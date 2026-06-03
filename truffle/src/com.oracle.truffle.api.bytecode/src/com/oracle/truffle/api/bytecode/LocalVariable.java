@@ -97,8 +97,8 @@ public abstract class LocalVariable {
      * can share an offset; otherwise, the local offset is the same as the {@link #getLocalIndex()
      * local index}.
      * <p>
-     * Note that the local offset can only be read if the current bytecode index is between
-     * {@link #getStartIndex()} and {@link #getEndIndex()} (exclusive).
+     * Using the local offset to access a local variable is only valid if the current bytecode index
+     * is in the range {@code [getStartIndex(), getEndIndex())}.
      *
      * @since 24.2
      */

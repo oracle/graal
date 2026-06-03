@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
@@ -53,7 +54,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.ExceptionHandler;
+import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.source.Source;
@@ -203,6 +207,186 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testClearLocalDuplicate() {
+        BasicInterpreter node = parseNode("clearLocalDuplicate", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginBlock();
+            b.emitClearLocal(local);
+            b.emitClearLocal(local);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "clear.local",
+                            "load.constant",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "clear.local",
+                            "clear.local",
+                            "load.constant",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRewriteAcrossBlockStart() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("rewriteAcrossBlockStart", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.emitClearLocal(x);
+
+            b.beginBlock();
+            b.emitClearLocal(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRewriteAcrossBlockEnd() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("rewriteAcrossBlockEnd", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.beginBlock();
+            b.emitClearLocal(x); // kept
+            b.endBlock();
+            b.emitClearLocal(x); // removed
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+
+        Instruction last = node.getBytecodeNode().getInstructionsAsList().getLast();
+        List<LocalVariable> locals = node.getBytecodeNode().getLocals();
+        assertEquals(1, locals.size());
+        if (run.hasBlockScoping()) {
+            assertEquals(last.getNextBytecodeIndex(), locals.getFirst().getEndIndex());
+        } else {
+            assertEquals(-1, locals.getFirst().getEndIndex());
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRewriteAcrossBranchUnwind() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("rewriteAcrossBranchUnwind", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal();
+            b.emitClearLocal(x); // explicit
+            b.emitBranch(lbl); // block unwind emits another clear.local(x)
+            b.endBlock();
+
+            b.emitLabel(lbl);
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "branch",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRewriteAcrossBranchUnwindFixSource() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        Source source = Source.newBuilder("test", "clear;nop;return 42;", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("rewriteAcrossBranchUnwindFixSource", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+            b.beginSource(source);
+            b.beginSourceSection(0, 20); // clear;nop;return 42;
+            b.beginBlock();
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal();
+
+            b.beginSourceSection(0, 6); // clear;
+            b.emitClearLocal(x); // explicit
+            b.endSourceSection();
+
+            b.beginSourceSection(6, 4); // nop;
+            b.emitBranch(lbl); // block unwind emits another clear.local(x)
+            b.endSourceSection();
+            b.endBlock();
+
+            b.emitLabel(lbl);
+            b.beginSourceSection(10, 10); // return 42;
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endBlock();
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "branch",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertSourceSectionsForInstructions(node, 0, 1, "clear;", "clear;nop;return 42;");
+        assertSourceSectionsForInstructions(node, 1, 2, "nop;", "clear;nop;return 42;");
+        assertSourceSectionsForInstructions(node, 2, 4, "return 42;", "clear;nop;return 42;");
+    }
+
+    @Test
     public void testMultipleRewrites() {
         BasicInterpreter node = parseNode("multipleRewrites", (BasicInterpreterBuilder b) -> {
             b.beginRoot();
@@ -325,10 +509,73 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
                         "pop",
                         "load.constant",
                         "return");
-        for (Instruction oldInstruction : instructionsToTest) {
-            Instruction newInstruction = oldInstruction.getLocation().update().getInstruction();
-            assertEquals(oldInstruction.getName(), newInstruction.getName());
-        }
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertUpdatedInstructions(instructionsToTest, newInstructions, 0, 1, 5, 12, 13);
+    }
+
+    @Test
+    public void testClearLocalDuplicateTranslateRewrittenBytecodeIndex() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("clearLocalDuplicateTranslateRewrittenBytecodeIndex", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.emitClearLocal(x);
+            b.emitClearLocal(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertInstructions(node,
+                        "clear.local",
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertUpdatedInstructions(oldInstructions, newInstructions, 0, 2, 3);
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testMultipleChainedRewrites() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("multipleChainedRewrites", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+            b.emitClearLocal(x);
+            b.emitClearLocal(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
@@ -363,26 +610,256 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = node.getBytecodeNode().getLocals();
         assertEquals(1, locals.size());
         LocalVariable x = locals.getFirst();
-        // The bci should point to the load.constant. Walk the instructions explicitly to avoid
-        // coincidentally interpreting an immediate as an opcode.
-        for (var instruction : node.getBytecodeNode().getInstructions()) {
-            if (instruction.getBytecodeIndex() == x.getStartIndex()) {
-                Instruction localStartInstruction;
-                if (run.testTracer()) {
-                    // Get the instruction after trace.instruction.
-                    localStartInstruction = node.getBytecodeNode().getInstruction(instruction.getNextBytecodeIndex());
-                } else {
-                    localStartInstruction = instruction;
-                }
-                assertEquals("load.constant", localStartInstruction.getName());
-                break;
-            }
-            if (instruction.getBytecodeIndex() > x.getStartIndex()) {
-                fail("Local start index does not point to a valid instruction.");
-            }
-        }
+        assertLocalStartInstruction(node, x, "load.constant");
 
         assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testClearLocalDuplicateFixLocalIndices() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("clearLocalDuplicateFixLocalIndices", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+
+            b.beginBlock();
+            b.emitClearLocal(x); // kept
+            b.createLocal(); // y
+            b.emitClearLocal(x); // deleted
+
+            b.createLocal(); // z
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+
+        List<LocalVariable> locals = node.getBytecodeNode().getLocals();
+        assertEquals(3, locals.size());
+        LocalVariable x = locals.get(0);
+        LocalVariable y = locals.get(1);
+        LocalVariable z = locals.get(2);
+        assertLocalStartInstruction(node, x, "clear.local");
+        assertLocalStartInstruction(node, y, "load.constant");
+        assertLocalStartInstruction(node, z, "load.constant");
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRedundantStoreFixLocalIndices() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("redundantStoreFixLocalIndices", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x); // deleted
+            b.emitLoadConstant(1L); // deleted
+            b.endStoreLocal();
+            b.endBlock(); // emits clear.local(x), which is kept by the rewrite
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+
+        List<LocalVariable> locals = node.getBytecodeNode().getLocals();
+        assertEquals(1, locals.size());
+        LocalVariable y = locals.getFirst();
+        assertLocalStartInstruction(node, y, "clear.local");
+        assertLocalEndInstruction(node, y, "clear.local");
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRedundantStoreTranslateRewrittenBytecodeIndex() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("redundantStoreTranslateRewrittenBytecodeIndex", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+            b.emitClearLocal(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertInstructions(node,
+                        "load.constant",
+                        "store.local",
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertUpdatedInstructions(oldInstructions, newInstructions, 2, 3, 4);
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testRedundantStoreFixSourceKeptSuffix() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        Source source = Source.newBuilder("test", "x=1;clear;return 42;", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("redundantStoreFixSourceKeptSuffix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginSource(source);
+
+            b.beginSourceSection(0, 10); // x=1;clear;
+            b.beginSourceSection(0, 4); // x=1;
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(1L); // deleted
+            b.endStoreLocal();
+            b.endSourceSection();
+
+            b.beginSourceSection(4, 6); // clear;
+            b.emitClearLocal(x); // kept
+            b.endSourceSection();
+            b.endSourceSection();
+
+            b.beginSourceSection(10, 10); // return 42;
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endSource();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertSourceSectionsForInstructions(node, 0, 1, "clear;", "x=1;clear;");
+        assertSourceSectionsForInstructions(node, 1, 3, "return 42;");
+        assertDeletedSourceSection(node, "x=1;");
+    }
+
+    /**
+     * Tests a source section that starts before a deleted prefix and ends inside it.
+     */
+    @Test
+    public void testRedundantStoreFixSourcePrefix() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        Source source = Source.newBuilder("test", "void;x=1;clear;return 42;", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("redundantStoreFixSourcePrefix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginSource(source);
+
+            b.beginSourceSection(0, 9); // void;x=1;
+            b.emitVoidOperation();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(1L); // deleted
+            b.endStoreLocal();
+            b.endSourceSection();
+
+            b.beginSourceSection(9, 6); // clear;
+            b.emitClearLocal(x); // kept
+            b.endSourceSection();
+
+            b.beginSourceSection(15, 10); // return 42;
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endSource();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "c.VoidOperation",
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertSourceSectionsForInstructions(node, 0, 1, "void;x=1;");
+        assertSourceSectionsForInstructions(node, 1, 2, "clear;");
+        assertSourceSectionsForInstructions(node, 2, 4, "return 42;");
+    }
+
+    @Test
+    public void testClearLocalDuplicateFixSourceSuffix() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        Source source = Source.newBuilder("test", "keep;drop;return 42;", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("clearLocalDuplicateFixSourceSuffix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+
+            b.beginBlock();
+            b.beginSource(source);
+
+            b.beginSourceSection(0, 5); // keep;
+            b.emitClearLocal(x); // kept
+            b.endSourceSection();
+
+            b.beginSourceSection(5, 5); // drop;
+            b.emitClearLocal(x); // deleted
+            b.endSourceSection();
+
+            b.beginSourceSection(10, 10); // return 42;
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endSource();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertSourceSectionsForInstructions(node, 0, 1, "keep;");
+        assertSourceSectionsForInstructions(node, 1, 3, "return 42;");
+        assertEmptySourceSection(node, "drop;");
     }
 
     /**
@@ -583,6 +1060,129 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         assertDeletedSourceSection(node, "nop");
     }
 
+    /**
+     * Tests that rewriting across try entry remaps an on-stack try-finally start BCI.
+     */
+    @Test
+    public void testTryFinallyFixHandlerStartBci() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("tryFinallyFixHandlerStartBci", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.beginTryFinally(() -> b.emitVoidOperation());
+            b.beginBlock();
+            b.emitClearLocal(x);
+            b.emitVoidOperation();
+            b.endBlock();
+            b.endTryFinally();
+            b.endRoot();
+        });
+
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(1, handlers.size());
+        assertEquals(HandlerKind.CUSTOM, handlers.get(0).getKind());
+        assertGuards(handlers.get(0), node, "clear.local", "c.VoidOperation");
+    }
+
+    /**
+     * Tests that rewriting across try entry remaps an on-stack try-catch start BCI.
+     */
+    @Test
+    public void testTryCatchFixHandlerStartBci() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("tryCatchFixHandlerStartBci", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.beginTryCatch();
+            b.beginBlock();
+            b.emitClearLocal(x);
+            b.emitVoidOperation();
+            b.endBlock();
+            b.emitVoidOperation();
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(1, handlers.size());
+        assertEquals(HandlerKind.CUSTOM, handlers.get(0).getKind());
+        assertGuards(handlers.get(0), node, "clear.local", "c.VoidOperation");
+    }
+
+    /**
+     * Tests that rewriting across branch unwind fixes an already-emitted try-catch range end BCI.
+     */
+    @Test
+    public void testTryCatchFixEmittedHandlerEndBci() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("tryCatchFixEmittedHandlerEndBci", b -> {
+            b.beginRoot();
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal();
+            b.beginTryCatch();
+            b.beginBlock();
+            b.emitVoidOperation();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.emitBranch(lbl); // block unwind emits clear.local(x)
+            b.endBlock();
+            b.emitVoidOperation();
+            b.endTryCatch();
+            b.endBlock();
+
+            b.emitLabel(lbl);
+            b.emitVoidOperation();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "c.VoidOperation",
+                        "clear.local",
+                        "branch",
+                        "c.VoidOperation",
+                        "pop",
+                        "clear.local",
+                        "c.VoidOperation",
+                        "load.null",
+                        "return");
+
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(2, handlers.size());
+        assertEquals(HandlerKind.CUSTOM, handlers.get(0).getKind());
+        assertEquals(HandlerKind.CUSTOM, handlers.get(1).getKind());
+        assertGuards(handlers.get(0), node, "c.VoidOperation");
+        assertGuards(handlers.get(1), node, "branch");
+    }
+
+    private static void assertGuards(ExceptionHandler handler, BasicInterpreter node, String... expectedInstructions) {
+        List<String> actualInstructions = new java.util.ArrayList<>();
+        for (Instruction instruction : node.getBytecodeNode().getInstructions()) {
+            int bci = instruction.getBytecodeIndex();
+            if (handler.getStartBytecodeIndex() <= bci && bci < handler.getEndBytecodeIndex()) {
+                if (!instruction.getName().equals("trace.instruction")) {
+                    actualInstructions.add(instruction.getName());
+                }
+            }
+        }
+        assertEquals(expectedInstructions.length, actualInstructions.size());
+        for (int i = 0; i < expectedInstructions.length; i++) {
+            assertTrue(actualInstructions.get(i).startsWith(expectedInstructions[i]));
+        }
+    }
+
     private void assertSourceSectionsForInstructions(BasicInterpreter node, int instructionStartIndex, int instructionEndIndex, String... sourceStrings) {
         int startIndex = instructionStartIndex;
         int endIndex = instructionEndIndex;
@@ -598,6 +1198,46 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
             for (int j = 0; j < sourceStrings.length; j++) {
                 assertEquals("Instruction " + i + " did not have the expected source section at index " + j, sourceStrings[j], sourceSections[j].getCharacters());
             }
+        }
+    }
+
+    private void assertLocalStartInstruction(BasicInterpreter node, LocalVariable local, String instructionName) {
+        assertInstructionAtBci(node, local.getStartIndex(), instructionName, "Local start index");
+    }
+
+    private void assertLocalEndInstruction(BasicInterpreter node, LocalVariable local, String instructionName) {
+        assertInstructionAtBci(node, local.getEndIndex(), instructionName, "Local end index");
+    }
+
+    private void assertInstructionAtBci(BasicInterpreter node, int bci, String instructionName, String description) {
+        // Walk the instructions explicitly to avoid coincidentally interpreting an immediate as an
+        // opcode.
+        for (var instruction : node.getBytecodeNode().getInstructions()) {
+            if (instruction.getBytecodeIndex() == bci) {
+                Instruction actualInstruction;
+                if (run.testTracer()) {
+                    // Get the instruction after trace.instruction.
+                    actualInstruction = node.getBytecodeNode().getInstruction(instruction.getNextBytecodeIndex());
+                } else {
+                    actualInstruction = instruction;
+                }
+                assertEquals(instructionName, actualInstruction.getName());
+                return;
+            }
+            if (instruction.getBytecodeIndex() > bci) {
+                fail(description + " does not point to a valid instruction.");
+            }
+        }
+        fail(description + " does not point to a valid instruction.");
+    }
+
+    private static void assertUpdatedInstructions(List<Instruction> oldInstructions, List<Instruction> newInstructions, int... newInstructionIndexes) {
+        assertEquals(newInstructionIndexes.length, oldInstructions.size());
+        for (int i = 0; i < oldInstructions.size(); i++) {
+            Instruction expectedInstruction = newInstructions.get(newInstructionIndexes[i]);
+            Instruction actualInstruction = oldInstructions.get(i).getLocation().update().getInstruction();
+            assertEquals(expectedInstruction.getName(), actualInstruction.getName());
+            assertEquals(expectedInstruction.getBytecodeIndex(), actualInstruction.getBytecodeIndex());
         }
     }
 

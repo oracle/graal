@@ -73,6 +73,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.IntBinaryOperator;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -104,7 +105,8 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ImmediateReference;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.Kind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedInstructionPatternModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
@@ -1514,7 +1516,6 @@ final class BuilderElement extends AbstractElement {
                 if (model.enableBlockScoping) {
                     b.tree(operationStack.write(operation, operationFields.frameOffset, "parentScope.getFrameOffset() + parentScope.getNumLocals()"));
                 }
-                emitRequestLeaderBci(b, "blocks are rewrite boundaries");
                 break;
             case TAG:
                 buildEmitInstruction(b, null, model.tagEnterInstruction, "nodeId");
@@ -1797,13 +1798,13 @@ final class BuilderElement extends AbstractElement {
                 values.put(operationFields.elseReachable, "state.reachable");
                 break;
             case WHILE:
-                values.put(operationFields.whileStartBci, requestLeaderBci());
+                values.put(operationFields.whileStartBci, requestLeaderBci("while loop header"));
                 values.put(operationFields.bodyReachable, "state.reachable");
                 break;
             case TRY_CATCH:
                 values.put(operationFields.handlerId, "++state.numHandlers");
                 values.put(operationFields.stackHeight, "state.currentStackHeight");
-                values.put(operationFields.tryStartBci, requestLeaderBci());
+                values.put(operationFields.tryStartBci, "state.bci");
                 values.put(operationFields.operationReachable, "state.reachable");
                 values.put(operationFields.tryReachable, "state.reachable");
                 values.put(operationFields.catchReachable, "state.reachable");
@@ -1812,7 +1813,7 @@ final class BuilderElement extends AbstractElement {
                 values.put(operationFields.handlerId, "++state.numHandlers");
                 values.put(operationFields.stackHeight, "state.currentStackHeight");
                 values.put(operationFields.finallyGenerator, operation.getOperationBeginArgumentName(0));
-                values.put(operationFields.tryStartBci, requestLeaderBci());
+                values.put(operationFields.tryStartBci, "state.bci");
                 values.put(operationFields.operationReachable, "state.reachable");
                 values.put(operationFields.tryReachable, "state.reachable");
                 values.put(operationFields.catchReachable, "false");
@@ -1821,7 +1822,7 @@ final class BuilderElement extends AbstractElement {
                 values.put(operationFields.handlerId, "++state.numHandlers");
                 values.put(operationFields.stackHeight, "state.currentStackHeight");
                 values.put(operationFields.finallyGenerator, operation.getOperationBeginArgumentName(0));
-                values.put(operationFields.tryStartBci, requestLeaderBci());
+                values.put(operationFields.tryStartBci, "state.bci");
                 values.put(operationFields.operationReachable, "state.reachable");
                 values.put(operationFields.tryReachable, "state.reachable");
                 values.put(operationFields.catchReachable, "state.reachable");
@@ -2089,7 +2090,7 @@ final class BuilderElement extends AbstractElement {
 
                 b.declaration(type(int[].class), "branchFixupBcis", operationStack.read(operation, operationFields.branchFixupBcis));
                 b.declaration(type(int.class), "numBranchFixupBcis", operationStack.read(operation, operationFields.numBranchFixupBcis));
-                b.declaration(type(int.class), "endBci", requestLeaderBci());
+                b.declaration(type(int.class), "endBci", requestLeaderBci("short-circuit merge point"));
                 b.startFor().string("int i = 0; i < numBranchFixupBcis; i++").end().startBlock();
                 b.statement(BytecodeRootNodeElement.writeInt("state.bc", "branchFixupBcis[i]", "endBci"));
                 b.end();
@@ -2152,7 +2153,7 @@ final class BuilderElement extends AbstractElement {
                 break;
             case TRY_FINALLY:
                 emitFinallyHandlersAfterTry(b, operation);
-                emitFixFinallyBranchBci(b, operation);
+                emitPatchBranchFixupBci(b, operation, operationFields.endBranchFixupBci, "finally handler branch target");
                 b.statement("state.popOperation()");
                 b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), ")");
                 break;
@@ -2267,7 +2268,6 @@ final class BuilderElement extends AbstractElement {
                     // local table entries are emitted at the end of the block.
                     emitEndBlockScope(b, operation);
                 }
-                emitRequestLeaderBci(b, "blocks are rewrite boundaries");
 
                 break;
             case YIELD, CUSTOM_YIELD:
@@ -2331,7 +2331,7 @@ final class BuilderElement extends AbstractElement {
             /*
              * We don't BE yields/tag.resume, but the BE machinery needs a valid bci. Use the
              * tag.resume bci if it was emitted, otherwise use the yield bci. Note: a leader bci was
-             * already requested at state.bci, so yieldBci is safe from rewrites.
+             * already requested at state.bci in buildEmitOperationInstruction, so yieldBci is safe from rewrites.
              */
             String yieldBci = "state.bci - " + operation.instruction.getInstructionLength();
             emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : " + yieldBci);
@@ -2501,36 +2501,39 @@ final class BuilderElement extends AbstractElement {
      * Returns an expression computing the current bci and marking it as a leader bci (if rewriting
      * is enabled).
      * <p>
-     * This helper should be used any time the builder uses the current bci and expects it to be
-     * stable.
+     * This helper should be used when the current bci is a basic block boundary.
      */
-    private String requestLeaderBci() {
-        return requestLeaderBci("state");
+    private String requestLeaderBci(String reason) {
+        return requestLeaderBci("state", reason);
     }
 
-    private String requestLeaderBci(String receiver) {
+    private String requestLeaderBci(String receiver, String reason) {
+        Objects.requireNonNull(reason);
+        String result;
         if (model.enableInstructionRewriting) {
-            return CodeTreeBuilder.createBuilder().startCall(receiver, rootStackElement.requestLeaderBci).end().build().toString();
+            result = CodeTreeBuilder.createBuilder().startCall(receiver, rootStackElement.requestLeaderBci).end().build().toString();
         } else if (receiver == null) {
-            return "bci";
+            result = "bci";
         } else {
-            return receiver + ".bci";
+            result = receiver + ".bci";
         }
+        result += " /* " + reason + " */";
+        return result;
     }
 
     /**
-     * Emits a statement requesting a leader bci. Unlike {@link #requestLeaderBci()} this helper is
-     * for statements where the leader bci is not accessed, but must be requested for correctness
-     * reasons (e.g., on block entry/exit).
-     * <p>
-     * This helper should be used any time rewrites should not be performed on preceding
-     * instructions. This includes cases where the result of a doEmitInstruction call is stored
-     * somewhere.
+     * Emits a statement requesting a leader bci. Unlike {@link #requestLeaderBci(String)} this
+     * helper is for statements where the leader bci is not accessed, but must be requested for
+     * correctness reasons (e.g., on block entry/exit).
      */
     private void emitRequestLeaderBci(CodeTreeBuilder b, String reason) {
+        emitRequestLeaderBci(b, "state", reason);
+    }
+
+    private void emitRequestLeaderBci(CodeTreeBuilder b, String receiver, String reason) {
         if (model.enableInstructionRewriting) {
             b.startStatement();
-            b.startCall("state", rootStackElement.requestLeaderBci).end();
+            b.startCall(receiver, rootStackElement.requestLeaderBci).end();
             b.string(" ").startComment().string(" ", reason, " ").end();
             b.end();
         }
@@ -2552,12 +2555,20 @@ final class BuilderElement extends AbstractElement {
 
         b.statement("state.maxLocals = Math.max(state.maxLocals, ", operationStack.read(operation, operationFields.frameOffset), " + ",
                         operationStack.read(operation, operationFields.numLocals), ")");
+        String localTableIndices = operationStack.read(operation, operationFields.locals);
+        if (model.enableInstructionRewriting || operation.kind == OperationKind.BLOCK) {
+            b.declaration(arrayOf(type(int.class)), "localTableIndices", localTableIndices);
+            localTableIndices = "localTableIndices";
+        }
         b.startFor().string("int index = 0; index < ", operationStack.read(operation, operationFields.numLocals), "; index++").end().startBlock();
 
-        b.statement("state.locals[", operationStack.read(operation, operationFields.locals), "[index] + LOCALS_OFFSET_END_BCI] = state.bci");
+        b.statement("state.locals[", localTableIndices, "[index] + LOCALS_OFFSET_END_BCI] = state.bci");
+        if (model.enableInstructionRewriting) {
+            b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, ", localTableIndices, "[index])");
+        }
         if (operation.kind == OperationKind.BLOCK) {
             buildEmitInstruction(b, null, model.clearLocalInstruction,
-                            BytecodeRootNodeElement.safeCastShort("state.locals[" + operationStack.read(operation, operationFields.locals) + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
+                            BytecodeRootNodeElement.safeCastShort("state.locals[" + localTableIndices + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
         }
         b.end(); // for
         b.end(); // block
@@ -2647,7 +2658,7 @@ final class BuilderElement extends AbstractElement {
 
             if (model.epilogExceptional != null) {
                 b.lineComment("Emit epilog special exception handler");
-                b.statement(doCreateExceptionHandler("0", requestLeaderBci(), "HANDLER_EPILOG_EXCEPTIONAL", "-1", "-1"));
+                b.statement(doCreateExceptionHandler("0", "state.bci", "HANDLER_EPILOG_EXCEPTIONAL", "-1", "-1"));
             }
 
             if (model.enableRootTagging) {
@@ -3026,7 +3037,7 @@ final class BuilderElement extends AbstractElement {
         b.lineComment("register exception table entry");
         b.startAssign("exHandlerIndex");
         b.tree(doCreateExceptionHandler(operationStack.read(op, operationFields.tryStartBci),
-                        requestLeaderBci(),
+                        "state.bci",
                         "HANDLER_CUSTOM",
                         "-" + operationStack.read(op, operationFields.handlerId),
                         "handlerSp"));
@@ -3041,24 +3052,30 @@ final class BuilderElement extends AbstractElement {
         buildEmitInstruction(b, "branchTargetBci", model.branchInstruction, new String[]{UNINIT});
         b.tree(operationStack.write(op, operationFields.endBranchFixupBci,
                         "branchTargetBci + " + model.branchInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset()));
-        emitRequestLeaderBci(b, "new basic block entered");
-
         b.end();
+
+        String handlerKind = switch (op.kind) {
+            case TRY_FINALLY -> "finally";
+            case TRY_CATCH_OTHERWISE -> "otherwise";
+            default -> throw new AssertionError("Unexpected operation " + op);
+        };
+        emitRequestLeaderBci(b, "start of " + handlerKind + " handler");
 
         b.startIf().string(operationStack.read(op, operationFields.operationReachable)).end().startBlock();
         b.lineComment("update exception table; force handler code to be reachable");
         b.statement("state.reachable = true");
+        b.declaration(type(int.class), "handlerBci", "state.bci");
 
         b.startStatement().startCall("state.patchHandlerTable");
         b.string(operationStack.read(op, operationFields.extraTableEntriesStart));
         b.string(operationStack.read(op, operationFields.extraTableEntriesEnd));
         b.string(operationStack.read(op, operationFields.handlerId));
-        b.string(requestLeaderBci());
+        b.string("handlerBci");
         b.string("handlerSp");
         b.end(2);
 
         b.startIf().string("exHandlerIndex != ", UNINIT).end().startBlock();
-        b.statement("state.handlerTable[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = ", requestLeaderBci());
+        b.statement("state.handlerTable[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
         b.end();
         b.end(); // if operationReachable
 
@@ -3071,13 +3088,12 @@ final class BuilderElement extends AbstractElement {
     }
 
     /**
-     * Produces code to patch the regular finally handler's branch over the exceptional handler.
+     * Produces code to patch a branch fixup BCI to the current BCI.
      */
-    private void emitFixFinallyBranchBci(CodeTreeBuilder b, OperationModel op) {
-        // The regular handler branches over the exceptional handler. Patch its bci.
-        b.statement("int toUpdate = ", operationStack.read(op, operationFields.endBranchFixupBci));
+    private void emitPatchBranchFixupBci(CodeTreeBuilder b, OperationModel op, OperationField fixupField, String reason) {
+        b.statement("int toUpdate = ", operationStack.read(op, fixupField));
         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-        b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
+        b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci(reason)));
         b.end();
     }
 
@@ -3148,7 +3164,7 @@ final class BuilderElement extends AbstractElement {
                 b.string("constantPoolIndex").string("continuationBci != -1 ? continuationBci + " + operation.instruction.getInstructionLength() + " : -1");
                 b.string("state.currentStackHeight");
                 b.end(2); // statement + call
-                emitRequestLeaderBci(b, "continuation bci emitted");
+                emitRequestLeaderBci(b, "start of continuation resume block");
                 break;
             default:
                 buildEmitInstruction(b, null, operation.instruction, args);
@@ -3242,7 +3258,7 @@ final class BuilderElement extends AbstractElement {
         b.string("labelImpl");
         b.string("branchTargetBci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
         b.end(2);
-        emitRequestLeaderBci(b, "new basic block entered");
+        emitRequestLeaderBci(b, "branch marks end of current basic block");
         b.end(); // if reachable
     }
 
@@ -3524,8 +3540,12 @@ final class BuilderElement extends AbstractElement {
         if (operation.isVariadic) {
             b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction.signature.dynamicOperandCount() - 1));
 
-            b.startIf().string(operationStack.read(operation, operationFields.variadicCountPatchIndex), " != -1").end().startBlock();
-            b.statement(BytecodeRootNodeElement.writeInt("state.bc", operationStack.read(operation, operationFields.variadicCountPatchIndex), "variadicCount"));
+            b.declaration(type(int.class), "createVariadicBci", operationStack.read(operation, operationFields.createVariadicBci));
+            b.startIf().string("createVariadicBci != -1").end().startBlock();
+            b.startAssert().tree(BytecodeRootNodeElement.readInstruction("state.bc", "createVariadicBci")).string(" == ") //
+                            .tree(parent.createInstructionConstant(model.createVariadicInstruction)).end();
+            int countOffset = model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset();
+            b.statement(BytecodeRootNodeElement.writeInt("state.bc", formatBciOffset("createVariadicBci", countOffset), "variadicCount"));
             b.end();
 
             b.startStatement().startCall("doEmitVariadicEnd");
@@ -3668,7 +3688,7 @@ final class BuilderElement extends AbstractElement {
                     b.tree(operationStack.write(op, operationFields.shortCircuitBci, "shortCircuitBci"));
                 }
 
-                emitRequestLeaderBci(b, "new basic block entered");
+                emitRequestLeaderBci(b, "start of short-circuit fall-through block");
 
                 // Remember the short circuit instruction's bci so we can patch the branch bci.
                 b.startIf().string("shortCircuitBci != -1").end().startBlock();
@@ -3705,32 +3725,31 @@ final class BuilderElement extends AbstractElement {
                 b.statement("state.updateMaxStackHeight(state.currentStackHeight)");
                 b.end(); // if
                 b.statement("break");
-            } else if (op.kind == OperationKind.CUSTOM && op.isVariadic) {
+            } else if (op.isCustomVariadic()) {
                 // Before emitting a variadic instruction, we need to emit instructions
-                // to merge all
-                // of the operands on the stack into one array.
+                // to merge all of the operands on the stack into one array.
                 if (op.instruction.signature.dynamicOperandCount() == 1) {
                     // only argument is variadic
-                    b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
+                    b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
                         b.string(op.variadicOffset);
                     }
                     b.string("childIndex");
                     b.end().end();
-                    b.startIf().string("patchIndex != -1").end().startBlock();
+                    b.startIf().string("createVariadicBci != -1").end().startBlock();
 
-                    b.tree(operationStack.write(op, operationFields.variadicCountPatchIndex, "patchIndex"));
+                    b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
                     b.end();
                 } else {
                     b.startIf().string("childIndex >= " + (op.instruction.signature.dynamicOperandCount() - 1)).end().startBlock();
-                    b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
+                    b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
                         b.string(op.variadicOffset);
                     }
                     b.string("childIndex - " + (op.instruction.signature.dynamicOperandCount() - 1));
                     b.end().end();
-                    b.startIf().string("patchIndex != -1").end().startBlock();
-                    b.tree(operationStack.write(op, operationFields.variadicCountPatchIndex, "patchIndex"));
+                    b.startIf().string("createVariadicBci != -1").end().startBlock();
+                    b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
                     b.end();
                     b.end();
                 }
@@ -3904,14 +3923,11 @@ final class BuilderElement extends AbstractElement {
                     b.startIf().string("branchFalseBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.falseBranchFixupBci,
                                     "branchFalseBci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
+                    emitRequestLeaderBci(b, "start of then block");
                     b.end();
 
                     b.end().startElseBlock();
-                    b.statement("int toUpdate = ", operationStack.read(op, operationFields.falseBranchFixupBci));
-                    b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
-                    b.end();
+                    emitPatchBranchFixupBci(b, op, operationFields.falseBranchFixupBci, "if/then merge point");
                     b.end();
                     break;
                 case IF_THEN_ELSE:
@@ -3920,23 +3936,16 @@ final class BuilderElement extends AbstractElement {
                     b.startIf().string("branchFalseBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.falseBranchFixupBci,
                                     "branchFalseBci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
+                    emitRequestLeaderBci(b, "start of then block");
                     b.end();
                     b.end().startElseIf().string("childIndex == 1").end().startBlock();
                     buildEmitInstruction(b, "branchBci", model.branchInstruction, new String[]{UNINIT});
                     b.startIf().string("branchBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.endBranchFixupBci, "branchBci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
                     b.end();
-                    b.statement("int toUpdate = ", operationStack.read(op, operationFields.falseBranchFixupBci));
-                    b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
-                    b.end();
+                    emitPatchBranchFixupBci(b, op, operationFields.falseBranchFixupBci, "start of else block");
                     b.end().startElseBlock();
-                    b.statement("int toUpdate = ", operationStack.read(op, operationFields.endBranchFixupBci));
-                    b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
-                    b.end();
+                    emitPatchBranchFixupBci(b, op, operationFields.endBranchFixupBci, "if/else merge point");
                     b.end();
                     break;
                 case CONDITIONAL:
@@ -3948,7 +3957,7 @@ final class BuilderElement extends AbstractElement {
                     b.startIf().string("branchFalseBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.falseBranchFixupBci,
                                     "branchFalseBci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
+                    emitRequestLeaderBci(b, "start of true block");
                     b.end();
 
                     b.end().startElseIf().string("childIndex == 1").end().startBlock();
@@ -3958,23 +3967,16 @@ final class BuilderElement extends AbstractElement {
                     b.startIf().string("state.reachable").end().startBlock();
                     buildEmitInstruction(b, "branchBci", model.branchInstruction, new String[]{UNINIT});
                     b.tree(operationStack.write(op, operationFields.endBranchFixupBci, "branchBci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
                     b.end();
                     // we have to adjust the stack for the third child
                     b.statement("state.currentStackHeight -= 1");
 
-                    b.statement("int toUpdate = ", operationStack.read(op, operationFields.falseBranchFixupBci));
-                    b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
-                    b.end();
+                    emitPatchBranchFixupBci(b, op, operationFields.falseBranchFixupBci, "start of false block");
                     b.end().startElseBlock();
                     if (model.usesBoxingElimination()) {
                         b.tree(operationStack.write(op, operationFields.getChildBci(1, false), "childBci"));
                     }
-                    b.statement("int toUpdate = ", operationStack.read(op, operationFields.endBranchFixupBci));
-                    b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
-                    b.end();
+                    emitPatchBranchFixupBci(b, op, operationFields.endBranchFixupBci, "conditional merge point");
                     b.end();
                     break;
                 case WHILE:
@@ -3983,7 +3985,7 @@ final class BuilderElement extends AbstractElement {
                     buildEmitInstruction(b, "branchFalseBci", model.branchFalseInstruction, emitBranchFalseArguments(model.branchFalseInstruction));
                     b.startIf().string("branchFalseBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.endBranchFixupBci, "branchFalseBci + " + branchTarget.offset()));
-                    emitRequestLeaderBci(b, "new basic block entered");
+                    emitRequestLeaderBci(b, "start of while body");
                     b.end();
                     b.end().startElseBlock();
                     b.statement("int toUpdate = ", operationStack.read(op, operationFields.endBranchFixupBci));
@@ -4004,14 +4006,14 @@ final class BuilderElement extends AbstractElement {
                     }
                     String readBranchProfile = BytecodeRootNodeElement.readInt("state.bc", "toUpdate + " + offset + " /* loop branch profile */");
                     buildEmitInstruction(b, null, model.branchBackwardInstruction, new String[]{operationStack.read(op, operationFields.whileStartBci), readBranchProfile});
-                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci()));
+                    b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci("while loop exit")));
                     b.end();
                     b.end();
                     break;
                 case TRY_CATCH:
                     b.startIf().string("childIndex == 0").end().startBlock();
                     b.startIf().string(operationStack.read(op, operationFields.operationReachable)).end().startBlock();
-                    b.declaration(type(int.class), "tryEndBci", requestLeaderBci());
+                    b.declaration(type(int.class), "tryEndBci", "state.bci");
 
                     b.startIf().string(operationStack.read(op, operationFields.tryReachable)).end().startBlock();
                     buildEmitInstruction(b, "branchBci", model.branchInstruction, new String[]{UNINIT});
@@ -4019,7 +4021,9 @@ final class BuilderElement extends AbstractElement {
                     b.end(); // if tryReachable
 
                     b.declaration(type(int.class), "handlerSp", "state.currentStackHeight + 1");
-                    b.declaration(type(int.class), "handlerBci", requestLeaderBci());
+                    b.startDeclaration(type(int.class), "handlerBci");
+                    b.string(requestLeaderBci("start of catch block"));
+                    b.end();
                     b.startStatement().startCall("state.patchHandlerTable");
                     b.string(operationStack.read(op, operationFields.extraTableEntriesStart));
                     b.string(operationStack.read(op, operationFields.extraTableEntriesEnd));
@@ -4035,7 +4039,7 @@ final class BuilderElement extends AbstractElement {
                     b.startElseIf().string("childIndex == 1").end().startBlock();
                     b.lineComment("pop the exception");
                     buildEmitInstruction(b, null, model.popInstruction, emitPopArguments("-1"));
-                    emitFixFinallyBranchBci(b, op);
+                    emitPatchBranchFixupBci(b, op, operationFields.endBranchFixupBci, "try/catch merge point");
                     b.end();
                     break;
                 case TRY_CATCH_OTHERWISE:
@@ -4044,7 +4048,7 @@ final class BuilderElement extends AbstractElement {
                     b.end().startElseBlock();
                     b.lineComment("pop the exception");
                     buildEmitInstruction(b, null, model.popInstruction, emitPopArguments("-1"));
-                    emitFixFinallyBranchBci(b, op);
+                    emitPatchBranchFixupBci(b, op, operationFields.endBranchFixupBci, "otherwise handler branch target");
                     b.end();
                     break;
                 case STORE_LOCAL:
@@ -4349,8 +4353,21 @@ final class BuilderElement extends AbstractElement {
         return ex;
     }
 
+    private static String formatBciOffset(String base, int offset) {
+        if (offset == 0) {
+            return base;
+        } else if (offset < 0) {
+            return base + " - " + (-offset);
+        } else {
+            return base + " + " + offset;
+        }
+    }
+
     private CodeExecutableElement createDoEmitVariadicBeforeChild() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitVariadicBeforeChild");
+        BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                        "Emits variadic merge instructions before a child.",
+                        "Returns the bci of a pending create.variadic instruction whose count must be patched, or -1 if no patch is needed."));
 
         if (model.maximumVariadicOffset > 0) {
             ex.addParameter(new CodeVariableElement(type(int.class), "offset"));
@@ -4369,10 +4386,9 @@ final class BuilderElement extends AbstractElement {
         b.end();
 
         b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
-        buildEmitInstructionWithStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
+        buildEmitInstructionWithStackEffect(b, "createVariadicBci", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
                         createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
-        emitRequestLeaderBci(b, "offset into instruction will be remembered for patching");
-        b.startReturn().string("createVariadicOffset + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset()).end();
+        b.startReturn().string("createVariadicBci").end();
         b.end().startElseBlock();
         String offset;
         if (model.maximumVariadicOffset > 0) {
@@ -4721,7 +4737,7 @@ final class BuilderElement extends AbstractElement {
                 b.startCase().tree(parent.createOperationConstant(model.epilogReturn.operation)).end();
                 b.startBlock();
                 buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", null);
-                b.startAssign("childBci").string(requestLeaderBci() + " - " + model.epilogReturn.operation.instruction.getInstructionLength()).end();
+                b.startAssign("childBci").string("state.bci - " + model.epilogReturn.operation.instruction.getInstructionLength()).end();
                 b.statement("break");
                 b.end(); // case epilog
             }
@@ -4793,13 +4809,21 @@ final class BuilderElement extends AbstractElement {
             if (model.enableBlockScoping) {
                 b.startCase().tree(parent.createOperationConstant(model.blockOperation)).end();
                 b.startBlock();
-                b.declaration(type(int.class), "blockEndBci", requestLeaderBci());
+                b.declaration(type(int.class), "blockEndBci", "state.bci");
+                String blockLocalTableIndices = operationStack.read(model.blockOperation, operationFields.locals);
+                if (model.enableInstructionRewriting || operationKind == OperationKind.BRANCH) {
+                    b.declaration(arrayOf(type(int.class)), "blockLocalTableIndices", blockLocalTableIndices);
+                    blockLocalTableIndices = "blockLocalTableIndices";
+                }
                 b.startFor().string("int j = 0; j < ", operationStack.read(model.blockOperation, operationFields.numLocals), "; j++").end().startBlock();
-                b.statement("state.locals[", operationStack.read(model.blockOperation, operationFields.locals), "[j] + LOCALS_OFFSET_END_BCI] = blockEndBci");
+                b.statement("state.locals[", blockLocalTableIndices, "[j] + LOCALS_OFFSET_END_BCI] = blockEndBci");
+                if (model.enableInstructionRewriting) {
+                    b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, ", blockLocalTableIndices, "[j])");
+                }
                 if (operationKind == OperationKind.BRANCH) {
                     buildEmitInstruction(b, null, model.clearLocalInstruction,
                                     BytecodeRootNodeElement.safeCastShort(
-                                                    "state.locals[" + operationStack.read(model.blockOperation, operationFields.locals) + "[j] + LOCALS_OFFSET_FRAME_INDEX]"));
+                                                    "state.locals[" + blockLocalTableIndices + "[j] + LOCALS_OFFSET_FRAME_INDEX]"));
                 }
                 b.statement("needsRewind = true");
                 b.end(); // for
@@ -4813,7 +4837,7 @@ final class BuilderElement extends AbstractElement {
 
     private void emitExtraExceptionTableEntry(CodeTreeBuilder b, OperationModel op) {
         b.startDeclaration(type(int.class), "handlerTableIndex");
-        b.string("state.doCreateExceptionHandler(", operationStack.read(op, operationFields.tryStartBci), ", ", requestLeaderBci(), ", HANDLER_CUSTOM, -",
+        b.string("state.doCreateExceptionHandler(", operationStack.read(op, operationFields.tryStartBci), ", state.bci, HANDLER_CUSTOM, -",
                         operationStack.read(op, operationFields.handlerId), ", ", UNINIT, " /* stack height */)");
         b.end();
         b.startIf().string("handlerTableIndex != ", UNINIT).end().startBlock();
@@ -4833,21 +4857,13 @@ final class BuilderElement extends AbstractElement {
         b.end();
         b.startIf().string("needsRewind").end().startBlock();
 
-        /*
-         * Eagerly request a leader bci once to avoid requesting it for each operation. Rewind
-         * doesn't emit instructions, so repeated calls would produce the same bci. Even if no
-         * operation needs this bci, the next instruction is a branch/return that we cannot rewrite
-         * anyway.
-         */
-        b.declaration(type(int.class), "leaderBci", requestLeaderBci());
-
         buildOperationStackWalkFromBottom(b, lowestOperationIndex, () -> {
             b.startSwitch().string("operation.operation").end().startBlock();
 
             if (model.enableTagInstrumentation) {
                 b.startCase().tree(parent.createOperationConstant(model.tagOperation)).end();
                 b.startCaseBlock();
-                b.tree(operationStack.write(model.tagOperation, operationFields.handlerStartBci, "leaderBci"));
+                b.tree(operationStack.write(model.tagOperation, operationFields.handlerStartBci, "state.bci"));
                 b.statement("break");
                 b.end();
             }
@@ -4856,7 +4872,7 @@ final class BuilderElement extends AbstractElement {
             b.startCase().tree(parent.createOperationConstant(model.findOperation(OperationKind.TRY_CATCH_OTHERWISE))).end();
             b.startCaseBlock();
             b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
-            b.tree(operationStack.write(model.findOperation(OperationKind.TRY_FINALLY), operationFields.tryStartBci, "leaderBci"));
+            b.tree(operationStack.write(model.findOperation(OperationKind.TRY_FINALLY), operationFields.tryStartBci, "state.bci"));
             b.end(); // if
             b.statement("break");
             b.end(); // case finally
@@ -4864,30 +4880,31 @@ final class BuilderElement extends AbstractElement {
             b.startCase().tree(parent.createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
             b.startCaseBlock();
             b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
-            b.tree(operationStack.write(model.tryCatchOperation, operationFields.tryStartBci, "leaderBci"));
+            b.tree(operationStack.write(model.tryCatchOperation, operationFields.tryStartBci, "state.bci"));
             b.end(); // if
             b.statement("break");
             b.end(); // case trycatch
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
             b.startCaseBlock();
-            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "leaderBci"));
+            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "state.bci"));
             b.statement("break");
             b.end(); // case source section
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
             b.startCaseBlock();
-            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "leaderBci"));
+            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "state.bci"));
             b.statement("break");
             b.end(); // case source section
 
             if (model.enableBlockScoping) {
                 b.startCase().tree(parent.createOperationConstant(model.blockOperation)).end();
                 b.startCaseBlock();
+                b.declaration(arrayOf(type(int.class)), "blockLocalTableIndices", operationStack.read(model.blockOperation, operationFields.locals));
                 b.startFor().string("int j = 0; j < ", operationStack.read(model.blockOperation, operationFields.numLocals), "; j++").end().startBlock();
-                b.declaration(type(int.class), "prevTableIndex", operationStack.read(model.blockOperation, operationFields.locals) + "[j]");
+                b.declaration(type(int.class), "prevTableIndex", "blockLocalTableIndices[j]");
 
-                /**
+                /*
                  * We need to emit multiple local ranges if instructions were emitted after
                  * unwinding the block (i.e., instructions at which the local is not live).
                  * Otherwise, we can reuse the same local table entry. We cannot reuse the entry
@@ -4895,9 +4912,12 @@ final class BuilderElement extends AbstractElement {
                  */
                 if (operationKind != OperationKind.BRANCH) {
                     b.declaration(type(int.class), "endBci", "state.locals[prevTableIndex + LOCALS_OFFSET_END_BCI]");
-                    b.startIf().string("endBci == leaderBci").end().startBlock();
+                    b.startIf().string("endBci == state.bci").end().startBlock();
                     b.lineComment("No need to split. Reuse the existing entry.");
                     b.statement("state.locals[prevTableIndex + LOCALS_OFFSET_END_BCI] = ", UNINIT);
+                    if (model.enableInstructionRewriting) {
+                        b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, prevTableIndex)");
+                    }
                     b.statement("continue");
                     b.end();
                 }
@@ -4907,7 +4927,7 @@ final class BuilderElement extends AbstractElement {
                 b.declaration(type(int.class), "frameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
                 b.declaration(type(int.class), "nameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_NAME]");
                 b.declaration(type(int.class), "infoIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_INFO]");
-                b.statement(operationStack.read(model.blockOperation, operationFields.locals), "[j] = state.doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
+                b.statement("blockLocalTableIndices[j] = state.doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
                 b.end(); // for
                 b.end(); // case block
             }
@@ -4944,14 +4964,20 @@ final class BuilderElement extends AbstractElement {
 
         final Map<DoEmitInstructionKey, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
         final Map<InstructionEncoding, CodeExecutableElement> doRewriteStepMethods = new TreeMap<>();
-        final Map<InstructionRewriteRuleModel, CodeExecutableElement> applyRewriteRuleMethods = new TreeMap<>();
+        final Map<InstructionRewriteRuleModel, CodeExecutableElement> applyRewriteRuleMethods = new LinkedHashMap<>();
+        final Map<InstructionRewriteRuleModel, CodeExecutableElement> remapBciMethods = new LinkedHashMap<>();
         private CodeVariableElement instructionRewriteState;
         private CodeVariableElement leaderBci;
+        private CodeVariableElement minLocalsTableFixupIndex;
+        private CodeVariableElement minHandlerTableFixupIndex;
         private CodeExecutableElement requestLeaderBci;
         private CodeExecutableElement recordRewrittenBciDelta;
         private CodeExecutableElement replayFromLeaderBciMethod;
+        private CodeExecutableElement fixBuilderStateBeforeRewriteMethod;
+        private CodeExecutableElement fixExceptionHandlersBeforeRewriteMethod;
         private CodeExecutableElement fixLocalsBeforeRewriteMethod;
-        private CodeExecutableElement fixSourcesBeforeDeleteMethod;
+        private CodeExecutableElement fixSourcesBeforeRewriteMethod;
+        private CodeExecutableElement fixOperationStackBeforeRewriteMethod;
 
         RootStackElement() {
             super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "RootStackElement");
@@ -5008,6 +5034,34 @@ final class BuilderElement extends AbstractElement {
                                 "Each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset."));
                 this.add(rewrittenBciDeltas);
                 this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "rewrittenBciDeltasIndex"));
+                /*
+                 * On rewrite, we need to walk the handler/locals table to remap bci's that can
+                 * change due to the rewrite. We maintain a minimum fix-up index for each table to
+                 * reduce the number of entries to process. This index tracks the earliest entry
+                 * that could possibly contain a remappable bci.
+                 *
+                 * We maintain each fix-up index in two ways:
+                 *
+                 * 1) In requestLeaderBci(), initialize to the current table size. Rewrites cannot
+                 * occur before the current bci, and emitted table entries don't contain remappable
+                 * bci's greater than the current bci, so no existing entry needs fixing.
+                 *
+                 * 2) When writing a remappable bci into an existing table entry, we may update an
+                 * entry before the current fix-up index, so we set the fix-up index to min(fix-up
+                 * index, table index).
+                 */
+                this.minHandlerTableFixupIndex = new CodeVariableElement(Set.of(PRIVATE), type(int.class), "minHandlerTableFixupIndex");
+                BytecodeRootNodeElement.addJavadoc(this.minHandlerTableFixupIndex, List.of(
+                                "Lower bound on the handler table entries that may need bci remapping on rewrite.",
+                                "Entries before this index are stable for the current leader bci and can be skipped."));
+                this.add(this.minHandlerTableFixupIndex);
+                if (model.enableBlockScoping) {
+                    this.minLocalsTableFixupIndex = new CodeVariableElement(Set.of(PRIVATE), type(int.class), "minLocalsTableFixupIndex");
+                    BytecodeRootNodeElement.addJavadoc(this.minLocalsTableFixupIndex, List.of(
+                                    "Lower bound on the locals table entries that may need bci remapping on rewrite.",
+                                    "Entries before this index are stable for the current leader bci and can be skipped."));
+                    this.add(this.minLocalsTableFixupIndex);
+                }
                 // add rewriter helpers in lateInit to co-locate them with the rewrite methods
                 this.requestLeaderBci = createRequestLeaderBci();
                 this.recordRewrittenBciDelta = createRecordRewrittenBciDelta();
@@ -5015,16 +5069,24 @@ final class BuilderElement extends AbstractElement {
                 if (model.enableBlockScoping) {
                     this.fixLocalsBeforeRewriteMethod = createFixLocalsBeforeRewrite();
                 }
-                for (var rule : model.instructionRewriterModel.rules) {
-                    if (rule.getKind() == Kind.DELETION) {
-                        this.fixSourcesBeforeDeleteMethod = builderSourceInfoTable.createFixSourcesBeforeDeleteMethod();
-                        break;
+                if (model.instructionRewriterModel.rules.length != 0) {
+                    this.fixExceptionHandlersBeforeRewriteMethod = createFixExceptionHandlersBeforeRewrite();
+                    this.fixSourcesBeforeRewriteMethod = builderSourceInfoTable.createFixSourcesBeforeRewriteMethod();
+                    this.fixOperationStackBeforeRewriteMethod = createFixOperationStackBeforeRewrite();
+                    this.fixBuilderStateBeforeRewriteMethod = createFixBuilderStateBeforeRewrite();
+                }
+                for (int i = 0; i < model.instructionRewriterModel.rules.length; i++) {
+                    var rule = model.instructionRewriterModel.rules[i];
+                    if (rule.getRewriteKind() == RewriteKind.SECTIONED) {
+                        remapBciMethods.put(rule, createRemapBciMethod(rule, i));
                     }
+                    DFAModel.DFAState acceptingState = model.instructionRewriterModel.dfa.getAcceptingState(rule);
+                    applyRewriteRuleMethods.put(rule, createApplyRewriteRule(rule, acceptingState, i));
                 }
             }
 
             if (model.hasYieldOperation()) {
-                /**
+                /*
                  * Invariant: Continuation locations are sorted by bci, which means we can iterate
                  * over the bytecodes and continuation locations in lockstep (i.e., the i-th yield
                  * instruction uses the i-th continuation location).
@@ -5088,7 +5150,7 @@ final class BuilderElement extends AbstractElement {
             if (model.enableInstructionRewriting) {
                 b.statement("this.rewrittenBciDeltas = null");
                 b.statement("this.rewrittenBciDeltasIndex = 0");
-                b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
+                emitRequestLeaderBci(b, "this", "Initialize the rewriter");
             }
 
             this.add(createReset());
@@ -5137,10 +5199,14 @@ final class BuilderElement extends AbstractElement {
                 this.addAll(doRewriteStepMethods.values());
                 this.addAll(applyRewriteRuleMethods.values());
                 this.add(replayFromLeaderBciMethod);
+                this.addAll(remapBciMethods.values());
                 this.add(requestLeaderBci);
                 this.add(recordRewrittenBciDelta);
+                this.addOptional(fixBuilderStateBeforeRewriteMethod);
+                this.addOptional(fixExceptionHandlersBeforeRewriteMethod);
                 this.addOptional(fixLocalsBeforeRewriteMethod);
-                this.addOptional(fixSourcesBeforeDeleteMethod);
+                this.addOptional(fixSourcesBeforeRewriteMethod);
+                this.addOptional(fixOperationStackBeforeRewriteMethod);
             }
             this.add(createToString());
         }
@@ -5182,7 +5248,7 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.needsClean = true");
             if (model.enableInstructionRewriting) {
                 b.statement("this.rewrittenBciDeltasIndex = 0");
-                b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
+                emitRequestLeaderBci(b, "this", "Reset the rewriter");
             }
 
             return ex;
@@ -5557,6 +5623,9 @@ final class BuilderElement extends AbstractElement {
             if (model.enableBlockScoping) {
                 b.statement("assert frameIndex - USER_LOCALS_START_INDEX >= 0");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_START_BCI] = this.bci");
+                if (model.enableInstructionRewriting) {
+                    b.statement("this.minLocalsTableFixupIndex = Math.min(this.minLocalsTableFixupIndex, tableIndex)");
+                }
                 b.lineComment("will be patched later at the end of the block");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX] = localIndex");
@@ -5654,6 +5723,9 @@ final class BuilderElement extends AbstractElement {
             b.declaration(type(int.class), "previousHandlerBci", "this.handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
             b.startIf().string("previousEndBci == startBci && previousKind == handlerKind && previousHandlerBci == handlerBci").end().startBlock();
             b.statement("this.handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
+            if (model.enableInstructionRewriting) {
+                b.statement("this.minHandlerTableFixupIndex = Math.min(this.minHandlerTableFixupIndex, previousEntry)");
+            }
             b.startReturn().string(UNINIT).end();
             b.end(); // if same handler and contiguous
             b.end(); // if table non-empty
@@ -5668,6 +5740,9 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_KIND] = handlerKind");
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
+            if (model.enableInstructionRewriting) {
+                b.statement("this.minHandlerTableFixupIndex = Math.min(this.minHandlerTableFixupIndex, result)");
+            }
             b.statement("this.handlerTableSize += EXCEPTION_HANDLER_LENGTH");
 
             b.statement("return result");
@@ -5847,7 +5922,10 @@ final class BuilderElement extends AbstractElement {
                 b.staticReference(instructionRewriterElement.stateConstants.get(acceptingState));
                 b.string(" /* " + rule + " */");
                 b.end().startCaseBlock();
-                CodeExecutableElement applyRewriteRule = ensureApplyRewriteRuleCreated(rule, acceptingState);
+                CodeExecutableElement applyRewriteRule = applyRewriteRuleMethods.get(rule);
+                if (applyRewriteRule == null) {
+                    throw new AssertionError("Expected apply rewrite helper for rewrite rule " + rule);
+                }
                 b.startReturn().startCall(null, applyRewriteRule).string("oldInstructionBci").end(2);
                 b.end();
             }
@@ -5862,17 +5940,55 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        private CodeExecutableElement ensureApplyRewriteRuleCreated(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState) {
-            if (!model.enableInstructionRewriting) {
-                throw new AssertionError();
+        private CodeExecutableElement createRemapBciMethod(InstructionRewriteRuleModel rewriteRule, int ruleIndex) {
+            if (rewriteRule.getRewriteKind() != RewriteKind.SECTIONED) {
+                throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getRewriteKind());
             }
-            return applyRewriteRuleMethods.computeIfAbsent(rewriteRule, (e) -> createApplyRewriteRule(rewriteRule, acceptingState));
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "remapBciRule" + ruleIndex);
+            ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "BCI remap for rewrite rule:",
+                            rewriteRule.toString()));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.lineComment("Before the rewritten range.");
+            b.startIf().string("bci <= startBci").end().startBlock();
+            b.startReturn().string("bci").end();
+            b.end();
+
+            int oldOffset = 0;
+            int deletedSoFar = 0;
+            for (RewriteSection section : rewriteRule.getSections()) {
+                int sectionLength = getRewriteSectionLength(section);
+                int sectionEnd = oldOffset + sectionLength;
+                int rewrittenSectionStart = oldOffset - deletedSoFar;
+                String sectionText = formatRewriteSection(section);
+                switch (section.kind()) {
+                    case IDENTITY -> {
+                        b.lineComment("In `" + sectionText + "` (kept).");
+                        b.startIf().string("bci <= startBci + " + sectionEnd).end().startBlock();
+                        b.startReturn().string(formatBciOffset("bci", -deletedSoFar)).end();
+                        b.end();
+                    }
+                    case DELETE -> {
+                        b.lineComment("In `" + sectionText + "` (deleted).");
+                        b.startIf().string("bci <= startBci + " + sectionEnd).end().startBlock();
+                        b.startReturn().string(formatBciOffset("startBci", rewrittenSectionStart)).end();
+                        b.end();
+                        deletedSoFar += sectionLength;
+                    }
+                }
+                oldOffset = sectionEnd;
+            }
+
+            b.lineComment("After the rewritten range.");
+            b.startReturn().string(formatBciOffset("bci", -deletedSoFar)).end();
+            return ex;
         }
 
-        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState) {
-            String methodName = "applyRewriteRule" + instructionRewriterElement.stateConstants.get(acceptingState).getSimpleName().toString().toUpperCase();
-
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), methodName);
+        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState, int ruleIndex) {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "applyRewriteRuleRule" + ruleIndex);
             ex.addParameter(new CodeVariableElement(type(int.class), "oldInstructionBci"));
             CodeTreeBuilder doc = ex.createDocBuilder();
             doc.startJavadoc().string("Applies the following rewrite rule:").newLine();
@@ -5889,11 +6005,12 @@ final class BuilderElement extends AbstractElement {
             b.startReturn().string("oldInstructionBci").end();
             b.end();
 
-            // Step 1: Assert that the instruction stream matches the LHS.
             b.declaration(type(int.class), "startBci", "bci - " + getRewritePatternLength(rewriteRule));
-            for (int i = 0; i < rewriteRule.lhs.length; i++) {
-                int offset = getInstructionOffsetInPattern(rewriteRule, i);
-                emitAssertInstruction(b, rewriteRule.lhs[i].instruction(), "startBci", offset);
+            // Step 1 (optional): Assert that the instruction stream matches the LHS.
+            if (model.additionalAssertions) {
+                for (int i = 0; i < rewriteRule.lhs.length; i++) {
+                    emitAssertInstruction(b, rewriteRule.lhs[i].instruction(), "startBci", getInstructionOffsetInPattern(rewriteRule, i));
+                }
             }
 
             // Step 2: Load immediates needed for constraint checking and for the RHS.
@@ -5942,17 +6059,28 @@ final class BuilderElement extends AbstractElement {
             }
 
             // Step 4: Undo LHS.
-            if (model.enableBlockScoping) {
-                b.startStatement().startCall(null, fixLocalsBeforeRewriteMethod).string("startBci").end(2);
-            }
-            if (rewriteRule.getKind() == Kind.DELETION) {
-                b.startStatement().startCall(null, fixSourcesBeforeDeleteMethod).string("startBci").end(2);
-                b.startStatement().startCall(null, recordRewrittenBciDelta);
-                b.string("startBci");
-                b.string(Integer.toString(getRewritePatternLength(rewriteRule)));
-                b.end(2);
+            if (rewriteRule.getRewriteKind() == RewriteKind.SECTIONED) {
+                CodeExecutableElement remapBciMethod = remapBciMethods.get(rewriteRule);
+                if (remapBciMethod == null) {
+                    throw new AssertionError("Expected bci remap helper for rewrite rule.");
+                }
+                String remapMethodReference = RootStackElement.class.getSimpleName() + "::" + remapBciMethod.getSimpleName();
+                b.startStatement().startCall(null, fixBuilderStateBeforeRewriteMethod).string("startBci").string(remapMethodReference).end(2);
+                int rewrittenLength = 0;
+                for (RewriteSection section : rewriteRule.getSections()) {
+                    int sectionLength = getRewriteSectionLength(section);
+                    switch (section.kind()) {
+                        case IDENTITY -> rewrittenLength += sectionLength;
+                        case DELETE -> {
+                            b.startStatement().startCall(null, recordRewrittenBciDelta);
+                            b.string(formatBciOffset("startBci", rewrittenLength));
+                            b.string(Integer.toString(sectionLength));
+                            b.end(2);
+                        }
+                    }
+                }
             } else {
-                throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getKind());
+                throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getRewriteKind());
             }
 
             /*
@@ -6011,16 +6139,39 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
+        private static int getRewriteSectionLength(RewriteSection section) {
+            int length = 0;
+            for (var pattern : section.patterns()) {
+                length += pattern.instruction().getInstructionLength();
+            }
+            return length;
+        }
+
+        private static String formatRewriteSection(RewriteSection section) {
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < section.patterns().length; i++) {
+                if (i != 0) {
+                    result.append(' ');
+                }
+                result.append(section.patterns()[i]);
+            }
+            return result.toString();
+        }
+
         private CodeExecutableElement createRequestLeaderBci() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "requestLeaderBci");
             BytecodeRootNodeElement.addJavadoc(ex, List.of(
-                            "Returns the current bci and marks it as the new leader bci for rewriting.",
-                            "The rewriter will not rewrite instructions preceding the current bci, which ensures the leader bci is a stable program location.",
-                            "The builder should request a new leader bci whenever it writes out the current bci or the bci of an instruction (e.g., to bytecode, side tables, or the operation stack)."));
+                            "Returns the current bci and marks it as the new leader bci. ",
+                            "The leader bci marks the start of the current basic block. ",
+                            "The rewriter will not rewrite instructions preceding the current bci, so this call serves as a rewriter boundary."));
 
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startAssign(instructionRewriteState).staticReference(instructionRewriterElement.startState).end();
+            b.startAssign(minHandlerTableFixupIndex).string("handlerTableSize").end();
+            if (model.enableBlockScoping) {
+                b.startAssign(minLocalsTableFixupIndex).string("localsTableIndex").end();
+            }
             b.startReturn().variable(leaderBci).string(" = bci").end();
 
             return ex;
@@ -6120,25 +6271,119 @@ final class BuilderElement extends AbstractElement {
         private CodeExecutableElement createFixLocalsBeforeRewrite() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixLocalsBeforeRewrite");
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
             BytecodeRootNodeElement.addJavadoc(ex, List.of(
-                            "When applying a rewrite rule, the start bci of a local declared on the LHS may become invalid after rewriting.",
-                            "This method \"rewinds\" the start bci's of any locals declared on the LHS to startBci."));
+                            "Fix up local table ranges that overlap or follow the rewritten range."));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(operationStack.asType(), "currentScope", "getCurrentScope()");
-            b.startDeclaration(arrayOf(type(int.class)), "scopeLocals").string("currentScope.getLocals()").end();
-            b.startFor().string("int i = currentScope.getNumLocals() - 1; i >= 0; i--").end().startBlock();
-            b.startIf().string("locals[scopeLocals[i] + LOCALS_OFFSET_START_BCI] <= startBci").end().startBlock();
-            b.lineComment("All remaining locals were created earlier.");
-            b.statement("break");
+            b.startFor().string("int tableIndex = minLocalsTableFixupIndex; tableIndex < localsTableIndex; tableIndex += LOCALS_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "localStartBci", "locals[tableIndex + LOCALS_OFFSET_START_BCI]");
+            b.startIf().string("startBci < localStartBci").end().startBlock();
+            b.statement("locals[tableIndex + LOCALS_OFFSET_START_BCI] = remapBci.applyAsInt(startBci, localStartBci)");
             b.end();
-            b.statement("locals[scopeLocals[i] + LOCALS_OFFSET_START_BCI] = startBci");
+            b.declaration(type(int.class), "localEndBci", "locals[tableIndex + LOCALS_OFFSET_END_BCI]");
+            b.startIf().string("localEndBci != " + UNINIT + " && startBci < localEndBci").end().startBlock();
+            b.statement("locals[tableIndex + LOCALS_OFFSET_END_BCI] = remapBci.applyAsInt(startBci, localEndBci)");
+            b.end();
             b.end();
 
-            /*
-             * NB: whenever we emit end bci's (in endBlock/beforeEmitReturn/beforeEmitBranch), we
-             * always request a leader bci, so end bci's do not need to be fixed up.
-             */
+            return ex;
+        }
+
+        private CodeExecutableElement createFixExceptionHandlersBeforeRewrite() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixExceptionHandlersBeforeRewrite");
+            ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "Fix up emitted exception handler ranges that overlap or follow the rewritten range."));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startFor().string("int tableIndex = minHandlerTableFixupIndex; tableIndex < handlerTableSize; tableIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "entryStartBci", "handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_START_BCI]");
+            b.startIf().string("startBci < entryStartBci").end().startBlock();
+            b.statement("handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_START_BCI] = remapBci.applyAsInt(startBci, entryStartBci)");
+            b.end();
+            b.declaration(type(int.class), "entryEndBci", "handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_END_BCI]");
+            b.startIf().string("startBci < entryEndBci").end().startBlock();
+            b.statement("handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_END_BCI] = remapBci.applyAsInt(startBci, entryEndBci)");
+            b.end();
+            b.end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createFixOperationStackBeforeRewrite() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixOperationStackBeforeRewrite");
+            ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "Fix up operation stack entries with bcis that overlap or follow the rewritten range."));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            buildOperationStackWalk(b, "rootOperationSp", () -> {
+                b.startSwitch().string("operation.operation").end().startBlock();
+
+                Collection<OperationModel> tryOperations = List.of(model.tryFinallyOperation, model.tryCatchOtherwiseOperation, model.tryCatchOperation);
+                for (OperationModel tryOperation : tryOperations) {
+                    b.startCase().tree(parent.createOperationConstant(tryOperation)).end();
+                }
+                b.startCaseBlock();
+                b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
+                b.declaration(type(int.class), "tryStartBci", operationStack.read(tryOperations, operationFields.tryStartBci));
+                b.startIf().string("startBci < tryStartBci").end().startBlock();
+                b.tree(operationStack.write(tryOperations, operationFields.tryStartBci, "remapBci.applyAsInt(startBci, tryStartBci)"));
+                b.end();
+                b.end();
+                b.statement("break");
+                b.end();
+
+                Collection<OperationModel> sourceSectionOperations = List.of(model.sourceSectionPrefixOperation, model.sourceSectionSuffixOperation);
+                for (OperationModel sourceSectionOperation : sourceSectionOperations) {
+                    b.startCase().tree(parent.createOperationConstant(sourceSectionOperation)).end();
+                }
+                b.startCaseBlock();
+                b.declaration(type(int.class), "sourceStartBci", operationStack.read(sourceSectionOperations, operationFields.startBci));
+                b.startIf().string("startBci < sourceStartBci").end().startBlock();
+                b.tree(operationStack.write(sourceSectionOperations, operationFields.startBci, "remapBci.applyAsInt(startBci, sourceStartBci)"));
+                b.end();
+                b.statement("break");
+                b.end();
+
+                Collection<OperationModel> variadicOperations = model.getCustomVariadicOperations();
+                if (!variadicOperations.isEmpty()) {
+                    for (OperationModel variadicOperation : variadicOperations) {
+                        b.startCase().tree(parent.createOperationConstant(variadicOperation)).end();
+                    }
+                    b.startCaseBlock();
+                    b.declaration(type(int.class), "createVariadicBci", operationStack.read(variadicOperations, operationFields.createVariadicBci));
+                    b.startIf().string("createVariadicBci != ", UNINIT, " && startBci < createVariadicBci").end().startBlock();
+                    b.tree(operationStack.write(variadicOperations, operationFields.createVariadicBci, "remapBci.applyAsInt(startBci, createVariadicBci)"));
+                    b.end();
+                    b.statement("break");
+                    b.end();
+                }
+
+                b.end(); // switch
+            }, "this");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createFixBuilderStateBeforeRewrite() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixBuilderStateBeforeRewrite");
+            ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of("Remaps builder state that may contain bci values invalidated by rewriting."));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startStatement().startCall(null, fixExceptionHandlersBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
+            if (model.enableBlockScoping) {
+                b.startStatement().startCall(null, fixLocalsBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
+            }
+            b.startStatement().startCall(null, fixSourcesBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
+            b.startStatement().startCall(null, fixOperationStackBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
 
             return ex;
         }
@@ -6227,7 +6472,7 @@ final class BuilderElement extends AbstractElement {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.statement("assert !impl.isDefined()");
-            b.statement("impl.bci = ", requestLeaderBci(null));
+            b.statement("impl.bci = ", requestLeaderBci("this", "label definition"));
 
             b.startIf().string("impl.unresolved0 != -1").end().startBlock();
             b.statement(BytecodeRootNodeElement.writeInt("this.bc", "impl.unresolved0", "impl.bci"));
@@ -6705,34 +6950,17 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        /**
-         * We need to fix up entries that overlap with the LHS, since the LHS will be deleted. In
-         * the bytecode stream below, there are three cases to consider:
-         *
-         * <pre>
-         * foo, bar, lhs1, lhs2, lhs3, baz -> foo, bar, baz
-         *          |----(a)----|                  (deleted)
-         *     |------(b)-------|                 |(b)-|
-         *                      |---(c)---|            |(c)-|
-         * </pre>
-         *
-         * <ul>
-         * <li>Source section (a) is fully contained in the LHS, so it should be deleted.</li>
-         * <li>Source section (b) starts before the LHS, so its endBci should exclude the LHS
-         * (b.endBci = startBci).</li>
-         * <li>Source section (c) ends after the LHS, so its startBci should exclude the LHS
-         * (c.startBci = endBci = startBci).</li>
-         * </ul>
-         * We fix (a) and (b) using a source table walk (they were already written to sourceInfo)
-         * and we fix (c) using an operation stack walk (it is represented by an ongoing
-         * SourceSection operation).
+        /*
+         * The generated remapper is monotonic, so it preserves the relative ordering and hierarchy
+         * of source table entries, which lets us remap each bci independently while keeping the
+         * overall table shape valid.
          */
-        private CodeExecutableElement createFixSourcesBeforeDeleteMethod() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixSourcesBeforeDelete");
+        private CodeExecutableElement createFixSourcesBeforeRewriteMethod() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixSourcesBeforeRewrite");
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
             BytecodeRootNodeElement.addJavadoc(ex, List.of(
-                            "When applying a deletion rewrite rule, the bci ranges of source information may become invalid after rewriting.",
-                            "This method fixes the source information to account for deleted instructions."));
+                            "Fix up source table ranges that overlap or follow the rewritten range."));
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -6740,64 +6968,28 @@ final class BuilderElement extends AbstractElement {
             b.returnStatement();
             b.end();
 
-            b.lineComment("Fix up entries that end inside the LHS.");
             b.startFor().string("int i = sourceInfoIndex - ").variable(entryLengthVariable) //
                             .string("; i >= 0; i -= ").variable(entryLengthVariable).end().startBlock();
 
-            b.startIf().tree(SourceInfoTable.loadElement("sourceInfo", "i", parent.sourceInfoTable.endBciOffset)).string(" <= startBci").end().startBlock();
-            b.lineComment("All remaining entries in the table were emitted before the LHS.");
+            b.declaration(type(int.class), "entryEndBci", SourceInfoTable.loadElement("sourceInfo", "i", parent.sourceInfoTable.endBciOffset));
+            b.startIf().string("entryEndBci <= startBci").end().startBlock();
+            b.lineComment("All remaining entries in the table were emitted before the rewritten range.");
             b.statement("break");
             b.end();
 
-            b.startIf().string("startBci <= ").tree(SourceInfoTable.loadElement("sourceInfo", "i", parent.sourceInfoTable.startBciOffset)).end().startBlock();
-            b.lineComment("Entry is fully contained in the LHS. Remove it.");
+            b.declaration(type(int.class), "entryStartBci", SourceInfoTable.loadElement("sourceInfo", "i", parent.sourceInfoTable.startBciOffset));
+            b.declaration(type(int.class), "newStartBci", "remapBci.applyAsInt(startBci, entryStartBci)");
+            b.declaration(type(int.class), "newEndBci", "remapBci.applyAsInt(startBci, entryEndBci)");
 
-            b.startIf().string("sourceInfoIndex == i + ").variable(entryLengthVariable).end().startBlock();
+            b.startIf().string("newStartBci == newEndBci && sourceInfoIndex == i + ").variable(entryLengthVariable).end().startBlock();
             b.lineComment("This is the last entry in the table. Delete it.");
             b.statement("sourceInfoIndex = i");
             b.end().startElseBlock();
-            b.lineComment("Deletion would leave a hole. Update the entry to cover an empty bytecode range.");
-            b.statement(writeElement("sourceInfo", "i", parent.sourceInfoTable.startBciOffset, "startBci"));
-            b.statement(writeElement("sourceInfo", "i", parent.sourceInfoTable.endBciOffset, "startBci"));
+            b.statement(writeElement("sourceInfo", "i", parent.sourceInfoTable.startBciOffset, "newStartBci"));
+            b.statement(writeElement("sourceInfo", "i", parent.sourceInfoTable.endBciOffset, "newEndBci"));
             b.end();
-            b.end().startElseBlock();
-            b.lineComment("Entry starts before the LHS. Fix its endBci.");
-            b.statement(writeElement("sourceInfo", "i", parent.sourceInfoTable.endBciOffset, "startBci"));
-            b.end(); // if
 
             b.end(); // for
-
-            b.lineComment("Fix up entries that start inside the LHS and have not ended.");
-            b.string("loop: ");
-            buildOperationStackWalk(b, "rootOperationSp", () -> {
-                b.startSwitch().string("operation.operation").end().startBlock();
-                b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
-                b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
-                b.startCaseBlock();
-                b.startIf().string("startBci < operation.getStartBci()").end().startBlock();
-                b.lineComment("Entry starts in the LHS. Fix its startBci.");
-                b.tree(operationStack.write(Set.of(model.sourceSectionPrefixOperation, model.sourceSectionSuffixOperation), operationFields.startBci, "startBci"));
-                b.statement("continue");
-                b.end().startElseBlock();
-                b.lineComment("This and all outer source sections start before the LHS. Stop walking.");
-                b.statement("break loop");
-                b.end();
-                b.end(); // case SourceSection
-
-                OperationModel[] rewriteBoundaryOperations = new OperationModel[]{model.blockOperation, model.ifThenOperation, model.ifThenElseOperation,
-                                model.conditionalOperation,
-                                model.whileOperation, model.tryCatchOperation, model.tryFinallyOperation, model.tryCatchOtherwiseOperation};
-                for (var rewriteBoundaryOperation : rewriteBoundaryOperations) {
-                    b.startCase().tree(parent.createOperationConstant(rewriteBoundaryOperation)).end();
-                }
-                b.startCaseBlock();
-                b.lineComment("This operation must contain the entire LHS (we can't rewrite across this operation)");
-                b.lineComment("Thus, any outer source sections will fully contain the LHS. Stop walking.");
-                b.statement("break loop");
-                b.end();
-
-                b.end(); // switch
-            }, "this");
 
             return ex;
         }
@@ -6886,7 +7078,7 @@ final class BuilderElement extends AbstractElement {
                                         the operation stack from top to bottom.
                                         """);
 
-        private final OperationField variadicCountPatchIndex = field(type(int.class), "variadicCountPatchIndex").withInitializer(UNINIT);
+        private final OperationField createVariadicBci = field(type(int.class), "createVariadicBci").withInitializer(UNINIT);
         private final OperationField numVariadicReturnIndices = field(type(int.class), "numVariadicReturnIndices").withInitializer("0");
         private final OperationField variadicReturnIndices = field(type(int[].class), "variadicReturnIndices") //
                         .skipInitialization(true).dynamicType(false).withStaticInitializer("new int[16]").lengthField(numVariadicReturnIndices);
@@ -7088,7 +7280,7 @@ final class BuilderElement extends AbstractElement {
                             }
                         }
                         if (operation.isVariadic) {
-                            fields.add(variadicCountPatchIndex);
+                            fields.add(createVariadicBci);
                             if (model.hasVariadicReturn) {
                                 fields.add(variadicReturnIndices);
                                 fields.add(numVariadicReturnIndices);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -50,13 +52,27 @@ import java.util.stream.Stream;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 
 public class InstructionRewriteRuleModel implements Comparable<InstructionRewriteRuleModel> {
-    // Upper-bound pattern length to keep rewrite overhead low.
-    private static final int MAX_PATTERN_SIZE = 5;
-
     public final ResolvedInstructionPatternModel[] lhs;
     public final ResolvedInstructionPatternModel[] rhs;
     public final Map<String, ImmediateReference> bindings;
+    private final RewriteSection[] sections;
+    private final RewriteKind rewriteKind;
     private InstructionRewriterModel parent;
+
+    public enum RewriteSectionKind {
+        DELETE,
+        IDENTITY
+    }
+
+    public record RewriteSection(RewriteSectionKind kind, InstructionPatternModel[] patterns) {
+        public RewriteSection {
+            Objects.requireNonNull(kind);
+            Objects.requireNonNull(patterns);
+            if (patterns.length == 0) {
+                throw new IllegalArgumentException("Rewrite sections must contain at least one instruction pattern.");
+            }
+        }
+    }
 
     public record ImmediateReference(int instructionIndex, int immediateIndex) implements Comparable<ImmediateReference> {
 
@@ -91,22 +107,54 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         }
     }
 
-    public enum Kind {
-        DELETION,
+    public enum RewriteKind {
+        /**
+         * Splits the matched instruction sequence into kept and removed sections. Because removal
+         * shifts later BCIs, BCIs written to side tables must be remapped to preserve validity.
+         */
+        SECTIONED,
+        /**
+         * Keeps the instruction layout unchanged and rewrites the first opcode. No BCI fix-up is
+         * needed, but applicability must still be validated, e.g. against exception handler ranges.
+         */
         SUPERINSTRUCTION
     }
 
+    /**
+     * Section-based constructor for sectioned rewrite rules.
+     *
+     * The sections represent contiguous parts of the matched instruction sequence. IDENTITY
+     * sections are kept as-is, DELETE sections are removed.
+     */
+    public InstructionRewriteRuleModel(RewriteSection... sections) {
+        validateSections(sections);
+        this.sections = sections;
+        InstructionPatternModel[] lhsPatterns = flattenLhsPatterns(this.sections);
+        InstructionPatternModel[] rhsPatterns = deriveRhsPatterns(this.sections);
+        this.rewriteKind = RewriteKind.SECTIONED;
+        this.lhs = new ResolvedInstructionPatternModel[lhsPatterns.length];
+        this.rhs = new ResolvedInstructionPatternModel[rhsPatterns.length];
+        this.bindings = new HashMap<>();
+        initialize(lhsPatterns, rhsPatterns);
+    }
+
+    /**
+     * Test-only constructor used by {@code @GenerateInstructionRewriter} tests.
+     */
     public InstructionRewriteRuleModel(InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern) {
+        this.sections = rhsPattern.length == 0
+                        ? new RewriteSection[]{new RewriteSection(RewriteSectionKind.DELETE, lhsPattern.clone())}
+                        : new RewriteSection[0];
+        // The test-only @GenerateInstructionRewriter codegen uses lhs/rhs directly.
+        this.rewriteKind = null;
         this.lhs = new ResolvedInstructionPatternModel[lhsPattern.length];
         this.rhs = new ResolvedInstructionPatternModel[rhsPattern.length];
-
-        if (lhsPattern.length > MAX_PATTERN_SIZE) {
-            throw new IllegalArgumentException("Pattern exceeds maximum length %d".formatted(MAX_PATTERN_SIZE));
-        }
-
         this.bindings = new HashMap<>();
+        initialize(lhsPattern, rhsPattern);
+    }
 
-        /**
+    private void initialize(InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern) {
+        /*
          * First, resolve the LHS. The first occurrence of an immediate binding declares it and
          * subsequent occurrences become immediate constraints.
          */
@@ -127,7 +175,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
             offset += instruction.getInstructionLength();
         }
 
-        /**
+        /*
          * Then, resolve the RHS using the same process. All instructions on the RHS should have
          * immediates with bindings declared on the LHS.
          */
@@ -163,11 +211,12 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         }
     }
 
-    public Kind getKind() {
-        if (rhs.length == 0) {
-            return Kind.DELETION;
-        }
-        throw new IllegalStateException("Unknown rewrite rule kind.");
+    public RewriteKind getRewriteKind() {
+        return rewriteKind;
+    }
+
+    public RewriteSection[] getSections() {
+        return sections;
     }
 
     public boolean hasImmediateConstraints() {
@@ -193,18 +242,55 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         return result;
     }
 
+    private static void validateSections(RewriteSection[] sections) {
+        if (sections == null || sections.length == 0) {
+            throw new IllegalArgumentException("Expected at least one rewrite section.");
+        }
+
+        // A sectioned rule must change the matched instruction sequence. An all-IDENTITY rule
+        // would re-emit the same instruction sequence and could immediately match again forever.
+        boolean seenNonIdentity = false;
+        for (RewriteSection section : sections) {
+            if (section.kind() == RewriteSectionKind.DELETE) {
+                seenNonIdentity = true;
+                break;
+            }
+        }
+        if (!seenNonIdentity) {
+            throw new IllegalArgumentException("Expected at least one non-IDENTITY rewrite section.");
+        }
+    }
+
+    private static InstructionPatternModel[] flattenLhsPatterns(RewriteSection[] sections) {
+        List<InstructionPatternModel> lhs = new ArrayList<>();
+        for (RewriteSection section : sections) {
+            lhs.addAll(List.of(section.patterns()));
+        }
+        return lhs.toArray(InstructionPatternModel[]::new);
+    }
+
+    private static InstructionPatternModel[] deriveRhsPatterns(RewriteSection[] sections) {
+        List<InstructionPatternModel> rhs = new ArrayList<>();
+        for (RewriteSection section : sections) {
+            if (section.kind() == RewriteSectionKind.IDENTITY) {
+                rhs.addAll(List.of(section.patterns()));
+            }
+        }
+        return rhs.toArray(InstructionPatternModel[]::new);
+    }
+
     public ResolvedImmediate resolveImmediateReference(ImmediateReference immediateReference) {
         return lhs[immediateReference.instructionIndex].immediates()[immediateReference.immediateIndex];
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof InstructionRewriteRuleModel other && Arrays.equals(lhs, other.lhs) && Arrays.equals(rhs, other.rhs);
+        return obj instanceof InstructionRewriteRuleModel other && rewriteKind == other.rewriteKind && Arrays.equals(lhs, other.lhs) && Arrays.equals(rhs, other.rhs);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(lhs, rhs);
+        return Objects.hash(rewriteKind, Arrays.hashCode(lhs), Arrays.hashCode(rhs));
     }
 
     @Override
