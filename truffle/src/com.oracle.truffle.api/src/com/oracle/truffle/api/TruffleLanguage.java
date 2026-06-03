@@ -3052,18 +3052,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a {@link TruffleFile} for given path. This method allows to access files in the
-         * guest language home even if file system privileges might be limited or denied. If the
-         * path locates a file under the guest language home it is guaranteed that the returned
-         * {@link TruffleFile} has at least read access. Otherwise, the returned {@link TruffleFile}
-         * access depends on the file system used by the context and can vary from all access in
-         * case of allowed IO to no access in case of denied IO. The {@code getInternalTruffleFile}
-         * method should be used to read language standard libraries in a language home. This method
-         * is an equivalent to {@code getTruffleFileInternal(path, p -> true)}. For security reasons
-         * the language should check that the file is a language source file in language standard
-         * libraries folder before using this method for a file in a language home. For performance
-         * reasons consider to use {@link #getTruffleFileInternal(String, Predicate)} and perform
-         * the language standard libraries check using a predicate.
+         * Returns a {@link TruffleFile} for the given path. This method allows access to a
+         * language's internal resources even if file system privileges might be limited or denied.
+         * If the path locates a file under an internal resource root or under a guest language
+         * home, it is guaranteed that the returned {@link TruffleFile} has at least read access.
+         * Otherwise, the returned {@link TruffleFile} access depends on the file system used by
+         * the context and can vary from all access in case of allowed IO to no access in case of
+         * denied IO. This method should be used to read language-provided files, such as language
+         * standard libraries.
+         * <p>
+         * This method is equivalent to {@code getTruffleFileInternal(path, p -> true)}. If a
+         * language should only use a subset of the language's internal resources,
+         * consider using {@link #getTruffleFileInternal(String, Predicate)} and perform that
+         * language-specific restriction using a predicate.
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
@@ -3073,6 +3074,7 @@ public abstract class TruffleLanguage<C> {
          *             {@link Path}
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(java.lang.String)
+         * @see #getInternalResource(String)
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -3100,6 +3102,7 @@ public abstract class TruffleLanguage<C> {
          *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
+         * @see #getInternalResource(String)
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -3116,13 +3119,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a {@link TruffleFile} for the given path. This method allows to access files in
-         * the guest language home even if file system privileges might be limited or denied. If the
-         * path locates a file under the guest language home and satisfies the given {@code filter},
-         * it is guaranteed that the returned {@link TruffleFile} has at least read access.
-         * Otherwise, the returned {@link TruffleFile} access depends on the file system used by the
-         * context and can vary from all access in case of allowed IO to no access in case of denied
-         * IO.
+         * Returns a {@link TruffleFile} for the given path. This method allows access to a
+         * language's internal resources even if file system privileges might be limited or denied.
+         * If the path locates a file under an internal resource root or under a guest language home, and the file
+         * satisfies the given {@code filter}, it is guaranteed that the returned
+         * {@link TruffleFile} has at least read access. Otherwise, the returned
+         * {@link TruffleFile} access depends on the file system used by the context and can vary
+         * from all access in case of allowed IO to no access in case of denied IO.
          * <p>
          * A common use case for this method is a filter granting read access to the language
          * standard libraries.
@@ -3131,8 +3134,8 @@ public abstract class TruffleLanguage<C> {
          * <ol>
          * <li>If the IO is enabled by the {@link Context} an accessible {@link TruffleFile} is
          * returned without any other checks.</li>
-         * <li>If the given path does not locate a file in a language home a {@link TruffleFile}
-         * with no access is returned.</li>
+         * <li>If the given path does not locate a file in an internal resource root or a guest
+         * language home, a {@link TruffleFile} with no access is returned.</li>
          * <li>If the given filter accepts the file a readable {@link TruffleFile} is returned.
          * Otherwise, a {@link TruffleFile} with no access is returned.</li>
          * </ol>
