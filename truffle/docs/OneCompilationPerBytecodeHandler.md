@@ -257,50 +257,40 @@ This tail call threading implementation imposes the following **restrictions**:
 
 ### Template
 
-The Template feature, used in conjunction with tail call threading, enables the creation of multiple variants of a bytecode handler. To utilize this feature, identify an int field of a `VIRTUAL` argument as the _template variable_ using `@Field(templateVariable = N)`, where `N >= 2` is the number of variants for that field. Here's an example:
+The Template feature, used in conjunction with tail call threading, enables the creation of multiple variants of a bytecode handler. To utilize this feature, identify an int field of a `VIRTUAL` argument as the _template variable_ using `@Field(templateVariable = N)`, where `N >= 2` is the number of variants for that field. The following example uses a simple int-only top-of-stack cache with three states:
 
 ```java
-@BytecodeInterpreterSwitch
-@BytecodeInterpreterHandlerConfig(maximumOperationCode = LAST_OPCODE, arguments = {
-    @Argument, // Denotes `this' pointer
+@BytecodeInterpreterHandlerConfig(maximumOperationCode = RET, arguments = {
+    @Argument, // receiver
     @Argument(returnValue = true),
-    @Argument(expand = VIRTUAL, fields = {@Field(name = "lvl", templateVariable = 3)}),
+    @Argument(expand = VIRTUAL, fields = {
+        @Field(name = "tos0", scratch = true),
+        @Field(name = "tos1", scratch = true),
+        @Field(name = "level", templateVariable = 3)
+    }),
     @Argument,
-    @Argument(expand = MATERIALIZED, fields = {@Field(name = "stack")})
+    @Argument(expand = MATERIALIZED)
 })
-public void dispatchLoop(short[] bytecode) {
+public int execute(short[] bytecode) {
     ...
 }
 
-public class State {
+public final class IntTosStack {
+    final int[] stack;
     int sp;
-    int lvl;
+    int tos0;
+    int tos1;
+    private int level;
 }
 ```
 
-Inside the bytecode handler, you can use the _template variable_ to determine the behavior of the handler. The compiler will generate multiple variants of the bytecode handler, each with a different constant value for the _template variable_, and perform specialization through constant folding, propagation, and dead-code elimination.
+Only fields with a property need to be listed in `fields`: `tos0` and `tos1` are scratch state, while `level` is the template variable. The other `IntTosStack` fields still participate in `VIRTUAL` expansion. The program model is that the virtual-expanded instance fields are the interpreter state carried from one handler stub to the next. Non-template fields such as `sp`, `tos0`, and `tos1` can live in physical registers. The template field is different: it selects the handler variant and is initialized as a constant on entry to that variant. Scratch fields are carried between threaded handler stubs, but they are initialized to their default value when entering from the Java caller and are not written back to the original Java object or pending exception state when threading exits.
 
-```
-@BytecodeInterpreterHandler(ADD)
-public int addHandler(int pc, State state, short[] bytecode, Frame frame) {
-    switch (state.lvl) {
-        case 0:
-            // handler variant 0
-            ...
-            break;
-        case 1:
-            // handler variant 1
-            ...
-            break;
-        case 2:
-            // handler variant 2
-            ...
-            break;
-        default: error();
-    }
-    state.lvl = 1;
-}
-```
+The three states are:
+
+- `level == 0`: no cached operand; operands are in the backing stack array
+- `level == 1`: `tos0` holds the top int operand
+- `level == 2`: `tos0` and `tos1` hold the top two int operands, with `tos1` at the top
 
 When branching to the next bytecode handler in the tail call threading, you can assign a new constant value to the _template variable_ to specify which variant of the next bytecode handler to execute. If no new value is assigned, the template variable retains its current constant value.
 
@@ -310,85 +300,120 @@ At a threaded dispatch, each template variable value must be a constant or a phi
 
 Template variables do not occupy stub ABI argument slots. The selected stub variant initializes them as constants on entry, and their value on exit selects the variant of the next threaded handler.
 
-The Template feature is particularly useful for implementing state machines that assume specific traits of the interpreter. For example, you can implement the Top of Stack optimization, where bytecode handlers operate directly on registers instead of the stack representation in memory.
-The following state machine illustrates this concept:
+By default, every `@BytecodeInterpreterHandler` is considered compatible with non-zero template states. A handler can opt out with `@BytecodeInterpreterHandler(templateCompatible = false)`. The compiler still creates the handler variants, but non-zero template handler tables leave that handler's opcode entries pointing at the generated threading-exit stub, so state is normalized and the bytecode is re-dispatched through template variant `0`.
+
+The following state machine illustrates this top-of-stack cache:
 
 ```
                   +-----+
                   | pop |
     +---------------+   |
-    |     lvl 0     |<--+    // top of stack in memory
+    |    level 0    |<--+    // memory stack only
     +---------------+
       |           ^
       | push      | pop
       v           |
     +---------------+
-    |     lvl 1     |        // top of stack in register, and the rest in memory
+    |    level 1    |        // tos0 is valid
     +---------------+
       |           ^
       | push      | pop
       v           |
     +---------------+
-+-->|     lvl 2     |        // top two of stack in registers, and the rest in memory
++-->|    level 2    |        // tos0 and tos1 are valid
 |   +---------------+
 |     | push
 +-----+
 ```
 
-Let's consider the Java bytecode instructions `iconst_0` and `iadd` as an example. `iconst_0` pushes a constant int 0 onto the Java stack and involves a single state transition, making it straightforward to implement. On the other hand, `iadd` involves three state transitions: popping the second operand from the Java stack, popping the first operand from the Java stack, and pushing the addition result back onto the stack. In this case, the language implementor should consider combining the state transitions when selecting the next variant to branch to.
+In practice, it is common to encapsulate these state transitions within individual helper methods and force their inlining. For instance, the _template variable_ `level` can be made private and all updates can go through `push`, `pop`, and cleanup helpers:
 
-In practice, it is common to encapsulate these state transitions within individual helper methods and force their inlining. For instance, the _template variable_ lvl can be made private and all updates are solely through the push and pop helper methods:
-
-```
-public class VirtualStack {
-    int sp;
-    private int lvl;
-
+```java
+public final class IntTosStack {
     final int[] stack;
+    int sp;
 
     int tos0;
     int tos1;
 
+    private int level;
+
     public void push(int value) {
-        switch (lvl) {
+        switch (level) {
             case 0:
                 tos0 = value;
-                lvl = 1;
+                level = 1;
                 break;
             case 1:
                 tos1 = value;
-                lvl = 2;
+                level = 2;
                 break;
             case 2:
                 stack[sp++] = tos0;
                 tos0 = tos1;
                 tos1 = value;
+                level = 2;
                 break;
-            default: error();
+            default:
+                throw new AssertionError(level);
         }
     }
 
     public int pop() {
-        switch (lvl) {
+        switch (level) {
             case 0:
                 return stack[--sp];
             case 1:
-                lvl = 0;
+                level = 0;
                 return tos0;
             case 2:
-                lvl = 1;
+                level = 1;
                 return tos1;
-            default: throw error();
+            default:
+                throw new AssertionError(level);
         }
+    }
+
+    public void cleanup() {
+        switch (level) {
+            case 0:
+                break;
+            case 1:
+                stack[sp++] = tos0;
+                break;
+            case 2:
+                stack[sp++] = tos0;
+                stack[sp++] = tos1;
+                break;
+            default:
+                throw new AssertionError(level);
+        }
+        level = 0;
     }
 }
 ```
 
-> **Note:** When the `VirtualStack` instance is passed as a `VIRTUAL` argument, the fields `tos0` and `tos1` are expanded and naturally stored in registers, effectively implementing the Top of Stack optimization.
+The bytecode handlers can then be written against the logical operand stack. For example:
 
-When the compiler generates the variants, the _template variable_ is initialized with a constant value. As the bytecode handler executes, each call to the push and pop operations will also update `lvl` to a next constant, enabling the compiler to eliminate dead code through constant folding and propagation.
+```java
+@BytecodeInterpreterHandler(ICONST_0)
+public long iconst0Handler(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+    stack.push(0);
+    return pc + 1;
+}
 
-Currently, the bytecode handler is expected to exit with a constant `lvl`, which is used to determine which variant of the next bytecode handler to be executed. It is possible to implement a variable `lvl` derived from merging multiple control flows, with the price of an extra memory access.
+@BytecodeInterpreterHandler(IADD)
+public long iaddHandler(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+    int b = stack.pop();
+    int a = stack.pop();
+    stack.push(a + b);
+    return pc + 1;
+}
+```
+
+When the compiler generates the variants, the _template variable_ is initialized with a constant value. As the bytecode handler executes, each call to the push and pop operations updates `level` to a next constant, enabling the compiler to eliminate dead code through constant folding and propagation. For example, the `IADD` handler in `level == 2` can fold the two pops and one push into direct operations on the expanded fields, with no backing stack access on that path.
+
+The bytecode handler is expected to exit with a constant `level`, or with a supported phi of constants, which is used to determine which variant of the next bytecode handler should execute. Unsupported non-constant template shapes are rejected instead of falling back to dynamic template selection.
 
 Note that tail call threading can exit at points where interpreter state has not yet been normalized. In the previous example, register-resident stack tops may not have been written back to memory.
 
@@ -410,7 +435,7 @@ Example:
 
 ```java
 @BytecodeInterpreterThreadingExit
-public void threadingExit(int pc, VirtualStack vs, short[] bytecode, Frame frame) {
-    vs.cleanup();
+public void threadingExit(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+    stack.cleanup();
 }
 ```

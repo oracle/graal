@@ -61,6 +61,15 @@ public final class BytecodeInterpreterDirectives {
         boolean threading() default true;
 
         /**
+         * Indicates whether this handler can be dispatched while a template variable is in a
+         * non-zero state. If {@code false}, non-zero template handler tables dispatch this handler's
+         * opcodes to a generated threading-exit stub so that state is normalized before the bytecode
+         * is re-dispatched from the interpreter switch. The default is {@code true}, meaning the
+         * handler is compatible with all template states.
+         */
+        boolean templateCompatible() default true;
+
+        /**
          * Indicates whether execution of this handler should include a safepoint check.
          */
         boolean safepoint() default true;
@@ -124,6 +133,21 @@ public final class BytecodeInterpreterDirectives {
                 boolean nonNull() default true;
 
                 /**
+                 * Marks this field as scratch state when template mode is enabled. Scratch fields
+                 * are carried between threaded bytecode handler stubs, but they are not initialized
+                 * from the original Java object on entry, are not written back to the original Java
+                 * object on exit, and are not preserved through pending exception state. This is
+                 * intended for register-resident interpreter state that is valid only while threaded
+                 * execution remains inside the generated handler stubs. When template mode is not
+                 * enabled, this metadata is ignored and the field remains an ordinary expanded
+                 * argument.
+                 * <p>
+                 * This property is only supported for fields of {@link ExpansionKind#VIRTUAL}
+                 * arguments. It cannot be combined with {@link #templateVariable()}.
+                 */
+                boolean scratch() default false;
+
+                /**
                  * Marks the expanded field as the template variable used to specialize template
                  * variants and select the template variant of the next threaded bytecode handler.
                  * A value of {@code 0} means that the field is not a template variable. A value of
@@ -175,15 +199,6 @@ public final class BytecodeInterpreterDirectives {
          * The maximum unsigned opcode value that can be handled by this interpreter.
          */
         int maximumOperationCode();
-
-        /**
-         * Opcodes that can be dispatched while a template variable is in a non-zero state. If this
-         * list is empty, all opcodes are considered compatible. When the list is non-empty,
-         * incompatible opcodes in non-zero template handler tables dispatch to a generated
-         * threading-exit stub so that state is normalized before the bytecode is re-dispatched from
-         * the interpreter switch.
-         */
-        int[] templateCompatibleOpcodes() default {};
 
         /**
          * Configuration for each handler method argument. For non-static methods, the first element
