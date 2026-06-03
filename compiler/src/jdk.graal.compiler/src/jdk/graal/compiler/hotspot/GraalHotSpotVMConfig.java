@@ -650,12 +650,15 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     osArch.equals("aarch64"));
     public final int NMethodPatchingType_stw_instruction_and_data_patch = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
     public final int NMethodPatchingType_conc_instruction_and_data_patch = getConstant("NMethodPatchingType::conc_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
+    // conc_data_patch is currently only exposed by Oracle JDK builds.
+    public final int NMethodPatchingType_conc_data_patch = getConstant("NMethodPatchingType::conc_data_patch", Integer.class, -1, osArch.equals("aarch64") && isOracleVmVendor);
     // @formatter:on
 
     {
         if (osArch.equals("aarch64")) {
             if (BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_stw_instruction_and_data_patch &&
-                            BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_conc_instruction_and_data_patch) {
+                            BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_conc_instruction_and_data_patch &&
+                            (!isOracleVmVendor || BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_conc_data_patch)) {
                 throw new IllegalArgumentException("unsupported barrier sequence " + BarrierSetAssembler_nmethod_patching_type);
             }
         }
