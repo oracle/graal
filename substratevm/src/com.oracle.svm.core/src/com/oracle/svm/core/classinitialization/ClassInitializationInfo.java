@@ -485,7 +485,7 @@ public final class ClassInitializationInfo {
                 return;
             }
 
-            initState = InitState.BeingInitialized;
+            initState = InitState.BeingLinked;
             setInitThread();
         } finally {
             initLock.unlock();
