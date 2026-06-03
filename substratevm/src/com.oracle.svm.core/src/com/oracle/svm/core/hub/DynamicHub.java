@@ -1245,18 +1245,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     public native Set<AccessFlag> accessFlags();
 
-    /*
-     * Mirrors the JDK wrapper around getClassAccessFlagsRaw0(): arrays report access flags from
-     * their element type, while non-arrays use their own hub metadata.
-     */
-    @Substitute
-    private int getClassAccessFlagsRaw() {
-        DynamicHub hub = this;
-        while (hub.hubIsArray()) {
-            hub = hub.getComponentHub();
-        }
-        return hub.getClassAccessFlagsRaw0();
-    }
+    @KeepOriginal
+    private native int getClassAccessFlagsRaw();
 
     /*
      * The JDK implementation of Class.accessFlags() calls this native primitive, so only the
