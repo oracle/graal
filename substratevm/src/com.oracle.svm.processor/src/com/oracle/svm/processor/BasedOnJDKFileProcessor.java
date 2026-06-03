@@ -77,12 +77,13 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.shared.util.BasedOnJDKFile";
     static final String ANNOTATION_LIST_CLASS_NAME = "com.oracle.svm.shared.util.BasedOnJDKFile.List";
+    static final String JDK_REPOSITORY_PATTERN = "(?:graalvm/labs-openjdk|openjdk/jdk(?:[0-9]+u)?)";
     static final Pattern BLOB_PATTERN = Pattern
-                    .compile("^https://github.com/openjdk/jdk([0-9]+u)?/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)(-L(?<lineEnd>[0-9]+))?)?$");
-    static final String BLOB_PATTERN_STR = "https://github.com/openjdk/jdk([0-9]+u)?/blob/<tag|revision>/path/to/file.ext[#L<from>[-L<to>]]";
+                    .compile("^https://github.com/" + JDK_REPOSITORY_PATTERN + "/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)(-L(?<lineEnd>[0-9]+))?)?$");
+    static final String BLOB_PATTERN_STR = "https://github.com/{graalvm/labs-openjdk|openjdk/jdk([0-9]+u)?}/blob/<tag|revision>/path/to/file.ext[#L<from>[-L<to>]]";
     static final Pattern TREE_PATTERN = Pattern
-                    .compile("^https://github.com/openjdk/jdk([0-9]+u)?/tree/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*[-_.A-Za-z0-9](?<trailingSlash>/)?)$");
-    static final String TREE_PATTERN_STR = "https://github.com/openjdk/jdk([0-9]+u)?/tree/<tag|revision>/path/to/dir/";
+                    .compile("^https://github.com/" + JDK_REPOSITORY_PATTERN + "/tree/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*[-_.A-Za-z0-9](?<trailingSlash>/)?)$");
+    static final String TREE_PATTERN_STR = "https://github.com/{graalvm/labs-openjdk|openjdk/jdk([0-9]+u)?}/tree/<tag|revision>/path/to/dir/";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
     private final Set<Element> processed = new HashSet<>(); // noEconomicSet(dependencies)
