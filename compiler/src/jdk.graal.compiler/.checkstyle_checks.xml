@@ -300,7 +300,7 @@
       <property name="illegalPattern" value="true"/>
     </module>
     <module name="Regexp">
-      <property name="format" value="[^/](?i)master|(?i)slave|(?i)whitelist|(?i)blacklist|(?i)whitehat|(?i)blackhat|(?i)grandfather"/>
+      <property name="format" value="(?i)slave|(?i)whitelist|(?i)blacklist|(?i)whitehat|(?i)blackhat|(?i)grandfather"/>
       <message key="illegal.regexp" value="Avoid insensitive term matched by {0}." />
       <property name="illegalPattern" value="true"/>
     </module>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -82,8 +84,9 @@ public class SyncPortProcessor extends AbstractProcessor {
     // END+HOTSPOT_PORT_SYNC_SEARCH_RANGE].
     static final String SYNC_SEARCH_RANGE_VAR = "HOTSPOT_PORT_SYNC_SEARCH_RANGE";
 
-    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/%s/master/";
-    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/%s/git/matching-refs/heads/master";
+    static final String JDK_LATEST_BRANCH = "master";
+    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/%s/" + JDK_LATEST_BRANCH + "/";
+    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/%s/git/matching-refs/heads/" + JDK_LATEST_BRANCH;
 
     static final String SYNC_PORT_CLASS_NAME = "jdk.graal.compiler.lir.SyncPort";
     static final String SYNC_PORTS_CLASS_NAME = "jdk.graal.compiler.lir.SyncPorts";
@@ -91,8 +94,14 @@ public class SyncPortProcessor extends AbstractProcessor {
     static final Pattern URL_PATTERN = Pattern.compile(
                     "^https://github.com/(?<user>[^/]+)/(?<repo>[^/]+)/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
     static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/(?<user>[^/]+)/(?<repo>[^/]+)/(?<commit>[0-9a-fA-F]{40})/$");
+    static final Pattern LATEST_COMMIT_PATTERN = Pattern.compile("\"sha\"\\s*:\\s*\"(?<commit>[0-9a-fA-F]{40})\"");
 
     static final int DEFAULT_SEARCH_RANGE = 200;
+    static final int URL_OPEN_ATTEMPTS = 3;
+    static final long URL_OPEN_RETRY_DELAY_MILLIS = 2_000;
+    static final String UNKNOWN_COMMIT = "UNKNOWN";
+
+    private static final Map<String, String> latestCommitCache = new LinkedHashMap<>();
 
     private final boolean isEnabled;
     private final boolean shouldDump;
@@ -128,7 +137,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
         Matcher matcher = URL_PATTERN.matcher(from);
         if (!matcher.matches()) {
-            env().getMessager().printMessage(ERROR, String.format("Invalid URL: %s", from));
+            printMessage(ERROR, String.format("Invalid URL: %s", from), element, annotationMirror);
             return;
         }
 
@@ -150,23 +159,11 @@ public class SyncPortProcessor extends AbstractProcessor {
 
             String urlPrefix = isURLOverwritten ? overwriteURL : String.format(JDK_LATEST, repo);
             String url = urlPrefix + path;
+            String latestCommit = isURLOverwritten ? latestCommitFromOverwrite(urlPrefix) : null;
             String sha1Latest = digest(proxy, md, url, lineStart - 1, lineEnd);
 
             if (sha1Latest.equals(sha1)) {
                 return;
-            }
-
-            String latestCommit;
-
-            if (isURLOverwritten) {
-                Matcher rawMatcher = URL_RAW_PATTERN.matcher(urlPrefix);
-                if (rawMatcher.matches()) {
-                    latestCommit = rawMatcher.group("commit");
-                } else {
-                    latestCommit = "UNKNOWN";
-                }
-            } else {
-                latestCommit = getLatestCommit(proxy, repo);
             }
 
             String extraMessage = "";
@@ -179,8 +176,9 @@ public class SyncPortProcessor extends AbstractProcessor {
                 if (idx != -1) {
                     int idxInclusive = idx + 1;
                     kind = NOTE;
-                    if ("UNKNOWN".equals(latestCommit)) {
-                        extraMessage = " The original code snippet is shifted.";
+                    latestCommit = latestCommit == null ? getLatestCommit(proxy, repo) : latestCommit;
+                    if (!isKnown(latestCommit)) {
+                        extraMessage = " The original code snippet is shifted." + latestCommitResolutionMessage();
                     } else {
                         String urlFormat = "https://github.com/%s/%s/blob/%s/%s#L%d-L%d";
                         String newUrl = String.format(urlFormat, user, repo, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
@@ -200,6 +198,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                         }
                     }
                 } else {
+                    String latestReference = isURLOverwritten ? latestReference(latestCommit) : JDK_LATEST_BRANCH;
                     extraMessage = String.format("""
                                      See also:
                                     https://github.com/%s/%s/compare/%s...%s
@@ -208,10 +207,10 @@ public class SyncPortProcessor extends AbstractProcessor {
                                     user,
                                     repo,
                                     commit,
-                                    latestCommit,
+                                    latestReference,
                                     user,
                                     repo,
-                                    latestCommit,
+                                    latestReference,
                                     path);
                     if (shouldDump) {
                         dump(proxy, urlOld, lineStart - 1, lineEnd, "old", element.getSimpleName().toString());
@@ -219,39 +218,64 @@ public class SyncPortProcessor extends AbstractProcessor {
                     }
                 }
             } else {
-                extraMessage = String.format("""
-                                 New SyncPort? Then:
-                                @SyncPort(from = "https://github.com/%s/%s/blob/%s/%s#L%d-L%d",
-                                          sha1 = "%s")
-                                """,
-                                user,
-                                repo,
-                                latestCommit,
-                                path,
-                                lineStart,
-                                lineEnd,
-                                sha1Latest);
+                latestCommit = latestCommit == null ? getLatestCommit(proxy, repo) : latestCommit;
+                if (isKnown(latestCommit)) {
+                    extraMessage = String.format("""
+                                     New SyncPort? Then:
+                                    @SyncPort(from = "https://github.com/%s/%s/blob/%s/%s#L%d-L%d",
+                                              sha1 = "%s")
+                                    """,
+                                    user,
+                                    repo,
+                                    latestCommit,
+                                    path,
+                                    lineStart,
+                                    lineEnd,
+                                    sha1Latest);
+                } else {
+                    extraMessage = String.format("""
+                                     New SyncPort? The latest source has sha1 "%s".
+                                    Resolve the latest openjdk/%s branch head commit before updating the @SyncPort URL.%s
+                                    """,
+                                    sha1Latest,
+                                    repo,
+                                    latestCommitResolutionMessage());
+                }
                 if (dumpUpdateCommands != null) {
                     dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", sha1, sha1Latest, sha1);
                 }
             }
-            env().getMessager().printMessage(kind,
+            printMessage(kind,
                             String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/%s/%s/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
                                             from,
                                             toString(element),
                                             user,
                                             repo,
-                                            isURLOverwritten ? "/" + latestCommit : "/master",
+                                            isURLOverwritten ? "/" + latestReference(latestCommit) : "/master",
                                             path,
                                             lineStart,
                                             lineEnd,
                                             sha1,
                                             sha1Latest,
-                                            extraMessage));
+                                            extraMessage),
+                            element,
+                            annotationMirror);
         } catch (FileNotFoundException e) {
-            env().getMessager().printMessage(kind,
+            printMessage(kind,
                             String.format("Sha1 digest of %s (ported by %s) does not match : File not found in the latest commit.",
-                                            from, toString(element)));
+                                            from, toString(element)),
+                            element,
+                            annotationMirror);
+        }
+    }
+
+    private void printMessage(Diagnostic.Kind kind, String message, Element element, AnnotationMirror annotationMirror) {
+        if (element == null) {
+            env().getMessager().printMessage(kind, message);
+        } else if (annotationMirror == null) {
+            env().getMessager().printMessage(kind, message, element);
+        } else {
+            env().getMessager().printMessage(kind, message, element, annotationMirror);
         }
     }
 
@@ -268,8 +292,33 @@ public class SyncPortProcessor extends AbstractProcessor {
             return new FileInputStream(new File(uri));
         }
 
-        URLConnection connection = new URI(url).toURL().openConnection(proxy);
-        return connection.getInputStream();
+        IOException lastException = null;
+        for (int attempt = 1; attempt <= URL_OPEN_ATTEMPTS; attempt++) {
+            try {
+                URLConnection connection = uri.toURL().openConnection(proxy);
+                return connection.getInputStream();
+            } catch (FileNotFoundException e) {
+                throw e;
+            } catch (IOException e) {
+                lastException = e;
+                if (attempt == URL_OPEN_ATTEMPTS) {
+                    throw e;
+                }
+                waitBeforeRetry(e);
+            }
+        }
+        throw lastException;
+    }
+
+    private static void waitBeforeRetry(IOException original) throws IOException {
+        try {
+            Thread.sleep(URL_OPEN_RETRY_DELAY_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            IOException interrupted = new IOException("Interrupted while retrying URL connection", e);
+            interrupted.addSuppressed(original);
+            throw interrupted;
+        }
     }
 
     private static String digest(Proxy proxy, MessageDigest md, String url, int lineStartExclusive, int lineEnd) throws IOException, URISyntaxException {
@@ -283,11 +332,8 @@ public class SyncPortProcessor extends AbstractProcessor {
     }
 
     private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStartExclusive, int lineEnd, int searchRange) throws IOException, URISyntaxException {
-        URLConnection oldUrlConnection = new URI(oldUrl).toURL().openConnection(proxy);
-        URLConnection newUrlConnection = new URI(newUrl).toURL().openConnection(proxy);
-
-        try (BufferedReader oldUrlIn = new BufferedReader(new InputStreamReader(oldUrlConnection.getInputStream()));
-                        BufferedReader newUrlIn = new BufferedReader(new InputStreamReader(newUrlConnection.getInputStream()))) {
+        try (BufferedReader oldUrlIn = new BufferedReader(new InputStreamReader(toInputStream(proxy, oldUrl)));
+                        BufferedReader newUrlIn = new BufferedReader(new InputStreamReader(toInputStream(proxy, newUrl)))) {
             String oldSnippet = oldUrlIn.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
             int newLineStartExclusive = Math.max(0, lineStartExclusive - searchRange);
             int newLineEnd = lineEnd + searchRange;
@@ -301,8 +347,7 @@ public class SyncPortProcessor extends AbstractProcessor {
     }
 
     private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String dirName, String fileName) throws IOException, URISyntaxException {
-        URLConnection connection = new URI(url).toURL().openConnection(proxy);
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(toInputStream(proxy, url)))) {
             String content = in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
             File directory = new File(dirName);
             if (!directory.exists()) {
@@ -317,34 +362,56 @@ public class SyncPortProcessor extends AbstractProcessor {
         }
     }
 
-    private String cachedLatestCommit = null;
-
-    private String getLatestCommit(Proxy proxy, String repo) throws IOException, URISyntaxException {
-        if (cachedLatestCommit == null) {
-            String result = null;
-
-            URLConnection connection = new URI(String.format(JDK_LATEST_INFO, repo)).toURL().openConnection(proxy);
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                String result1 = in.lines().collect(Collectors.joining());
-                int idx = result1.indexOf("commits/");
-                if (idx != -1) {
-                    result = result1.substring(idx + 8, idx + 48);
-                }
-            }
-            if (result == null) {
-                result = "UNKNOWN";
-            }
-            synchronized (this) {
-                if (cachedLatestCommit == null) {
-                    cachedLatestCommit = result;
-                }
-            }
+    private static String latestCommitFromOverwrite(String urlPrefix) {
+        Matcher rawMatcher = URL_RAW_PATTERN.matcher(urlPrefix);
+        if (rawMatcher.matches()) {
+            return rawMatcher.group("commit");
         }
-        return cachedLatestCommit;
+        return UNKNOWN_COMMIT;
+    }
+
+    private static String latestCommitResolutionMessage() {
+        return " Could not resolve the latest OpenJDK branch head commit.";
+    }
+
+    private static boolean isKnown(String latestCommit) {
+        return latestCommit != null && !UNKNOWN_COMMIT.equals(latestCommit);
+    }
+
+    private static String latestReference(String latestCommit) {
+        return isKnown(latestCommit) ? latestCommit : JDK_LATEST_BRANCH;
+    }
+
+    private static String getLatestCommit(Proxy proxy, String repo) {
+        synchronized (latestCommitCache) {
+            String latestCommit = latestCommitCache.get(repo);
+            if (latestCommit != null) {
+                return latestCommit;
+            }
+            latestCommit = readLatestCommit(proxy, repo);
+            latestCommitCache.put(repo, latestCommit);
+            return latestCommit;
+        }
+    }
+
+    private static String readLatestCommit(Proxy proxy, String repo) {
+        String latestInfoURL = String.format(JDK_LATEST_INFO, repo);
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(toInputStream(proxy, latestInfoURL)))) {
+            String response = in.lines().collect(Collectors.joining());
+            Matcher matcher = LATEST_COMMIT_PATTERN.matcher(response);
+            if (matcher.find()) {
+                return matcher.group("commit");
+            }
+            return UNKNOWN_COMMIT;
+        } catch (IOException | URISyntaxException e) {
+            return UNKNOWN_COMMIT;
+        }
     }
 
     @Override
     protected boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        Element currentElement = null;
+        AnnotationMirror currentAnnotationMirror = null;
         if (isEnabled) {
             if (!roundEnv.processingOver()) {
                 try {
@@ -363,7 +430,9 @@ public class SyncPortProcessor extends AbstractProcessor {
                     }
 
                     for (Element element : roundEnv.getElementsAnnotatedWith(tSyncPort)) {
-                        compareDigest(md, getAnnotation(element, tSyncPort.asType()), element, proxy);
+                        currentElement = element;
+                        currentAnnotationMirror = getAnnotation(element, tSyncPort.asType());
+                        compareDigest(md, currentAnnotationMirror, element, proxy);
                     }
 
                     TypeElement tSyncPorts = getTypeElement(SYNC_PORTS_CLASS_NAME);
@@ -371,11 +440,13 @@ public class SyncPortProcessor extends AbstractProcessor {
                     for (Element element : roundEnv.getElementsAnnotatedWith(tSyncPorts)) {
                         AnnotationMirror syncPorts = getAnnotation(element, tSyncPorts.asType());
                         for (AnnotationMirror syncPort : getAnnotationValueList(syncPorts, "value", AnnotationMirror.class)) {
+                            currentElement = element;
+                            currentAnnotationMirror = syncPort;
                             compareDigest(md, syncPort, element, proxy);
                         }
                     }
                 } catch (NoSuchAlgorithmException | IOException | URISyntaxException e) {
-                    env().getMessager().printMessage(ERROR, e.toString());
+                    printMessage(ERROR, "Error caught in %s: %s".formatted(getClass().getName(), e), currentElement, currentAnnotationMirror);
                 }
             }
         }
