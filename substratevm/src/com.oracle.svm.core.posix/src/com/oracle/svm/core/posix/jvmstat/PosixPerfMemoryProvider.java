@@ -234,7 +234,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L853-L967")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3-ga/src/hotspot/os/posix/perfMemory_posix.cpp#L852-L966")
     private static int createSharedMemFile(CCharPointer directoryPath, CCharPointer filename, int size) {
         if (!makeUserTmpDir(directoryPath)) {
             return -1;
