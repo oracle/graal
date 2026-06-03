@@ -28,6 +28,8 @@ package com.oracle.svm.configure.test.config;
 import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
+import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.LinkedList;
@@ -91,54 +93,7 @@ public class ResourceConfigurationTest {
             List<String> addedResources = new LinkedList<>();
             List<String> ignoredResources = new LinkedList<>();
 
-            ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
-
-                @Override
-                public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
-                    addedResources.add(pattern);
-                }
-
-                @Override
-                public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
-                    throw new AssertionError("Unused function.");
-                }
-
-                @Override
-                public void addResourceEntry(Module module, String resourcePath, Object origin) {
-                    throw new AssertionError("Unused function.");
-                }
-
-                @Override
-                public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
-                }
-
-                @Override
-                public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
-                    ignoredResources.add(pattern);
-                }
-
-                @Override
-                public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
-                }
-
-                @Override
-                public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
-
-                }
-
-                @Override
-                public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
-
-                }
-
-                @Override
-                public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
-
-                }
-            };
-
-            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry,
-                            EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
+            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = createParser(newTestRegistry(addedResources, ignoredResources));
             writerThread.start();
             rcp.parseAndRegister(pr);
 
@@ -149,5 +104,66 @@ public class ResourceConfigurationTest {
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    public void quotedRegexExcludeRegistersAsRegex() throws IOException {
+        List<String> ignoredResources = new ArrayList<>();
+        ResourceConfigurationParser<UnresolvedAccessCondition> parser = createParser(newTestRegistry(new LinkedList<>(), ignoredResources));
+        String config = "{ \"resources\": { \"includes\": [], \"excludes\": [ " +
+                        "{ \"pattern\": \"\\\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\\\E\" } ] } }";
+
+        parser.parseAndRegister(new StringReader(config));
+
+        Assert.assertEquals(List.of("\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\E"), ignoredResources);
+    }
+
+    private static ResourceConfigurationParser<UnresolvedAccessCondition> createParser(ResourcesRegistry<UnresolvedAccessCondition> registry) {
+        return ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
+    }
+
+    private static ResourcesRegistry<UnresolvedAccessCondition> newTestRegistry(List<String> addedResources, List<String> ignoredResources) {
+        return new ResourcesRegistry<>() {
+
+            @Override
+            public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                addedResources.add(pattern);
+            }
+
+            @Override
+            public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void addResourceEntry(Module module, String resourcePath, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+            }
+
+            @Override
+            public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                ignoredResources.add(pattern);
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
+            }
+
+            @Override
+            public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
+            }
+
+            @Override
+            public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
+            }
+        };
     }
 }
