@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.AboveEqual;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
@@ -48,6 +49,11 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm10;
+import static jdk.vm.ci.amd64.AMD64.xmm11;
+import static jdk.vm.ci.amd64.AMD64.xmm12;
+import static jdk.vm.ci.amd64.AMD64.xmm13;
+import static jdk.vm.ci.amd64.AMD64.xmm14;
+import static jdk.vm.ci.amd64.AMD64.xmm15;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
 import static jdk.vm.ci.amd64.AMD64.xmm3;
 import static jdk.vm.ci.amd64.AMD64.xmm4;
@@ -67,15 +73,18 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1634-L1680",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/18bcbf7941f7567449983b3f317401efb3e34d39/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1634-L1680",
           sha1 = "2c80c5744293a2f52c282898101c701790fd23df")
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L1010-L1493",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/18bcbf7941f7567449983b3f317401efb3e34d39/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L1010-L1493",
           sha1 = "a13f01c5f15f95cbdb6acb082866aa3f14bc94b4")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/18bcbf7941f7567449983b3f317401efb3e34d39/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L1496-L1672",
+          sha1 = "09d8ac6f9fe48a599d5315f49802654cc0005c28")
 // @formatter:on
 public final class AMD64SHA512Op extends AMD64LIRInstruction {
 
@@ -110,7 +119,7 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
 
         this.multiBlock = multiBlock;
 
-        // rbp, rbx, r12-r15 will be restored
+        // rbp, rbx, r12-r15 will be restored. vzeroupper clears upper bits of xmm0-xmm15.
         this.temps = new Value[]{
                         rax.asValue(),
                         rcx.asValue(),
@@ -132,6 +141,11 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
                         xmm8.asValue(),
                         xmm9.asValue(),
                         xmm10.asValue(),
+                        xmm11.asValue(),
+                        xmm12.asValue(),
+                        xmm13.asValue(),
+                        xmm14.asValue(),
+                        xmm15.asValue(),
         };
     }
 
@@ -217,6 +231,198 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        if (masm.supports(CPUFeature.SHA512)) {
+            emitSHA512NIX1(crb, masm);
+        } else {
+            emitAVX2Bmi2Code(crb, masm);
+        }
+        masm.vzeroupper();
+    }
+
+    // Implemented using Intel IpSec implementation (intel-ipsec-mb on github)
+    private void emitSHA512NIX1(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        Label labelDoneHash = new Label();
+        Label labelBlockLoop = new Label();
+
+        Register argHash = rsi;
+        Register argMsg = rdi;
+        Register ofs = rdx;
+        Register limit = rcx;
+
+        masm.vpbroadcasti128(xmm15, recordExternalAddress(crb, pshuffleByteFlipMaskSha512));
+
+        // load current hash value and transform
+        masm.vmovdqu(xmm0, new AMD64Address(argHash));
+        masm.vmovdqu(xmm1, new AMD64Address(argHash, 32));
+        // ymm0 = D C B A, ymm1 = H G F E
+        masm.vperm2i128(xmm2, xmm0, xmm1, 0x20);
+        masm.vperm2i128(xmm3, xmm0, xmm1, 0x31);
+        // ymm2 = F E B A, ymm3 = H G D C
+        masm.vpermq(xmm13, xmm2, 0x1b, AVXSize.YMM);
+        masm.vpermq(xmm14, xmm3, 0x1b, AVXSize.YMM);
+        // ymm13 = A B E F, ymm14 = C D G H
+
+        masm.leaq(rax, recordExternalAddress(crb, k512W));
+        masm.align(16);
+        masm.bind(labelBlockLoop);
+        masm.vmovdqu(xmm11, xmm13); // ABEF
+        masm.vmovdqu(xmm12, xmm14); // CDGH
+
+        // R0 - R3
+        masm.vmovdqu(xmm0, new AMD64Address(argMsg, 0 * 32));
+        masm.vpshufb(xmm3, xmm0, xmm15, AVXSize.YMM); // ymm0 / ymm3 = W[0..3]
+        masm.vpaddq(xmm0, xmm3, new AMD64Address(rax, 0 * 32), AVXSize.YMM);
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+
+        // R4 - R7
+        masm.vmovdqu(xmm0, new AMD64Address(argMsg, 1 * 32));
+        masm.vpshufb(xmm4, xmm0, xmm15, AVXSize.YMM); // ymm0 / ymm4 = W[4..7]
+        masm.vpaddq(xmm0, xmm4, new AMD64Address(rax, 1 * 32), AVXSize.YMM);
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+        masm.sha512msg1(xmm3, xmm4); // ymm3 = W[0..3] + S0(W[1..4])
+
+        // R8 - R11
+        masm.vmovdqu(xmm0, new AMD64Address(argMsg, 2 * 32));
+        masm.vpshufb(xmm5, xmm0, xmm15, AVXSize.YMM); // ymm0 / ymm5 = W[8..11]
+        masm.vpaddq(xmm0, xmm5, new AMD64Address(rax, 2 * 32), AVXSize.YMM);
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+        masm.sha512msg1(xmm4, xmm5); // ymm4 = W[4..7] + S0(W[5..8])
+
+        // R12 - R15
+        masm.vmovdqu(xmm0, new AMD64Address(argMsg, 3 * 32));
+        masm.vpshufb(xmm6, xmm0, xmm15, AVXSize.YMM); // ymm0 / ymm6 = W[12..15]
+        masm.vpaddq(xmm0, xmm6, new AMD64Address(rax, 3 * 32), AVXSize.YMM);
+        masm.vpermq(xmm8, xmm6, 0x1b, AVXSize.YMM); // ymm8 = W[12] W[13] W[14] W[15]
+        masm.vpermq(xmm9, xmm5, 0x39, AVXSize.YMM); // ymm9 = W[8] W[11] W[10] W[9]
+        masm.vpblendd(xmm8, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm8 = W[12] W[11] W[10] W[9]
+        masm.vpaddq(xmm3, xmm3, xmm8, AVXSize.YMM);
+        masm.sha512msg2(xmm3, xmm6); // W[16..19] = xmm3 + W[9..12] + S1(W[14..17])
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+        masm.sha512msg1(xmm5, xmm6); // ymm5 = W[8..11] + S0(W[9..12])
+
+        // R16 - R19, R32 - R35, R48 - R51
+        for (int i = 4, j = 3; j > 0; j--) {
+            masm.vpaddq(xmm0, xmm3, new AMD64Address(rax, i * 32), AVXSize.YMM);
+            masm.vpermq(xmm8, xmm3, 0x1b, AVXSize.YMM); // ymm8 = W[16] W[17] W[18] W[19]
+            masm.vpermq(xmm9, xmm6, 0x39, AVXSize.YMM); // ymm9 = W[12] W[15] W[14] W[13]
+            masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // xmm7 = W[16] W[15] W[14] W[13]
+            masm.vpaddq(xmm4, xmm4, xmm7, AVXSize.YMM); // ymm4 = W[4..7] + S0(W[5..8]) + W[13..16]
+            masm.sha512msg2(xmm4, xmm3); // ymm4 += S1(W[14..17])
+            masm.sha512rnds2(xmm12, xmm11, xmm0);
+            masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+            masm.sha512rnds2(xmm11, xmm12, xmm0);
+            masm.sha512msg1(xmm6, xmm3); // ymm6 = W[12..15] + S0(W[13..16])
+            i += 1;
+            // R20 - R23, R36 - R39, R52 - R55
+            masm.vpaddq(xmm0, xmm4, new AMD64Address(rax, i * 32), AVXSize.YMM);
+            masm.vpermq(xmm8, xmm4, 0x1b, AVXSize.YMM); // ymm8 = W[20] W[21] W[22] W[23]
+            masm.vpermq(xmm9, xmm3, 0x39, AVXSize.YMM); // ymm9 = W[16] W[19] W[18] W[17]
+            masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[20] W[19] W[18] W[17]
+            masm.vpaddq(xmm5, xmm5, xmm7, AVXSize.YMM); // ymm5 = W[8..11] + S0(W[9..12]) + W[17..20]
+            masm.sha512msg2(xmm5, xmm4); // ymm5 += S1(W[18..21])
+            masm.sha512rnds2(xmm12, xmm11, xmm0);
+            masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+            masm.sha512rnds2(xmm11, xmm12, xmm0);
+            masm.sha512msg1(xmm3, xmm4); // ymm3 = W[16..19] + S0(W[17..20])
+            i += 1;
+            // R24 - R27, R40 - R43, R56 - R59
+            masm.vpaddq(xmm0, xmm5, new AMD64Address(rax, i * 32), AVXSize.YMM);
+            masm.vpermq(xmm8, xmm5, 0x1b, AVXSize.YMM); // ymm8 = W[24] W[25] W[26] W[27]
+            masm.vpermq(xmm9, xmm4, 0x39, AVXSize.YMM); // ymm9 = W[20] W[23] W[22] W[21]
+            masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[24] W[23] W[22] W[21]
+            masm.vpaddq(xmm6, xmm6, xmm7, AVXSize.YMM); // ymm6 = W[12..15] + S0(W[13..16]) + W[21..24]
+            masm.sha512msg2(xmm6, xmm5); // ymm6 += S1(W[22..25])
+            masm.sha512rnds2(xmm12, xmm11, xmm0);
+            masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+            masm.sha512rnds2(xmm11, xmm12, xmm0);
+            masm.sha512msg1(xmm4, xmm5); // ymm4 = W[20..23] + S0(W[21..24])
+            i += 1;
+            // R28 - R31, R44 - R47, R60 - R63
+            masm.vpaddq(xmm0, xmm6, new AMD64Address(rax, i * 32), AVXSize.YMM);
+            masm.vpermq(xmm8, xmm6, 0x1b, AVXSize.YMM); // ymm8 = W[28] W[29] W[30] W[31]
+            masm.vpermq(xmm9, xmm5, 0x39, AVXSize.YMM); // ymm9 = W[24] W[27] W[26] W[25]
+            masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[28] W[27] W[26] W[25]
+            masm.vpaddq(xmm3, xmm3, xmm7, AVXSize.YMM); // ymm3 = W[16..19] + S0(W[17..20]) + W[25..28]
+            masm.sha512msg2(xmm3, xmm6); // ymm3 += S1(W[26..29])
+            masm.sha512rnds2(xmm12, xmm11, xmm0);
+            masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+            masm.sha512rnds2(xmm11, xmm12, xmm0);
+            masm.sha512msg1(xmm5, xmm6); // ymm5 = W[24..27] + S0(W[25..28])
+            i += 1;
+        }
+        // R64 - R67
+        masm.vpaddq(xmm0, xmm3, new AMD64Address(rax, 16 * 32), AVXSize.YMM);
+        masm.vpermq(xmm8, xmm3, 0x1b, AVXSize.YMM); // ymm8 = W[64] W[65] W[66] W[67]
+        masm.vpermq(xmm9, xmm6, 0x39, AVXSize.YMM); // ymm9 = W[60] W[63] W[62] W[61]
+        masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[64] W[63] W[62] W[61]
+        masm.vpaddq(xmm4, xmm4, xmm7, AVXSize.YMM); // ymm4 = W[52..55] + S0(W[53..56]) + W[61..64]
+        masm.sha512msg2(xmm4, xmm3); // ymm4 += S1(W[62..65])
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+        masm.sha512msg1(xmm6, xmm3); // ymm6 = W[60..63] + S0(W[61..64])
+
+        // R68 - R71
+        masm.vpaddq(xmm0, xmm4, new AMD64Address(rax, 17 * 32), AVXSize.YMM);
+        masm.vpermq(xmm8, xmm4, 0x1b, AVXSize.YMM); // ymm8 = W[68] W[69] W[70] W[71]
+        masm.vpermq(xmm9, xmm3, 0x39, AVXSize.YMM); // ymm9 = W[64] W[67] W[66] W[65]
+        masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[68] W[67] W[66] W[65]
+        masm.vpaddq(xmm5, xmm5, xmm7, AVXSize.YMM); // ymm5 = W[56..59] + S0(W[57..60]) + W[65..68]
+        masm.sha512msg2(xmm5, xmm4); // ymm5 += S1(W[66..69])
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+
+        // R72 - R75
+        masm.vpaddq(xmm0, xmm5, new AMD64Address(rax, 18 * 32), AVXSize.YMM);
+        masm.vpermq(xmm8, xmm5, 0x1b, AVXSize.YMM); // ymm8 = W[72] W[73] W[74] W[75]
+        masm.vpermq(xmm9, xmm4, 0x39, AVXSize.YMM); // ymm9 = W[68] W[71] W[70] W[69]
+        masm.vpblendd(xmm7, xmm8, xmm9, 0x3f, AVXSize.YMM); // ymm7 = W[72] W[71] W[70] W[69]
+        masm.vpaddq(xmm6, xmm6, xmm7, AVXSize.YMM); // ymm6 = W[60..63] + S0(W[61..64]) + W[69..72]
+        masm.sha512msg2(xmm6, xmm5); // ymm6 += S1(W[70..73])
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+
+        // R76 - R79
+        masm.vpaddq(xmm0, xmm6, new AMD64Address(rax, 19 * 32), AVXSize.YMM);
+        masm.sha512rnds2(xmm12, xmm11, xmm0);
+        masm.vperm2i128(xmm0, xmm0, xmm0, 0x01);
+        masm.sha512rnds2(xmm11, xmm12, xmm0);
+
+        // update hash value
+        masm.vpaddq(xmm14, xmm14, xmm12, AVXSize.YMM);
+        masm.vpaddq(xmm13, xmm13, xmm11, AVXSize.YMM);
+
+        if (multiBlock) {
+            masm.addq(argMsg, 4 * 32);
+            masm.addq(ofs, 128);
+            masm.cmpqAndJcc(ofs, limit, BelowEqual, labelBlockLoop, false);
+            masm.movq(rax, ofs); // return ofs
+        }
+
+        // store the hash value back in memory
+        // xmm13 = ABEF
+        // xmm14 = CDGH
+        masm.vperm2i128(xmm1, xmm13, xmm14, 0x31);
+        masm.vperm2i128(xmm2, xmm13, xmm14, 0x20);
+        masm.vpermq(xmm1, xmm1, 0xb1, AVXSize.YMM); // ymm1 = D C B A
+        masm.vpermq(xmm2, xmm2, 0xb1, AVXSize.YMM); // ymm2 = H G F E
+        masm.vmovdqu(new AMD64Address(argHash, 0 * 32), xmm1);
+        masm.vmovdqu(new AMD64Address(argHash, 1 * 32), xmm2);
+
+        masm.bind(labelDoneHash);
+    }
+
+    private void emitAVX2Bmi2Code(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Label labelLoop0 = new Label();
         Label labelLoop1 = new Label();
         Label labelLoop2 = new Label();
