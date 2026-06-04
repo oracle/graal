@@ -119,12 +119,12 @@ public class StackTraceUtils {
     /**
      * Implements the semantic of Reflection.getCallerClass.
      */
-    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames) {
-        return getCallerClass(startSP, showLambdaFrames, true);
+    public static Class<?> getCallerClass(Pointer startSP) {
+        return getCallerClass(startSP, true);
     }
 
-    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames, boolean ignoreFirst) {
-        GetCallerClassVisitor visitor = new GetCallerClassVisitor(showLambdaFrames, ignoreFirst);
+    public static Class<?> getCallerClass(Pointer startSP, boolean ignoreFirst) {
+        GetCallerClassVisitor visitor = new GetCallerClassVisitor(ignoreFirst);
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
     }
@@ -340,12 +340,10 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 }
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
-    private final boolean showLambdaFrames;
     private boolean ignoreFirst;
     Class<?> result;
 
-    GetCallerClassVisitor(boolean showLambdaFrames, boolean ignoreFirst) {
-        this.showLambdaFrames = showLambdaFrames;
+    GetCallerClassVisitor(boolean ignoreFirst) {
         this.ignoreFirst = ignoreFirst;
     }
 
@@ -371,7 +369,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             }
             return true;
 
-        } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, showLambdaFrames, false)) {
+        } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false)) {
             /*
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.

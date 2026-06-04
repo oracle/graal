@@ -408,7 +408,7 @@ public final class ClassInitializationInfo {
          * `@InternalVMMethod`-class so unlike Reflection.getCallerClass, we don't need to ignore
          * the first frame.
          */
-        return StackTraceUtils.getCallerClass(readCallerStackPointer(), true, false);
+        return StackTraceUtils.getCallerClass(readCallerStackPointer(), false);
     }
 
     /**
