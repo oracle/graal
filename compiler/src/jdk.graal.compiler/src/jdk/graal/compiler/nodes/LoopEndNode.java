@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import java.util.Collections;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -124,6 +125,11 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     public void setGuestSafepointState(SafepointState newState) {
+        if (loopBegin instanceof LoopBeginNode) {
+            GraalError.guarantee(!newState.canSafepoint() || !loopBegin().getGuestLoopBeginSafepointState().canSafepoint(),
+                            "Cannot enable a guest safepoint at a loop end while a guest safepoint at the loop begin is enabled, loopEndState=%s, loopBeginState=%s", newState,
+                            loopBegin().getGuestLoopBeginSafepointState());
+        }
         this.guestSafepointState = newState;
     }
 
