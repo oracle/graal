@@ -126,6 +126,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -776,6 +777,13 @@ public class TruffleFeature implements InternalFeature {
         warnAllMethods(metaAccess, JavaStackWalker.class);
         warnAllMethods(metaAccess, Deoptimizer.class);
         warnAllMethods(metaAccess, Heap.getHeap().getClass());
+
+        /*
+         * Missing reflection registration diagnostics format JSON suggestions and use broad JDK
+         * library code. Keep that cold reporting path outside Truffle runtime compilation.
+         */
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportInvokedExecutable", Executable.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportAccessedField", Field.class);
 
         /*
          * GR-41564 These methods should become part of the blocklist once the Truffle language
