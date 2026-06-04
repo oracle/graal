@@ -122,7 +122,8 @@ public final class LambdaUtils {
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        return type.isFinalFlagSet() && isLambdaName(typeName);
+        return !isArrayTypeName(typeName) && !type.isArray() &&
+                        type.isFinalFlagSet() && isLambdaName(typeName);
     }
 
     public static boolean isLambdaName(String name) {
@@ -202,7 +203,8 @@ public final class LambdaUtils {
      * @return true if type is a lambda class, false instead
      */
     public static boolean isLambdaClass(ResolvedJavaType type) {
-        return isLambdaClassName(type.toClassName());
+        return !isArrayTypeName(type.getName()) && !type.isArray() &&
+                        isLambdaClassName(type.toClassName());
     }
 
     /**
@@ -212,7 +214,7 @@ public final class LambdaUtils {
      * @return true if the clazz is lambda class, false instead
      */
     public static boolean isLambdaClass(Class<?> clazz) {
-        return isLambdaClassName(clazz.getName());
+        return !clazz.isArray() && isLambdaClassName(clazz.getName());
     }
 
     /**
@@ -223,5 +225,9 @@ public final class LambdaUtils {
      */
     public static boolean isLambdaClassName(String className) {
         return className.contains(LAMBDA_CLASS_NAME_SUBSTRING);
+    }
+
+    private static boolean isArrayTypeName(String name) {
+        return !name.isEmpty() && name.charAt(0) == '[';
     }
 }
