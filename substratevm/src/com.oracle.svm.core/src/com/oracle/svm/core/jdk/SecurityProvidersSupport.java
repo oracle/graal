@@ -73,10 +73,10 @@ public final class SecurityProvidersSupport {
     private final EconomicSet<String> userRequestedSecurityProviders = EconomicSet.create();
 
     /**
-     * A map of providers, identified by their names (see {@link Provider#getName()}), and the
-     * results of their verification (see javax.crypto.JceSecurity#getVerificationResult). This
-     * structure is used instead of the (see javax.crypto.JceSecurity#verifyingProviders) map to
-     * avoid keeping provider objects in the image heap.
+     * A map of providers, identified by their class names, and the results of their verification
+     * (see javax.crypto.JceSecurity#getVerificationResult). This structure is used instead of the
+     * (see javax.crypto.JceSecurity#verifyingProviders) map to avoid keeping provider objects in
+     * the image heap.
      */
     private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
 
@@ -119,12 +119,11 @@ public final class SecurityProvidersSupport {
     }
 
     /**
-     * Returns {@code true} if the provider, identified by either its name (e.g., SUN) or fully
-     * qualified name (e.g., sun.security.provider.Sun), is either user-requested or reachable via a
-     * security service.
+     * Returns {@code true} if the provider, identified by its fully qualified name (e.g.,
+     * sun.security.provider.Sun), is either user-requested or reachable via a security service.
      */
-    public boolean isSecurityProviderRequested(String providerName, String providerFQName) {
-        return verifiedSecurityProviders.containsKey(providerName) || userRequestedSecurityProviders.contains(providerFQName);
+    public boolean isSecurityProviderRequested(String providerFQName) {
+        return verifiedSecurityProviders.containsKey(providerFQName) || userRequestedSecurityProviders.contains(providerFQName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -176,7 +175,7 @@ public final class SecurityProvidersSupport {
     public boolean isMissingBuiltInProvider(String provName) {
         String providerName = getBuiltInProviderName(provName);
         String providerFQName = getBuiltInProviderClassName(provName);
-        return providerName != null && !isSecurityProviderRequested(providerName, providerFQName);
+        return providerName != null && !isSecurityProviderRequested(providerFQName);
     }
 
     public static SecurityException missingBuiltInProvider(String provName) {
@@ -194,15 +193,15 @@ public final class SecurityProvidersSupport {
     public Provider loadBuiltInProvider(String provName, Debug debug) {
         return switch (provName) {
             case "SUN", "sun.security.provider.Sun" ->
-                isSecurityProviderRequested("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
+                isSecurityProviderRequested("sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
             case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                isSecurityProviderRequested("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
+                isSecurityProviderRequested("sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
             case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                isSecurityProviderRequested("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
+                isSecurityProviderRequested("com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
             case "SunJSSE", "sun.security.ssl.SunJSSE" ->
-                isSecurityProviderRequested("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
+                isSecurityProviderRequested("sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
             case "SunEC", "sun.security.ec.SunEC" ->
-                isSecurityProviderRequested("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : null;
+                isSecurityProviderRequested("sun.security.ec.SunEC") ? allocateSunECProvider() : null;
             case "Apple", "apple.security.AppleProvider" -> {
                 try {
                     Class<?> c = Class.forName("apple.security.AppleProvider");

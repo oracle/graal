@@ -95,8 +95,8 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* The verification results map key is an identity wrapper object. */
-        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
+        /* Provider verification is tied to the provider implementation class. */
+        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getClass().getName());
         if (o == Boolean.TRUE) {
             return null;
         } else if (o != null) {
