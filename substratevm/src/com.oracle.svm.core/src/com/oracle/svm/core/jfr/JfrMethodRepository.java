@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
@@ -63,7 +64,7 @@ public class JfrMethodRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
-    public long getMethodId(Class<?> clazz, String methodName, String methodSignature, int methodId, int methodModifier) {
+    public long getMethodId(Class<?> clazz, String methodName, String methodSignature, int methodId, int methodFlags) {
         assert clazz != null;
         assert methodName != null;
         assert methodId > 0;
@@ -93,8 +94,8 @@ public class JfrMethodRepository implements JfrRepository {
             JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodSignature, false));
-            JfrNativeEventWriter.putInt(data, methodModifier);
-            JfrNativeEventWriter.putBoolean(data, !StackTraceUtils.shouldShowFrame(clazz, methodName));
+            JfrNativeEventWriter.putInt(data, FrameSourceInfo.MethodFlags.getMethodModifiers(methodFlags));
+            JfrNativeEventWriter.putBoolean(data, !StackTraceUtils.shouldShowFrame(clazz, methodName, methodFlags));
             if (!JfrNativeEventWriter.commit(data)) {
                 return methodId;
             }

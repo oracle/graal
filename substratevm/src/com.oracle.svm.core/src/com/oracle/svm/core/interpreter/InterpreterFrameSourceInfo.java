@@ -43,13 +43,15 @@ public final class InterpreterFrameSourceInfo extends FrameSourceInfo {
      */
     private final InterpreterFrameSourceInfo callerInfo;
 
-    public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
-        this(sourceClass, sourceMethodName, sourceLineNumber, bci, interpretedMethod, interpreterFrame, null);
+    public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, int sourceMethodFlags, ResolvedJavaMethod interpretedMethod,
+                    Object interpreterFrame) {
+        this(sourceClass, sourceMethodName, sourceLineNumber, bci, sourceMethodFlags, interpretedMethod, interpreterFrame, null);
     }
 
-    public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, ResolvedJavaMethod interpretedMethod, Object interpreterFrame,
+    public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, int sourceMethodFlags, ResolvedJavaMethod interpretedMethod,
+                    Object interpreterFrame,
                     InterpreterFrameSourceInfo callerInfo) {
-        super(sourceClass, sourceMethodName, sourceLineNumber, bci);
+        super(sourceClass, sourceMethodName, sourceLineNumber, bci, sourceMethodFlags);
         this.interpretedMethod = interpretedMethod;
         this.interpreterFrame = interpreterFrame;
         this.callerInfo = callerInfo;
@@ -58,19 +60,21 @@ public final class InterpreterFrameSourceInfo extends FrameSourceInfo {
         Objects.requireNonNull(sourceMethodName);
     }
 
-    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci, Object interpreterFrame, InterpreterFrameSourceInfo callerInfo) {
+    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci, int sourceMethodFlags, Object interpreterFrame,
+                    InterpreterFrameSourceInfo callerInfo) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, interpreterFrame, callerInfo);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, sourceMethodFlags, interpretedMethod, interpreterFrame,
+                        callerInfo);
     }
 
-    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci) {
+    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci, int sourceMethodFlags) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, null);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, sourceMethodFlags, interpretedMethod, null);
     }
 
-    public static InterpreterFrameSourceInfo forNativeMethod(ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
+    public static InterpreterFrameSourceInfo forNativeMethod(ResolvedJavaMethod interpretedMethod, Object interpreterFrame, int sourceMethodFlags) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, LINENUMBER_NATIVE, -1, interpretedMethod, interpreterFrame);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, LINENUMBER_NATIVE, -1, sourceMethodFlags, interpretedMethod, interpreterFrame);
     }
 
     private static Class<?> sourceClass(ResolvedJavaMethod interpretedMethod) {

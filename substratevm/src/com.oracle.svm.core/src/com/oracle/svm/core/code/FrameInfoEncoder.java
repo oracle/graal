@@ -41,7 +41,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
@@ -58,7 +57,9 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.LIRKind;
@@ -69,6 +70,7 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.internal.vm.annotation.Hidden;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
@@ -144,11 +146,12 @@ public class FrameInfoEncoder {
              * StackTraceElement contains interned strings, so we un-intern these strings and
              * perform our own de-duplication.
              */
-            int sourceMethodModifiers = method.getModifiers();
+            boolean isHidden = method.getDeclaringClass().isHidden() || AnnotationUtil.isAnnotationPresent(method, Hidden.class);
+            int sourceMethodFlags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden);
             String methodSignature = method.getSignature().toMethodDescriptor();
             String sourceMethodName = stringTable.deduplicate(encoder.encodeMethod(source.getMethodName(), sourceClass), true);
             String sourceMethodSignature = CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers() ? stringTable.deduplicate(methodSignature, true) : methodSignature;
-            resultFrameInfo.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceMethodModifiers);
+            resultFrameInfo.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceMethodFlags);
         }
 
         protected abstract Class<?> getDeclaringJavaClass(ResolvedJavaMethod method);
@@ -202,7 +205,7 @@ public class FrameInfoEncoder {
                     Class<?> sourceClass,
                     String sourceMethodName,
                     String sourceMethodSignature,
-                    int sourceMethodModifier,
+                    int sourceMethodFlags,
                     int sourceLineNumber,
                     long encodedBci,
                     boolean isSliceEnd) {
@@ -415,7 +418,7 @@ public class FrameInfoEncoder {
             int methodId = frame.methodId;
             if (frame.sourceMethod != null) {
                 assert methodId == 0;
-                methodId = encoders.findMethodIndex(frame.sourceMethod, frame.sourceClass, frame.sourceMethodName, frame.sourceMethodSignature, frame.sourceMethodModifier, false);
+                methodId = encoders.findMethodIndex(frame.sourceMethod, frame.sourceClass, frame.sourceMethodName, frame.sourceMethodSignature, frame.sourceMethodFlags, false);
             }
 
             encodingBuffer.putSV(encodeCompressedFirstEntry(methodId, true));
@@ -443,13 +446,13 @@ public class FrameInfoEncoder {
                 int previousMethodId = cur.sourceMethodId;
                 if (cur.getSourceMethod() != null) {
                     cur.sourceMethodId = encoders.findMethodIndex(cur.getSourceMethod(), cur.getSourceClass(), cur.getSourceMethodName(), cur.getSourceMethodSignature(),
-                                    cur.getSourceMethodModifiers(), false);
+                                    cur.getSourceMethodFlags(), false);
                     assert previousMethodId == 0 || previousMethodId == cur.sourceMethodId;
                 }
 
                 boolean isSliceEnd = (cur.caller == null);
                 CompressedFrameData expected = new CompressedFrameData(previousMethodId, cur.getSourceMethod(), cur.getSourceClass(), cur.getSourceMethodName(),
-                                cur.getSourceMethodSignature(), cur.getSourceMethodModifiers(), cur.sourceLineNumber, cur.encodedBci, isSliceEnd);
+                                cur.getSourceMethodSignature(), cur.getSourceMethodFlags(), cur.sourceLineNumber, cur.encodedBci, isSliceEnd);
                 assert expected.equals(slice.get(curIdx)) : expected;
                 curIdx++;
             }
@@ -503,14 +506,14 @@ public class FrameInfoEncoder {
             if (resultFrame.getSourceMethod() != null) {
                 assert resultFrame.sourceMethodId == 0;
                 encoders.addMethod(resultFrame.getSourceMethod(), resultFrame.getSourceClass(), resultFrame.getSourceMethodName(), resultFrame.getSourceMethodSignature(),
-                                resultFrame.getSourceMethodModifiers());
+                                resultFrame.getSourceMethodFlags());
             }
 
             // save encoding metadata
             assert resultFrame.hasLocalValueInfo() == includeLocalValues : resultFrame;
             if (!includeLocalValues) {
                 CompressedFrameData frame = new CompressedFrameData(resultFrame.sourceMethodId, resultFrame.getSourceMethod(), resultFrame.getSourceClass(), resultFrame.getSourceMethodName(),
-                                resultFrame.getSourceMethodSignature(), resultFrame.getSourceMethodModifiers(), resultFrame.sourceLineNumber, resultFrame.encodedBci, (resultFrame.caller == null));
+                                resultFrame.getSourceMethodSignature(), resultFrame.getSourceMethodFlags(), resultFrame.sourceLineNumber, resultFrame.encodedBci, (resultFrame.caller == null));
                 frameSlice.add(frame);
             }
 
@@ -534,12 +537,12 @@ public class FrameInfoEncoder {
         if (data.frame.getSourceMethod() != null) {
             assert data.frame.sourceMethodId == 0;
             encoders.addMethod(data.frame.getSourceMethod(), data.frame.getSourceClass(), data.frame.getSourceMethodName(), data.frame.getSourceMethodSignature(),
-                            data.frame.getSourceMethodModifiers());
+                            data.frame.getSourceMethodFlags());
         }
 
         // save encoding metadata
         CompressedFrameData frame = new CompressedFrameData(data.frame.sourceMethodId, data.frame.getSourceMethod(), data.frame.getSourceClass(), data.frame.getSourceMethodName(),
-                        data.frame.getSourceMethodSignature(), data.frame.getSourceMethodModifiers(), data.frame.sourceLineNumber, data.frame.encodedBci, true);
+                        data.frame.getSourceMethodSignature(), data.frame.getSourceMethodFlags(), data.frame.sourceLineNumber, data.frame.encodedBci, true);
         frameMetadata.addFrameSlice(data, List.of(frame));
 
         allDebugInfos.add(data);
@@ -970,7 +973,7 @@ public class FrameInfoEncoder {
 
             if (cur.getSourceMethod() != null) {
                 assert cur.sourceMethodId == 0;
-                cur.sourceMethodId = encoders.findMethodIndex(cur.getSourceMethod(), cur.getSourceClass(), cur.getSourceMethodName(), cur.getSourceMethodSignature(), cur.getSourceMethodModifiers(),
+                cur.sourceMethodId = encoders.findMethodIndex(cur.getSourceMethod(), cur.getSourceClass(), cur.getSourceMethodName(), cur.getSourceMethodSignature(), cur.getSourceMethodFlags(),
                                 false);
             }
 

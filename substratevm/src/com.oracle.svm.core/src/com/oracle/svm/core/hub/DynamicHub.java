@@ -387,20 +387,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** Is this a VM-internal class that should be hidden from stack traces. */
     private static final int IS_VM_INTERNAL_FLAG_BIT = 8;
     /**
-     * Is this a lambda form hidden class that should be hidden from stack traces in some
-     * circumstances.
-     */
-    private static final int IS_LAMBDA_FORM_HIDDEN_BIT = 9;
-    /**
      * Indicates this Class was linked during build time. Accessing an unlinked class during run
      * time will throw an error.
      */
-    private static final int IS_BUILD_TIME_LINKED_BIT = 10;
+    private static final int IS_BUILD_TIME_LINKED_BIT = 9;
     /**
      * Indicates whether the class is a proxy class according to
      * {@link java.lang.reflect.Proxy#isProxyClass}.
      */
-    private static final int IS_PROXY_CLASS_BIT = 11;
+    private static final int IS_PROXY_CLASS_BIT = 10;
 
     /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int ADDITIONAL_FLAGS_INSTANTIATED_BIT = 0;
@@ -688,7 +683,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public static short makeFlags(boolean isPrimitive, boolean isInterface, boolean isHidden, boolean isRecord, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, boolean isProxyClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLinked, boolean isProxyClass) {
         return NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, isPrimitive) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, isInterface) |
                         makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
@@ -697,7 +692,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
                         makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
-                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
                         makeFlag(IS_BUILD_TIME_LINKED_BIT, isLinked) |
                         makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
     }
@@ -1428,11 +1422,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isVMInternal() {
         return isFlagSet(flags, IS_VM_INTERNAL_FLAG_BIT);
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isLambdaFormHidden() {
-        return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
     }
 
     private boolean isBuildTimeLinked() {

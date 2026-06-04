@@ -220,7 +220,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
     /* These are used only for constructing/encoding the code and frame info, or as cache. */
     private ResolvedJavaMethod sourceMethod;
 
-    private int sourceMethodModifiers;
     private String sourceMethodSignature;
 
     public FrameInfoQueryResult() {
@@ -245,7 +244,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         sourceMethodId = 0;
         sourceMethod = null;
         sourceMethodSignature = Encoders.INVALID_METHOD_SIGNATURE;
-        sourceMethodModifiers = Encoders.INVALID_METHOD_MODIFIERS;
     }
 
     /**
@@ -393,13 +391,13 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "Identity comparison against sentinel string value")
-    void setSourceFields(Class<?> clazz, String methodName, String signature, int modifiers) {
+    void setSourceFields(Class<?> clazz, String methodName, String signature, int flags) {
         assert sourceClass == Encoders.INVALID_CLASS && sourceMethodName == Encoders.INVALID_METHOD_NAME && sourceMethodSignature == Encoders.INVALID_METHOD_SIGNATURE &&
-                        sourceMethodModifiers == Encoders.INVALID_METHOD_MODIFIERS;
+                        sourceMethodFlags == Encoders.INVALID_METHOD_MODIFIERS;
         this.sourceClass = clazz;
         this.sourceMethodName = methodName;
         this.sourceMethodSignature = signature;
-        this.sourceMethodModifiers = modifiers;
+        this.sourceMethodFlags = flags;
     }
 
     ResolvedJavaMethod getSourceMethod() {
@@ -421,12 +419,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getSourceMethodId() {
         return sourceMethodId;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public int getSourceMethodModifiers() {
-        fillSourceFieldsIfMissing();
-        return sourceMethodModifiers;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

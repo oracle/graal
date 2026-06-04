@@ -266,6 +266,12 @@ interface CodeInfoImpl extends CodeInfo {
     void setMethodTableFirstId(int methodId);
 
     @RawField
+    int getMethodCount();
+
+    @RawField
+    void setMethodCount(int count);
+
+    @RawField
     int getState();
 
     @RawField

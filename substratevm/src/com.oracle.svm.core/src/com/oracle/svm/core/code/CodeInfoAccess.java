@@ -29,11 +29,10 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -43,10 +42,11 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
@@ -368,7 +368,7 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
     public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants, NonmovableObjectArray<Class<?>> classes,
-                    NonmovableObjectArray<String> memberNames, NonmovableObjectArray<String> otherStrings, NonmovableArray<Byte> methodTable, int methodTableFirstId) {
+                    NonmovableObjectArray<String> memberNames, NonmovableObjectArray<String> otherStrings, NonmovableArray<Byte> methodTable, int methodTableFirstId, int methodTableEntryCount) {
         CodeInfoImpl impl = cast(info);
         impl.setObjectConstants(objectConstants);
         impl.setClasses(classes);
@@ -376,6 +376,7 @@ public final class CodeInfoAccess {
         impl.setOtherStrings(otherStrings);
         impl.setMethodTable(methodTable);
         impl.setMethodTableFirstId(methodTableFirstId);
+        impl.setMethodCount(methodTableEntryCount);
         if (!SubstrateUtil.HOSTED) {
             // notify the GC about the frame metadata that is now live
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
@@ -463,6 +464,11 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getMethodTableFirstId(CodeInfo info) {
         return cast(info).getMethodTableFirstId();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getMethodCount(CodeInfo info) {
+        return cast(info).getMethodCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

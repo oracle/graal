@@ -24,67 +24,7 @@
  */
 package com.oracle.svm.truffle.tck;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.ConstantTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.core.UnsafeMemoryUtil;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.SharedArenaSupport;
-import com.oracle.svm.hosted.code.FactoryMethod;
-import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.shared.option.BundleMember;
-import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.shared.util.LogUtils;
-import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.NewInstanceNode;
-import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
-import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ModifiersProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativebridge.BinaryMarshaller;
-import org.graalvm.nativebridge.DispatchHandler;
-import org.graalvm.nativebridge.IsolateCreateException;
-import org.graalvm.nativebridge.ProcessIsolate;
-import org.graalvm.nativebridge.ProcessIsolateConfig;
-import org.graalvm.nativebridge.ProcessIsolateThread;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.polyglot.io.FileSystem;
+import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -124,7 +64,67 @@ import java.util.function.ToLongBiFunction;
 import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
 
-import static com.oracle.graal.pointsto.reports.ReportUtils.report;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativebridge.BinaryMarshaller;
+import org.graalvm.nativebridge.DispatchHandler;
+import org.graalvm.nativebridge.IsolateCreateException;
+import org.graalvm.nativebridge.ProcessIsolate;
+import org.graalvm.nativebridge.ProcessIsolateConfig;
+import org.graalvm.nativebridge.ProcessIsolateThread;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.polyglot.io.FileSystem;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.ConstantTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.core.UnsafeMemoryUtil;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.SharedArenaSupport;
+import com.oracle.svm.hosted.code.FactoryMethod;
+import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.BundleMember;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ModifiersProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -451,8 +451,8 @@ public class PermissionsFeature implements Feature {
         if (type == null) {
             return false;
         }
-        if (LambdaUtils.isLambdaClassName(type.toJavaName())) {
-            return AnnotationUtil.isAnnotationPresent(type, LambdaFormHiddenMethod.class);
+        if (LambdaUtils.isLambdaType(type)) {
+            return true;
         }
         Class<?> javaClass = type.getJavaClass();
         return javaClass != null && javaClass.isAnonymousClass();

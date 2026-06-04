@@ -35,15 +35,15 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
@@ -65,6 +65,7 @@ public class ImageCodeInfo {
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord relativeIPOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableFirstId;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableEntryCount;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private int codeInfoIndexEntriesPerBlock = 1;
 
     private final Object[] objectFields;
@@ -126,6 +127,7 @@ public class ImageCodeInfo {
         infoImpl.setOtherStrings(NonmovableArrays.fromImageHeap(imageCodeInfo.otherStrings));
         infoImpl.setMethodTable(NonmovableArrays.fromImageHeap(imageCodeInfo.methodTable));
         infoImpl.setMethodTableFirstId(imageCodeInfo.methodTableFirstId);
+        infoImpl.setMethodCount(imageCodeInfo.methodTableEntryCount);
         infoImpl.setIsAOTImageCode(true);
         infoImpl.setNextImageCodeInfo(next);
     }
@@ -372,6 +374,16 @@ public class ImageCodeInfo {
         @Override
         public void setMethodTableFirstId(int methodId) {
             methodTableFirstId = methodId;
+        }
+
+        @Override
+        public int getMethodCount() {
+            return methodTableEntryCount;
+        }
+
+        @Override
+        public void setMethodCount(int count) {
+            methodTableEntryCount = count;
         }
 
         @Override

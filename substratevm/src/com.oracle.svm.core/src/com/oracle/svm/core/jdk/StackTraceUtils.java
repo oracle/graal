@@ -40,7 +40,6 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
-import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -54,6 +53,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.util.AnnotationUtil;
 
+import jdk.internal.vm.annotation.Hidden;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -131,24 +131,24 @@ public class StackTraceUtils {
 
     /**
      * Indicates whether the frame should be displayed in the context of Java backtracing. Returns
-     * true if so, and false otherwise. Backtracing means that there are no lambda or hidden frames
-     * present. To learn more about backtracing, refer to {@link BacktraceDecoder}. For more
-     * fine-grained control over what is displayed, see
-     * {@link #shouldShowFrame(Class, String, boolean, boolean)}.
+     * true if so, and false otherwise. Backtracing means that there are no hidden frames present.
+     * To learn more about backtracing, refer to {@link BacktraceDecoder}. For more fine-grained
+     * control over what is displayed, see
+     * {@link #shouldShowFrame(Class, String, int, boolean, boolean)}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(Class<?> clazz, String method) {
-        return shouldShowFrame(clazz, method, false, true);
+    public static boolean shouldShowFrame(Class<?> clazz, String method, int flags) {
+        return shouldShowFrame(clazz, method, flags, false, true);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo) {
-        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName());
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), frameSourceInfo.getSourceMethodFlags());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showLambdaFrames, boolean showReflectFrames) {
-        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames);
+    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showHiddenFrames, boolean showReflectFrames) {
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), frameSourceInfo.getSourceMethodFlags(), showHiddenFrames, showReflectFrames);
     }
 
     /*
@@ -157,20 +157,14 @@ public class StackTraceUtils {
      * results than stack walking at run time.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(Class<?> clazz, String methodName, boolean showLambdaFrames, boolean showReflectFrames) {
+    public static boolean shouldShowFrame(Class<?> clazz, String methodName, int flags, boolean showHiddenFrames, boolean showReflectFrames) {
         SubstrateUtil.guaranteeRuntimeOnly();
         if (isVMInternalFrameClass(clazz)) {
             return false;
         }
 
-        if (!showLambdaFrames) {
-            // GR-76134 This check should in theory be performed on methods
-            if (DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
-                return false;
-            }
-            if (SubstrateAccessor.class.isAssignableFrom(clazz) && UninterruptibleUtils.String.startsWith(methodName, "methodHandle")) {
-                return false;
-            }
+        if (!showHiddenFrames && FrameSourceInfo.MethodFlags.isHidden(flags)) {
+            return false;
         }
 
         if (!showReflectFrames) {
@@ -219,19 +213,14 @@ public class StackTraceUtils {
      * Note that this method is duplicated (and commented) above for stack walking at run time. Make
      * sure to always keep both versions in sync.
      */
-    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showLambdaFrames, boolean showReflectFrames) {
+    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showHiddenFrames, boolean showReflectFrames) {
         ResolvedJavaType clazz = method.getDeclaringClass();
         if (AnnotationUtil.isAnnotationPresent(clazz, InternalVMMethod.class)) {
             return false;
         }
 
-        if (!showLambdaFrames) {
-            if (AnnotationUtil.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
-                return false;
-            }
-            if (metaAccess.lookupJavaType(SubstrateAccessor.class).isAssignableFrom(clazz) && method.getName().startsWith("methodHandle")) {
-                return false;
-            }
+        if (!showHiddenFrames && (clazz.isHidden() || AnnotationUtil.isAnnotationPresent(clazz, Hidden.class))) {
+            return false;
         }
 
         if (!showReflectFrames) {

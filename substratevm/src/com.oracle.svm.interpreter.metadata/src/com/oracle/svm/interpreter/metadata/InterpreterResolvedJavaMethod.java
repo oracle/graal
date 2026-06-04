@@ -480,7 +480,12 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return (flags & ACC_SCOPED) != 0;
     }
 
+    /**
+     * Returns true if this method is hidden from user-visible stack walking, either directly or
+     * because it is declared by a hidden class.
+     */
     public final boolean isHidden() {
+        // ClassfileParser sets ACC_HIDDEN on methods of runtime-loaded hidden classes.
         return (flags & ACC_HIDDEN) != 0;
     }
 
