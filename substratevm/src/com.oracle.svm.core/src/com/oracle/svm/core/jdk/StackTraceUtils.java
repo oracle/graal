@@ -175,9 +175,6 @@ public class StackTraceUtils {
                  * method of each class is affected.
                  */
                 return false;
-            } else if ((clazz == java.lang.reflect.Constructor.class || clazz == java.lang.Class.class) && UninterruptibleUtils.String.equals("newInstance", methodName)) {
-                /* Ignore a constructor invocation frame (see the comment above). */
-                return false;
             } else if (clazz == SubstrateMethodAccessor.class || (RuntimeClassLoading.isSupported() && clazz == CremaMethodAccessor.class)) {
                 /*
                  * Ignore SVM's method accessor implementations like HotSpot ignores
@@ -225,10 +222,6 @@ public class StackTraceUtils {
 
         if (!showReflectFrames) {
             if (clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Method.class)) && "invoke".equals(method.getName())) {
-                return false;
-            }
-            if ((clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Constructor.class)) || clazz.equals(metaAccess.lookupJavaType(Class.class))) //
-                            && "newInstance".equals(method.getName())) {
                 return false;
             }
             if (clazz.equals(metaAccess.lookupJavaType(SubstrateMethodAccessor.class)) || (RuntimeClassLoading.isSupported() && clazz.equals(metaAccess.lookupJavaType(CremaMethodAccessor.class)))) {
