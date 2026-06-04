@@ -185,6 +185,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AESCryptDelegatePlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
@@ -192,6 +193,7 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
@@ -289,6 +291,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerReferencePlugins(invocationPlugins);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config);
+                registerPoly1305Plugin(invocationPlugins);
                 registerP256Plugins(invocationPlugins, config);
                 registerDualPivotQuicksortPlugins(invocationPlugins, config, target.arch);
 
@@ -1455,6 +1458,19 @@ public class HotSpotGraphBuilderPlugins {
                 return config.stubKyberBarrettReduce != 0L;
             }
         });
+    }
+
+    private static void registerPoly1305Plugin(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
+        r.register(new HotSpotPoly1305ProcessBlocksPlugin());
+    }
+
+    private static final class HotSpotPoly1305ProcessBlocksPlugin extends Poly1305ProcessBlocksPlugin {
+
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch);
+        }
     }
 
     private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {

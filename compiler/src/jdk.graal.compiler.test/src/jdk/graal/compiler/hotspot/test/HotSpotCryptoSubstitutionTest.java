@@ -209,7 +209,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testPoly1305() throws Exception {
-        Assume.assumeTrue("Poly1305 not supported", Poly1305ProcessBlocksNode.isSupported(getTarget().arch));
+        Assume.assumeTrue("Poly1305 not supported", Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(getTarget().arch));
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),

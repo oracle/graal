@@ -156,6 +156,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.word.WordCastNode;
@@ -209,6 +210,7 @@ public class SubstrateGraphBuilderPlugins {
         if (supportsStubBasedPlugins) {
             registerAESPlugins(plugins);
             registerArraysSupportPlugins(plugins);
+            registerPoly1305Plugin(plugins);
         }
     }
 
@@ -1283,6 +1285,11 @@ public class SubstrateGraphBuilderPlugins {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport");
         r.register(new StandardGraphBuilderPlugins.VectorizedMismatchInvocationPlugin());
         r.register(new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin());
+    }
+
+    private static void registerPoly1305Plugin(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
+        r.register(new Poly1305ProcessBlocksPlugin());
     }
 
     public static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {

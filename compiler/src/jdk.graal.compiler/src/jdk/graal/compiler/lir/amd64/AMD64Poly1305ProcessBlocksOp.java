@@ -525,7 +525,7 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
         // vecA2 to have bits 127-88 of all 8 blocks in 8 qwords
         masm.evmovdqu64(data0, new AMD64Address(input, 0));
         masm.evmovdqu64(data1, new AMD64Address(input, 64));
-        poly1305LimbsAVX512(crb, masm, data0, data1, vecA0, vecA1, vecA2, true, tmp);
+        poly1305LimbsAVX512(crb, masm, data0, data1, vecA0, vecA1, vecA2, true, tmp, t1);
 
         // Add accumulator to the fist message block
         EVPADDQ.emit(masm, AVXSize.ZMM, vecA0, vecA0, vecC0);
@@ -538,7 +538,7 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
         // vecA5 to have bits 127-88 of all 8 blocks in 8 qwords
         masm.evmovdqu64(data0, new AMD64Address(input, 64 * 2));
         masm.evmovdqu64(data1, new AMD64Address(input, 64 * 3));
-        poly1305LimbsAVX512(crb, masm, data0, data1, vecA3, vecA4, vecA5, true, tmp);
+        poly1305LimbsAVX512(crb, masm, data0, data1, vecA3, vecA4, vecA5, true, tmp, t1);
 
         masm.subl(length, 16 * 16);
         masm.leaq(input, new AMD64Address(input, 16 * 16));
@@ -587,7 +587,7 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
         // vecB1 to have bits 87-44 of all 4 blocks in alternating 8 qwords
         // vecB2 to have bits 127-88 of all 4 blocks in alternating 8 qwords
         EVPXORQ.emit(masm, AVXSize.ZMM, vecT2, vecT2, vecT2);
-        poly1305LimbsAVX512(crb, masm, vecT0, vecT2, vecB0, vecB1, vecB2, false, tmp);
+        poly1305LimbsAVX512(crb, masm, vecT0, vecT2, vecB0, vecB1, vecB2, false, tmp, t1);
 
         // vecT1 contains the 2 highest bits of the powers of R
         EVPSLLQ.emit(masm, AVXSize.ZMM, vecT1, vecT1, 40);
@@ -690,12 +690,12 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
         // Load and interleave next block of data (128 bytes)
         masm.evmovdqu64(data0, new AMD64Address(input, 0));
         masm.evmovdqu64(data1, new AMD64Address(input, 64));
-        poly1305LimbsAVX512(crb, masm, data0, data1, vecB0, vecB1, vecB2, true, tmp);
+        poly1305LimbsAVX512(crb, masm, data0, data1, vecB0, vecB1, vecB2, true, tmp, t1);
 
         // Load and interleave next block of data (128 bytes)
         masm.evmovdqu64(data0, new AMD64Address(input, 64 * 2));
         masm.evmovdqu64(data1, new AMD64Address(input, 64 * 3));
-        poly1305LimbsAVX512(crb, masm, data0, data1, vecB3, vecB4, vecB5, true, tmp);
+        poly1305LimbsAVX512(crb, masm, data0, data1, vecB3, vecB4, vecB5, true, tmp, t1);
 
         poly1305Multiply8AVX512(crb, masm, vecA0, vecA1, vecA2,
                         vecR0, vecR1, vecR2, vecR1P, vecR2P,
@@ -1333,7 +1333,8 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
                     Register l1,
                     Register l2,
                     boolean padMSG,
-                    Register tmp) {
+                    Register tmp,
+                    Register addressTmp) {
         // Interleave blocks of data
         EVPUNPCKHQDQ.emit(masm, AVXSize.ZMM, tmp, d0, d1);
         EVPUNPCKLQDQ.emit(masm, AVXSize.ZMM, l0, d0, d1);
@@ -1349,7 +1350,10 @@ public final class AMD64Poly1305ProcessBlocksOp extends AMD64LIRInstruction {
         EVPSRLQ.emit(masm, AVXSize.ZMM, l1, l0, 44);
         EVPSLLQ.emit(masm, AVXSize.ZMM, tmp, tmp, 20);
         // (A OR B AND C)
-        EVPTERNLOGQ.emit(masm, AVXSize.ZMM, l1, tmp, recordExternalAddress(crb, POLY1305_MASK44), 0xA8);
+        // GR-76165: Load the address through a GPR to avoid HotSpot-side JVMCI data patching for a
+        // RIP-relative memory operand followed by an immediate.
+        masm.leaq(addressTmp, recordExternalAddress(crb, POLY1305_MASK44));
+        EVPTERNLOGQ.emit(masm, AVXSize.ZMM, l1, tmp, new AMD64Address(addressTmp), 0xA8);
 
         // Lowest 44-bit limbs of new blocks
         EVPANDQ.emit(masm, AVXSize.ZMM, l0, l0, recordExternalAddress(crb, POLY1305_MASK44));
