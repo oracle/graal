@@ -8168,7 +8168,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 for (int i = length - 1; i >= 0; i--) {
                     vector128Ops().intoArray(WasmFrame.popVector128(frame, --stackPointer), fixedArray, i << 4);
                 }
-                return new WasmVec128Array(arrayType, fixedArray);
+                return new WasmVec128Array(arrayType, length, fixedArray);
             }
             default: {
                 Object[] fixedArray = new Object[length];

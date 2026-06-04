@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,30 +52,31 @@ public final class WasmVec128Array extends WasmArray {
 
     private final byte[] array;
 
-    public WasmVec128Array(DefinedType type, byte[] array) {
-        super(type, array.length);
+    public WasmVec128Array(DefinedType type, int length, byte[] array) {
+        super(type, length);
         assert type.asArrayType().fieldType().storageType() == VectorType.V128;
+        assert length << 4 == array.length;
         this.array = array;
     }
 
     public <V128> WasmVec128Array(DefinedType type, int length, V128 initialValue, Vector128Ops<V128> vector128Ops) {
-        this(type, new byte[length << 4]);
+        this(type, length, new byte[length << 4]);
         fill(0, length, initialValue, vector128Ops);
     }
 
     public WasmVec128Array(DefinedType type, int length, Vector128 initialValue) {
-        this(type, new byte[length << 4]);
+        this(type, length, new byte[length << 4]);
         for (int i = 0; i < length; i++) {
             System.arraycopy(initialValue.getBytes(), 0, this.array, i << 4, 16);
         }
     }
 
     public WasmVec128Array(DefinedType type, int length) {
-        this(type, new byte[length << 4]);
+        this(type, length, new byte[length << 4]);
     }
 
     public WasmVec128Array(DefinedType type, int length, byte[] source, int srcOffset) {
-        this(type, new byte[length << 4]);
+        this(type, length, new byte[length << 4]);
         initialize(source, srcOffset, 0, length);
     }
 

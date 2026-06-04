@@ -1,2 +1,3 @@
 canonical_super_access/super;sub
 cross_module_struct_access/create;access
+v128_array_len_is_element_count

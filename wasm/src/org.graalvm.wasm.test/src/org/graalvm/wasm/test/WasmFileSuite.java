@@ -405,6 +405,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if ("true".equals(multiMemoryOption)) {
                 options.add(WasmBinaryTools.WabtOption.MULTI_MEMORY);
             }
+            String gcOption = testCase.options().getProperty("wasm.GC");
+            if ("true".equals(gcOption)) {
+                options.add(WasmBinaryTools.WabtOption.GC);
+            }
             String exceptionsOption = testCase.options().getProperty("wasm.Exceptions");
             String legacyExceptionsOption = testCase.options().getProperty("wasm.LegacyExceptions");
             if ("true".equals(exceptionsOption) || "true".equals(legacyExceptionsOption)) {

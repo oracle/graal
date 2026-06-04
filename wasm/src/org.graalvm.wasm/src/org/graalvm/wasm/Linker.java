@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -848,7 +848,7 @@ public class Linker {
                                         Vector128 vec = (Vector128) stack.removeLast();
                                         System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 4);
                                     }
-                                    yield new WasmVec128Array(arrayType, fixedArray);
+                                    yield new WasmVec128Array(arrayType, length, fixedArray);
                                 }
                                 default -> {
                                     Object[] fixedArray = new Object[length];
