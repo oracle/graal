@@ -182,7 +182,7 @@ public class LibGraalTruffleEntryPoints {
 
     @SuppressWarnings("unused")
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeCompiler", include = LibGraalFeature.IsEnabled.class)
-    @TruffleToLibGraal(Id.InitializeRuntime)
+    @TruffleToLibGraal(Id.InitializeCompiler)
     public static void initializeCompiler(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, long compilerHandle, JObject hsCompilable,
                     boolean firstInitialization) {
         try (JNIMethodScope scope = openScope(Id.InitializeCompiler, env)) {
