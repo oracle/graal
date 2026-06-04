@@ -864,7 +864,7 @@ public class Linker {
                             break;
                         }
                         case Bytecode.REF_I31: {
-                            stack.add((int) stack.removeLast() & ~(1 << 31));
+                            stack.add(WasmType.asSignedI31((int) stack.removeLast()));
                             break;
                         }
                         default:
