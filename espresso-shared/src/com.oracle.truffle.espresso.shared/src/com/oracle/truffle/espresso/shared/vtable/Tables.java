@@ -45,16 +45,15 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
     private final EconomicMap<C, List<TableEntryRef<C, M, F>>> itables;
     private final List<TableEntryRef<C, M, F>> mirandas;
     private final int implicitInterfaceMethodsStart;
-    private final int implicitInterfaceMethodsEnd;
 
     Tables(List<TableEntryRef<C, M, F>> vtable,
                     EconomicMap<C, List<TableEntryRef<C, M, F>>> itables,
-                    List<TableEntryRef<C, M, F>> mirandas) {
+                    List<TableEntryRef<C, M, F>> mirandas,
+                    int implicitInterfaceMethodsStart) {
         this.vtable = vtable;
         this.itables = itables;
         this.mirandas = mirandas;
-        this.implicitInterfaceMethodsStart = vtable.size() - mirandas.size();
-        this.implicitInterfaceMethodsEnd = vtable.size();
+        this.implicitInterfaceMethodsStart = implicitInterfaceMethodsStart;
     }
 
     /**
@@ -131,11 +130,15 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
         return mirandas;
     }
 
+    /**
+     * The index in {@link #getVtable()} at which the implicit interface methods start, if they were
+     * appended to the vtable. Returns the size of {@link #getVtable()} otherwise.
+     * <p>
+     * When implicit interface methods are appended, the entries in {@link #getVtable()} from this
+     * returned index to the end contain the same entries as
+     * {@link #getImplicitInterfaceMethods()}, in the same order.
+     */
     public int getImplicitInterfaceMethodsStart() {
         return implicitInterfaceMethodsStart;
-    }
-
-    public int getImplicitInterfaceMethodsEnd() {
-        return implicitInterfaceMethodsEnd;
     }
 }

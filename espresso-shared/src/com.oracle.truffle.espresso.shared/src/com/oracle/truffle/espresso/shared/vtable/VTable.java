@@ -168,11 +168,12 @@ public final class VTable {
             // concrete class methods, then from the maximally specific ones.
             // This step also detect miranda methods.
             resolveInterfaces();
+            int mirandaStart = vtable.size();
             if (addMirandas) {
                 resolveMirandas();
             }
 
-            return new Tables<>(vtable, itables, mirandas);
+            return new Tables<>(vtable, itables, mirandas, mirandaStart);
         }
 
         private boolean needsFallback(boolean inVTable) {
