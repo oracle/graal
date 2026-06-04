@@ -39,7 +39,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.Word;
+import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
 import com.oracle.svm.core.jni.JNIMethodSupport;
@@ -122,7 +122,7 @@ public class PreserveLambdaProxyClassesTest {
         JNIObjectHandle lambdaObject = JNIObjectHandles.createLocal(supplier);
         try {
             JNIMethodId get = getMethodId(env, lambdaClass, "get", "()Ljava/lang/Object;");
-            JNIObjectHandle result = env.getFunctions().getCallObjectMethodA().invoke(env, lambdaObject, get, Word.nullPointer());
+            JNIObjectHandle result = env.getFunctions().getCallObjectMethodA().invoke(env, lambdaObject, get, WordFactory.nullPointer());
             try {
                 assertNoJniException(env);
                 assertEquals(EXPECTED, JNIObjectHandles.getObject(result));
