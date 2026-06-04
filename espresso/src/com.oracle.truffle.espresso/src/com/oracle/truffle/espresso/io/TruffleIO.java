@@ -637,6 +637,19 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
+     * @param fd the file descriptor of a channel
+     * @return true if the channel associated with the fd is open
+     */
+    @TruffleBoundary
+    public boolean isOpen(int fd) {
+        Channel channel = getChannel(fd);
+        if (channel != null) {
+            return channel.isOpen();
+        }
+        return false;
+    }
+
+    /**
      * Registers a file descriptor with a selector for the specified operations.
      * <p>
      * The file descriptor {@code fd} is associated with a channel, which must be an instance of
@@ -694,7 +707,12 @@ public final class TruffleIO implements ContextAccess {
             return false;
         }
         setFD(fileDesc, -1);
-        return closeImpl(fd);
+        Channel channel = getChannel(fd);
+        boolean toReturn = closeImpl(fd);
+        if (channel instanceof SelectableChannel) {
+            context.getLibsState().pollerCleanSelectionKey(fd);
+        }
+        return toReturn;
     }
 
     /**
