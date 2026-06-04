@@ -846,7 +846,7 @@ public class Linker {
                                     byte[] fixedArray = new byte[length << 4];
                                     for (int i = length - 1; i >= 0; i--) {
                                         Vector128 vec = (Vector128) stack.removeLast();
-                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 4);
+                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 16);
                                     }
                                     yield new WasmVec128Array(arrayType, length, fixedArray);
                                 }
