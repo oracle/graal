@@ -31,6 +31,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -49,21 +50,36 @@ public class NativeImageResourceUtils {
     public static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";
     public static final String RESOURCE_FILE_3 = RESOURCE_DIR + "/resource-test3.html";
     public static final String RESOURCE_FILE_4 = RESOURCE_DIR + "/resource-test4.output";
+    public static final String SYNTHETIC_RESOURCE_FILE = "synthetic-resource.txt";
+    public static final String SYNTHETIC_RESOURCE_CONTENT = "synthetic resource";
+    public static final String DUPLICATE_RESOURCE_FILE = "duplicate-resource.txt";
+    public static final String DUPLICATE_RESOURCE_CONTENT_1 = "from-a";
+    public static final String DUPLICATE_RESOURCE_CONTENT_2 = "from-b";
 
     // Register resources.
     public static final class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             // Remove leading / for the resource patterns
-            Module resourceModule = TestFeature.class.getModule();
+            Module resourceModule = access.getApplicationClassLoader().getUnnamedModule();
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, SIMPLE_RESOURCE_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_EMPTY_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR_WITH_SPACE.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_1.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));
+            /*
+             * The runtime classpath lookup test puts the SVM tests jar on the runtime classpath,
+             * where RESOURCE_FILE_2 is available. Do not also embed it in the image, otherwise
+             * ClassLoader resource enumeration sees both copies.
+             */
+            if (!Boolean.getBoolean("svm.test.expectRuntimeClassPathResource")) {
+                RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));
+            }
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_3.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_4.substring(1));
+            RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE, SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
+            RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_1.getBytes(StandardCharsets.UTF_8));
+            RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_2.getBytes(StandardCharsets.UTF_8));
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {

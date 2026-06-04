@@ -37,6 +37,8 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -118,6 +120,9 @@ public final class Target_java_lang_ClassLoader {
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ClassRegistries.ClassRegistryComputer.class)//
     public volatile AbstractClassRegistry classRegistry;
+
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ResourceLoaderIdComputer.class)//
+    public int resourceLoaderId;
 
     /**
      * Used to implement
@@ -459,5 +464,13 @@ final class AssertionLockComputer implements FieldValueTransformer {
     public Object transform(Object receiver, Object originalValue) {
         assert receiver != null;
         return receiver;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+final class ResourceLoaderIdComputer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return ResourceLoaderKeys.hosted().getResourceLoaderId((ClassLoader) receiver);
     }
 }

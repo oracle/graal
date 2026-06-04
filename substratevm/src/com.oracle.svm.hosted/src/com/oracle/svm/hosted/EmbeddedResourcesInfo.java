@@ -59,12 +59,12 @@ public class EmbeddedResourcesInfo {
         return ImageSingletons.lookup(EmbeddedResourcesInfo.class);
     }
 
-    public void declareResourceAsRegistered(Module module, String resource, String source, Object origin) {
+    public void declareResourceAsRegistered(ClassLoader owner, Module module, String resource, String source, Object origin) {
         if (!collectEmbeddedResourcesInfo) {
             return;
         }
 
-        Resources.ModuleResourceKey key = Resources.createStorageKey(module, resource);
+        Resources.ModuleResourceKey key = Resources.createStorageKey(owner, module, resource);
 
         /*
          * If we already have an entry with this key, and it was a NEGATIVE_QUERY, the new resource

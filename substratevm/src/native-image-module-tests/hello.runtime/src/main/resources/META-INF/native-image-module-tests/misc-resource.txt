@@ -1,0 +1,1 @@
+Runtime module-path misc resource in module moduletests.hello.runtime

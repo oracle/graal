@@ -25,18 +25,34 @@
 
 package com.oracle.svm.core.jdk.resources;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.shared.util.VMError;
 
 public final class NativeImageResourceFileSystemUtil {
 
     private NativeImageResourceFileSystemUtil() {
     }
 
-    public static byte[] getBytes(String resourceName, boolean readOnly) {
-        Object entry = Resources.getAtRuntime(resourceName);
+    public static ResourceStorageEntryBase getEntry(String resourcePath, boolean probe) {
+        if (ClassRegistries.respectClassLoader()) {
+            int separator = resourcePath.indexOf('/');
+            if (separator <= 0 || separator == resourcePath.length() - 1) {
+                throw new IllegalArgumentException("Loader-aware resource paths require a loader key and resource name.");
+            }
+            String resourceHost = resourcePath.substring(0, separator);
+            String resourceName = resourcePath.substring(separator + 1);
+            return Resources.getAtRuntime(resourceHost, null, resourceName, probe);
+        }
+        return Resources.getAtRuntime(resourcePath);
+    }
+
+    public static byte[] getBytes(String resourcePath, boolean readOnly) {
+        Object entry = getEntry(resourcePath, false);
         if (entry == null) {
             return new byte[0];
         }
@@ -53,6 +69,10 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
-        return Resources.inputStreamToByteArray(is);
+        try {
+            return is.readAllBytes();
+        } catch (IOException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }

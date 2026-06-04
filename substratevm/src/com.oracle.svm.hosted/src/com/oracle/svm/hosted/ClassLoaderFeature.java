@@ -30,17 +30,18 @@ import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -52,11 +53,7 @@ import jdk.vm.ci.meta.JavaConstant;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ClassLoaderFeature implements InternalFeature {
 
-    private static final String APP_KEY_NAME = "ClassLoader#App";
     private static final String APP_PACKAGE_KEY_NAME = "ClassLoader.Packages#App";
-    private static final String PLATFORM_KEY_NAME = "ClassLoader#Platform";
-    private static final String BOOT_KEY_NAME = "ClassLoader#Boot";
-
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
     /**
@@ -97,11 +94,11 @@ public class ClassLoaderFeature implements InternalFeature {
     JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object instanceof ClassLoader loader) {
             if (replaceWithAppClassLoader(loader) || loader == appClassLoader) {
-                return registry.getConstant(APP_KEY_NAME);
+                return registry.getConstant(ResourceLoaderKeys.APP);
             } else if (loader == platformClassLoader) {
-                return registry.getConstant(PLATFORM_KEY_NAME);
+                return registry.getConstant(ResourceLoaderKeys.PLATFORM);
             } else if (loader == bootClassLoader) {
-                return registry.getConstant(BOOT_KEY_NAME);
+                return registry.getConstant(ResourceLoaderKeys.BOOT);
             } else if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(loader)) {
                 return registry.getConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(loader));
             } else {
@@ -110,6 +107,11 @@ public class ClassLoaderFeature implements InternalFeature {
         }
 
         return null;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ResourceLoaderKeys.initializeHostedResourceLoaderSupport(appClassLoader, platformClassLoader, bootClassLoader, ClassLoaderFeature::getRuntimeClassLoader);
     }
 
     @Override
@@ -159,9 +161,9 @@ public class ClassLoaderFeature implements InternalFeature {
              * fieldValueInterceptors will be computed for the scanned objects.
              */
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            registry.registerHeapConstant(APP_KEY_NAME, appClassLoader);
-            registry.registerHeapConstant(PLATFORM_KEY_NAME, platformClassLoader);
-            registry.registerHeapConstant(BOOT_KEY_NAME, bootClassLoader);
+            registry.registerHeapConstant(ResourceLoaderKeys.APP, appClassLoader);
+            registry.registerHeapConstant(ResourceLoaderKeys.PLATFORM, platformClassLoader);
+            registry.registerHeapConstant(ResourceLoaderKeys.BOOT, bootClassLoader);
             registry.registerFutureHeapConstant(APP_PACKAGE_KEY_NAME, config.getMetaAccess().lookupJavaType(ConcurrentHashMap.class));
         }
 

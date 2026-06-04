@@ -85,6 +85,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.TimeUtils;
 
@@ -574,7 +575,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
         if (indexNode == null && MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             // Try to access the resource to see if the metadata is present
-            Resources.getAtRuntime(getString(path));
+            NativeImageResourceFileSystemUtil.getEntry(getString(path), false);
         }
         return indexNode;
     }
@@ -657,7 +658,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private void readAllEntries() {
         for (var resources : Resources.layeredSingletons()) {
             resources.forEachResource((key, value) -> {
-                byte[] name = getBytes(key.resource());
+                byte[] name = getBytes(toResourceFileSystemPath(key));
                 ResourceStorageEntryBase entry = value.getValue();
                 if (entry != null && entry.hasData()) {
                     IndexNode newIndexNode = new IndexNode(name, entry.isDirectory(), true);
@@ -666,6 +667,13 @@ public class NativeImageResourceFileSystem extends FileSystem {
             });
         }
         buildNodeTree();
+    }
+
+    private static String toResourceFileSystemPath(Resources.ModuleResourceKey key) {
+        if (ClassRegistries.respectClassLoader()) {
+            return key.loaderKey() + "/" + key.resource();
+        }
+        return key.resource();
     }
 
     private void buildNodeTree() {

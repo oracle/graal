@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,16 @@ package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
+import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_1;
+import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_2;
+import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_FILE;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_CONTENT;
+import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
@@ -48,15 +53,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.hub.registry.ClassRegistries;
+
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
-@AddExports("java.base/java.lang")
+import jdk.internal.loader.BuiltinClassLoader;
+
+@AddExports({"java.base/java.lang", "java.base/jdk.internal.loader"})
 public class NativeImageResourceTest {
 
     /**
@@ -117,6 +128,29 @@ public class NativeImageResourceTest {
             Assert.assertNotNull("Runtime class path resource " + resourceName + " is not found!", in);
             Assert.assertEquals("runtime class path resource", new String(in.readAllBytes(), StandardCharsets.UTF_8).trim());
         }
+    }
+
+    @Test
+    public void syntheticResourceRegisteredByFeature() throws IOException {
+        try (InputStream in = ClassLoader.getSystemClassLoader().getResourceAsStream(SYNTHETIC_RESOURCE_FILE)) {
+            Assert.assertNotNull("Synthetic resource " + SYNTHETIC_RESOURCE_FILE + " is not found!", in);
+            Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void loaderlessResourceEnumerationKeepsDuplicates() throws IOException {
+        Assume.assumeFalse("legacy loaderless resource enumeration test requires class-loader-aware lookup to be disabled", ClassRegistries.respectClassLoader());
+
+        Enumeration<URL> urls = ClassLoader.getSystemClassLoader().getResources(DUPLICATE_RESOURCE_FILE);
+        List<String> contents = new ArrayList<>();
+        while (urls.hasMoreElements()) {
+            try (InputStream in = urls.nextElement().openStream()) {
+                contents.add(new String(in.readAllBytes(), StandardCharsets.UTF_8).trim());
+            }
+        }
+
+        Assert.assertEquals(List.of(DUPLICATE_RESOURCE_CONTENT_1, DUPLICATE_RESOURCE_CONTENT_2), contents);
     }
 
     /**
@@ -218,6 +252,41 @@ public class NativeImageResourceTest {
         } catch (IOException e) {
             Assert.fail("IOException in URLClassLoader.(get|find)Resource(s): " + e.getMessage());
         }
+    }
+
+    @Test
+    public void builtinClassLoaderFindsClassPathResources() throws IOException {
+        BuiltinClassLoader loader = (BuiltinClassLoader) ClassLoader.getSystemClassLoader();
+
+        URL resource = loader.findResource(RESOURCE_FILE_1.substring(1));
+        Assert.assertNotNull("Resource " + RESOURCE_FILE_1 + " is not found!", resource);
+        try (InputStream in = resource.openStream()) {
+            Assert.assertEquals("Java is awesome!", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+
+        Enumeration<URL> resources = loader.findResources(RESOURCE_FILE_2.substring(1));
+        URL firstResource = singleResource(RESOURCE_FILE_2, resources);
+        try (InputStream in = firstResource.openStream()) {
+            Assert.assertEquals("Native image is awesome!", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+
+        Enumeration<URL> loaderResources = ClassLoader.getSystemClassLoader().getResources(RESOURCE_FILE_2.substring(1));
+        URL firstLoaderResource = singleResource(RESOURCE_FILE_2, loaderResources);
+        try (InputStream in = firstLoaderResource.openStream()) {
+            Assert.assertEquals("Native image is awesome!", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+
+        Enumeration<URL> systemResources = ClassLoader.getSystemResources(RESOURCE_FILE_2.substring(1));
+        URL firstSystemResource = singleResource(RESOURCE_FILE_2, systemResources);
+        try (InputStream in = firstSystemResource.openStream()) {
+            Assert.assertEquals("Native image is awesome!", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static URL singleResource(String resourceName, Enumeration<URL> resources) {
+        List<URL> urls = Collections.list(resources);
+        Assert.assertEquals("Resource " + resourceName + " URLs: " + urls, 1, urls.size());
+        return urls.get(0);
     }
 
     @Test
