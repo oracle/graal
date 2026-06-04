@@ -674,7 +674,7 @@ public class DebuggerFeature implements InternalFeature {
             int gotOffset = GOT_NO_ENTRY;
 
             if (interpreterMethod.isInterpreterExecutable()) {
-                gotOffset = gotEntryAllocator.queryGotEntry(hostedMethod);
+                gotOffset = gotEntryAllocator.queryGOTEntry(hostedMethod);
             }
 
             if (gotOffset == GOT_NO_ENTRY) {

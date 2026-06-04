@@ -54,14 +54,14 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected int initialize(WordPointer gotStartAddress) {
-        UnsignedWord alignedGotSize = getPageAlignedGotSize();
+        UnsignedWord alignedGOTSize = getPageAlignedGOTSize();
 
         HANDLE gotMappingHandle = MemoryAPI.CreateFileMappingW(
                         WinBase.INVALID_HANDLE_VALUE(), // in-memory
                         Word.nullPointer(),
                         MemoryAPI.PAGE_READWRITE(),
                         0,
-                        UnsignedUtils.safeToInt(alignedGotSize),
+                        UnsignedUtils.safeToInt(alignedGOTSize),
                         Word.nullPointer() // anonymous
         );
 
@@ -82,8 +82,8 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_MAP_FAILED;
         }
 
-        Pointer gotStartInMemory = gotMappedAddress.add(getGotOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGotSectionSize());
+        Pointer gotStartInMemory = gotMappedAddress.add(getGOTOffsetFromStartOfMapping());
+        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
 
         // Keep the initial GOT mapping for writing.
 
@@ -95,7 +95,7 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int mapGot(Pointer address) {
+    public int mapGOT(Pointer address) {
         HANDLE gotMappingHandle = GOT_MAPPING_HANDLE.get().read();
         if (gotMappingHandle.isNull()) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_INVALID;
@@ -103,7 +103,7 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
 
         Pointer mappedAddress = VirtualMemoryProvider.get().mapFile(
                         address,
-                        getPageAlignedGotSize(),
+                        getPageAlignedGOTSize(),
                         gotMappingHandle,
                         Word.zero(),
                         Access.READ);

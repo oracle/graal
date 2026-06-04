@@ -39,7 +39,7 @@ public interface MethodAddressResolver {
      * that callers don't see stale state from accesses floating across its invocation, or can deal
      * with it accordingly.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    long resolveMethodWithGotEntry(long gotEntry);
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long resolveMethodWithGOTEntry(long gotEntry);
 
 }

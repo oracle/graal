@@ -49,7 +49,7 @@ public class MethodAddressResolutionDispatcher {
             JavaSpinLockUtils.unlock(dispatcher, LOCK_OFFSET);
         }
 
-        long resolvedMethodAddress = PLTGOTConfiguration.singleton().getMethodAddressResolver().resolveMethodWithGotEntry(gotEntry);
+        long resolvedMethodAddress = PLTGOTConfiguration.singleton().getMethodAddressResolver().resolveMethodWithGOTEntry(gotEntry);
 
         try {
             JavaSpinLockUtils.lockNoTransition(dispatcher, LOCK_OFFSET);

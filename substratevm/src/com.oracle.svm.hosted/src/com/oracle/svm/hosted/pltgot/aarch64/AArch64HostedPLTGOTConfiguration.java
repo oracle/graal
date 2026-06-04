@@ -67,6 +67,6 @@ public final class AArch64HostedPLTGOTConfiguration extends HostedPLTGOTConfigur
 
     @Override
     public Register getGOTPassingRegister(RegisterConfig registerConfig) {
-        throw new UnsupportedOperationException("AArch64 passes got entries via (unused) deopt frame handle slot.");
+        throw new UnsupportedOperationException("AArch64 passes GOT entries via (unused) deopt frame handle slot.");
     }
 }

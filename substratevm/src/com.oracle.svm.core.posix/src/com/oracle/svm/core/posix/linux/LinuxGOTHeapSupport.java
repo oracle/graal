@@ -110,7 +110,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_UNIQUE_FILE_CREATE_FAILED;
         }
 
-        UnsignedWord gotPageAlignedSize = getPageAlignedGotSize();
+        UnsignedWord gotPageAlignedSize = getPageAlignedGOTSize();
 
         if (Unistd.NoTransitions.ftruncate(fd, Word.signed(gotPageAlignedSize.rawValue())) != 0) {
             Unistd.NoTransitions.close(fd);
@@ -123,8 +123,8 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_MAP_FAILED;
         }
 
-        Pointer gotStartInMemory = gotMemory.add(getGotOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGotSectionSize());
+        Pointer gotStartInMemory = gotMemory.add(getGOTOffsetFromStartOfMapping());
+        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
 
         /* Keep the initial GOT mapping for writing. */
 
@@ -136,7 +136,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int mapGot(Pointer start) {
+    public int mapGOT(Pointer start) {
         SignedWord memViewFd = memoryViewFd.get().read();
         if (memViewFd.lessThan(0)) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_INVALID;
@@ -144,7 +144,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
         Pointer mappedAddress = VirtualMemoryProvider.get().mapFile(
                         start,
-                        getPageAlignedGotSize(),
+                        getPageAlignedGOTSize(),
                         memViewFd,
                         Word.zero(),
                         Access.READ);

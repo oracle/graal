@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.core.pltgot;
 
+import java.nio.ByteBuffer;
+
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -33,15 +37,16 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -59,27 +64,57 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     private static final CGlobalData<Pointer> GOT_STATUS = CGlobalDataFactory.createWord(GOT_UNINITIALIZED);
     static final CGlobalData<WordPointer> GOT_START_ADDRESS = CGlobalDataFactory.createWord();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getGotSectionSize() {
+    private static final CGlobalData<Word> NUMBER_OF_GOT_ENTRIES = CGlobalDataFactory.createBytes(GOTHeapSupport::createNumberOfGOTEntriesBytes);
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private long numberOfGOTEntries = -1;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setNumberOfGOTEntries(long value) {
+        assert numberOfGOTEntries == -1 : String.format("Number of GOT entries was already initialized to %d", numberOfGOTEntries);
+        numberOfGOTEntries = value;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static byte[] createNumberOfGOTEntriesBytes() {
+        long numberOfEntries = GOTHeapSupport.get().numberOfGOTEntries;
+        assert numberOfEntries >= 0 : "Number of GOT entries was not initialized.";
+        int wordSize = SubstrateGuestTarget.getWordSize();
+        return ByteBuffer.allocate(wordSize).order(SubstrateGuestTarget.getByteOrder()).putLong(numberOfEntries).array();
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected static UnsignedWord getGOTSectionSize() {
         return IMAGE_GOT_END.get().subtract(IMAGE_GOT_BEGIN.get());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getPageAlignedGotSize() {
-        UnsignedWord gotSectionSize = getGotSectionSize();
+    /*
+     * Empty GOT-related Mach-O sections must be physically padded to one word for object-file symbol
+     * validity, so for empty GOT on Mach-O getGOTSectionSize() / wordSize will not be equal to the NUMBER_OF_GOT_ENTRIES.
+     * Runtime code must use this logical flag, not section allocation size, to decide whether GOT initialization is needed.
+     */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean hasGOTEntries() {
+        Word numberOfEntries = NUMBER_OF_GOT_ENTRIES.get().readWord(0);
+        return numberOfEntries.aboveThan(0);
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected static UnsignedWord getPageAlignedGOTSize() {
+        UnsignedWord gotSectionSize = getGOTSectionSize();
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         return PointerUtils.roundUp((PointerBase) gotSectionSize, pageSize);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getGotOffsetFromStartOfMapping() {
-        return getPageAlignedGotSize().subtract(getGotSectionSize());
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected static UnsignedWord getGOTOffsetFromStartOfMapping() {
+        return getPageAlignedGOTSize().subtract(getGOTSectionSize());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getRequiredPreHeapMemoryInBytes() {
-        return getPageAlignedGotSize();
+        return getPageAlignedGOTSize();
     }
 
     @Fold
@@ -87,36 +122,43 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         return (GOTHeapSupport) ImageSingletons.lookup(DynamicMethodAddressResolutionHeapSupport.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void makeGOTWritable() {
-        changeGOTMappingProtection(true);
+        if (hasGOTEntries()) {
+            changeGOTMappingProtection(true);
+        }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void makeGOTReadOnly() {
-        changeGOTMappingProtection(false);
+        if (hasGOTEntries()) {
+            changeGOTMappingProtection(false);
+        }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract int mapGot(Pointer address);
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected abstract int mapGOT(Pointer address);
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int install(Pointer heapBase) {
-        return mapGot(getPreHeapMappingStartAddress(heapBase));
+        if (!hasGOTEntries()) {
+            return CEntryPointErrors.NO_ERROR;
+        }
+        return mapGOT(getPreHeapMappingStartAddress(heapBase));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected Pointer getPreHeapMappingStartAddress() {
         return getPreHeapMappingStartAddress(KnownIntrinsics.heapBase());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected Pointer getPreHeapMappingStartAddress(PointerBase heapBase) {
         return ((Pointer) heapBase).subtract(getRequiredPreHeapMemoryInBytes());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void changeGOTMappingProtection(boolean writable) {
         Pointer gotMappingStartAddress = GOT_START_ADDRESS.get().read();
         VMError.guarantee(gotMappingStartAddress.isNonNull());
@@ -124,13 +166,16 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         if (writable) {
             access |= Access.WRITE;
         }
-        int ret = VirtualMemoryProvider.get().protect(gotMappingStartAddress, getPageAlignedGotSize(), access);
+        int ret = VirtualMemoryProvider.get().protect(gotMappingStartAddress, getPageAlignedGOTSize(), access);
         VMError.guarantee(ret == 0, "Failed to change GOT protection.");
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int initialize() {
+        if (!hasGOTEntries()) {
+            return CEntryPointErrors.NO_ERROR;
+        }
         boolean isFirstIsolate = GOT_STATUS.get().logicCompareAndSwapWord(0, GOT_UNINITIALIZED, GOT_INITIALIZATION_IN_PROGRESS, LocationIdentity.ANY_LOCATION);
         if (!isFirstIsolate) {
             while (true) {

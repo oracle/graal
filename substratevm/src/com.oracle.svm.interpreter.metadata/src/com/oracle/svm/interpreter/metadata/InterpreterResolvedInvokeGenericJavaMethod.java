@@ -72,7 +72,7 @@ public final class InterpreterResolvedInvokeGenericJavaMethod extends Interprete
         }
         return new InterpreterResolvedInvokeGenericJavaMethod(invokeGeneric.getSymbolicName(), invokeGeneric.getMaxLocals(), invokeGeneric.getFlags(),
                         invokeGeneric.getDeclaringClass(), invokeGeneric.getSignature(), invokeGeneric.getSymbolicSignature(),
-                        invokeGeneric.getVTableIndex(), invokeGeneric.getGotOffset(), invokeGeneric.getEnterStubOffset(), invokeGeneric.getMethodId(), invoker, appendixBox[0], unbasicTo,
+                        invokeGeneric.getVTableIndex(), invokeGeneric.getGOTOffset(), invokeGeneric.getEnterStubOffset(), invokeGeneric.getMethodId(), invoker, appendixBox[0], unbasicTo,
                         invokeGeneric.getPreparedSignature());
     }
 

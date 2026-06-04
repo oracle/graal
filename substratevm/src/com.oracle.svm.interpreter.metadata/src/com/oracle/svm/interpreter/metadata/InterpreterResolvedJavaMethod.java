@@ -766,7 +766,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         this.gotOffset = gotOffset;
     }
 
-    public final int getGotOffset() {
+    public final int getGOTOffset() {
         return gotOffset;
     }
 

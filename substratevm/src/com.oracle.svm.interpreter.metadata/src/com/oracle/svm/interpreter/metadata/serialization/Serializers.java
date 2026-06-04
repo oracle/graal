@@ -732,7 +732,7 @@ public final class Serializers {
 
                         ReferenceConstant<MethodRefHolder> nativeEntryPointHolder = value.getNativeEntryPointHolderConstant();
                         int vtableIndex = value.getVTableIndex();
-                        int gotOffset = value.getGotOffset();
+                        int gotOffset = value.getGOTOffset();
                         int enterStubOffset = value.getEnterStubOffset();
                         int methodId = value.getMethodId();
 
