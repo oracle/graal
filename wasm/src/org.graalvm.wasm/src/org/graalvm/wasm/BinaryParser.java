@@ -1954,6 +1954,10 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.ARRAY_NEW_DEFAULT: {
                         int arrayTypeIdx = readArrayTypeIndex();
+                        if (!WasmType.hasDefaultValue(module.arrayTypeElemType(arrayTypeIdx))) {
+                            Assert.fail(Failure.TYPE_MISMATCH, "array.new_default: array type %d has non-defaultable element type %s", arrayTypeIdx,
+                                            WasmType.toString(module.arrayTypeElemType(arrayTypeIdx)));
+                        }
                         state.popChecked(I32_TYPE);
                         state.push(WasmType.withNullable(false, arrayTypeIdx));
                         state.addInstruction(Bytecode.ARRAY_NEW_DEFAULT, arrayTypeIdx);
@@ -3276,6 +3280,10 @@ public class BinaryParser extends BinaryStreamParser {
                         }
                         case Instructions.ARRAY_NEW_DEFAULT: {
                             int arrayTypeIdx = readArrayTypeIndex();
+                            if (!WasmType.hasDefaultValue(module.arrayTypeElemType(arrayTypeIdx))) {
+                                Assert.fail(Failure.TYPE_MISMATCH, "array.new_default: array type %d has non-defaultable element type %s", arrayTypeIdx,
+                                                WasmType.toString(module.arrayTypeElemType(arrayTypeIdx)));
+                            }
                             state.popChecked(I32_TYPE);
                             state.push(WasmType.withNullable(false, arrayTypeIdx));
                             state.addInstruction(Bytecode.ARRAY_NEW_DEFAULT, arrayTypeIdx);
