@@ -75,7 +75,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, EconomicSet<Module>> packageToModules;
 
-    private record ConditionalResource(AccessCondition condition, String resourceName, Object origin) {
+    private record ConditionalResource(AccessCondition condition, String resourceName, Object origin, boolean preserved) {
     }
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
@@ -119,13 +119,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
-            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) ||
-                            classLoaderSupport.getClassPathEntriesToPreserve().contains(classpathFile);
+            boolean preserveCurrent = classLoaderSupport.getClassPathEntriesToPreserve().contains(classpathFile);
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) || preserveCurrent;
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, includeCurrent);
+                    scanDirectory(classpathFile, resourceCollector, includeCurrent, preserveCurrent);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
-                    scanJar(classpathFile, resourceCollector, includeCurrent);
+                    scanJar(classpathFile, resourceCollector, includeCurrent, preserveCurrent);
                 }
             } catch (IOException ex) {
                 throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
@@ -136,20 +136,20 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name()) ||
-                            classLoaderSupport.getJavaModuleNamesToPreserve().contains(info.resolvedModule().name());
+            boolean preserveCurrent = classLoaderSupport.getJavaModuleNamesToPreserve().contains(info.resolvedModule().name());
+            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name()) || preserveCurrent;
             List<ConditionalResource> resourcesFound = new ArrayList<>();
             moduleReader.list().forEach(resourceName -> {
-                var conditionsWithOrigins = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeCurrent);
+                var conditionsWithOrigins = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeCurrent, preserveCurrent);
                 for (var conditionWithOrigin : conditionsWithOrigins) {
-                    resourcesFound.add(new ConditionalResource(conditionWithOrigin.condition(), resourceName, conditionWithOrigin.origin()));
+                    resourcesFound.add(new ConditionalResource(conditionWithOrigin.condition(), resourceName, conditionWithOrigin.origin(), conditionWithOrigin.preserved()));
                 }
             });
 
             for (ConditionalResource entry : resourcesFound) {
                 String resName = entry.resourceName();
                 if (resName.endsWith("/")) {
-                    includeResource(resourceCollector, info.module, resName, entry.condition(), entry.origin());
+                    includeResource(resourceCollector, info.module, resName, entry.condition(), entry.origin(), entry.preserved());
                     continue;
                 }
 
@@ -160,7 +160,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     continue;
                 }
 
-                includeResource(resourceCollector, info.module, resName, entry.condition(), entry.origin());
+                includeResource(resourceCollector, info.module, resName, entry.condition(), entry.origin(), entry.preserved());
             }
 
         } catch (IOException e) {
@@ -168,7 +168,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent) {
+    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent, boolean preserveCurrent) {
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
         while (!queue.isEmpty()) {
@@ -182,9 +182,9 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             }
 
-            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, entry.toUri(), includeCurrent);
+            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, entry.toUri(), includeCurrent, preserveCurrent);
             for (var conditionWithOrigin : conditionsWithOrigins) {
-                includeResource(collector, null, relativeFilePath, conditionWithOrigin.condition(), conditionWithOrigin.origin());
+                includeResource(collector, null, relativeFilePath, conditionWithOrigin.condition(), conditionWithOrigin.origin(), conditionWithOrigin.preserved());
             }
 
             if (Files.isDirectory(entry)) {
@@ -205,7 +205,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanJar(Path jarPath, ResourceCollector collector, boolean includeCurrent) throws IOException {
+    private static void scanJar(Path jarPath, ResourceCollector collector, boolean includeCurrent, boolean preserveCurrent) throws IOException {
         try (JarFile jf = new JarFile(jarPath.toFile())) {
             Enumeration<JarEntry> entries = jf.entries();
             while (entries.hasMoreElements()) {
@@ -215,22 +215,22 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     entryName = entryName.substring(0, entry.getName().length() - 1);
                 }
 
-                var conditionsWithOrigins = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeCurrent);
+                var conditionsWithOrigins = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeCurrent, preserveCurrent);
                 for (var conditionWithOrigin : conditionsWithOrigins) {
-                    includeResource(collector, null, entryName, conditionWithOrigin.condition(), conditionWithOrigin.origin());
+                    includeResource(collector, null, entryName, conditionWithOrigin.condition(), conditionWithOrigin.origin(), conditionWithOrigin.preserved());
                 }
             }
         }
     }
 
-    private static void includeResource(ResourceCollector collector, Module module, String name, AccessCondition condition, Object origin) {
-        collector.addResourceConditionally(module, name, condition, origin);
+    private static void includeResource(ResourceCollector collector, Module module, String name, AccessCondition condition, Object origin, boolean preserved) {
+        collector.addResourceConditionally(module, name, condition, origin, preserved);
     }
 
-    private static List<ConditionWithOrigin> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {
+    private static List<ConditionWithOrigin> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent, boolean preserveCurrent) {
         List<ConditionWithOrigin> conditions = new ArrayList<>(collector.isIncluded(module, fileName, uri));
         if (includeCurrent && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
-            conditions.add(new ConditionWithOrigin(AccessCondition.unconditional(), "Include all"));
+            conditions.add(new ConditionWithOrigin(AccessCondition.unconditional(), "Include all", preserveCurrent));
         }
 
         return conditions;

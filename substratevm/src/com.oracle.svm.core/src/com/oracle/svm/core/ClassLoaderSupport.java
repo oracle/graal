@@ -52,7 +52,10 @@ public abstract class ClassLoaderSupport {
 
     protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
 
-    public record ConditionWithOrigin(AccessCondition condition, Object origin) {
+    public record ConditionWithOrigin(AccessCondition condition, Object origin, boolean preserved) {
+        public ConditionWithOrigin(AccessCondition condition, Object origin) {
+            this(condition, origin, false);
+        }
     }
 
     public interface ResourceCollector {
@@ -60,7 +63,11 @@ public abstract class ClassLoaderSupport {
 
         void addResourceEntry(Module module, String resourceName, Object origin);
 
-        void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin);
+        default void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin) {
+            addResourceConditionally(module, resourceName, condition, origin, false);
+        }
+
+        void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin, boolean preserved);
 
         void registerNegativeQuery(Module module, String resourceName);
 
