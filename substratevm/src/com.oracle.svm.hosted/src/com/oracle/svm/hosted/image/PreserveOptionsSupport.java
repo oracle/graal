@@ -33,6 +33,8 @@ import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSe
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
+import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -226,10 +228,18 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         });
 
         bb.getHostVM().registerClassReachabilityListener((access, reachedClass) -> {
-            if (LambdaUtils.isLambdaClass(reachedClass) &&
-                            preservedClassNames.contains(LambdaUtils.capturingClass(reachedClass.getName()))) {
+            if (LambdaUtils.isLambdaClass(reachedClass)) {
+                String capturingClass = LambdaUtils.capturingClass(reachedClass.getName());
+                if (!preservedClassNames.contains(capturingClass)) {
+                    return;
+                }
                 registerPreservedClass(reflection, resources, proxy, always, reachedClass);
                 registerPreservedClassHierarchyMetadata(reflection, serialization, always, reachedClass);
+                if (Serializable.class.isAssignableFrom(reachedClass)) {
+                    serialization.registerIncludingAssociatedClasses(always, reachedClass);
+                    serialization.register(always, true, SerializedLambda.class);
+                    serialization.registerLambdaCapturingClass(always, capturingClass);
+                }
                 access.requireAnalysisIteration();
             }
         });
