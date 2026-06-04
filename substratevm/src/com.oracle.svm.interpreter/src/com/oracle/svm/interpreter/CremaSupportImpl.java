@@ -419,9 +419,9 @@ public class CremaSupportImpl implements CremaSupport {
          * to methods.
          */
         InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable().toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
-        assert completeVTable.length == hubNumVTableEntries || (thisType.isInterface() && hubNumVTableEntries == 0);
+        assert completeVTable.length == hubNumVTableEntries || ((thisType.isInterface() || thisType.isAbstract()) && hubNumVTableEntries == 0);
         thisType.setVtable(completeVTable, dispatchTable.vtableLength(), dispatchTable.mirandaMethodsStart());
-        if (!thisType.isInterface()) {
+        if (!thisType.isInterface() && !thisType.isAbstract()) {
             fillVTable(hub, completeVTable);
         }
 
@@ -1315,6 +1315,15 @@ public class CremaSupportImpl implements CremaSupport {
 
         @Override
         public int svmVTableLength(Class<?>[] interfaces) {
+            if (partialType.isAbstract()) {
+                // Abstract classes do not need to materialize the SVM vtable, as they are never a
+                // receiver of virtual invocation.
+                return 0;
+            }
+            return concatenatedTableLength(interfaces);
+        }
+
+        private int concatenatedTableLength(Class<?>[] interfaces) {
             int result = table.getVtable().size();
             for (Class<?> intf : interfaces) {
                 result += getItableFor(intf).size();
@@ -1330,7 +1339,7 @@ public class CremaSupportImpl implements CremaSupport {
                 List<InterpreterResolvedJavaMethod> itable = toITable(getItableFor(intf));
                 result.addAll(itable);
             }
-            assert svmVTableLength(interfaces) == result.size();
+            assert concatenatedTableLength(interfaces) == result.size();
             return result;
         }
 

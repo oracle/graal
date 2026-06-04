@@ -101,14 +101,17 @@ public class InterpreterKnownCompiledEntryPoints {
         };
     }
 
+    @SuppressWarnings("unused")
     private static void throwIllegalAccessErrorStub() {
         throw new IllegalAccessError();
     }
 
+    @SuppressWarnings("unused")
     private static void throwIncompatibleClassChangeErrorStub() {
         throw new IncompatibleClassChangeError();
     }
 
+    @SuppressWarnings("unused")
     private static void throwAbstractMethodErrorStub() {
         throw new AbstractMethodError();
     }
