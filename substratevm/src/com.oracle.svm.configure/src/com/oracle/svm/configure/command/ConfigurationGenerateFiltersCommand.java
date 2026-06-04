@@ -186,7 +186,9 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
     }
 
     private static void warnDeprecated() {
+        // Checkstyle: allow System.err (stderr support)
         System.err.println(DEPRECATION_NOTICE);
+        // Checkstyle: disallow System.err
     }
 
     private static void addSingleRule(HierarchyFilterNode root, String argName, String qualifiedPkg, HierarchyFilterNode.Inclusion inclusion) {
