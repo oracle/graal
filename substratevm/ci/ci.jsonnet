@@ -139,7 +139,7 @@
       "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
-        "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
+        "windows:amd64:jdk-latest": sg.daily + t("1:30:00"),
       },
       "libc:musl_static": {
         "linux:amd64:jdk-latest": tier3 + gdb("14.2") + t("55:00"),
