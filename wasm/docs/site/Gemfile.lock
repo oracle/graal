@@ -1,11 +1,3 @@
-GIT
-  remote: https://github.com/graalvm/graal-languages-jekyll-theme.git
-  revision: 1e8d5b675768ea158684474ef7a32a6ed8ce9baf
-  branch: main
-  specs:
-    graal-languages-jekyll-theme (0.2.0)
-      jekyll (~> 4.3)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -50,6 +42,8 @@ GEM
     google-protobuf (4.34.1-x86_64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
+    graal-languages-jekyll-theme (0.2.0)
+      jekyll (~> 4.3)
     hashery (2.1.2)
     html-proofer (5.2.1)
       addressable (~> 2.3)
@@ -169,7 +163,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  graal-languages-jekyll-theme!
+  graal-languages-jekyll-theme
   html-proofer
   http_parser.rb
   jekyll
