@@ -731,6 +731,7 @@ public class Linker {
                             int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
 
                             int length = (int) stack.removeLast();
+                            instance.module().limits().checkArrayInstanceSize(length, elemType);
                             WasmArray array = switch (elemType) {
                                 case WasmType.I8_TYPE -> {
                                     byte initialValue = (byte) (int) stack.removeLast();
@@ -777,6 +778,7 @@ public class Linker {
                             int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
 
                             int length = (int) stack.removeLast();
+                            instance.module().limits().checkArrayInstanceSize(length, elemType);
                             WasmArray array = switch (elemType) {
                                 case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length);
                                 case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length);

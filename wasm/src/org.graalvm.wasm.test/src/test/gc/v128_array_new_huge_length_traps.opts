@@ -1,0 +1,2 @@
+wasm.GC=true
+wasm.SIMD=true

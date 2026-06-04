@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
+import static org.graalvm.wasm.constants.Sizes.MAX_ARRAY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
@@ -74,6 +75,7 @@ public final class ModuleLimits {
     private final int localCountLimit;
     private final int structFieldCountLimit;
     private final int arrayNewFixedLengthLimit;
+    private final long arrayInstanceSizeLimit;
     private final int tableInstanceSizeLimit;
     private final int memoryInstanceSizeLimit;
     private final long memory64InstanceSizeLimit;
@@ -81,7 +83,7 @@ public final class ModuleLimits {
     public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int subtypeDepthLimit, int functionCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit, int tagCountLimit,
                     int dataSegmentCountLimit, int elementSegmentCountLimit, int tableCountLimit, int memoryCountLimit,
                     int paramCountLimit, int resultCountLimit, int functionSizeLimit, int localCountLimit,
-                    int structFieldCountLimit, int arrayNewFixedLengthLimit, int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit) {
+                    int structFieldCountLimit, int arrayNewFixedLengthLimit, long arrayInstanceSizeLimit, int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
         this.typeCountLimit = minUnsigned(typeCountLimit, WasmType.MAX_TYPE_INDEX);
         this.subtypeDepthLimit = minUnsigned(subtypeDepthLimit, Integer.MAX_VALUE);
@@ -100,6 +102,7 @@ public final class ModuleLimits {
         this.localCountLimit = minUnsigned(localCountLimit, Integer.MAX_VALUE);
         this.structFieldCountLimit = minUnsigned(structFieldCountLimit, Integer.MAX_VALUE);
         this.arrayNewFixedLengthLimit = minUnsigned(arrayNewFixedLengthLimit, Integer.MAX_VALUE);
+        this.arrayInstanceSizeLimit = minUnsigned(arrayInstanceSizeLimit, MAX_ARRAY_INSTANCE_SIZE);
         this.tableInstanceSizeLimit = minUnsigned(tableInstanceSizeLimit, MAX_TABLE_INSTANCE_SIZE);
         this.memoryInstanceSizeLimit = minUnsigned(memoryInstanceSizeLimit, MAX_MEMORY_INSTANCE_SIZE);
         this.memory64InstanceSizeLimit = minUnsigned(memory64InstanceSizeLimit, MAX_MEMORY_64_INSTANCE_SIZE);
@@ -132,6 +135,7 @@ public final class ModuleLimits {
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
+                    MAX_ARRAY_INSTANCE_SIZE,
                     MAX_TABLE_INSTANCE_SIZE,
                     MAX_MEMORY_INSTANCE_SIZE,
                     MAX_MEMORY_64_INSTANCE_SIZE);
@@ -212,6 +216,19 @@ public final class ModuleLimits {
 
     public void checkArrayNewFixedLength(int length) {
         assertUnsignedIntLessOrEqual(length, arrayNewFixedLengthLimit, Failure.ARRAY_NEW_FIXED_LIMIT_EXCEEDED);
+    }
+
+    public void checkArrayInstanceSize(int length, int elemType) {
+        assertUnsignedLongLessOrEqual(arrayInstanceByteLength(length, elemType), arrayInstanceSizeLimit, Failure.ARRAY_LENGTH_LIMIT_EXCEEDED);
+    }
+
+    public boolean exceedsArrayInstanceSizeLimit(int length, int elemType) {
+        return Long.compareUnsigned(arrayInstanceByteLength(length, elemType), arrayInstanceSizeLimit) > 0;
+    }
+
+    private static long arrayInstanceByteLength(int length, int elemType) {
+        int elemByteSize = WasmType.isReferenceType(elemType) ? Integer.BYTES : WasmType.storageByteSize(elemType);
+        return (long) length * elemByteSize;
     }
 
     public void checkTableInstanceSize(int size) {

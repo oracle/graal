@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ public final class JsConstants {
     private static final int LOCAL_COUNT_LIMIT = 50_000;
     private static final int STRUCT_FIELD_COUNT_LIMIT = 10_000;
     private static final int ARRAY_NEW_FIXED_LENGTH_LIMIT = 10_000;
+    private static final int ARRAY_SIZE_LIMIT = 1 << 30;
     private static final int TABLE_SIZE_LIMIT = 10_000_000;
     private static final int MEMORY_SIZE_LIMIT = 65_536;
 
@@ -88,6 +89,7 @@ public final class JsConstants {
                     LOCAL_COUNT_LIMIT,
                     STRUCT_FIELD_COUNT_LIMIT,
                     ARRAY_NEW_FIXED_LENGTH_LIMIT,
+                    ARRAY_SIZE_LIMIT,
                     TABLE_SIZE_LIMIT,
                     MEMORY_SIZE_LIMIT,
                     MEMORY_SIZE_LIMIT);
