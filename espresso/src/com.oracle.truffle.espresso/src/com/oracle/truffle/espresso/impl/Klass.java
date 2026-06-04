@@ -885,6 +885,16 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return TypeAccess.super.isInterface();
     }
 
+    @Idempotent
+    public final boolean isInterface(EspressoContext context) {
+        return Modifier.isInterface(getModifiers(context));
+    }
+
+    @Idempotent
+    public final boolean isAbstract(EspressoContext context) {
+        return Modifier.isAbstract(getModifiers(context));
+    }
+
     /**
      * Returns the guest {@link Class} object associated with this {@link Klass} instance.
      */

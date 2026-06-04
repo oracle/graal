@@ -555,7 +555,7 @@ public final class GuestAllocator implements LanguageAccess {
         }
 
         public static void checkCanAllocateNewReference(Meta meta, Klass klass, boolean error, AllocationProfiler profile) {
-            if (!canAllocateNewReference(klass)) {
+            if (!canAllocateNewReference(klass, meta.getContext())) {
                 profile.enterNewReference();
                 throw meta.throwException(error ? meta.java_lang_InstantiationError : meta.java_lang_InstantiationException);
             }
@@ -585,6 +585,10 @@ public final class GuestAllocator implements LanguageAccess {
 
         private static boolean canAllocateNewReference(Klass klass) {
             return (klass instanceof ObjectKlass) && !klass.isAbstract() && !klass.isInterface();
+        }
+
+        private static boolean canAllocateNewReference(Klass klass, EspressoContext context) {
+            return (klass instanceof ObjectKlass) && !klass.isAbstract(context) && !klass.isInterface(context);
         }
 
         private static boolean canAllocateNewArray(int size) {
