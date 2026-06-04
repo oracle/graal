@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package com.oracle.svm.core.windows;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
+import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_STACK_OVERFLOW;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
@@ -36,20 +38,20 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(SubstrateSegfaultHandler.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
@@ -92,8 +94,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     private static int handler(ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo) {
         ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
-        if (exceptionRecord.ExceptionCode() != ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION()) {
-            /* Not a segfault. */
+        if (!isHandledException(exceptionRecord.ExceptionCode())) {
+            /* Not an exception handled by the segfault handler. */
             return ErrHandlingAPI.EXCEPTION_CONTINUE_SEARCH();
         }
 
@@ -110,13 +112,20 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         return ErrHandlingAPI.EXCEPTION_CONTINUE_SEARCH();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean isHandledException(int exceptionCode) {
+        return exceptionCode == EXCEPTION_ACCESS_VIOLATION() ||
+                        exceptionCode == EXCEPTION_IN_PAGE_ERROR() ||
+                        exceptionCode == EXCEPTION_STACK_OVERFLOW();
+    }
+
     @Override
     protected void printSignalInfo(Log log, PointerBase signalInfo) {
         ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo = (ErrHandlingAPI.EXCEPTION_POINTERS) signalInfo;
         ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
 
         int exceptionCode = exceptionRecord.ExceptionCode();
-        log.string("siginfo: ExceptionCode: ").signed(exceptionCode);
+        log.string("siginfo: ExceptionCode: ").signed(exceptionCode).string(" (").string(getExceptionName(exceptionCode)).string(")");
 
         int numParameters = exceptionRecord.NumberParameters();
         if ((exceptionCode == EXCEPTION_ACCESS_VIOLATION() || exceptionCode == EXCEPTION_IN_PAGE_ERROR()) && numParameters >= 2) {
@@ -141,6 +150,18 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
                     log.string(" ").zhex(exInfo.addressOf(i).read());
                 }
             }
+        }
+    }
+
+    private static String getExceptionName(int exceptionCode) {
+        if (exceptionCode == EXCEPTION_ACCESS_VIOLATION()) {
+            return "EXCEPTION_ACCESS_VIOLATION";
+        } else if (exceptionCode == EXCEPTION_IN_PAGE_ERROR()) {
+            return "EXCEPTION_IN_PAGE_ERROR";
+        } else if (exceptionCode == EXCEPTION_STACK_OVERFLOW()) {
+            return "EXCEPTION_STACK_OVERFLOW";
+        } else {
+            return "UNKNOWN";
         }
     }
 
