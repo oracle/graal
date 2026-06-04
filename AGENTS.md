@@ -11,6 +11,8 @@
 
 ## Docs
 - Documentation sources live under `docs/`. Update the matching page for user-facing changes.
+- When working on documentation or editing Markdown files, consult `docs/AGENTS.md` for GraalVM documentation terminology, style, and Markdown conventions.
+- Apply `docs/AGENTS.md` to new or modified content only; do not refactor existing documentation in bulk just to match it.
 
 ## Before Submitting
 - [ ] Ensure formatting and checkstyle pass (`mx checkstyle`).
