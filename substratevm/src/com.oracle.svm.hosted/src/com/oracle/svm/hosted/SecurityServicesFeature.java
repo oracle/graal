@@ -846,7 +846,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      */
                     String providerFQName = provider.getClass().getName();
                     SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-                    support.addVerifiedSecurityProvider(providerFQName, result instanceof Exception ? result : Boolean.TRUE);
+                    support.addVerifiedSecurityProvider(provider.getClass(), result instanceof Exception ? result : Boolean.TRUE);
 
                     /*
                      * If this provider is not yet loaded via the service loading mechanism, we need

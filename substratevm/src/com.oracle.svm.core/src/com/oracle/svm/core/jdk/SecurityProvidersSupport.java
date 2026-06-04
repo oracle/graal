@@ -73,12 +73,15 @@ public final class SecurityProvidersSupport {
     private final EconomicSet<String> userRequestedSecurityProviders = EconomicSet.create();
 
     /**
-     * A map of providers, identified by their class names, and the results of their verification
+     * A map of providers, identified by their implementation classes, and the results of their verification
      * (see javax.crypto.JceSecurity#getVerificationResult). This structure is used instead of the
      * (see javax.crypto.JceSecurity#verifyingProviders) map to avoid keeping provider objects in
      * the image heap.
      */
-    private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
+    private final EconomicMap<Class<?>, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
+
+    /** Set of verified provider class names, used when providers are requested by name. */
+    private final EconomicSet<String> verifiedSecurityProviderClassNames = EconomicSet.create();
 
     private Properties savedInitialSecurityProperties;
 
@@ -95,12 +98,13 @@ public final class SecurityProvidersSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addVerifiedSecurityProvider(String key, Object verificationResult) {
-        verifiedSecurityProviders.put(key, verificationResult);
+    public void addVerifiedSecurityProvider(Class<?> providerClass, Object verificationResult) {
+        verifiedSecurityProviders.put(providerClass, verificationResult);
+        verifiedSecurityProviderClassNames.add(providerClass.getName());
     }
 
-    public Object getSecurityProviderVerificationResult(String key) {
-        return verifiedSecurityProviders.get(key);
+    public Object getSecurityProviderVerificationResult(Class<?> providerClass) {
+        return verifiedSecurityProviders.get(providerClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -123,7 +127,7 @@ public final class SecurityProvidersSupport {
      * sun.security.provider.Sun), is either user-requested or reachable via a security service.
      */
     public boolean isSecurityProviderRequested(String providerFQName) {
-        return verifiedSecurityProviders.containsKey(providerFQName) || userRequestedSecurityProviders.contains(providerFQName);
+        return verifiedSecurityProviderClassNames.contains(providerFQName) || userRequestedSecurityProviders.contains(providerFQName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
