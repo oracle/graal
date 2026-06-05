@@ -36,6 +36,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_IS_CONSTRUCTOR;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_IS_FIELD;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_CALLER_SENSITIVE;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_TRUSTED_FINAL;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_HIDDEN_MEMBER;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) public static int MN_REFERENCE_KIND_SHIFT;
 

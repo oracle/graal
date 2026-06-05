@@ -50,6 +50,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
@@ -382,6 +383,11 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     @Override
     public final boolean isSynthetic() {
         return (flags & Constants.ACC_SYNTHETIC) != 0;
+    }
+
+    public final boolean isTrustedFinal() {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return isFinal() && (isStatic() || Record.class.isAssignableFrom(getDeclaringClass().getJavaClass()) || getDeclaringClass().isHidden());
     }
 
     // endregion Unimplemented methods

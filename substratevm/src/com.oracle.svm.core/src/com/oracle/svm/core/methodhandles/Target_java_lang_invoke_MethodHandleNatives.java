@@ -94,7 +94,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             refKind = Modifier.isStatic(field.getModifiers()) ? Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic
                             : Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(field);
+                var resolved = CremaSupport.singleton().toJVMCI(field);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraFieldMemberNameFlags(resolved);
             }
         } else if (member instanceof Method) {
             Method method = (Method) member;
@@ -112,7 +114,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
             }
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(method);
+                var resolved = CremaSupport.singleton().toJVMCI(method);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraMethodMemberNameFlags(resolved);
             }
         } else if (member instanceof Constructor) {
             Constructor<?> constructor = (Constructor<?>) member;
@@ -123,7 +127,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
             refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(constructor);
+                var resolved = CremaSupport.singleton().toJVMCI(constructor);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraMethodMemberNameFlags(resolved);
             }
         } else {
             throw new InternalError("Unknown member type: " + member.getClass());
