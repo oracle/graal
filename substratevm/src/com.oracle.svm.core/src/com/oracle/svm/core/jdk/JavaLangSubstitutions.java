@@ -39,6 +39,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
+import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform;
@@ -81,6 +82,7 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOpera
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.Modules;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -666,17 +668,6 @@ final class Target_jdk_internal_loader_BootLoader {
     // Checkstyle: resume
 
     @Substitute
-    static Package getDefinedPackage(String name) {
-        if (name != null) {
-            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                            null, null, null, null, null);
-            return SubstrateUtil.cast(pkg, Package.class);
-        } else {
-            return null;
-        }
-    }
-
-    @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     public static Stream<Package> packages() {
         Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
@@ -695,6 +686,38 @@ final class Target_jdk_internal_loader_BootLoader {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L907-L924")
     private static String[] getSystemPackageNames() {
         return ClassRegistries.getSystemPackageNames();
+    }
+
+    /**
+     * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L44-L52")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
+    private static String getSystemPackageLocation(String internalPackageName) {
+        String moduleLocation = ClassRegistries.getSystemPackageLocation(internalPackageName);
+        return moduleLocation != null ? moduleLocation : BootLoaderClassPathSupport.getBootLoaderPackageLocation(internalPackageName);
+    }
+
+    /**
+     * Defines boot loader packages without reaching the JDK helper path that depends on `JAVA_HOME`.
+     *
+     * @param packageName package name in external form (e.g. "org.foo.impl")
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/classes/jdk/internal/loader/BootLoader.java#L187-L200")
+    public static Package getDefinedPackage(String packageName) {
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        ClassLoader classLoader = SubstrateUtil.cast(bootClassLoader, ClassLoader.class);
+        Package definedPackage = classLoader.getDefinedPackage(packageName);
+        if (definedPackage == null) {
+            String location = getSystemPackageLocation(packageName.replace('.', '/'));
+            if (location != null) {
+                definedPackage = Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), location);
+            }
+        }
+        return definedPackage;
     }
 
     @SuppressWarnings({"unused", "restricted"})
@@ -728,6 +751,45 @@ final class Target_jdk_internal_loader_BootLoader {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
+}
+
+@TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
+final class Target_jdk_internal_loader_BootLoader_PackageHelper {
+
+    @Alias //
+    private static native URL toFileURL(String location);
+
+    @Alias //
+    private static native Manifest getManifest(String location);
+
+    /**
+     * Defines boot loader packages without parsing the original helper path that reads `JAVA_HOME`.
+     */
+    @Substitute
+    static Package definePackage(String packageName, String location) {
+        Module module = findModule(location);
+        if (module != null) {
+            if (packageName.isEmpty()) {
+                throw new InternalError("Empty package in " + location);
+            }
+            return SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), Target_java_lang_ClassLoader.class).definePackage(packageName, module);
+        }
+        URL url = toFileURL(location);
+        Manifest manifest = url != null ? getManifest(location) : null;
+        return Target_jdk_internal_loader_ClassLoaders.bootLoader().defineOrCheckPackage(packageName, manifest, url);
+    }
+
+    /**
+     * Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
+     */
+    @Substitute
+    private static Module findModule(String location) {
+        String moduleName = location.startsWith("jrt:/") ? location.substring(5) : null;
+        if (moduleName != null) {
+            return Modules.findLoadedModule(moduleName).orElseThrow(() -> new InternalError(moduleName + " not loaded"));
+        }
+        return null;
+    }
 }
 
 final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {

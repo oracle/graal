@@ -99,7 +99,7 @@ public final class Target_java_lang_ClassLoader {
      * invoked by the VM to record every loaded class with this loader".
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
-    private ArrayList<Class<?>> classes;
+    ArrayList<Class<?>> classes;
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true)// GR-62338
     public ConcurrentHashMap<String, Object> parallelLockMap;
@@ -280,6 +280,9 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias
     native Stream<Package> packages();
+
+    @Alias
+    native Package definePackage(String packageName, Module module);
 
     @Substitute
     private static Target_java_lang_AssertionStatusDirectives retrieveDirectives() {

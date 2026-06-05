@@ -185,6 +185,17 @@ public final class ClassRegistries implements ParsingContext {
         return null;
     }
 
+    /**
+     * Returns the boot loader package location in the format expected by
+     * {@code BootLoader.PackageHelper}.
+     *
+     * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
+     */
+    public static String getSystemPackageLocation(String internalPackageName) {
+        String module = getBootModuleForPackage(internalPackageName.replace('/', '.'));
+        return module == null ? null : "jrt:/" + module;
+    }
+
     public static String[] getSystemPackageNames() {
         Set<String> systemPackageNames = new HashSet<>();
         for (var singleton : layeredSingletons()) {

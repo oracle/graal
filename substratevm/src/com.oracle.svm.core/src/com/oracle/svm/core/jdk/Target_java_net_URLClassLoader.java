@@ -71,6 +71,9 @@ final class Target_jdk_internal_loader_URLClassPath {
 final class Target_jdk_internal_loader_Resource {
     @Alias
     public native byte[] getBytes() throws java.io.IOException;
+
+    @Alias
+    public native URL getCodeSourceURL();
 }
 
 @TargetClass(URLClassLoader.class)

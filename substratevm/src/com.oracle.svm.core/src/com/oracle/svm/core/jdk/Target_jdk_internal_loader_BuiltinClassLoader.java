@@ -36,6 +36,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.Manifest;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -70,6 +71,9 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Alias
     native boolean hasClassPath();
+
+    @Alias
+    protected native Package defineOrCheckPackage(String packageName, Manifest manifest, URL url);
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)

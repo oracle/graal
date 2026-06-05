@@ -25,6 +25,9 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
 
 /// Accesses the runtime boot loader class path exposed via `ClassLoaders.bootLoader().ucp`.
 /// This is used for resources and classes supplied with `-Xbootclasspath/a:` in
@@ -44,5 +47,32 @@ public final class BootLoaderClassPathSupport {
             return null;
         }
         return resource.getBytes();
+    }
+
+    /// Looks up the boot loader class path entry that provides `internalPackageName` (e.g. `org/foo/impl`).
+    ///
+    /// This is only for boot loader package discovery, mirroring the `-Xbootclasspath/a:`
+    /// branch of `BootLoader.getSystemPackageLocation`. It must not be used as a general
+    /// class path package lookup: the returned path is consumed by boot-loader package
+    /// definition logic so that `BootLoader.getDefinedPackage` can define package metadata
+    /// for classes loaded from the appended boot class path.
+    public static String getBootLoaderPackageLocation(String internalPackageName) {
+        Target_jdk_internal_loader_BuiltinClassLoader bootLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        if (bootLoader == null || bootLoader.ucp == null) {
+            return null;
+        }
+        Target_jdk_internal_loader_Resource resource = bootLoader.ucp.getResource(internalPackageName + "/");
+        if (resource == null) {
+            return null;
+        }
+        URL codeSourceURL = resource.getCodeSourceURL();
+        if (codeSourceURL == null || !"file".equals(codeSourceURL.getProtocol())) {
+            return null;
+        }
+        try {
+            return Path.of(codeSourceURL.toURI()).toString();
+        } catch (IllegalArgumentException | URISyntaxException e) {
+            return null;
+        }
     }
 }
