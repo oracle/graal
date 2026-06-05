@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ public final class Sizes {
 
     public static final int MAX_TABLE_INSTANCE_SIZE = Integer.MAX_VALUE;
     public static final int MAX_MEMORY_INSTANCE_SIZE = MAX_MEMORY_DECLARATION_SIZE;
+    public static final long MAX_ARRAY_INSTANCE_SIZE = 1L << 30;
 
     // 64 TB
     public static final long MAX_MEMORY_64_INSTANCE_BYTE_SIZE = 64_000_000_000_000L;

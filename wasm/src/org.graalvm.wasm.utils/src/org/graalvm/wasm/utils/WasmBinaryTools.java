@@ -67,6 +67,7 @@ public class WasmBinaryTools {
     static boolean compileUsingStdInOut = true;
 
     public enum WabtOption {
+        GC,
         MULTI_MEMORY,
         THREADS,
         EXCEPTIONS,
@@ -148,6 +149,7 @@ public class WasmBinaryTools {
         commandLine.add("--no-check");
         for (WabtOption option : options) {
             switch (option) {
+                case GC -> commandLine.add("--enable-gc");
                 case MULTI_MEMORY -> commandLine.add("--enable-multi-memory");
                 case THREADS -> commandLine.add("--enable-threads");
                 case EXCEPTIONS -> commandLine.add("--enable-exceptions");

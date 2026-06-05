@@ -168,6 +168,7 @@ public enum Failure {
     NULL_I31_REFERENCE(Type.TRAP, "null i31 reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     OUT_OF_BOUNDS_ARRAY_ACCESS(Type.TRAP, "out of bounds array access"),
+    ARRAY_LENGTH_LIMIT_EXCEEDED(Type.TRAP, "array length exceeds limit"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),

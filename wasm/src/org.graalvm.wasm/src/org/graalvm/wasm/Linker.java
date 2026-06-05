@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -731,6 +731,7 @@ public class Linker {
                             int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
 
                             int length = (int) stack.removeLast();
+                            instance.module().limits().checkArrayInstanceSize(length, elemType);
                             WasmArray array = switch (elemType) {
                                 case WasmType.I8_TYPE -> {
                                     byte initialValue = (byte) (int) stack.removeLast();
@@ -777,6 +778,7 @@ public class Linker {
                             int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
 
                             int length = (int) stack.removeLast();
+                            instance.module().limits().checkArrayInstanceSize(length, elemType);
                             WasmArray array = switch (elemType) {
                                 case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length);
                                 case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length);
@@ -846,9 +848,9 @@ public class Linker {
                                     byte[] fixedArray = new byte[length << 4];
                                     for (int i = length - 1; i >= 0; i--) {
                                         Vector128 vec = (Vector128) stack.removeLast();
-                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 4);
+                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 16);
                                     }
-                                    yield new WasmVec128Array(arrayType, fixedArray);
+                                    yield new WasmVec128Array(arrayType, length, fixedArray);
                                 }
                                 default -> {
                                     Object[] fixedArray = new Object[length];
