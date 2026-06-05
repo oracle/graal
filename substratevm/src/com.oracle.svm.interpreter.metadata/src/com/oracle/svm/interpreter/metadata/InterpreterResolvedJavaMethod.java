@@ -859,7 +859,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     @Override
     public final boolean requiresInterfaceDispatch(InterpreterResolvedJavaType holder) {
         assert getDeclaringClass().isInterface();
-        return hasDispatchIndex() && (holder == getDeclaringClass() || !(this.equals(holder.lookupVTableEntry(getVTableIndex()))));
+        return hasDispatchIndex() && ((holder.equals(getDeclaringClass())) || !(this.equals(holder.lookupVTableEntry(getVTableIndex()))));
     }
 
     public final boolean isDevirtualized() {

@@ -387,7 +387,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         /* Allocate DynamicHub. */
-        int hubNumVTableEntries = dispatchTable.svmVTableLength(dispatchTransitiveSuperInterfaces);
+        int hubNumVTableEntries = dispatchTable.needsSvmVTable() ? dispatchTable.svmVTableLength(dispatchTransitiveSuperInterfaces) : 0;
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, hubFlags, classLoader, simpleBinaryName, module, UNINITIALIZED_DECLARING_CLASS_SENTINEL, classSignature,
                         typeID, interfaceID,
@@ -419,9 +419,9 @@ public class CremaSupportImpl implements CremaSupport {
          * to methods.
          */
         InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable().toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
-        assert completeVTable.length == hubNumVTableEntries || ((thisType.isInterface() || thisType.isAbstract()) && hubNumVTableEntries == 0);
+        assert completeVTable.length == hubNumVTableEntries || !dispatchTable.needsSvmVTable();
         thisType.setVtable(completeVTable, dispatchTable.vtableLength(), dispatchTable.mirandaMethodsStart());
-        if (!thisType.isInterface() && !thisType.isAbstract()) {
+        if (dispatchTable.needsSvmVTable()) {
             fillVTable(hub, completeVTable);
         }
 
@@ -1194,6 +1194,11 @@ public class CremaSupportImpl implements CremaSupport {
         protected abstract InterpreterResolvedJavaMethod[] createDeclaredMethods();
 
         /**
+         * Whether the dynamic hub needs to reserve memory to store the native svm vtable.
+         */
+        public abstract boolean needsSvmVTable();
+
+        /**
          * The size of the actual svm VTable that will be put in the {@link DynamicHub}.
          * <p>
          * Said size include the regular VTable (ie: the table used for virtual dispatch), and the
@@ -1217,6 +1222,9 @@ public class CremaSupportImpl implements CremaSupport {
          */
         protected abstract List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces);
 
+        /**
+         * The index in the vtable at which the implicit interface methods started to be added.
+         */
         public abstract int mirandaMethodsStart();
 
         private record FailingMethodKey(Symbol<Name> name, Symbol<Signature> signature, ErrorType errorType) {
@@ -1248,6 +1256,11 @@ public class CremaSupportImpl implements CremaSupport {
         CremaInterfaceDispatchTable(Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> table, CremaPartialType partialType) {
             super(partialType);
             this.table = table;
+        }
+
+        @Override
+        public boolean needsSvmVTable() {
+            return false;
         }
 
         @Override
@@ -1314,10 +1327,15 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
+        public boolean needsSvmVTable() {
+            // Abstract classes do not need to materialize the SVM vtable, as they are never a
+            // receiver of virtual invocation.
+            return !partialType.isAbstract();
+        }
+
+        @Override
         public int svmVTableLength(Class<?>[] interfaces) {
             if (partialType.isAbstract()) {
-                // Abstract classes do not need to materialize the SVM vtable, as they are never a
-                // receiver of virtual invocation.
                 return 0;
             }
             return concatenatedTableLength(interfaces);
