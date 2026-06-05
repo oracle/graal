@@ -90,6 +90,7 @@ import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -107,6 +108,7 @@ import jdk.internal.misc.Unsafe;
  *
  * @see JavaThreads
  */
+@InternalVMMethod
 public abstract class PlatformThreads {
     /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
     /// 64 KiB, and address space randomization enabled may result in transient isolate

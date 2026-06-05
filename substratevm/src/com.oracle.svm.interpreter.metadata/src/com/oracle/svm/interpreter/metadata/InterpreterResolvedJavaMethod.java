@@ -489,6 +489,10 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return (flags & ACC_HIDDEN) != 0;
     }
 
+    public final boolean isLambdaFormCompiled() {
+        return (flags & ACC_LAMBDA_FORM_COMPILED) != 0;
+    }
+
     @Override
     public final boolean isDeclaredSignaturePolymorphic() {
         // Note: might not be true for the instantiation of polymorphic signature intrinsics.

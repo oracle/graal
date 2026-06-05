@@ -453,7 +453,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return null;
         }
         InterpreterFrameSourceInfo stackTraceCallerInfo = interpreterFrame.getStackTraceCallerInfo();
-        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden());
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
         return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, flags, interpreterFrame, stackTraceCallerInfo);
     }
 
@@ -469,7 +469,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             sb.append(") at ").append(frameInfo.getSourceReference());
             VMError.shouldNotReachHere(sb.toString());
         }
-        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(intrinsicMethod.getModifiers(), intrinsicMethod.isHidden());
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(intrinsicMethod.getModifiers(), intrinsicMethod.isHidden(), intrinsicMethod.isLambdaFormCompiled());
         return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod, interpreterFrame, flags);
     }
 
@@ -494,7 +494,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
          * the method object but does not carry the normal source-class/source-method fields.
          */
         InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
-        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden());
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
         return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci(), flags);
     }
 

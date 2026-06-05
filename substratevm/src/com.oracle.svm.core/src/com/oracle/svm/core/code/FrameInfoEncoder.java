@@ -147,7 +147,8 @@ public class FrameInfoEncoder {
              * perform our own de-duplication.
              */
             boolean isHidden = method.getDeclaringClass().isHidden() || AnnotationUtil.isAnnotationPresent(method, Hidden.class);
-            int sourceMethodFlags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden);
+            boolean isLambdaFormCompiled = ((SharedMethod) method).isLambdaFormCompiled();
+            int sourceMethodFlags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden, isLambdaFormCompiled);
             String methodSignature = method.getSignature().toMethodDescriptor();
             String sourceMethodName = stringTable.deduplicate(encoder.encodeMethod(source.getMethodName(), sourceClass), true);
             String sourceMethodSignature = CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers() ? stringTable.deduplicate(methodSignature, true) : methodSignature;

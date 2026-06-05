@@ -171,8 +171,9 @@ public abstract class FrameSourceInfo {
      */
     public static final class MethodFlags {
         private static final int HIDDEN_METHOD_FLAG = 0x8000;
+        private static final int LAMBDA_FORM_COMPILED_METHOD_FLAG = 0x4000;
 
-        static final int EXTRA_FLAGS_BITS = 1;
+        static final int EXTRA_FLAGS_BITS = 2;
         static final int EXTRA_FLAGS_POS = 16 - EXTRA_FLAGS_BITS;
         static final int EXTRA_FLAGS_MASK = ((1 << EXTRA_FLAGS_BITS) - 1) << EXTRA_FLAGS_POS;
         static {
@@ -189,9 +190,11 @@ public abstract class FrameSourceInfo {
         @SuppressWarnings("all")
         private static void checkConstants() {
             assert (HIDDEN_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "HIDDEN_METHOD_FLAG collides with specified method modifier";
+            assert (LAMBDA_FORM_COMPILED_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "LAMBDA_FORM_COMPILED_METHOD_FLAG collides with specified method modifier";
             assert (CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS &
                             Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS : "INVALID_METHOD_MODIFIERS should only used specified method modifiers to avoid collitions with internal method flags";
             assert (EXTRA_FLAGS_MASK & HIDDEN_METHOD_FLAG) == HIDDEN_METHOD_FLAG : "HIDDEN_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
+            assert (EXTRA_FLAGS_MASK & LAMBDA_FORM_COMPILED_METHOD_FLAG) == LAMBDA_FORM_COMPILED_METHOD_FLAG : "LAMBDA_FORM_COMPILED_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
             /*
              * This property is used by extra flag encoding/decoding in the case where full
              * modifiers are not serialized. See `CodeInfoDecoder.getMethodFlags` &
@@ -200,10 +203,13 @@ public abstract class FrameSourceInfo {
             assert Byte.SIZE % EXTRA_FLAGS_BITS == 0 : "The number of extra flag bit doesn't align at byte boundaries.";
         }
 
-        public static int computeSourceMethodFlags(int modifiers, boolean isHidden) {
+        public static int computeSourceMethodFlags(int modifiers, boolean isHidden, boolean isLambdaFormCompiled) {
             int flags = modifiers;
             if (isHidden) {
                 flags |= HIDDEN_METHOD_FLAG;
+            }
+            if (isLambdaFormCompiled) {
+                flags |= LAMBDA_FORM_COMPILED_METHOD_FLAG;
             }
             return flags;
         }
@@ -211,6 +217,10 @@ public abstract class FrameSourceInfo {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static boolean isHidden(int flags) {
             return (flags & HIDDEN_METHOD_FLAG) != 0;
+        }
+
+        public static boolean isLambdaFormCompiled(int flags) {
+            return (flags & LAMBDA_FORM_COMPILED_METHOD_FLAG) != 0;
         }
 
         /**
