@@ -26,8 +26,11 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.List;
 
@@ -42,6 +45,9 @@ import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.TypeResult;
+
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.vm.ci.meta.JavaKind;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
@@ -186,6 +192,20 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerAsSerializable(AccessCondition condition, Class<?> clazz) {
         serializationSupport.register(condition, false, clazz);
+        if (LambdaUtils.isLambdaClass(clazz) && Serializable.class.isAssignableFrom(clazz)) {
+            serializationSupport.registerLambdaCapturingClass(condition, LambdaUtils.capturingClass(clazz.getName()));
+            serializationSupport.register(condition, false, SerializedLambda.class);
+            serializationSupport.register(condition, false, String.class);
+            for (Field field : clazz.getDeclaredFields()) {
+                if (!Modifier.isStatic(field.getModifiers())) {
+                    Class<?> fieldType = field.getType();
+                    Class<?> serializationFieldType = fieldType.isPrimitive()
+                                    ? JavaKind.fromJavaClass(fieldType).toBoxedJavaClass()
+                                    : fieldType;
+                    serializationSupport.register(condition, false, serializationFieldType);
+                }
+            }
+        }
     }
 
     @Override

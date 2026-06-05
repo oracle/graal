@@ -1,0 +1,19 @@
+{
+  "reflection": [
+    {
+      "type": {
+        "lambda": {
+          "declaringClass": "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$LambdaFactory",
+          "declaringMethod": {
+            "name": "createLambda",
+            "parameterTypes": []
+          },
+          "interfaces": [
+            "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$SerializableFunction"
+          ]
+        }
+      },
+      "serializable": true
+    }
+  ]
+}
