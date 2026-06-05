@@ -136,12 +136,11 @@ public class StackTraceUtils {
      * Indicates whether the frame should be displayed in the context of Java backtracing. Returns
      * true if so, and false otherwise. Backtracing means that there are no hidden frames present.
      * To learn more about backtracing, refer to {@link BacktraceDecoder}. For more fine-grained
-     * control over what is displayed, see
-     * {@link #shouldShowFrame(Class, String, int, boolean, boolean)}.
+     * control over what is displayed, see {@link #shouldShowFrame(Class, String, int, boolean)}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldShowFrame(Class<?> clazz, String method, int flags) {
-        return shouldShowFrame(clazz, method, flags, false, true);
+        return shouldShowFrame(clazz, method, flags, false);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -150,43 +149,22 @@ public class StackTraceUtils {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showHiddenFrames, boolean showReflectFrames) {
-        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), frameSourceInfo.getSourceMethodFlags(), showHiddenFrames, showReflectFrames);
+    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showHiddenFrames) {
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), frameSourceInfo.getSourceMethodFlags(), showHiddenFrames);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(Class<?> clazz, String methodName, int flags, boolean showHiddenFrames, boolean showReflectFrames) {
+    public static boolean shouldShowFrame(Class<?> clazz, String methodName, int flags, boolean showHiddenFrames) {
         SubstrateUtil.guaranteeRuntimeOnly();
         if (isVMInternalFrameClass(clazz)) {
             return false;
         }
-
         if (!showHiddenFrames && FrameSourceInfo.MethodFlags.isHidden(flags)) {
             return false;
         }
-
-        if (!showReflectFrames) {
-            if (clazz == java.lang.reflect.Method.class && UninterruptibleUtils.String.equals("invoke", methodName)) {
-                /*
-                 * Ignore a reflective method invocation frame. Note that the classes cannot be
-                 * annotated with @InternalFrame because 1) they are JDK classes and 2) only one
-                 * method of each class is affected.
-                 */
-                return false;
-            } else if (clazz == SubstrateMethodAccessor.class || (RuntimeClassLoading.isSupported() && clazz == CremaMethodAccessor.class)) {
-                /*
-                 * Ignore SVM's method accessor implementations like HotSpot ignores
-                 * `MethodAccessorImpl`. Note that this does not ignore ConstructorAccessors, this
-                 * is in line with HotSpot's behaviour.
-                 */
-                return false;
-            }
-        }
-
         if (clazz == Target_jdk_internal_vm_Continuation.class && (UninterruptibleUtils.String.startsWith(methodName, "enter") || UninterruptibleUtils.String.startsWith(methodName, "yield"))) {
             return false;
         }
-
         return true;
     }
 
@@ -419,7 +397,7 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
 
     @Override
     public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, true)) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true)) {
             // Skip internal frames.
             return true;
         }

@@ -610,8 +610,7 @@ final class StackWalkerUtil {
     /// [Method#invoke(Object, Object...)] and methods from the JDK's internal [MethodAccessor]
     /// implementations.
     static boolean skipFrame(FrameSourceInfo frameSourceInfo, boolean skipHiddenFrames, boolean skipReflectFrames, boolean skipMethodHandleFrames) {
-        // The reflection check is done differently here
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames, true)) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames)) {
             return true;
         }
         Class<?> clazz = frameSourceInfo.getSourceClass();

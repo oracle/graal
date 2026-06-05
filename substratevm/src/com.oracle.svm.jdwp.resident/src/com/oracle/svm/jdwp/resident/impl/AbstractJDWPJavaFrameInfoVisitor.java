@@ -39,7 +39,7 @@ abstract class AbstractJDWPJavaFrameInfoVisitor extends JavaStackFrameVisitor {
     }
 
     protected boolean ignoreFrame(FrameSourceInfo frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true)) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, false)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 
