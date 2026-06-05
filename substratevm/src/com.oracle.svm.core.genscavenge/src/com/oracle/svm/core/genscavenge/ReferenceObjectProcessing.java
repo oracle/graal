@@ -248,12 +248,15 @@ final class ReferenceObjectProcessing {
             // Note that marking is also used in copying collections for pinned objects.
             return true;
         }
+        HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
+        Space space = HeapChunk.getSpace(chunk);
+        if (space.isMetaspace()) {
+            return false;
+        }
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
             // Note that when processing for enqueuing, mark status of objects is already cleared.
             return false;
         }
-        HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-        Space space = HeapChunk.getSpace(chunk);
         return space.isToSpace() || space.isCompactingOldSpace();
     }
 

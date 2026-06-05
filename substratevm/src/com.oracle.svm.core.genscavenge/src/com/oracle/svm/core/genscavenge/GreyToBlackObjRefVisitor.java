@@ -37,6 +37,7 @@ import com.oracle.svm.core.heap.DerivedReferenceSupport;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
@@ -87,6 +88,14 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
         if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
             counters.noteNonHeapReferent();
+            return;
+        }
+
+        if (Metaspace.isSupported() && Metaspace.singleton().isInAddressSpace(p)) {
+            Object obj = p.toObjectNonNull();
+            if (!ObjectHeaderImpl.isMarked(obj)) {
+                ObjectHeaderImpl.setMarked(obj);
+            }
             return;
         }
 
