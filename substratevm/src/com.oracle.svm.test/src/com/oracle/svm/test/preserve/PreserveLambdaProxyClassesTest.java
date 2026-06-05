@@ -167,7 +167,7 @@ public class PreserveLambdaProxyClassesTest {
 
     private static void assertNoJniException(JNIEnvironment env) {
         JNIObjectHandle exception = env.getFunctions().getExceptionOccurred().invoke(env);
-        if (exception.isNonNull()) {
+        if (exception.notEqual(JNIObjectHandles.nullHandle())) {
             Throwable throwable = JNIObjectHandles.getObject(exception);
             env.getFunctions().getExceptionClear().invoke(env);
             deleteLocalRef(exception);
@@ -176,7 +176,7 @@ public class PreserveLambdaProxyClassesTest {
     }
 
     private static void deleteLocalRef(JNIObjectHandle handle) {
-        if (handle.isNonNull()) {
+        if (handle.notEqual(JNIObjectHandles.nullHandle())) {
             JNIObjectHandles.deleteLocalRef(handle);
         }
     }
