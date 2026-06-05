@@ -46,7 +46,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     }
   },
 
-  libgraal_compile_immediately_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
+  libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
@@ -68,14 +68,14 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   },
 
   # -ea assertions are enough to keep execution time reasonable
-  libgraal_compile_immediately: self.libgraal_compile_immediately_base(),
-  libgraal_compile_immediately_zgc: self.libgraal_compile_immediately_base(extra_vm_args=['-XX:+UseZGC']),
-  libgraal_compile_immediately_shenandoah: self.libgraal_compile_immediately_base(extra_vm_args=['-XX:+UseShenandoahGC']),
+  libgraal_truffle: self.libgraal_truffle_base(),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_shenandoah: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseShenandoahGC']),
   # enable economy mode building with the -Ob flag
-  libgraal_compile_immediately_quickbuild: self.libgraal_compile_immediately_base(['-Ob']),
+  libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
   # Use economy mode for coverage testing
-  libgraal_compile_immediately_coverage: self.libgraal_compile_immediately_base(['-Ob'], coverage=true),
+  libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local tier2 = {
@@ -92,20 +92,20 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "vm-libgraal_compile_immediately_zgc-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
     "vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
-    "vm-libgraal_compile_immediately-labsjdk-latest-linux-amd64": {} + galahad.exclude,
+    "vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
 
     "vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
-    "vm-libgraal_compile_immediately_quickbuild-labsjdk-latest-linux-amd64": t("1:30:00"),
+    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:30:00"),
   } + g.as_dailies(tier2) + g.as_dailies(tier3),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
-    "vm-libgraal_compile_immediately_quickbuild-labsjdk-latest-linux-aarch64": {
+    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-aarch64": {
       capabilities+: ["!xgene3"],
     },
-    "vm-libgraal_compile_immediately_coverage*": {}
+    "vm-libgraal_truffle_coverage*": {}
   },
 
   # See definition of `monthlies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -144,9 +144,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
-      "libgraal_compile_immediately",
+      "libgraal_truffle",
       "libgraal_compiler_quickbuild",
-      "libgraal_compile_immediately_quickbuild"
+      "libgraal_truffle_quickbuild"
     ]
   ],
 
@@ -174,7 +174,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for os_arch in all_os_arches
     for task in [
       "libgraal_compiler_zgc",
-      "libgraal_compile_immediately_zgc",
+      "libgraal_truffle_zgc",
     ]
   ],
 
@@ -197,7 +197,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for os_arch in all_os_arches
     for task in [
       "libgraal_compiler_shenandoah",
-      "libgraal_compile_immediately_shenandoah",
+      "libgraal_truffle_shenandoah",
     ]
   ],
 
@@ -223,7 +223,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "windows-amd64"
     ]
     for task in [
-      "libgraal_compile_immediately_coverage"
+      "libgraal_truffle_coverage"
     ]
   ],
 
