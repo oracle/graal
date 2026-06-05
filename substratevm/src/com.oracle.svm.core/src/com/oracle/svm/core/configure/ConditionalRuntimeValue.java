@@ -43,6 +43,13 @@ public final class ConditionalRuntimeValue<T> {
 
     private static final Object NULL_VALUE = new Object();
 
+    /**
+     * Stores always-available, non-preserved values directly and wraps only values that need
+     * dynamic-access metadata. All helper methods in this class treat direct values as
+     * semantically equivalent to {@link RuntimeDynamicAccessMetadata#alwaysAvailable(boolean)
+     * alwaysAvailable(false)}. Preserved values must therefore stay wrapped even when they are
+     * otherwise always available.
+     */
     public static <T> Object create(RuntimeDynamicAccessMetadata dynamicAccessMetadata, T value) {
         Object storedValue = value == null ? NULL_VALUE : value;
         if (dynamicAccessMetadata == null || dynamicAccessMetadata.isAlwaysAvailable() && !dynamicAccessMetadata.isPreserved()) {
@@ -79,9 +86,12 @@ public final class ConditionalRuntimeValue<T> {
         return valueOrConditional instanceof ConditionalRuntimeValue<?> conditional && conditional.getDynamicAccessMetadata().isPreserved();
     }
 
+    /**
+     * Adds a condition to a wrapped value. Direct values are intentionally left unchanged because
+     * they represent values that are already unconditionally available and not preserved.
+     */
     public static Object withCondition(Object valueOrConditional, AccessCondition condition, boolean preserved) {
         if (!(valueOrConditional instanceof ConditionalRuntimeValue<?>)) {
-            /* A direct value is already unconditionally available and not preserved. */
             return valueOrConditional;
         }
         Object value = getValueUnconditionally(valueOrConditional);

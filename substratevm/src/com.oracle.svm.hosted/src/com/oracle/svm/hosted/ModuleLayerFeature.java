@@ -789,7 +789,17 @@ public class ModuleLayerFeature implements InternalFeature {
         runtimeModuleLayer.modules();
     }
 
+    /**
+     * Compact immutable JDK collection implementations are only safe for closed executable images.
+     * Layered image builds keep module metadata mutable/observable across layer patching and
+     * rescanning, and shared-library images preserve more runtime module state than ordinary
+     * executables.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
+    private static boolean shouldCompactModuleMetadata() {
+        return !ImageLayerBuildingSupport.buildingImageLayer() && !SubstrateOptions.SharedLibrary.getValue();
+    }
+
     private final class ModuleLayerFeatureUtils {
         private final Map<ClassLoader, Map<String, Module>> runtimeModules;
         private final ImageClassLoader imageClassLoader;
@@ -1215,10 +1225,6 @@ public class ModuleLayerFeature implements InternalFeature {
             }
 
             return nameToModule;
-        }
-
-        private static boolean shouldCompactModuleMetadata() {
-            return !ImageLayerBuildingSupport.buildingImageLayer() && !SubstrateOptions.SharedLibrary.getValue();
         }
 
         private static Map<String, Set<Module>> compactPackageMap(Map<String, Set<Module>> packages) {

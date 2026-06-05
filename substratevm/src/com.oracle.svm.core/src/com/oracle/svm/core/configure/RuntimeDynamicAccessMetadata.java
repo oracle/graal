@@ -75,15 +75,21 @@ public class RuntimeDynamicAccessMetadata {
         return addCondition(null, condition, preserved);
     }
 
+    /**
+     * Returns metadata with {@code cnd} merged in. Existing always-available metadata remains
+     * always available: adding a condition to something that is already unconditional must not
+     * narrow its availability. If any merged registration is non-preserved, the resulting metadata
+     * is non-preserved.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static RuntimeDynamicAccessMetadata addCondition(RuntimeDynamicAccessMetadata current, AccessCondition cnd, boolean preserved) {
         VMError.guarantee(cnd instanceof TypeReachabilityCondition, "Only TypeReachabilityCondition conditions can be used in RuntimeConditionSet.");
         TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
-        VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
         boolean mergedPreserved = current == null ? preserved : current.preserved && preserved;
         if (reachabilityCondition.isAlwaysTrue() || current != null && current.isAlwaysAvailable()) {
             return alwaysAvailable(mergedPreserved);
         }
+        VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
         Object newRuntimeCondition = createRuntimeCondition(cnd);
         Object[] mergedConditions;
         if (current == null || current.conditions == null || current.conditions.length == 0) {
@@ -103,6 +109,43 @@ public class RuntimeDynamicAccessMetadata {
 
     public boolean isAlwaysAvailable() {
         return conditions == null;
+    }
+
+    /**
+     * Returns metadata that is available whenever either input metadata is available. This is used
+     * when the same value is registered multiple times and the runtime should honor the union of
+     * all registrations. If any merged registration is non-preserved, the resulting metadata is
+     * non-preserved.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeDynamicAccessMetadata merge(RuntimeDynamicAccessMetadata current, RuntimeDynamicAccessMetadata additional) {
+        if (current == null) {
+            return additional;
+        } else if (additional == null) {
+            return current;
+        }
+        boolean mergedPreserved = current.preserved && additional.preserved;
+        if (current.isAlwaysAvailable() || additional.isAlwaysAvailable()) {
+            return alwaysAvailable(mergedPreserved);
+        }
+        Object[] mergedConditions = Arrays.copyOf(current.conditions, current.conditions.length + additional.conditions.length);
+        int mergedLength = current.conditions.length;
+        for (Object additionalCondition : additional.conditions) {
+            boolean seen = false;
+            for (Object currentCondition : current.conditions) {
+                if (currentCondition.equals(additionalCondition)) {
+                    seen = true;
+                    break;
+                }
+            }
+            if (!seen) {
+                mergedConditions[mergedLength++] = additionalCondition;
+            }
+        }
+        if (mergedLength < mergedConditions.length) {
+            mergedConditions = Arrays.copyOf(mergedConditions, mergedLength);
+        }
+        return intern(mergedConditions, mergedPreserved);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

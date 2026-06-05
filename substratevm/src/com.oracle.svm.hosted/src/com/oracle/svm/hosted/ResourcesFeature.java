@@ -244,11 +244,14 @@ public class ResourcesFeature implements InternalFeature {
         public void addCondition(AccessCondition condition, Module module, String resourcePath) {
             VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
             TypeReachabilityCondition typeReachabilityCondition = (TypeReachabilityCondition) condition;
-            if (typeReachabilityCondition.isRuntimeChecked() && !typeReachabilityCondition.isAlwaysTrue()) {
+            if (!typeReachabilityCondition.isRuntimeChecked() && !typeReachabilityCondition.isAlwaysTrue()) {
+                return;
+            }
+            if (!typeReachabilityCondition.isAlwaysTrue()) {
                 classInitializationSupport.addForTypeReachedTracking(typeReachabilityCondition.getType());
             }
 
-            Resources.currentLayer().addResourceCondition(module, resourcePath, condition);
+            Resources.currentLayer().addResourceCondition(module, resourcePath, condition, false);
         }
 
         @Override
@@ -269,13 +272,14 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         private void addResourceEntry(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Module module, String resourcePath, Object origin) {
-            if (!shouldRegisterResource(module, resourcePath)) {
-                return;
-            }
-
             String resPath = resourcePath;
             if (resourcePath.startsWith("/")) {
                 resPath = resourcePath.substring(1);
+            }
+
+            if (!shouldRegisterResource(module, resPath)) {
+                Resources.currentLayer().addResourceMetadata(module, resPath, dynamicAccessMetadata);
+                return;
             }
 
             if (module != null && module.isNamed()) {
@@ -322,9 +326,9 @@ public class ResourcesFeature implements InternalFeature {
         /*
          * It is possible that one resource can be registered under different conditions
          * (typeReachable). In some cases, few conditions will be satisfied, and we will try to
-         * register same resource for each satisfied condition. This function will check if the
-         * resource is already registered and prevent multiple registrations of same resource under
-         * different conditions
+         * register same resource for each satisfied condition. This function detects already
+         * registered classpath resources so duplicate physical registrations can be skipped while
+         * the caller still merges the later condition metadata into the stored entry.
          */
         public boolean shouldRegisterResource(Module module, String resourceName) {
             /* we only do this if we are on the classPath */
