@@ -105,9 +105,9 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
     // synchronized until parallel class loading is implemented (GR-62338)
     @Override
     public synchronized Class<?> doLoadClass(Symbol<Type> type) {
-        String pkg = packageFromType(type);
+        String internalPackageName = packageFromType(type);
         try {
-            byte[] bytes = pkg == null ? null : loadFromJImage(type, pkg);
+            byte[] bytes = internalPackageName == null ? null : loadFromJImage(type, internalPackageName);
             if (bytes == null) {
                 /* Preserve boot class path append semantics by looking there after the jimage. */
                 bytes = loadFromAppendedBootClassPathBytes(type);
@@ -123,8 +123,8 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         }
     }
 
-    private byte[] loadFromJImage(Symbol<Type> type, String pkg) throws IOException {
-        String moduleName = ClassRegistries.getBootModuleForPackage(pkg);
+    private byte[] loadFromJImage(Symbol<Type> type, String internalPackageName) throws IOException {
+        String moduleName = ClassRegistries.getBootModuleForPackage(internalPackageName);
         if (moduleName == null) {
             return null;
         }
@@ -144,12 +144,15 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         return BootLoaderClassPathSupport.getResourceBytes(TypeSymbols.typeToName(type) + ".class");
     }
 
+    /**
+     * Extracts an internal package name from a type descriptor.
+     */
     private static String packageFromType(Symbol<Type> type) {
         int lastSlash = type.lastIndexOf((byte) '/');
         if (lastSlash == -1) {
             return null;
         }
-        return type.subSequence(1, lastSlash).toString().replace('/', '.');
+        return type.subSequence(1, lastSlash).toString();
     }
 
     @Override

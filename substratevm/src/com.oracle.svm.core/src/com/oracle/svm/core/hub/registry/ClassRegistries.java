@@ -134,6 +134,10 @@ public final class ClassRegistries implements ParsingContext {
     private final ConcurrentHashMap<ClassLoader, AbstractClassRegistry> buildTimeRegistries;
 
     private final AbstractClassRegistry bootRegistry;
+
+    /**
+     * Maps boot loader packages in internal form (e.g. {@code java/lang}) to their defining module.
+     */
     private final EconomicMap<String, String> bootPackageToModule;
 
     /**
@@ -158,7 +162,7 @@ public final class ClassRegistries implements ParsingContext {
 
     private static EconomicMap<String, String> computeBootPackageToModuleMap() {
         EconomicMap<String, String> bootPackageToModule = EconomicMap.create();
-        JVMCIReflectionUtil.bootLoaderPackages().forEach(p -> bootPackageToModule.put(p.getName(), p.module().getName()));
+        JVMCIReflectionUtil.bootLoaderPackages().forEach(p -> bootPackageToModule.put(p.getName().replace('.', '/'), p.module().getName()));
         return bootPackageToModule;
     }
 
@@ -175,9 +179,12 @@ public final class ClassRegistries implements ParsingContext {
         return singletons[singletons.length - 1];
     }
 
-    static String getBootModuleForPackage(String pkg) {
+    /**
+     * Finds the boot module that defines `internalPackageName`.
+     */
+    static String getBootModuleForPackage(String internalPackageName) {
         for (var singleton : layeredSingletons()) {
-            var module = singleton.bootPackageToModule.get(pkg);
+            var module = singleton.bootPackageToModule.get(internalPackageName);
             if (module != null) {
                 return module;
             }
@@ -192,10 +199,13 @@ public final class ClassRegistries implements ParsingContext {
      * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
      */
     public static String getSystemPackageLocation(String internalPackageName) {
-        String module = getBootModuleForPackage(internalPackageName.replace('/', '.'));
+        String module = getBootModuleForPackage(internalPackageName);
         return module == null ? null : "jrt:/" + module;
     }
 
+    /**
+     * Returns boot loader package names in internal form, matching `BootLoader.getSystemPackageNames`.
+     */
     public static String[] getSystemPackageNames() {
         Set<String> systemPackageNames = new HashSet<>();
         for (var singleton : layeredSingletons()) {
