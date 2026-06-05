@@ -28,18 +28,23 @@ import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CST
 
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.shared.BuildPhaseProvider;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -50,8 +55,10 @@ public final class JNINativeLinkage {
 
     private PointerBase entryPoint = Word.nullPointer();
 
-    private final Class<?> declaringClassObject;
-    private final CharSequence declaringClass;
+    @UnknownObjectField(availability = BuildPhaseProvider.AfterAnalysis.class) //
+    @Stable //
+    private DynamicHub declaringClass;
+    private final CharSequence declaringClassName;
     private final CharSequence name;
     private final CharSequence descriptor;
 
@@ -60,25 +67,35 @@ public final class JNINativeLinkage {
     /**
      * Creates an object for linking the address of a native method.
      *
-     * @param declaringClass the {@linkplain JavaType#getName() name} of the class declaring the
-     *            native method
+     * @param declaringClass the class declaring the native method
      * @param name the name of the native method
      * @param descriptor the {@linkplain Signature#toMethodDescriptor() descriptor} of the native
      *            method
      */
-    public JNINativeLinkage(CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
-        this(null, declaringClass, name, descriptor);
-    }
-
-    public JNINativeLinkage(Class<?> declaringClassObject, CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
-        this.declaringClassObject = declaringClassObject;
+    public JNINativeLinkage(DynamicHub declaringClass, CharSequence name, CharSequence descriptor) {
+        assert declaringClass != null;
         this.declaringClass = declaringClass;
+        this.declaringClassName = MetaUtil.toInternalName(declaringClass.getName());
         this.name = name;
         this.descriptor = descriptor;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JNINativeLinkage(ResolvedJavaType declaringClass, CharSequence name, CharSequence descriptor) {
+        this.declaringClassName = MetaUtil.toInternalName(declaringClass.toClassName());
+        this.name = name;
+        this.descriptor = descriptor;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setDeclaringClass(DynamicHub declaringClass) {
+        assert this.declaringClass == null;
+        assert MetaUtil.toInternalName(declaringClass.getName()).equals(getDeclaringClassName());
+        this.declaringClass = declaringClass;
+    }
+
     public String getDeclaringClassName() {
-        return (String) declaringClass;
+        return (String) declaringClassName;
     }
 
     public String getName() {
@@ -118,7 +135,7 @@ public final class JNINativeLinkage {
 
     @Override
     public int hashCode() {
-        return (((name.hashCode() * 31) + descriptor.hashCode()) * 31) + declaringClass.hashCode();
+        return (((name.hashCode() * 31) + descriptor.hashCode()) * 31) + declaringClassName.hashCode();
     }
 
     /**
@@ -130,7 +147,7 @@ public final class JNINativeLinkage {
         if (obj instanceof JNINativeLinkage) {
             JNINativeLinkage that = (JNINativeLinkage) obj;
             return (that == this) ||
-                            (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClass, that.declaringClass) &&
+                            (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClassName, that.declaringClassName) &&
                                             WRAPPED_CSTRING_EQUIVALENCE.equals(name, that.name) &&
                                             WRAPPED_CSTRING_EQUIVALENCE.equals(descriptor, that.descriptor));
         }
@@ -150,8 +167,16 @@ public final class JNINativeLinkage {
      */
     public PointerBase getOrFindEntryPoint() {
         if (entryPoint.isNull()) {
-            Class<?> classObject = getDeclaringClassObject();
-            ClassLoader classLoader = classObject == null ? null : DynamicHub.fromClass(classObject).getClassLoader();
+            Class<?> classObject = null;
+            ClassLoader classLoader = null;
+            /*
+             * When class loaders are ignored, NativeLibraries.find is substituted with a global
+             * NativeLibrarySupport lookup, so neither the declaring class nor its loader is needed.
+             */
+            if (ClassRegistries.respectClassLoader()) {
+                classObject = DynamicHub.toClass(declaringClass);
+                classLoader = declaringClass.getClassLoader();
+            }
             String shortName = getShortName();
             entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortName, getName()));
             if (entryPoint.isNull()) {
@@ -163,16 +188,6 @@ public final class JNINativeLinkage {
             }
         }
         return entryPoint;
-    }
-
-    private Class<?> getDeclaringClassObject() {
-        if (ClassRegistries.respectClassLoader()) {
-            if (declaringClassObject != null) {
-                return declaringClassObject;
-            }
-            return JNIReflectionDictionary.getClassObjectByName(getDeclaringClassName());
-        }
-        return null;
     }
 
     public String getShortName() {

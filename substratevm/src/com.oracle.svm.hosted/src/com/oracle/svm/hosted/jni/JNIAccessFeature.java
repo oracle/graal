@@ -67,6 +67,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
@@ -190,9 +191,11 @@ public class JNIAccessFeature implements Feature {
     private final Map<Class<?>, Set<Pair<String, Class<?>[]>>> newNegativeMethodLookups = new ConcurrentHashMap<>();
     private final Map<RegistrationWithPreserved<Field>, Boolean> newFields = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<String>> newNegativeFieldLookups = new ConcurrentHashMap<>();
-    private final Map<JNINativeLinkage, JNINativeLinkage> newLinkages = new ConcurrentHashMap<>();
 
-    private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new ConcurrentHashMap<>();
+    // Needs Pair to de-duplicate linkage objects for lack of key-to-key lookups.
+    private final Map<JNINativeLinkage, Pair<JNINativeLinkage, ResolvedJavaType>> nativeLinkages = new ConcurrentHashMap<>();
+    private final Map<AbstractJNINativeCallWrapperMethod, JNINativeLinkage> pendingNativeCallWrappers = new ConcurrentHashMap<>();
+    private volatile BeforeAnalysisAccessImpl beforeAnalysisAccess;
 
     public static class Options {
         @Option(help = "Print JNI methods added to generated image")//
@@ -305,13 +308,48 @@ public class JNIAccessFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
+        beforeAnalysisAccess = access;
 
         for (CallVariant variant : CallVariant.values()) {
             registerJavaCallTrampoline(access, variant, false);
             registerJavaCallTrampoline(access, variant, true);
         }
+        pendingNativeCallWrappers.forEach((wrapper, linkage) -> registerNativeCallWrapperReachabilityHandler(access, wrapper, linkage));
+        pendingNativeCallWrappers.clear();
 
         singleton().runtimeSupport.setAnalysisAccess(access);
+    }
+
+    public void registerNativeCallWrapperReachabilityHandler(AbstractJNINativeCallWrapperMethod wrapper) {
+        JNINativeLinkage linkage = wrapper.getLinkage();
+        BeforeAnalysisAccessImpl access = beforeAnalysisAccess;
+        if (access != null) {
+            registerNativeCallWrapperReachabilityHandler(access, wrapper, linkage);
+        } else {
+            JNINativeLinkage previous = pendingNativeCallWrappers.putIfAbsent(wrapper, linkage);
+            assert previous == null || previous == linkage;
+        }
+    }
+
+    private void registerNativeCallWrapperReachabilityHandler(BeforeAnalysisAccessImpl access, AbstractJNINativeCallWrapperMethod wrapper, JNINativeLinkage linkage) {
+        AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
+        access.registerReachabilityHandler(
+                        a -> setHubAndNativeLinkageForReachableWrapper((DuringAnalysisAccessImpl) a, linkage), analysisWrapper);
+    }
+
+    private void setHubAndNativeLinkageForReachableWrapper(DuringAnalysisAccessImpl access, JNINativeLinkage linkage) {
+        /*
+         * The JNI reflection dictionary stores only linkages that RegisterNatives can update
+         * and UnregisterNatives can clear. SVM does not support those JNI operations for
+         * built-in native functions, so built-in linkages are intentionally not added.
+         */
+        if (!linkage.isBuiltInFunction()) {
+            ResolvedJavaType declaringClass = nativeLinkages.get(linkage).getRight();
+            AnalysisType declaringClassType = access.getUniverse().lookup(declaringClass);
+            DynamicHub declaringHub = access.getHostVM().dynamicHub(declaringClassType);
+            linkage.setDeclaringClass(declaringHub);
+            JNIReflectionDictionary.currentLayer().addLinkage(linkage);
+        }
     }
 
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
@@ -344,26 +382,22 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
-    public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
+    public JNINativeLinkage makeLinkage(ResolvedJavaType declaringClass, String name, String descriptor) {
+        assert declaringClass.isInstanceClass() : declaringClass;
         UserError.guarantee(!runtimeSupport.isSealed(),
                         "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
                         declaringClass, name, descriptor);
-
-        assert declaringClass.startsWith("L") && declaringClass.endsWith(";") : declaringClass;
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
         if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {
             System.out.println("Creating a new JNINativeLinkage: " + key);
         }
 
-        return nativeLinkages.computeIfAbsent(key, linkage -> {
-            newLinkages.put(linkage, linkage);
-            return linkage;
-        });
+        return nativeLinkages.computeIfAbsent(key, linkage -> Pair.create(linkage, declaringClass)).getLeft();
     }
 
     private boolean wereElementsAdded() {
-        return !(newClasses.isEmpty() && newMethods.isEmpty() && newFields.isEmpty() && newLinkages.isEmpty() &&
+        return !(newClasses.isEmpty() && newMethods.isEmpty() && newFields.isEmpty() &&
                         newNegativeClassLookups.isEmpty() && newNegativeFieldLookups.isEmpty() && newNegativeMethodLookups.isEmpty());
     }
 
@@ -407,9 +441,6 @@ public class JNIAccessFeature implements Feature {
             }
         });
         newNegativeFieldLookups.clear();
-
-        JNIReflectionDictionary.currentLayer().addLinkages(newLinkages);
-        newLinkages.clear();
 
         access.requireAnalysisIteration();
     }

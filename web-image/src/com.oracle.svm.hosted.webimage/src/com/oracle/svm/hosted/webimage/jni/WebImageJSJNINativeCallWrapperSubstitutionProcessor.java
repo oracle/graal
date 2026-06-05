@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.hosted.jni.JNIAccessFeature;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -38,6 +39,24 @@ public class WebImageJSJNINativeCallWrapperSubstitutionProcessor extends Substit
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
-        return callWrappers.computeIfAbsent(method, WebImageJSJNINativeCallWrapperMethod::new);
+        WebImageJSJNINativeCallWrapperMethod wrapper = callWrappers.get(method);
+        if (wrapper != null) {
+            return wrapper;
+        }
+
+        wrapper = new WebImageJSJNINativeCallWrapperMethod(method);
+        WebImageJSJNINativeCallWrapperMethod existing = callWrappers.putIfAbsent(method, wrapper);
+        if (existing != null) {
+            return existing;
+        }
+
+        /*
+         * Registering the reachability handler can ask the analysis universe to look up this
+         * wrapper, which can re-enter this substitution processor. The wrapper must already be
+         * visible in callWrappers so the recursive lookup returns it instead of creating another
+         * wrapper.
+         */
+        JNIAccessFeature.singleton().registerNativeCallWrapperReachabilityHandler(wrapper);
+        return wrapper;
     }
 }

@@ -64,12 +64,6 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.guest.staging.c.CGlobalData;
-import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
-import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -130,6 +124,12 @@ import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.ArrayUtil;
+import com.oracle.svm.guest.staging.c.CGlobalData;
+import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.Utf8;
 import com.oracle.svm.shared.util.VMError;
@@ -389,7 +389,6 @@ public final class JNIFunctions {
     static int RegisterNatives(JNIEnvironment env, JNIObjectHandle hclazz, JNINativeMethod methods, int nmethods) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         Pointer p = (Pointer) methods;
-        String declaringClass = MetaUtil.toInternalName(clazz.getName());
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
             CharSequence name = Utf8.wrapUtf8CString(entry.name());
@@ -411,7 +410,7 @@ public final class JNIFunctions {
             if (RuntimeClassLoading.isSupported()) {
                 DynamicHub hub = DynamicHub.fromClass(clazz);
                 if (hub.isRuntimeLoaded()) {
-                    assert JNIReflectionDictionary.getLinkage(declaringClass, name, signature) == null : "Runtime loaded classes should have no global linkage";
+                    assert JNIReflectionDictionary.getLinkage(hub, name, signature) == null : "Runtime loaded classes should have no global linkage";
                     ResolvedJavaType interpreterType = hub.getInterpreterType();
                     assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
                     CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
@@ -423,7 +422,7 @@ public final class JNIFunctions {
                 }
             }
 
-            JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(declaringClass, name, signature);
+            JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(DynamicHub.fromClass(clazz), name, signature);
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
