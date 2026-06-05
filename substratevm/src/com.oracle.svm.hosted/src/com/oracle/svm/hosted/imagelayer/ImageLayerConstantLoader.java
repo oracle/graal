@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
@@ -129,7 +128,13 @@ final class ImageLayerConstantLoader {
      * reachable transitively from other constants.
      */
     void relinkStaticFinalFieldValues(boolean isLateLoading) {
-        IntStream.range(0, snapshot.getConstants().size()).parallel().forEach(i -> {
+        /*
+         * Relinking can trigger hosted class initialization, which may execute arbitrary framework
+         * code. Do not use the common pool here: if class initialization waits for common-pool work
+         * while other relinking tasks are blocked on class-initialization state, the image build can
+         * deadlock.
+         */
+        for (int i = 0; i < snapshot.getConstants().size(); i++) {
             var constantData = snapshot.getConstants().get(i);
             var relinking = constantData.getObject().getRelinking();
             if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
@@ -143,7 +148,7 @@ final class ImageLayerConstantLoader {
                     loader.universe.getHeapScanner().registerBaseLayerValue(constant, PERSISTED);
                 }
             }
-        });
+        }
     }
 
     private PersistedConstantData.Loader findConstant(int id) {

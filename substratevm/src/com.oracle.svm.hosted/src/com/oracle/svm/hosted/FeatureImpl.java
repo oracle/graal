@@ -83,6 +83,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
@@ -680,6 +681,20 @@ public class FeatureImpl {
             VMError.guarantee(!(field instanceof OriginalFieldProvider),
                             "The ResolvedJavaField %s must be the original (Host VM) field. You can use OriginalFieldProvider.getOriginalField() to retrieve that", field);
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Registers a {@link LayeredFieldValueTransformer} for a field whose value may be carried
+         * forward from an initial layer and updated by an extension layer. Unlike
+         * {@link #registerFieldValueTransformer(Field, FieldValueTransformer)}, the transformer is
+         * represented as an image-layer-aware JVMCI transformer so that updatable prior-layer field
+         * values can be tracked and patched when a later layer supplies a replacement value.
+         *
+         * @param field the field whose value should be transformed
+         * @param transformer the layered transformer instance to apply to the field
+         */
+        public void registerLayeredFieldValueTransformer(Field field, LayeredFieldValueTransformer<?> transformer) {
+            FieldValueInterceptionSupport.singleton().registerLayeredFieldValueTransformer(getMetaAccess().lookupJavaField(field), transformer);
         }
 
         /**

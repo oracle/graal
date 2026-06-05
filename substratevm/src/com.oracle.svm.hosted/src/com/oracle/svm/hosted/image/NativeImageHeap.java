@@ -650,7 +650,7 @@ public final class NativeImageHeap implements ImageHeap {
                 for (HostedField field : clazz.getInstanceFields(true)) {
                     boolean fieldPatchable = false;
                     if (layeredFieldValueTransformerSupport != null) {
-                        fieldPatchable = layeredFieldValueTransformerSupport.finalizeFieldValue(field, constant);
+                        fieldPatchable = layeredFieldValueTransformerSupport.isFieldValueUpdatable(field, constant);
                     }
                     boolean fieldRelocatable = false;
                     /*

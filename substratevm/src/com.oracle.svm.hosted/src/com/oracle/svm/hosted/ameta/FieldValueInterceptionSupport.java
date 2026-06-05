@@ -52,6 +52,7 @@ import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithR
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -213,6 +214,19 @@ public final class FieldValueInterceptionSupport {
             throw UserError.abort("Cannot register a field value transformer for field %s: %s", oField.format("%H.%n"),
                             "A field value transformer is already registered for this field, or the field value is transformed via an @Alias annotation.");
         }
+    }
+
+    /**
+     * Registers a programmatic layered field value transformer for an analysis field. This is used
+     * when a feature needs the {@link LayeredFieldValueTransformer} semantics, including
+     * cross-layer update tracking, but cannot express the transformer with a
+     * {@link com.oracle.svm.core.layered.LayeredFieldValue} annotation on the field.
+     */
+    public void registerLayeredFieldValueTransformer(AnalysisField aField, LayeredFieldValueTransformer<?> transformer) {
+        VMError.guarantee(layeredSupport != null, "Layered field value transformers can only be registered in layered image builds.");
+        ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(aField);
+        VMError.guarantee(oField != null, "Cannot register a layered field value transformer for synthetic field %s", aField);
+        registerFieldValueTransformer(oField, OriginalClassProvider.getOriginalType(oField.getType()), layeredSupport.createTransformer(aField, transformer));
     }
 
     Object lookupFieldValueInterceptor(AnalysisField field) {

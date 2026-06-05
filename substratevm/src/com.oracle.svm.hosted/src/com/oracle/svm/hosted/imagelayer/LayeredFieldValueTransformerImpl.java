@@ -32,7 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
@@ -99,9 +101,20 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
                         .toList();
     }
 
+    void finalizeFieldValues(ImageHeapScanner heapScanner, ScanReason reason) {
+        for (var info : receiverToValueStateMap.values()) {
+            info.maybeTransform();
+            if (!info.isUnresolved() && !info.useUpdate && info.transformerResultUpdatable && !info.exposeUpdatableResults) {
+                boolean fieldValueUpdatable = finalizeFieldValue(heapScanner.toImageHeapObject(info.receiver, reason));
+                assert fieldValueUpdatable;
+                heapScanner.rescanConstant(info.transformerResultValue, reason);
+            }
+        }
+    }
+
     /**
-     * This method is called during image heap layouting. At this point all compiler optimization
-     * have already been performed and so it is now legal to expose all values.
+     * This method is called immediately before image heap layout. At this point all compiler
+     * optimizations have already been performed and so it is now legal to expose all values.
      *
      * @return whether this value is updatable.
      */
@@ -130,20 +143,31 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
      * {@link LayeredFieldValueTransformer#update} should be called instead of
      * {@link LayeredFieldValueTransformer#transform}.
      */
-    private TransformedValueState createValueStatue(JavaConstant receiver) {
+    private TransformedValueState createValueState(JavaConstant receiver) {
         boolean useUpdate = false;
         JavaConstant finalReceiver = receiver;
         if (receiver instanceof ImageHeapConstant ihc) {
-            finalReceiver = ihc.getHostedObject();
             if (ihc.isInSharedLayer()) {
                 useUpdate = priorLayerReceiversWithUpdatableValues.contains(ImageHeapConstant.getConstantID(ihc));
+            }
+            finalReceiver = ihc.getHostedObject();
+            assert !JavaConstant.NULL_POINTER.equals(finalReceiver) : "JavaConstant.NULL_POINTER is only used as a synthetic receiver for prior-layer values without a hosted object.";
+            if (finalReceiver == null) {
+                VMError.guarantee(useUpdate, "Missing hosted object for non-updatable layered field value receiver %s", ihc);
+                /*
+                 * This is a prior-layer receiver that no longer has a hosted Java object in the
+                 * current layer. The transformer update API still expects a JavaConstant argument,
+                 * so use the JVMCI representation of Java null rather than passing a host null to
+                 * GuestAccess.invoke.
+                 */
+                finalReceiver = JavaConstant.NULL_POINTER;
             }
         }
         return new TransformedValueState(finalReceiver, useUpdate);
     }
 
     TransformedValueState maybeUpdateState(JavaConstant receiver) {
-        var valueState = receiverToValueStateMap.computeIfAbsent(getHostedObject(receiver), _ -> createValueStatue(receiver));
+        var valueState = receiverToValueStateMap.computeIfAbsent(getHostedObject(receiver), _ -> createValueState(receiver));
         valueState.maybeTransform();
         return valueState;
     }
@@ -172,7 +196,7 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
     }
 
     private static JavaConstant getHostedObject(JavaConstant receiver) {
-        return receiver instanceof ImageHeapConstant ihc ? ihc.getHostedObject() : receiver;
+        return receiver instanceof ImageHeapConstant ihc && ihc.isBackedByHostedObject() ? ihc.getHostedObject() : receiver;
     }
 
     /**
