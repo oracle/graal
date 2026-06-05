@@ -69,6 +69,7 @@ public class DeoptimizationRuntime {
 
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
             DeoptimizationAction action = Deoptimizer.decodeDeoptAction(actionAndReason);
+            DeoptimizationReason reason = Deoptimizer.decodeDeoptReason(actionAndReason);
 
             if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
                 CodePointer ip = KnownIntrinsics.readReturnAddress();
@@ -80,7 +81,7 @@ public class DeoptimizationRuntime {
 
             if (action.doesInvalidateCompilation()) {
                 boolean reprofile = (action == DeoptimizationAction.InvalidateReprofile);
-                Deoptimizer.invalidateMethodOfFrame(CurrentIsolate.getCurrentThread(), sp, speculation, reprofile);
+                Deoptimizer.invalidateMethodOfFrame(CurrentIsolate.getCurrentThread(), sp, speculation, reason, reprofile);
             } else {
                 Deoptimizer.deoptimizeFrame(sp, false, speculation);
             }

@@ -31,6 +31,7 @@ import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -97,6 +98,12 @@ public interface SubstrateInstalledCode {
      * after invalidation.
      */
     void reprofile();
+
+    /**
+     * Records the reason for a deoptimization that invalidated this installed code, if this
+     * installed-code implementation exposes deoptimization counts through profiling metadata.
+     */
+    void recordDeoptimization(DeoptimizationReason reason);
 
     /** Whether the code represented by this object exists and could have live invocations. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

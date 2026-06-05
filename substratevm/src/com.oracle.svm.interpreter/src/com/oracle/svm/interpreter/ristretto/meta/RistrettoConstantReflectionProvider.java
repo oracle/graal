@@ -37,6 +37,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -49,10 +50,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class RistrettoConstantReflectionProvider extends SubstrateConstantReflectionProvider {
 
     private final SnippetReflectionProvider snippetReflectionProvider;
+    private final MethodHandleAccessProvider methodHandleAccessProvider;
 
     public RistrettoConstantReflectionProvider(SubstrateMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider) {
         super(metaAccess);
         this.snippetReflectionProvider = snippetReflectionProvider;
+        this.methodHandleAccessProvider = new RistrettoMethodHandleAccessProvider(snippetReflectionProvider);
     }
 
     @Override
@@ -94,5 +97,10 @@ public class RistrettoConstantReflectionProvider extends SubstrateConstantReflec
             case Object -> snippetReflectionProvider.forObject(InterpreterToVM.getFieldObject(receiver, iField));
             default -> throw GraalError.shouldNotReachHere("Unknown kind: " + kind);
         };
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        return methodHandleAccessProvider;
     }
 }
