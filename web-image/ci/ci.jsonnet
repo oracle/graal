@@ -15,7 +15,7 @@ local tier2 = r.tier2;
   // THE TASK CONFIGURATION
   task_dict:: {
     // TODO GR-67831 Split into separate style and fullbuild jobs
-    'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.jdt + r.spotbugs + r.prettier + platforms({
+    'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.jdt + r.spotbugs + r.prettier + r.notify.base + platforms({
       'linux:amd64:jdk-latest': daily,
     }),
     'unittest': mxgate('webimagebuild,webimageunittest,webimagespectest_no-closure') + r.task_spec({
