@@ -283,7 +283,13 @@ public class SerializationSupport {
         DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
         DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
         if (MetadataTracer.enabled() && shouldTraceSerialization(declaringHub)) {
-            MetadataTracer.singleton().traceSerializationType(declaringClass);
+            MetadataTracer tracer = MetadataTracer.singleton();
+            tracer.traceSerializationType(declaringClass);
+            if (targetConstructorClass != declaringClass) {
+                // Replay also needs the constructor declaring class.
+                // See FS-001-native-image-semantics.3.1.
+                tracer.traceReflectionType(targetConstructorClass);
+            }
         }
         for (var singleton : layeredSingletons()) {
             Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
