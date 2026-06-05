@@ -77,8 +77,13 @@ public class PreserveLambdaProxyClassesTest {
     public void preserveIncludesReachedLambdaProxyClasses() throws Exception {
         SerializableSupplier supplier = PreservedCapturingClass.createSupplier();
         assertReflectiveAccess(supplier);
-        assertSerializationAccess(supplier);
         assertJniAccess(supplier);
+    }
+
+    @Test
+    public void preserveSupportsSerializableLambdaRoundTrip() throws Exception {
+        SerializableSupplier supplier = PreservedCapturingClass.createSupplier();
+        assertSerializableLambdaRoundTrip(supplier);
     }
 
     private static void assertReflectiveAccess(SerializableSupplier supplier) throws ReflectiveOperationException {
@@ -90,7 +95,7 @@ public class PreserveLambdaProxyClassesTest {
         assertEquals(EXPECTED, capturedField.get(supplier));
     }
 
-    private static void assertSerializationAccess(SerializableSupplier supplier) throws Exception {
+    private static void assertSerializableLambdaRoundTrip(SerializableSupplier supplier) throws Exception {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ObjectOutputStream stream = new ObjectOutputStream(bytes)) {
             stream.writeObject(supplier);
