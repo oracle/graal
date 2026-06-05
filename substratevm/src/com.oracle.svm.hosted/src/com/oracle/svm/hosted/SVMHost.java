@@ -841,6 +841,17 @@ public class SVMHost extends HostVM {
                 new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, getProviders(method.getMethodVariantKey()));
             }
         }
+        if (shouldIntrinsifyStringFormat(method)) {
+            new StringFormatPhase(allowStringFormatFormatterFallback()).apply(graph, bb.getProviders(method));
+        }
+    }
+
+    protected boolean shouldIntrinsifyStringFormat(AnalysisMethod method) {
+        return method.isOriginalMethod() && StringFormatPhase.Options.IntrinsifyStringFormat.getValue();
+    }
+
+    protected boolean allowStringFormatFormatterFallback() {
+        return true;
     }
 
     @Override

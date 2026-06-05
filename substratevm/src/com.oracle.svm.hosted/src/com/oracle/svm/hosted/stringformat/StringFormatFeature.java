@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.stringformat.StringFormat;
+import com.oracle.svm.core.stringformat.StringFormatPhase;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -54,6 +55,9 @@ final class StringFormatFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
+        if (!StringFormatPhase.Options.IntrinsifyStringFormat.getValue()) {
+            return;
+        }
         ImageSingletons.add(StringFormat.class, new StringFormat());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         access.registerObjectReachableCallback(Locale.class, this::collectZeroDigits);

@@ -88,17 +88,29 @@ public final class StringFormatPhase extends BasePhase<Providers> {
     /* Target methods that perform the intrinsified string formatting. */
     private static final Method INTRINSIC_METHOD = ReflectionUtil.lookupMethod(StringFormat.class, "format", String.class, Object[].class);
     private static final Method INTRINSIC_LOCALE_METHOD = ReflectionUtil.lookupMethod(StringFormat.class, "format", Locale.class, String.class, Object[].class);
+    private static final Method INTRINSIC_FORMATTER_FALLBACK_METHOD = ReflectionUtil.lookupMethod(StringFormat.class, "formatWithFormatterFallback", String.class, Object[].class);
+    private static final Method INTRINSIC_FORMATTER_FALLBACK_LOCALE_METHOD = ReflectionUtil.lookupMethod(StringFormat.class, "formatWithFormatterFallback", Locale.class, String.class, Object[].class);
 
     /**
      * Matches a simplified version of the Java format specifiers.
-     * %[argument_index$][flags]conversion
+     * %[argument_index$][flags][width][.precision][tT]conversion
      */
-    private static final Pattern FORMAT_STRING_PATTERN = Pattern.compile("%(\\d+\\$)?([0#\\<]*)?([1-9]\\d*)?([" + StringFormat.SUPPORTED_CONVERSIONS + "])");
+    private static final Pattern FORMAT_STRING_PATTERN = Pattern.compile("%(\\d+\\$)?([-#+ 0,(<]*)?(\\d+)?(\\.\\d+)?([tT])?([a-zA-Z%])");
     /**
      * Limit to ensure that format strings that often repeat the same format argument do not lead to
      * an excessive array length of the transformed format specifiers.
      */
     private static final int MAX_FORMAT_SPECIFIERS = 100;
+
+    private final boolean allowFormatterFallback;
+
+    public StringFormatPhase() {
+        this(true);
+    }
+
+    public StringFormatPhase(boolean allowFormatterFallback) {
+        this.allowFormatterFallback = allowFormatterFallback;
+    }
 
     @Override
     protected void run(StructuredGraph graph, Providers providers) {
@@ -110,18 +122,19 @@ public final class StringFormatPhase extends BasePhase<Providers> {
             NodeInputList<ValueNode> arguments = callTarget.arguments();
             if (formatMethod.equals(callTarget.targetMethod())) {
                 assert arguments.size() == 2;
-                processFormat(graph, callTarget, null, arguments.get(0), arguments.get(1), providers);
+                processFormat(graph, callTarget, null, arguments.get(0), arguments.get(1), providers, allowFormatterFallback);
             } else if (formatLocaleMethod.equals(callTarget.targetMethod())) {
                 assert arguments.size() == 3;
-                processFormat(graph, callTarget, arguments.get(0), arguments.get(1), arguments.get(2), providers);
+                processFormat(graph, callTarget, arguments.get(0), arguments.get(1), arguments.get(2), providers, allowFormatterFallback);
             } else if (formattedMethod.equals(callTarget.targetMethod())) {
                 assert arguments.size() == 2;
-                processFormat(graph, callTarget, null, arguments.get(0), arguments.get(1), providers);
+                processFormat(graph, callTarget, null, arguments.get(0), arguments.get(1), providers, allowFormatterFallback);
             }
         }
     }
 
-    private static void processFormat(StructuredGraph graph, MethodCallTargetNode callTarget, ValueNode locale, ValueNode formatNode, ValueNode argsNode, Providers providers) {
+    private static void processFormat(StructuredGraph graph, MethodCallTargetNode callTarget, ValueNode locale, ValueNode formatNode, ValueNode argsNode, Providers providers,
+                    boolean allowFormatterFallback) {
         /* We require that the format string is a String constant. */
         if (!formatNode.isJavaConstant()) {
             graph.getDebug().log("Format string is not a constant: %s", formatNode);
@@ -152,7 +165,7 @@ public final class StringFormatPhase extends BasePhase<Providers> {
          * We require that the format string is well formed and contains only a few supported format
          * specifiers.
          */
-        Deque<StringFormatSpecifier> formatSpecifiers = parseFormatString(formatString, argumentNodes);
+        Deque<StringFormatSpecifier> formatSpecifiers = parseFormatString(formatString, argumentNodes, allowFormatterFallback);
         if (formatSpecifiers == null) {
             graph.getDebug().log("Format string is too complicated for intrinsification: %s", formatString);
             return;
@@ -167,7 +180,7 @@ public final class StringFormatPhase extends BasePhase<Providers> {
      * all relevant JDK methods and classes are non-public, so we cannot re-use the parsing code
      * from the JDK.
      */
-    private static Deque<StringFormatSpecifier> parseFormatString(String formatString, List<ValueNode> argumentNodes) {
+    private static Deque<StringFormatSpecifier> parseFormatString(String formatString, List<ValueNode> argumentNodes, boolean allowFormatterFallback) {
         Deque<StringFormatSpecifier> formatSpecifiers = new ArrayDeque<>();
         int index = 0;
         int max = formatString.length();
@@ -206,8 +219,10 @@ public final class StringFormatPhase extends BasePhase<Providers> {
                 return null;
             }
 
+            boolean hasNumberedArgumentIndex = false;
             boolean hasArgumentIndex = false;
             if (matcher.start(1) >= 0) {
+                hasNumberedArgumentIndex = true;
                 hasArgumentIndex = true;
                 try {
                     /*
@@ -228,59 +243,60 @@ public final class StringFormatPhase extends BasePhase<Providers> {
 
             boolean alternate = false;
             boolean zeroPad = false;
-            if (matcher.start(2) >= 0) {
-                String flagsString = formatString.substring(matcher.start(2), matcher.end(2));
-                for (int i = 0; i < flagsString.length(); i++) {
-                    if (flagsString.charAt(i) == '#' && !alternate) {
-                        alternate = true;
-                    } else if (flagsString.charAt(i) == '<' && !hasArgumentIndex) {
-                        /* Re-use the currentArgumentIndex from the last conversion. */
-                        hasArgumentIndex = true;
-                    } else if (flagsString.charAt(i) == '0' && !zeroPad) {
-                        zeroPad = true;
-                    } else {
-                        return null;
-                    }
+            boolean reusePreviousArgument = false;
+            boolean intrinsicFlagsSupported = true;
+            String flagsString = matcher.start(2) >= 0 ? formatString.substring(matcher.start(2), matcher.end(2)) : "";
+            for (int i = 0; i < flagsString.length(); i++) {
+                char flag = flagsString.charAt(i);
+                if (flag == '#' && !alternate) {
+                    alternate = true;
+                } else if (flag == '0' && !zeroPad) {
+                    zeroPad = true;
+                } else if (flag == '<' && !reusePreviousArgument) {
+                    reusePreviousArgument = true;
+                } else {
+                    intrinsicFlagsSupported = false;
                 }
+            }
+            if (reusePreviousArgument) {
+                if (hasNumberedArgumentIndex) {
+                    return null;
+                }
+                /* Re-use the currentArgumentIndex from the last conversion. */
+                hasArgumentIndex = true;
             }
 
             boolean hasWidth = false;
             int width = -1;
+            String widthString = null;
             if (matcher.start(3) >= 0) {
-                String widthString = formatString.substring(matcher.start(3), matcher.end(3));
-                assert widthString.charAt(0) != '0';
-                if (widthString.length() > 1) {
-                    return null;
-                }
+                widthString = formatString.substring(matcher.start(3), matcher.end(3));
                 try {
                     width = Integer.parseInt(widthString);
-                    assert width > 0;
                     hasWidth = true;
                 } catch (NumberFormatException e) {
                     return null;
                 }
             }
 
-            String conversionString = formatString.substring(matcher.start(4), matcher.end(4));
-            assert conversionString.length() == 1;
-            char conversion = conversionString.charAt(0);
-            assert StringFormat.SUPPORTED_CONVERSIONS.indexOf(conversion) >= 0;
-            if (alternate) {
-                if (conversion == StringFormat.HEXADECIMAL_INTEGER) {
-                    appendLiteral(formatSpecifiers, "0x");
-                } else if (conversion == StringFormat.HEXADECIMAL_INTEGER_UPPER) {
-                    appendLiteral(formatSpecifiers, "0X");
-                } else {
+            boolean hasPrecision = false;
+            int precision = -1;
+            String precisionString = null;
+            if (matcher.start(4) >= 0) {
+                hasPrecision = true;
+                precisionString = formatString.substring(matcher.start(4) + 1, matcher.end(4));
+                try {
+                    precision = Integer.parseInt(precisionString);
+                } catch (NumberFormatException e) {
                     return null;
                 }
             }
-            if (zeroPad || hasWidth) {
-                if (conversion != StringFormat.DECIMAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER_UPPER) {
-                    return null;
-                }
-                if (!zeroPad || !hasWidth) {
-                    return null;
-                }
+            boolean dateTime = matcher.start(5) >= 0;
+            String conversionString = formatString.substring(matcher.start(6), matcher.end(6));
+            assert conversionString.length() == 1;
+            char conversion = conversionString.charAt(0);
+            if (!consumesArgument(conversion, dateTime)) {
+                return null;
             }
 
             if (!hasArgumentIndex) {
@@ -291,10 +307,85 @@ public final class StringFormatPhase extends BasePhase<Providers> {
                 return null;
             }
 
-            formatSpecifiers.addLast(new StringFormatSpecifier(conversion, argumentNodes.get(currentArgumentIndex), width));
+            boolean intrinsicSupported = isIntrinsicSupported(conversion, dateTime, hasPrecision, precisionString, alternate, zeroPad, hasWidth, widthString, intrinsicFlagsSupported);
+            if (intrinsicSupported) {
+                formatSpecifiers.addLast(new StringFormatSpecifier(conversion, argumentNodes.get(currentArgumentIndex), alternate, width, zeroPad ? '0' : ' ', precision));
+            } else if (allowFormatterFallback) {
+                formatSpecifiers.addLast(new StringFormatSpecifier(toSingleArgumentFormatSpecifier(formatString, matcher, flagsString), argumentNodes.get(currentArgumentIndex)));
+            } else {
+                return null;
+            }
             index = matcher.end();
         }
         return formatSpecifiers;
+    }
+
+    private static boolean consumesArgument(char conversion, boolean dateTime) {
+        if (dateTime) {
+            return "HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc".indexOf(conversion) >= 0;
+        }
+        return "bBhHsScCdoxXeEfgGaA".indexOf(conversion) >= 0;
+    }
+
+    private static boolean isIntrinsicSupported(char conversion, boolean dateTime, boolean hasPrecision, String precisionString, boolean alternate, boolean zeroPad, boolean hasWidth,
+                    String widthString, boolean intrinsicFlagsSupported) {
+        if (dateTime || !intrinsicFlagsSupported || StringFormat.SUPPORTED_CONVERSIONS.indexOf(conversion) < 0) {
+            return false;
+        }
+        if (alternate && conversion != StringFormat.OCTAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER_UPPER) {
+            return false;
+        }
+        if (hasPrecision) {
+            if (conversion != StringFormat.BOOLEAN && conversion != StringFormat.BOOLEAN_UPPER && conversion != StringFormat.HASHCODE && conversion != StringFormat.HASHCODE_UPPER &&
+                            conversion != StringFormat.STRING && conversion != StringFormat.STRING_UPPER) {
+                return false;
+            }
+            if (precisionString.length() != 1) {
+                return false;
+            }
+        }
+        if (hasWidth) {
+            if (widthString.length() != 1 || widthString.charAt(0) == '0') {
+                return false;
+            }
+            if (conversion != StringFormat.DECIMAL_INTEGER && conversion != StringFormat.OCTAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER &&
+                            conversion != StringFormat.HEXADECIMAL_INTEGER_UPPER && conversion != StringFormat.BOOLEAN && conversion != StringFormat.BOOLEAN_UPPER &&
+                            conversion != StringFormat.HASHCODE && conversion != StringFormat.HASHCODE_UPPER && conversion != StringFormat.STRING && conversion != StringFormat.STRING_UPPER &&
+                            conversion != StringFormat.CHARACTER && conversion != StringFormat.CHARACTER_UPPER) {
+                return false;
+            }
+            if (zeroPad && (conversion != StringFormat.DECIMAL_INTEGER && conversion != StringFormat.OCTAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER &&
+                            conversion != StringFormat.HEXADECIMAL_INTEGER_UPPER)) {
+                return false;
+            }
+            if (hasWidth && alternate) {
+                return false;
+            }
+        } else if (zeroPad) {
+            return false;
+        }
+        return true;
+    }
+
+    private static String toSingleArgumentFormatSpecifier(String formatString, Matcher matcher, String flagsString) {
+        StringBuilder result = new StringBuilder("%");
+        for (int i = 0; i < flagsString.length(); i++) {
+            char flag = flagsString.charAt(i);
+            if (flag != '<') {
+                result.append(flag);
+            }
+        }
+        if (matcher.start(3) >= 0) {
+            result.append(formatString, matcher.start(3), matcher.end(3));
+        }
+        if (matcher.start(4) >= 0) {
+            result.append(formatString, matcher.start(4), matcher.end(4));
+        }
+        if (matcher.start(5) >= 0) {
+            result.append(formatString, matcher.start(5), matcher.end(5));
+        }
+        result.append(formatString, matcher.start(6), matcher.end(6));
+        return result.toString();
     }
 
     /**
@@ -302,7 +393,14 @@ public final class StringFormatPhase extends BasePhase<Providers> {
      * array needs to be materialized immediately before the invoke.
      */
     private static void rewriteInvoke(StructuredGraph graph, MethodCallTargetNode originalCallTarget, ValueNode locale, Deque<StringFormatSpecifier> formatSpecifiers, CoreProviders providers) {
-        VirtualObjectNode virtualObject = graph.add(new VirtualArrayNode(providers.getMetaAccess().lookupJavaType(Object.class), formatSpecifiers.size()));
+        int argumentCount = 0;
+        boolean usesFormatterFallback = false;
+        for (StringFormatSpecifier formatSpecifier : formatSpecifiers) {
+            argumentCount += formatSpecifier.argumentCount();
+            usesFormatterFallback |= formatSpecifier.formatterFormat != null;
+        }
+
+        VirtualObjectNode virtualObject = graph.add(new VirtualArrayNode(providers.getMetaAccess().lookupJavaType(Object.class), argumentCount));
         AllocatedObjectNode allocatedObject = graph.unique(new AllocatedObjectNode(virtualObject));
         CommitAllocationNode commitAllocation = graph.add(new CommitAllocationNode());
         commitAllocation.getVirtualObjects().add(virtualObject);
@@ -316,13 +414,26 @@ public final class StringFormatPhase extends BasePhase<Providers> {
             if (formatSpecifier.literal != null) {
                 JavaConstant literal = providers.getConstantReflection().forString(deduplication.deduplicate(formatSpecifier.literal, false));
                 commitAllocation.getValues().add(ConstantNode.forConstant(literal, providers.getMetaAccess(), graph));
+            } else if (formatSpecifier.formatterFormat != null) {
+                JavaConstant formatterFormat = providers.getConstantReflection().forString(deduplication.deduplicate(formatSpecifier.formatterFormat, false));
+                commitAllocation.getValues().add(ConstantNode.forConstant(formatterFormat, providers.getMetaAccess(), graph));
+                commitAllocation.getValues().add(formatSpecifier.argument);
             } else {
                 commitAllocation.getValues().add(formatSpecifier.argument);
             }
             conversionsBuilder.append(formatSpecifier.conversion);
-            if (formatSpecifier.zeroPaddingWidth >= 0) {
-                assert String.valueOf(formatSpecifier.zeroPaddingWidth).length() == 1;
-                conversionsBuilder.append(formatSpecifier.zeroPaddingWidth);
+            if (formatSpecifier.alternate) {
+                conversionsBuilder.append('#');
+            }
+            if (formatSpecifier.width >= 0) {
+                assert String.valueOf(formatSpecifier.width).length() == 1;
+                conversionsBuilder.append(formatSpecifier.width);
+                conversionsBuilder.append(formatSpecifier.padding);
+            }
+            if (formatSpecifier.precision >= 0) {
+                assert String.valueOf(formatSpecifier.precision).length() == 1;
+                conversionsBuilder.append('.');
+                conversionsBuilder.append(formatSpecifier.precision);
             }
         }
         graph.addBeforeFixed(originalCallTarget.invoke().asFixedNode(), commitAllocation);
@@ -330,7 +441,9 @@ public final class StringFormatPhase extends BasePhase<Providers> {
 
         JavaConstant conversions = providers.getConstantReflection().forString(deduplication.deduplicate(conversionsBuilder.toString(), false));
         ValueNode conversionsNode = ConstantNode.forConstant(conversions, providers.getMetaAccess(), graph);
-        ResolvedJavaMethod intrinsicMethod = providers.getMetaAccess().lookupJavaMethod(locale == null ? INTRINSIC_METHOD : INTRINSIC_LOCALE_METHOD);
+        Method targetMethod = locale == null ? (usesFormatterFallback ? INTRINSIC_FORMATTER_FALLBACK_METHOD : INTRINSIC_METHOD)
+                        : (usesFormatterFallback ? INTRINSIC_FORMATTER_FALLBACK_LOCALE_METHOD : INTRINSIC_LOCALE_METHOD);
+        ResolvedJavaMethod intrinsicMethod = providers.getMetaAccess().lookupJavaMethod(targetMethod);
         ValueNode[] intrinsicArguments = locale == null ? new ValueNode[]{conversionsNode, allocatedObject} : new ValueNode[]{locale, conversionsNode, allocatedObject};
         MethodCallTargetNode intrinsicCallTarget = graph
                         .add(new SubstrateMethodCallTargetNode(InvokeKind.Static, intrinsicMethod, intrinsicArguments, originalCallTarget.returnStamp()));

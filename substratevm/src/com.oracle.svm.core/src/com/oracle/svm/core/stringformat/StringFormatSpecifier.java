@@ -33,21 +33,48 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 final class StringFormatSpecifier {
     final String literal;
+    final String formatterFormat;
     final char conversion;
     final ValueNode argument;
-    final int zeroPaddingWidth;
+    final boolean alternate;
+    final int width;
+    final char padding;
+    final int precision;
 
     StringFormatSpecifier(String literal) {
         this.literal = Objects.requireNonNull(literal);
+        this.formatterFormat = null;
         this.conversion = StringFormat.STRING;
         this.argument = null;
-        this.zeroPaddingWidth = -1;
+        this.alternate = false;
+        this.width = -1;
+        this.padding = 0;
+        this.precision = -1;
     }
 
-    StringFormatSpecifier(char conversion, ValueNode argument, int width) {
+    StringFormatSpecifier(char conversion, ValueNode argument, boolean alternate, int width, char padding, int precision) {
         this.literal = null;
+        this.formatterFormat = null;
         this.conversion = conversion;
         this.argument = argument;
-        this.zeroPaddingWidth = width;
+        this.alternate = alternate;
+        this.width = width;
+        this.padding = padding;
+        this.precision = precision;
+    }
+
+    StringFormatSpecifier(String formatterFormat, ValueNode argument) {
+        this.literal = null;
+        this.formatterFormat = Objects.requireNonNull(formatterFormat);
+        this.conversion = StringFormat.FORMATTER;
+        this.argument = argument;
+        this.alternate = false;
+        this.width = -1;
+        this.padding = 0;
+        this.precision = -1;
+    }
+
+    int argumentCount() {
+        return formatterFormat != null ? 2 : 1;
     }
 }
