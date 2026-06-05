@@ -8,6 +8,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-75640) Added experimental support for Native Image layered images on Darwin.
 * (GR-53498) Added experimental support for Native Image layered images on AArch64.
 * (GR-73717) Added support for collecting conditional reachability metadata from a native image at run time using `-XX:TraceMetadataConditionPackages`.
+* (GR-75222) Deprecated `native-image-utils generate-filters`. The native-image agent applies built-in filters by default; pass custom filter JSON directly with `caller-filter-file=<path>` or `access-filter-file=<path>` when additional filtering is needed.
 * (GR-73875) Added `--print-options` flag to `native-image` for printing available build options in table, markdown, or JSON format. Automated generation of option documentation from `@Option` annotations, eliminating manual maintenance of option tables.
 * (GR-70601) (GR-70592) (GR-70593) (GR-70598) (GR-71096): Add experimental support for just-in-time compilation of Java bytecodes loaded at run-time.
 * (GR-73556) Remove the deprecated `@AutomaticFeature` annotation and its handling. Features should be registered via the --features argument.
