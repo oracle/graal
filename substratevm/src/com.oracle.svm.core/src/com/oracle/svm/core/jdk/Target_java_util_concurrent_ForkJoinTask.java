@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.Constructor;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -47,8 +51,8 @@ final class Target_java_util_concurrent_ForkJoinTask {
      * MissingReflectionRegistrationError (GR-51083). Even if the NI tracing agent is used, the
      * reflective access might go unregistered, since it is executed unpredictably (depending on
      * {@code a.thread != Thread.currentThread()} in the context of a thread pool). This substitute
-     * avoids this problem by never wrapping the exception, which is documented as correct behavior
-     * by the original method.
+     * avoids missing reflection registration errors while still preserving the original
+     * cross-thread wrapping behavior when a suitable public constructor is available.
      */
     @Substitute
     @SuppressWarnings("all")
@@ -63,6 +67,54 @@ final class Target_java_util_concurrent_ForkJoinTask {
             ex = new CancellationException();
             if (!asExecutionException || !((Object) this instanceof Target_java_util_concurrent_ForkJoinTask_InterruptibleTask))
                 return ex;
+        } else if (a.thread != Thread.currentThread()) {
+            Constructor<?> oneArgCtor = null;
+            /*
+             * MissingReflectionRegistrationError is a LinkageError. Avoid catching that concrete
+             * type in substituted bytecode: the catch type would be preserved in the substituted
+             * method's exception table and can fail universe building. Catch LinkageError and
+             * filter it explicitly instead.
+             */
+            try {
+                oneArgCtor = ex.getClass().getConstructor(Throwable.class);
+            } catch (Exception ignore) {
+            } catch (LinkageError e) {
+                if (!(e instanceof MissingReflectionRegistrationError)) {
+                    throw e;
+                }
+            }
+            if (oneArgCtor != null) {
+                try {
+                    ex = SubstrateUtil.cast(oneArgCtor.newInstance(ex), Throwable.class);
+                } catch (Exception ignore) {
+                } catch (LinkageError e) {
+                    if (!(e instanceof MissingReflectionRegistrationError)) {
+                        throw e;
+                    }
+                }
+            } else {
+                Constructor<?> noArgCtor = null;
+                try {
+                    noArgCtor = ex.getClass().getConstructor();
+                } catch (Exception ignore) {
+                } catch (LinkageError e) {
+                    if (!(e instanceof MissingReflectionRegistrationError)) {
+                        throw e;
+                    }
+                }
+                if (noArgCtor != null) {
+                    try {
+                        Throwable rx = SubstrateUtil.cast(noArgCtor.newInstance(), Throwable.class);
+                        rx.initCause(ex);
+                        ex = rx;
+                    } catch (Exception ignore) {
+                    } catch (LinkageError e) {
+                        if (!(e instanceof MissingReflectionRegistrationError)) {
+                            throw e;
+                        }
+                    }
+                }
+            }
         }
         return (asExecutionException) ? new ExecutionException(ex) : ex;
         // Checkstyle: resume
@@ -72,6 +124,7 @@ final class Target_java_util_concurrent_ForkJoinTask {
 
 @TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "Aux")
 final class Target_java_util_concurrent_ForkJoinTask_Aux {
+    @Alias Thread thread;
     @Alias Throwable ex;
 }
 
