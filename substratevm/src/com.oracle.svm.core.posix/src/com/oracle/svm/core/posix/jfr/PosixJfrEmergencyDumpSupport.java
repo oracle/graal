@@ -140,7 +140,8 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
             return Word.nullPointer();
         }
         resetPathBuffer();
-        appendRepositoryLocationToPathBuffer(0);
+        int idx = appendRepositoryLocationToPathBuffer(0);
+        writePathBufferChar(idx, 0);
         return getPathBuffer();
     }
 
