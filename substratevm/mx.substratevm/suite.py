@@ -1229,7 +1229,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "22+",
+            "javaCompliance" : "24+",
             "jacoco" : "exclude",
         },
 

@@ -33,6 +33,14 @@ import java.nio.file.Path;
 /// This is used for resources and classes supplied with `-Xbootclasspath/a:` in
 /// configurations where the boot loader is initialized at run time.
 public final class BootLoaderClassPathSupport {
+    /// Carries boot-append class bytes with the package source discovered from the resource.
+    ///
+    /// @param bytes bytes of a class file
+    /// @param packageLocation the file-system path of the boot class path entry (i.e., jar file or directory)
+    /// from which `bytes` was loaded
+    public record ClassFileBytes(byte[] bytes, String packageLocation) {
+    }
+
     private BootLoaderClassPathSupport() {
     }
 
@@ -49,22 +57,24 @@ public final class BootLoaderClassPathSupport {
         return resource.getBytes();
     }
 
-    /// Looks up the boot loader class path entry that provides `internalPackageName` (e.g. `org/foo/impl`).
-    ///
-    /// This is only for boot loader package discovery, mirroring the `-Xbootclasspath/a:`
-    /// branch of `BootLoader.getSystemPackageLocation`. It must not be used as a general
-    /// class path package lookup: the returned path is consumed by boot-loader package
-    /// definition logic so that `BootLoader.getDefinedPackage` can define package metadata
-    /// for classes loaded from the appended boot class path.
-    public static String getBootLoaderPackageLocation(String internalPackageName) {
+    /// Looks up a class on the boot loader's runtime class path and returns its package source.
+    public static ClassFileBytes getClassBytes(String internalClassName) throws IOException {
         Target_jdk_internal_loader_BuiltinClassLoader bootLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
         if (bootLoader == null || bootLoader.ucp == null) {
             return null;
         }
-        Target_jdk_internal_loader_Resource resource = bootLoader.ucp.getResource(internalPackageName + "/");
+        Target_jdk_internal_loader_Resource resource = bootLoader.ucp.getResource(internalClassName + ".class");
         if (resource == null) {
             return null;
         }
+        return new ClassFileBytes(resource.getBytes(), getCodeSourcePath(resource));
+    }
+
+    /// Gets the file-system path of the boot class path entry that contains `resource`. For
+    /// example, a resource loaded from `file:/tmp/boot-append.jar` returns
+    /// `/tmp/boot-append.jar`, and a class file loaded from `file:/tmp/boot-append/org/example/Widget.class`
+    /// returns `/tmp/boot-append`.
+    private static String getCodeSourcePath(Target_jdk_internal_loader_Resource resource) {
         URL codeSourceURL = resource.getCodeSourceURL();
         if (codeSourceURL == null || !"file".equals(codeSourceURL.getProtocol())) {
             return null;

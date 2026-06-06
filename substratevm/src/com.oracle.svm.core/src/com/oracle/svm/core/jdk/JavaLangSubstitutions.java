@@ -39,7 +39,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
-import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform;
@@ -689,6 +688,13 @@ final class Target_jdk_internal_loader_BootLoader {
     }
 
     /**
+     * Looks up the source location for a package already known to the boot loader.
+     *
+     * This method returns a non-null location only after at least one boot-loaded class in
+     * {@code internalPackageName} has been loaded. For appended boot class path entries, the
+     * package source is recorded when runtime class loading reads a class from that package; this
+     * method does not scan the boot class path for packages with no loaded classes.
+     *
      * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
      */
     @Substitute
@@ -696,28 +702,7 @@ final class Target_jdk_internal_loader_BootLoader {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
     private static String getSystemPackageLocation(String internalPackageName) {
-        String moduleLocation = ClassRegistries.getSystemPackageLocation(internalPackageName);
-        return moduleLocation != null ? moduleLocation : BootLoaderClassPathSupport.getBootLoaderPackageLocation(internalPackageName);
-    }
-
-    /**
-     * Defines boot loader packages without reaching the JDK helper path that depends on `JAVA_HOME`.
-     *
-     * @param packageName package name in external form (e.g. "org.foo.impl")
-     */
-    @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/classes/jdk/internal/loader/BootLoader.java#L187-L200")
-    public static Package getDefinedPackage(String packageName) {
-        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        ClassLoader classLoader = SubstrateUtil.cast(bootClassLoader, ClassLoader.class);
-        Package definedPackage = classLoader.getDefinedPackage(packageName);
-        if (definedPackage == null) {
-            String location = getSystemPackageLocation(packageName.replace('.', '/'));
-            if (location != null) {
-                definedPackage = Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), location);
-            }
-        }
-        return definedPackage;
+        return ClassRegistries.getSystemPackageLocation(internalPackageName);
     }
 
     @SuppressWarnings({"unused", "restricted"})
@@ -756,37 +741,22 @@ final class Target_jdk_internal_loader_BootLoader {
 @TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
 final class Target_jdk_internal_loader_BootLoader_PackageHelper {
 
-    @Alias //
-    private static native URL toFileURL(String location);
-
-    @Alias //
-    private static native Manifest getManifest(String location);
-
-    /**
-     * Defines boot loader packages without parsing the original helper path that reads `JAVA_HOME`.
-     */
-    @Substitute
-    static Package definePackage(String packageName, String location) {
-        Module module = findModule(location);
-        if (module != null) {
-            if (packageName.isEmpty()) {
-                throw new InternalError("Empty package in " + location);
-            }
-            return SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), Target_java_lang_ClassLoader.class).definePackage(packageName, module);
-        }
-        URL url = toFileURL(location);
-        Manifest manifest = url != null ? getManifest(location) : null;
-        return Target_jdk_internal_loader_ClassLoaders.bootLoader().defineOrCheckPackage(packageName, manifest, url);
-    }
-
-    /**
-     * Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
-     */
+    /// Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
+    ///
+    /// This intentionally accepts only `jrt:/` module locations. The original JDK implementation also
+    /// recognizes exploded-module `file:/` locations under `JAVA_HOME/modules`, but `JAVA_HOME` might
+    /// not be set at image run time and Native Image does not support exploded boot modules. For
+    /// classes loaded from `-Xbootclasspath/a:`, `location` will be a file system path without
+    /// a `file:/` prefix.
     @Substitute
     private static Module findModule(String location) {
         String moduleName = location.startsWith("jrt:/") ? location.substring(5) : null;
         if (moduleName != null) {
-            return Modules.findLoadedModule(moduleName).orElseThrow(() -> new InternalError(moduleName + " not loaded"));
+            Module module = Modules.findLoadedModule(moduleName).orElse(null);
+            if (module == null) {
+                throw new InternalError(moduleName + " not loaded");
+            }
+            return module;
         }
         return null;
     }

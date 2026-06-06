@@ -141,6 +141,16 @@ public final class ClassRegistries implements ParsingContext {
     private final EconomicMap<String, String> bootPackageToModule;
 
     /**
+     * Maps loaded boot-append package names in internal form (e.g. {@code org/example}) to the
+     * {@code -Xbootclasspath/a:} entry (e.g. {@code /path/to/boot-append.jar}) that supplied
+     * the first successfully defined class in the package.
+     * <p>
+     * GR-76444: Remove this field and use jdk.internal.loader.BuiltinClassLoader.packageToModule
+     * as the canonical source for named boot-module package lookup.
+     */
+    private static final ConcurrentHashMap<String, String> loadedBootAppendPackageLocations = new ConcurrentHashMap<>();
+
+    /**
      * Holds all class names known to the image build. The value linked to each name is a
      * conditional value specifying when the name can be queried at run-time, and holding a
      * Throwable object if querying the class with this name should throw a specific error at
@@ -200,7 +210,30 @@ public final class ClassRegistries implements ParsingContext {
      */
     public static String getSystemPackageLocation(String internalPackageName) {
         String module = getBootModuleForPackage(internalPackageName);
-        return module == null ? null : "jrt:/" + module;
+        if (module != null) {
+            return "jrt:/" + module;
+        }
+        return getBootLoaderPackageLocation(internalPackageName);
+    }
+
+    /**
+     * Records the package source for `internalClassName` after a boot-append class has loaded.
+     */
+    public static void recordBootAppendPackageLocation(String internalClassName, String location) {
+        int lastSlash = internalClassName.lastIndexOf('/');
+        if (lastSlash != -1 && location != null) {
+            loadedBootAppendPackageLocations.putIfAbsent(internalClassName.substring(0, lastSlash), location);
+        }
+    }
+
+    /**
+     * Looks up the boot loader class path entry that provided `internalPackageName`.
+     *
+     * This is only for boot loader package discovery after a runtime-loaded boot class has made the
+     * package observable. It must not be used as a general class path package lookup.
+     */
+    private static String getBootLoaderPackageLocation(String internalPackageName) {
+        return loadedBootAppendPackageLocations.get(internalPackageName);
     }
 
     /**
@@ -213,6 +246,11 @@ public final class ClassRegistries implements ParsingContext {
                 systemPackageNames.add(key);
             }
         }
+        /*
+         * Runtime-loaded boot-append classes define their packages after image startup, so they
+         * live outside the build-time boot module package map.
+         */
+        systemPackageNames.addAll(loadedBootAppendPackageLocations.keySet());
         return systemPackageNames.toArray(String[]::new);
     }
 

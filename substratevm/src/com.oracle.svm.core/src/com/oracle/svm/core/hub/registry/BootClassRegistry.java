@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
+import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -108,14 +109,19 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         String internalPackageName = packageFromType(type);
         try {
             byte[] bytes = internalPackageName == null ? null : loadFromJImage(type, internalPackageName);
+            ClassFileBytes classFileBytes = null;
             if (bytes == null) {
                 /* Preserve boot class path append semantics by looking there after the jimage. */
-                bytes = loadFromAppendedBootClassPathBytes(type);
+                classFileBytes = loadFromAppendedBootClassPathBytes(type);
+                bytes = classFileBytes == null ? null : classFileBytes.bytes();
             }
             if (bytes == null) {
                 return null;
             }
             Class<?> loaded = defineClass(type, bytes, 0, bytes.length, ClassDefinitionInfo.EMPTY);
+            if (classFileBytes != null) {
+                ClassRegistries.recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
+            }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
             return loaded;
         } catch (IOException e) {
@@ -140,8 +146,8 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         return Files.readAllBytes(classPath);
     }
 
-    private static byte[] loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
-        return BootLoaderClassPathSupport.getResourceBytes(TypeSymbols.typeToName(type) + ".class");
+    private static ClassFileBytes loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
+        return BootLoaderClassPathSupport.getClassBytes(TypeSymbols.typeToName(type).toString());
     }
 
     /**

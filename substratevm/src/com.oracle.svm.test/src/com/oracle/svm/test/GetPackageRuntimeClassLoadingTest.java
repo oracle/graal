@@ -31,29 +31,50 @@ import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.INIT_NAME;
 import static java.lang.constant.ConstantDescs.MTD_void;
 
+import java.io.IOException;
 import java.lang.classfile.ClassFile;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Tests boot-loader package visibility for classes loaded through {@code -Xbootclasspath/a:} after
+ * image startup.
+ */
 @NativeImageBuildArgs({
+                "-H:+UnlockExperimentalVMOptions",
                 "-H:+RuntimeClassLoading",
                 "--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED",
+                "--enable-url-protocols=jar",
                 "--initialize-at-run-time=jdk.internal.loader.ClassLoaders",
                 "--features=com.oracle.svm.test.GetPackageRuntimeClassLoadingTest$TestFeature"
 })
 public class GetPackageRuntimeClassLoadingTest {
-    private static final String BOOT_APPEND_CLASS_NAME = "bootappend.BootAppendPackageClass";
+    private static final String EXPLODED_BOOT_APPEND_PACKAGE_NAME = "bootappend";
+    private static final String EXPLODED_BOOT_APPEND_CLASS_NAME = EXPLODED_BOOT_APPEND_PACKAGE_NAME + ".BootAppendPackageClass";
+    private static final String JAR_BOOT_APPEND_PACKAGE_NAME = "bootappendjar";
+    private static final String JAR_BOOT_APPEND_CLASS_NAME = JAR_BOOT_APPEND_PACKAGE_NAME + ".BootAppendJarPackageClass";
+    private static final String FAILED_BOOT_APPEND_PACKAGE_NAME = "bootappendfailed";
+    private static final String FAILED_BOOT_APPEND_CLASS_NAME = FAILED_BOOT_APPEND_PACKAGE_NAME + ".BootAppendFailedPackageClass";
+    private static final String MISMATCHED_BOOT_APPEND_CLASS_NAME = "bootappendmismatch.BootAppendFailedPackageClass";
     private static final String BOOT_APPEND_MARKER = "loaded from boot append path";
 
+    /**
+     * Registers JDK internals that the test uses to append boot class path entries at run time.
+     */
     public static class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -77,24 +98,83 @@ public class GetPackageRuntimeClassLoadingTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testGetPackageForRuntimeDefinedBootClass() throws Exception {
-        Assert.assertNull(Package.getPackage("bootappend"));
+        Assert.assertNull(Package.getPackage(EXPLODED_BOOT_APPEND_PACKAGE_NAME));
 
-        byte[] classBytes = generateBootAppendClassBytes();
+        byte[] classBytes = generateBootAppendClassBytes(EXPLODED_BOOT_APPEND_CLASS_NAME);
         Path bootAppendRoot = Files.createTempDirectory("gr36066-boot-append");
-        Path packageDir = Files.createDirectory(bootAppendRoot.resolve("bootappend"));
+        Path packageDir = Files.createDirectory(bootAppendRoot.resolve(EXPLODED_BOOT_APPEND_PACKAGE_NAME));
         Files.write(packageDir.resolve("BootAppendPackageClass.class"), classBytes);
 
         appendBootClassPath(bootAppendRoot);
-        Class<?> clazz = Class.forName(BOOT_APPEND_CLASS_NAME, true, null);
+        Assert.assertNull(Package.getPackage(EXPLODED_BOOT_APPEND_PACKAGE_NAME));
+        Class<?> clazz = Class.forName(EXPLODED_BOOT_APPEND_CLASS_NAME, true, null);
 
-        Assert.assertNotNull(clazz);
-        Assert.assertNull(clazz.getClassLoader());
-        Assert.assertEquals(BOOT_APPEND_MARKER, clazz.getMethod("marker").invoke(null));
-        Assert.assertNotNull(Package.getPackage("bootappend"));
+        assertBootAppendClassLoaded(clazz);
+        Assert.assertNotNull(Package.getPackage(EXPLODED_BOOT_APPEND_PACKAGE_NAME));
+        assertPackageVisibleToGetPackages(EXPLODED_BOOT_APPEND_PACKAGE_NAME);
+        deleteRecursively(bootAppendRoot);
     }
 
-    private static byte[] generateBootAppendClassBytes() {
-        ClassDesc bootAppendClass = ClassDesc.of(BOOT_APPEND_CLASS_NAME);
+    /**
+     * Checks that package lookup is not dependent on explicit directory entries in boot-append JARs.
+     */
+    @SuppressWarnings("deprecation")
+    @Test
+    public void testGetPackageForRuntimeDefinedBootJarClass() throws Exception {
+        Assert.assertNull(Package.getPackage(JAR_BOOT_APPEND_PACKAGE_NAME));
+
+        byte[] classBytes = generateBootAppendClassBytes(JAR_BOOT_APPEND_CLASS_NAME);
+        Path bootAppendJar = Files.createTempFile("gr36066-boot-append", ".jar");
+        try (JarOutputStream jarOutput = new JarOutputStream(Files.newOutputStream(bootAppendJar))) {
+            /* Do not add a package directory entry; only the class entry should be present. */
+            jarOutput.putNextEntry(new JarEntry(JAR_BOOT_APPEND_CLASS_NAME.replace('.', '/') + ".class"));
+            jarOutput.write(classBytes);
+            jarOutput.closeEntry();
+        }
+
+        appendBootClassPath(bootAppendJar);
+        Assert.assertNull(Package.getPackage(JAR_BOOT_APPEND_PACKAGE_NAME));
+        Class<?> clazz = Class.forName(JAR_BOOT_APPEND_CLASS_NAME, true, null);
+
+        assertBootAppendClassLoaded(clazz);
+        Assert.assertNotNull(Package.getPackage(JAR_BOOT_APPEND_PACKAGE_NAME));
+        assertPackageVisibleToGetPackages(JAR_BOOT_APPEND_PACKAGE_NAME);
+
+        try {
+            Files.deleteIfExists(bootAppendJar);
+        } catch (FileSystemException e) {
+            /*
+             * A boot-append JAR can stay open in the boot loader's URLClassPath until process
+             * shutdown. Windows rejects deleting such files while they are still open.
+             */
+            bootAppendJar.toFile().deleteOnExit();
+        }
+    }
+
+    /**
+     * Checks that a failed boot-append class definition does not make its package observable.
+     */
+    @SuppressWarnings("deprecation")
+    @Test
+    public void testFailedRuntimeDefinedBootClassDoesNotDefinePackage() throws Exception {
+        Assert.assertNull(Package.getPackage(FAILED_BOOT_APPEND_PACKAGE_NAME));
+
+        byte[] classBytes = generateBootAppendClassBytes(MISMATCHED_BOOT_APPEND_CLASS_NAME);
+        Path bootAppendRoot = Files.createTempDirectory("gr36066-boot-append-failed");
+        Path packageDir = Files.createDirectory(bootAppendRoot.resolve(FAILED_BOOT_APPEND_PACKAGE_NAME));
+        Files.write(packageDir.resolve("BootAppendFailedPackageClass.class"), classBytes);
+
+        appendBootClassPath(bootAppendRoot);
+        Assert.assertThrows(NoClassDefFoundError.class, () -> Class.forName(FAILED_BOOT_APPEND_CLASS_NAME, true, null));
+        Assert.assertNull(Package.getPackage(FAILED_BOOT_APPEND_PACKAGE_NAME));
+        deleteRecursively(bootAppendRoot);
+    }
+
+    /**
+     * Generates a minimal public class whose static marker method proves the loaded class identity.
+     */
+    private static byte[] generateBootAppendClassBytes(String className) {
+        ClassDesc bootAppendClass = ClassDesc.of(className);
         // @formatter:off
         return ClassFile.of().build(bootAppendClass, classBuilder -> classBuilder
                         .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
@@ -107,6 +187,26 @@ public class GetPackageRuntimeClassLoadingTest {
         // @formatter:on
     }
 
+    /**
+     * Verifies that `clazz` came from the boot loader and exposes the generated marker method.
+     */
+    private static void assertBootAppendClassLoaded(Class<?> clazz) throws ReflectiveOperationException {
+        Assert.assertNotNull(clazz);
+        Assert.assertNull(clazz.getClassLoader());
+        Assert.assertEquals(BOOT_APPEND_MARKER, clazz.getMethod("marker").invoke(null));
+    }
+
+    /**
+     * Verifies that package enumeration includes a package defined by a runtime-loaded boot class.
+     */
+    @SuppressWarnings("deprecation")
+    private static void assertPackageVisibleToGetPackages(String packageName) {
+        Assert.assertTrue(Arrays.stream(Package.getPackages()).anyMatch(p -> p.getName().equals(packageName)));
+    }
+
+    /**
+     * Appends `entry` to the boot loader's runtime class path using the JDK loader API.
+     */
     private static void appendBootClassPath(Path entry) throws ReflectiveOperationException {
         Class<?> classLoadersClass = Class.forName("jdk.internal.loader.ClassLoaders");
         Method bootLoaderMethod = classLoadersClass.getDeclaredMethod("bootLoader");
@@ -119,6 +219,9 @@ public class GetPackageRuntimeClassLoadingTest {
         appendClassPathMethod.invoke(bootLoader, entry.toString());
     }
 
+    /**
+     * Initializes the boot loader URL class path when this native-image runtime did not create one.
+     */
     private static void initializeBootClassPathIfNeeded(Object bootLoader) throws ReflectiveOperationException {
         var ucpField = bootLoader.getClass().getSuperclass().getDeclaredField("ucp");
         ucpField.setAccessible(true);
@@ -126,6 +229,17 @@ public class GetPackageRuntimeClassLoadingTest {
             Class<?> urlClassPathClass = Class.forName("jdk.internal.loader.URLClassPath");
             Object ucp = urlClassPathClass.getDeclaredConstructor(URL[].class).newInstance((Object) new URL[0]);
             ucpField.set(bootLoader, ucp);
+        }
+    }
+
+    /**
+     * Recursively deletes {@code path}.
+     */
+    private static void deleteRecursively(Path path) throws IOException {
+        try (var paths = Files.walk(path)) {
+            for (Path entry : paths.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(entry);
+            }
         }
     }
 }
