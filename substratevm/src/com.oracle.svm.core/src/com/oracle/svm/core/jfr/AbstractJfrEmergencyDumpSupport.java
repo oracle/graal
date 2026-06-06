@@ -35,6 +35,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.collections.GrowableWordArrayAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -78,6 +79,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     private RawFileDescriptor emergencyFd;
     private int emergencyChunkPathCallCount;
     private String openFileWarning;
+    private String openDirectoryWarning;
 
     @Override
     public final void initialize() {
@@ -109,6 +111,11 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         repositoryLocationSet = true;
         repositoryLocationText = dirText;
         repositoryLocationBytes = toPathBytes(dirText);
+        if (isRepositoryLocationTooLong()) {
+            openDirectoryWarning = "Unable to open repository " + dirText + ". Repository path is too long.";
+        } else {
+            openDirectoryWarning = "Unable to open repository " + dirText;
+        }
     }
 
     @Override
@@ -178,7 +185,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
             if (endIdx < 0) {
                 return Word.nullPointer();
             }
-            endIdx = appendTextToPathBuffer(CHUNK_FILE_EXTENSION, endIdx);
+            endIdx = appendChunkFileExtensionToPathBuffer(endIdx);
             writePathBufferChar(endIdx, 0);
 
             RawFileDescriptor fd = getFileSupport().create(path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
@@ -213,7 +220,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         for (int i = 0; i < CHUNKFILE_EXTENSION_LEN; i++) {
             int extensionIndex = CHUNKFILE_EXTENSION_LEN - i - 1;
             int filenameIndex = filenameLength - i - 1;
-            if (CHUNK_FILE_EXTENSION.charAt(extensionIndex) != filenameCharAt(filename, filenameIndex)) {
+            if (textCharAt(CHUNK_FILE_EXTENSION, extensionIndex) != filenameCharAt(filename, filenameIndex)) {
                 return false;
             }
         }
@@ -262,9 +269,9 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
             idx = appendPathSeparatorToPathBuffer(idx);
         }
 
-        idx = appendTextToPathBuffer(DUMP_FILE_PREFIX, idx);
+        idx = appendDumpFilePrefixToPathBuffer(idx);
         idx = appendPidTextToPathBuffer(idx);
-        idx = appendTextToPathBuffer(CHUNK_FILE_EXTENSION, idx);
+        idx = appendChunkFileExtensionToPathBuffer(idx);
         writePathBufferChar(idx, 0);
         return pathBuffer();
     }
@@ -331,12 +338,24 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return pos + CHUNKFILE_EXTENSION_LEN + 1 >= JVM_MAXPATHLEN ? -1 : pos;
     }
 
+    private int appendChunkFileExtensionToPathBuffer(int idx) {
+        return appendTextToPathBuffer(CHUNK_FILE_EXTENSION, idx);
+    }
+
+    private int appendDumpFilePrefixToPathBuffer(int idx) {
+        return appendTextToPathBuffer(DUMP_FILE_PREFIX, idx);
+    }
+
     private int appendTextToPathBuffer(String text, int idx) {
         int pos = idx;
         for (int i = 0; i < text.length(); i++) {
-            writePathBufferChar(pos++, text.charAt(i));
+            writePathBufferChar(pos++, textCharAt(text, i));
         }
         return pos;
+    }
+
+    private static int textCharAt(String text, int index) {
+        return UninterruptibleUtils.String.charAt(text, index);
     }
 
     protected final boolean addUsableChunkFilename(GrowableWordArray chunkFilenames, Word filename, int filenameLength) {
@@ -445,15 +464,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     }
 
     protected final void logOpenDirectoryWarning() {
-        SubstrateJVM.getLogging().logJfrSystemError(createOpenDirectoryWarning());
-    }
-
-    private String createOpenDirectoryWarning() {
-        String locationText = repositoryLocationText();
-        if (isRepositoryLocationTooLong()) {
-            return "Unable to open repository " + locationText + ". Repository path is too long.";
-        }
-        return "Unable to open repository " + locationText;
+        SubstrateJVM.getLogging().logJfrSystemError(openDirectoryWarning);
     }
 
     private void writeEmergencyDumpFile(GrowableWordArray sortedChunkFilenames) {
