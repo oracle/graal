@@ -29,8 +29,6 @@ package com.oracle.svm.core.posix.jfr;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 
-import java.nio.charset.StandardCharsets;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,11 +43,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.memory.NativeMemory;
-import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -65,82 +59,24 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
+/**
+ * POSIX implementation of JFR emergency dump support. Directory scanning opens the
+ * repository once and reopens chunk files relative to that validated directory.
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupport {
     private static final byte FILE_SEPARATOR = '/';
     private Dirent.DIR directory;
     private int directoryFd;
-    private byte[] pidBytes;
-    private byte[] cwdBytes;
-    private byte[] dumpPathBytes;
-    private byte[] repositoryLocationBytes;
-    private CCharPointer pathBuffer;
-    private boolean pathBufferInitialized;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixJfrEmergencyDumpSupport() {
     }
 
     @Override
-    protected void allocatePathBufferIfNeeded() {
-        if (!pathBufferInitialized) {
-            pathBuffer = NativeMemory.calloc(JVM_MAXPATHLEN + 1, NmtCategory.JFR);
-            pathBufferInitialized = true;
-        }
-    }
-
-    @Override
     protected void initializeRepositoryState() {
         directory = Word.nullPointer();
         directoryFd = -1;
-    }
-
-    @Override
-    protected void savePidText(String pid) {
-        pidBytes = pid.getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    protected void saveCwdText(String cwd) {
-        cwdBytes = cwd.getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    protected void saveDumpPathText(String dumpPath) {
-        dumpPathBytes = dumpPath == null ? null : dumpPath.getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    protected void useSavedCwdAsDumpPath() {
-        dumpPathBytes = cwdBytes;
-    }
-
-    @Override
-    protected void saveRepositoryLocationText(String repositoryLocation) {
-        repositoryLocationBytes = repositoryLocation.getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    protected long getPathBufferAddress() {
-        if (!pathBufferInitialized) {
-            return 0L;
-        }
-        return pathBuffer.rawValue();
-    }
-
-    @Override
-    protected int pidLength() {
-        return pidBytes.length;
-    }
-
-    @Override
-    protected int dumpPathLength() {
-        return dumpPathBytes == null ? -1 : dumpPathBytes.length;
-    }
-
-    @Override
-    protected int repositoryLocationLength() {
-        return repositoryLocationBytes == null ? -1 : repositoryLocationBytes.length;
     }
 
     @Override
@@ -181,7 +117,7 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     protected boolean openRepository() {
         CCharPointer repositoryLocation = getRepositoryLocation();
         if (repositoryLocation.isNull()) {
-            SubstrateJVM.getLogging().logJfrSystemError(getOpenDirectoryWarning());
+            logOpenDirectoryWarning();
             return false;
         }
         int fd = Fcntl.NoTransitions.restartableOpen(repositoryLocation, O_RDONLY() | O_NOFOLLOW(), 0);
@@ -192,7 +128,7 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
         directory = Dirent.fdopendir(fd);
         if (directory.isNull()) {
             Unistd.NoTransitions.close(fd);
-            SubstrateJVM.getLogging().logJfrSystemError(getOpenDirectoryWarning());
+            logOpenDirectoryWarning();
             return false;
         }
         directoryFd = fd;
@@ -200,11 +136,11 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     private CCharPointer getRepositoryLocation() {
-        if (repositoryLocationBytes == null || isRepositoryLocationTooLong()) {
+        if (repositoryLocationBytes() == null || isRepositoryLocationTooLong()) {
             return Word.nullPointer();
         }
-        clearPathBuffer();
-        writeToPathBuffer(repositoryLocationBytes, 0);
+        resetPathBuffer();
+        appendRepositoryLocationToPathBuffer(0);
         return getPathBuffer();
     }
 
@@ -231,47 +167,14 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
         return writeDateTimeToPathBuffer(idx, localTime.tm_year() + 1900, localTime.tm_mon() + 1, localTime.tm_mday(), localTime.tm_hour(), localTime.tm_min(), localTime.tm_sec());
     }
 
-    @Override
-    protected RawFilePath pathBuffer() {
-        return (RawFilePath) getPathBuffer();
-    }
-
     private CCharPointer getPathBuffer() {
-        return pathBuffer;
-    }
-
-    @Override
-    protected void clearPathBuffer() {
-        LibC.memset(getPathBuffer(), Word.signed(0), Word.unsigned(JVM_MAXPATHLEN));
-    }
-
-    @Override
-    protected int appendDumpPathToPathBuffer(int idx) {
-        return writeToPathBuffer(dumpPathBytes, idx);
-    }
-
-    @Override
-    protected int appendRepositoryLocationToPathBuffer(int idx) {
-        return writeToPathBuffer(repositoryLocationBytes, idx);
-    }
-
-    @Override
-    protected int appendPidTextToPathBuffer(int idx) {
-        return writeToPathBuffer(pidBytes, idx);
+        return (CCharPointer) pathBufferPointer();
     }
 
     @Override
     protected int appendPathSeparatorToPathBuffer(int idx) {
         getPathBuffer().write(idx, FILE_SEPARATOR);
         return idx + 1;
-    }
-
-    private int writeToPathBuffer(byte[] bytes, int start) {
-        int idx = start;
-        for (int i = 0; i < bytes.length; i++) {
-            getPathBuffer().write(idx++, bytes[i]);
-        }
-        return idx;
     }
 
     @Override
@@ -282,11 +185,6 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     @Override
     protected Word copyChunkFilename(Word filename, int filenameLength) {
         return (Word) (Pointer) LibC.strdup((CCharPointer) ((Pointer) filename));
-    }
-
-    @Override
-    protected void writePathBufferChar(int index, int ch) {
-        getPathBuffer().write(index, (byte) ch);
     }
 
     @Override
@@ -303,14 +201,6 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
         directoryFd = -1;
     }
 
-    @Override
-    protected void freePathBufferIfInitialized() {
-        if (pathBufferInitialized) {
-            NativeMemory.free(pathBuffer);
-            pathBuffer = Word.nullPointer();
-            pathBufferInitialized = false;
-        }
-    }
 }
 
 @AutomaticallyRegisteredFeature
