@@ -84,6 +84,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -92,9 +93,11 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -196,6 +199,9 @@ public class PermissionsFeature implements Feature {
                           - All: Reports all call paths for all violations.
                         """, type = OptionType.Expert)//
         public static final HostedOptionKey<CollectMode> TruffleTCKCollectMode = new HostedOptionKey<>(CollectMode.SinglePrivilegedMethodUsage);
+
+        @Option(help = "Path to a file where the Truffle TCK permissions inverted call graph is dumped.", type = OptionType.Expert)//
+        public static final HostedOptionKey<String> TruffleTCKDumpCallGraph = new HostedOptionKey<>(null);
     }
 
     /**
@@ -475,6 +481,29 @@ public class PermissionsFeature implements Feature {
                 }
             }
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
+            String dumpCallGraph = Options.TruffleTCKDumpCallGraph.getValue();
+            if (dumpCallGraph != null) {
+                Path callGraphPath = Paths.get(dumpCallGraph);
+                try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(callGraphPath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                                StandardOpenOption.TRUNCATE_EXISTING))) {
+                    for (Map.Entry<BaseMethodNode, Set<BaseMethodNode>> e : cg.entrySet()) {
+                        out.print(e.getKey().getId());
+                        out.print(" -> [");
+                        boolean first = true;
+                        for (BaseMethodNode methodNode : e.getValue()) {
+                            if (first) {
+                                first = false;
+                            } else {
+                                out.print(", ");
+                            }
+                            out.print(methodNode.getId());
+                        }
+                        out.println("]");
+                    }
+                } catch (IOException e) {
+                    throw UserError.abort(e, "Cannot write generated call graph to %s", callGraphPath);
+                }
+            }
             List<List<BaseMethodNode>> report = new ArrayList<>();
             int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
             maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
@@ -1518,7 +1547,7 @@ public class PermissionsFeature implements Feature {
 
         @Override
         public int compare(AnalysisMethod m1, AnalysisMethod m2) {
-            int res = removeLambdaHash(m1.getDeclaringClass().getName()).compareTo(removeLambdaHash(m2.getDeclaringClass().getName()));
+            int res = removeLambdaHash(m1.getDeclaringClass().toClassName()).compareTo(removeLambdaHash(m2.getDeclaringClass().toClassName()));
             if (res != 0) {
                 return res;
             }
