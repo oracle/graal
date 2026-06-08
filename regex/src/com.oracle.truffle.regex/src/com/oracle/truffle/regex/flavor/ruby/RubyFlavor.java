@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -225,7 +225,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
 public final class RubyFlavor extends RegexFlavor {
 
     public static final RubyFlavor INSTANCE = new RubyFlavor();
-    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, 0, UnicodeProperties.NameMatchingMode.ruby);
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_17_0_0, 0, UnicodeProperties.NameMatchingMode.ruby);
 
     private RubyFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK |
