@@ -138,6 +138,7 @@ public class PermissionsFeature implements Feature {
     private static final String CLINIT = "<clinit>";
     private static final Comparator<BaseMethodNode> CALLERS_COMPARATOR = Comparator.comparing(PermissionsFeature::isSystemOrSafeClass).//
                     thenComparing(new BaseMethodNodeComparator());
+    private static final Comparator<AnalysisMethod> INVOKE_COMPARATOR = new AnalysisMethodComparator();
 
     public enum ActionKind {
         Ignore,
@@ -617,7 +618,9 @@ public class PermissionsFeature implements Feature {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
+                Collection<AnalysisMethod> callees = invoke.getOriginalCallees();
+                Iterable<AnalysisMethod> ordered = callees.size() > 1 ? callees.stream().sorted(INVOKE_COMPARATOR).toList() : callees;
+                for (AnalysisMethod callee : ordered) {
                     AnalysisMethodNode calleeNode = new AnalysisMethodNode(callee);
                     if (callee.isImplementationInvoked()) {
                         Set<BaseMethodNode> parents = visited.get(calleeNode);
@@ -638,9 +641,23 @@ public class PermissionsFeature implements Feature {
                             }
                             callPathContainsTarget |= add;
                         } else if (!isBacktrace(calleeNode, path) || isBackTraceOverLanguageMethod(calleeNode, path)) {
-                            parents.add(mNode);
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
-                            callPathContainsTarget = true;
+                            /*
+                             * The outer branch handles already visited callees that are either not on the current
+                             * path, or are back edges that must be kept because they cross a language method. A
+                             * visited node with an empty caller set can also mean "this subtree was already proven
+                             * not to reach a target", so do not blindly propagate it to the current caller. Keep it
+                             * only when:
+                             * - it is a backtrace: together with the outer condition this means
+                             *   isBackTraceOverLanguageMethod(...) is true, so the recursive edge closes a path over a
+                             *   language method and is part of a violation;
+                             * - it is itself a target privileged method; or
+                             * - it already has parents, meaning a previous traversal found a path from it to a target.
+                             */
+                            if (isBacktrace(calleeNode, path) || targets.contains(calleeNode) || !parents.isEmpty()) {
+                                parents.add(mNode);
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
+                                callPathContainsTarget = true;
+                            }
                         } else {
                             if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
                                 debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
@@ -1494,6 +1511,34 @@ public class PermissionsFeature implements Feature {
             String k1 = o1.getId();
             String k2 = o2.getId();
             return k1.compareTo(k2);
+        }
+    }
+
+    static final class AnalysisMethodComparator implements Comparator<AnalysisMethod> {
+
+        @Override
+        public int compare(AnalysisMethod m1, AnalysisMethod m2) {
+            int res = removeLambdaHash(m1.getDeclaringClass().getName()).compareTo(removeLambdaHash(m2.getDeclaringClass().getName()));
+            if (res != 0) {
+                return res;
+            }
+            res = m1.getName().compareTo(m2.getName());
+            if (res != 0) {
+                return res;
+            }
+            return m1.getSignature().toString().compareTo(m2.getSignature().toString());
+        }
+
+        /**
+         *
+         * Lambda function names are not completely deterministic e.g. in name
+         * Lambda$7ad16f47b695d909/0x00000007c0b4c630.accept(java.lang.Object):void hash part is not
+         * deterministic. In order to avoid comparing based on that part, we need to eliminate hash
+         * part from name of lambda function.
+         *
+         */
+        private static String removeLambdaHash(String className) {
+            return className.contains("$$Lambda") ? className.replaceAll("/[0-9a-fA-Fx]*$", "") : className;
         }
     }
 }
