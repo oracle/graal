@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -388,7 +388,7 @@ public final class ArrayUtils {
         requireNonNull(a);
         requireNonNull(b);
         checkArgsRegionEquals(offsetA, offsetB, length);
-        if (regionEqualsOutOfBounds(a.length, offsetA, b.length, offsetB, length)) {
+        if (regionOutOfBounds(a.length, offsetA, b.length, offsetB, length)) {
             return false;
         }
         if (mask == null) {
@@ -411,7 +411,7 @@ public final class ArrayUtils {
         requireNonNull(a);
         requireNonNull(b);
         checkArgsRegionEquals(offsetA, offsetB, length);
-        if (regionEqualsOutOfBounds(a.length, offsetA, b.length, offsetB, length)) {
+        if (regionOutOfBounds(a.length, offsetA, b.length, offsetB, length)) {
             return false;
         }
         if (mask == null) {
@@ -435,7 +435,7 @@ public final class ArrayUtils {
         requireNonNull(a);
         requireNonNull(b);
         checkArgsRegionEquals(offsetA, offsetB, length);
-        if (regionEqualsOutOfBounds(a.length(), offsetA, b.length(), offsetB, length)) {
+        if (regionOutOfBounds(a.length(), offsetA, b.length(), offsetB, length)) {
             return false;
         }
         if (mask == null) {
@@ -497,8 +497,49 @@ public final class ArrayUtils {
         }
     }
 
-    private static boolean regionEqualsOutOfBounds(int lengthA, int offsetA, int lengthB, int offsetB, int length) {
-        return lengthA - offsetA < length || lengthB - offsetB < length;
+    /**
+     * Copies {@code length} elements from {@code source}, starting at {@code sourceIndex}, to
+     * {@code destination}, starting at {@code destinationIndex}.
+     * <p>
+     * This method is intended for performance-sensitive Truffle code that copies non-overlapping
+     * {@code int[]} regions and can benefit from compiler intrinsification, in particular for small
+     * constant-length copies. It is not a general replacement for {@link System#arraycopy}: use
+     * {@link System#arraycopy} unless the stricter contract below is acceptable.
+     * <p>
+     * Unlike {@link System#arraycopy}, this method is intrinsified in a manner that doesn't behave
+     * exactly as the scalar loop would: overlapping source and destination regions are not supported,
+     * and individual elements may be copied twice, which may be observable in multi-threading
+     * contexts.
+     *
+     * @since 25.1
+     */
+    public static void arraycopy(int[] source, int sourceIndex, int[] destination, int destinationIndex, int length) {
+        if (arraycopyRegionOutOfBounds(source.length, sourceIndex, destination.length, destinationIndex, length)) {
+            illegalArgumentException("copy region is out of bounds");
+        }
+        assert !(source == destination && sourceIndex != destinationIndex && sourceIndex < destinationIndex + length && destinationIndex < sourceIndex +
+                        length) : "source and destination regions must not overlap";
+        stubArraycopyS4(source, sourceIndex, destination, destinationIndex, length);
+    }
+
+    private static boolean regionOutOfBounds(int lengthA, int offsetA, int lengthB, int offsetB, int regionLength) {
+        return Integer.toUnsignedLong(offsetA) + Integer.toUnsignedLong(regionLength) > Integer.toUnsignedLong(lengthA) ||
+                        Integer.toUnsignedLong(offsetB) + Integer.toUnsignedLong(regionLength) > Integer.toUnsignedLong(lengthB);
+    }
+
+    private static boolean arraycopyRegionOutOfBounds(int lengthA, int offsetA, int lengthB, int offsetB, int regionLength) {
+        if (regionLength < 0) {
+            return true;
+        }
+        return arraycopyRegionOutOfBounds(lengthA, offsetA, regionLength) || arraycopyRegionOutOfBounds(lengthB, offsetB, regionLength);
+    }
+
+    private static boolean arraycopyRegionOutOfBounds(int arrayLength, int offset, int regionLength) {
+        if (regionLength == 0) {
+            return Integer.compareUnsigned(offset, arrayLength) > 0;
+        }
+        int upper = arrayLength - regionLength + 1;
+        return upper <= 0 || Integer.compareUnsigned(offset, upper) >= 0;
     }
 
     private static void checkArgsRegionEquals(int offsetA, int offsetB, int length) {
@@ -772,6 +813,12 @@ public final class ArrayUtils {
             }
         }
         return true;
+    }
+
+    private static void stubArraycopyS4(int[] source, long sourceIndex, int[] destination, long destinationIndex, int length) {
+        for (int i = 0; i < length; i++) {
+            destination[(int) (destinationIndex + i)] = source[(int) (sourceIndex + i)];
+        }
     }
 
     private static boolean stubRegionEqualsWithOrMaskCompactStrings(byte[] a, long offsetA, byte[] b, long offsetB, byte[] mask, int length, boolean compactA, boolean compactB, boolean compactM) {

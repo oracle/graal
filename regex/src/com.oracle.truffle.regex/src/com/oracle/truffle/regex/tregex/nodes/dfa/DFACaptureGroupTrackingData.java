@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
 
 public final class DFACaptureGroupTrackingData {
@@ -58,9 +59,24 @@ public final class DFACaptureGroupTrackingData {
     public void exportResult(TRegexDFAExecutorNode executor, byte index) {
         CompilerAsserts.partialEvaluationConstant(executor);
         if (executor.getMaxNumberOfNFAStates() == 1) {
-            System.arraycopy(results, 0, currentResult, 0, currentResult.length);
+            ArrayUtils.arraycopy(results, 0, currentResult, 0, currentResult.length);
         } else {
-            System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+            ArrayUtils.arraycopy(results, maskRowStart(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult.length), currentResult, 0,
+                            currentResult.length);
         }
+    }
+
+    static int maskRowStart(int[] array, int rowStart, int rowLength) {
+        int mask = array.length - rowLength;
+        assert mask >= 0;
+        assert Integer.bitCount(mask + 1) == 1 : "array length must make the row-start mask all-ones";
+        assert (rowStart & mask) == rowStart : "row start must fit the padded result array";
+        return rowStart & mask;
+    }
+
+    static void writeRowElement(int[] array, int rowStart, int rowLength, int index, int value) {
+        assert index >= 0;
+        assert index < rowLength;
+        array[maskRowStart(array, rowStart, rowLength) + index] = value;
     }
 }
