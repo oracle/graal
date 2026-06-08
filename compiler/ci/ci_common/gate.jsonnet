@@ -239,7 +239,6 @@
   # Candidates for Tier3 jobs. In CE, these will be dailies.
   local tier3_jobs = {
     "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": t("45:00"),
-    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("45:00"),
     "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": t("45:00"),
     "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": t("45:00"),
 
@@ -283,6 +282,8 @@
   # fields of the denoted build.
   local dailies = {
     "compiler-test-labsjdk-latest-windows-amd64": {},
+
+    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("45:00"),
 
     "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
     "compiler-test_zgc-labsjdk-latest-linux-aarch64": t("2:30:00"),

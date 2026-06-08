@@ -618,7 +618,9 @@ class TruffleGateTags:
     truffle_jvm = ["truffle-jvm"]
     truffle_jvm_lite = ["truffle-jvm-lite", "truffle-jvm"]
     truffle_native = ["truffle-native"]
-    truffle_native_lite = ["truffle-native-lite", "truffle-native"]
+    truffle_native0 = ["truffle-native0", "truffle-native"]
+    truffle_native1 = ["truffle-native1", "truffle-native"]
+    truffle_native_lite = ["truffle-native-lite", "truffle-native0", "truffle-native"]
     # LibC Musl tests need special setup so we can't run them in truffle-native
     truffle_native_libcmusl_static = ["truffle-native-libcmusl-static"]
 
@@ -710,21 +712,21 @@ def gate_truffle_jvm(tasks):
 
 
 def gate_truffle_native(tasks):
-    with Task("Truffle SL Native ModulePath", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native ModulePath", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_fallback_gate_tests(force_cp=False)
             _sl_native_optimized_gate_tests(force_cp=False)
 
-    with Task("Truffle SL Native Open World Test", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native Open World Test", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_open_world_gate_tests(force_cp=False)
 
-    with Task("Truffle SL Native ClassPath", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native ClassPath", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_fallback_gate_tests(force_cp=True)
             _sl_native_optimized_gate_tests(force_cp=True)
 
-    with Task("Truffle Native Unit Preinitialization Tests", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Preinitialization Tests", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             truffle_native_context_preinitialization_tests()
 
@@ -732,11 +734,11 @@ def gate_truffle_native(tasks):
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=True)
 
-    with Task("Truffle Native Unit Tests Fallback", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Tests Fallback", tasks, tags=TruffleGateTags.truffle_native1) as t:
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=False)
 
-    with Task("Truffle Native Unit Tests Quick Build", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Tests Quick Build", tasks, tags=TruffleGateTags.truffle_native1) as t:
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=["-Ob"])
 

@@ -8,18 +8,19 @@ local mxgate(tags) = r.mxgate(tags, suite='web-image');
 local platforms = r.platforms;
 local t = r.t;
 
-local tier1 = r.tier1;
+local daily = r.daily;
 local tier2 = r.tier2;
-local weekly = r.weekly;
 
 {
   // THE TASK CONFIGURATION
   task_dict:: {
     // TODO GR-67831 Split into separate style and fullbuild jobs
-    'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.jdt + r.spotbugs + r.prettier + platforms({
-      'linux:amd64:jdk-latest': tier1,
+    'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.jdt + r.spotbugs + r.prettier + r.notify.base + platforms({
+      'linux:amd64:jdk-latest': daily,
     }),
-    'unittest': mxgate('webimagebuild,webimageunittest') + t('30:00') + r.node22 + platforms({
+    'unittest': mxgate('webimagebuild,webimageunittest,webimagespectest_no-closure') + r.task_spec({
+      mxgate_unittest_suite:: 'JS_JTT_Zip',
+    }) + t('30:00') + r.node22 + platforms({
       'linux:amd64:jdk-latest': tier2,
     }),
   },
