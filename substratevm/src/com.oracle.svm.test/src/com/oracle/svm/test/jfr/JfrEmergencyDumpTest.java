@@ -30,30 +30,30 @@ import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 
 public abstract class JfrEmergencyDumpTest extends JfrRecordingTest {
-    protected static JfrEmergencyDumpSupport getEmergencyDumpSupport() {
+    protected static AbstractJfrEmergencyDumpSupport getEmergencyDumpSupport() {
         if (!JfrEmergencyDumpSupport.isPresent()) {
             return null;
         }
-        return JfrEmergencyDumpSupport.singleton();
+        return (AbstractJfrEmergencyDumpSupport) JfrEmergencyDumpSupport.singleton();
     }
 
-    protected static long getPathBufferAddress(JfrEmergencyDumpSupport support) {
-        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
-            return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getPathBufferAddress(emergencyDumpSupport);
-        }
-        return 0L;
+    protected static long getPathBufferAddress(AbstractJfrEmergencyDumpSupport support) {
+        return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getPathBufferAddress(support);
     }
 
-    protected static int getEmergencyChunkPathCallCount(JfrEmergencyDumpSupport support) {
-        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
-            return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getEmergencyChunkPathCallCount(emergencyDumpSupport);
-        }
-        return 0;
+    protected static int getEmergencyChunkPathCallCount(AbstractJfrEmergencyDumpSupport support) {
+        return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getEmergencyChunkPathCallCount(support);
     }
 
-    protected static void resetEmergencyChunkPathCallCount(JfrEmergencyDumpSupport support) {
-        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
-            AbstractJfrEmergencyDumpSupport.TestingBackdoor.resetEmergencyChunkPathCallCount(emergencyDumpSupport);
-        }
+    protected static void resetEmergencyChunkPathCallCount(AbstractJfrEmergencyDumpSupport support) {
+        AbstractJfrEmergencyDumpSupport.TestingBackdoor.resetEmergencyChunkPathCallCount(support);
+    }
+
+    protected static void clearCachedCwd(AbstractJfrEmergencyDumpSupport support) {
+        AbstractJfrEmergencyDumpSupport.TestingBackdoor.clearCachedCwd(support);
+    }
+
+    protected static void clearRepositoryLocation(AbstractJfrEmergencyDumpSupport support) {
+        AbstractJfrEmergencyDumpSupport.TestingBackdoor.clearRepositoryLocation(support);
     }
 }

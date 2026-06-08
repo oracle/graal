@@ -29,6 +29,8 @@ package com.oracle.svm.core.posix.jfr;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 
+import java.nio.charset.StandardCharsets;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,15 +42,14 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.posix.headers.Dirent;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -59,6 +60,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
+
 /**
  * POSIX implementation of JFR emergency dump support. Directory scanning opens the
  * repository once and reopens chunk files relative to that validated directory.
@@ -66,6 +69,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupport {
     private static final byte FILE_SEPARATOR = '/';
+
     private Dirent.DIR directory;
     private int directoryFd;
 
@@ -80,6 +84,16 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     @Override
+    protected byte[] toBytes(String text) {
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    protected int elementSize() {
+        return Byte.BYTES;
+    }
+
+    @Override
     protected void iterateRepository(GrowableWordArray gwa) {
         int count = 0;
         if (directory.isNull()) {
@@ -89,8 +103,8 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
         Dirent.dirent entry;
         while ((entry = Dirent.readdir(directory)).isNonNull()) {
             CCharPointer fn = entry.d_name();
-            int filenameLength = (int) SubstrateUtil.strlen(fn).rawValue();
-            if (addUsableChunkFilename(gwa, (Word) (Pointer) fn, filenameLength)) {
+            int filenameLength = UnsignedUtils.safeToInt(SubstrateUtil.strlen(fn));
+            if (addUsableChunkFilename(gwa, (Pointer) fn, filenameLength)) {
                 count++;
             }
         }
@@ -99,18 +113,14 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
 
     @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
     @Override
-    protected RawFileDescriptor openRepositoryFile(Word filename) {
-        return openRepositoryFile((CCharPointer) ((Pointer) filename));
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private RawFileDescriptor openRepositoryFile(CCharPointer fn) {
+    protected RawFileDescriptor openRepositoryFile(Pointer filename) {
+        CCharPointer fn = (CCharPointer) filename;
         if (directoryFd == -1) {
             return Word.nullPointer();
         }
         // Reopen the validated repository entry relative to the directory we are currently
         // scanning.
-        return Word.signed(restartableOpenat(directoryFd, fn, O_RDONLY() | O_NOFOLLOW(), 0));
+        return Word.signed(Fcntl.NoTransitions.restartableOpenat(directoryFd, fn, O_RDONLY() | O_NOFOLLOW(), 0));
     }
 
     @Override
@@ -120,6 +130,7 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
             logOpenDirectoryWarning();
             return false;
         }
+
         int fd = Fcntl.NoTransitions.restartableOpen(repositoryLocation, O_RDONLY() | O_NOFOLLOW(), 0);
         if (fd == -1) {
             return false;
@@ -136,23 +147,12 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     private CCharPointer getRepositoryLocation() {
-        if (repositoryLocationBytes() == null || isRepositoryLocationTooLong()) {
+        if (isRepositoryLocationTooLong()) {
             return Word.nullPointer();
         }
-        resetPathBuffer();
         int idx = appendRepositoryLocationToPathBuffer(0);
-        writePathBufferChar(idx, 0);
+        writePathBufferElement(idx, (char) 0);
         return getPathBuffer();
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableOpenat(int fd, CCharPointer filename, int flags, int mode) {
-        int result;
-        do {
-            result = Fcntl.NoTransitions.openat(fd, filename, flags, mode);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
     }
 
     @Override
@@ -169,28 +169,28 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     private CCharPointer getPathBuffer() {
-        return (CCharPointer) pathBufferPointer();
+        return (CCharPointer) pathBuffer;
     }
 
     @Override
-    protected int appendPathSeparatorToPathBuffer(int idx) {
-        getPathBuffer().write(idx, FILE_SEPARATOR);
-        return idx + 1;
+    protected char getFileSeparator() {
+        return FILE_SEPARATOR;
     }
 
     @Override
-    protected int filenameCharAt(Word filename, int index) {
-        return filename.readByte(index);
+    protected boolean isFileSeparator(char ch) {
+        return ch == FILE_SEPARATOR;
     }
 
     @Override
-    protected Word copyChunkFilename(Word filename, int filenameLength) {
-        return (Word) (Pointer) LibC.strdup((CCharPointer) ((Pointer) filename));
+    protected void writeElement(Pointer buffer, int idx, char ch) {
+        byte b = NumUtil.safeToUByte(ch);
+        buffer.writeByte(idx, b);
     }
 
     @Override
-    protected void freeChunkFilename(Word filename) {
-        LibC.free(filename);
+    protected char readElement(Pointer buffer, int index) {
+        return (char) (buffer.readByte(index) & 0xFF);
     }
 
     @Override
@@ -201,7 +201,6 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
         }
         directoryFd = -1;
     }
-
 }
 
 @AutomaticallyRegisteredFeature

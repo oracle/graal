@@ -37,6 +37,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
@@ -58,7 +59,7 @@ public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
         if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
-        JfrEmergencyDumpSupport support = getEmergencyDumpSupport();
+        AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
         if (support == null) {
             return;
         }

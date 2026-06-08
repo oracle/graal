@@ -28,8 +28,12 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 
@@ -39,7 +43,7 @@ public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
         if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
-        JfrEmergencyDumpSupport support = getEmergencyDumpSupport();
+        AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
         if (support == null) {
             return;
         }
@@ -59,6 +63,45 @@ public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
             if (wasInitialized) {
                 support.initialize();
             }
+        }
+    }
+
+    @Test
+    public void testNullUserDirUsesRelativeDumpPath() throws Exception {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
+            return;
+        }
+        AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
+        if (support == null) {
+            return;
+        }
+
+        String originalUserDir = System.getProperty("user.dir");
+        Path dumpFile = Path.of("svm_oom_pid_" + ProcessHandle.current().pid() + ".jfr");
+        try {
+            support.initialize();
+            Files.deleteIfExists(dumpFile);
+
+            clearRepositoryLocation(support);
+            System.clearProperty("user.dir");
+            clearCachedCwd(support);
+            support.setDumpPath(null);
+            support.setRepositoryLocation("missing-jfr-repository-" + ProcessHandle.current().pid());
+
+            support.onVmError();
+
+            assertTrue("emergency dump file does not exist.", Files.exists(dumpFile));
+        } finally {
+            Files.deleteIfExists(dumpFile);
+            if (originalUserDir == null) {
+                System.clearProperty("user.dir");
+            } else {
+                System.setProperty("user.dir", originalUserDir);
+            }
+            clearCachedCwd(support);
+            support.initialize();
+            support.setDumpPath(null);
+            clearRepositoryLocation(support);
         }
     }
 }
