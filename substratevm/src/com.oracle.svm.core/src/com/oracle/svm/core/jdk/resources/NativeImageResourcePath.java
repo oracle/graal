@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.jdk.resources;
 
+import static com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider.RESOURCE_PROTOCOL;
+
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -67,7 +69,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.util.NativeImageResourcePathRepresentation;
 
 /**
@@ -347,14 +348,14 @@ public class NativeImageResourcePath extends NativeImageResourcePathRepresentati
                 byte[] resolvedPath = absolute.getResolvedPath();
                 int separator = indexOf(resolvedPath, (byte) '/');
                 if (separator <= 0 || separator == resolvedPath.length - 1) {
-                    throw new IllegalArgumentException("Loader-aware " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " paths require a loader key and resource name.");
+                    throw new IllegalArgumentException("Loader-aware " + RESOURCE_PROTOCOL + " paths require a loader key and resource name.");
                 }
                 String host = fileSystem.getString(Arrays.copyOf(resolvedPath, separator));
                 String resourcePath = fileSystem.getString(Arrays.copyOfRange(resolvedPath, separator, resolvedPath.length));
-                return new URI(JavaNetSubstitutions.RESOURCE_PROTOCOL, host, resourcePath, null);
+                return new URI(RESOURCE_PROTOCOL, host, resourcePath, null);
             }
             return new URI(
-                            JavaNetSubstitutions.RESOURCE_PROTOCOL,
+                            RESOURCE_PROTOCOL,
                             fileSystem.getString(absolute.path),
                             null);
         } catch (URISyntaxException e) {

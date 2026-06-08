@@ -22,30 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.protocol.resource;
 
-import java.net.MalformedURLException;
-import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-@NativeImageBuildArgs({
-                "-H:+UnlockExperimentalVMOptions",
-                "-H:+RuntimeClassLoading",
-                "--enable-url-protocols=runtime",
-                "-H:DisableURLProtocols=http"
-})
-public class RuntimeURLProtocolDisableTest {
-
-    @Test
-    public void disabledProtocolIsNotResolvedByRuntimeURLFallback() {
-        MalformedURLException exception = Assert.assertThrows(MalformedURLException.class, () -> URI.create("http://example.com").toURL());
-        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains("unknown protocol: http"));
-    }
-
-    @Test
-    public void runtimeModeEnablesJDKProtocols() throws Exception {
-        URI.create("jar:file:/tmp/missing.jar!/resource.txt").toURL();
+public final class Handler extends URLStreamHandler {
+    @Override
+    protected URLConnection openConnection(URL url) {
+        throw new AssertionError("Internal Native Image resource URLs must not use application URL handlers.");
     }
 }

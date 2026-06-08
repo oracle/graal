@@ -64,6 +64,9 @@ public final class Target_jdk_internal_misc_VM {
         return ArgsSupport.singleton().getInitialArgs();
     }
 
+    @Alias
+    public static native boolean isBooted();
+
     /*
      * Finalizers are not supported, but we still do not want to inherit any counters from the image
      * builder.
