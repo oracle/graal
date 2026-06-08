@@ -82,17 +82,24 @@ public final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
+        if (iovecCount < 0) {
+            return Errno.Inval;
+        }
 
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesWritten = 0;
         try {
+            validateU32MemoryRange(memory, sizeAddress, Integer.BYTES);
             for (int i = 0; i < iovecCount; i++) {
                 final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
+                validateU32MemoryRange(memory, start, len);
                 memoryLib.copyToStream(memory, node, stream, start, len);
                 totalBytesWritten += len;
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return Errno.Io;
         }
@@ -105,20 +112,27 @@ public final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
+        if (iovecCount < 0) {
+            return Errno.Inval;
+        }
 
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesRead = 0;
         try {
+            validateU32MemoryRange(memory, sizeAddress, Integer.BYTES);
             for (int i = 0; i < iovecCount; i++) {
                 final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
+                validateU32MemoryRange(memory, start, len);
                 final int bytesRead = memoryLib.copyFromStream(memory, node, stream, start, len);
                 if (bytesRead == -1) {
                     break;
                 }
                 totalBytesRead += bytesRead;
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return Errno.Io;
         }
