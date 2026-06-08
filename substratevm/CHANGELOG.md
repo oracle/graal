@@ -19,6 +19,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-2092) Add jitdump support for recording run-time compilation metadata for perf (see PerfProfiling.md). Can be enabled with `-g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump`.
 * (GR-69116) Rename `native-image-configure` tool to `native-image-utils`.
 * (GR-69572) Deprecates the `native-image-inspect` tool. To extract embedded SBOMs, use `native-image-utils extract-sbom --image-path=<path_to_binary>`.
+* (GR-76386) Move `native-image-utils extract-sbom` to GraalVM Community Edition.
 * (GR-70136) Add a new tool `--tool:llvm-backend` for the LLVM backend of Native Image.
 * (GR-68984) Ship the `reachability-metadata-schema.json` together with GraalVM at `<graalvm-home>/lib/svm/schemas/reachability-metadata-schema.json`.
 * (GR-68984) Improve the schema to capture detailed constraints about each element in the `reachability-metadata-schema.json`.

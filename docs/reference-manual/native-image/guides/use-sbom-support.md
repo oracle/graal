@@ -70,8 +70,8 @@ It lists all of the Java libraries included in it.
 
 ### Native Image Utils Tool
 
-GraalVM Native Image provides the `native-image-utils` tool to retrieve an SBOM embedded in a native executable.
-The Utils Tool is a viable alternative if you prefer not to install `syft`.
+The `native-image-utils extract-sbom` command retrieves an SBOM embedded in a native executable or shared library that follows the [Native Image SBOM specification](https://www.graalvm.org/dev/security-guide/native-image/sbom/){:target="_blank"}.
+The utils tool is a viable alternative if you prefer not to install `syft`.
 
 Run the following command to read the SBOM contents using the Utils Tool:
 ```bash
