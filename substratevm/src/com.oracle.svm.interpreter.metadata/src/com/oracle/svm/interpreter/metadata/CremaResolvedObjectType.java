@@ -72,8 +72,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     private final byte[] primitiveStatics;
     private final Object[] referenceStatics;
 
-    // GR-70720: Allow AOT types as nest host.
-    private CremaResolvedObjectType host;
+    // GR-70720: The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
+    private InterpreterResolvedObjectType host;
 
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
@@ -263,11 +263,16 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedObjectType getNestHost() {
+    public InterpreterResolvedObjectType getNestHost() {
         if (host == null) {
             host = resolveHost();
         }
         return host;
+    }
+
+    public void setNestHost(InterpreterResolvedObjectType nestHost) {
+        assert host == null;
+        host = nestHost;
     }
 
     @Override
@@ -276,14 +281,18 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
          * This method is not called for VM operations, only for reflection. No need to cache the
          * result as this is a rare operation.
          */
-        CremaResolvedObjectType nestHost = getNestHost();
+        InterpreterResolvedObjectType nestHost = getNestHost();
         if (this != nestHost) {
-            return resolveNestMembers(nestHost);
+            if (nestHost instanceof CremaResolvedObjectType cremaNestHost) {
+                return resolveNestMembers(cremaNestHost);
+            }
+            // GR-70720: For non-Crema hosts, report the host itself; hidden nestmates are not listed as nest members.
+            return new InterpreterResolvedObjectType[]{nestHost};
         }
         return resolveNestMembers(this);
     }
 
-    private CremaResolvedObjectType resolveHost() {
+    private InterpreterResolvedObjectType resolveHost() {
         NestHostAttribute nestHostAttribute = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
         if (nestHostAttribute == null) {
             return this;
