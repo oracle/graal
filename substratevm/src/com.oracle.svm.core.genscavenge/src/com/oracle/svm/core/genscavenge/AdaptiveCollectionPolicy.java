@@ -28,6 +28,7 @@ import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoun
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -132,7 +133,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgMinorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptivePaddedAverage avgSurvived = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, SURVIVOR_PADDING);
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
-    private final ReciprocalLeastSquareFit minorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
+    private final ReciprocalLeastSquareFit minorCostEstimator = ReciprocalLeastSquareFit.createWithEffectiveHistoryLength(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long minorCount;
     private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
@@ -145,7 +146,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgMajorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptiveWeightedAverage avgMajorIntervalSeconds = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
-    private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
+    private final ReciprocalLeastSquareFit majorCostEstimator = ReciprocalLeastSquareFit.createWithEffectiveHistoryLength(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
     private UnsignedWord oldGenSizeIncrementSupplement = Word.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
     private long latestMajorMutatorIntervalNanos;
@@ -162,10 +163,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_attempt_scavenge
+    public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) { // should_attempt_scavenge
         guaranteeSizeParametersInitialized();
 
         boolean collectYoungSeparately = shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen());
+        if (forcedCompleteCollection && !collectYoungSeparately) {
+            return true;
+        }
         if (!followingIncrementalCollection && collectYoungSeparately) {
             /*
              * With a copying collector, default to always doing an incremental collection first
@@ -177,10 +181,14 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
         if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
             /*
-             * In the preceding incremental collection, we promoted objects to the old generation
-             * beyond its current capacity to avoid a promotion failure, but due to the chunked
-             * nature of our heap, we should still be within the maximum heap size. Follow up with a
-             * full collection during which we reclaim enough space or expand the old generation.
+             * In the preceding incremental collection, to avoid a promotion failure, we promoted
+             * objects to the old generation beyond its current capacity. We might have temporarily
+             * exceeded the maximum heap size, but due to the chunked nature of our heap, should
+             * currently be within limits.
+             *
+             * Follow up with a full collection during which we reclaim enough space or expand the
+             * old generation. However, when tenuring all objects, we might exceed the old
+             * generation's maximum size and potentially later maximum heap size (GR-72932).
              */
             return true;
         }
@@ -254,9 +262,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         sizes.setSurvivorSize(targetSize);
 
         if (decrTenuringThreshold) {
-            tenuringThreshold = Math.max(tenuringThreshold - 1, 1);
+            // Note: we allow 0 to promote from eden to the old gen, but the original code uses >=1.
+            tenuringThreshold = Math.max(tenuringThreshold - 1, 0);
         } else if (incrTenuringThreshold) {
-            tenuringThreshold = Math.min(tenuringThreshold + 1, HeapParameters.getMaxSurvivorSpaces() + 1);
+            tenuringThreshold = Math.min(tenuringThreshold + 1, HeapParameters.getMaxSurvivorSpaces());
         }
     }
 
@@ -315,6 +324,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         if (deltax == 0 || totalSize == 0) { // division by zero below
             return true; // general assumption for space expansion
         }
+
+        /*
+         * Note: prior to using the estimator, we should check whether its current model is
+         * plausible (e.g., increasing size results in strictly decreasing predicted cost, and
+         * predicted costs are non-negative), and fall back to a conservative behavior if not.
+         */
+
         double y0 = estimator.estimate(x0) + otherCost;
         double y1 = y0 * (1 - deltax / totalSize * ADAPTIVE_SIZE_ESTIMATOR_MIN_TOTAL_SIZE_COST_TRADEOFF);
         double minSlope = (y1 - y0) / deltax;
@@ -360,6 +376,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         double decayedMajorGcCost = majorGcCost();
         double avgMajorInterval = avgMajorIntervalSeconds.getAverage();
         if (USE_ADAPTIVE_SIZE_DECAY_MAJOR_GC_COST && ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE > 0 && avgMajorInterval > 0) {
+            /*
+             * This seems pointless or flawed for major GCs because this method is called at the end
+             * when majorTimer has only just been restarted.
+             */
             double secondsSinceMajor = secondsSinceMajorGc();
             if (secondsSinceMajor > 0 && secondsSinceMajor > ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE * avgMajorInterval) {
                 double decayed = decayedMajorGcCost * (ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE * avgMajorInterval) / secondsSinceMajor;
@@ -397,40 +417,49 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return curSize.unsignedDivide(100).multiply(percentChange);
     }
 
+    /**
+     * Should not be called during a major collection itself because then, {@link #majorTimer} is
+     * repurposed to measure collection time (rather than time between collections).
+     */
     private double secondsSinceMajorGc() { // time_since_major_gc
-        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.startedNanos());
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.lastStartedNanoTime());
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
+    public void onCollectionBegin(boolean completeCollection, long beginNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.stopAt(requestingNanoTime);
+        if (!timer.wasStartedAtLeastOnce()) {
+            long origin = Isolates.isStartTimeAssigned() ? Isolates.getStartTimeNanos() : beginNanoTime;
+            timer.startAt(origin);
+        }
+        timer.stopAt(beginNanoTime);
         if (completeCollection) {
-            latestMajorMutatorIntervalNanos = timer.totalNanos();
+            latestMajorMutatorIntervalNanos = timer.lastIntervalNanos();
         } else {
-            latestMinorMutatorIntervalNanos = timer.totalNanos();
+            latestMinorMutatorIntervalNanos = timer.lastIntervalNanos();
         }
 
-        timer.reset();
         timer.start(); // measure collection pause
 
-        super.onCollectionBegin(completeCollection, requestingNanoTime);
+        super.onCollectionBegin(completeCollection, beginNanoTime);
     }
 
+    // PSParallelCompact::invoke_no_policy + major_collection_end
+    // or PSScavenge::invoke + minor_collection_end
     @Override
-    public void onCollectionEnd(boolean completeCollection, GCCause cause) { // {major,minor}_collection_end
+    public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         Timer timer = completeCollection ? majorTimer : minorTimer;
         timer.stop();
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), sizes.getPromoSize());
+                            cause, latestMajorMutatorIntervalNanos, timer.lastIntervalNanos(), sizes.getPromoSize());
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), sizes.getEdenSize());
+                            cause, latestMinorMutatorIntervalNanos, timer.lastIntervalNanos(), sizes.getEdenSize());
             minorCount++;
             minorCountSinceMajorCollection++;
 
@@ -586,6 +615,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
                     intervalSeconds.sample(intervalInSeconds);
                 }
             }
+            // Note: we should probably discard the sample if an interval is 0 or negative above.
             costEstimator.sample(UnsignedUtils.toDouble(sizeBytes), cost);
         }
     }

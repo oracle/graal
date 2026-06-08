@@ -42,7 +42,7 @@ import jdk.graal.compiler.options.OptionValues;
 
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
-    @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime. Serial GC only.", type = OptionType.User)//
+    @Option(help = "The garbage collection policy. Default: 'Adaptive'. Serial GC only.", type = OptionType.User)//
     public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive", SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Percentage of total collection time that should be spent on young generation collections. Serial GC with collection policy 'BySpaceAndTime' only.", type = OptionType.User)//
