@@ -343,7 +343,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (previous == null || !previous.includes(QUERIED)) {
                         registerTypeForRuntimeAccess(analysisType);
                     }
-                    typeData.updateDynamicAccessMetadata(cnd, preserved);
+                    typeData.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility == ACCESSED) {
                     if (previous == null || !previous.includes(ACCESSED) || !preserved && typeData.dynamicAccess.isPreserved()) {
@@ -607,7 +607,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
                 }
                 if (accessibility.includes(QUERIED)) {
-                    data.updateDynamicAccessMetadata(cnd, preserved);
+                    data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility.includes(ACCESSED)) {
                     if ((previous == null || !previous.includes(ACCESSED))) {
@@ -763,7 +763,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
                 }
                 if (accessibility.includes(QUERIED)) {
-                    data.updateDynamicAccessMetadata(cnd, preserved);
+                    data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility.includes(ACCESSED)) {
                     if (previous == null || !previous.includes(ACCESSED)) {
@@ -1834,6 +1834,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         RuntimeDynamicAccessMetadata dynamicAccess = null;
         boolean inHeap = false;
         boolean hiding = false;
+        /*
+         * Query-only registrations can be upgraded by preserved access registrations. Explicit
+         * non-preserved access registrations still keep the element non-preserved.
+         */
+        boolean notPreservedAccess = false;
 
         ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
             ConfigurationMemberAccessibility previous = accessibility;
@@ -1847,8 +1852,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return accessibility != null && accessibility.includes(target);
         }
 
-        void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
-            dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, preserved);
+        void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
+            boolean metadataPreserved = dynamicAccess == null ? preserved : dynamicAccess.isPreserved();
+            if (preserved && !notPreservedAccess) {
+                metadataPreserved = true;
+            } else if (!preserved && newAccessibility.includes(ACCESSED)) {
+                notPreservedAccess = true;
+                metadataPreserved = false;
+            } else if (!preserved && !isRegisteredAs(ACCESSED)) {
+                metadataPreserved = false;
+            }
+            dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, true).withPreserved(metadataPreserved);
         }
 
         RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
