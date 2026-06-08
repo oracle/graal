@@ -1924,6 +1924,9 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getNestMembers),
                     optionalBrk("java/lang/Class", "getSigners", "()[Ljava/lang/Object;",
                                     BreakpointInterceptor::getSigners),
+                    brk("java/net/URL", "isValidProtocol", "(Ljava/lang/String;)Z", BreakpointInterceptor::isValidURLProtocol),
+                    brk("java/net/URL$DefaultFactory", "createURLStreamHandler", "(Ljava/lang/String;)Ljava/net/URLStreamHandler;",
+                                    BreakpointInterceptor::createURLStreamHandler),
 
                     /* FFM API was introduced in Java 22 */
                     brk("jdk/internal/foreign/abi/AbstractLinker", "downcallHandle0",
@@ -1933,6 +1936,53 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/invoke/MethodHandle;Ljava/lang/foreign/FunctionDescriptor;Ljava/lang/foreign/Arena;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/foreign/MemorySegment;",
                                     BreakpointInterceptor::upcallStub)
     };
+
+    private static boolean isValidURLProtocol(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle protocol = getObjectArgument(thread, 1);
+        traceURLStreamHandler(jni, bp.clazz, callerClass, state, "getURLStreamHandler", fromJniString(jni, protocol), state.getFullStackTraceOrNull());
+        return true;
+    }
+
+    private static boolean createURLStreamHandler(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle protocol = getObjectArgument(thread, 1);
+        traceURLStreamHandler(jni, bp.clazz, callerClass, state, bp.specification.methodName, fromJniString(jni, protocol), state.getFullStackTraceOrNull());
+        return true;
+    }
+
+    private static void traceURLStreamHandler(JNIEnvironment jni, JNIObjectHandle clazz, JNIObjectHandle callerClass, InterceptedState state, String function,
+                    String protocolName, JNIMethodId[] stackTrace) {
+        String protocolClass = urlStreamHandlerReflectionTarget(jni, state, protocolName);
+        if (protocolClass != null) {
+            traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, function, null, stackTrace, protocolClass);
+        }
+    }
+
+    private static String urlStreamHandlerReflectionTarget(JNIEnvironment jni, InterceptedState state, String protocolName) {
+        /*
+         * The JDK asks the default factory for jar: during ordinary class path resource handling.
+         * Native Image handles those resources without requiring the jar URL handler metadata.
+         */
+        if ("jar".equalsIgnoreCase(protocolName)) {
+            return isClassPathJarResourceURL(jni, state) ? null : "sun.net.www.protocol.jar.Handler";
+        }
+        return "jrt".equalsIgnoreCase(protocolName) ? "sun.net.www.protocol.jrt.Handler" : null;
+    }
+
+    private static boolean isClassPathJarResourceURL(JNIEnvironment jni, InterceptedState state) {
+        for (int depth = 1; depth < 32; depth++) {
+            JNIMethodId method = state.getCallerMethod(depth);
+            if (method.isNull()) {
+                return false;
+            }
+            String className = getClassNameOrNull(jni, getMethodDeclaringClass(method));
+            if (className != null && className.startsWith("jdk.internal.loader.URLClassPath")) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
