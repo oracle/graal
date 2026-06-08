@@ -189,7 +189,7 @@ public abstract class ConfigurationParser {
             String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
             warnOrFailOnSchemaError(message);
 
-            EconomicSet<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> EconomicSet.create());
+            EconomicSet<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, _ -> EconomicSet.create());
             unknownAttributesForType.addAll(unknownAttributes);
         }
     }

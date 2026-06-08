@@ -147,7 +147,7 @@ public class ConfigurationType implements JsonPrintable {
                 fields = new HashMap<>();
             }
             for (Map.Entry<String, FieldInfo> fieldInfoEntry : other.fields.entrySet()) {
-                fields.compute(fieldInfoEntry.getKey(), (key, value) -> {
+                fields.compute(fieldInfoEntry.getKey(), (_, value) -> {
                     if (value == null) {
                         return fieldInfoEntry.getValue();
                     } else {
@@ -174,7 +174,7 @@ public class ConfigurationType implements JsonPrintable {
                 methods = new HashMap<>();
             }
             for (Map.Entry<ConfigurationMethod, ConfigurationMemberInfo> methodEntry : other.methods.entrySet()) {
-                methods.compute(methodEntry.getKey(), (key, value) -> {
+                methods.compute(methodEntry.getKey(), (_, value) -> {
                     if (value != null) {
                         return value.intersect(methodEntry.getValue());
                     } else {
@@ -250,7 +250,7 @@ public class ConfigurationType implements JsonPrintable {
         maybeRemoveFields(allDeclaredFieldsAccess.combine(other.allDeclaredFieldsAccess), allPublicFieldsAccess.combine(other.allPublicFieldsAccess));
         if (fields != null && other.fields != null) {
             for (Map.Entry<String, FieldInfo> fieldInfoEntry : other.fields.entrySet()) {
-                fields.computeIfPresent(fieldInfoEntry.getKey(), (key, value) -> value.newWithDifferencesFrom(fieldInfoEntry.getValue()));
+                fields.computeIfPresent(fieldInfoEntry.getKey(), (_, value) -> value.newWithDifferencesFrom(fieldInfoEntry.getValue()));
             }
             if (fields.isEmpty()) {
                 fields = null;
@@ -264,7 +264,7 @@ public class ConfigurationType implements JsonPrintable {
         if (methods != null && other.methods != null) {
             for (Map.Entry<ConfigurationMethod, ConfigurationMemberInfo> entry : other.methods.entrySet()) {
                 ConfigurationMemberInfo otherMethodInfo = entry.getValue();
-                methods.computeIfPresent(entry.getKey(), (method, methodInfo) -> {
+                methods.computeIfPresent(entry.getKey(), (_, methodInfo) -> {
                     if (otherMethodInfo.includes(methodInfo)) {
                         return null; // remove
                     }
@@ -328,7 +328,7 @@ public class ConfigurationType implements JsonPrintable {
         if (fields == null) {
             fields = new HashMap<>();
         }
-        fields.compute(name, (k, v) -> (v != null)
+        fields.compute(name, (_, v) -> (v != null)
                         ? FieldInfo.get(v.getKind().intersect(ConfigurationMemberInfo.get(declaration, accessibility)), v.isFinalButWritable() || finalButWritable)
                         : FieldInfo.get(declaration, accessibility, finalButWritable));
     }
@@ -376,11 +376,11 @@ public class ConfigurationType implements JsonPrintable {
         }
         ConfigurationMethod method = new ConfigurationMethod(name, internalSignature);
         if (matchesAllSignatures) { // remove any methods that the new entry matches
-            methods.compute(method, (k, v) -> v != null ? kind.union(v) : kind);
+            methods.compute(method, (_, v) -> v != null ? kind.union(v) : kind);
             methods = maybeRemove(methods, map -> map.entrySet().removeIf(entry -> name.equals(entry.getKey().getName()) &&
                             kind.includes(entry.getValue()) && !method.equals(entry.getKey())));
         } else {
-            methods.compute(method, (k, v) -> v != null ? kind.intersect(v) : kind);
+            methods.compute(method, (_, v) -> v != null ? kind.intersect(v) : kind);
         }
         assert methods.containsKey(method);
     }

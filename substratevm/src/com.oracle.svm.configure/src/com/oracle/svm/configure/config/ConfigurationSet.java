@@ -71,7 +71,7 @@ public class ConfigurationSet {
     @SuppressWarnings("unchecked")
     public ConfigurationSet() {
         this(new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false), new ForeignConfiguration());
+                        new PredefinedClassesConfiguration(Collections.emptyList(), _ -> false), new ForeignConfiguration());
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
