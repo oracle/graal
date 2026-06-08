@@ -236,7 +236,7 @@
 
         linux_aarch64    + tier3  + jdk + truffle_test_lite_gate,
       ] +
-      if jdk.truffle_jdk_name == 'oraclejdk-latest' then [
+      if jdk == jdk_latest_oracle then [
         darwin_aarch64   + tier3  + jdk + truffle_test_lite_gate,
         windows_amd64    + tier3  + jdk + truffle_test_lite_gate + winDevKit(jdk),
       ] else [
