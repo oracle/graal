@@ -6,6 +6,7 @@ environ-sizes-get
 fd_advise-file
 fd_prestat_get
 fd_prestat_dir_name
+path-memory-range-validation
 fd_read-stdin
 fd_read-stdin-eof
 fd_read-stdin-multi
@@ -16,6 +17,7 @@ fd_filestat_get-file
 fd_fdstat_set_flags-file
 path_create_directory
 path_filestat_get-file
+path_filestat_get-negative-path-length
 path_filestat_set_times-file
 path_link-file
 path_open-existing-file

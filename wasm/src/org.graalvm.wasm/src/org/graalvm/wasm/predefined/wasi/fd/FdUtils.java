@@ -41,8 +41,14 @@
 
 package org.graalvm.wasm.predefined.wasi.fd;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.nodes.Node;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.LinkOption;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.wasi.types.Dirent;
@@ -52,20 +58,20 @@ import org.graalvm.wasm.predefined.wasi.types.Filestat;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.graalvm.wasm.predefined.wasi.types.Iovec;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.LinkOption;
-import java.util.concurrent.TimeUnit;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.nodes.Node;
 
-final class FdUtils {
+public final class FdUtils {
 
     static final LinkOption[] FOLLOW_LINKS = new LinkOption[0];
     static final LinkOption[] NOFOLLOW_LINKS = new LinkOption[]{LinkOption.NOFOLLOW_LINKS};
 
     private FdUtils() {
 
+    }
+
+    public static void validateU32MemoryRange(WasmMemory memory, int address, int length) {
+        Objects.checkFromIndexSize(Integer.toUnsignedLong(address), Integer.toUnsignedLong(length), WasmMemoryLibrary.getUncached().byteSize(memory));
     }
 
     static LinkOption[] linkOptions(boolean followSymlinks) {
@@ -91,7 +97,7 @@ final class FdUtils {
             return Errno.Io;
         }
 
-        WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, totalBytesWritten);
+        memoryLib.store_i32(memory, node, sizeAddress, totalBytesWritten);
         return Errno.Success;
     }
 
@@ -117,7 +123,7 @@ final class FdUtils {
             return Errno.Io;
         }
 
-        WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, totalBytesRead);
+        memoryLib.store_i32(memory, node, sizeAddress, totalBytesRead);
         return Errno.Success;
     }
 
