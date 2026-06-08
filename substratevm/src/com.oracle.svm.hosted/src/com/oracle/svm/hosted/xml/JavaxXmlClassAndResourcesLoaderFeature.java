@@ -35,17 +35,28 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransformServiceClassesAndResources;
 
+import java.io.IOException;
+import java.lang.module.ModuleReader;
+import java.lang.module.ResolvedModule;
+import java.util.Optional;
+
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
+    private static final String JDK_CATALOG_RESOURCE_PREFIX = "jdk/xml/internal/jdkcatalog/";
+
+    private static boolean jdkCatalogResourcesRegistered;
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (RuntimeClassLoading.isSupported()) {
@@ -113,6 +124,33 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         }
     }
 
+    static synchronized void registerJdkCatalogResources() {
+        if (jdkCatalogResourcesRegistered) {
+            return;
+        }
+
+        var javaXmlResolvedModule = JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml");
+        if (javaXmlResolvedModule.isEmpty()) {
+            jdkCatalogResourcesRegistered = true;
+            return;
+        }
+
+        String javaXmlModuleName = javaXmlResolvedModule.get().getName();
+        Module javaXmlModule = ModuleLayer.boot().findModule(javaXmlModuleName).orElseThrow(() -> VMError.shouldNotReachHere("Could not resolve hosted java.xml module"));
+        Optional<ResolvedModule> resolvedModule = ModuleLayer.boot().configuration().findModule(javaXmlModuleName);
+        VMError.guarantee(resolvedModule.isPresent());
+
+        try (ModuleReader reader = resolvedModule.get().reference().open()) {
+            reader.list()
+                            .filter(entry -> entry.startsWith(JDK_CATALOG_RESOURCE_PREFIX))
+                            .forEach(entry -> RuntimeResourceAccess.addResource(javaXmlModule, entry));
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
+        jdkCatalogResourcesRegistered = true;
+    }
+
     /**
      * Initialize the {@code CatalogHolder#catalog} field. We do this eagerly (instead of e.g. in a
      * {@link FieldValueTransformer}) to work around a race condition in
@@ -120,6 +158,7 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
      */
     private static void initializeJdkCatalog() {
         if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent()) {
+            registerJdkCatalogResources();
             // Ensure the JdkXmlConfig$CatalogHolder#catalog field is initialized.
             Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkXmlConfig$CatalogHolder");
             // The constructor call prepareCatalog which will call JdkCatalog#init.

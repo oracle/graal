@@ -46,12 +46,14 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
         FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
         List<String> parserClasses = xmlParserClasses();
         registerReflectionClasses(access, parserClasses);
+        JavaxXmlClassAndResourcesLoaderFeature.registerJdkCatalogResources();
         registerResources();
     }
 
     void registerConfig(Feature.DuringAnalysisAccess a, String className) {
         FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
         registerReflectionClasses(access, Collections.singletonList(className));
+        JavaxXmlClassAndResourcesLoaderFeature.registerJdkCatalogResources();
         registerResources();
     }
 
