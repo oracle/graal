@@ -879,6 +879,8 @@ public abstract class Accessor {
         public abstract boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy);
 
         public abstract void collectNativeImagePresetOptions();
+
+        public abstract Source getSourceReceiver(org.graalvm.polyglot.Source source);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1727,7 +1729,8 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.isolate.PolyglotIsolateAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.tck.TruffleTCKAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);

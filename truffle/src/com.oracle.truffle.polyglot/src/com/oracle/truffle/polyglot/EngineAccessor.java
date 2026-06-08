@@ -2484,6 +2484,11 @@ final class EngineAccessor extends Accessor {
                 polyglot.presetOptions = Collections.unmodifiableMap(newDefaults);
             }
         }
+
+        @Override
+        public Source getSourceReceiver(org.graalvm.polyglot.Source source) {
+            return (Source) PolyglotImpl.findInstance().getAPIAccess().getSourceReceiver(source);
+        }
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {
