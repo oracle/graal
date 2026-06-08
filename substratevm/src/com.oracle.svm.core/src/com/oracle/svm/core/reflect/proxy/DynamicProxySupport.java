@@ -95,7 +95,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                  * This causes the internal structure of the proxyCache to be unusable in the
                  * application layer.
                  */
-                return Arrays.hashCode(Arrays.stream(interfaces).map(Class::getName).toArray());
+                String[] interfaceNames = new String[interfaces.length];
+                for (int i = 0; i < interfaces.length; i++) {
+                    interfaceNames[i] = interfaces[i].getName();
+                }
+                return Arrays.hashCode(interfaceNames);
             } else {
                 return Arrays.hashCode(interfaces);
             }
@@ -132,7 +136,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(intfs);
         Object conditionalValue = proxyCache.get(key);
         if (conditionalValue == null) {
-            conditionalValue = ConditionalRuntimeValue.create(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs, preserved));
+            conditionalValue = ConditionalRuntimeValue.create(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs));
         } else {
             RuntimeDynamicAccessMetadata currentMetadata = ConditionalRuntimeValue.getDynamicAccessMetadata(conditionalValue);
             RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.addCondition(currentMetadata, condition, true)
@@ -140,14 +144,23 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             conditionalValue = ConditionalRuntimeValue.create(newMetadata, ConditionalRuntimeValue.getValueUnconditionally(conditionalValue));
         }
         proxyCache.put(key, conditionalValue);
+        if (ConditionalRuntimeValue.getValueUnconditionally(conditionalValue) instanceof Class<?> proxyClass) {
+            registerProxyReflectionMetadata(condition, proxyClass, intfs, preserved);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private Object createProxyClass(Class<?>[] interfaces, boolean preserved) {
+    private Object createProxyClass(Class<?>[] interfaces) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
-            boolean isPredefinedProxy = Arrays.stream(interfaces).anyMatch(PredefinedClassesSupport::isPredefined);
+            boolean isPredefinedProxy = false;
+            for (Class<?> intf : interfaces) {
+                if (PredefinedClassesSupport.isPredefined(intf)) {
+                    isPredefinedProxy = true;
+                    break;
+                }
+            }
             if (isPredefinedProxy) {
                 /*
                  * Treat the proxy as a predefined class so that we can set its class loader to the
@@ -157,24 +170,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                  */
                 PredefinedClassesSupport.registerClass(clazz);
                 JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType(clazz));
-            }
-
-            /*
-             * The constructor of the generated dynamic proxy class that takes a
-             * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
-             * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
-             * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
-             * be allocated at run time.
-             */
-            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-            reflectionSupport.register(AccessCondition.unconditional(), preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
-
-            /*
-             * The proxy class reflectively looks up the methods of the interfaces it implements to
-             * pass a Method object to InvocationHandler.
-             */
-            for (Class<?> intf : interfaces) {
-                reflectionSupport.register(AccessCondition.unconditional(), preserved, intf.getMethods());
             }
 
             /*
@@ -193,6 +188,35 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             return clazz;
         } catch (Throwable t) {
             return t;
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void registerProxyReflectionMetadata(AccessCondition condition, Class<?> proxyClass, Class<?>[] interfaces, boolean preserved) {
+        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+
+        /*
+         * Proxy.newProxyInstance first queries the generated proxy class for its constructor, so
+         * the proxy class itself must satisfy class-level reflection checks in addition to the
+         * constructor registration below.
+         */
+        reflectionSupport.register(condition, preserved, proxyClass);
+
+        /*
+         * The constructor of the generated dynamic proxy class that takes a
+         * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
+         * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)`,
+         * is registered for reflection so that dynamic proxy instances can be allocated at run
+         * time.
+         */
+        reflectionSupport.register(condition, preserved, ReflectionUtil.lookupConstructor(proxyClass, InvocationHandler.class));
+
+        /*
+         * The proxy class reflectively looks up the methods of the interfaces it implements to pass
+         * a Method object to InvocationHandler.
+         */
+        for (Class<?> intf : interfaces) {
+            reflectionSupport.register(condition, preserved, intf.getMethods());
         }
     }
 

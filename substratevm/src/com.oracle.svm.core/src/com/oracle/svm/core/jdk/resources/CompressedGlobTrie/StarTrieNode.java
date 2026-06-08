@@ -45,6 +45,6 @@ final class StarTrieNode<C> extends GlobTrieNode<C> {
     }
 
     public boolean hasChildrenOnThisLevel() {
-        return this.getChildren().stream().anyMatch(child -> !child.isNewLevel());
+        return hasChildrenOnSameLevel();
     }
 }

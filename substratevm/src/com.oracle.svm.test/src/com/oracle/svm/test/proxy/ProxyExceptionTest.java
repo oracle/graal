@@ -25,11 +25,22 @@
 
 package com.oracle.svm.test.proxy;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Proxy;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ProxyExceptionTest {
+
+    @Retention(RetentionPolicy.RUNTIME)
+    private @interface Marker {
+    }
+
+    @Marker
+    private static final class AnnotatedClass {
+    }
 
     /**
      * <p>
@@ -42,5 +53,12 @@ public class ProxyExceptionTest {
     @Test
     public void test1() {
         Proxy.newProxyInstance(ClassLoader.getSystemClassLoader(), new Class<?>[]{CustomProxy.class}, new CustomInvocationHandler());
+    }
+
+    @Test
+    public void testAnnotationProxyCreation() {
+        // Checkstyle: allow direct annotation access
+        Assert.assertEquals(1, AnnotatedClass.class.getAnnotations().length);
+        // Checkstyle: disallow direct annotation access
     }
 }

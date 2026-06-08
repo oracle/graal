@@ -50,6 +50,7 @@ import java.util.stream.StreamSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
@@ -384,7 +385,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             Constructor<?> constructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(rawDeclaringClass, rawTargetConstructor);
             DynamicHub rawDeclaringHub = typeToHub(rawDeclaringType);
             DynamicHub rawTargetConstructorHub = typeToHub(rawTargetConstructorType);
-            SerializationSupport.currentLayer().addConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub, SerializationFeature.getConstructorAccessor(constructor));
+            SerializationSupport.currentLayer().addConstructorAccessor(
+                            AccessCondition.unconditional(),
+                            false,
+                            rawDeclaringHub,
+                            rawTargetConstructorHub,
+                            SerializationFeature.getConstructorAccessor(constructor));
             Class<?> constructorAccessor = SerializationSupport.getHostedSerializationConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub).getClass();
             verifyClassIdentityHashCode(constructorAccessor, typeData);
             metaAccess.lookupJavaType(constructorAccessor);

@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -128,6 +129,8 @@ public interface ReflectionHostedSupport {
     Set<String> getKnownClassNames();
 
     int getReflectionClassesCount();
+
+    RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz);
 
     int getReflectionMethodsCount();
 
