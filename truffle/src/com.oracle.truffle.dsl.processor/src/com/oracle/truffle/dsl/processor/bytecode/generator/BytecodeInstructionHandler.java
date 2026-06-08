@@ -631,8 +631,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             case TAG_ENTER:
                 return emitTagEnter(b);
             case TAG_YIELD:
-            case TAG_YIELD_NULL:
                 return emitTagYield(b);
+            case TAG_YIELD_NULL:
+                return emitTagYieldNull(b);
             case TAG_LEAVE:
                 return emitTagLeave(b, mode);
             case TAG_LEAVE_VOID:
@@ -1622,13 +1623,28 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         return null;
     }
 
-    private TypeMirror emitTagYield(CodeTreeBuilder b) throws AssertionError {
-        Operand operand = switch (instruction.kind) {
-            case TAG_YIELD -> instruction.signature.singleDynamicOperand();
-            case TAG_YIELD_NULL -> null;
-            default -> throw new AssertionError("unexpected tag yield instruction " + instruction);
-        };
+    private TypeMirror emitTagYield(CodeTreeBuilder b) {
+        InstructionImmediate imm = instruction.getImmediate(ImmediateKind.TAG_NODE);
+        b.startDeclaration(parent.parent.tagNode.asType(), "tagNode");
+        b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
+        b.end();
 
+        String resultStackOffset = model().usesTagYieldResultStackOffsetImmediate()
+                        ? BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findImmediate(ImmediateKind.SHORT, "result_stack_offset")).toString()
+                        : String.valueOf(model().tagYieldResultStackOffset);
+        String stackPointer = handlerLayout.isTailCall() ? VirtualStateElement.LOCAL_NAME + ".sp" : "sp";
+        b.startDeclaration(type(Object.class), "result_");
+        b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(stackPointer + " - " + resultStackOffset));
+        b.end();
+
+        b.startStatement().startCall("tagNode.findProbe().onYield");
+        b.string(parent.localFrame());
+        b.string("result_");
+        b.end(2);
+        return null;
+    }
+
+    private TypeMirror emitTagYieldNull(CodeTreeBuilder b) {
         InstructionImmediate imm = instruction.getImmediate(ImmediateKind.TAG_NODE);
         b.startDeclaration(parent.parent.tagNode.asType(), "tagNode");
         b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
@@ -1636,11 +1652,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         b.startStatement().startCall("tagNode.findProbe().onYield");
         b.string(parent.localFrame());
-        if (operand != null) {
-            b.string(operand.localName());
-        } else {
-            b.string("null");
-        }
+        b.string("null");
         b.end().end();
         return null;
     }

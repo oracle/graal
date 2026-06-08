@@ -533,9 +533,36 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (signature.isVoid()) {
             customOperation.addError("A @%s cannot be void. It must return a value, which becomes the result yielded to the caller.", getSimpleName(types.Yield));
         }
-        if (signature.dynamicOperandCount() > 1) {
-            customOperation.addError("A @%s must take zero or one dynamic operands.", getSimpleName(types.Yield));
+        int dynamicOperandCount = signature.dynamicOperandCount();
+        AnnotationMirror mirror = customOperation.getTemplateTypeAnnotation();
+        AnnotationValue resultOperandIndexValue = ElementUtils.getAnnotationValue(mirror, "resultOperandIndex", false);
+        int resultOperandIndex;
+        if (resultOperandIndexValue == null) {
+            if (dynamicOperandCount > 1) {
+                customOperation.addError(mirror, null,
+                                "A @%s with multiple dynamic operands must specify resultOperandIndex.",
+                                getSimpleName(types.Yield));
+                return;
+            }
+            resultOperandIndex = 0;
+        } else {
+            if (dynamicOperandCount == 0) {
+                customOperation.addError(mirror, resultOperandIndexValue,
+                                "A @%s with no dynamic operands cannot specify resultOperandIndex. Remove resultOperandIndex or add dynamic operands to resolve this error.",
+                                getSimpleName(types.Yield));
+                return;
+            }
+            resultOperandIndex = ElementUtils.resolveAnnotationValue(Integer.class, resultOperandIndexValue);
+            if (resultOperandIndex < 0 || dynamicOperandCount <= resultOperandIndex) {
+                customOperation.addError(mirror, resultOperandIndexValue,
+                                "Invalid resultOperandIndex %s for @%s. The value must be between 0 and %s.",
+                                resultOperandIndex,
+                                getSimpleName(types.Yield),
+                                dynamicOperandCount - 1);
+                return;
+            }
         }
+        customOperation.setResultOperandIndex(resultOperandIndex);
     }
 
     private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {

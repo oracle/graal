@@ -43,8 +43,10 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -388,17 +390,7 @@ public class BytecodeDSLBuiltins {
         }
 
         if (m.enableTagInstrumentation && m.hasYieldOperation()) {
-            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, "result", Object.class, Object.class));
-            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-
-            for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
-                if (yieldOperation.instruction.signature.dynamicOperandCount() == 0) {
-                    m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
-                    m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-                    break;
-                }
-            }
-
+            configureTagYieldInstructions(m);
             m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
             m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
@@ -431,6 +423,36 @@ public class BytecodeDSLBuiltins {
                 m.invalidateInstructions[i] = model;
                 model.finalizeModel();
             }
+        }
+    }
+
+    private static void configureTagYieldInstructions(BytecodeDSLModel m) {
+        Set<Integer> yieldResultStackOffsets = new HashSet<>();
+        boolean needsYieldNull = false;
+        if (m.enableYield) {
+            yieldResultStackOffsets.add(m.getYieldResultStackOffset(m.findOperation(OperationKind.YIELD)));
+        }
+        for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
+            if (yieldOperation.instruction.signature.dynamicOperandCount() == 0) {
+                needsYieldNull = true;
+            } else {
+                yieldResultStackOffsets.add(m.getYieldResultStackOffset(yieldOperation));
+            }
+        }
+        if (!yieldResultStackOffsets.isEmpty()) {
+            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(void.class));
+            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            if (yieldResultStackOffsets.size() == 1) {
+                // static offset for all yields
+                m.tagYieldResultStackOffset = yieldResultStackOffsets.iterator().next();
+            } else {
+                // dynamic offset for all yields
+                m.tagYieldInstruction.addImmediate(ImmediateKind.SHORT, "result_stack_offset");
+            }
+        }
+        if (needsYieldNull) {
+            m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
+            m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ public class CustomOperationModel extends Template {
     public Boolean forceCached;
     public boolean customYield;
     public Boolean storeBytecodeIndex;
+    public int resultOperandIndex;
 
     public CustomOperationModel(ProcessorContext context, BytecodeDSLModel bytecode, TypeElement templateType, AnnotationMirror mirror, OperationModel operation) {
         super(context, templateType, mirror);
@@ -109,6 +110,14 @@ public class CustomOperationModel extends Template {
 
     public boolean isCustomYield() {
         return this.customYield;
+    }
+
+    public void setResultOperandIndex(int resultOperandIndex) {
+        this.resultOperandIndex = resultOperandIndex;
+    }
+
+    public int getResultOperandIndex() {
+        return resultOperandIndex;
     }
 
     @Override

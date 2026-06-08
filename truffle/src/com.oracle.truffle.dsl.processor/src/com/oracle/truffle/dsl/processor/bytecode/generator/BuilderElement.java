@@ -259,12 +259,13 @@ final class BuilderElement extends AbstractElement {
         this.addAll(createBeforeEmitReturn());
         if (model.hasYieldOperation()) {
             if (model.enableTagInstrumentation) {
-                this.add(createDoEmitTagYield(model.tagYieldInstruction));
-                this.add(createDoEmitTagResume());
-
+                if (model.tagYieldInstruction != null) {
+                    this.add(createDoEmitTagYield(model.tagYieldInstruction));
+                }
                 if (model.tagYieldNullInstruction != null) {
                     this.add(createDoEmitTagYield(model.tagYieldNullInstruction));
                 }
+                this.add(createDoEmitTagResume());
             }
         }
 
@@ -2282,7 +2283,7 @@ final class BuilderElement extends AbstractElement {
                 break;
             case YIELD, CUSTOM_YIELD:
                 if (model.enableTagInstrumentation) {
-                    b.statement("doEmitTagYield()");
+                    emitDoEmitTagYield(b, operation);
                 }
                 buildEmitOperationInstruction(b, operation, constantOperandValues);
 
@@ -4761,6 +4762,14 @@ final class BuilderElement extends AbstractElement {
         return ex;
     }
 
+    private void emitDoEmitTagYield(CodeTreeBuilder b, OperationModel operation) {
+        b.startStatement().startCall("doEmitTagYield");
+        if (model.usesTagYieldResultStackOffsetImmediate()) {
+            b.string("(short) ", String.valueOf(model.getYieldResultStackOffset(operation)));
+        }
+        b.end(2);
+    }
+
     /**
      * Before emitting a yield, we may need to emit additional instructions for tag instrumentation.
      */
@@ -4776,6 +4785,10 @@ final class BuilderElement extends AbstractElement {
         };
 
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), methodName);
+        boolean hasStackOffsetImmediate = instr.kind == InstructionKind.TAG_YIELD && model.usesTagYieldResultStackOffsetImmediate();
+        if (hasStackOffsetImmediate) {
+            ex.addParameter(new CodeVariableElement(type(short.class), "resultStackOffset"));
+        }
 
         CodeTreeBuilder b = ex.createBuilder();
         b.startIf().string("tags == 0").end().startBlock();
@@ -4788,7 +4801,11 @@ final class BuilderElement extends AbstractElement {
             OperationModel op = model.findOperation(OperationKind.TAG);
             b.startCase().tree(parent.createOperationConstant(op)).end();
             b.startBlock();
-            buildEmitInstruction(b, null, instr, operationStack.read(op, operationFields.nodeId));
+            if (hasStackOffsetImmediate) {
+                buildEmitInstruction(b, null, instr, operationStack.read(op, operationFields.nodeId), "resultStackOffset");
+            } else {
+                buildEmitInstruction(b, null, instr, operationStack.read(op, operationFields.nodeId));
+            }
             b.statement("break");
             b.end(); // case tag
 

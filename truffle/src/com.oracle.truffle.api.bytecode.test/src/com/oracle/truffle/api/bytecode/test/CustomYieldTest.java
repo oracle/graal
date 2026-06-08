@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,10 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -70,6 +74,7 @@ import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.Yield;
@@ -112,6 +117,28 @@ public class CustomYieldTest {
         CustomYieldTestRootNode root = nodes.getNode(0);
 
         CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call(42);
+        assertEquals(42, result.value());
+        assertEquals(123, result.continueWith(123));
+    }
+
+    /**
+     * Tests basic usage of a custom yield with multiple dynamic operands.
+     */
+    @Test
+    public void testMultipleOperands() {
+        BytecodeRootNodes<CustomYieldTestRootNode> nodes = CustomYieldTestRootNodeGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginPairYield();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endPairYield();
+            b.endReturn();
+            b.endRoot();
+        });
+        CustomYieldTestRootNode root = nodes.getNode(0);
+
+        CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call(40, 2);
         assertEquals(42, result.value());
         assertEquals(123, result.continueWith(123));
     }
@@ -181,6 +208,14 @@ public class CustomYieldTest {
             @Specialization
             public static Object doYield(Object result, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
                 return new CustomYieldResult(root, frame, result);
+            }
+        }
+
+        @Yield(resultOperandIndex = 0, javadoc = "A custom yield operation with two operands.")
+        public static final class PairYield {
+            @Specialization
+            public static Object doYield(int left, int right, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return new CustomYieldResult(root, frame, left + right);
             }
         }
 
@@ -653,6 +688,163 @@ public class CustomYieldTest {
         });
     }
 
+    /**
+     * Tests that tag instrumentation can read different custom yield result operand offsets.
+     */
+    @Test
+    public void testMultiOperandTagInstrumentation() {
+        InstructionDescriptor tagYield = getInstructionDescriptor(ComplexCustomYieldTestRootNodeGen.BYTECODE.getInstructionDescriptors(), "tag.yield");
+        assertTrue(hasArgumentDescriptor(tagYield, "result_stack_offset"));
+
+        runInstrumentationTest((context, instrumenter) -> {
+            BytecodeRootNodes<ComplexCustomYieldTestRootNode> nodes = ComplexCustomYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginSecondOperandYield();
+                b.emitLoadConstant(100);
+                b.beginFirstOperandYield();
+                b.emitLoadArgument(0);
+                b.emitLoadConstant(200);
+                b.endFirstOperandYield();
+                b.endSecondOperandYield();
+                b.endReturn();
+                b.endRoot();
+            });
+            ComplexCustomYieldTestRootNode root = nodes.getNode(0);
+            root.getBytecodeNode().setUncachedThreshold(0);
+
+            List<Object> yieldValues = new ArrayList<>();
+            AtomicInteger resumeCount = new AtomicInteger();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(yieldValues, resumeCount));
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(7);
+            assertEquals(207, cont.getResult());
+            assertEquals(List.of(7, 7), yieldValues);
+            assertEquals(0, resumeCount.get());
+
+            cont = (ContinuationResult) cont.continueWith(5);
+            assertEquals(105, cont.getResult());
+            assertEquals(List.of(7, 7, 5), yieldValues);
+            assertEquals(2, resumeCount.get());
+
+            assertEquals(123, cont.continueWith(123));
+            assertEquals(List.of(7, 7, 5), yieldValues);
+            assertEquals(3, resumeCount.get());
+        });
+    }
+
+    /**
+     * Tests that a root node whose custom yields all have the same result stack offset does not
+     * require an immediate for tag.yield.
+     */
+    @Test
+    public void testFixedResultStackOffsetTagYield() {
+        InstructionDescriptor tagYield = getInstructionDescriptor(FixedResultStackOffsetYieldTestRootNodeGen.BYTECODE.getInstructionDescriptors(), "tag.yield");
+        assertFalse(hasArgumentDescriptor(tagYield, "result_stack_offset"));
+
+        runInstrumentationTest((context, instrumenter) -> {
+            BytecodeRootNodes<FixedResultStackOffsetYieldTestRootNode> nodes = FixedResultStackOffsetYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginAdd();
+                b.beginFirstOperandYield();
+                b.emitLoadArgument(0);
+                b.emitLoadConstant(100);
+                b.endFirstOperandYield();
+                b.beginOtherFirstOperandYield();
+                b.emitLoadArgument(1);
+                b.emitLoadConstant(200);
+                b.endOtherFirstOperandYield();
+                b.endAdd();
+                b.endReturn();
+                b.endRoot();
+            });
+            FixedResultStackOffsetYieldTestRootNode root = nodes.getNode(0);
+
+            List<Object> yieldValues = new ArrayList<>();
+            AtomicInteger resumeCount = new AtomicInteger();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(yieldValues, resumeCount));
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(7, 11);
+            assertEquals(107, cont.getResult());
+            assertEquals(List.of(7), yieldValues);
+            assertEquals(0, resumeCount.get());
+
+            cont = (ContinuationResult) cont.continueWith(5);
+            assertEquals(211, cont.getResult());
+            assertEquals(List.of(7, 11), yieldValues);
+            assertEquals(1, resumeCount.get());
+
+            assertEquals(11, cont.continueWith(6));
+            assertEquals(List.of(7, 11), yieldValues);
+            assertEquals(2, resumeCount.get());
+        });
+    }
+
+    /**
+     * Tests that no-result custom yields generate tag.yieldNull without tag.yield.
+     */
+    @Test
+    public void testNoResultTagYieldUsesTagYieldNull() {
+        List<InstructionDescriptor> descriptors = NoResultTagYieldTestRootNodeGen.BYTECODE.getInstructionDescriptors();
+        assertNotNull(getInstructionDescriptor(descriptors, "tag.yieldNull"));
+        assertNull(getInstructionDescriptor(descriptors, "tag.yield"));
+
+        runInstrumentationTest((context, instrumenter) -> {
+            BytecodeRootNodes<NoResultTagYieldTestRootNode> nodes = NoResultTagYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitNoResultYield();
+                b.endReturn();
+                b.endRoot();
+            });
+            NoResultTagYieldTestRootNode root = nodes.getNode(0);
+
+            List<Object> yieldValues = new ArrayList<>();
+            AtomicInteger resumeCount = new AtomicInteger();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(yieldValues, resumeCount));
+
+            CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call();
+            assertEquals("no result", result.value());
+            assertEquals(123, result.continueWith(123));
+
+            assertEquals(Arrays.asList((Object) null), yieldValues);
+            assertEquals(1, resumeCount.get());
+        });
+    }
+
+    /**
+     * Tests that resultOperandIndex only counts dynamic operands when constant operands are
+     * present.
+     */
+    @Test
+    public void testResultOperandIndexIgnoresConstantOperands() {
+        runInstrumentationTest((context, instrumenter) -> {
+            BytecodeRootNodes<ConstantOperandMultiYieldTestRootNode> nodes = ConstantOperandMultiYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginConstantsSecondOperandYield(1);
+                b.emitLoadConstant(100);
+                b.emitLoadArgument(0);
+                b.endConstantsSecondOperandYield(10);
+                b.endReturn();
+                b.endRoot();
+            });
+            ConstantOperandMultiYieldTestRootNode root = nodes.getNode(0);
+
+            List<Object> yieldValues = new ArrayList<>();
+            AtomicInteger resumeCount = new AtomicInteger();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(yieldValues, resumeCount));
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(7);
+            assertEquals(118, cont.getResult());
+            assertEquals(123, cont.continueWith(123));
+
+            assertEquals(List.of(7), yieldValues);
+            assertEquals(1, resumeCount.get());
+        });
+    }
+
     @Test
     public void testYieldQuickeningRegressionTest() {
         /*
@@ -717,6 +909,19 @@ public class CustomYieldTest {
         };
     }
 
+    private static InstructionDescriptor getInstructionDescriptor(List<InstructionDescriptor> descriptors, String name) {
+        for (InstructionDescriptor descriptor : descriptors) {
+            if (descriptor.getName().equals(name)) {
+                return descriptor;
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasArgumentDescriptor(InstructionDescriptor instruction, String name) {
+        return instruction.getArgumentDescriptors().stream().anyMatch(argument -> argument.getName().equals(name));
+    }
+
     /**
      * A root node with most Bytecode DSL features enabled (uncached, tag instrumentation,
      * serialization, BE).
@@ -757,6 +962,98 @@ public class CustomYieldTest {
             @Specialization
             public static Object doString(int addend1, String result, int addend2, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
                 return ContinuationResult.create(root, frame, addend1 + result + addend2);
+            }
+        }
+
+        @Yield(resultOperandIndex = 0, tags = {StatementTag.class})
+        public static final class FirstOperandYield {
+            @Specialization
+            public static Object doInt(int result, int other, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, result + other);
+            }
+        }
+
+        @Yield(resultOperandIndex = 1, tags = {StatementTag.class})
+        public static final class SecondOperandYield {
+            @Specialization
+            public static Object doInt(int other, int result, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, other + result);
+            }
+        }
+    }
+
+    /**
+     * A root node whose custom yields all use the first dynamic operand for their result index,
+     * fixing the result stack offset at two slots from the top of stack.
+     */
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    public abstract static class FixedResultStackOffsetYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected FixedResultStackOffsetYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        public static final class Add {
+            @Specialization
+            static int add(int left, int right) {
+                return left + right;
+            }
+        }
+
+        @Yield(resultOperandIndex = 0, tags = {StatementTag.class})
+        public static final class FirstOperandYield {
+            @Specialization
+            public static Object doInt(int result, int other, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, result + other);
+            }
+        }
+
+        @Yield(resultOperandIndex = 0, tags = {StatementTag.class})
+        public static final class OtherFirstOperandYield {
+            @Specialization
+            public static Object doInt(int result, int other, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, result + other);
+            }
+        }
+    }
+
+    /**
+     * A root node with only a no-result custom yield.
+     */
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    public abstract static class NoResultTagYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected NoResultTagYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Yield(tags = {StatementTag.class})
+        public static final class NoResultYield {
+            @Specialization
+            public static Object doNoArgs(@Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return new CustomYieldResult(root, frame, "no result");
+            }
+        }
+    }
+
+    /**
+     * A root node with constants around multiple dynamic custom yield operands.
+     */
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    public abstract static class ConstantOperandMultiYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ConstantOperandMultiYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Yield(resultOperandIndex = 1, tags = {StatementTag.class})
+        @ConstantOperand(type = int.class, name = "addend1")
+        @ConstantOperand(type = int.class, name = "addend2", specifyAtEnd = true)
+        public static final class ConstantsSecondOperandYield {
+            @Specialization
+            public static Object doInt(int addend1, int other, int result, int addend2, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, addend1 + other + result + addend2);
             }
         }
     }
@@ -851,11 +1148,47 @@ public class CustomYieldTest {
             }
         }
 
-        @ExpectError("A @Yield must take zero or one dynamic operands.")
+        @ExpectError("A @Yield with multiple dynamic operands must specify resultOperandIndex.")
         @Yield
-        public static final class CustomYieldTooManyOperands {
+        public static final class CustomYieldMissingResultOperandIndex {
             @Specialization
             public static Object doInt(int arg1, int arg2, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return null;
+            }
+        }
+
+        @ExpectError("Invalid resultOperandIndex 2 for @Yield. The value must be between 0 and 1.")
+        @Yield(resultOperandIndex = 2)
+        public static final class CustomYieldBadResultOperandIndex {
+            @Specialization
+            public static Object doInt(int arg1, int arg2, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return null;
+            }
+        }
+
+        @ExpectError("Invalid resultOperandIndex -1 for @Yield. The value must be between 0 and 1.")
+        @Yield(resultOperandIndex = -1)
+        public static final class CustomYieldNegativeResultOperandIndex {
+            @Specialization
+            public static Object doInt(int arg1, int arg2, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return null;
+            }
+        }
+
+        @ExpectError("A @Yield with no dynamic operands cannot specify resultOperandIndex. Remove resultOperandIndex or add dynamic operands to resolve this error.")
+        @Yield(resultOperandIndex = 1)
+        public static final class CustomYieldNoOperandsBadResultOperandIndex {
+            @Specialization
+            public static Object doNoArgs(@Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return null;
+            }
+        }
+
+        @ExpectError("A @Yield with no dynamic operands cannot specify resultOperandIndex. Remove resultOperandIndex or add dynamic operands to resolve this error.")
+        @Yield(resultOperandIndex = 0)
+        public static final class CustomYieldNoOperandsSpecifiedDefaultResultOperandIndex {
+            @Specialization
+            public static Object doNoArgs(@Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
                 return null;
             }
         }

@@ -236,6 +236,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
     public InstructionModel tagYieldInstruction;
+    public int tagYieldResultStackOffset;
     public InstructionModel tagYieldNullInstruction;
     public InstructionModel tagResumeInstruction;
     public InstructionModel clearLocalInstruction;
@@ -749,6 +750,24 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public Collection<OperationModel> getCustomYieldOperations() {
         return customYieldOperations.stream().map(customOperation -> customOperation.operation).toList();
+    }
+
+    public int getYieldResultStackOffset(OperationModel yieldOperation) {
+        int dynamicOperandCount = yieldOperation.instruction.signature.dynamicOperandCount();
+        if (dynamicOperandCount == 0) {
+            throw new AssertionError("Yield operation has no result operand: " + yieldOperation);
+        }
+        if (yieldOperation.kind == OperationKind.YIELD) {
+            return dynamicOperandCount;
+        } else if (yieldOperation.kind == OperationKind.CUSTOM_YIELD) {
+            return dynamicOperandCount - yieldOperation.customModel.getResultOperandIndex();
+        } else {
+            throw new AssertionError("Not a yield operation: " + yieldOperation);
+        }
+    }
+
+    public boolean usesTagYieldResultStackOffsetImmediate() {
+        return enableTagInstrumentation && tagYieldResultStackOffset == 0;
     }
 
     public Collection<OperationModel> getCustomVariadicOperations() {

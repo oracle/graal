@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ import com.oracle.truffle.api.dsl.Bind;
  * A custom yield operation has many of the same restrictions and capabilities of a regular
  * {@link Operation}, with a few differences:
  * <ul>
- * <li>It must take zero or one dynamic operand.</li>
+ * <li>It can take zero or more dynamic operands.</li>
  * <li>It yields a value to the caller, so it must have a return value. The result should be a
  * {@link InteropLibrary#isValidValue valid interop type}. Typically, the result should encapsulate
  * the continuation state so that the callee can resume execution at a later time.</li>
@@ -83,6 +83,10 @@ import com.oracle.truffle.api.dsl.Bind;
  * operations.)</li>
  * </ul>
  *
+ * If a custom yield takes multiple dynamic operands, {@link #resultOperandIndex()} specifies which
+ * operand represents the logical "result" of the yield before the custom yield executes. This
+ * result is used by {@link GenerateBytecode#enableTagInstrumentation() tag instrumentation}.
+ * <p>
  * Note that {@link GenerateBytecode#enableYield} does not need to be {@code true} to use custom
  * yields; it is only necessary if you need the built-in yield operation. The built-in yield
  * operation is semantically equivalent to the following custom yield operation:
@@ -128,6 +132,18 @@ public @interface Yield {
      * @since 25.1
      */
     String javadoc() default "";
+
+    /**
+     * Index of the dynamic operand that represents the logical "result" of the yield before the
+     * custom yield executes. This result is used by
+     * {@link GenerateBytecode#enableTagInstrumentation() tag instrumentation}.
+     * <p>
+     * This field must be specified for custom yields with multiple dynamic operands; it
+     * should not be specified for custom yields with no dynamic operands.
+     *
+     * @since 25.2
+     */
+    int resultOperandIndex() default 0;
 
     // no storeBytecodeIndex() attribute. Unconditionally enabled as we yield from the method.
 }
