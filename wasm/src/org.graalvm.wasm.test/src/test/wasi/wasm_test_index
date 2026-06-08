@@ -10,6 +10,7 @@ fd_read-stdin
 fd_read-stdin-eof
 fd_read-stdin-multi
 fd_seek-file
+fd_pread_pwrite-negative-offset
 fd_fdstat_get-file
 fd_filestat_get-file
 fd_fdstat_set_flags-file

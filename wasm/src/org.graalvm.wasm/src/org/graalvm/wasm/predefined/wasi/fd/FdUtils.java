@@ -122,6 +122,9 @@ final class FdUtils {
     }
 
     static Errno writeToStreamAt(Node node, WasmMemory memory, OutputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        if (offset < 0) {
+            return Errno.Inval;
+        }
         try {
             long currentOffset = channel.position();
             try {
@@ -136,6 +139,9 @@ final class FdUtils {
     }
 
     static Errno readFromStreamAt(Node node, WasmMemory memory, InputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        if (offset < 0) {
+            return Errno.Inval;
+        }
         try {
             long currentOffset = channel.position();
             try {
