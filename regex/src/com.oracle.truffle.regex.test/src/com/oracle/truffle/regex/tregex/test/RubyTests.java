@@ -663,9 +663,9 @@ public class RubyTests extends RegexTestBase {
     public void nestingLimit() {
         int depth = 10_000;
         String nestedGroups = "(".repeat(depth) + "a" + ")".repeat(depth);
-        expectUnsupported(nestedGroups, "");
+        expectUnsupported(nestedGroups, "", Map.of());
         String nestedCharClasses = "[".repeat(depth) + "a" + "]".repeat(depth);
-        expectUnsupported(nestedCharClasses, "");
+        expectUnsupported(nestedCharClasses, "", Map.of());
     }
 
     @Test

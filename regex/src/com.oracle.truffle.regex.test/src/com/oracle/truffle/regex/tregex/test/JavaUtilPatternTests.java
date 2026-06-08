@@ -83,7 +83,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     public void characterClassNestingLimit() {
         int depth = 10_000;
         String pattern = "[".repeat(depth) + "a" + "]".repeat(depth);
-        expectUnsupported(pattern, "");
+        expectUnsupported(pattern, "", Map.of());
     }
 
     @Test
