@@ -161,17 +161,29 @@ public class RuntimeDynamicAccessMetadata {
         maybeTrackConditionSatisfied(condition, false);
     }
 
+    /**
+     * Logs satisfied conditions matching {@link #trackConditionSatisfied()}. The option is read and
+     * checked before inspecting the condition so the disabled case does not pay for type formatting or
+     * array traversal.
+     */
     private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime) {
+        String trackedType = trackConditionSatisfied();
+        if (trackedType == null || condition == null) {
+            return;
+        }
+        maybeTrackConditionSatisfied(condition, ignoredAtBuildTime, trackedType);
+    }
+
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime, String trackedType) {
         if (condition == null) {
             return;
         } else if (condition instanceof Object[] conditionsArray) {
             for (Object singleCondition : conditionsArray) {
-                maybeTrackConditionSatisfied(singleCondition, ignoredAtBuildTime);
+                maybeTrackConditionSatisfied(singleCondition, ignoredAtBuildTime, trackedType);
             }
             return;
         }
 
-        String trackedType = trackConditionSatisfied();
         String typeName = null;
         if (condition instanceof Class<?> reachedTypeCondition) {
             typeName = reachedTypeCondition.getTypeName();
@@ -255,14 +267,14 @@ public class RuntimeDynamicAccessMetadata {
         if (condition instanceof Class<?> reachedTypeCondition) {
             return "typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")";
         }
-        return String.valueOf(condition);
+        throw VMError.shouldNotReachHere("Only typeReached condition is supported.");
     }
 
     private static void appendUnsatisfiedConditionAsJson(StringBuilder builder, Object condition) {
         if (condition instanceof Class<?> reachedTypeCondition) {
             builder.append("    ").append(quoteJsonString("typeReached")).append(": ").append(quoteJsonString(DynamicHub.fromClass(reachedTypeCondition).getTypeName()));
         } else {
-            builder.append("    ").append(quoteJsonString("condition")).append(": ").append(quoteJsonString(String.valueOf(condition)));
+            throw VMError.shouldNotReachHere("Only typeReached condition is supported.");
         }
         builder.append(System.lineSeparator());
     }

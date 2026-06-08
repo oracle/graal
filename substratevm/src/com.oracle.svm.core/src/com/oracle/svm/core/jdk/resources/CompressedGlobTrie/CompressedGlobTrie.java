@@ -33,9 +33,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -130,7 +130,9 @@ public class CompressedGlobTrie {
 
             List<String> invalidPatternsErrors = classifyPatterns(patterns, doubleStarPatterns, starPatterns, noStarPatterns, validatePatterns);
             if (!invalidPatternsErrors.isEmpty()) {
-                invalidPatternsErrors.forEach(LogUtils::warning);
+                for (String invalidPatternError : invalidPatternsErrors) {
+                    LogUtils.warning(invalidPatternError);
+                }
             }
 
             /* sort patterns in the groups based on generality */
@@ -141,9 +143,15 @@ public class CompressedGlobTrie {
              * add patterns from the most general to more specific one. This allows us to discard
              * some patterns that are already covered with more generic one that was added before
              */
-            doubleStarPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
-            starPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
-            noStarPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
+            for (GlobWithInfo<C> pattern : doubleStarPatterns) {
+                addPattern(root, pattern, contentKind);
+            }
+            for (GlobWithInfo<C> pattern : starPatterns) {
+                addPattern(root, pattern, contentKind);
+            }
+            for (GlobWithInfo<C> pattern : noStarPatterns) {
+                addPattern(root, pattern, contentKind);
+            }
 
             return root;
         }
@@ -161,7 +169,7 @@ public class CompressedGlobTrie {
             return unescapedPattern;
         }
 
-        private static <C> Set<C> getAdditionalContent(GlobTrieNode<C> node, AdditionalContentKind contentKind) {
+        private static <C> UnmodifiableEconomicSet<C> getAdditionalContent(GlobTrieNode<C> node, AdditionalContentKind contentKind) {
             return contentKind == AdditionalContentKind.HOSTED_ONLY ? node.getHostedOnlyContent() : node.getRuntimeContent();
         }
 
@@ -190,8 +198,10 @@ public class CompressedGlobTrie {
                      * Both pattern and additionalContent are already present in the trie, so we can
                      * skip this pattern
                      */
-                    if (getAdditionalContent(node, contentKind).stream().anyMatch(c -> c.equals(pattern.additionalContent()))) {
-                        return;
+                    for (C additionalContent : getAdditionalContent(node, contentKind)) {
+                        if (additionalContent.equals(pattern.additionalContent())) {
+                            return;
+                        }
                     }
                 }
             }
@@ -400,7 +410,11 @@ public class CompressedGlobTrie {
         }
 
         List<C> additionalContexts = new ArrayList<>();
-        matchedNodes.forEach(node -> additionalContexts.addAll(node.getHostedOnlyContent()));
+        for (GlobTrieNode<C> node : matchedNodes) {
+            for (C content : node.getHostedOnlyContent()) {
+                additionalContexts.add(content);
+            }
+        }
         return additionalContexts;
     }
 
@@ -412,7 +426,11 @@ public class CompressedGlobTrie {
         }
 
         List<C> additionalContexts = new ArrayList<>();
-        matchedNodes.forEach(node -> additionalContexts.addAll(node.getRuntimeContent()));
+        for (GlobTrieNode<C> node : matchedNodes) {
+            for (C content : node.getRuntimeContent()) {
+                additionalContexts.add(content);
+            }
+        }
         return additionalContexts;
     }
 
@@ -523,10 +541,9 @@ public class CompressedGlobTrie {
             for (StarTrieNode<C> child : node.getChildrenWithStar()) {
                 int finalJ = j;
                 /* we can match next level with more than one pattern */
-                successors.addAll(matchOneLevel(child, sp.squashedPart())
-                                .stream()
-                                .map(c -> new MatchedNode<>(c, finalJ + sp.numberOfSquashedParts()))
-                                .toList());
+                for (GlobTrieNode<C> matchedChild : matchOneLevel(child, sp.squashedPart())) {
+                    successors.add(new MatchedNode<>(matchedChild, finalJ + sp.numberOfSquashedParts()));
+                }
             }
 
             GlobTrieNode<C> part = parts.get(j);
@@ -674,7 +691,12 @@ public class CompressedGlobTrie {
     }
 
     public static <C> void removeNodes(GlobTrieNode<C> head, Predicate<C> shouldRemove) {
-        List<C> contentToRemove = head.getHostedOnlyContent().stream().filter(shouldRemove).toList();
+        List<C> contentToRemove = new ArrayList<>();
+        for (C content : head.getHostedOnlyContent()) {
+            if (shouldRemove.test(content)) {
+                contentToRemove.add(content);
+            }
+        }
         head.removeHostedOnlyContent(contentToRemove);
 
         List<GlobTrieNode<C>> childrenToRemove = new ArrayList<>();

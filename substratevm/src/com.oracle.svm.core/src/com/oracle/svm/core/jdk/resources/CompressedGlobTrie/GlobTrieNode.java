@@ -25,19 +25,20 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.util.GlobUtils;
 
 public class GlobTrieNode<C> {
@@ -57,9 +58,9 @@ public class GlobTrieNode<C> {
      * build machine.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
-    private Set<C> hostedOnlyContent;
-    @UnknownObjectField(availability = AfterAnalysis.class, fullyQualifiedTypes = {"java.util.HashSet", "java.util.ImmutableCollections$SetN", "java.util.ImmutableCollections$Set12"}) //
-    private Set<C> runtimeContent;
+    private EconomicSet<C> hostedOnlyContent;
+    @UnknownObjectField(availability = AfterAnalysis.class, fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true) //
+    private EconomicSet<C> runtimeContent;
 
     protected GlobTrieNode() {
         content = "";
@@ -67,7 +68,7 @@ public class GlobTrieNode<C> {
         isLeaf = false;
         isNewLevel = false;
         if (SubstrateUtil.HOSTED) {
-            hostedOnlyContent = new HashSet<>(); // noEconomicSet(streaming)
+            hostedOnlyContent = EconomicSet.create();
         }
     }
 
@@ -101,7 +102,7 @@ public class GlobTrieNode<C> {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    protected Set<C> getHostedOnlyContent() {
+    protected UnmodifiableEconomicSet<C> getHostedOnlyContent() {
         return hostedOnlyContent;
     }
 
@@ -115,19 +116,23 @@ public class GlobTrieNode<C> {
         this.hostedOnlyContent.add(ac);
     }
 
-    protected Set<C> getRuntimeContent() {
-        return runtimeContent == null ? Set.of() : runtimeContent;
+    protected UnmodifiableEconomicSet<C> getRuntimeContent() {
+        return runtimeContent == null ? EconomicSet.emptySet() : runtimeContent;
     }
 
     protected void addRuntimeContent(C ac) {
         if (runtimeContent == null) {
-            runtimeContent = new HashSet<>(); // noEconomicSet(streaming)
+            runtimeContent = EconomicSet.create();
         }
         runtimeContent.add(ac);
     }
 
     public List<GlobTrieNode<C>> getChildren() {
-        return children.values().stream().toList();
+        List<GlobTrieNode<C>> result = new ArrayList<>(children.size());
+        for (GlobTrieNode<C> child : children.values()) {
+            result.add(child);
+        }
+        return result;
     }
 
     protected GlobTrieNode<C> getChild(String child) {
@@ -166,18 +171,32 @@ public class GlobTrieNode<C> {
     }
 
     protected List<StarTrieNode<C>> getChildrenWithStar() {
-        return this.getChildren().stream()
-                        .filter(node -> node instanceof StarTrieNode)
-                        .map(node -> (StarTrieNode<C>) node)
-                        .toList();
+        List<StarTrieNode<C>> result = new ArrayList<>();
+        for (GlobTrieNode<C> child : children.values()) {
+            if (child instanceof StarTrieNode) {
+                result.add((StarTrieNode<C>) child);
+            }
+        }
+        return result;
     }
 
     protected List<LiteralNode<C>> getChildrenWithLiteral() {
-        return this.getChildren()
-                        .stream()
-                        .filter(node -> node instanceof LiteralNode)
-                        .map(node -> (LiteralNode<C>) node)
-                        .toList();
+        List<LiteralNode<C>> result = new ArrayList<>();
+        for (GlobTrieNode<C> child : children.values()) {
+            if (child instanceof LiteralNode) {
+                result.add((LiteralNode<C>) child);
+            }
+        }
+        return result;
+    }
+
+    protected boolean hasChildrenOnSameLevel() {
+        for (GlobTrieNode<C> child : children.values()) {
+            if (!child.isNewLevel()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected DoubleStarNode<C> getDoubleStarNode() {
@@ -194,8 +213,6 @@ public class GlobTrieNode<C> {
             child.trim();
         }
 
-        hostedOnlyContent = Set.copyOf(hostedOnlyContent);
-        runtimeContent = runtimeContent == null ? Set.of() : Set.copyOf(runtimeContent);
         children = Map.copyOf(children);
     }
 }

@@ -362,7 +362,8 @@ public final class ClassRegistries implements ParsingContext {
         if (clazz == null) {
             return null;
         }
-        return getDynamicAccessMetadataForName(clazz.getName());
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = DynamicHub.fromClass(clazz).getDynamicAccessMetadata();
+        return dynamicAccessMetadata != null ? dynamicAccessMetadata : getDynamicAccessMetadataForName(clazz.getName());
     }
 
     public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataForName(String className) {
