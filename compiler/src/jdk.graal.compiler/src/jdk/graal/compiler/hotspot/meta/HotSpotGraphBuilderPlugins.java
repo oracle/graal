@@ -32,7 +32,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_12_TO_16;
@@ -183,7 +182,6 @@ import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
-import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AESCryptDelegatePlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
@@ -280,7 +278,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerContinuationPlugins(invocationPlugins, config);
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, config);
-                registerAESPlugins(invocationPlugins, config);
+                registerAESPlugins(invocationPlugins);
                 registerAdler32Plugins(invocationPlugins, config);
                 registerSHAPlugins(invocationPlugins, config);
                 registerMLPlugins(invocationPlugins, config);
@@ -1010,52 +1008,20 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    public abstract static class GaloisCounterModeCryptPlugin extends AESCryptDelegatePlugin {
+    public static class HotSpotGaloisCounterModeCryptPlugin extends StandardGraphBuilderPlugins.GaloisCounterModeCryptPlugin {
 
-        GaloisCounterModeCryptPlugin() {
-            super(CryptMode.ENCRYPT, "implGCMCrypt0",
-                            byte[].class, int.class, int.class, byte[].class, int.class, byte[].class, int.class,
-                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GCTR"),
-                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GHASH"));
+        @Override
+        protected boolean canApply(GraphBuilderContext b) {
+            return true;
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len,
-                        ValueNode ct, ValueNode ctOffset, ValueNode out, ValueNode outOffset, ValueNode gctr, ValueNode ghash) {
-            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
-                ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
-                ResolvedJavaType typeGCTR = getTypeGCTR(receiverType);
-                ResolvedJavaType typeGHASH = getTypeGHASH(receiverType);
-
-                ValueNode nonNullGCTR = b.nullCheckedValue(gctr);
-                ValueNode nonNullGHASH = b.nullCheckedValue(ghash);
-
-                ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
-                ValueNode ctAddr = helper.arrayElementPointer(ct, JavaKind.Byte, ctOffset);
-                ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
-
-                // Read GCTR.K
-                ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, typeGCTR, typeAESCrypt, nonNullGCTR);
-                // Read GCTR.counter
-                ValueNode counterAddr = readFieldArrayStart(b, helper, typeGCTR, "counter", nonNullGCTR, JavaKind.Byte);
-                // Read GHASH.state
-                ValueNode stateAddr = readFieldArrayStart(b, helper, typeGHASH, "state", nonNullGHASH, JavaKind.Long);
-                // Read GHASH.subkeyHtbl
-                ValueNode subkeyHtblAddr = readFieldArrayStart(b, helper, typeGHASH, "subkeyHtbl", nonNullGHASH, JavaKind.Long);
-
-                ForeignCallNode call = new ForeignCallNode(GALOIS_COUNTER_MODE_CRYPT,
-                                inAddr, len, ctAddr, outAddr, kAddr, stateAddr, subkeyHtblAddr, counterAddr);
-                helper.emitFinalReturn(JavaKind.Int, call);
-                return true;
-            }
-        }
-
-        private static ResolvedJavaType getTypeGCTR(ResolvedJavaType context) {
+        protected ResolvedJavaType getTypeGCTR(MetaAccessProvider metaAccess, ResolvedJavaType context) {
             return UnresolvedJavaType.create("Lcom/sun/crypto/provider/GCTR;").resolve(context);
         }
 
-        private static ResolvedJavaType getTypeGHASH(ResolvedJavaType context) {
+        @Override
+        protected ResolvedJavaType getTypeGHASH(MetaAccessProvider metaAccess, ResolvedJavaType context) {
             return UnresolvedJavaType.create("Lcom/sun/crypto/provider/GHASH;").resolve(context);
         }
 
@@ -1065,7 +1031,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerAESPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
         r.register(new HotSpotCipherBlockChainingCryptPlugin(CryptMode.ENCRYPT));
         r.register(new HotSpotCipherBlockChainingCryptPlugin(CryptMode.DECRYPT));
@@ -1075,12 +1041,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new HotSpotElectronicCodeBookCryptPlugin(CryptMode.DECRYPT));
 
         r = new Registration(plugins, "com.sun.crypto.provider.GaloisCounterMode");
-        r.register(new GaloisCounterModeCryptPlugin() {
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.galoisCounterModeCrypt != 0L;
-            }
-        });
+        r.register(new HotSpotGaloisCounterModeCryptPlugin());
 
         r = new Registration(plugins, "com.sun.crypto.provider.CounterMode");
 

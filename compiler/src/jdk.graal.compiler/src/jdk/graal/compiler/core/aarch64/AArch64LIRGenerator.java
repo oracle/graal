@@ -93,6 +93,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ChaCha20BlockOp;
 import jdk.graal.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
+import jdk.graal.compiler.lir.aarch64.AArch64GaloisCounterModeAESCryptOp;
 import jdk.graal.compiler.lir.aarch64.AArch64HaltOp;
 import jdk.graal.compiler.lir.aarch64.AArch64IndexOfZeroOp;
 import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
@@ -792,6 +793,41 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                         asAllocatable(usedPtr),
                         result,
                         getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitGaloisCounterModeAESCrypt(EnumSet<?> runtimeCheckedCPUFeatures, Value inAddr, Value len, Value ctAddr, Value outAddr, Value kAddr, Value stateAddr, Value subkeyHtblAddr,
+                    Value counterAddr) {
+        RegisterValue rIn = AArch64.r0.asValue(inAddr.getValueKind());
+        RegisterValue rLen = AArch64.r1.asValue(len.getValueKind());
+        RegisterValue rCt = AArch64.r2.asValue(ctAddr.getValueKind());
+        RegisterValue rOut = AArch64.r3.asValue(outAddr.getValueKind());
+        RegisterValue rKey = AArch64.r4.asValue(kAddr.getValueKind());
+        RegisterValue rState = AArch64.r5.asValue(stateAddr.getValueKind());
+        RegisterValue rSubkeyHtbl = AArch64.r6.asValue(subkeyHtblAddr.getValueKind());
+        RegisterValue rCounter = AArch64.r7.asValue(counterAddr.getValueKind());
+        RegisterValue rResult = AArch64.r0.asValue(len.getValueKind());
+        emitMove(rIn, inAddr);
+        emitMove(rLen, len);
+        emitMove(rCt, ctAddr);
+        emitMove(rOut, outAddr);
+        emitMove(rKey, kAddr);
+        emitMove(rState, stateAddr);
+        emitMove(rSubkeyHtbl, subkeyHtblAddr);
+        emitMove(rCounter, counterAddr);
+        append(new AArch64GaloisCounterModeAESCryptOp(rIn,
+                        rLen,
+                        rCt,
+                        rOut,
+                        rKey,
+                        rState,
+                        rSubkeyHtbl,
+                        rCounter,
+                        rResult,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        Variable result = newVariable(len.getValueKind());
+        emitMove(result, rResult);
         return result;
     }
 

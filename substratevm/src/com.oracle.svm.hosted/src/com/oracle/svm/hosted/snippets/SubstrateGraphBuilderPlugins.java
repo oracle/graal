@@ -1328,6 +1328,37 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
+    public static class SubstrateGaloisCounterModeCryptPlugin extends StandardGraphBuilderPlugins.GaloisCounterModeCryptPlugin {
+
+        @Override
+        protected boolean canApply(GraphBuilderContext b) {
+            return b instanceof BytecodeParser;
+        }
+
+        @Override
+        protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
+            Class<?> classAESCrypt = ReflectionUtil.lookupClass("com.sun.crypto.provider.AESCrypt");
+            return metaAccess.lookupJavaType(classAESCrypt);
+        }
+
+        @Override
+        protected ResolvedJavaType getTypeGCTR(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
+            Class<?> classGCTR = ReflectionUtil.lookupClass("com.sun.crypto.provider.GCTR");
+            return metaAccess.lookupJavaType(classGCTR);
+        }
+
+        @Override
+        protected ResolvedJavaType getTypeGHASH(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
+            Class<?> classGHASH = ReflectionUtil.lookupClass("com.sun.crypto.provider.GHASH");
+            return metaAccess.lookupJavaType(classGHASH);
+        }
+
+        @Override
+        public boolean isRuntimeChecked(Architecture arch) {
+            return false;
+        }
+    }
+
     private static void registerAESPlugins(InvocationPlugins plugins) {
         // These plugins may generate fallback invocations and thus cannot be used in runtime
         // compilation
@@ -1382,6 +1413,9 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
+
+        r = new Registration(plugins, "com.sun.crypto.provider.GaloisCounterMode");
+        r.register(new SubstrateGaloisCounterModeCryptPlugin());
     }
 
     private static <T> T constantObjectParameter(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, Class<T> declaredType, ValueNode classNode) {

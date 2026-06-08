@@ -219,6 +219,7 @@ import jdk.graal.compiler.replacements.nodes.CRC32TableNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
@@ -2578,6 +2579,67 @@ public class StandardGraphBuilderPlugins {
         @Override
         public final boolean isApplicable(Architecture arch) {
             return ElectronicCodeBookAESNode.isSupported(arch);
+        }
+    }
+
+    public abstract static class GaloisCounterModeCryptPlugin extends AESCryptDelegatePlugin {
+
+        public GaloisCounterModeCryptPlugin() {
+            super(CryptMode.ENCRYPT, "implGCMCrypt0",
+                            byte[].class, int.class, int.class, byte[].class, int.class, byte[].class, int.class,
+                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GCTR"),
+                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GHASH"));
+        }
+
+        protected abstract boolean canApply(GraphBuilderContext b);
+
+        protected abstract ResolvedJavaType getTypeGCTR(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException;
+
+        protected abstract ResolvedJavaType getTypeGHASH(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException;
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len,
+                        ValueNode ct, ValueNode ctOffset, ValueNode out, ValueNode outOffset, ValueNode gctr, ValueNode ghash) {
+            if (!canApply(b)) {
+                return false;
+            }
+            ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+            ResolvedJavaType typeAESCrypt;
+            ResolvedJavaType typeGCTR;
+            ResolvedJavaType typeGHASH;
+            try {
+                typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
+                typeGCTR = getTypeGCTR(b.getMetaAccess(), receiverType);
+                typeGHASH = getTypeGHASH(b.getMetaAccess(), receiverType);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode nonNullGCTR = b.nullCheckedValue(gctr);
+                ValueNode nonNullGHASH = b.nullCheckedValue(ghash);
+
+                ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
+                ValueNode ctAddr = helper.arrayElementPointer(ct, JavaKind.Byte, ctOffset);
+                ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
+
+                // Read GCTR.K
+                ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, typeGCTR, typeAESCrypt, nonNullGCTR);
+                // Read GCTR.counter
+                ValueNode counterAddr = readFieldArrayStart(b, helper, typeGCTR, "counter", nonNullGCTR, JavaKind.Byte);
+                // Read GHASH.state
+                ValueNode stateAddr = readFieldArrayStart(b, helper, typeGHASH, "state", nonNullGHASH, JavaKind.Long);
+                // Read GHASH.subkeyHtbl
+                ValueNode subkeyHtblAddr = readFieldArrayStart(b, helper, typeGHASH, "subkeyHtbl", nonNullGHASH, JavaKind.Long);
+
+                GaloisCounterModeAESNode node = new GaloisCounterModeAESNode(inAddr, len, ctAddr, outAddr, kAddr, stateAddr, subkeyHtblAddr, counterAddr);
+                helper.emitFinalReturn(JavaKind.Int, node);
+                return true;
+            }
+        }
+
+        @Override
+        public final boolean isApplicable(Architecture arch) {
+            return GaloisCounterModeAESNode.isSupported(arch);
         }
     }
 

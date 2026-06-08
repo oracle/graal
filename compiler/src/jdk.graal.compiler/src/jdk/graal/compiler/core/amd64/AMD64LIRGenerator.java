@@ -37,8 +37,11 @@ import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.graal.compiler.lir.LIRValueUtil.isIntConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
+import static jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp.supports;
 import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.r9;
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbx;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -134,6 +137,7 @@ import jdk.graal.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64ElectronicCodeBookAESDecryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64ElectronicCodeBookAESEncryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64EncodeArrayOp;
+import jdk.graal.compiler.lir.amd64.AMD64GaloisCounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.amd64.AMD64HaltOp;
 import jdk.graal.compiler.lir.amd64.AMD64IndexOfZeroOp;
@@ -1040,6 +1044,46 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitGaloisCounterModeAESCrypt(EnumSet<?> runtimeCheckedCPUFeatures, Value inAddr, Value len, Value ctAddr, Value outAddr, Value kAddr, Value stateAddr, Value subkeyHtblAddr,
+                    Value counterAddr) {
+        AllocatableValue rIn = rdi.asValue(inAddr.getValueKind());
+        AllocatableValue rLen = rsi.asValue(len.getValueKind());
+        AllocatableValue rCt = rdx.asValue(ctAddr.getValueKind());
+        AllocatableValue rOut = rcx.asValue(outAddr.getValueKind());
+        AllocatableValue rKey = r8.asValue(kAddr.getValueKind());
+        AllocatableValue rState = r9.asValue(stateAddr.getValueKind());
+        boolean useAVX512 = supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.AES, CPUFeature.CLMUL, CPUFeature.AVX, CPUFeature.AVX2,
+                        CPUFeature.AVX512F, CPUFeature.AVX512DQ, CPUFeature.AVX512BW, CPUFeature.AVX512VL, CPUFeature.AVX512_VAES, CPUFeature.AVX512_VPCLMULQDQ);
+        AllocatableValue rSubkeyHtbl = (useAVX512 ? r10 : r11).asValue(subkeyHtblAddr.getValueKind());
+        AllocatableValue rCounter = (useAVX512 ? r11 : rax).asValue(counterAddr.getValueKind());
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(rIn, inAddr);
+        emitMove(rLen, len);
+        emitMove(rCt, ctAddr);
+        emitMove(rOut, outAddr);
+        emitMove(rKey, kAddr);
+        emitMove(rState, stateAddr);
+        emitMove(rSubkeyHtbl, subkeyHtblAddr);
+        emitMove(rCounter, counterAddr);
+        append(new AMD64GaloisCounterModeAESCryptOp(this,
+                        (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
+                        rIn,
+                        rLen,
+                        rCt,
+                        rOut,
+                        rKey,
+                        rState,
+                        rSubkeyHtbl,
+                        rCounter,
+                        rResult,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        Variable result = newVariable(len.getValueKind());
+        emitMove(result, rResult);
+        return result;
+    }
+
     @Override
     public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
         Variable result = newVariable(len.getValueKind());
@@ -1280,7 +1324,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @SuppressWarnings("unchecked")
     @Override
     public void emitSha256ImplCompress(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state) {
-        if (supports(runtimeCheckedCPUFeatures, CPUFeature.SHA)) {
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.SHA)) {
             append(new AMD64SHA256Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, asAllocatable(buf), asAllocatable(state)));
         } else {
             RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
@@ -1346,23 +1390,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    protected boolean supports(EnumSet<?> runtimeCheckedCPUFeatures, CPUFeature feature) {
-        assert runtimeCheckedCPUFeatures == null || runtimeCheckedCPUFeatures.isEmpty() ||
-                        runtimeCheckedCPUFeatures.iterator().next() instanceof CPUFeature : Assertions.errorMessage(runtimeCheckedCPUFeatures);
-        EnumSet<CPUFeature> typedFeatures = (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures;
-        return typedFeatures != null && typedFeatures.contains(feature) || ((AMD64) target().arch).getFeatures().contains(feature);
-    }
-
     /**
      * Return the maximum size of vector registers used in SSE/AVX instructions.
      */
+    @SuppressWarnings("unchecked")
     @Override
     public AVXSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
-        if (supports(runtimeCheckedCPUFeatures, AMD64.CPUFeature.AVX512VL)) {
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, AMD64.CPUFeature.AVX512VL)) {
             return AVXSize.ZMM;
         }
-        if (supports(runtimeCheckedCPUFeatures, AMD64.CPUFeature.AVX2)) {
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, AMD64.CPUFeature.AVX2)) {
             return AVXSize.YMM;
         }
         return AVXSize.XMM;

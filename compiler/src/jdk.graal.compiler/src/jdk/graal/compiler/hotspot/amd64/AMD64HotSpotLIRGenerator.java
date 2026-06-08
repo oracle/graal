@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import static jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp.supports;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -145,15 +146,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return (HotSpotProviders) super.getProviders();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public AVXSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
         int maxVectorSize = config.maxVectorSize;
-        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX512VL)) {
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {
                 return AVXSize.ZMM;
             }
         }
-        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX2)) {
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.AVX2)) {
             if (maxVectorSize < 0 || maxVectorSize >= 32) {
                 return AVXSize.YMM;
             }
