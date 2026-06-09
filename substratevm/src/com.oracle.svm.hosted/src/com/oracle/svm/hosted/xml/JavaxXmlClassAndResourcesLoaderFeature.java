@@ -58,7 +58,8 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
     private static final String JDK_CATALOG_RESOURCE_PREFIX = "jdk/xml/internal/jdkcatalog/";
-    private static final String JRT_URL_CONNECTION_CLASS = "com.oracle.svm.core.jdk.JRTURLConnection";
+    private static final String JRT_URL_STREAM_HANDLER_CLASS =
+                    "com.oracle.svm.core.jdk.JavaNetSubstitutions$JRTURLStreamHandler";
 
     private static final Set<AccessCondition> jdkCatalogResourceConditions = new HashSet<>();
 
@@ -76,7 +77,7 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             registerApiReachabilityHandlers(access);
             initializeJdkCatalog();
         }
-        registerJrtCatalogResourceAccess();
+        registerJrtCatalogResourceAccess(access);
     }
 
     private static void registerApiReachabilityHandlers(BeforeAnalysisAccess access) {
@@ -158,9 +159,15 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         }
     }
 
-    private static void registerJrtCatalogResourceAccess() {
+    private static void registerJrtCatalogResourceAccess(BeforeAnalysisAccess access) {
         if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-            registerJdkCatalogResources(AccessCondition.typeReached(ReflectionUtil.lookupClass(JRT_URL_CONNECTION_CLASS)));
+            Class<?> handlerClass = ReflectionUtil.lookupClass(JRT_URL_STREAM_HANDLER_CLASS);
+            /*
+             * Use build-time reachability here. The resources need to be present once the Native
+             * Image JRT handler is in the image, but access must not emit a run-time typeReached
+             * check for internal helper classes.
+             */
+            access.registerReachabilityHandler(_ -> registerJdkCatalogResources(), handlerClass);
         }
     }
 
