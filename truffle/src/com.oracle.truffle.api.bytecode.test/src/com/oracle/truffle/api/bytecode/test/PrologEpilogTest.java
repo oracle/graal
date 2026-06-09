@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -51,9 +52,11 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,6 +71,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -80,7 +84,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
 public class PrologEpilogTest extends AbstractInstructionTest {
@@ -135,6 +147,38 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         } else {
             nodes = PrologEpilogBytecodeNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         }
+        return nodes.getNode(0);
+    }
+
+    public EpilogReturnExceptionHandlerNode parseEpilogReturnExceptionHandlerNode(BytecodeParser<EpilogReturnExceptionHandlerNodeGen.Builder> builder) {
+        BytecodeRootNodes<EpilogReturnExceptionHandlerNode> nodes;
+        if (testSerialize) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            try {
+                EpilogReturnExceptionHandlerNodeGen.serialize(new DataOutputStream(output), SERIALIZER, builder);
+                Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
+                nodes = EpilogReturnExceptionHandlerNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+            } catch (IOException ex) {
+                throw new AssertionError(ex);
+            }
+        } else {
+            nodes = EpilogReturnExceptionHandlerNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
+        }
+        return nodes.getNode(0);
+    }
+
+    private static ReturnEpilogTagRootNode parseReturnEpilogTagNode(BytecodeConfig config, BytecodeParser<ReturnEpilogTagRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<ReturnEpilogTagRootNode> nodes = ReturnEpilogTagRootNodeGen.create(null, config, parser);
+        return nodes.getNode(0);
+    }
+
+    private static ReturnEpilogTagRootNode parseInstrumentedReturnEpilogTagNode(BytecodeConfig config, BytecodeParser<ReturnEpilogTagRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<ReturnEpilogTagRootNode> nodes = ReturnEpilogTagRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), config, parser);
+        return nodes.getNode(0);
+    }
+
+    private static ReturnEpilogNoRootTagRootNode parseReturnEpilogNoRootTagNode(BytecodeConfig config, BytecodeParser<ReturnEpilogNoRootTagRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<ReturnEpilogNoRootTagRootNode> nodes = ReturnEpilogNoRootTagRootNodeGen.create(null, config, parser);
         return nodes.getNode(0);
     }
 
@@ -551,6 +595,367 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         assertNull(root.thrownValue);
         assertTrue(!root.internalExceptionIntercepted);
     }
+
+    @Test
+    public void testReturnEpilogExceptionNotHandledByTryCatch() {
+        EpilogReturnExceptionHandlerNode root = parseEpilogReturnExceptionHandlerNode(b -> {
+            // @formatter:off
+            b.beginRoot();
+            b.beginTryCatch();
+                b.beginReturn();
+                    b.emitLoadConstant(42);
+                b.endReturn();
+
+                b.beginReturn();
+                    b.emitLoadConstant(123);
+                b.endReturn();
+            b.endTryCatch();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        try {
+            root.getCallTarget().call();
+            fail("exception expected");
+        } catch (MyException ex) {
+            assertEquals("return epilog", ex.getMessage());
+        }
+        assertEquals(1, root.throwInReturnCount);
+    }
+
+    @Test
+    public void testReturnEpilogExceptionNotHandledByTryFinally() {
+        EpilogReturnExceptionHandlerNode root = parseEpilogReturnExceptionHandlerNode(b -> {
+            // @formatter:off
+            b.beginRoot();
+            b.beginTryFinally(() -> b.emitIncrementHandlerCount());
+                b.beginReturn();
+                    b.emitLoadConstant(42);
+                b.endReturn();
+            b.endTryFinally();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        try {
+            root.getCallTarget().call();
+            fail("exception expected");
+        } catch (MyException ex) {
+            assertEquals("return epilog", ex.getMessage());
+        }
+        assertEquals(1, root.throwInReturnCount);
+        assertEquals(1, root.handlerCount);
+    }
+
+    @Test
+    public void testReturnEpilogExceptionNotHandledByTryCatchOtherwise() {
+        EpilogReturnExceptionHandlerNode root = parseEpilogReturnExceptionHandlerNode(b -> {
+            // @formatter:off
+            b.beginRoot();
+            b.beginTryCatchOtherwise(() -> b.emitIncrementHandlerCount());
+                b.beginReturn();
+                    b.emitLoadConstant(42);
+                b.endReturn();
+
+                b.beginReturn();
+                    b.emitLoadConstant(123);
+                b.endReturn();
+            b.endTryCatchOtherwise();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        try {
+            root.getCallTarget().call();
+            fail("exception expected");
+        } catch (MyException ex) {
+            assertEquals("return epilog", ex.getMessage());
+        }
+        assertEquals(1, root.throwInReturnCount);
+        assertEquals(1, root.handlerCount);
+    }
+
+    @Test
+    public void testReturnEpilogExceptionNotHandledByNestedTryCatch() {
+        EpilogReturnExceptionHandlerNode root = parseEpilogReturnExceptionHandlerNode(b -> {
+            // @formatter:off
+            b.beginRoot();
+            b.beginTryCatch();
+                b.beginTryCatch();
+                    b.beginReturn();
+                        b.emitLoadConstant(42);
+                    b.endReturn();
+
+                    b.beginReturn();
+                        b.emitLoadConstant(123);
+                    b.endReturn();
+                b.endTryCatch();
+
+                b.beginReturn();
+                    b.emitLoadConstant(456);
+                b.endReturn();
+            b.endTryCatch();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        try {
+            root.getCallTarget().call();
+            fail("exception expected");
+        } catch (MyException ex) {
+            assertEquals("return epilog", ex.getMessage());
+        }
+        assertEquals(1, root.throwInReturnCount);
+    }
+
+    @Test
+    public void testReturnEpilogExceptionObservedByRootTag() {
+        try (Context context = Context.create(BytecodeDSLTestLanguage.ID)) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            context.enter();
+            Instrumenter instrumenter = context.getEngine().getInstruments().get(TagTest.TagTestInstrumentation.ID).lookup(Instrumenter.class);
+            ReturnEpilogTagRootNode node = parseInstrumentedReturnEpilogTagNode(BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitLoadConstant(42);
+                b.endReturn();
+                b.endRoot();
+            });
+            node.throwInReturnEpilog = new MyException("return epilog");
+
+            List<TagTest.Event> events = TagTest.attachEventListener(instrumenter, SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
+
+            assertFails(() -> node.getCallTarget().call(), MyException.class);
+            assertEquals(2, events.size());
+            assertEquals(TagTest.EventKind.ENTER, events.get(0).kind());
+            assertEquals(List.of(RootTag.class), events.get(0).tags());
+            assertEquals(TagTest.EventKind.EXCEPTIONAL, events.get(1).kind());
+            assertEquals(List.of(RootTag.class), events.get(1).tags());
+            assertEquals(MyException.class, events.get(1).value().getClass());
+        }
+    }
+
+    @Test
+    public void testReturnEpilogExceptionNotObservedByOtherTags() {
+        try (Context context = Context.create(BytecodeDSLTestLanguage.ID)) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            context.enter();
+            Instrumenter instrumenter = context.getEngine().getInstruments().get(TagTest.TagTestInstrumentation.ID).lookup(Instrumenter.class);
+            ReturnEpilogTagRootNode node = parseInstrumentedReturnEpilogTagNode(BytecodeConfig.DEFAULT, b -> {
+                // @formatter:off
+                b.beginRoot();
+                b.beginTag(ExpressionTag.class);
+                    b.beginReturn();
+                        b.emitLoadConstant(42);
+                    b.endReturn();
+                b.endTag(ExpressionTag.class);
+                b.endRoot();
+                // @formatter:on
+            });
+            node.throwInReturnEpilog = new MyException("return epilog");
+
+            List<TagTest.Event> events = TagTest.attachEventListener(instrumenter, SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class).build());
+
+            assertFails(() -> node.getCallTarget().call(), MyException.class);
+            assertEquals(4, events.size());
+            assertEquals(TagTest.EventKind.ENTER, events.get(0).kind());
+            assertEquals(List.of(RootBodyTag.class), events.get(0).tags());
+            assertEquals(TagTest.EventKind.ENTER, events.get(1).kind());
+            assertEquals(List.of(ExpressionTag.class), events.get(1).tags());
+            assertEquals(TagTest.EventKind.RETURN_VALUE, events.get(2).kind());
+            assertEquals(List.of(ExpressionTag.class), events.get(2).tags());
+            assertEquals(TagTest.EventKind.RETURN_VALUE, events.get(3).kind());
+            assertEquals(List.of(RootBodyTag.class), events.get(3).tags());
+        }
+    }
+
+    @Test
+    public void testReturnEpilogSource() {
+        Source s = Source.newBuilder("test", "12345678", "name").build();
+        ReturnEpilogTagRootNode node = parseReturnEpilogTagNode(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 8);
+            b.beginRoot();
+            b.beginSourceSection(2, 4);
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endSourceSection();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        Instruction epilog = findInstruction(bytecode, "c.LeaveValue");
+
+        SourceSection[] sections = epilog.getSourceSections();
+        assertEquals(2, sections.length);
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+
+        node.getRootNodes().update(ReturnEpilogTagRootNodeGen.BYTECODE.newConfigBuilder().addTag(RootTag.class).build());
+
+        bytecode = node.getBytecodeNode();
+        epilog = findInstruction(bytecode, "c.LeaveValue");
+        Instruction rootLeave = findInstructionAfter(bytecode, "tag.leave", epilog.getBytecodeIndex());
+
+        sections = epilog.getSourceSections();
+        assertEquals(2, sections.length);
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+
+        SourceSection[] rootLeaveSections = rootLeave.getSourceSections();
+        assertFalse(containsSourceSection(rootLeaveSections, 2, 4));
+    }
+
+    @Test
+    public void testReturnEpilogSuffixSource() {
+        Source s = Source.newBuilder("test", "12345678", "name").build();
+        ReturnEpilogTagRootNode node = parseReturnEpilogTagNode(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(s);
+            b.beginSourceSection();
+            b.beginRoot();
+            b.beginSourceSection();
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endSourceSection(2, 4);
+            b.endRoot();
+            b.endSourceSection(0, 8);
+            b.endSource();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        Instruction epilog = findInstruction(bytecode, "c.LeaveValue");
+
+        SourceSection[] sections = epilog.getSourceSections();
+        assertEquals(2, sections.length);
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+
+        node.getRootNodes().update(ReturnEpilogTagRootNodeGen.BYTECODE.newConfigBuilder().addTag(RootTag.class).build());
+
+        bytecode = node.getBytecodeNode();
+        epilog = findInstruction(bytecode, "c.LeaveValue");
+        Instruction rootLeave = findInstructionAfter(bytecode, "tag.leave", epilog.getBytecodeIndex());
+
+        sections = epilog.getSourceSections();
+        assertEquals(2, sections.length);
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+
+        SourceSection[] rootLeaveSections = rootLeave.getSourceSections();
+        assertFalse(containsSourceSection(rootLeaveSections, 2, 4));
+    }
+
+    @Test
+    public void testReturnEpilogSourceNoRootTagStaticallyEnabled() {
+        Source s = Source.newBuilder("test", "12345678", "name").build();
+        ReturnEpilogNoRootTagRootNode node = parseReturnEpilogNoRootTagNode(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 8);
+            b.beginRoot();
+            b.beginSourceSection(2, 4);
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endSourceSection();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        Instruction epilog = findInstruction(node.getBytecodeNode(), "c.LeaveValue");
+
+        SourceSection[] sections = epilog.getSourceSections();
+        assertEquals(2, sections.length);
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+    }
+
+    @Test
+    public void testReturnEpilogLocals() {
+        ReturnEpilogTagRootNode node = parseReturnEpilogTagNode(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.createLocal("rootLocal1", null);
+            b.createLocal("rootLocal2", null);
+            b.beginBlock();
+            b.createLocal("blockLocal1", null);
+            b.createLocal("blockLocal2", null);
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        Instruction epilog = findInstruction(bytecode, "c.LeaveValue");
+
+        assertEquals(4, bytecode.getLocalCount(epilog.getBytecodeIndex()));
+        assertEquals(List.of("rootLocal1", "rootLocal2", "blockLocal1", "blockLocal2"), Arrays.asList(bytecode.getLocalNames(epilog.getBytecodeIndex())));
+
+        node.getRootNodes().update(ReturnEpilogTagRootNodeGen.BYTECODE.newConfigBuilder().addTag(RootTag.class).build());
+
+        bytecode = node.getBytecodeNode();
+        epilog = findInstruction(bytecode, "c.LeaveValue");
+        Instruction rootLeave = findInstructionAfter(bytecode, "tag.leave", epilog.getBytecodeIndex());
+
+        assertEquals(4, bytecode.getLocalCount(epilog.getBytecodeIndex()));
+        assertEquals(List.of("rootLocal1", "rootLocal2", "blockLocal1", "blockLocal2"), Arrays.asList(bytecode.getLocalNames(epilog.getBytecodeIndex())));
+        assertEquals(0, bytecode.getLocalCount(rootLeave.getBytecodeIndex()));
+    }
+
+    @Test
+    public void testReturnEpilogLocalsNoRootTagStaticallyEnabled() {
+        ReturnEpilogNoRootTagRootNode node = parseReturnEpilogNoRootTagNode(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.createLocal("rootLocal1", null);
+            b.createLocal("rootLocal2", null);
+            b.beginBlock();
+            b.createLocal("blockLocal1", null);
+            b.createLocal("blockLocal2", null);
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        Instruction epilog = findInstruction(bytecode, "c.LeaveValue");
+
+        assertEquals(4, bytecode.getLocalCount(epilog.getBytecodeIndex()));
+        assertEquals(List.of("rootLocal1", "rootLocal2", "blockLocal1", "blockLocal2"), Arrays.asList(bytecode.getLocalNames(epilog.getBytecodeIndex())));
+    }
+
+    private static void assertSourceSection(int startIndex, int length, SourceSection section) {
+        assertEquals(startIndex, section.getCharIndex());
+        assertEquals(length, section.getCharLength());
+    }
+
+    private static Instruction findInstruction(BytecodeNode bytecode, String name) {
+        return findInstructionAfter(bytecode, name, -1);
+    }
+
+    private static Instruction findInstructionAfter(BytecodeNode bytecode, String name, int bci) {
+        for (Instruction instruction : bytecode.getInstructionsAsList()) {
+            if (instruction.getBytecodeIndex() > bci && instruction.getName().equals(name)) {
+                return instruction;
+            }
+        }
+        throw new AssertionError("No instruction named " + name + " found after bci " + bci + ".");
+    }
+
+    private static boolean containsSourceSection(SourceSection[] sections, int startIndex, int length) {
+        for (SourceSection section : sections) {
+            if (section.getCharIndex() == startIndex && section.getCharLength() == length) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
@@ -648,6 +1053,73 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
         @Specialization
         public static void doThrow(String message) {
             throw new MyException(message);
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
+abstract class EpilogReturnExceptionHandlerNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+    transient int throwInReturnCount;
+    transient int handlerCount;
+
+    protected EpilogReturnExceptionHandlerNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @EpilogReturn
+    public static final class ThrowingReturnEpilog {
+        @Specialization
+        public static Object doDefault(@SuppressWarnings("unused") Object returnValue, @Bind EpilogReturnExceptionHandlerNode root) {
+            root.throwInReturnCount++;
+            throw new MyException("return epilog");
+        }
+    }
+
+    @Operation
+    public static final class IncrementHandlerCount {
+        @Specialization
+        public static void doDefault(@Bind EpilogReturnExceptionHandlerNode root) {
+            root.handlerCount++;
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+abstract class ReturnEpilogTagRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+    transient RuntimeException throwInReturnEpilog;
+
+    protected ReturnEpilogTagRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @EpilogReturn
+    static final class LeaveValue {
+        @Specialization
+        public static Object doDefault(Object returnValue, @Bind ReturnEpilogTagRootNode root) {
+            if (root.throwInReturnEpilog != null) {
+                throw root.throwInReturnEpilog;
+            }
+            return returnValue;
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true, enableRootTagging = false)
+abstract class ReturnEpilogNoRootTagRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+    transient RuntimeException throwInReturnEpilog;
+
+    protected ReturnEpilogNoRootTagRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @EpilogReturn
+    static final class LeaveValue {
+        @Specialization
+        public static Object doDefault(Object returnValue, @Bind ReturnEpilogNoRootTagRootNode root) {
+            if (root.throwInReturnEpilog != null) {
+                throw root.throwInReturnEpilog;
+            }
+            return returnValue;
         }
     }
 }

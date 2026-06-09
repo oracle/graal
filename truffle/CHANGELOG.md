@@ -96,6 +96,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-73872: Added support for native-image preset options. Polyglot options provided during native-image build are captured as preset defaults at image build time, then applied at runtime as defaults.
 * GR-75360: Bytecode DSL: Generated root nodes now support delegation to parent implementations of `RootNode.isInstrumentable()`, `RootNode.prepareForCall()`, and `RootNode.prepareForInstrumentation(tags)`, when available.
 * GR-76069: Added `ArrayUtils.arraycopy(int[], int, int[], int, int)`, a specialized variant of `System.arraycopy`.
+* GR-75854: Bytecode DSL: `@EpilogReturn` instructions are now associated with the source sections and local scopes active at the return.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
