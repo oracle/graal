@@ -309,7 +309,7 @@ public class ResourcesFeature implements InternalFeature {
                 Resources.ModuleResourceKey key = cursor.getKey();
                 if (resourcePath.equals(key.resource()) && Objects.equals(Resources.moduleName(module), key.getModuleName())) {
                     // A preserved duplicate must remain visible to native tracing replay.
-                    // §FS-001-native-image-semantics.3.2
+                    // See FS-001-native-image-semantics.3.2.
                     cursor.getValue().getDynamicAccessMetadata().setPreserved();
                 }
             }

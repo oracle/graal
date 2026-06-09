@@ -1840,7 +1840,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         boolean notPreservedAccess = false;
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */
-        boolean accessMetadata = false; // §FS-001-native-image-semantics.3.2
+        boolean accessMetadata = false; // See FS-001-native-image-semantics.3.2.
 
         ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
             ConfigurationMemberAccessibility previous = accessibility;
