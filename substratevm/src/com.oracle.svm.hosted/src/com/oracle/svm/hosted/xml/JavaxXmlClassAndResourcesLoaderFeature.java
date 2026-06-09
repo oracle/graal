@@ -38,13 +38,17 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransfor
 import java.io.IOException;
 import java.lang.module.ModuleReader;
 import java.lang.module.ResolvedModule;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.jdk.JRTSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -54,8 +58,9 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
     private static final String JDK_CATALOG_RESOURCE_PREFIX = "jdk/xml/internal/jdkcatalog/";
+    private static final String JRT_URL_CONNECTION_CLASS = "com.oracle.svm.core.jdk.JRTURLConnection";
 
-    private static boolean jdkCatalogResourcesRegistered;
+    private static final Set<AccessCondition> jdkCatalogResourceConditions = new HashSet<>();
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -71,6 +76,7 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             registerApiReachabilityHandlers(access);
             initializeJdkCatalog();
         }
+        registerJrtCatalogResourceAccess();
     }
 
     private static void registerApiReachabilityHandlers(BeforeAnalysisAccess access) {
@@ -124,14 +130,16 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         }
     }
 
-    static synchronized void registerJdkCatalogResources() {
-        if (jdkCatalogResourcesRegistered) {
-            return;
-        }
+    static void registerJdkCatalogResources() {
+        registerJdkCatalogResources(AccessCondition.unconditional());
+    }
 
+    private static synchronized void registerJdkCatalogResources(AccessCondition condition) {
         var javaXmlResolvedModule = JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml");
         if (javaXmlResolvedModule.isEmpty()) {
-            jdkCatalogResourcesRegistered = true;
+            return;
+        }
+        if (!jdkCatalogResourceConditions.add(condition)) {
             return;
         }
 
@@ -143,12 +151,17 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         try (ModuleReader reader = resolvedModule.get().reference().open()) {
             reader.list()
                             .filter(entry -> entry.startsWith(JDK_CATALOG_RESOURCE_PREFIX))
-                            .forEach(entry -> RuntimeResourceAccess.addResource(javaXmlModule, entry));
+                            .forEach(entry -> RuntimeResourceSupport.singleton().addResource(condition, javaXmlModule, entry,
+                                            "JDK XML catalog resources"));
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
 
-        jdkCatalogResourcesRegistered = true;
+    private static void registerJrtCatalogResourceAccess() {
+        if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
+            registerJdkCatalogResources(AccessCondition.typeReached(ReflectionUtil.lookupClass(JRT_URL_CONNECTION_CLASS)));
+        }
     }
 
     /**
@@ -158,7 +171,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
      */
     private static void initializeJdkCatalog() {
         if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent()) {
-            registerJdkCatalogResources();
             // Ensure the JdkXmlConfig$CatalogHolder#catalog field is initialized.
             Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkXmlConfig$CatalogHolder");
             // The constructor call prepareCatalog which will call JdkCatalog#init.

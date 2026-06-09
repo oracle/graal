@@ -36,9 +36,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -272,8 +270,6 @@ class JavaNetFeature implements InternalFeature {
         for (String protocol : protocols) {
             JavaNetSubstitutions.registerURLProtocol(access, protocol);
         }
-
-        RuntimeResourceSupport.singleton().addResources(AccessCondition.unconditional(), "META-INF/services/java.net.spi.URLStreamHandlerProvider", "JavaNetFeature for URL");
     }
 }
 
@@ -307,7 +303,8 @@ public final class JavaNetSubstitutions {
     }
 
     static boolean isDisabledURLProtocol(String protocol) {
-        return ImageSingletons.contains(URLProtocolsSupport.class) && ImageSingletons.lookup(URLProtocolsSupport.class).isDisabled(protocol);
+        return ImageSingletons.contains(URLProtocolsSupport.class) &&
+                        ImageSingletons.lookup(URLProtocolsSupport.class).isDisabled(protocol);
     }
 
     static String handlerClassName(String protocol) {
