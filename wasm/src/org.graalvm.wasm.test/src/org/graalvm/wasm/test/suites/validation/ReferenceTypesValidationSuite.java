@@ -555,6 +555,26 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testTableInitActiveElementSegmentZeroLength() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 0
+        // table.init 2 0
+        // i32.const 0
+        //
+        // (elem (i32.const 0) func)
+        // (elem func 0)
+        // (elem (table 0) (i32.const 0) func)
+        final byte[] binary = getDefaultTableInitBuilder("41 00 41 00 41 00 FC 0C 02 00 41 00 0B").addElements("00 41 00 0B 00").addElements("01 00 01 00").addElements("02 00 41 00 0B 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 0, result.asInt());
+        });
+    }
+
+    @Test
     public void testMultipleTables() throws IOException {
         // (table 1 1 funcref)
         // (table 1 1 externref)
