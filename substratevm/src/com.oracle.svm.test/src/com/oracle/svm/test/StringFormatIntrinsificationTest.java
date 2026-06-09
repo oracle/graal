@@ -27,11 +27,25 @@ package com.oracle.svm.test;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
+import java.util.Formattable;
+import java.util.FormattableFlags;
+import java.util.Formatter;
 import java.util.Locale;
 
 import org.junit.Test;
 
 public class StringFormatIntrinsificationTest {
+
+    static final class CustomFormattable implements Formattable {
+        @Override
+        public void formatTo(Formatter formatter, int flags, int width, int precision) {
+            String value = (flags & FormattableFlags.UPPERCASE) != 0 ? "FORMATTABLE" : "formattable";
+            if (precision >= 0 && value.length() > precision) {
+                value = value.substring(0, precision);
+            }
+            formatter.format("%" + Math.max(width, 0) + "s", value);
+        }
+    }
 
     @Test
     public void testExistingSimpleFormats() {
@@ -84,9 +98,30 @@ public class StringFormatIntrinsificationTest {
     }
 
     @Test
+    public void testAdditionalWidthPrecisionAndCharacterFormats() {
+        assertEquals("chars: a I   b   I \uD83D\uDE00", String.format("chars: %c %C %3c %3C %C", 'a', 'i', 'b', 'i', 0x1F600));
+        assertEquals("negative padded: -007 -007 ffffffff 37777777777", String.format("negative padded: %04d %04d %04x %04o", -7, (short) -7, -1, -1));
+        assertEquals("big padded: -0012 00012 0xff 0377",
+                        String.format("big padded: %05d %05d %#x %#o", new BigInteger("-12"), new BigInteger("12"), new BigInteger("255"), new BigInteger("255")));
+        assertEquals("precisions: abcd ABCD true TRUE 123a 123A", String.format("precisions: %.4s %.4S %.4b %.4B %.4h %.4H", "abcdef", "abcdef", true, true, 0x123abc, 0x123abc));
+        assertEquals("nulls:  null nu false FAL  null NUL", String.format("nulls: %5s %.2s %5b %.3B %5h %.3H", null, null, null, null, null, null));
+
+        Locale arabicDigits = Locale.forLanguageTag("ar-u-nu-arab");
+        assertEquals("negative padded: -\u0660\u0660\u0667 -\u0660\u0660\u0667 ffffffff 37777777777",
+                        String.format(arabicDigits, "negative padded: %04d %04d %04x %04o", -7, (short) -7, -1, -1));
+        assertEquals("big padded: -\u0660\u0660\u0661\u0662 \u0660\u0660\u0660\u0661\u0662 0xff 0377",
+                        String.format(arabicDigits, "big padded: %05d %05d %#x %#o", new BigInteger("-12"), new BigInteger("12"), new BigInteger("255"), new BigInteger("255")));
+
+        Locale turkish = Locale.forLanguageTag("tr");
+        assertEquals("turkish: \u0130 \u0130   \u0130ST", String.format(turkish, "turkish: %S %C %5.3S", "i", 'i', "istanbul"));
+    }
+
+    @Test
     public void testUnsupportedFormatStillFallsBackToFormatter() {
         assertEquals("float: 3.14 simple: ok hex: 0xff", String.format("float: %.2f simple: %s hex: %#x", Math.PI, "ok", 255));
         assertEquals("padded alternate:  0xff", String.format("padded alternate: %#5x", 255));
         assertEquals("fallback: OK OK 1970", String.format("fallback: %1$S %<S %3$tY", "ok", "unused", 12 * 60 * 60 * 1000L));
+        assertEquals("fallback mix: ok  0xff 1.3 0007 done", String.format("fallback mix: %s %#5x %.1f %04d %s", "ok", 255, 1.25, 7, "done"));
+        assertEquals("formattable:         form         FORM", String.format("formattable: %12.4s %12.4S", new CustomFormattable(), new CustomFormattable()));
     }
 }
