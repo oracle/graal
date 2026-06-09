@@ -111,6 +111,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.LoadHubOrNullNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
+import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
@@ -1088,6 +1089,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return false;
     }
 
+    private static boolean hasOSRMonitorEnter(MonitorIdNode lock) {
+        return lock.usages().filter(OSRMonitorEnterNode.class).isNotEmpty();
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1134,6 +1139,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
 
             for (MonitorIdNode lock : locks) {
                 if (!lock.isEliminated() && !newList.contains(lock)) {
+                    if (hasOSRMonitorEnter(lock)) {
+                        /*
+                         * OSR monitor enters represent locks already held by the interpreter at
+                         * the OSR entry. They must stay in the graph and keep their monitor ids
+                         * live.
+                         */
+                        continue;
+                    }
                     // lock is nested and eliminated
                     for (Node usage : lock.usages().snapshot()) {
                         if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
@@ -1143,6 +1156,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                     lock.setEliminated();
                 }
             }
+            newList.removeIf(DefaultJavaLoweringProvider::hasOSRMonitorEnter);
             locks = newList;
         }
 
