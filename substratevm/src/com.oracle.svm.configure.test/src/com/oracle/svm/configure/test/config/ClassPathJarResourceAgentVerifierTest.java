@@ -53,6 +53,7 @@ public class ClassPathJarResourceAgentVerifierTest {
     private static final String VERIFIER_ENABLED_PROPERTY = ClassPathJarResourceAgentVerifierTest.class.getName() + ".verifier.enabled";
     private static final String CONFIG_PATH_PROPERTY = ClassPathJarResourceAgentVerifierTest.class.getName() + ".configpath";
     private static final String JAR_HANDLER = "sun.net.www.protocol.jar.Handler";
+    private static final String JRT_HANDLER = "sun.net.www.protocol.jrt.Handler";
 
     @Test
     public void verifyJarUrlHandlerMetadataWasNotGenerated() throws Exception {
@@ -84,6 +85,39 @@ public class ClassPathJarResourceAgentVerifierTest {
                         jarHandlerType);
         ConfigurationMemberInfo constructorInfo = getConstructorInfo(jarHandlerType);
         Assert.assertNotNull("Missing JDK jar URL handler constructor metadata", constructorInfo);
+        Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
+    }
+
+    @Test
+    public void verifyJrtUrlHandlerMetadataWasNotGenerated() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        Assert.assertNotNull("""
+                        The agent did not record the reflection probe, so this verifier is not \
+                        checking an agent-generated configuration.""",
+                        getConfigurationType(reflectionConfiguration,
+                                        ClassPathJarResourceAgentTest.ReflectiveProbe.class.getName()));
+        Assert.assertNull("""
+                        JDK system module resource access must not add reflective metadata for the \
+                        JDK jrt URL handler.""",
+                        getConfigurationType(reflectionConfiguration, JRT_HANDLER));
+    }
+
+    @Test
+    public void verifyJrtUrlHandlerMetadataWasGenerated() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        ConfigurationType jrtHandlerType = getConfigurationType(reflectionConfiguration, JRT_HANDLER);
+        Assert.assertNotNull("""
+                        Explicit jrt: URL access must add reflective metadata for the JDK jrt URL \
+                        handler, even if an earlier system module resource lookup cached the handler.""",
+                        jrtHandlerType);
+        ConfigurationMemberInfo constructorInfo = getConstructorInfo(jrtHandlerType);
+        Assert.assertNotNull("Missing JDK jrt URL handler constructor metadata", constructorInfo);
         Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
     }
 

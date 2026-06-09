@@ -43,19 +43,20 @@ import org.junit.Test;
 /**
  * Regression fixture for the native-image-agent URL protocol breakpoint.
  *
- * Looking up a resource from a class path JAR makes the JDK create a {@code jar:} resource URL as
- * part of its class path implementation. For ordinary applications and benchmarks, that URL is only
- * a resource lookup detail: Native Image embeds the selected resources and does not need reflective
- * access to the JDK's {@code sun.net.www.protocol.jar.Handler}. Recording that handler makes the
- * image builder treat reflective JAR URL support as application-requested behavior and pulls
- * {@code JarURLConnection}, {@code URLJarFile}, and related classes into images. This test therefore
- * runs against the real agent instead of only the trace processor, because the regression is whether
- * the agent emits the unwanted handler metadata in the first place.
+ * Looking up resources from a class path JAR or a JDK system module makes the JDK create a
+ * {@code jar:} or {@code jrt:} resource URL as part of its implementation. For ordinary
+ * applications and benchmarks, that URL is only a resource lookup detail: Native Image embeds the
+ * selected resources and does not need reflective access to the JDK URL handlers. Recording those
+ * handlers makes the image builder treat reflective URL support as application-requested behavior
+ * and pulls related classes into images. This test therefore runs against the real agent instead of
+ * only the trace processor, because the regression is whether the agent emits the unwanted handler
+ * metadata in the first place.
  */
 public class ClassPathJarResourceAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = ClassPathJarResourceAgentTest.class.getName() + ".generator.enabled";
     private static final String RESOURCE_NAME = "agent-url-protocol-resource.txt";
     private static final String RESOURCE_CONTENTS = "agent resource lookup";
+    private static final String JDK_MODULE_RESOURCE_NAME = "java/lang/Object.class";
 
     @Test
     public void accessClassPathJarResource() throws Exception {
@@ -71,6 +72,22 @@ public class ClassPathJarResourceAgentTest {
 
         accessClassPathJarResourceInternal();
         accessExplicitJarURL();
+    }
+
+    @Test
+    public void accessJDKModuleResource() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+        accessJDKModuleResourceInternal();
+    }
+
+    @Test
+    public void accessJDKModuleResourceThenExplicitJrtURL() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+
+        accessJDKModuleResourceInternal();
+        accessExplicitJrtURL();
     }
 
     private static void accessClassPathJarResourceInternal() throws Exception {
@@ -93,6 +110,16 @@ public class ClassPathJarResourceAgentTest {
         }
     }
 
+    private static void accessJDKModuleResourceInternal() throws Exception {
+        URL resource = ClassLoader.getSystemResource(JDK_MODULE_RESOURCE_NAME);
+        Assert.assertNotNull(resource);
+        Assert.assertEquals("jrt", resource.getProtocol());
+        try (InputStream input = resource.openStream()) {
+            Assert.assertTrue(input.read() >= 0);
+        }
+        Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
+    }
+
     private static void accessExplicitJarURL() throws Exception {
         Path jarFile = Files.createTempFile("native-image-agent-explicit-jar-url", ".jar");
         try {
@@ -106,6 +133,14 @@ public class ClassPathJarResourceAgentTest {
             }
         } finally {
             Files.deleteIfExists(jarFile);
+        }
+    }
+
+    private static void accessExplicitJrtURL() throws Exception {
+        URL resource = URI.create("jrt:/java.base/" + JDK_MODULE_RESOURCE_NAME).toURL();
+        Assert.assertEquals("jrt", resource.getProtocol());
+        try (InputStream input = resource.openStream()) {
+            Assert.assertTrue(input.read() >= 0);
         }
     }
 

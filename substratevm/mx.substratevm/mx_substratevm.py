@@ -876,6 +876,32 @@ def run_agent_jar_url_protocol_config_test(agent_path):
                  _configure_test_jvmci_exports() +
                  [verifier_class + '#verifyJarUrlHandlerMetadataWasGenerated'])
 
+    config_dir = join(svmbuild_dir(), 'jrt-url-protocol-agent-test-config')
+    if exists(config_dir):
+        mx.rmtree(config_dir)
+    agent_opts = ['config-output-dir=' + config_dir]
+    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                  '-D' + generator_class + '.generator.enabled=true'] +
+                 _configure_test_jvmci_exports() +
+                 [generator_class + '#accessJDKModuleResource'])
+    jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                  '-D' + verifier_class + '.configpath=' + config_dir] +
+                 _configure_test_jvmci_exports() +
+                 [verifier_class + '#verifyJrtUrlHandlerMetadataWasNotGenerated'])
+
+    explicit_config_dir = join(svmbuild_dir(), 'explicit-jrt-url-protocol-agent-test-config')
+    if exists(explicit_config_dir):
+        mx.rmtree(explicit_config_dir)
+    agent_opts = ['config-output-dir=' + explicit_config_dir]
+    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                  '-D' + generator_class + '.generator.enabled=true'] +
+                 _configure_test_jvmci_exports() +
+                 [generator_class + '#accessJDKModuleResourceThenExplicitJrtURL'])
+    jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                  '-D' + verifier_class + '.configpath=' + explicit_config_dir] +
+                 _configure_test_jvmci_exports() +
+                 [verifier_class + '#verifyJrtUrlHandlerMetadataWasGenerated'])
+
 
 def _configure_test_jvmci_exports():
     return [
