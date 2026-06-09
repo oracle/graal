@@ -31,11 +31,6 @@ import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
@@ -165,6 +160,7 @@ import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
@@ -637,21 +633,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.stubDoubleKeccak != 0L) {
             registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
         }
-        if (c.stubDilithiumAlmostNtt != 0L) {
-            registerForeignCall(DILITHIUM_ALMOST_NTT, c.stubDilithiumAlmostNtt, NativeCall);
-        }
-        if (c.stubDilithiumAlmostInverseNtt != 0L) {
-            registerForeignCall(DILITHIUM_ALMOST_INVERSE_NTT, c.stubDilithiumAlmostInverseNtt, NativeCall);
-        }
-        if (c.stubDilithiumNttMult != 0L) {
-            registerForeignCall(DILITHIUM_NTT_MULT, c.stubDilithiumNttMult, NativeCall);
-        }
-        if (c.stubDilithiumMontMulByConstant != 0L) {
-            registerForeignCall(DILITHIUM_MONT_MUL_BY_CONSTANT, c.stubDilithiumMontMulByConstant, NativeCall);
-        }
-        if (c.stubDilithiumDecomposePoly != 0L) {
-            registerForeignCall(DILITHIUM_DECOMPOSE_POLY, c.stubDilithiumDecomposePoly, NativeCall);
-        }
         if (c.stubKyberNtt != 0L) {
             registerForeignCall(KYBER_NTT, c.stubKyberNtt, NativeCall);
         }
@@ -741,6 +722,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.MD5Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32UpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32CUpdateBytesNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumAlmostInverseNttNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumAlmostNttNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumDecomposePolyNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumMontMulByConstantNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumNttMultNode.STUB);
     }
 
     @FunctionalInterface

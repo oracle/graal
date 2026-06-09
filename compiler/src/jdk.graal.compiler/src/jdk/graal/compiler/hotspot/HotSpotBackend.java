@@ -187,16 +187,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     public static final HotSpotForeignCallDescriptor DOUBLE_KECCAK = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_double_keccak", int.class,
                     WordBase.class, WordBase.class);
-    public static final HotSpotForeignCallDescriptor DILITHIUM_ALMOST_NTT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumAlmostNtt", int.class,
-                    WordBase.class, WordBase.class);
-    public static final HotSpotForeignCallDescriptor DILITHIUM_ALMOST_INVERSE_NTT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumAlmostInverseNtt", int.class,
-                    WordBase.class, WordBase.class);
-    public static final HotSpotForeignCallDescriptor DILITHIUM_NTT_MULT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumNttMult", int.class,
-                    WordBase.class, WordBase.class, WordBase.class);
-    public static final HotSpotForeignCallDescriptor DILITHIUM_MONT_MUL_BY_CONSTANT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumMontMulByConstant", int.class,
-                    WordBase.class, int.class);
-    public static final HotSpotForeignCallDescriptor DILITHIUM_DECOMPOSE_POLY = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumDecomposePoly", int.class,
-                    WordBase.class, WordBase.class, WordBase.class, int.class, int.class);
 
     public static final HotSpotForeignCallDescriptor KYBER_NTT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberNtt", int.class,
                     WordBase.class, WordBase.class);
