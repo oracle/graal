@@ -145,7 +145,8 @@ You can use `-H:Preserve` in the following ways:
 * `-H:Preserve=path=<cp-entry>`: preserves all elements from a given class-path entry
 * You can combine any of the previous uses by separating them with a comma (`,`). For example: `-H:Preserve=path=<cp-entry>,module=<module>,module=<module2>,package=<package>`
 
-When a preserved class captures a lambda, Native Image also preserves the reached lambda proxy class for that lambda. The proxy class is registered for reflection and JNI access like other preserved classes, and serializable lambdas are registered for Java serialization.
+Native Image also preserves the corresponding lambda proxy class when a preserved class captures a lambda. 
+It registers that proxy class for reflection and JNI access, like other preserved classes, and it registers serializable lambdas for Java serialization.
 
 You must explicitly configure multi-interface proxy classes, arrays of dimension 3 and higher, and _.class_ files as resources in the native image. Tooling-related Java modules are not included by default with `-H:Preserve=all` and must be added with `-H:Preserve=module=<module>` if needed.
 
