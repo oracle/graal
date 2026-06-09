@@ -113,14 +113,6 @@ final class Target_java_net_URL {
             return null;
         }
 
-        if ("jrt".equalsIgnoreCase(protocol) && JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-            URLStreamHandler handler = JavaNetSubstitutions.newJRTURLStreamHandler();
-            synchronized (streamHandlerLock) {
-                handlers.put("jrt", handler);
-            }
-            return handler;
-        }
-
         URLStreamHandler handler = handlers.get(protocol);
         if (handler != null) {
             return handler;
@@ -128,7 +120,7 @@ final class Target_java_net_URL {
 
         boolean checkedWithFactory = false;
         URLStreamHandlerFactory currentFactory;
-        boolean overrideable = isOverrideable(protocol) && !"resource".equalsIgnoreCase(protocol);
+        boolean overrideable = isOverrideable(protocol) && !JavaNetSubstitutions.RESOURCE_PROTOCOL.equalsIgnoreCase(protocol);
         if (overrideable && Target_jdk_internal_misc_VM.isBooted()) {
             currentFactory = factory;
             if (currentFactory != null) {
@@ -184,7 +176,7 @@ final class Target_java_net_URL {
             switch (protocol) {
                 case "file":
                     return new sun.net.www.protocol.file.Handler();
-                case "resource":
+                case JavaNetSubstitutions.RESOURCE_PROTOCOL:
                     return new URLStreamHandler() {
                         @Override
                         protected URLConnection openConnection(URL url) {
@@ -301,7 +293,7 @@ final class URLProtocolsSupport {
 /** Dummy class to have a class with the file's name. */
 public final class JavaNetSubstitutions {
     static final String ALL_PROTOCOLS = "all";
-    static final String RUNTIME_PROTOCOLS = "runtime";
+    static final String RESOURCE_PROTOCOL = "resource";
     private static final String PROTOCOL_QUALIFIER = "sun.net.www.protocol.";
     static final Set<String> KNOWN_JDK_PROTOCOLS = Set.of(
                     "file", "ftp", "http", "https", "jar", "jmod", "jrt", "mailto");
@@ -325,6 +317,9 @@ public final class JavaNetSubstitutions {
     static void registerURLProtocol(DuringSetupAccess access, String protocol) {
         if (isDisabledURLProtocol(protocol)) {
             LogUtils.warning("The URL protocol " + protocol + " was both enabled and disabled. The disable option takes precedence.");
+            return;
+        }
+        if (RESOURCE_PROTOCOL.equalsIgnoreCase(protocol)) {
             return;
         }
         String handlerClassName = handlerClassName(protocol);
