@@ -62,7 +62,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     @Override
     protected void merge(TypeConfiguration other) {
         other.types.forEach((key, value) -> {
-            types.compute(key, (k, v) -> {
+            types.compute(key, (_, v) -> {
                 if (v != null) {
                     return ConfigurationType.copyAndMerge(v, value);
                 }
@@ -74,7 +74,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     @Override
     public void subtract(TypeConfiguration other) {
         other.types.forEach((key, type) -> {
-            types.computeIfPresent(key, (k, v) -> ConfigurationType.copyAndSubtract(v, type));
+            types.computeIfPresent(key, (_, v) -> ConfigurationType.copyAndSubtract(v, type));
         });
     }
 
@@ -83,7 +83,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         types.forEach((key, type) -> {
             ConfigurationType intersectedType = other.types.get(key);
             if (intersectedType != null) {
-                types.compute(key, (k, v) -> ConfigurationType.copyAndIntersect(type, intersectedType));
+                types.compute(key, (_, _) -> ConfigurationType.copyAndIntersect(type, intersectedType));
             } else {
                 types.remove(key);
             }
@@ -107,7 +107,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     public void addOrMerge(ConfigurationType type) {
-        types.compute(new ConditionalElement<>(type.getCondition(), type.getTypeDescriptor()), (key, value) -> {
+        types.compute(new ConditionalElement<>(type.getCondition(), type.getTypeDescriptor()), (_, value) -> {
             if (value == null) {
                 return type;
             } else {
@@ -123,7 +123,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public void mergeConditional(UnresolvedAccessCondition condition, TypeConfiguration other) {
-        other.types.forEach((key, value) -> {
+        other.types.forEach((_, value) -> {
             addOrMerge(new ConfigurationType(value, condition));
         });
     }

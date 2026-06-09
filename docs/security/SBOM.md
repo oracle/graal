@@ -23,13 +23,13 @@ The SBOM feature can be disabled with `--enable-sbom=false`.
 
 ## Extracting SBOM Contents
 
-After embedding the compressed SBOM into the image, there are two possible ways to extract the SBOM contents:
+For native images with an embedded SBOM, there are two possible ways to extract the SBOM contents:
 - using the [Native Image Utils Tool](#native-image-utils-tool)
 - using [Syft](https://github.com/anchore/syft){:target="_blank"}
 
 ### Native Image Utils Tool
 
-The Native Image Utils Tool can extract the compressed SBOM using the `extract-sbom` command from executables and shared libraries.
+The Native Image Utils Tool can extract the compressed SBOM using the `extract-sbom` command from native executables and shared libraries.
 ```bash
 $JAVA_HOME/bin/native-image-utils extract-sbom --image-path=<path_to_binary>
 ```

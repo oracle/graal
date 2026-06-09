@@ -38,6 +38,7 @@ import com.oracle.svm.configure.command.ConfigurationGenerateFiltersCommand;
 import com.oracle.svm.configure.command.ConfigurationHelpCommand;
 import com.oracle.svm.configure.command.ConfigurationProcessTraceCommand;
 import com.oracle.svm.configure.command.ConfigurationUnknownCommand;
+import com.oracle.svm.configure.command.SBOMExtractorCommand;
 import com.oracle.svm.shared.util.LogUtils;
 
 /**
@@ -58,6 +59,7 @@ public class ConfigurationTool {
         ConfigurationCommand processTraceCommand = new ConfigurationProcessTraceCommand();
         ConfigurationCommand generateFiltersCommand = new ConfigurationGenerateFiltersCommand();
         ConfigurationCommand conditionalsCommand = new ConfigurationGenerateConditionalsCommand();
+        ConfigurationCommand sbomExtractorCommand = new SBOMExtractorCommand();
 
         commands.put(helpCommand.getName(), helpCommand);
         commands.put(generateCommand.getName(), generateCommand);
@@ -65,6 +67,7 @@ public class ConfigurationTool {
         commands.put(processTraceCommand.getName(), processTraceCommand);
         commands.put(conditionalsCommand.getName(), conditionalsCommand);
         commands.put(generateFiltersCommand.getName(), generateFiltersCommand);
+        commands.put(sbomExtractorCommand.getName(), sbomExtractorCommand);
     }
 
     public static Collection<ConfigurationCommand> getCommands() {

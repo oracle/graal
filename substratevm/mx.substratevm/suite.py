@@ -1311,7 +1311,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
             "testProject": True,
             "jacoco" : "exclude",
         },
@@ -1655,7 +1655,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "24+",
             "jacoco" : "exclude",
         },
 
