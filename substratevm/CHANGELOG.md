@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.1 (Internal Version 25.1.0)
+* (GR-76005) Improve Native Image support for constant `String.format` and `String::formatted` calls by intrinsifying simple format strings in CE. This reduces the reachability of JDK formatting and localization code for applications such as Hello World.
 * (GR-74889) Added Windows support for Native Image JFR recordings and heap dumps.
 * (GR-67169) Added POSIX support for Native Image JFR emergency dumps. When an out-of-memory error occurs while a JFR recording is active, Native Image can preserve in-memory recording data in an emergency JFR file.
 * (GR-75640) Added experimental support for Native Image layered images on Darwin.

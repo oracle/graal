@@ -105,6 +105,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
+import com.oracle.svm.core.stringformat.StringFormatPhase;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
@@ -841,6 +842,17 @@ public class SVMHost extends HostVM {
                 new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, getProviders(method.getMethodVariantKey()));
             }
         }
+        if (shouldIntrinsifyStringFormat(method)) {
+            new StringFormatPhase(allowStringFormatFormatterFallback()).apply(graph, bb.getProviders(method));
+        }
+    }
+
+    protected boolean shouldIntrinsifyStringFormat(AnalysisMethod method) {
+        return method.isOriginalMethod() && StringFormatPhase.Options.IntrinsifyStringFormat.getValue();
+    }
+
+    protected boolean allowStringFormatFormatterFallback() {
+        return true;
     }
 
     @Override
