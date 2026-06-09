@@ -1839,6 +1839,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * non-preserved access registrations still keep the element non-preserved.
          */
         boolean notPreservedAccess = false;
+        /* Query metadata keeps members discoverable but must not satisfy guarded access. */
+        boolean accessMetadata = false; // §FS-001-native-image-semantics.3.2
 
         ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
             ConfigurationMemberAccessibility previous = accessibility;
@@ -1853,14 +1855,28 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
+            boolean accessRegistration = newAccessibility.includes(ACCESSED);
+            if (dynamicAccess == null || accessRegistration && !accessMetadata) {
+                dynamicAccess = null;
+            }
+            if (!accessRegistration && accessMetadata) {
+                return;
+            }
             boolean metadataPreserved = dynamicAccess == null ? preserved : dynamicAccess.isPreserved();
-            if (preserved && !notPreservedAccess) {
-                metadataPreserved = true;
-            } else if (!preserved && newAccessibility.includes(ACCESSED)) {
-                notPreservedAccess = true;
-                metadataPreserved = false;
-            } else if (!preserved && !isRegisteredAs(ACCESSED)) {
-                metadataPreserved = false;
+            if (accessRegistration) {
+                accessMetadata = true;
+                if (preserved && !notPreservedAccess) {
+                    metadataPreserved = true;
+                } else if (!preserved) {
+                    notPreservedAccess = true;
+                    metadataPreserved = false;
+                }
+            } else {
+                if (preserved && !notPreservedAccess) {
+                    metadataPreserved = true;
+                } else if (!preserved) {
+                    metadataPreserved = false;
+                }
             }
             dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, true).withPreserved(metadataPreserved);
         }
