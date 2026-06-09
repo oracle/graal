@@ -53,6 +53,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicDeoptimizeNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -491,13 +492,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         // we are not interested in comparing object ids of the graphs e.g. for root nodes
         // so we null out all the object constants
         for (Node node : graph.getNodes()) {
-            if (node instanceof ConstantNode) {
-                Constant constant = ((ConstantNode) node).getValue();
+            if (node instanceof ConstantNode constantNode) {
+                Constant constant = constantNode.getValue();
                 if (constant instanceof JavaConstant) {
                     ResolvedJavaType type = getMetaAccess().lookupJavaType((JavaConstant) constant);
                     if (((JavaConstant) constant).getJavaKind() == JavaKind.Object && type != null && !WRAPPER_CLASSES.contains(type.toJavaName())) {
-                        node.replaceAtUsages(graph.unique(ConstantNode.defaultForKind(JavaKind.Object)));
-                        node.safeDelete();
+                        node.replaceAtUsagesAndDelete(ConstantNode.forConstant(constantNode.stamp(NodeView.DEFAULT), JavaConstant.NULL_POINTER, getMetaAccess(), graph));
                     }
                 }
             }

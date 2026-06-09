@@ -718,7 +718,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
-        n.stateAfter().replaceFirstInput(n, memoryRead);
+        n.stateAfter().replaceFirstInputWithoutCheckingInvariants(n, memoryRead);
         n.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(n, memoryRead);
     }
@@ -734,7 +734,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
-        n.stateAfter().replaceFirstInput(n, memoryRead);
+        n.stateAfter().replaceFirstInputWithoutCheckingInvariants(n, memoryRead);
         n.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(n, memoryRead);
     }

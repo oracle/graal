@@ -332,16 +332,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         return oldValue;
     }
 
-    boolean replaceFirst(Node node, Node other) {
-        for (int i = 0; i < size; i++) {
-            if (nodes[i] == node) {
-                nodes[i] = other;
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public Iterator<T> iterator() {
         return new NodeListIterator<>(this, 0);

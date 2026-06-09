@@ -710,6 +710,8 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                         useCloned = graph.addOrUniqueWithInputs(useCloned);
                         fixedSuccessor.replaceAllInputs(use, useCloned);
                     }
+                    GraalError.guarantee(use.hasNoUsages(), "all users of the original call target must have been replaced: %s", use);
+                    use.safeDelete();
                 } else if (use instanceof ValuePhiNode phi) {
                     for (int i = 0; i < phi.valueCount(); i++) {
                         ValueNode phiValue = phi.valueAt(i);
@@ -1037,6 +1039,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
              * same component, and all nodes in the component are replaced.
              */
             node.replaceAtUsages(null, usage -> component.simdStamps.containsKey((ValueNode) usage));
+            GraalError.guarantee(node.hasNoUsages(), "unexpected remaining usage %s of expanded Vector API node %s", node.usages().first(), node);
             if (node instanceof FixedWithNextNode fixedNode) {
                 if (replacement instanceof FixedWithNextNode fixedReplacement && fixedReplacement.next() != null) {
                     /*
@@ -1044,7 +1047,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                      * unboxing operations, which expand to multiple fixed nodes that we add to the
                      * control flow during unboxing.
                      */
-                    fixedNode.replaceAtUsages(replacement);
                     graph.removeFixed(fixedNode);
                 } else {
                     graph.replaceFixed(fixedNode, replacement);
@@ -1052,7 +1054,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             } else if (node instanceof MacroWithExceptionNode macroWithExceptionNode) {
                 AbstractBeginNode exceptionEdge = macroWithExceptionNode.exceptionEdge();
                 if (replacement instanceof FixedWithNextNode fixedReplacement && fixedReplacement.next() != null) {
-                    macroWithExceptionNode.replaceAtUsages(replacement);
                     graph.removeSplit(macroWithExceptionNode, macroWithExceptionNode.getPrimarySuccessor());
                 } else {
                     graph.replaceSplit(macroWithExceptionNode, replacement, macroWithExceptionNode.getPrimarySuccessor());

@@ -42,6 +42,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -656,7 +657,7 @@ public class InliningUtil extends ValueMergeUtil {
                      * canonicalization or dead code elimination. Until the usages are removed, they
                      * need some placeholder value as an input to keep the graph valid.
                      */
-                    invokeNode.replaceAtUsages(ConstantNode.defaultForKind(returnKind, graph));
+                    invokeNode.replaceAtUsages(defaultPlaceholderForInvoke(invokeNode, returnKind, graph));
                 }
             }
             GraphUtil.killCFG(invoke.next());
@@ -668,6 +669,18 @@ public class InliningUtil extends ValueMergeUtil {
         graph.maybeMarkUnsafeAccess(inlineGraph);
         assert inlineGraph.getSpeculationLog() == null ||
                         inlineGraph.getSpeculationLog() == graph.getSpeculationLog() : "Only the root graph should have a speculation log";
+    }
+
+    private static ConstantNode defaultPlaceholderForInvoke(ValueNode invokeNode, JavaKind returnKind, StructuredGraph graph) {
+        Stamp invokeStamp = invokeNode.stamp(NodeView.DEFAULT);
+        if (invokeStamp instanceof IntegerStamp) {
+            /*
+             * Methods returning word types have an Object return kind but an integer invoke stamp.
+             * Use the invoke stamp so the placeholder is compatible with surviving value usages.
+             */
+            return ConstantNode.forIntegerStamp(invokeStamp, 0, graph);
+        }
+        return ConstantNode.defaultForKind(returnKind, graph);
     }
 
     /**

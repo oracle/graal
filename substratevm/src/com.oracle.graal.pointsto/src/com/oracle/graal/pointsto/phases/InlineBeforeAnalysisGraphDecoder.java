@@ -323,7 +323,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                 assert lookupNode(callerLoopScope, invokeData.exceptionOrderId) == inlineScope.exceptionPlaceholderNode : inlineScope;
                 registerNode(callerLoopScope, invokeData.exceptionOrderId, null, true, true);
                 ValueNode exceptionReplacement = makeStubNode(callerScope, callerLoopScope, invokeData.exceptionOrderId);
-                inlineScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionReplacement);
+                inlineScope.exceptionPlaceholderNode.replaceAtUsagesAndDeleteWithoutCheckingInvariants(exceptionReplacement);
             }
 
             handleNonInlinedInvoke(callerScope, callerLoopScope, invokeData);
