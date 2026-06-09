@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -548,8 +548,9 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static ConditionalRuntimeValue<ResourceStorageEntryBase> mergeResourceMetadata(ConditionalRuntimeValue<ResourceStorageEntryBase> current,
                     RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
-        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata)
-                        .withPreserved(dynamicAccessMetadata.isPreserved());
+        RuntimeDynamicAccessMetadata currentMetadata = current.getDynamicAccessMetadata();
+        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(currentMetadata, dynamicAccessMetadata)
+                        .withPreserved(currentMetadata.isPreserved() || dynamicAccessMetadata.isPreserved());
         return new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally());
     }
 
@@ -864,7 +865,6 @@ public final class Resources {
                 if (resourceNameMatchesIncludePattern || canonicalResourceNameMatchesIncludePattern) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
                     // resource with the name actually exists. Do not report missing metadata.
-                    traceResource(resourceNameMatchesIncludePattern ? resourceName : canonicalResourceName, moduleName);
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);

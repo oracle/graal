@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1785,7 +1785,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
-            unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.addCondition(unsafeAllocatedDynamicAccess, condition, preserved);
+            boolean newPreserved = preserved || unsafeAllocatedDynamicAccess != null && unsafeAllocatedDynamicAccess.isPreserved();
+            unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.addCondition(unsafeAllocatedDynamicAccess, condition, true).withPreserved(newPreserved);
         }
 
         private static final class LookupErrors {
@@ -1834,11 +1835,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         RuntimeDynamicAccessMetadata dynamicAccess = null;
         boolean inHeap = false;
         boolean hiding = false;
-        /*
-         * Query-only registrations can be upgraded by preserved access registrations. Explicit
-         * non-preserved access registrations still keep the element non-preserved.
-         */
-        boolean notPreservedAccess = false;
+        /* Preserve must stay visible to native tracing even with explicit metadata for the same
+         * element. See FS-001-native-image-semantics.3.2. */
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */
         boolean accessMetadata = false; // See FS-001-native-image-semantics.3.2.
 
@@ -1862,21 +1860,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!accessRegistration && accessMetadata) {
                 return;
             }
-            boolean metadataPreserved = dynamicAccess == null ? preserved : dynamicAccess.isPreserved();
+            boolean metadataPreserved = preserved || dynamicAccess != null && dynamicAccess.isPreserved();
             if (accessRegistration) {
                 accessMetadata = true;
-                if (preserved && !notPreservedAccess) {
-                    metadataPreserved = true;
-                } else if (!preserved) {
-                    notPreservedAccess = true;
-                    metadataPreserved = false;
-                }
-            } else {
-                if (preserved && !notPreservedAccess) {
-                    metadataPreserved = true;
-                } else if (!preserved) {
-                    metadataPreserved = false;
-                }
             }
             dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, true).withPreserved(metadataPreserved);
         }

@@ -2241,6 +2241,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (clazz == void.class || (clazz.isArray() && SubstrateUtil.arrayTypeDimension(clazz) >= 255)) {
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
+        boolean followReflectionConfiguration = ClassLoadingSupport.singleton().followReflectionConfiguration();
         DynamicHub arrayHub = getArrayHub();
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {

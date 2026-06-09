@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -280,7 +280,9 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName, boolean preserved) {
-        registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(registeredBundles.get(baseName), condition, preserved));
+        RuntimeDynamicAccessMetadata current = registeredBundles.get(baseName);
+        boolean newPreserved = preserved || current != null && current.isPreserved();
+        registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(current, condition, true).withPreserved(newPreserved));
     }
 
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {

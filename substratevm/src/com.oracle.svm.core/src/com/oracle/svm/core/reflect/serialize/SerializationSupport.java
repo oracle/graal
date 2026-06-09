@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -228,7 +228,9 @@ public class SerializationSupport {
         VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt());
         synchronized (hostedClasses) {
             DynamicHubKey key = new DynamicHubKey(hub);
-            hostedClasses.put(key, RuntimeDynamicAccessMetadata.addCondition(hostedClasses.get(key), cnd, preserved));
+            RuntimeDynamicAccessMetadata current = hostedClasses.get(key);
+            boolean newPreserved = preserved || current != null && current.isPreserved();
+            hostedClasses.put(key, RuntimeDynamicAccessMetadata.addCondition(current, cnd, true).withPreserved(newPreserved));
         }
     }
 
