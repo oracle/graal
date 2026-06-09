@@ -24,9 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports;
 
-import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
-import static com.oracle.graal.pointsto.reports.ReportUtils.reasonComparator;
-
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +46,7 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
     private static void doPrint(PrintWriter out, BigBang bb) {
         Map<AnalysisType, Integer> histogram = new HashMap<>();
         AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb, histogram);
-        printer.scanBootImageHeapRoots(fieldComparator, reasonComparator);
+        printer.scanBootImageHeapRoots(ReportUtils.fieldComparator(), ReportUtils.reasonComparator());
         printHistogram(out, histogram);
     }
 
