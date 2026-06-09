@@ -73,7 +73,7 @@ class ClassUtil {
 
     @SuppressWarnings("SuspiciousInvocationHandlerImplementation")
     public static void createProxy(Class<?>... interfaceList) {
-        Proxy.newProxyInstance(ClassUtil.class.getClassLoader(), interfaceList, (proxy, method, args) -> null);
+        Proxy.newProxyInstance(ClassUtil.class.getClassLoader(), interfaceList, (_, _, _) -> null);
     }
 }
 
