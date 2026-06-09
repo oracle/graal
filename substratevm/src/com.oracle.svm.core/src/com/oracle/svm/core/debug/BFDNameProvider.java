@@ -37,7 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * the corresponding DWARF class record must embed the class in a namespace whose name matches the
  * classloader id otherwise the mangled name will not be recognised and demangled successfully.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class BFDNameProvider implements UniqueShortNameProvider {
 
     public BFDNameProvider(List<ClassLoader> ignore) {

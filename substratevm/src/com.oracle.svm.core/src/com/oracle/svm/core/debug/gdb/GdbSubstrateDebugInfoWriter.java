@@ -49,6 +49,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
@@ -98,6 +101,7 @@ public class GdbSubstrateDebugInfoWriter implements SubstrateDebugInfoWriter {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class GdbSubstrateDebugInfoFeature implements InternalFeature {
 
     @Override
