@@ -50,6 +50,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class OperationModel implements PrettyPrintable {
@@ -86,6 +87,7 @@ public class OperationModel implements PrettyPrintable {
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,
         CUSTOM_YIELD,
+        CUSTOM_RETURN,
         CUSTOM_INSTRUMENTATION,
     }
 
@@ -279,6 +281,13 @@ public class OperationModel implements PrettyPrintable {
         return instructions.get(0);
     }
 
+    public NodeData getNodeData() {
+        if (instructions.isEmpty()) {
+            return null;
+        }
+        return instructions.getFirst().nodeData;
+    }
+
     public OperationModel setOperationBeginArguments(OperationArgument... operationBeginArguments) {
         if (this.operationBeginArguments != EMPTY_ARGUMENTS && this.operationBeginArguments.length != operationBeginArguments.length) {
             throw new AssertionError("Number of begin arguments for %s should not change (was %d, attempted to set to %d).".formatted(name, this.operationBeginArguments.length,
@@ -326,7 +335,8 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public boolean isCustom() {
-        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
+        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_RETURN || kind == OperationKind.CUSTOM_SHORT_CIRCUIT ||
+                        kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
     public boolean isCustomVariadic() {

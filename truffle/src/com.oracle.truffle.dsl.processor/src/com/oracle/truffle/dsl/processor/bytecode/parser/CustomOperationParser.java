@@ -182,6 +182,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             kind = OperationKind.CUSTOM_INSTRUMENTATION;
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
             kind = OperationKind.CUSTOM_YIELD;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Return)) {
+            kind = OperationKind.CUSTOM_RETURN;
         } else {
             kind = OperationKind.CUSTOM;
         }
@@ -260,8 +262,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
-            if (operation.kind == OperationKind.CUSTOM_YIELD) {
+            if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
                 validateYieldSignature(customOperation, signature);
+            } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Return)) {
+                validateReturnSignature(customOperation, signature);
             }
 
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
@@ -318,7 +322,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         operation.isVariadic = signature.isVariadic() || isShortCircuit();
         operation.variadicOffset = signature.variadicOffset();
-        operation.isVoid = signature.isVoid();
+        operation.isVoid = operation.kind == OperationKind.CUSTOM_RETURN || signature.isVoid();
 
         DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount()];
         for (Operand dynamicOperand : signature.dynamicOperands()) {
@@ -366,7 +370,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
         custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
 
-        if (operation.instruction().nodeData == null) {
+        if (operation.getNodeData() == null) {
             return;
         }
 
@@ -426,7 +430,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
         }
 
-        for (SpecializationData s : operation.instruction().nodeData.getReachableSpecializations()) {
+        for (SpecializationData s : operation.getNodeData().getReachableSpecializations()) {
             ExecutableElement method = s.getMethod();
             if (method == null) {
                 continue;
@@ -559,6 +563,46 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 "Invalid resultOperandIndex %s for @%s. The value must be between 0 and %s.",
                                 resultOperandIndex,
                                 getSimpleName(types.Yield),
+                                dynamicOperandCount - 1);
+                return;
+            }
+        }
+        customOperation.setResultOperandIndex(resultOperandIndex);
+    }
+
+    private void validateReturnSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.isVoid()) {
+            customOperation.addError("A @%s cannot be void. It must return a value, which becomes the value returned from the root node.", getSimpleName(types.Return));
+        }
+        int dynamicOperandCount = signature.dynamicOperandCount();
+        AnnotationMirror mirror = customOperation.getTemplateTypeAnnotation();
+        AnnotationValue resultOperandIndexValue = ElementUtils.getAnnotationValue(mirror, "resultOperandIndex", false);
+        int resultOperandIndex;
+        if (resultOperandIndexValue == null) {
+            if (dynamicOperandCount == 0) {
+                customOperation.addError("A @%s must take at least one dynamic operand for the returned value. Add a dynamic operand to resolve this error.", getSimpleName(types.Return));
+                return;
+            }
+            if (dynamicOperandCount > 1) {
+                customOperation.addError(mirror, null,
+                                "A @%s with multiple dynamic operands must specify resultOperandIndex.",
+                                getSimpleName(types.Return));
+                return;
+            }
+            resultOperandIndex = 0;
+        } else {
+            if (dynamicOperandCount == 0) {
+                customOperation.addError(mirror, resultOperandIndexValue,
+                                "A @%s with no dynamic operands cannot specify resultOperandIndex. Remove resultOperandIndex or add dynamic operands to resolve this error.",
+                                getSimpleName(types.Return));
+                return;
+            }
+            resultOperandIndex = ElementUtils.resolveAnnotationValue(Integer.class, resultOperandIndexValue);
+            if (resultOperandIndex < 0 || dynamicOperandCount <= resultOperandIndex) {
+                customOperation.addError(mirror, resultOperandIndexValue,
+                                "Invalid resultOperandIndex %s for @%s. The value must be between 0 and %s.",
+                                resultOperandIndex,
+                                getSimpleName(types.Return),
                                 dynamicOperandCount - 1);
                 return;
             }
@@ -727,7 +771,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     /**
-     * Validates the operation specification. Reports any errors on the {@link customOperation}.
+     * Validates the operation specification. Reports any errors on the {@code customOperation}.
      */
     private void validateCustomOperation(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror) {
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);

@@ -82,9 +82,9 @@ public class OptimizationDecisionsModel {
             return allIdsSet;
         }
 
-        public ResolvedQuickenDecision resolve(BytecodeDSLModel model) {
+        public List<ResolvedQuickenDecision> resolve(BytecodeDSLModel model) {
             OperationModel operationModel = model.getOperationByName(operation);
-            List<SpecializationData> specializationModels = operationModel.instruction().nodeData.findSpecializationsByName(this.specializations);
+            List<SpecializationData> specializationModels = operationModel.getNodeData().findSpecializationsByName(this.specializations);
             ProcessorContext c = ProcessorContext.getInstance();
             List<TypeMirror> parameterTypes;
             if (this.types == null) {
@@ -106,11 +106,15 @@ public class OptimizationDecisionsModel {
             } else {
                 parameterTypes = this.types.stream().map((typeName) -> ElementUtils.fromQualifiedName(typeName)).toList();
             }
-            return new ResolvedQuickenDecision(operationModel, specializationModels, parameterTypes);
+            List<ResolvedQuickenDecision> decisions = new ArrayList<>();
+            for (InstructionModel instruction : operationModel.instructions) {
+                decisions.add(new ResolvedQuickenDecision(operationModel, instruction, specializationModels, parameterTypes));
+            }
+            return decisions;
         }
     }
 
-    public record ResolvedQuickenDecision(OperationModel operation, List<SpecializationData> specializations, List<TypeMirror> types) {
+    public record ResolvedQuickenDecision(OperationModel operation, InstructionModel instruction, List<SpecializationData> specializations, List<TypeMirror> types) {
     }
 
 }

@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.O
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 
@@ -58,6 +59,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationA
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 
 /**
@@ -416,7 +418,7 @@ public class BytecodeDSLBuiltins {
                 InstructionModel model = m.instruction(InstructionKind.INVALIDATE, "invalidate" + i, m.signature(void.class));
                 for (int j = 0; j < i; j++) {
                     InstructionModel.InstructionImmediate imm = new InstructionModel.InstructionImmediate(ImmediateKind.SHORT, "invalidated" + j, new InstructionModel.InstructionImmediateEncoding(
-                                    ImmediateKind.SHORT.width), false, OptionalInt.empty());
+                                    ImmediateKind.SHORT.width), false, OptionalInt.empty(), Optional.empty());
                     imm.encoding().setOffset(model.getInstructionLength());
                     model.addImmediate(imm);
                 }
@@ -443,10 +445,9 @@ public class BytecodeDSLBuiltins {
             m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(void.class));
             m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             if (yieldResultStackOffsets.size() == 1) {
-                // static offset for all yields
-                m.tagYieldResultStackOffset = yieldResultStackOffsets.iterator().next();
+                m.tagYieldInstruction.addFixedImmediate(ImmediateKind.SHORT, "result_stack_offset", yieldResultStackOffsets.iterator().next(), CodeTreeBuilder.singleString(String.valueOf(
+                                (int) yieldResultStackOffsets.iterator().next())));
             } else {
-                // dynamic offset for all yields
                 m.tagYieldInstruction.addImmediate(ImmediateKind.SHORT, "result_stack_offset");
             }
         }

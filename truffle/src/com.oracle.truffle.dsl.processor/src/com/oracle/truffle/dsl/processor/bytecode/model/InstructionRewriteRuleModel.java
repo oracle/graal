@@ -161,7 +161,8 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         int offset = 0;
         for (int i = 0; i < lhsPattern.length; i++) {
             InstructionModel instruction = lhsPattern[i].instruction();
-            ResolvedImmediate[] immediates = new ResolvedImmediate[instruction.immediates.size()];
+            List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
+            ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
                 String binding = lhsPattern[i].immediates()[j];
                 if (binding == null) {
@@ -169,7 +170,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
                     continue;
                 }
                 ImmediateReference constraint = this.bindings.putIfAbsent(binding, new ImmediateReference(i, j));
-                immediates[j] = new ResolvedImmediate(instruction.immediates.get(j), binding, constraint);
+                immediates[j] = new ResolvedImmediate(encodedImmediates.get(j), binding, constraint);
             }
             this.lhs[i] = new ResolvedInstructionPatternModel(offset, instruction, immediates);
             offset += instruction.getInstructionLength();
@@ -182,7 +183,8 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         offset = 0;
         for (int i = 0; i < rhsPattern.length; i++) {
             InstructionModel instruction = rhsPattern[i].instruction();
-            ResolvedImmediate[] immediates = new ResolvedImmediate[instruction.immediates.size()];
+            List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
+            ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
                 String binding = rhsPattern[i].immediates()[j];
                 if (binding == null) {
@@ -196,7 +198,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
                     throw new IllegalArgumentException("Found unbound immediate %s in the rhs of rewrite rule %s. No corresponding immediate was bound on the lhs.".formatted(binding,
                                     formatRewriteRule(lhsPattern, rhsPattern, -1)));
                 }
-                immediates[j] = new ResolvedImmediate(instruction.immediates.get(j), binding, constraint);
+                immediates[j] = new ResolvedImmediate(encodedImmediates.get(j), binding, constraint);
             }
             this.rhs[i] = new ResolvedInstructionPatternModel(offset, instruction, immediates);
             offset += instruction.getInstructionLength();

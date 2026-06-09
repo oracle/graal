@@ -75,6 +75,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeState;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -110,6 +111,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private final List<CustomOperationModel> instrumentations = new ArrayList<>();
     private final List<CustomOperationModel> customYieldOperations = new ArrayList<>();
+    private final List<CustomOperationModel> customReturnOperations = new ArrayList<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
     public InstructionRewriterModel instructionRewriterModel;
     // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
@@ -236,7 +238,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
     public InstructionModel tagYieldInstruction;
-    public int tagYieldResultStackOffset;
     public InstructionModel tagYieldNullInstruction;
     public InstructionModel tagResumeInstruction;
     public InstructionModel clearLocalInstruction;
@@ -442,8 +443,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             instrumentations.add(customOp);
         } else if (kind == OperationKind.CUSTOM_YIELD) {
-            customOp.setCustomYield();
             customYieldOperations.add(customOp);
+        } else if (kind == OperationKind.CUSTOM_RETURN) {
+            customReturnOperations.add(customOp);
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
             op.setInternal();
             if (prolog != null) {
@@ -567,9 +569,32 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return getTemplateTypeAnnotation();
     }
 
+    public void configureEpilogReturnInstructions(List<Integer> returnResultStackOffsets) {
+        if (epilogReturn == null) {
+            return;
+        }
+
+        if (!returnResultStackOffsets.contains(1)) {
+            throw new AssertionError("Expected return epilog result stack offsets to include 1.");
+        }
+
+        InstructionModel instruction = epilogReturn.operation.instruction();
+        if (returnResultStackOffsets.size() == 1) {
+            instruction.addFixedImmediate(ImmediateKind.SHORT, "result_stack_offset", 1, CodeTreeBuilder.singleString(String.valueOf(1)));
+        } else {
+            // Remove the "base" instruction and add one variant per offset.
+            instructions.remove(instruction.getName());
+            epilogReturn.operation.instructions.clear();
+            for (int offset : returnResultStackOffsets) {
+                InstructionModel variant = instruction(new InstructionModel(instruction, "offset" + offset));
+                variant.addFixedImmediate(ImmediateKind.SHORT, "result_stack_offset", offset, CodeTreeBuilder.singleString(String.valueOf(offset)));
+                epilogReturn.operation.instructions.add(variant);
+            }
+        }
+    }
+
     public void finalizeInstructions() {
         BytecodeDSLBuiltins.addBuiltinsOnFinalize(this, types);
-
         for (InstructionModel instr : getInstructions()) {
             if (instr.nodeData == null) {
                 continue;
@@ -592,15 +617,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
-        for (var entry : instructions.entrySet()) {
-            String name = entry.getKey();
-            InstructionModel instruction = entry.getValue();
+        for (InstructionModel instruction : instructions.sequencedValues()) {
             if (instruction.isQuickening()) {
                 continue;
             }
-            newInstructions.put(name, instruction);
+            if (newInstructions.put(instruction.getName(), instruction) != null) {
+                throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", instruction.getName()));
+            }
             for (InstructionModel derivedInstruction : instruction.getFlattenedQuickenedInstructions()) {
-                newInstructions.put(derivedInstruction.getName(), derivedInstruction);
+                if (newInstructions.put(derivedInstruction.getName(), derivedInstruction) != null) {
+                    throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", derivedInstruction.getName()));
+                }
             }
         }
 
@@ -672,9 +699,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {
         String[] finalImmediates = immediates;
-        if (immediates.length == 0 && !instruction.immediates.isEmpty()) {
+        if (immediates.length == 0 && !instruction.getEncodedImmediates().isEmpty()) {
             // Provide an empty array of immediates if immediates weren't provided.
-            finalImmediates = new String[instruction.immediates.size()];
+            finalImmediates = new String[instruction.getEncodedImmediates().size()];
         }
         return new InstructionPatternModel(instruction, finalImmediates);
     }
@@ -684,7 +711,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      * immediate layout differences that can vary between configurations.
      */
     private InstructionPatternModel pStoreLocal(String localBinding) {
-        String[] immediates = new String[storeLocalOperation.instruction().immediates.size()];
+        String[] immediates = new String[storeLocalOperation.instruction().getEncodedImmediates().size()];
         immediates[0] = localBinding;
         return p(storeLocalOperation.instruction(), immediates);
     }
@@ -753,6 +780,24 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return customYieldOperations.stream().map(customOperation -> customOperation.operation).toList();
     }
 
+    public Collection<OperationModel> getCustomReturnOperations() {
+        return customReturnOperations.stream().map(customOperation -> customOperation.operation).toList();
+    }
+
+    public int getReturnResultStackOffset(OperationModel operation) {
+        int dynamicOperandCount = operation.instruction().signature.dynamicOperandCount();
+        if (dynamicOperandCount == 0) {
+            throw new AssertionError("Return operation has no result operand: " + operation);
+        }
+        if (operation.kind == OperationKind.RETURN) {
+            return dynamicOperandCount;
+        } else if (operation.kind == OperationKind.CUSTOM_RETURN) {
+            return dynamicOperandCount - operation.customModel.getResultOperandIndex();
+        } else {
+            throw new AssertionError("Not a return operation: " + operation);
+        }
+    }
+
     public int getYieldResultStackOffset(OperationModel yieldOperation) {
         int dynamicOperandCount = yieldOperation.instruction().signature.dynamicOperandCount();
         if (dynamicOperandCount == 0) {
@@ -765,10 +810,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         } else {
             throw new AssertionError("Not a yield operation: " + yieldOperation);
         }
-    }
-
-    public boolean usesTagYieldResultStackOffsetImmediate() {
-        return enableTagInstrumentation && tagYieldResultStackOffset == 0;
     }
 
     public Collection<OperationModel> getCustomVariadicOperations() {

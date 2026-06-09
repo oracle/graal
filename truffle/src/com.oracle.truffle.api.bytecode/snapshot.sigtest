@@ -670,6 +670,15 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Prolo
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean storeBytecodeIndex()
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Return
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forceCached()
+meth public abstract !hasdefault int resultOperandIndex()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>[] tags()
+meth public abstract !hasdefault java.lang.String javadoc()
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.ShortCircuitOperation
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.bytecode.ShortCircuitOperation$Repeat)
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)

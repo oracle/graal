@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 
@@ -106,23 +107,17 @@ final class InstructionsElement extends AbstractElement {
         argumentDescriptorImpl = this.add(new ArgumentDescriptorElement());
         abstractArgument = this.add(new AbstractArgumentElement());
 
-        Set<String> generated = new HashSet<>();
-        for (ImmediateKind kind : ImmediateKind.values()) {
-            if (kind == ImmediateKind.LOCAL_INDEX && !parent.model.localAccessesNeedLocalIndex() && !parent.model.materializedLocalAccessesNeedLocalIndex()) {
-                // Only generate immediate class for LocalIndex when needed.
-                continue;
+        Set<String> argumentElements = new HashSet<>();
+        for (InstructionModel instruction : parent.model.getInstructions()) {
+            for (InstructionImmediate immediate : resolveImmediates(instruction)) {
+                String className = getImmediateClassName(immediate.kind(), immediate.fixedValue().isPresent());
+                if (argumentElements.contains(className)) {
+                    continue;
+                }
+                CodeTypeElement implType = this.add(immediate.fixedValue().isPresent() ? new FixedArgumentElement(immediate.kind()) : new ArgumentElement(immediate.kind()));
+                abstractArgument.getPermittedSubclasses().add(implType.asType());
+                argumentElements.add(className);
             }
-
-            String className = getImmediateClassName(kind);
-            if (generated.contains(className)) {
-                continue;
-            }
-            if (kind == ImmediateKind.TAG_NODE && !parent.model.enableTagInstrumentation) {
-                continue;
-            }
-            CodeTypeElement implType = this.add(new ArgumentElement(kind));
-            abstractArgument.getPermittedSubclasses().add(implType.asType());
-            generated.add(className);
         }
 
         this.add(createGetInstructionLength());
@@ -244,7 +239,7 @@ final class InstructionsElement extends AbstractElement {
     static List<InstructionImmediate> resolveImmediates(InstructionModel instruction) {
         if (instruction.nodeData != null && instruction.canUseNodeSingleton()) {
             List<InstructionImmediate> immediates = new ArrayList<>(instruction.immediates);
-            immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE, true, OptionalInt.empty()));
+            immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", new InstructionImmediateEncoding(ImmediateWidth.NONE), true, OptionalInt.empty(), Optional.empty()));
             return immediates;
         } else {
             return instruction.immediates;
@@ -288,16 +283,21 @@ final class InstructionsElement extends AbstractElement {
     }
 
     private void emitCreateArgument(CodeTreeBuilder b, InstructionModel instruction, InstructionImmediate immediate) {
+        boolean fixed = immediate.fixedValue().isPresent();
+
         b.startGroup();
         b.newLine();
         b.startIndention();
-        b.startNew(getImmediateClassName(immediate.kind()));
+        b.startNew(getImmediateClassName(immediate.kind(), fixed));
         b.tree(argumentDescriptorImpl.readArgumentConstant(immediate));
-        b.string("bci + " + immediate.offset());
+        b.string("bci + " + (immediate.isEncoded() ? immediate.offset() : 0));
 
-        for (CodeVariableElement var : createImmediateArguments(immediate.kind())) {
+        for (CodeVariableElement var : createImmediateArguments(immediate.kind(), fixed)) {
             String name = var.getName();
             switch (name) {
+                case "value":
+                    b.tree(immediate.fixedValue().orElseThrow().tree());
+                    break;
                 case "bytecodeIndex":
                     b.string("bci");
                     break;
@@ -332,7 +332,13 @@ final class InstructionsElement extends AbstractElement {
         };
     }
 
-    private static String getImmediateClassName(ImmediateKind kind) {
+    private static String getImmediateClassName(ImmediateKind kind, boolean fixed) {
+        if (fixed) {
+            if (kind != ImmediateKind.SHORT) {
+                throw new AssertionError("Only integer fixed immediates are currently supported for instruction introspection: " + kind);
+            }
+            return "FixedIntegerArgument";
+        }
         switch (kind) {
             case BRANCH_PROFILE:
                 return "BranchProfileArgument";
@@ -376,8 +382,15 @@ final class InstructionsElement extends AbstractElement {
         throw new AssertionError("invalid kind");
     }
 
-    private List<CodeVariableElement> createImmediateArguments(ImmediateKind immediateKind) {
+    private List<CodeVariableElement> createImmediateArguments(ImmediateKind immediateKind, boolean fixed) {
         List<CodeVariableElement> args = new ArrayList<>();
+        if (fixed) {
+            if (immediateKind != ImmediateKind.SHORT) {
+                throw new AssertionError("Only integer fixed immediates are supported for instruction introspection: " + immediateKind);
+            }
+            args.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "value"));
+            return args;
+        }
         switch (immediateKind) {
             case CONSTANT:
                 args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
@@ -443,13 +456,13 @@ final class InstructionsElement extends AbstractElement {
             this.add(createGetKind());
         }
 
-        record DescriptorData(String name, String descriptorKind, ImmediateWidth width) {
+        record DescriptorData(String name, String descriptorKind, ImmediateWidth logicalWidth, ImmediateWidth encodedWidth) {
             DescriptorData(InstructionImmediate immediate) {
-                this(getIntrospectionArgumentName(immediate), getArgumentDescriptorKind(immediate.kind()), immediate.encoding().width());
+                this(getIntrospectionArgumentName(immediate), getArgumentDescriptorKind(immediate.kind()), immediate.kind().width, immediate.encoding().width());
             }
 
             int byteSize() {
-                return width == null ? 0 : width.byteSize;
+                return encodedWidth.byteSize;
             }
 
             String constantName() {
@@ -532,9 +545,9 @@ final class InstructionsElement extends AbstractElement {
     final class ArgumentElement extends CodeTypeElement {
 
         ArgumentElement(ImmediateKind immediateKind) {
-            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, getImmediateClassName(immediateKind));
+            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, getImmediateClassName(immediateKind, false));
             this.setSuperClass(abstractArgument.asType());
-            this.addAll(createImmediateArguments(immediateKind));
+            this.addAll(createImmediateArguments(immediateKind, false));
             this.add(createConstructorUsingFields(Set.of(), this));
 
             switch (immediateKind) {
@@ -694,6 +707,7 @@ final class InstructionsElement extends AbstractElement {
             b.declaration(InstructionsElement.this.type(byte[].class), "bc", "this.bytecodes");
             b.startReturn();
             CodeTree read = CodeTreeBuilder.singleString(switch (kind.width) {
+                case NONE -> throw new AssertionError("Non-encoded immediates cannot be read.");
                 case BYTE -> BytecodeRootNodeElement.readByteSafe("bc", "bci");
                 case SHORT -> BytecodeRootNodeElement.readShortSafe("bc", "bci");
                 case INT -> BytecodeRootNodeElement.readIntSafe("bc", "bci");
@@ -790,6 +804,29 @@ final class InstructionsElement extends AbstractElement {
             b.string("profiles[index * 2 + 1]");
             b.end();
             b.end();
+            return ex;
+        }
+
+    }
+
+    final class FixedArgumentElement extends CodeTypeElement {
+
+        FixedArgumentElement(ImmediateKind immediateKind) {
+            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, getImmediateClassName(immediateKind, true));
+            this.setSuperClass(abstractArgument.asType());
+            if (immediateKind != ImmediateKind.SHORT) {
+                throw new AssertionError("Only integer fixed immediates are currently supported for instruction introspection: " + immediateKind);
+            }
+            this.addAll(createImmediateArguments(immediateKind, true));
+            this.add(createConstructorUsingFields(Set.of(), this));
+            this.add(createAsInteger());
+        }
+
+        private CodeExecutableElement createAsInteger() {
+            CodeExecutableElement ex = GeneratorUtils.override(InstructionsElement.this.types.Instruction_Argument, "asInteger");
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return this.value");
             return ex;
         }
 

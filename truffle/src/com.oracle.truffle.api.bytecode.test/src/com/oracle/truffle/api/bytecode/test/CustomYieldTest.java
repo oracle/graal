@@ -694,7 +694,7 @@ public class CustomYieldTest {
     @Test
     public void testMultiOperandTagInstrumentation() {
         InstructionDescriptor tagYield = getInstructionDescriptor(ComplexCustomYieldTestRootNodeGen.BYTECODE.getInstructionDescriptors(), "tag.yield");
-        assertTrue(hasArgumentDescriptor(tagYield, "result_stack_offset"));
+        assertTrue(hasEncodedArgument(tagYield, "result_stack_offset"));
 
         runInstrumentationTest((context, instrumenter) -> {
             BytecodeRootNodes<ComplexCustomYieldTestRootNode> nodes = ComplexCustomYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
@@ -740,7 +740,7 @@ public class CustomYieldTest {
     @Test
     public void testFixedResultStackOffsetTagYield() {
         InstructionDescriptor tagYield = getInstructionDescriptor(FixedResultStackOffsetYieldTestRootNodeGen.BYTECODE.getInstructionDescriptors(), "tag.yield");
-        assertFalse(hasArgumentDescriptor(tagYield, "result_stack_offset"));
+        assertFalse(hasEncodedArgument(tagYield, "result_stack_offset"));
 
         runInstrumentationTest((context, instrumenter) -> {
             BytecodeRootNodes<FixedResultStackOffsetYieldTestRootNode> nodes = FixedResultStackOffsetYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
@@ -918,8 +918,8 @@ public class CustomYieldTest {
         return null;
     }
 
-    private static boolean hasArgumentDescriptor(InstructionDescriptor instruction, String name) {
-        return instruction.getArgumentDescriptors().stream().anyMatch(argument -> argument.getName().equals(name));
+    private static boolean hasEncodedArgument(InstructionDescriptor instruction, String name) {
+        return instruction.getArgumentDescriptors().stream().anyMatch(argument -> argument.getName().equals(name) && argument.getLength() != 0);
     }
 
     /**

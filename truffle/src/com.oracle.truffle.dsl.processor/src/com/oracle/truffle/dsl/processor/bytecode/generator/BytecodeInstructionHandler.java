@@ -1582,7 +1582,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
                 InstructionModel specialization = entry.getValue();
                 b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(specialization)).end();
-                b.end(); // else block
+                b.end(); // if block
             }
 
             b.startElseBlock(elseIf);
@@ -1629,9 +1629,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
         b.end();
 
-        String resultStackOffset = model().usesTagYieldResultStackOffsetImmediate()
-                        ? BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findImmediate(ImmediateKind.SHORT, "result_stack_offset")).toString()
-                        : String.valueOf(model().tagYieldResultStackOffset);
+        String resultStackOffset = readResultStackOffset(instruction);
         String stackPointer = handlerLayout.isTailCall() ? VirtualStateElement.LOCAL_NAME + ".sp" : "sp";
         b.startDeclaration(type(Object.class), "result_");
         b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(stackPointer + " - " + resultStackOffset));
@@ -2483,8 +2481,33 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
     }
 
-    private static String createStackIndex(InstructionModel instruction, Operand operand) {
-        return "sp - " + (instruction.signature.dynamicOperandCount() - operand.dynamicIndex());
+    private static String createOperandStackIndex(InstructionModel instr, Operand operand) {
+        if (instr.kind == InstructionKind.TAG_LEAVE || instr.isEpilogReturn()) {
+            // special cases: load from the stack slot of the return result operand
+            return "sp - " + readResultStackOffset(instr);
+        }
+        return "sp - " + (instr.signature.dynamicOperandCount() - operand.dynamicIndex());
+    }
+
+    private static String createResultStackIndex(InstructionModel instr) {
+        int dynamicOperandCount = instr.signature.dynamicOperandCount();
+        if (dynamicOperandCount == 0) {
+            // push on the top of stack
+            return "sp";
+        } else if (instr.kind == InstructionKind.TAG_LEAVE || instr.isEpilogReturn()) {
+            // special case: write to the stack slot of the return result operand
+            return "sp - " + readResultStackOffset(instr);
+        }
+        // overwrite the first dynamic operand
+        return createOperandStackIndex(instr, instr.signature.dynamicOperands().get(0));
+    }
+
+    private static String readResultStackOffset(InstructionModel instr) {
+        InstructionImmediate imm = instr.findImmediate(ImmediateKind.SHORT, "result_stack_offset");
+        if (imm == null) {
+            throw new AssertionError("Missing result stack offset: " + instr);
+        }
+        return BytecodeRootNodeElement.readImmediate("bc", "bci", imm).toString();
     }
 
     private static boolean isEmitLoadOperand(InstructionModel instr, Operand operand, ExecutionMode mode) {
@@ -2653,7 +2676,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.cast(targetType);
             }
 
-            String stackIndex = createStackIndex(useInstruction, operand);
+            String stackIndex = createOperandStackIndex(useInstruction, operand);
             Operand singleUnexpected = findSingleUnexpectedOperand();
             boolean hasUnexpected = unexpectedResult != null && singleUnexpected.dynamicIndex() == operand.dynamicIndex();
             if (hasUnexpected) {
@@ -2722,13 +2745,13 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         for (Operand operand : toClear) {
             // unconditional clear in both interpreter and compiled
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", createStackIndex(useInstruction, operand)));
+            b.statement(BytecodeRootNodeElement.clearFrame("frame", createOperandStackIndex(useInstruction, operand)));
         }
 
         if (!compiledClear.isEmpty() && !mode.isSlowPath() && getTier().isCached()) {
             b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
             for (Operand operand : compiledClear) {
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", createStackIndex(useInstruction, operand)));
+                b.statement(BytecodeRootNodeElement.clearFrame("frame", createOperandStackIndex(useInstruction, operand)));
             }
             b.end();
         }
@@ -2860,7 +2883,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         if (instr.hasVariableStackEffect()) {
             returnIndex = "sp - stackSize";
         } else {
-            returnIndex = instr.getStackEffect() == 1 ? "sp" : ("sp - " + (1 - instr.getStackEffect()));
+            returnIndex = createResultStackIndex(instr);
         }
 
         // Update the stack.
@@ -3053,6 +3076,8 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 case CUSTOM:
                     if (instruction.operation.kind == OperationKind.CUSTOM_YIELD) {
                         return HandlerKind.YIELD;
+                    } else if (instruction.operation.kind == OperationKind.CUSTOM_RETURN) {
+                        return HandlerKind.RETURN;
                     } else {
                         return HandlerKind.NEXT;
                     }
