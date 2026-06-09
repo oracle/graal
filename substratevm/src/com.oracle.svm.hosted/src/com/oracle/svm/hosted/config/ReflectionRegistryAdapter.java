@@ -44,6 +44,7 @@ import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -191,9 +192,9 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
 
     @Override
     public void registerAsSerializable(AccessCondition condition, Class<?> clazz) {
-        serializationSupport.register(condition, false, clazz);
         if (LambdaUtils.isLambdaClass(clazz) && Serializable.class.isAssignableFrom(clazz)) {
             serializationSupport.registerLambdaCapturingClass(condition, LambdaUtils.capturingClass(clazz.getName()));
+            reflectionSupport.register(condition, false, ReflectionUtil.lookupMethod(clazz, "writeReplace"));
             serializationSupport.register(condition, false, SerializedLambda.class);
             serializationSupport.register(condition, false, String.class);
             for (Field field : clazz.getDeclaredFields()) {
@@ -206,6 +207,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
                 }
             }
         }
+        serializationSupport.register(condition, false, clazz);
     }
 
     @Override

@@ -159,12 +159,26 @@ public final class PredefinedClassesSupport {
          */
         if (Serializable.class.isAssignableFrom(lambdaClass) &&
                         SerializationSupport.currentLayer().isLambdaCapturingClassRegistered(LambdaUtils.capturingClass(lambdaClass.getName()))) {
-            try {
-                Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
-                RuntimeReflection.register(serializeLambdaMethod);
-            } catch (NoSuchMethodException e) {
-                throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
+            registerLambdaWriteReplaceForSerialization(lambdaClass);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerSerializableLambdasForCapturingClass(String lambdaCapturingClass) {
+        for (Class<?> clazz : singleton().predefinedClassesByHash.getValues()) {
+            if (LambdaUtils.isLambdaClass(clazz) && Serializable.class.isAssignableFrom(clazz) && LambdaUtils.capturingClass(clazz.getName()).equals(lambdaCapturingClass)) {
+                registerLambdaWriteReplaceForSerialization(clazz);
             }
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void registerLambdaWriteReplaceForSerialization(Class<?> lambdaClass) {
+        try {
+            Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
+            RuntimeReflection.register(serializeLambdaMethod);
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
         }
     }
 

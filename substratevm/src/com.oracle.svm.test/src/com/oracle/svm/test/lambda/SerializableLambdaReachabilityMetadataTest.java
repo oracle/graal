@@ -39,7 +39,9 @@ import org.junit.Test;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "-H:ConfigurationFileDirectories=src/com.oracle.svm.test/src/com/oracle/svm/test/lambda/serializablemetadata"
+                "-H:+UnlockExperimentalVMOptions",
+                "-H:ConfigurationResourceRoots=com/oracle/svm/test/lambda/serializablemetadata",
+                "-H:-UnlockExperimentalVMOptions"
 })
 public class SerializableLambdaReachabilityMetadataTest {
     @FunctionalInterface
