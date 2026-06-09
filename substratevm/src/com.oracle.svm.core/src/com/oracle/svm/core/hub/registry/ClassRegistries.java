@@ -277,13 +277,9 @@ public final class ClassRegistries implements ParsingContext {
 
     public static Class<?> findLoadedClass(String name, ClassLoader loader) {
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
         ClassNotFoundException classNotFoundException = null;
         for (var singleton : layeredSingletons()) {
-            Class<?> result = null;
-            if (type != null) {
-                result = singleton.getRegistry(loader).findLoadedClass(type);
-            }
+            Class<?> result = singleton.getRegistry(loader).findLoadedClass(typeBytes);
             if (result == null) {
                 result = PredefinedClassesSupport.getLoadedForNameOrNull(name, loader);
             }

@@ -53,6 +53,14 @@ public abstract class AbstractClassRegistry {
      */
     protected final ConcurrentHashMap<Symbol<Type>, Object> runtimeClasses;
 
+    /**
+     * Runtime class registries use {@link Symbol} identity as their loaded-class key. Runtime
+     * symbols may be weakly held by the global symbol table, so each registry also keeps the
+     * symbols used by its own runtime-loaded classes findable by descriptor bytes for the lifetime
+     * of the registry.
+     */
+    private final ConcurrentHashMap<ByteSequence, Symbol<Type>> runtimeTypeSymbols;
+
     AbstractClassRegistry(ConcurrentHashMap<Symbol<Type>, Object> runtimeClasses) {
         if (SubstrateUtil.HOSTED) {
             this.aotClasses = ImageHeapMap.createNonLayeredMap();
@@ -60,6 +68,7 @@ public abstract class AbstractClassRegistry {
             this.aotClasses = null;
         }
         this.runtimeClasses = runtimeClasses;
+        this.runtimeTypeSymbols = runtimeClasses == null ? null : new ConcurrentHashMap<>();
     }
 
     protected final Class<?> findAOTLoadedClass(Symbol<Type> name) {
@@ -79,6 +88,20 @@ public abstract class AbstractClassRegistry {
             return entry;
         }
         return null;
+    }
+
+    public final Class<?> findLoadedClass(ByteSequence typeBytes) {
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (type == null && runtimeTypeSymbols != null) {
+            type = runtimeTypeSymbols.get(typeBytes);
+        }
+        return type == null ? null : findLoadedClass(type);
+    }
+
+    protected final void recordRuntimeTypeSymbol(Symbol<Type> type) {
+        if (runtimeTypeSymbols != null) {
+            runtimeTypeSymbols.put(type, type);
+        }
     }
 
     public abstract ClassLoader getClassLoader();

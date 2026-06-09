@@ -25,6 +25,7 @@
 package com.oracle.truffle.espresso.classfile.descriptors;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -101,6 +102,14 @@ public abstract sealed class Symbols permits SymbolsImpl {
     abstract boolean isWeak(Symbol<?> symbol);
 
     abstract boolean verify();
+
+    /**
+     * Extracts all strongly and weakly referenced symbols and resets the table to empty maps.
+     *
+     * This is intended for image builders that need to preserve symbols without serializing the
+     * table's internal data structures into the image heap.
+     */
+    public abstract Collection<Symbol<?>> drainSymbols();
 
     /**
      * This method should NOT be used directly. Symbols created via this method may violate the
