@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -32,11 +33,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
@@ -45,6 +42,12 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -66,7 +69,8 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             MemoryProtectionProvider.singleton().handleSegfault(sigInfo);
         }
 
-        if (tryEnterIsolate(uContext)) {
+        IsolateThread fallbackThreadMemory = UnsafeLateStackValue.get(VMThreadLocalSupport.singleton().sizeOfIsolateThread());
+        if (tryEnterIsolate(uContext, fallbackThreadMemory)) {
             dump(sigInfo, uContext, true);
             throw VMError.shouldNotReachHereAtRuntime();
         }

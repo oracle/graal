@@ -30,6 +30,7 @@ import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PA
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_STACK_OVERFLOW;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -38,8 +39,10 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
@@ -100,7 +103,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         }
 
         ErrHandlingAPI.CONTEXT context = exceptionInfo.ContextRecord();
-        if (tryEnterIsolate(context)) {
+        IsolateThread fallbackThreadMemory = UnsafeLateStackValue.get(VMThreadLocalSupport.singleton().sizeOfIsolateThread());
+        if (tryEnterIsolate(context, fallbackThreadMemory)) {
             dump(exceptionInfo, context, true);
             throw shouldNotReachHere();
         }

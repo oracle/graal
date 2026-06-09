@@ -245,7 +245,6 @@ public class VMThreadFeature implements InternalFeature {
             NonmovableArray<Byte> referenceMapEncoding = encoder.encodeAll();
 
             var threadLocalSupport = ImageSingletons.lookup(VMThreadLocalSupport.class);
-
             threadLocalSupport.vmThreadReferenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
             threadLocalSupport.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
             threadLocalSupport.vmThreadSize = nextOffset;
