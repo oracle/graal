@@ -25,6 +25,7 @@
 package com.oracle.svm.test.lambda;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -41,6 +42,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
+                "--exact-reachability-metadata=com.oracle.svm.test.lambda",
                 "-H:ConfigurationResourceRoots=com/oracle/svm/test/lambda/serializablemetadata",
                 "-H:-UnlockExperimentalVMOptions"
 })
@@ -71,6 +73,10 @@ public class SerializableLambdaReachabilityMetadataTest {
         static Function<Integer, String> createCapturedLambda(int offset, CapturedValue capturedValue) {
             return (SerializableFunction) value -> capturedValue.text() + ":" + (value + offset);
         }
+
+        static Function<Integer, String> createUnregisteredLambda() {
+            return (SerializableFunction) value -> "unregistered:" + value;
+        }
     }
 
     @Test
@@ -96,6 +102,14 @@ public class SerializableLambdaReachabilityMetadataTest {
 
         assertEquals("captured:49", expected);
         assertEquals(expected, deserialized.apply(value));
+    }
+
+    @Test
+    public void testMethodScopedMetadataDoesNotRegisterOtherSerializableLambdas() {
+        Function<Integer, String> lambda = LambdaFactory.createUnregisteredLambda();
+
+        assertEquals("unregistered:42", lambda.apply(42));
+        assertThrows(LinkageError.class, () -> deserialize(serialize((Serializable) lambda)));
     }
 
     private static byte[] serialize(Serializable object) throws IOException {

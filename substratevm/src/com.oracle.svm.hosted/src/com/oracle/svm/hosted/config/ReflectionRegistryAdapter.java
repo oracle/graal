@@ -32,6 +32,7 @@ import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.List;
@@ -195,7 +196,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerAsSerializable(AccessCondition condition, Class<?> clazz) {
         if (LambdaUtils.isLambdaClass(clazz) && Serializable.class.isAssignableFrom(clazz)) {
-            serializationSupport.registerLambdaCapturingClass(condition, LambdaUtils.capturingClass(clazz.getName()));
+            registerLambdaCapturingClassForDeserialization(condition, clazz);
             reflectionSupport.register(condition, false, ReflectionUtil.lookupMethod(clazz, "writeReplace"));
             serializationSupport.register(condition, false, SerializedLambda.class);
             registerSerializedLambdaFieldTypes(condition);
@@ -206,6 +207,15 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
             }
         }
         serializationSupport.register(condition, false, clazz);
+    }
+
+    private void registerLambdaCapturingClassForDeserialization(AccessCondition condition, Class<?> lambdaClass) {
+        Class<?> lambdaCapturingClass = ReflectionUtil.lookupClass(false, LambdaUtils.capturingClass(lambdaClass.getName()),
+                        lambdaClass.getClassLoader());
+        Method deserializeLambdaMethod = ReflectionUtil.lookupMethod(lambdaCapturingClass, "$deserializeLambda$",
+                        SerializedLambda.class);
+        reflectionSupport.register(condition, false, lambdaCapturingClass);
+        reflectionSupport.register(condition, false, deserializeLambdaMethod);
     }
 
     private void registerSerializedLambdaFieldTypes(AccessCondition condition) {

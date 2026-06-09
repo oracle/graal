@@ -851,9 +851,10 @@ For lambda classes:
 }
 ```
 
-When a lambda descriptor is marked `"serializable": true`, Native Image also registers the lambda
-capturing class, its synthetic lambda deserialization method, the serialized-lambda carrier type,
-the carrier's serialized field types, and statically declared captured field types.
+For each lambda class matched by a descriptor marked `"serializable": true`, Native Image also
+registers the lambda capturing class, its synthetic lambda deserialization method, the
+serialized-lambda carrier type, the carrier's serialized field types, and statically declared
+captured field types.
 
 In rare cases an application might explicitly make calls to:
 
