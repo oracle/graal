@@ -152,8 +152,9 @@ These are internal options for debugging language implementations and tools.
 - `--engine.CompileImmediately` : Compile immediately to test Truffle compilation
 - `--engine.CompileOnly=<name>,<name>,...` : Restrict compilation to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.
 - `--engine.DynamicCompilationThresholds=true|false` : Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).
+- `--engine.DynamicCompilationThresholdsHighLoadSlope=[0.0, inf)` : The slope used to increase compilation thresholds when compilation queue load is above DynamicCompilationThresholdsMaxNormalLoad (default: 0.09).
 - `--engine.DynamicCompilationThresholdsMaxNormalLoad=[1, inf)` : The desired maximum compilation queue load. When the load rises above this value, the compilation thresholds are increased. The load is scaled by the number of compiler threads.  (default: 90)
-- `--engine.DynamicCompilationThresholdsMinNormalLoad=[1, inf)` : The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).
+- `--engine.DynamicCompilationThresholdsMinNormalLoad=[0, inf)` : The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 0).
 - `--engine.DynamicCompilationThresholdsMinScale=[0.0, inf)` : The minimal scale the compilation thresholds can be reduced to (default: 0.1).
 - `--engine.OSRCompilationThreshold=[1, inf)` : Number of loop iterations until on-stack-replacement compilation is triggered (default 100352).
 - `--engine.OSRMaxCompilationReAttempts=[0, inf)` : Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.

@@ -90,26 +90,27 @@ For example, let's assume that an average compilation takes 100ms and that there
 A runtime with 16 threads will finish all the tasks in approximately `10 * 100ms` i.e. 1 second.
 On the other hand, a runtime with 2 compiler thread will take approximately `80 * 100ms`, i.e. 8 seconds.
 
-The scale function is defined by 3 parameters: `--engine.DynamicCompilationThresholdsMinScale`, `--engine.DynamicCompilationThresholdsMinNormalLoad` and `DynamicCompilationThresholdsMaxNormalLoad`.
+The scale function is defined by 4 parameters: `--engine.DynamicCompilationThresholdsMinScale`, `--engine.DynamicCompilationThresholdsMinNormalLoad`, `--engine.DynamicCompilationThresholdsMaxNormalLoad`, and `--engine.DynamicCompilationThresholdsHighLoadSlope`.
 
 The `--engine.DynamicCompilationThresholdsMinScale` option defines how low we are willing to scale the thresholds.
 It has a default value of 0.1, meaning that the compilation thresholds will never be scaled below 10% of their default value.
-This in practice means that, by definition, `scale(0) = DynamicCompilationThresholdsMinScale` or for default values `scale(0) = 0.1`
+When `DynamicCompilationThresholdsMinNormalLoad` is greater than 0, this in practice means that, by definition, `scale(0) = DynamicCompilationThresholdsMinScale`.
+When `DynamicCompilationThresholdsMinNormalLoad` is 0, low-load threshold reduction is disabled, which is the default behavior.
 
 The `--engine.DynamicCompilationThresholdsMinNormalLoad` option defines the minimal load at which compilation thresholds will not be scaled.
 This means that as long as the load of the queue is above this value the runtime will not *scale down* the compilation thresholds.
-This in practice means that, by definition, `scale(DynamicCompilationThresholdsMinScale) = 1` or for default values `scale(10) = 1`
+This in practice means that, by definition, `scale(DynamicCompilationThresholdsMinNormalLoad) = 1` or for default values `scale(0) = 1`
 
 The `--engine.DynamicCompilationThresholdsMaxNormalLoad` option defines the maximal load at which compilation thresholds will not be scaled.
 This means that as long as the load of the queue is below this value the runtime will not *scale up* the compilation thresholds.
-This in practice means that, by definition, `scale(DynamicCompilationThresholdsMaxScale) = 1` or for default values `scale(90) = 1`
+This in practice means that, by definition, `scale(DynamicCompilationThresholdsMaxNormalLoad) = 1` or for default values `scale(90) = 1`
 
 So far we've defined the `scale` function at 3 points.
 For all values between those points the `scale` function is a straight line connecting those two points.
 This means that for all values between the minimal and maximal normal load the scale function is 1 by definition.
 For values between 0 and the minimal normal load the `scale` function grows linearly between the minimal scale and 1.
-Let's define the slope of this function as `s`.
-Now, for the remainder of the functions domain, i.e. the values greater than the maximum normal load, we define `scale` to be a linear function with slope `s` passing through the point `(DynamicCompilationThresholdsMaxNormalLoad, 1)`.
+If the minimum normal load is 0, the scale function does not reduce thresholds for low load.
+Now, for the remainder of the functions domain, i.e. the values greater than the maximum normal load, we define `scale` to be a linear function with slope `DynamicCompilationThresholdsHighLoadSlope` passing through the point `(DynamicCompilationThresholdsMaxNormalLoad, 1)`.
 
 The following is an ASCII art plot of the scale function which should illustrate how it's defined.
 
