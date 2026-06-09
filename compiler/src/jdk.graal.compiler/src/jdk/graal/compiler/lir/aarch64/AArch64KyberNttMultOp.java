@@ -172,7 +172,7 @@ public final class AArch64KyberNttMultOp extends AArch64LIRInstruction {
         // Kyber multiply polynomials in the NTT domain.
         // Implements
         // static int implKyberNttMult(
-        //              short[] result, short[] ntta, short[] nttb, short[] zetas) {}
+        // short[] result, short[] ntta, short[] nttb, short[] zetas) {}
         //
         // result (short[256]) = c_rarg0
         // ntta (short[256]) = c_rarg1

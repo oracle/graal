@@ -169,7 +169,7 @@ public final class AArch64KyberAddPoly3Op extends AArch64LIRInstruction {
         // b (short[256]) = c_rarg2
         // c (short[256]) = c_rarg3
         // As above we sum 256 sets of values in total i.e. 32 x 8H
-        // quadwords.  So, we can load, add and store the data in 3
+        // quadwords. So, we can load, add and store the data in 3
         // groups of 11, 11 and 10 at a time i.e. we need to map sets
         // of 10 or 11 registers. A further constraint is that the
         // mapping needs to skip callee saves. So, we allocate the
