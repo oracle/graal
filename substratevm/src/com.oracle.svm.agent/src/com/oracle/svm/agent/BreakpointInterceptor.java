@@ -1978,7 +1978,7 @@ final class BreakpointInterceptor {
          * Native Image handles those resources without requiring the jar URL handler metadata.
          */
         if ("jar".equalsIgnoreCase(protocolName)) {
-            return isClassPathJarResourceURL(jni, state) ? null : "sun.net.www.protocol.jar.Handler";
+            return isBuiltInClassPathJarResourceURL(jni, state) ? null : "sun.net.www.protocol.jar.Handler";
         }
         /*
          * System module resource lookup similarly creates jrt: URLs as a JDK implementation detail.
@@ -1990,15 +1990,27 @@ final class BreakpointInterceptor {
         return null;
     }
 
-    private static boolean isClassPathJarResourceURL(JNIEnvironment jni, InterceptedState state) {
+    private static boolean isBuiltInClassPathJarResourceURL(JNIEnvironment jni, InterceptedState state) {
+        boolean foundURLClassPath = false;
         for (int depth = 1; depth < 32; depth++) {
             JNIMethodId method = state.getCallerMethod(depth);
             if (method.isNull()) {
                 return false;
             }
             String className = getClassNameOrNull(jni, getMethodDeclaringClass(method));
-            if (className != null && className.startsWith("jdk.internal.loader.URLClassPath")) {
-                return true;
+            if (className != null) {
+                if (className.startsWith("jdk.internal.loader.URLClassPath")) {
+                    foundURLClassPath = true;
+                } else if (foundURLClassPath) {
+                    /* Classify the loader frame that owns the URLClassPath frame. */
+                    if (className.startsWith("java.net.URLClassLoader")) {
+                        return false;
+                    }
+                    if (className.startsWith("jdk.internal.loader.BuiltinClassLoader") ||
+                                    className.startsWith("jdk.internal.loader.ClassLoaders$")) {
+                        return true;
+                    }
+                }
             }
         }
         return false;

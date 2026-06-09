@@ -857,7 +857,7 @@ def run_agent_jar_url_protocol_config_test(agent_path):
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-D' + generator_class + '.generator.enabled=true'] +
                  _configure_test_jvmci_exports() +
-                 [generator_class + '#accessClassPathJarResource'])
+                 [generator_class + '#accessBuiltInClassPathJarResource'])
     jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
                   '-D' + verifier_class + '.configpath=' + config_dir] +
                  _configure_test_jvmci_exports() +
@@ -870,9 +870,22 @@ def run_agent_jar_url_protocol_config_test(agent_path):
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-D' + generator_class + '.generator.enabled=true'] +
                  _configure_test_jvmci_exports() +
-                 [generator_class + '#accessClassPathJarResourceThenExplicitJarURL'])
+                 [generator_class + '#accessBuiltInClassPathJarResourceThenExplicitJarURL'])
     jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
                   '-D' + verifier_class + '.configpath=' + explicit_config_dir] +
+                 _configure_test_jvmci_exports() +
+                 [verifier_class + '#verifyJarUrlHandlerMetadataWasGenerated'])
+
+    url_class_loader_config_dir = join(svmbuild_dir(), 'url-class-loader-jar-url-protocol-agent-test-config')
+    if exists(url_class_loader_config_dir):
+        mx.rmtree(url_class_loader_config_dir)
+    agent_opts = ['config-output-dir=' + url_class_loader_config_dir]
+    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                  '-D' + generator_class + '.generator.enabled=true'] +
+                 _configure_test_jvmci_exports() +
+                 [generator_class + '#accessURLClassLoaderJarResource'])
+    jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                  '-D' + verifier_class + '.configpath=' + url_class_loader_config_dir] +
                  _configure_test_jvmci_exports() +
                  [verifier_class + '#verifyJarUrlHandlerMetadataWasGenerated'])
 

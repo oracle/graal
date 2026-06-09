@@ -43,35 +43,45 @@ import org.junit.Test;
 /**
  * Regression fixture for the native-image-agent URL protocol breakpoint.
  *
- * Looking up resources from a class path JAR or a JDK system module makes the JDK create a
+ * Looking up resources from a built-in class path JAR or a JDK system module makes the JDK create a
  * {@code jar:} or {@code jrt:} resource URL as part of its implementation. For ordinary
  * applications and benchmarks, that URL is only a resource lookup detail: Native Image embeds the
- * selected resources and does not need reflective access to the JDK URL handlers. Recording those
- * handlers makes the image builder treat reflective URL support as application-requested behavior
- * and pulls related classes into images. This test therefore runs against the real agent instead of
- * only the trace processor, because the regression is whether the agent emits the unwanted handler
- * metadata in the first place.
+ * selected resources and does not need reflective access to the JDK URL handlers. In contrast, a
+ * runtime {@link URLClassLoader} over a JAR still executes the JDK JAR URL path in a native image
+ * and therefore remains metadata-relevant. Recording JVM-only handlers makes the image builder
+ * treat reflective URL support as application-requested behavior and pulls related classes into
+ * images. This test therefore runs against the real agent instead of only the trace processor,
+ * because the regression is whether the agent emits the unwanted handler metadata in the first
+ * place.
  */
 public class ClassPathJarResourceAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = ClassPathJarResourceAgentTest.class.getName() + ".generator.enabled";
     private static final String RESOURCE_NAME = "agent-url-protocol-resource.txt";
     private static final String RESOURCE_CONTENTS = "agent resource lookup";
+    private static final String BUILT_IN_CLASSPATH_JAR_RESOURCE_NAME = "org/junit/Test.class";
     private static final String JDK_MODULE_RESOURCE_NAME = "java/lang/Object.class";
 
     @Test
-    public void accessClassPathJarResource() throws Exception {
+    public void accessBuiltInClassPathJarResource() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
-        accessClassPathJarResourceInternal();
+        accessBuiltInClassPathJarResourceInternal(); // FS-001-native-image-semantics.3.2
     }
 
     @Test
-    public void accessClassPathJarResourceThenExplicitJarURL() throws Exception {
+    public void accessBuiltInClassPathJarResourceThenExplicitJarURL() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
 
-        accessClassPathJarResourceInternal();
-        accessExplicitJarURL();
+        accessBuiltInClassPathJarResourceInternal();
+        accessExplicitJarURL(); // FS-001-native-image-semantics.3.2
+    }
+
+    @Test
+    public void accessURLClassLoaderJarResource() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+        accessURLClassLoaderJarResourceInternal(); // FS-001-native-image-semantics.3.2
     }
 
     @Test
@@ -90,7 +100,17 @@ public class ClassPathJarResourceAgentTest {
         accessExplicitJrtURL();
     }
 
-    private static void accessClassPathJarResourceInternal() throws Exception {
+    private static void accessBuiltInClassPathJarResourceInternal() throws Exception {
+        URL resource = ClassLoader.getSystemResource(BUILT_IN_CLASSPATH_JAR_RESOURCE_NAME);
+        Assert.assertNotNull(resource);
+        Assert.assertEquals("Built-in classpath resource URL: " + resource, "jar", resource.getProtocol());
+        try (InputStream input = resource.openStream()) {
+            Assert.assertTrue(input.read() >= 0);
+        }
+        Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
+    }
+
+    private static void accessURLClassLoaderJarResourceInternal() throws Exception {
         Path jarFile = Files.createTempFile("native-image-agent-classpath-resource", ".jar");
         try {
             writeProbeJar(jarFile);

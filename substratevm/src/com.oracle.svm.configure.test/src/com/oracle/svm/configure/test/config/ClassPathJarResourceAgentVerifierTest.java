@@ -67,7 +67,7 @@ public class ClassPathJarResourceAgentVerifierTest {
                         getConfigurationType(reflectionConfiguration,
                                         ClassPathJarResourceAgentTest.ReflectiveProbe.class.getName()));
         Assert.assertNull("""
-                        Classpath resource access through a JAR must not add reflective metadata \
+                        Built-in classpath resource access through a JAR must not add reflective metadata \
                         for the JDK jar URL handler.""",
                         getConfigurationType(reflectionConfiguration, JAR_HANDLER));
     }
@@ -81,7 +81,7 @@ public class ClassPathJarResourceAgentVerifierTest {
         ConfigurationType jarHandlerType = getConfigurationType(reflectionConfiguration, JAR_HANDLER);
         Assert.assertNotNull("""
                         Explicit jar: URL access must add reflective metadata for the JDK jar URL \
-                        handler, even if an earlier classpath resource lookup cached the handler.""",
+                        handler, and runtime URLClassLoader JAR access must do the same.""",
                         jarHandlerType);
         ConfigurationMemberInfo constructorInfo = getConstructorInfo(jarHandlerType);
         Assert.assertNotNull("Missing JDK jar URL handler constructor metadata", constructorInfo);
