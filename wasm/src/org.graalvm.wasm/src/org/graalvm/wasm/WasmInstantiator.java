@@ -343,7 +343,7 @@ public class WasmInstantiator {
                 linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveElemSegment(store, instance, tableIndex, elemIndex, offsetAddress, offsetBytecode, bytecodeOffset, elemCount);
                 });
-            } else {
+            } else if (elemMode == SegmentMode.PASSIVE) {
                 final int bytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolvePassiveElemSegment(store, instance, elemIndex, bytecodeOffset, elemCount);

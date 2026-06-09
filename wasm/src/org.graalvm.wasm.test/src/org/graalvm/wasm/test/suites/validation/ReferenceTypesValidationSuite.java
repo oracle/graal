@@ -247,6 +247,30 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testTableInitDeclarativeElementSegmentSecondInstantiation() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 1
+        // table.init 0 0
+        // i32.const 0
+        //
+        // (elem declare func 0)
+        final byte[] binary = getDefaultTableInitBuilder("41 00 41 00 41 01 FC 0C 00 00 41 00 0B").addElements("03 00 01 00").build();
+        runParserTest(binary, (context, source) -> {
+            Value module = context.eval(source);
+            module.newInstance();
+            Value main = module.newInstance().getMember("exports").getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expect out of bounds error", e.getMessage().contains("out of bounds table access"));
+            }
+        });
+    }
+
+    @Test
     public void testCallNullValueAfterTableInit() throws IOException {
         // main:
         // i32.const 0
