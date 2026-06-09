@@ -128,6 +128,7 @@ meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> or
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.MapCursor<{%%0},{%%1}> emptyCursor()
 meth public void putAll(org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>)
 meth public void putAll(org.graalvm.collections.UnmodifiableEconomicMap<? extends {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
+meth public void trimToSize()
 meth public {org.graalvm.collections.EconomicMap%1} computeIfAbsent({org.graalvm.collections.EconomicMap%0},java.util.function.Function<? super {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
 meth public {org.graalvm.collections.EconomicMap%1} putIfAbsent({org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1})
 
@@ -317,4 +318,3 @@ CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 
 meth public abstract boolean advance()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
-
