@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,15 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.aarch64.test.AArch64TestMacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.test.GraalTest;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ValueKind;
 
 public class AArch64AddressingModeTest extends GraalTest {
 
@@ -75,6 +78,36 @@ public class AArch64AddressingModeTest extends GraalTest {
         base = AArch64.r11;
         index = AArch64.r13;
         scratch = AArch64.r15;
+    }
+
+    @Test
+    public void testCanMakeImmediateAddress() {
+        for (int bitMemoryTransferSize : new int[]{8, 16, 32, 64, 128}) {
+            int scale = bitMemoryTransferSize / Byte.SIZE;
+            int maxScaledDisplacement = 4095 * scale;
+            for (int displacement : new int[]{Integer.MIN_VALUE, -264, -257, -256, -255, -1, 0, 1, 255, 256,
+                            maxScaledDisplacement - 1, maxScaledDisplacement, maxScaledDisplacement + 1, 4096 * scale, Integer.MAX_VALUE}) {
+                boolean expected = displacement >= -256 && displacement <= 255 ||
+                                displacement >= 0 && displacement % scale == 0 && displacement <= maxScaledDisplacement;
+                Assert.assertEquals(expected, AArch64AddressValue.canMakeImmediateAddress(bitMemoryTransferSize, displacement));
+                if (expected) {
+                    AArch64AddressValue address = AArch64AddressValue.makeAddress(ValueKind.Illegal, bitMemoryTransferSize, base.asValue(), displacement);
+                    Assert.assertEquals(displacement, address.getDisplacement());
+                    Assert.assertEquals(base.asValue(), address.getBase());
+                    AArch64Address.AddressingMode expectedMode = displacement == 0 ? AArch64Address.AddressingMode.BASE_REGISTER_ONLY
+                                    : displacement >= 0 && displacement % scale == 0 ? AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED
+                                                    : AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+                    Assert.assertEquals(expectedMode, address.getAddressingMode());
+                    Assert.assertEquals(expectedMode == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED ? scale : 1, address.getScaleFactor());
+                } else {
+                    Assert.assertThrows(GraalError.class,
+                                    () -> AArch64AddressValue.makeAddress(ValueKind.Illegal, bitMemoryTransferSize, base.asValue(), displacement));
+                }
+            }
+        }
+        Assert.assertTrue(AArch64AddressValue.canMakeImmediateAddress(AArch64Address.ANY_SIZE, 0));
+        Assert.assertEquals(AArch64Address.AddressingMode.BASE_REGISTER_ONLY,
+                        AArch64AddressValue.makeAddress(ValueKind.Illegal, AArch64Address.ANY_SIZE, base.asValue(), 0).getAddressingMode());
     }
 
     @Test

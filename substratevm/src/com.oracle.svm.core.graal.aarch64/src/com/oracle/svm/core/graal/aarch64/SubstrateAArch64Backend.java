@@ -689,7 +689,16 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             var heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue(wordKind);
             var heapBaseOffset = GOTAccess.getGOTEntryOffsetFromHeapRegister(pltGOTConfiguration.getMethodGOTEntry(callee));
             int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            Value gotEntryAddress = AArch64AddressValue.makeAddress(wordKind, wordBits, heapBase, heapBaseOffset);
+            Value gotEntryAddress;
+            if (AArch64AddressValue.canMakeImmediateAddress(wordBits, heapBaseOffset)) {
+                gotEntryAddress = AArch64AddressValue.makeAddress(wordKind, wordBits, heapBase, heapBaseOffset);
+            } else {
+                // GOT entries are addressed backwards from the GOT end, so large tables can exceed
+                // AArch64's immediate load range.
+                Value gotEntryOffset = emitConstant(wordKind, JavaConstant.forLong(heapBaseOffset));
+                Value gotEntryBase = getArithmetic().emitAdd(heapBase, gotEntryOffset, false);
+                gotEntryAddress = AArch64AddressValue.makeAddress(wordKind, wordBits, asAllocatable(gotEntryBase));
+            }
             return getArithmetic().emitLoad(wordKind, gotEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
         }
 
