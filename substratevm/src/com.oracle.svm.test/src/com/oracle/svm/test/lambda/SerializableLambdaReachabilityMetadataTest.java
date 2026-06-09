@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.function.Function;
 
@@ -48,9 +49,27 @@ public class SerializableLambdaReachabilityMetadataTest {
     interface SerializableFunction extends Function<Integer, String>, Serializable {
     }
 
+    static final class CapturedValue implements Serializable {
+        @Serial private static final long serialVersionUID = 1L;
+
+        private final String text;
+
+        CapturedValue(String text) {
+            this.text = text;
+        }
+
+        String text() {
+            return text;
+        }
+    }
+
     static final class LambdaFactory {
         static Function<Integer, String> createLambda() {
             return (SerializableFunction) value -> "lambda:" + value;
+        }
+
+        static Function<Integer, String> createCapturedLambda(int offset, CapturedValue capturedValue) {
+            return (SerializableFunction) value -> capturedValue.text() + ":" + (value + offset);
         }
     }
 
@@ -63,6 +82,19 @@ public class SerializableLambdaReachabilityMetadataTest {
         @SuppressWarnings("unchecked")
         Function<Integer, String> deserialized = (Function<Integer, String>) deserialize(serialize((Serializable) lambda));
 
+        assertEquals(expected, deserialized.apply(value));
+    }
+
+    @Test
+    public void testCapturedSerializableLambdaReachabilityMetadata() throws Exception {
+        int value = 42;
+        Function<Integer, String> lambda = LambdaFactory.createCapturedLambda(7, new CapturedValue("captured"));
+        String expected = lambda.apply(value);
+
+        @SuppressWarnings("unchecked")
+        Function<Integer, String> deserialized = (Function<Integer, String>) deserialize(serialize((Serializable) lambda));
+
+        assertEquals("captured:49", expected);
         assertEquals(expected, deserialized.apply(value));
     }
 

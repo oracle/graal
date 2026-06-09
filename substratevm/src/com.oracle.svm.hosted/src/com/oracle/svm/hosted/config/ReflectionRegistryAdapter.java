@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.io.ObjectStreamClass;
+import java.io.ObjectStreamField;
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Executable;
@@ -196,18 +198,28 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
             serializationSupport.registerLambdaCapturingClass(condition, LambdaUtils.capturingClass(clazz.getName()));
             reflectionSupport.register(condition, false, ReflectionUtil.lookupMethod(clazz, "writeReplace"));
             serializationSupport.register(condition, false, SerializedLambda.class);
-            serializationSupport.register(condition, false, String.class);
+            registerSerializedLambdaFieldTypes(condition);
             for (Field field : clazz.getDeclaredFields()) {
                 if (!Modifier.isStatic(field.getModifiers())) {
-                    Class<?> fieldType = field.getType();
-                    Class<?> serializationFieldType = fieldType.isPrimitive()
-                                    ? JavaKind.fromJavaClass(fieldType).toBoxedJavaClass()
-                                    : fieldType;
-                    serializationSupport.register(condition, false, serializationFieldType);
+                    registerSerializationFieldType(condition, field.getType());
                 }
             }
         }
         serializationSupport.register(condition, false, clazz);
+    }
+
+    private void registerSerializedLambdaFieldTypes(AccessCondition condition) {
+        ObjectStreamClass serializedLambdaDescriptor = ObjectStreamClass.lookup(SerializedLambda.class);
+        for (ObjectStreamField field : serializedLambdaDescriptor.getFields()) {
+            registerSerializationFieldType(condition, field.getType());
+        }
+    }
+
+    private void registerSerializationFieldType(AccessCondition condition, Class<?> fieldType) {
+        Class<?> serializationFieldType = fieldType.isPrimitive()
+                        ? JavaKind.fromJavaClass(fieldType).toBoxedJavaClass()
+                        : fieldType;
+        serializationSupport.register(condition, false, serializationFieldType);
     }
 
     @Override
