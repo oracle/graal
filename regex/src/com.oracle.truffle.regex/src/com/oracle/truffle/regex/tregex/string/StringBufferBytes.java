@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,11 @@ public final class StringBufferBytes extends ByteArrayBuffer implements Abstract
         this.encoding = encoding;
     }
 
+    public StringBufferBytes(StringBufferBytes copy) {
+        super(copy);
+        this.encoding = copy.encoding;
+    }
+
     @Override
     public Encoding getEncoding() {
         return encoding;
@@ -76,6 +81,21 @@ public final class StringBufferBytes extends ByteArrayBuffer implements Abstract
         assert c1 <= encoding.getMaxValue();
         assert c2 <= encoding.getMaxValue();
         add((byte) (c1 ^ c2));
+    }
+
+    @Override
+    public AbstractStringBuffer copy() {
+        return new StringBufferBytes(this);
+    }
+
+    @Override
+    public long prefixHash(int maxLength) {
+        int prefixLength = Math.min(length(), maxLength);
+        long hash = prefixLength;
+        for (int i = 0; i < prefixLength; i++) {
+            hash = Long.rotateLeft(hash, 5) ^ Byte.toUnsignedInt(buf[i]);
+        }
+        return hash;
     }
 
     @Override

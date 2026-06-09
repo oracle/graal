@@ -76,6 +76,19 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void wordListCommonPrefixes() {
+        test("abc|abde|abfgh", "", "xxabdeyy", 0, true, 2, 6);
+        test("abc|abde|abfgh", "", "xxabzyy", 0, false);
+        test("uvwxyz|abc|abde|abfgh", "", "xxuvwxyzyy", 0, true, 2, 8);
+        test("abc|abde|uvwxyz|abfgh", "", "xxuvwxyzyy", 0, true, 2, 8);
+        test("abc|abde|abfgh|uvwxyz", "", "xxuvwxyzyy", 0, true, 2, 8);
+        test("a|ab", "", "ab", 0, true, 0, 1);
+        test("ab|a", "", "ab", 0, true, 0, 2);
+        test("foobar|quuxx|foobazzz|fooquxq", "", "xxquuxxyy", 0, true, 2, 7);
+        test("foobar|quuxx|foobazzz|fooquxq", "", "xxfoobazzz", 0, true, 2, 10);
+    }
+
+    @Test
     public void nestedQuantifiers() {
         test("(x??)?", "", "x", 0, true, 0, 1, 0, 1);
         test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);

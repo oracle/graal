@@ -4847,6 +4847,9 @@ public final class TruffleString extends AbstractTruffleString {
          * Returns {@code true} if {@link ByteIndexOfStringSetNode} may implement the search for
          * this particular string set in strings with the given code range by dispatching to a
          * compiler intrinsic.
+         * <p>
+         * This is useful for use cases where the caller has a faster implementation for
+         * non-intrinsified paths.
          *
          * @since 25.1
          */

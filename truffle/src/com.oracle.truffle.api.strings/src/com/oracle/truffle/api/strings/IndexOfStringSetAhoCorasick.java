@@ -53,6 +53,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
+/**
+ * Classic Aho-Corasick (simple DFA-style) search implementation for
+ * {@link TruffleString.ByteIndexOfStringSetNode}. This implementation is used as a
+ * fallback when {@link IndexOfStringSetTeddy} cannot be used.
+ */
 final class IndexOfStringSetAhoCorasick extends IndexOfStringSet.SearchPlan {
 
     /** State field: best matching pattern id for this state. */
