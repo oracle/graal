@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -207,6 +207,32 @@ public class WasmType implements TruffleObject {
     public static final int NUM_COMMON_TYPE = 1;
     public static final int OBJ_COMMON_TYPE = 2;
     public static final int MIX_COMMON_TYPE = NUM_COMMON_TYPE | OBJ_COMMON_TYPE;
+
+    /**
+     * i31ref bounds.
+     */
+    public static final int I31_MIN_VALUE = -(1 << 30);
+    public static final int I31_MAX_VALUE = (1 << 30) - 1;
+
+    /**
+     * Returns the signed Java representation used for Wasm i31ref values. This is used to map
+     * {@code i32} values into {@code i31ref} values (the {@code ref.i31} instruction).
+     */
+    public static int asSignedI31(int value) {
+        return (value << 1) >> 1;
+    }
+
+    /**
+     * Returns the zero-extended i32 value produced by i31.get_u.
+     */
+    public static int asUnsignedI31(int value) {
+        assert isI31(value);
+        return value & Integer.MAX_VALUE;
+    }
+
+    public static boolean isI31(int value) {
+        return value >= I31_MIN_VALUE && value <= I31_MAX_VALUE;
+    }
 
     public static String toString(int valueType) {
         CompilerAsserts.neverPartOfCompilation();

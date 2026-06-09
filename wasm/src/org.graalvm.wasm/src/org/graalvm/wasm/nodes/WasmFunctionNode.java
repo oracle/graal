@@ -5414,7 +5414,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             }
             case Bytecode.REF_I31: {
                 int i32 = WasmFrame.popInt(frame, stackPointer - 1);
-                Integer i31 = (i32 << 1) >> 1;
+                Integer i31 = WasmType.asSignedI31(i32);
                 WasmFrame.pushReference(frame, stackPointer - 1, i31);
                 break;
             }
@@ -5427,7 +5427,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 }
                 int i32 = (int) i31;
                 if (aggregateOpcode == Bytecode.I31_GET_U) {
-                    i32 &= ~(1 << 31);
+                    i32 = WasmType.asUnsignedI31(i32);
                 }
                 WasmFrame.pushInt(frame, stackPointer - 1, i32);
                 break;

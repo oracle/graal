@@ -3324,7 +3324,7 @@ public class BinaryParser extends BinaryStreamParser {
                             state.push(WasmType.withNullable(false, I31_HEAPTYPE));
                             state.addInstruction(Bytecode.REF_I31);
                             if (calculable) {
-                                stack.add((int) stack.removeLast() & ~(1 << 31));
+                                stack.add(WasmType.asSignedI31((int) stack.removeLast()));
                             }
                             break;
                         }

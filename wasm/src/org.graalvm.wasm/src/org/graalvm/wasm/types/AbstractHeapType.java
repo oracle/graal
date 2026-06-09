@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,9 +62,6 @@ public enum AbstractHeapType implements HeapType {
     ARRAY(WasmType.ARRAY_HEAPTYPE),
     EXN(WasmType.EXN_HEAPTYPE);
 
-    private static final int I31_MIN_VALUE = -(1 << 30);
-    private static final int I31_MAX_VALUE = (1 << 30) - 1;
-
     private final int value;
 
     AbstractHeapType(int value) {
@@ -119,8 +116,8 @@ public enum AbstractHeapType implements HeapType {
             case NOEXN, NOFUNC, NOEXTERN, NONE -> false;
             case FUNC -> val instanceof WasmFunctionInstance;
             case EXTERN, ANY -> val != WasmConstant.NULL;
-            case EQ -> val instanceof WasmArray || val instanceof WasmStruct || (val instanceof Integer integer && integer >= 0);
-            case I31 -> val instanceof Integer integer && integer >= I31_MIN_VALUE && integer <= I31_MAX_VALUE;
+            case EQ -> val instanceof WasmArray || val instanceof WasmStruct || (val instanceof Integer integer && WasmType.isI31(integer));
+            case I31 -> val instanceof Integer integer && WasmType.isI31(integer);
             case STRUCT -> val instanceof WasmStruct;
             case ARRAY -> val instanceof WasmArray;
             case EXN -> val instanceof WasmRuntimeException;
