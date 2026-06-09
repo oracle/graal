@@ -303,6 +303,18 @@ public class ResourcesFeature implements InternalFeature {
             }
         }
 
+        private static void preserveExistingResource(Module module, String resourcePath) {
+            var cursor = Resources.currentLayer().resources().getEntries();
+            while (cursor.advance()) {
+                Resources.ModuleResourceKey key = cursor.getKey();
+                if (resourcePath.equals(key.resource()) && Objects.equals(Resources.moduleName(module), key.getModuleName())) {
+                    // A preserved duplicate must remain visible to native tracing replay.
+                    // §FS-001-native-image-semantics.3.2
+                    cursor.getValue().getDynamicAccessMetadata().setPreserved();
+                }
+            }
+        }
+
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
             abortIfSealed();

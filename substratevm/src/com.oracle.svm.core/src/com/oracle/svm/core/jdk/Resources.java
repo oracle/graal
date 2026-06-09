@@ -482,6 +482,8 @@ public final class Resources {
                 ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
                 if (entry == null) {
                     addResource(key, new ConditionalRuntimeValue<>(dynamicAccessMetadata, NEGATIVE_QUERY_MARKER));
+                } else {
+                    resources.put(key, mergeResourceMetadata(entry, dynamicAccessMetadata));
                 }
                 return;
             }
@@ -546,7 +548,8 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static ConditionalRuntimeValue<ResourceStorageEntryBase> mergeResourceMetadata(ConditionalRuntimeValue<ResourceStorageEntryBase> current,
                     RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
-        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata);
+        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata)
+                        .withPreserved(dynamicAccessMetadata.isPreserved());
         return new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally());
     }
 
