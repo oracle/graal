@@ -541,8 +541,17 @@ public final class RuntimeBootModuleLayerSupport {
                             .forEach(roots::add);
         }
 
+        /*
+         * Explicitly requested roots need a diagnostic before pruning. Default roots are only
+         * candidates discovered from the observable module set, so incompatible defaults can be
+         * filtered silently. A module already in the build-time boot configuration is not a
+         * runtime augmentation candidate at all: the preserved boot-layer module remains
+         * authoritative, and replacement attempts from --upgrade-module-path are rejected earlier.
+         * The loader-compatibility rejection is only for modules absent from that configuration,
+         * because adding one would require registering a runtime ModuleReference in a built-in
+         * loader that already preserves a different reference for the same name.
+         */
         rejectUnrepresentableExplicitRoots(buildTimeBootConfiguration, observableModuleFinder, explicitRoots);
-        // Runtime augmentation can only add modules that are absent and loader-compatible.
         roots.removeIf(moduleName -> !isRuntimeAugmentationCandidate(buildTimeBootConfiguration, observableModuleFinder, moduleName));
         return new RootModules(roots, explicitRoots);
     }
