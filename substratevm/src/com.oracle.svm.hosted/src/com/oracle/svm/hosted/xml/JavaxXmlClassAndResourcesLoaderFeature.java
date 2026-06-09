@@ -58,8 +58,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
     private static final String JDK_CATALOG_RESOURCE_PREFIX = "jdk/xml/internal/jdkcatalog/";
-    private static final String JRT_URL_STREAM_HANDLER_CLASS =
-                    "com.oracle.svm.core.jdk.JavaNetSubstitutions$JRTURLStreamHandler";
+    private static final String JRT_URL_STREAM_HANDLER_CLASS = "com.oracle.svm.core.jdk.JavaNetSubstitutions$JRTURLStreamHandler";
 
     private static final Set<AccessCondition> jdkCatalogResourceConditions = new HashSet<>();
 
