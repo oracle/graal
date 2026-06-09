@@ -52,7 +52,9 @@ import com.oracle.svm.test.NativeImageBuildArgs;
  */
 @NativeImageBuildArgs({
                 "--future-defaults=run-time-initialize-security-providers",
-                "-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityProviderVerificationTest$BuildTimeProvider"
+                "-H:+UnlockExperimentalVMOptions",
+                "-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityProviderVerificationTest$BuildTimeProvider",
+                "-H:-UnlockExperimentalVMOptions"
 })
 public class SecurityProviderVerificationTest {
     private static final String PROVIDER_NAME = "same-name-test-provider";
