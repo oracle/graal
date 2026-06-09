@@ -67,6 +67,8 @@ public class ParserState {
     private final ControlStack controlStack;
     private final RuntimeBytecodeGen bytecode;
     private final ArrayList<ExceptionTable> exceptionTables;
+    private final IntArrayList exceptionTableContinuationFixupIndices;
+    private final ArrayList<BytecodeFixup> exceptionTableContinuationFixups;
     private final SymbolTable symbolTable;
 
     private int maxStackSize;
@@ -78,6 +80,8 @@ public class ParserState {
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
         this.exceptionTables = new ArrayList<>();
+        this.exceptionTableContinuationFixupIndices = new IntArrayList();
+        this.exceptionTableContinuationFixups = new ArrayList<>();
         this.symbolTable = symbolTable;
 
         this.maxStackSize = 0;
@@ -442,8 +446,17 @@ public class ParserState {
         return !exceptionTables.isEmpty();
     }
 
-    public void registerExceptionTable(ExceptionTable table) {
+    public int registerExceptionTable(ExceptionTable table) {
+        final int tableIndex = exceptionTables.size();
         this.exceptionTables.add(table);
+        return tableIndex;
+    }
+
+    public void addExceptionTableContinuationFixup(int tableIndex, BytecodeFixup fixup) {
+        final int targetTableIndex = tableIndex == -1 ? exceptionTables.size() : tableIndex;
+        assert targetTableIndex >= 0 && targetTableIndex <= exceptionTables.size() : "Invalid exception-table continuation index";
+        exceptionTableContinuationFixupIndices.add(targetTableIndex);
+        exceptionTableContinuationFixups.add(fixup);
     }
 
     /**
@@ -457,6 +470,19 @@ public class ParserState {
      * The exception table has a single 4 byte entry (0xffff_ffff) to indicate the end of the table.
      */
     public void generateExceptionTable() {
+        final int[] tableOffsets = new int[exceptionTables.size()];
+        int tableOffset = bytecode.location();
+        for (int i = 0; i < exceptionTables.size(); i++) {
+            final ExceptionTable table = exceptionTables.get(i);
+            tableOffsets[i] = tableOffset;
+            tableOffset += table.handlerCount() * ExceptionHandler.SIZE;
+        }
+        final int tableEndOffset = tableOffset;
+        for (int i = 0; i < exceptionTableContinuationFixups.size(); i++) {
+            final int tableIndex = exceptionTableContinuationFixupIndices.get(i);
+            final int target = tableIndex == exceptionTables.size() ? tableEndOffset : tableOffsets[tableIndex];
+            exceptionTableContinuationFixups.get(i).patch(target);
+        }
         for (ExceptionTable table : exceptionTables) {
             table.generateExceptionTable(bytecode);
         }

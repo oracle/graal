@@ -13,6 +13,7 @@ legacy_delegate_no_throw
 legacy_delegate_throw
 legacy_delegate_1
 legacy_delegate_search_continuation
+legacy_delegate_same_range
 legacy_rethrow_recatch
 legacy_simple_catch
 legacy_disabled
