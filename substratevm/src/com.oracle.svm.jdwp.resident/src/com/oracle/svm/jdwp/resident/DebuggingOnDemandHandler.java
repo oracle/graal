@@ -239,7 +239,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
 
             if (result != JNIErrors.JNI_OK()) {
                 Log.log().string("CreateJavaVM failed: ").signed(result).newline();
-                LibC.exit(LibC.EXIT_CODE_ABORT);
+                LibC.abort();
             }
 
             debuggerServerJavaVM = (JNI.JavaVM) jvmptr.read();
@@ -517,7 +517,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
     private static void abortOnJNIException(JNIEnvironmentPointer dbgEnv) {
         if (dbgEnv.read().getFunctions().getExceptionCheck().invoke(dbgEnv.read())) {
             dbgEnv.read().getFunctions().getExceptionDescribe().invoke(dbgEnv.read());
-            LibC.exit(LibC.EXIT_CODE_ABORT);
+            LibC.abort();
         }
     }
 
