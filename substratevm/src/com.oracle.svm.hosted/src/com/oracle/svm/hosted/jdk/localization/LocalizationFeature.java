@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk.localization;
 
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.spi.LocaleServiceProvider;
 import java.util.spi.ResourceBundleControlProvider;
 
 import org.graalvm.collections.EconomicSet;
@@ -54,6 +56,7 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.util.UserError;
@@ -291,6 +294,30 @@ public class LocalizationFeature implements InternalFeature {
         }
     }
 
+    private static final String SERVICE_RESOURCE_PREFIX = "META-INF/services/";
+
+    private static final List<Class<? extends LocaleServiceProvider>> LOCALE_SERVICE_PROVIDER_CLASSES = getLocaleServiceProviderClasses();
+
+    private static List<Class<? extends LocaleServiceProvider>> getLocaleServiceProviderClasses() {
+        return Arrays.stream(LocaleProviderAdapter.class.getDeclaredMethods())
+                        .filter(method -> method.getParameterCount() == 0)
+                        .map(Method::getReturnType)
+                        .filter(LocaleServiceProvider.class::isAssignableFrom)
+                        .<Class<? extends LocaleServiceProvider>> map(LocalizationFeature::asLocaleServiceProviderClass)
+                        .distinct()
+                        .toList();
+    }
+
+    private static Class<? extends LocaleServiceProvider> asLocaleServiceProviderClass(Class<?> providerClass) {
+        return providerClass.asSubclass(LocaleServiceProvider.class);
+    }
+
+    private static void registerNegativeLocaleServiceProviderQueries(ClassLoader applicationClassLoader) {
+        for (Class<? extends LocaleServiceProvider> providerClass : LOCALE_SERVICE_PROVIDER_CLASSES) {
+            Resources.currentLayer().registerNegativeQuery(applicationClassLoader, null, SERVICE_RESOURCE_PREFIX + providerClass.getName());
+        }
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         addResourceBundles();
@@ -303,7 +330,10 @@ public class LocalizationFeature implements InternalFeature {
         access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.CharacterDataLatin1", "sharpsMap"));
 
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
-            a.registerReachabilityHandler(_ -> registerLocaleProviderAdapters(), LocaleProviderAdapter.class);
+            a.registerReachabilityHandler(callbackAccess -> {
+                registerLocaleProviderAdapters();
+                registerNegativeLocaleServiceProviderQueries(((FeatureImpl.DuringAnalysisAccessImpl) callbackAccess).getApplicationClassLoader());
+            }, LocaleProviderAdapter.class);
         }
     }
 
