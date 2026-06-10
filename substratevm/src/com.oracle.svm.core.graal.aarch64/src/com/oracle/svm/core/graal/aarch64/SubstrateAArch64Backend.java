@@ -1131,6 +1131,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 });
             }
 
+            makeFrameWithoutRuntimeCodeOffset(crb, masm, totalFrameSize, frameSize);
+        }
+
+        protected void makeFrameWithoutRuntimeCodeOffset(CompilationResultBuilder crb, AArch64MacroAssembler masm, int totalFrameSize, int frameSize) {
             boolean preserveFramePointer = ((SubstrateAArch64RegisterConfig) crb.frameMap.getRegisterConfig()).shouldPreserveFramePointer();
             // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
 
