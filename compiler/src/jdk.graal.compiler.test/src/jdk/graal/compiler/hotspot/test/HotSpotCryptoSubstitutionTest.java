@@ -55,9 +55,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.replacements.SnippetSubstitutionNode;
@@ -74,6 +74,14 @@ import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNod
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
@@ -359,9 +367,11 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Before
     public void clearExceptionCall() {
         expectedCall = null;
+        expectedNode = null;
     }
 
-    HotSpotForeignCallDescriptor expectedCall;
+    ForeignCallDescriptor expectedCall;
+    Class<? extends Node> expectedNode;
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
@@ -373,9 +383,12 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
             }
             assertTrue("expected call to " + expectedCall, false);
         }
+        if (expectedNode != null && graph.getNodes().filter(expectedNode).isEmpty()) {
+            assertTrue("expected node " + expectedNode.getSimpleName(), false);
+        }
     }
 
-    private void testDigestBase(String className, String methodName, String algorithm, HotSpotForeignCallDescriptor call) throws Exception {
+    private void testDigestBase(String className, String methodName, String algorithm, ForeignCallDescriptor call) throws Exception {
         Class<?> klass = Class.forName(className);
         expectedCall = call;
         MessageDigest digest = MessageDigest.getInstance(algorithm);
@@ -469,6 +482,39 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         }
         if (code != null) {
             code.invalidate();
+        }
+    }
+
+    void testWithInstalledIntrinsicAndExpectedNode(String className, String methodName, Class<? extends Node> expectedNodeClass, String testSnippetName, Object... args) {
+        Class<?> c;
+        try {
+            c = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            Assume.assumeTrue(className + " is not available", false);
+            return;
+        }
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, methodName)), expectedNodeClass, testSnippetName, args);
+    }
+
+    void testWithInstalledIntrinsicAndExpectedNode(ResolvedJavaMethod intrinsicMethod, Class<? extends Node> expectedNodeClass, String testSnippetName, Object... args) {
+        InstalledCode code = null;
+        try {
+            ResolvedJavaMethod method = getResolvedJavaMethod(testSnippetName);
+            Object receiver = method.isStatic() ? null : this;
+            GraalCompilerTest.Result expect = executeExpected(method, receiver, args);
+            expectedNode = expectedNodeClass;
+            code = compileAndInstallSubstitution(intrinsicMethod);
+            assertTrue("Failed to install " + intrinsicMethod.getName(), code != null);
+            expectedNode = null;
+            testAgainstExpected(method, expect, receiver, args);
+        } catch (AssumptionViolatedException e) {
+            // Suppress so that subsequent calls to this method within the
+            // same Junit @Test annotated method can proceed.
+        } finally {
+            expectedNode = null;
+            if (code != null) {
+                code.invalidate();
+            }
         }
     }
 
@@ -633,49 +679,51 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testMLKEM() {
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberNtt != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberInverseNtt != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberNttMult != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberAddPoly2 != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberAddPoly3 != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyber12To16 != 0L);
-        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberBarrettReduce != 0L);
+        Assume.assumeTrue("ML_KEM not supported", KyberNode.isSupported(getArchitecture()));
 
         Class<?> c;
         try {
-            c = Class.forName("sun.security.provider.ML_KEM");
+            c = Class.forName("com.sun.crypto.provider.ML_KEM");
         } catch (ClassNotFoundException e) {
-            Assume.assumeTrue("sun.security.provider.ML_KEM is not available", false);
+            Assume.assumeTrue("com.sun.crypto.provider.ML_KEM is not available", false);
             return;
         }
 
         // ML-KEM-512
-        testWithInstalledIntrinsic("sun.security.provider.ML_KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNtt", KyberNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberInverseNtt", KyberInverseNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNttMult", KyberNttMultNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), KyberAddPoly2Node.class,
+                        "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)),
+                        KyberAddPoly3Node.class, "testMLKEMEncapsulateDecapsulate",
                         "ML-KEM-512");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyber12To16", Kyber12To16Node.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberBarrettReduce", KyberBarrettReduceNode.class, "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-512");
         // ML-KEM-768
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNtt", KyberNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberInverseNtt", KyberInverseNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNttMult", KyberNttMultNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), KyberAddPoly2Node.class,
+                        "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)),
+                        KyberAddPoly3Node.class, "testMLKEMEncapsulateDecapsulate",
                         "ML-KEM-768");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyber12To16", Kyber12To16Node.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberBarrettReduce", KyberBarrettReduceNode.class, "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-768");
         // ML-KEM-1024
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
-        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNtt", KyberNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberInverseNtt", KyberInverseNttNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberNttMult", KyberNttMultNode.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), KyberAddPoly2Node.class,
+                        "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)),
+                        KyberAddPoly3Node.class, "testMLKEMEncapsulateDecapsulate",
                         "ML-KEM-1024");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
-        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyber12To16", Kyber12To16Node.class, "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsicAndExpectedNode("com.sun.crypto.provider.ML_KEM", "implKyberBarrettReduce", KyberBarrettReduceNode.class, "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-1024");
     }
 }

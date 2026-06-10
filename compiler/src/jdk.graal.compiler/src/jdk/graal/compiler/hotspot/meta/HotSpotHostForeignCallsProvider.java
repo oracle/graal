@@ -37,13 +37,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_12_TO_16;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_2;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_3;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_BARRETT_REDUCE;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_INVERSE_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
@@ -166,6 +159,13 @@ import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroForeignCalls;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
@@ -633,27 +633,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.stubDoubleKeccak != 0L) {
             registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
         }
-        if (c.stubKyberNtt != 0L) {
-            registerForeignCall(KYBER_NTT, c.stubKyberNtt, NativeCall);
-        }
-        if (c.stubKyberInverseNtt != 0L) {
-            registerForeignCall(KYBER_INVERSE_NTT, c.stubKyberInverseNtt, NativeCall);
-        }
-        if (c.stubKyberNttMult != 0L) {
-            registerForeignCall(KYBER_NTT_MULT, c.stubKyberNttMult, NativeCall);
-        }
-        if (c.stubKyberAddPoly2 != 0L) {
-            registerForeignCall(KYBER_ADD_POLY_2, c.stubKyberAddPoly2, NativeCall);
-        }
-        if (c.stubKyberAddPoly3 != 0L) {
-            registerForeignCall(KYBER_ADD_POLY_3, c.stubKyberAddPoly3, NativeCall);
-        }
-        if (c.stubKyber12To16 != 0L) {
-            registerForeignCall(KYBER_12_TO_16, c.stubKyber12To16, NativeCall);
-        }
-        if (c.stubKyberBarrettReduce != 0L) {
-            registerForeignCall(KYBER_BARRETT_REDUCE, c.stubKyberBarrettReduce, NativeCall);
-        }
         if (c.stubArrayPartition != 0L) {
             registerForeignCall(ARRAY_PARTITION, c.stubArrayPartition, NativeCall);
         }
@@ -720,6 +699,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA3Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA512Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.MD5Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberNttNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberInverseNttNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberNttMultNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberAddPoly2Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberAddPoly3Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Kyber12To16Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberBarrettReduceNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32UpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32CUpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumAlmostInverseNttNode.STUB);

@@ -62,6 +62,13 @@ import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
@@ -108,6 +115,13 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 GaloisCounterModeAESNode.class,
                 GHASHProcessBlocksNode.class,
                 IndexOfZeroNode.class,
+                KyberNttNode.class,
+                KyberInverseNttNode.class,
+                KyberNttMultNode.class,
+                KyberAddPoly2Node.class,
+                KyberAddPoly3Node.class,
+                Kyber12To16Node.class,
+                KyberBarrettReduceNode.class,
                 MD5Node.class,
                 Poly1305ProcessBlocksNode.class,
                 SHA1Node.class,

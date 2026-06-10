@@ -101,6 +101,13 @@ import jdk.graal.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GaloisCounterModeAESCryptOp;
 import jdk.graal.compiler.lir.aarch64.AArch64HaltOp;
 import jdk.graal.compiler.lir.aarch64.AArch64IndexOfZeroOp;
+import jdk.graal.compiler.lir.aarch64.AArch64Kyber12To16Op;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberAddPoly2Op;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberAddPoly3Op;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberBarrettReduceOp;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberInverseNttOp;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberNttMultOp;
+import jdk.graal.compiler.lir.aarch64.AArch64KyberNttOp;
 import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.graal.compiler.lir.aarch64.AArch64Move.MembarOp;
@@ -1114,6 +1121,109 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(rMultiplier, multiplier);
 
         append(new AArch64DilithiumDecomposePolyOp(rResult, rInput, rLowPart, rHighPart, rTwoGamma2, rMultiplier));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberNtt(Value poly, Value zetas) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rPoly = AArch64.r0.asValue(poly.getValueKind());
+        RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
+        emitMove(rPoly, poly);
+        emitMove(rZetas, zetas);
+        append(new AArch64KyberNttOp(rResult, rPoly, rZetas));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberInverseNtt(Value poly, Value zetas) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rPoly = AArch64.r0.asValue(poly.getValueKind());
+        RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
+        emitMove(rPoly, poly);
+        emitMove(rZetas, zetas);
+        append(new AArch64KyberInverseNttOp(rResult, rPoly, rZetas));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberNttMult(Value resultValue, Value ntta, Value nttb, Value zetas) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
+        RegisterValue rNtta = AArch64.r1.asValue(ntta.getValueKind());
+        RegisterValue rNttb = AArch64.r2.asValue(nttb.getValueKind());
+        RegisterValue rZetas = AArch64.r3.asValue(zetas.getValueKind());
+        emitMove(rResultPointer, resultValue);
+        emitMove(rNtta, ntta);
+        emitMove(rNttb, nttb);
+        emitMove(rZetas, zetas);
+        append(new AArch64KyberNttMultOp(rResult, rResultPointer, rNtta, rNttb, rZetas));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberAddPoly2(Value resultValue, Value a, Value b) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
+        RegisterValue rA = AArch64.r1.asValue(a.getValueKind());
+        RegisterValue rB = AArch64.r2.asValue(b.getValueKind());
+        emitMove(rResultPointer, resultValue);
+        emitMove(rA, a);
+        emitMove(rB, b);
+        append(new AArch64KyberAddPoly2Op(rResult, rResultPointer, rA, rB));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberAddPoly3(Value resultValue, Value a, Value b, Value c) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
+        RegisterValue rA = AArch64.r1.asValue(a.getValueKind());
+        RegisterValue rB = AArch64.r2.asValue(b.getValueKind());
+        RegisterValue rC = AArch64.r3.asValue(c.getValueKind());
+        emitMove(rResultPointer, resultValue);
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rC, c);
+        append(new AArch64KyberAddPoly3Op(rResult, rResultPointer, rA, rB, rC));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyber12To16(Value condensed, Value index, Value parsed, Value parsedLength) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rCondensed = AArch64.r0.asValue(condensed.getValueKind());
+        RegisterValue rIndex = AArch64.r1.asValue(index.getValueKind());
+        RegisterValue rParsed = AArch64.r2.asValue(parsed.getValueKind());
+        RegisterValue rParsedLength = AArch64.r3.asValue(parsedLength.getValueKind());
+        emitMove(rCondensed, condensed);
+        emitMove(rIndex, index);
+        emitMove(rParsed, parsed);
+        emitMove(rParsedLength, parsedLength);
+        append(new AArch64Kyber12To16Op(rResult, rCondensed, rIndex, rParsed, rParsedLength));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberBarrettReduce(Value coeffs) {
+        RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
+        emitMove(rCoeffs, coeffs);
+        append(new AArch64KyberBarrettReduceOp(rResult, rCoeffs));
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         emitMove(result, rResult);
         return result;
     }

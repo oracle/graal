@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.debug.GraalError;
@@ -37,6 +39,10 @@ import jdk.vm.ci.meta.Value;
 public final class AMD64LIRHelper {
 
     private AMD64LIRHelper() {
+    }
+
+    protected static void guaranteeFixedRegister(Value value, Register expected, String name) {
+        GraalError.guarantee(asRegister(value).equals(expected), "expect %s at %s, but was %s", name, expected, value);
     }
 
     protected static Value[] registersToValues(Register[] registers) {
@@ -64,7 +70,8 @@ public final class AMD64LIRHelper {
      * emitted instruction later than the immediately following instruction.
      */
     protected static AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
-        return (AMD64Address) crb.recordDataReferenceInCode(ptr);
+        int alignment = crb.dataBuilder.ensureValidDataAlignment(ptr.getAlignment());
+        return (AMD64Address) crb.recordDataReferenceInCode(ptr, alignment);
     }
 
     protected static ArrayDataPointerConstant pointerConstant(int alignment, byte[] bytes) {

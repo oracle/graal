@@ -73,6 +73,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import javax.crypto.Cipher;
+import javax.crypto.KEM;
 import javax.crypto.KeyAgreement;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
@@ -210,7 +211,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         List<Class<?>> classList = new ArrayList<>(List.of(
                         AlgorithmParameterGenerator.class, AlgorithmParameters.class,
                         CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
-                        Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
+                        Cipher.class, Configuration.class, KEM.class, KeyAgreement.class, KeyFactory.class,
                         KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
                         KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));

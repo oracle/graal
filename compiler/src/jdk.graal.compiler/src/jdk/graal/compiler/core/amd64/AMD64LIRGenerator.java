@@ -146,6 +146,13 @@ import jdk.graal.compiler.lir.amd64.AMD64GaloisCounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.amd64.AMD64HaltOp;
 import jdk.graal.compiler.lir.amd64.AMD64IndexOfZeroOp;
+import jdk.graal.compiler.lir.amd64.AMD64Kyber12To16Op;
+import jdk.graal.compiler.lir.amd64.AMD64KyberAddPoly2Op;
+import jdk.graal.compiler.lir.amd64.AMD64KyberAddPoly3Op;
+import jdk.graal.compiler.lir.amd64.AMD64KyberBarrettReduceOp;
+import jdk.graal.compiler.lir.amd64.AMD64KyberInverseNttOp;
+import jdk.graal.compiler.lir.amd64.AMD64KyberNttMultOp;
+import jdk.graal.compiler.lir.amd64.AMD64KyberNttOp;
 import jdk.graal.compiler.lir.amd64.AMD64LFenceOp;
 import jdk.graal.compiler.lir.amd64.AMD64MD5Op;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
@@ -1447,6 +1454,123 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
         append(new AMD64DilithiumDecomposePolyOp(rResult, rInput, rLowPart, rHighPart, rTwoGamma2, rMultiplier));
         Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberNtt(Value poly, Value zetas) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rPoly = rdi.asValue(poly.getValueKind());
+        AllocatableValue rZetas = rsi.asValue(zetas.getValueKind());
+
+        emitMove(rPoly, poly);
+        emitMove(rZetas, zetas);
+
+        append(new AMD64KyberNttOp(rResult, rPoly, rZetas));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberInverseNtt(Value poly, Value zetas) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rPoly = rdi.asValue(poly.getValueKind());
+        AllocatableValue rZetas = rsi.asValue(zetas.getValueKind());
+
+        emitMove(rPoly, poly);
+        emitMove(rZetas, zetas);
+
+        append(new AMD64KyberInverseNttOp(rResult, rPoly, rZetas));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberNttMult(Value resultArray, Value ntta, Value nttb, Value zetas) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rResultArray = rdi.asValue(resultArray.getValueKind());
+        AllocatableValue rNtta = rsi.asValue(ntta.getValueKind());
+        AllocatableValue rNttb = rdx.asValue(nttb.getValueKind());
+        AllocatableValue rZetas = rcx.asValue(zetas.getValueKind());
+
+        emitMove(rResultArray, resultArray);
+        emitMove(rNtta, ntta);
+        emitMove(rNttb, nttb);
+        emitMove(rZetas, zetas);
+
+        append(new AMD64KyberNttMultOp(rResult, rResultArray, rNtta, rNttb, rZetas));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberAddPoly2(Value resultArray, Value a, Value b) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rResultArray = rdi.asValue(resultArray.getValueKind());
+        AllocatableValue rA = rsi.asValue(a.getValueKind());
+        AllocatableValue rB = rdx.asValue(b.getValueKind());
+
+        emitMove(rResultArray, resultArray);
+        emitMove(rA, a);
+        emitMove(rB, b);
+
+        append(new AMD64KyberAddPoly2Op(rResult, rResultArray, rA, rB));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberAddPoly3(Value resultArray, Value a, Value b, Value c) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rResultArray = rdi.asValue(resultArray.getValueKind());
+        AllocatableValue rA = rsi.asValue(a.getValueKind());
+        AllocatableValue rB = rdx.asValue(b.getValueKind());
+        AllocatableValue rC = rcx.asValue(c.getValueKind());
+
+        emitMove(rResultArray, resultArray);
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rC, c);
+
+        append(new AMD64KyberAddPoly3Op(rResult, rResultArray, rA, rB, rC));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyber12To16(Value condensed, Value index, Value parsed, Value parsedLength) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rCondensed = rdi.asValue(condensed.getValueKind());
+        AllocatableValue rIndex = rsi.asValue(index.getValueKind());
+        AllocatableValue rParsed = rdx.asValue(parsed.getValueKind());
+        AllocatableValue rParsedLength = rcx.asValue(parsedLength.getValueKind());
+
+        emitMove(rCondensed, condensed);
+        emitMove(rIndex, index);
+        emitMove(rParsed, parsed);
+        emitMove(rParsedLength, parsedLength);
+
+        append(new AMD64Kyber12To16Op(rResult, rCondensed, rIndex, rParsed, rParsedLength));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitKyberBarrettReduce(Value coeffs) {
+        AllocatableValue rResult = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        AllocatableValue rCoeffs = rdi.asValue(coeffs.getValueKind());
+
+        emitMove(rCoeffs, coeffs);
+
+        append(new AMD64KyberBarrettReduceOp(rResult, rCoeffs));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         emitMove(result, rResult);
         return result;
     }

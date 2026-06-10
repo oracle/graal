@@ -227,6 +227,14 @@ import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
@@ -316,6 +324,7 @@ public class StandardGraphBuilderPlugins {
             registerGHASHPlugin(plugins);
             registerChaCha20Plugin(plugins);
             registerMLDSAPlugins(plugins);
+            registerMLKEMPlugins(plugins);
             registerBigIntegerPlugins(plugins);
             registerBase64Plugins(plugins);
             registerMessageDigestPlugins(plugins);
@@ -2815,6 +2824,102 @@ public class StandardGraphBuilderPlugins {
                     ValueNode highPartStart = helper.arrayStart(nonNullHighPart, JavaKind.Int);
 
                     b.addPush(JavaKind.Int, new DilithiumDecomposePolyNode(inputStart, lowPartStart, highPartStart, twoGamma2, multiplier));
+                    return true;
+                }
+            }
+        });
+    }
+
+    private abstract static class MLKEMInvocationPlugin extends ConditionalInvocationPlugin {
+        MLKEMInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return KyberNode.isSupported(arch);
+        }
+    }
+
+    private static void registerMLKEMPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.ML_KEM");
+        r.register(new MLKEMInvocationPlugin("implKyberNtt", short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode poly, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode polyStart = helper.arrayStart(b.nullCheckedValue(poly), JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(b.nullCheckedValue(zetas), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberNttNode(polyStart, zetasStart));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyberInverseNtt", short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode poly, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode polyStart = helper.arrayStart(b.nullCheckedValue(poly), JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(b.nullCheckedValue(zetas), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberInverseNttNode(polyStart, zetasStart));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyberNttMult", short[].class, short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode ntta, ValueNode nttb, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultStart = helper.arrayStart(b.nullCheckedValue(result), JavaKind.Short);
+                    ValueNode nttaStart = helper.arrayStart(b.nullCheckedValue(ntta), JavaKind.Short);
+                    ValueNode nttbStart = helper.arrayStart(b.nullCheckedValue(nttb), JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(b.nullCheckedValue(zetas), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberNttMultNode(resultStart, nttaStart, nttbStart, zetasStart));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyberAddPoly", short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode aIn, ValueNode bIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultStart = helper.arrayStart(b.nullCheckedValue(result), JavaKind.Short);
+                    ValueNode aStart = helper.arrayStart(b.nullCheckedValue(aIn), JavaKind.Short);
+                    ValueNode bStart = helper.arrayStart(b.nullCheckedValue(bIn), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberAddPoly2Node(resultStart, aStart, bStart));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyberAddPoly", short[].class, short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode aIn, ValueNode bIn, ValueNode cIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultStart = helper.arrayStart(b.nullCheckedValue(result), JavaKind.Short);
+                    ValueNode aStart = helper.arrayStart(b.nullCheckedValue(aIn), JavaKind.Short);
+                    ValueNode bStart = helper.arrayStart(b.nullCheckedValue(bIn), JavaKind.Short);
+                    ValueNode cStart = helper.arrayStart(b.nullCheckedValue(cIn), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberAddPoly3Node(resultStart, aStart, bStart, cStart));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyber12To16", byte[].class, int.class, short[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condensed, ValueNode index, ValueNode parsed, ValueNode parsedLength) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode condensedStart = helper.arrayStart(b.nullCheckedValue(condensed), JavaKind.Byte);
+                    ValueNode parsedStart = helper.arrayStart(b.nullCheckedValue(parsed), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new Kyber12To16Node(condensedStart, index, parsedStart, parsedLength));
+                    return true;
+                }
+            }
+        });
+        r.register(new MLKEMInvocationPlugin("implKyberBarrettReduce", short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode coeffsStart = helper.arrayStart(b.nullCheckedValue(coeffs), JavaKind.Short);
+                    b.addPush(JavaKind.Int, new KyberBarrettReduceNode(coeffsStart));
                     return true;
                 }
             }
