@@ -762,8 +762,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 bailOut("\\G anchor is only supported in top-level alternatives");
             }
 
-        while (true) {
-            alternative();
+            while (true) {
+                alternative();
 
                 if (match("|")) {
                     nextSequence();
@@ -1476,7 +1476,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a line-break matcher. We do not support this because it entails support for atomic
      * expressions, i.e. cuts in the backtracking.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean lineBreak() {
@@ -1506,7 +1506,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses an extended grapheme cluster. We do not support this because it entails support for
      * atomic expressions, i.e. cuts in the backtracking.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean extendedGraphemeCluster() {
@@ -1523,7 +1523,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a keep command. This instructs the regex engine to trim the current match to the
      * current position. ECMAScript regular expressions don't have support for anything of this
      * sort.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean keepCommand() {
@@ -1539,7 +1539,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a subexpression call. We do not support this as ECMAScript has no similar notion and
      * operates with finite memory (no stack).
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean subexpressionCall() {
@@ -1562,7 +1562,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a string escape, which is an escape sequence that matches a series of characters. In
      * Ruby, this can be seen when using the \\u{... ... ...} syntax to escape a sequence of
      * characters using their Unicode codepoint values.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean stringEscape() {
@@ -1602,7 +1602,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * <li>syntax character escapes like \., \* or \\</li>
      * <li>any superfluous uses of backslash, e.g. \: or \"</li>
      * </ul>
-     * 
+     *
      * @return the escaped codepoint
      */
     private int fetchEscapedChar() {
