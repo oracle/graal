@@ -785,7 +785,7 @@ public class SubstrateJVM {
             boolean existingFile = chunkWriter.hasOpenFile();
             if (!existingFile) {
                 // If no chunkfile is open, create one. This case is very unlikely.
-                RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkFile();
                 if (RawFileOperationSupport.bigEndian().isValid(fd)) {
                     chunkWriter.openFile(fd);
                 }

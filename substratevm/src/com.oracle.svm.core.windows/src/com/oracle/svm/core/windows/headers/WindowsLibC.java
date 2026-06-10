@@ -85,6 +85,9 @@ public class WindowsLibC {
 
     @CPointerTo(nameOfCType = "wchar_t")
     public interface WCharPointer extends PointerBase {
+        char read(int index);
+
+        void write(int index, char value);
     }
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

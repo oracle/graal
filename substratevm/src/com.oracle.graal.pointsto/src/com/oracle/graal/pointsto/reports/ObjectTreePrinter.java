@@ -28,8 +28,6 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CONNECTING_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
-import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
-import static com.oracle.graal.pointsto.reports.ReportUtils.reasonComparator;
 
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
@@ -68,7 +66,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         /* Use linked hash map for predictable iteration order. */
         Map<JavaConstant, ObjectNodeBase> constantToNode = new LinkedHashMap<>();
         ObjectTreePrinter printer = new ObjectTreePrinter(bb, constantToNode);
-        printer.scanBootImageHeapRoots(fieldComparator, reasonComparator);
+        printer.scanBootImageHeapRoots(ReportUtils.fieldComparator(), ReportUtils.reasonComparator());
         printer.printTypeHierarchy(out, constantToNode);
     }
 

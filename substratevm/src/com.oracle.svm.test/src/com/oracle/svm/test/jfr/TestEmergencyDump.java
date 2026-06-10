@@ -26,8 +26,13 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
+import com.oracle.svm.test.jfr.events.StringEvent;
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,23 +40,17 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
-import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.test.jfr.events.StringEvent;
-
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
 
 /**
  * This test commits events across multiple chunk files and ensure that the events all appear in the
  * emergency dump. This would indicate that the chunk files from the disk repository we merged
  * correctly along with in-flight data.
  */
-public class TestEmergencyDump extends JfrRecordingTest {
+public class TestEmergencyDump extends JfrEmergencyDumpTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
@@ -64,10 +63,13 @@ public class TestEmergencyDump extends JfrRecordingTest {
 
         String[] testedEvents = new String[]{STRING_EVENT_NAME, JfrEvent.DumpReason.getName()};
         Path dumpFile = Path.of("svm_oom_pid_" + ProcessHandle.current().pid() + ".jfr");
-        runEmergencyDumpScenario(testedEvents);
-        assertEmergencyDump(dumpFile, testedEvents, createExpectedStrings());
-        Files.deleteIfExists(dumpFile);
-        assertNoResidualTestedEvents(testedEvents);
+        try {
+            runEmergencyDumpScenario(testedEvents);
+            assertEmergencyDump(dumpFile, testedEvents, createExpectedStrings());
+        } finally {
+            Files.deleteIfExists(dumpFile);
+            assertNoResidualTestedEvents(testedEvents);
+        }
     }
 
     private void runEmergencyDumpScenario(String[] testedEvents) throws Throwable {

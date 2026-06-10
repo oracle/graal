@@ -56,7 +56,7 @@ public interface JfrEmergencyDumpSupport {
 
     String getDumpPath();
 
-    RawFileOperationSupport.RawFileDescriptor chunkPath();
+    RawFileOperationSupport.RawFileDescriptor chunkFile();
 
     void onVmError();
 

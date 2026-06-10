@@ -205,7 +205,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
                      * On Linux, different containerized processes may have the same pid and share
                      * the /tmp directory. So, use file locking to claim ownership of the file.
                      */
-                    fileFd = restartableOpenat(s.fd, entry.d_name(), O_RDONLY(), 0);
+                    fileFd = Fcntl.NoTransitions.restartableOpenat(s.fd, entry.d_name(), O_RDONLY(), 0);
                     if (fileFd == -1) {
                         continue;
                     }
@@ -315,7 +315,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
              * Open the filename in the current directory. Cannot use O_TRUNC here; truncation of an
              * existing file has to happen after the is_file_secure() check below.
              */
-            return restartableOpenat(s.fd, filename, O_RDWR() | O_CREAT() | O_NOFOLLOW(), PosixStat.S_IRUSR() | PosixStat.S_IWUSR());
+            return Fcntl.NoTransitions.restartableOpenat(s.fd, filename, O_RDWR() | O_CREAT() | O_NOFOLLOW(), PosixStat.S_IRUSR() | PosixStat.S_IWUSR());
         }
     }
 
@@ -470,16 +470,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             return errno == ESRCH() || errno == EPERM();
         }
         return false;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableOpenat(int fd, CCharPointer filename, int flags, int mode) {
-        int result;
-        do {
-            result = Fcntl.NoTransitions.openat(fd, filename, flags, mode);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L675-L691")
