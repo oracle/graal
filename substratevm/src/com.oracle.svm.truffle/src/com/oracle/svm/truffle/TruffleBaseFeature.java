@@ -295,8 +295,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState",
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
-        invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "initializeNativeImageState",
-                        Collections.emptyList());
     }
 
     private static void initializeHomeFinder() {
@@ -508,8 +506,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "resetNativeImageState", List.of());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine",
-                        Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState",
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
                         Collections.emptyList());

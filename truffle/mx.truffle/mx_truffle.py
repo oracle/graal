@@ -2563,9 +2563,7 @@ mx_sdk_vm.register_graalvm_component(
             "GraalVM Launcher Common",
         ],
         jar_distributions=[],
-        jvmci_parent_jars=[
-            "truffle:LOCATOR",
-        ],
+        jvmci_parent_jars=[],
         stability="supported",
     )
 )

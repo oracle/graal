@@ -94,7 +94,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.TruffleVersions;
@@ -331,9 +330,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
         PolyglotEngineImpl impl = null;
         try {
-            if (TruffleOptions.AOT) {
-                EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
-            }
             OutputStream resolvedOut = out == null ? System.out : out;
             OutputStream resolvedErr = err == null ? System.err : err;
             InputStream resolvedIn = in == null ? System.in : in;
@@ -834,18 +830,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (AbstractClassLoaderSupplier supplier : EngineAccessor.locatorOrDefaultLoaders()) {
-            ClassLoader loader = supplier.get();
-            if (loader != null) {
-                try {
-                    Class<?> clazz = loader.loadClass(className);
-                    if (supplier.accepts(clazz)) {
-                        Module clazzModule = clazz.getModule();
-                        JDKSupport.exportTransitivelyTo(clazzModule);
-                        return clazz;
-                    }
-                } catch (ClassNotFoundException e) {
+        AbstractClassLoaderSupplier classLoaderSupplier = EngineAccessor.loader();
+        ClassLoader loader = classLoaderSupplier.get();
+        if (loader != null) {
+            try {
+                Class<?> clazz = loader.loadClass(className);
+                if (classLoaderSupplier.accepts(clazz)) {
+                    Module clazzModule = clazz.getModule();
+                    JDKSupport.exportTransitivelyTo(clazzModule);
+                    return clazz;
                 }
+            } catch (ClassNotFoundException e) {
             }
         }
         return null;

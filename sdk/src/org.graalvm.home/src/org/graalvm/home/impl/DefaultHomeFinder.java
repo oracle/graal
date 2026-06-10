@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -241,7 +241,24 @@ public final class DefaultHomeFinder extends HomeFinder {
         if (res == null) {
             Path home = getHomeFolder();
             if (home == null) {
-                res = Collections.unmodifiableMap(collectStandaloneHomes());
+                res = collectStandaloneHomes();
+                /*
+                 * Tests use the org.graalvm.language.<id>.home property to define the language home,
+                 * see https://github.com/oracle/graal/blob/master/sulong/mx.sulong/suite.py#L1756.
+                 * Standalone can also use this system property to override a language home.
+                 */
+                if (ImageInfo.inImageRuntimeCode() && nativeImageLanguages != null) {
+                    for (String languageId : nativeImageLanguages) {
+                        String enforcedHome = System.getProperty("org.graalvm.language." + languageId + ".home");
+                        if (enforcedHome != null) {
+                            res.put(languageId, toRealPath(Path.of(enforcedHome)));
+                        }
+                    }
+                } else {
+                    collectHomesFromSystemProperties(res);
+                }
+                res = Collections.unmodifiableMap(res);
+
             } else if (ImageInfo.inImageRuntimeCode() && nativeImageLanguages != null) {
                 res = new HashMap<>(nativeImageLanguages.size());
                 Path languagesFolder = home.resolve("languages");
@@ -255,20 +272,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                 }
             } else {
                 res = collectHomes(home.resolve("languages"));
-                for (Object property : System.getProperties().keySet()) {
-                    if (property instanceof String) {
-                        String name = ((String) property);
-                        if (name.startsWith("org.graalvm.language.") && name.endsWith(".home")) {
-                            String after = name.substring("org.graalvm.language.".length());
-                            if (after.length() > ".home".length()) {
-                                String languageId = after.substring(0, after.length() - ".home".length());
-                                if (!languageId.contains(".")) {
-                                    res.put(languageId, toRealPath(Paths.get(System.getProperty(name))));
-                                }
-                            }
-                        }
-                    }
-                }
+                collectHomesFromSystemProperties(res);
                 res = Collections.unmodifiableMap(res);
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
@@ -276,6 +280,23 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         return res;
+    }
+
+    private static void collectHomesFromSystemProperties(Map<String, Path> res) {
+        for (Object property : System.getProperties().keySet()) {
+            if (property instanceof String) {
+                String name = ((String) property);
+                if (name.startsWith("org.graalvm.language.") && name.endsWith(".home")) {
+                    String after = name.substring("org.graalvm.language.".length());
+                    if (after.length() > ".home".length()) {
+                        String languageId = after.substring(0, after.length() - ".home".length());
+                        if (!languageId.contains(".")) {
+                            res.put(languageId, toRealPath(Paths.get(System.getProperty(name))));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static Path toRealPath(Path p) {
@@ -517,5 +538,28 @@ public final class DefaultHomeFinder extends HomeFinder {
     @SuppressWarnings("unused")
     private static void setNativeImageTools(Set<String> tools) {
         nativeImageTools = tools;
+    }
+
+    /**
+     * Overrides the cached language homes with a test-provided mapping.
+     *
+     * <p>
+     * NOTE: this method is called reflectively by unit tests through
+     * {@code com.oracle.truffle.api.test.polyglot.LanguageHomeSupport} to override language homes.
+     *
+     * @param newLanguageHomes language id to home directory mapping to expose to the test
+     * @return a closeable used when leaving the override scope
+     */
+    @SuppressWarnings("unused")
+    private static AutoCloseable overrideLanguageHomes(Map<String, Path> newLanguageHomes) {
+        DefaultHomeFinder finder = (DefaultHomeFinder) HomeFinder.getInstance();
+        Map<String, Path> originalLanguageHomes = new HashMap<>(newLanguageHomes);
+        finder.languageHomes = Collections.unmodifiableMap(newLanguageHomes);
+        return new AutoCloseable() {
+            @Override
+            public void close() {
+                finder.languageHomes = originalLanguageHomes;
+            }
+        };
     }
 }

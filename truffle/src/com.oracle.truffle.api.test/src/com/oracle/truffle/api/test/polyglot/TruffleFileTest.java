@@ -481,16 +481,16 @@ public class TruffleFileTest {
     }
 
     @Test
-    public void testRelativePathToLanguageHome() throws IOException {
+    @SuppressWarnings("try")
+    public void testRelativePathToLanguageHome() throws Exception {
         // reflection access
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
         Path langHome = cwdPath.getParent().resolve("home");
-        try (Engine engine = Engine.create()) {
-            FileSystemsTest.markAsLanguageHome(engine, TestRelativePathToLanguageHomeLanguage.class, langHome);
-            try (Context ctx = Context.newBuilder().engine(engine).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativePathToLanguageHomeLanguage.class, "");
-            }
+        try (Engine engine = Engine.create();
+                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestRelativePathToLanguageHomeLanguage.class, langHome);
+                        Context ctx = Context.newBuilder().engine(engine).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativePathToLanguageHomeLanguage.class, "");
         }
     }
 
@@ -723,30 +723,30 @@ public class TruffleFileTest {
     }
 
     @Test
-    public void testGetTruffleFileInternalAllowedIO() {
-        try (Engine engine = Engine.create()) {
-            FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
-            try (Context ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.ALL).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
-                                languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
-                                stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                                nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
-            }
+    @SuppressWarnings("try")
+    public void testGetTruffleFileInternalAllowedIO() throws Exception {
+        try (Engine engine = Engine.create();
+                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
+                        Context ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
+                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
         }
     }
 
     @Test
-    public void testGetTruffleFileInternalCustomFileSystem() {
+    @SuppressWarnings("try")
+    public void testGetTruffleFileInternalCustomFileSystem() throws Exception {
         // reflection access
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
-        try (Engine engine = Engine.create()) {
-            FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
-            try (Context ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
-                                languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
-                                stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                                nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
-            }
+        try (Engine engine = Engine.create();
+                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
+                        Context ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
+                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
         }
     }
 
@@ -786,15 +786,15 @@ public class TruffleFileTest {
     }
 
     @Test
-    public void testGetTruffleFileInternalDeniedIO() {
-        try (Engine engine = Engine.create()) {
-            FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalDeniedIOLanguage.class, languageHome);
-            try (Context ctx = Context.newBuilder().engine(engine).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
-                                languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
-                                stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                                nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
-            }
+    @SuppressWarnings("try")
+    public void testGetTruffleFileInternalDeniedIO() throws Exception {
+        try (Engine engine = Engine.create();
+                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalDeniedIOLanguage.class, languageHome);
+                        Context ctx = Context.newBuilder().engine(engine).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
+                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
         }
     }
 

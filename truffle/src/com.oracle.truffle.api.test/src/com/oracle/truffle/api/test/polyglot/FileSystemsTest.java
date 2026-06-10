@@ -49,7 +49,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -95,10 +94,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.home.Version;
 import org.graalvm.polyglot.Context;
@@ -109,7 +106,6 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -199,7 +195,8 @@ public class FileSystemsTest {
     }
 
     @BeforeClass
-    public static void createConfigurations() throws IOException, ReflectiveOperationException {
+    @SuppressWarnings("try")
+    public static void createConfigurations() throws Exception {
         assert cfgs.isEmpty();
         final FileSystem fullIO = FileSystem.newDefaultFileSystem();
         createDeprecatedConfigurations(fullIO);
@@ -223,21 +220,23 @@ public class FileSystemsTest {
         Engine engine = Engine.create();
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                         fullIO);
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
-        ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
-        setCwd(ctx, privateDir);
-        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
-                        new Configuration(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, ctx, privateDir, privateDir, fullIO, true, false, false, false, false, false, true, engine));
+        try (AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir)) {
+            ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
+            setCwd(ctx, privateDir);
+            cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
+                            new Configuration(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, ctx, privateDir, privateDir, fullIO, true, false, false, false, false, false, true, engine));
+        }
 
         // No IO under language home - internal file
         engine = Engine.create();
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                         fullIO);
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
-        ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
-        setCwd(ctx, privateDir);
-        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
-                        new Configuration(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, false, false, engine));
+        try (AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir)) {
+            ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
+            setCwd(ctx, privateDir);
+            cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
+                            new Configuration(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, false, false, engine));
+        }
 
         // Read Only
         IOAccess ioAccess;
@@ -301,15 +300,16 @@ public class FileSystemsTest {
         // Memory filesystem with deprecated internal resource access - in language home
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
         engine = Engine.create();
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
-        fileSystem = createDeprecatedInternalResourcesFileSystem(new MemoryFileSystem());
-        fileSystem.setCurrentWorkingDirectory(privateDir);
-        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
-        ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
-        setCwd(ctx, privateDir);
-        cfgs.put(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE,
-                        new Configuration(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true, true, true, true,
-                                        engine));
+        try (AutoCloseable homeScppe = LanguageHomeSupport.overrideLanguageHomes(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir)) {
+            fileSystem = createDeprecatedInternalResourcesFileSystem(new MemoryFileSystem());
+            fileSystem.setCurrentWorkingDirectory(privateDir);
+            ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+            ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
+            setCwd(ctx, privateDir);
+            cfgs.put(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE,
+                            new Configuration(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true, true, true, true,
+                                            engine));
+        }
 
         // Memory filesystem with read-only internal resources - outside language home
         fileSystem = FileSystem.allowInternalResources(new MemoryFileSystem());
@@ -323,14 +323,15 @@ public class FileSystemsTest {
         // Memory filesystem with read-only internal resources - in language home
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
         engine = Engine.create();
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
-        fileSystem = FileSystem.allowInternalResources(new MemoryFileSystem());
-        fileSystem.setCurrentWorkingDirectory(privateDir);
-        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
-        ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
-        setCwd(ctx, privateDir);
-        cfgs.put(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE,
-                        new Configuration(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, false, true, false, true, true, false, true, engine));
+        try (AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir)) {
+            fileSystem = FileSystem.allowInternalResources(new MemoryFileSystem());
+            fileSystem.setCurrentWorkingDirectory(privateDir);
+            ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+            ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
+            setCwd(ctx, privateDir);
+            cfgs.put(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE,
+                            new Configuration(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, false, true, false, true, true, false, true, engine));
+        }
 
         // PreInitializeContextFileSystem in image build time
         fileSystem = createPreInitializeContextFileSystem();
@@ -422,11 +423,6 @@ public class FileSystemsTest {
     public FileSystemsTest(final String cfgName) {
         this.cfg = cfgs.get(cfgName);
         Assume.assumeNotNull(this.cfg);
-    }
-
-    @Before
-    public void setUp() {
-        resetLanguageHomes();
     }
 
     @Test
@@ -3133,17 +3129,6 @@ public class FileSystemsTest {
         }
     }
 
-    private static void resetLanguageHomes() {
-        try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, FileSystemsTest.class.getClassLoader());
-            final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-            ReflectionUtils.setAccessible(reset, true);
-            reset.invoke(null);
-        } catch (ReflectiveOperationException re) {
-            throw new RuntimeException(re);
-        }
-    }
-
     /**
      * Sets the current working directory to a work folder. Used by configurations running on local
      * file system which have work folder in temp directory.
@@ -3163,34 +3148,6 @@ public class FileSystemsTest {
             String currentWorkingDirectory = (String) contextArguments[0];
             env.setCurrentWorkingDirectory(env.getInternalTruffleFile(currentWorkingDirectory));
             return null;
-        }
-    }
-
-    static void markAsLanguageHome(Engine engine, Class<? extends TruffleLanguage<?>> language, Path languageHome) {
-        try (Context ctx = Context.newBuilder().engine(engine).build()) {
-            String id = TestUtils.getDefaultLanguageId(language);
-            String home = languageHome.toString();
-            // Set language home in isolate
-            AbstractExecutableTestLanguage.evalTestLanguage(ctx, MarkAsLanguageHomeLanguage.class, "", id, home);
-            // Set language home in host
-            MarkAsLanguageHomeLanguage.markAsLanguageHome(id, home);
-        }
-    }
-
-    @Registration
-    public static final class MarkAsLanguageHomeLanguage extends AbstractExecutableTestLanguage {
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            String languageId = (String) contextArguments[0];
-            String languageHome = (String) contextArguments[1];
-            markAsLanguageHome(languageId, languageHome);
-            return null;
-        }
-
-        static void markAsLanguageHome(String languageId, String languageHome) {
-            System.setProperty("org.graalvm.language." + languageId + ".home", languageHome);
-            resetLanguageHomes();
         }
     }
 

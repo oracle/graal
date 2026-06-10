@@ -65,7 +65,7 @@ import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 
 final class InstrumentCache {
     private static final Map<String, InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new LinkedHashMap<>() : null;
-    private static Map<List<AbstractClassLoaderSupplier>, Map<String, InstrumentCache>> runtimeCaches = new HashMap<>();
+    private static Map<AbstractClassLoaderSupplier, Map<String, InstrumentCache>> runtimeCaches = new HashMap<>();
 
     private final String className;
     private final String id;
@@ -87,7 +87,7 @@ final class InstrumentCache {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
-        nativeImageCache.putAll(doLoad(List.of(new StrongClassLoaderSupplier(imageClassLoader))));
+        nativeImageCache.putAll(doLoad(new StrongClassLoaderSupplier(imageClassLoader)));
     }
 
     /**
@@ -135,11 +135,11 @@ final class InstrumentCache {
             return nativeImageCache;
         }
         synchronized (InstrumentCache.class) {
-            List<AbstractClassLoaderSupplier> classLoaders = EngineAccessor.locatorOrDefaultLoaders();
-            Map<String, InstrumentCache> cache = runtimeCaches.get(classLoaders);
+            AbstractClassLoaderSupplier classLoader = EngineAccessor.loader();
+            Map<String, InstrumentCache> cache = runtimeCaches.get(classLoader);
             if (cache == null) {
-                cache = doLoad(classLoaders);
-                runtimeCaches.put(classLoaders, cache);
+                cache = doLoad(classLoader);
+                runtimeCaches.put(classLoader, cache);
             }
             return cache;
         }
@@ -155,23 +155,21 @@ final class InstrumentCache {
         return result;
     }
 
-    static Map<String, InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
+    static Map<String, InstrumentCache> doLoad(AbstractClassLoaderSupplier classLoaderSupplier) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
         boolean usesTruffleClassLoader = false;
-        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
-        for (AbstractClassLoaderSupplier supplier : suppliers) {
-            ClassLoader loader = supplier.get();
-            if (loader == null) {
-                continue;
-            }
-            usesTruffleClassLoader |= truffleClassLoader == loader;
+        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(classLoaderSupplier);
+        ClassLoader loader = classLoaderSupplier.get();
+        if (loader == null) {
+            return Map.of();
+        }
+        usesTruffleClassLoader |= truffleClassLoader == loader;
 
-            for (TruffleInstrumentProvider p : loadProviders(loader)) {
-                if (supplier.accepts(p.getClass())) {
-                    loadInstrumentImpl(p, list, classNamesUsed, optionalResources);
-                }
+        for (TruffleInstrumentProvider p : loadProviders(loader)) {
+            if (classLoaderSupplier.accepts(p.getClass())) {
+                loadInstrumentImpl(p, list, classNamesUsed, optionalResources);
             }
         }
         /*

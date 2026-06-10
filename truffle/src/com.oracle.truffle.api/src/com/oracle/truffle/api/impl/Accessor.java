@@ -153,10 +153,6 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
-    protected void initializeNativeImageTruffleLocator() {
-        TruffleLocator.initializeNativeImageTruffleLocator();
-    }
-
     abstract static class Support {
 
         Support(String onlyAllowedClassName) {
