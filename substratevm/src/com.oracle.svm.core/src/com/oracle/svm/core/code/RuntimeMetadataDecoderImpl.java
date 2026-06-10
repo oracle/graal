@@ -154,13 +154,15 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Field.class, _ -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true, layerId), layerId);
+        int length = readMemberCollectionLength(reader, publicOnly, false, layerId);
+        return decodeArray(Field.class, _ -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true, layerId), length);
     }
 
     @Override
     public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, FieldDescriptor.class, _ -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false, layerId), layerId);
+        int length = readMemberCollectionLength(reader, false, true, layerId);
+        return decodeArray(FieldDescriptor.class, _ -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false, layerId), length);
     }
 
     /**
@@ -173,13 +175,15 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Method.class, _ -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true, layerId), layerId);
+        int length = readMemberCollectionLength(reader, publicOnly, false, layerId);
+        return decodeArray(Method.class, _ -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true, layerId), length);
     }
 
     @Override
     public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, MethodDescriptor.class, _ -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true, layerId), layerId);
+        int length = readMemberCollectionLength(reader, false, true, layerId);
+        return decodeArray(MethodDescriptor.class, _ -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true, layerId), length);
     }
 
     /**
@@ -192,14 +196,15 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Constructor.class, _ -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false, layerId), layerId);
+        int length = readMemberCollectionLength(reader, publicOnly, false, layerId);
+        return decodeArray(Constructor.class, _ -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false, layerId), length);
     }
 
     @Override
     public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, ConstructorDescriptor.class, _ -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false, layerId),
-                        layerId);
+        int length = readMemberCollectionLength(reader, false, true, layerId);
+        return decodeArray(ConstructorDescriptor.class, _ -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false, layerId), length);
     }
 
     /**
@@ -335,6 +340,24 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         assert isErrorIndex(index);
         int decodedIndex = FIRST_ERROR_INDEX - index;
         throw (T) MetadataAccessor.singleton().getObject(decodedIndex, layerId);
+    }
+
+    private static int readMemberCollectionLength(UnsafeArrayTypeReader buf, boolean publicOnly, boolean ignoreLookupErrors, int layerId) {
+        int length = buf.getSVInt();
+        if (isErrorIndex(length)) {
+            decodeAndThrowError(length, layerId);
+        }
+        if (length == NO_DATA) {
+            int declaredLookupError = buf.getSVInt();
+            int publicLookupError = buf.getSVInt();
+            int lookupError = publicOnly ? publicLookupError : declaredLookupError;
+            if (!ignoreLookupErrors && lookupError != NO_DATA) {
+                decodeAndThrowError(lookupError, layerId);
+            }
+            length = buf.getSVInt();
+            VMError.guarantee(length >= 0, "Invalid member metadata array length");
+        }
+        return length;
     }
 
     /**
@@ -744,12 +767,16 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     /**
      * Arrays are encoded by their length followed by the elements encoded one after the other.
      */
-    @SuppressWarnings("unchecked")
     private static <T> T[] decodeArray(UnsafeArrayTypeReader buf, Class<T> elementType, Function<Integer, T> elementDecoder, int layerId) {
         int length = buf.getSVInt();
         if (isErrorIndex(length)) {
             decodeAndThrowError(length, layerId);
         }
+        return decodeArray(elementType, elementDecoder, length);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T[] decodeArray(Class<T> elementType, Function<Integer, T> elementDecoder, int length) {
         T[] result = (T[]) KnownIntrinsics.unvalidatedNewArray(elementType, length);
         int valueCount = 0;
         for (int i = 0; i < length; ++i) {
