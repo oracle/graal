@@ -228,7 +228,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         });
 
         bb.getHostVM().registerClassReachabilityListener((access, reachedClass) -> {
-            if (LambdaUtils.isLambdaType(reachedClass)) {
+            if (LambdaUtils.isLambdaClass(reachedClass)) {
                 String capturingClass = LambdaUtils.capturingClass(reachedClass.getName());
                 if (!preservedClassNames.contains(capturingClass)) {
                     return;
