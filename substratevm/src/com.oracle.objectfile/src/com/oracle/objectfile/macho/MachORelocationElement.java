@@ -283,7 +283,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
     }
 
     static MachORelocationInfo createRelocation(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, RelocationKind kind, String symbolName) {
-        int length = ObjectFile.RelocationKind.getRelocationSize(kind);
+        int length = kind.getRelocationSize();
         MachORelocationType type = getMachORelocationType(relocatedSection, kind);
         return new MachORelocationInfo(containingElement, relocatedSection, offset, length, type, symbolName, false, 0);
 
