@@ -92,14 +92,6 @@
       num_threads:: 32,
       hyperthreading:: false
     },
-    a12c:: common.linux_aarch64 + self._bench_machine + {
-      machine_name:: "a12c",
-      capabilities+: ["tmpfs25g"],
-      numa_nodes:: [0, 1],
-      default_numa_node:: 0,
-      num_threads:: 160,
-      hyperthreading:: false
-    },
     hr350a:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "hr350a",
       capabilities+: ["tmpfs25g"],
