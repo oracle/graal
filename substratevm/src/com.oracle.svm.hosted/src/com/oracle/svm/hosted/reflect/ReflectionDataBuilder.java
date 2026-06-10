@@ -152,7 +152,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 ///    with the necessary information.
 /// 3. Private `registerTypesFor...` methods then perform the necessary registrations for the registered elements to
 ///    be accessible at runtime. This can include making elements reachable, rescanning objects on the heap, etc. In
-///    particular, [#registerTypesForTypeQuery(AnalysisType, boolean, boolean)] registers the complete metadata for a
+///    particular, [#registerTypesForTypeQuery(AnalysisType, TypeData, boolean, boolean)] registers the complete metadata for a
 ///    given type, including fields, methods, inner types, etc. The fields and methods are not registered for reflective
 ///    access themselves.
 /// 4. The contents of the metadata maps are queried from NativeImageCodeCache using the [ReflectionHostedSupport]
@@ -241,7 +241,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerAllDeclaredClasses(AnalysisType type) {
+    private void registerAllDeclaredClasses(AnalysisType type, TypeData activeTypeData) {
         try {
             for (var innerType : type.getDeclaredTypes()) {
                 innerType.registerAsReachable("Is inner class of class registered for reflection.");
@@ -250,7 +250,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
             }
         } catch (LinkageError e) {
-            types.get(type).classLookupLinkageError = e;
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerClassLookupError);
         }
     }
 
@@ -317,7 +317,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
                 if (accessibility == ACCESSED) {
                     if (previous == null || !previous.includes(ACCESSED) || !preserved && typeData.dynamicAccess.isPreserved()) {
-                        registerTypesForTypeQuery(analysisType, preserved, typeData.linkageError != null);
+                        registerTypesForTypeQuery(analysisType, typeData, preserved, typeData.linkageError != null);
                     }
                 }
                 return typeData;
@@ -325,20 +325,20 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerTypesForTypeQuery(AnalysisType type, boolean preserved, boolean linkageError) {
+    private void registerTypesForTypeQuery(AnalysisType type, TypeData typeData, boolean preserved, boolean linkageError) {
         type.registerAsReachable("Is registered for reflection.");
         runConditionalTask(unconditional(), _ -> {
             registerTypeForRuntimeAccess(type);
             if (!linkageError) {
-                registerAllDeclaredFieldsQuery(type, preserved, QUERIED);
-                registerAllFieldsQuery(type, preserved, QUERIED);
-                registerAllDeclaredMethodsQuery(type);
-                registerAllMethodsQuery(type);
-                registerAllDeclaredConstructorsQuery(type);
-                registerAllConstructorsQuery(type);
-                registerRecordComponents(type);
+                registerAllDeclaredFieldsQuery(type, typeData, preserved, QUERIED);
+                registerAllFieldsQuery(type, typeData, preserved, QUERIED);
+                registerAllDeclaredMethodsQuery(type, typeData);
+                registerAllMethodsQuery(type, typeData);
+                registerAllDeclaredConstructorsQuery(type, typeData);
+                registerAllConstructorsQuery(type, typeData);
+                registerRecordComponents(type, typeData);
             }
-            registerAllDeclaredClasses(type);
+            registerAllDeclaredClasses(type, typeData);
             registerAllClasses(type);
             registerPermittedSubclasses(type);
             registerNestMembers(type);
@@ -371,6 +371,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return e;
         }
         return null;
+    }
+
+    private void registerLinkageError(AnalysisType type, AnalysisType activeType, TypeData activeTypeData, LinkageError error, BiConsumer<TypeData, LinkageError> register) {
+        if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(type)) {
+            throw error;
+        }
+        TypeData data = activeTypeData != null && type.equals(activeType) ? activeTypeData : types.computeIfAbsent(type, _ -> new TypeData());
+        register.accept(data, error);
     }
 
     @Override
@@ -480,33 +488,61 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void registerAllMethodsQuery(AnalysisType type) {
+    private void registerAllMethodsQuery(AnalysisType type, TypeData activeTypeData) {
         forAllSuperTypes(type, t -> {
-            for (var method : t.getDeclaredMethods(false)) {
-                if (method.isPublic()) {
-                    registerMethod(unconditional(), QUERIED, false, method);
+            try {
+                ClassAccess.checkPublicMethods(t);
+                for (var method : t.getDeclaredMethods(false)) {
+                    if (method.isPublic()) {
+                        registerMethod(unconditional(), QUERIED, false, method);
+                    }
                 }
+            } catch (LinkageError e) {
+                registerLinkageError(t, type, activeTypeData, e, TypeData::registerPublicMethodLookupError);
             }
         });
     }
 
     private void registerAllDeclaredMethodsQuery(AnalysisType type) {
-        for (var method : type.getDeclaredMethods(false)) {
-            registerMethod(unconditional(), QUERIED, false, method);
+        registerAllDeclaredMethodsQuery(type, null);
+    }
+
+    private void registerAllDeclaredMethodsQuery(AnalysisType type, TypeData activeTypeData) {
+        try {
+            ClassAccess.checkDeclaredMethods(type);
+            for (var method : type.getDeclaredMethods(false)) {
+                registerMethod(unconditional(), QUERIED, false, method);
+            }
+        } catch (LinkageError e) {
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredMethodLookupError);
         }
     }
 
-    private void registerAllConstructorsQuery(AnalysisType type) {
-        for (var constructor : type.getDeclaredConstructors(false)) {
-            if (constructor.isPublic()) {
-                registerMethod(unconditional(), QUERIED, false, constructor);
+    private void registerAllConstructorsQuery(AnalysisType type, TypeData activeTypeData) {
+        try {
+            ClassAccess.checkPublicConstructors(type);
+            for (var constructor : type.getDeclaredConstructors(false)) {
+                if (constructor.isPublic()) {
+                    registerMethod(unconditional(), QUERIED, false, constructor);
+                }
             }
+        } catch (LinkageError e) {
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerPublicConstructorLookupError);
         }
     }
 
     private void registerAllDeclaredConstructorsQuery(AnalysisType type) {
-        for (var constructor : type.getDeclaredConstructors(false)) {
-            registerMethod(unconditional(), QUERIED, false, constructor);
+        registerAllDeclaredConstructorsQuery(type, null);
+    }
+
+    private void registerAllDeclaredConstructorsQuery(AnalysisType type, TypeData activeTypeData) {
+        try {
+            ClassAccess.checkDeclaredConstructors(type);
+            for (var constructor : type.getDeclaredConstructors(false)) {
+                registerMethod(unconditional(), QUERIED, false, constructor);
+            }
+        } catch (LinkageError e) {
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredConstructorLookupError);
         }
     }
 
@@ -630,17 +666,35 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerAllFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+        registerAllFieldsQuery(type, null, preserved, accessibility);
+    }
+
+    private void registerAllFieldsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
         forAllSuperTypes(type, t -> {
-            JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
-                if (field.isPublic()) {
-                    registerField(unconditional(), accessibility, preserved, field);
-                }
-            });
+            try {
+                ClassAccess.checkPublicFields(t);
+                JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
+                    if (field.isPublic()) {
+                        registerField(unconditional(), accessibility, preserved, field);
+                    }
+                });
+            } catch (LinkageError e) {
+                registerLinkageError(t, type, activeTypeData, e, TypeData::registerPublicFieldLookupError);
+            }
         });
     }
 
     private void registerAllDeclaredFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
-        JVMCIReflectionUtil.getAllFields(type).forEach(field -> registerField(unconditional(), accessibility, preserved, field));
+        registerAllDeclaredFieldsQuery(type, null, preserved, accessibility);
+    }
+
+    private void registerAllDeclaredFieldsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+        try {
+            ClassAccess.checkDeclaredFields(type);
+            JVMCIReflectionUtil.getAllFields(type).forEach(field -> registerField(unconditional(), accessibility, preserved, field));
+        } catch (LinkageError e) {
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredFieldLookupError);
+        }
     }
 
     private void registerField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaField field) {
@@ -803,12 +857,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerTypesForTypeAnnotations(analysisType);
     }
 
-    private void registerRecordComponents(AnalysisType type) {
-        List<? extends ResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
-        if (recordComponents != null) {
-            for (ResolvedJavaRecordComponent recordComponent : recordComponents) {
-                registerTypesForRecordComponent(recordComponent);
+    private void registerRecordComponents(AnalysisType type, TypeData activeTypeData) {
+        try {
+            ClassAccess.checkRecordComponents(type);
+            List<? extends ResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
+            if (recordComponents != null) {
+                for (ResolvedJavaRecordComponent recordComponent : recordComponents) {
+                    registerTypesForRecordComponent(recordComponent);
+                }
             }
+        } catch (LinkageError e) {
+            registerLinkageError(type, type, activeTypeData, e, TypeData::registerRecordComponentLookupError);
         }
     }
 
@@ -1257,7 +1316,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public RecordComponent[] getRecordComponents(Class<?> clazz) {
         assert isSealed();
-        return types.get(metaAccess.lookupJavaType(clazz)).isRegisteredAs(ACCESSED) ? ClassAccess.getRecordComponents(clazz) : null;
+        TypeData data = types.get(metaAccess.lookupJavaType(clazz));
+        if (data == null || !data.isRegisteredAs(ACCESSED) || data.getRecordComponentLookupError() != null) {
+            return null;
+        }
+        return ClassAccess.getRecordComponents(clazz);
     }
 
     public RuntimeDynamicAccessMetadata getTypeMetadata(Class<?> clazz) {
@@ -1357,44 +1420,53 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Map<Class<?>, Throwable> getFieldLookupErrors() {
-        Map<Class<?>, Throwable> fieldLookupExceptions = new HashMap<>();
-        types.forEach((type, data) -> {
-            if (data.linkageError != null) {
-                fieldLookupExceptions.put(type.getJavaClass(), data.linkageError);
-            }
-        });
-        return Collections.unmodifiableMap(fieldLookupExceptions);
+    public Map<Class<?>, Throwable> getDeclaredFieldLookupErrors() {
+        return getLookupErrors(TypeData::getDeclaredFieldLookupError);
     }
 
     @Override
-    public Map<Class<?>, Throwable> getMethodLookupErrors() {
-        Map<Class<?>, Throwable> methodLookupExceptions = new HashMap<>();
-        types.forEach((type, data) -> {
-            if (data.linkageError != null) {
-                methodLookupExceptions.put(type.getJavaClass(), data.linkageError);
-            }
-        });
-        return Collections.unmodifiableMap(methodLookupExceptions);
+    public Map<Class<?>, Throwable> getPublicFieldLookupErrors() {
+        return getLookupErrors(TypeData::getPublicFieldLookupError);
     }
 
     @Override
-    public Map<Class<?>, Throwable> getConstructorLookupErrors() {
-        Map<Class<?>, Throwable> constructorLookupExceptions = new HashMap<>();
+    public Map<Class<?>, Throwable> getDeclaredMethodLookupErrors() {
+        return getLookupErrors(TypeData::getDeclaredMethodLookupError);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getPublicMethodLookupErrors() {
+        return getLookupErrors(TypeData::getPublicMethodLookupError);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getDeclaredConstructorLookupErrors() {
+        return getLookupErrors(TypeData::getDeclaredConstructorLookupError);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getPublicConstructorLookupErrors() {
+        return getLookupErrors(TypeData::getPublicConstructorLookupError);
+    }
+
+    private Map<Class<?>, Throwable> getLookupErrors(Function<TypeData, LinkageError> errorGetter) {
+        Map<Class<?>, Throwable> lookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.linkageError != null) {
-                constructorLookupExceptions.put(type.getJavaClass(), data.linkageError);
+            LinkageError error = errorGetter.apply(data);
+            if (error != null) {
+                lookupExceptions.put(type.getJavaClass(), error);
             }
         });
-        return Collections.unmodifiableMap(constructorLookupExceptions);
+        return Collections.unmodifiableMap(lookupExceptions);
     }
 
     @Override
     public Map<Class<?>, Throwable> getRecordComponentLookupErrors() {
         Map<Class<?>, Throwable> recordComponentLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.linkageError != null) {
-                recordComponentLookupExceptions.put(type.getJavaClass(), data.linkageError);
+            LinkageError error = data.getRecordComponentLookupError();
+            if (error != null) {
+                recordComponentLookupExceptions.put(type.getJavaClass(), error);
             }
         });
         return Collections.unmodifiableMap(recordComponentLookupExceptions);
@@ -1483,6 +1555,73 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         private LinkageError linkageError = null;
         private LinkageError classLookupLinkageError = null;
+        private LinkageError declaredFieldLookupLinkageError = null;
+        private LinkageError publicFieldLookupLinkageError = null;
+        private LinkageError declaredMethodLookupLinkageError = null;
+        private LinkageError publicMethodLookupLinkageError = null;
+        private LinkageError declaredConstructorLookupLinkageError = null;
+        private LinkageError publicConstructorLookupLinkageError = null;
+        private LinkageError recordComponentLookupLinkageError = null;
+
+        void registerClassLookupError(LinkageError error) {
+            classLookupLinkageError = error;
+        }
+
+        void registerDeclaredFieldLookupError(LinkageError error) {
+            declaredFieldLookupLinkageError = error;
+        }
+
+        void registerPublicFieldLookupError(LinkageError error) {
+            publicFieldLookupLinkageError = error;
+        }
+
+        void registerDeclaredMethodLookupError(LinkageError error) {
+            declaredMethodLookupLinkageError = error;
+        }
+
+        void registerPublicMethodLookupError(LinkageError error) {
+            publicMethodLookupLinkageError = error;
+        }
+
+        void registerDeclaredConstructorLookupError(LinkageError error) {
+            declaredConstructorLookupLinkageError = error;
+        }
+
+        void registerPublicConstructorLookupError(LinkageError error) {
+            publicConstructorLookupLinkageError = error;
+        }
+
+        void registerRecordComponentLookupError(LinkageError error) {
+            recordComponentLookupLinkageError = error;
+        }
+
+        LinkageError getDeclaredFieldLookupError() {
+            return declaredFieldLookupLinkageError != null ? declaredFieldLookupLinkageError : linkageError;
+        }
+
+        LinkageError getPublicFieldLookupError() {
+            return publicFieldLookupLinkageError != null ? publicFieldLookupLinkageError : linkageError;
+        }
+
+        LinkageError getDeclaredMethodLookupError() {
+            return declaredMethodLookupLinkageError != null ? declaredMethodLookupLinkageError : linkageError;
+        }
+
+        LinkageError getPublicMethodLookupError() {
+            return publicMethodLookupLinkageError != null ? publicMethodLookupLinkageError : linkageError;
+        }
+
+        LinkageError getDeclaredConstructorLookupError() {
+            return declaredConstructorLookupLinkageError != null ? declaredConstructorLookupLinkageError : linkageError;
+        }
+
+        LinkageError getPublicConstructorLookupError() {
+            return publicConstructorLookupLinkageError != null ? publicConstructorLookupLinkageError : linkageError;
+        }
+
+        LinkageError getRecordComponentLookupError() {
+            return recordComponentLookupLinkageError != null ? recordComponentLookupLinkageError : linkageError;
+        }
 
         void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
             if (unsafeAllocatedDynamicAccess == null) {
@@ -1562,6 +1701,55 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         public static RecordComponent[] getRecordComponents(Class<?> clazz) {
             return clazz.getRecordComponents();
+        }
+
+        public static void checkDeclaredFields(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getDeclaredFields();
+            }
+        }
+
+        public static void checkPublicFields(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getFields();
+            }
+        }
+
+        public static void checkDeclaredMethods(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getDeclaredMethods();
+            }
+        }
+
+        public static void checkPublicMethods(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getMethods();
+            }
+        }
+
+        public static void checkDeclaredConstructors(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getDeclaredConstructors();
+            }
+        }
+
+        public static void checkPublicConstructors(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getConstructors();
+            }
+        }
+
+        public static void checkRecordComponents(AnalysisType type) {
+            Class<?> javaClass = type.getJavaClass();
+            if (javaClass != null) {
+                javaClass.getRecordComponents();
+            }
         }
 
         public Collection<AnalysisType> getNestMembers(AnalysisType type) {

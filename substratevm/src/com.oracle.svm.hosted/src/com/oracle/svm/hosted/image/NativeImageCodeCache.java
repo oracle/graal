@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -451,19 +452,31 @@ public abstract class NativeImageCodeCache {
             runtimeMetadataEncoder.addClassLookupError(type, error);
         });
 
-        reflectionSupport.getFieldLookupErrors().forEach((clazz, error) -> {
+        Map<Class<?>, Throwable> declaredFieldLookupErrors = reflectionSupport.getDeclaredFieldLookupErrors();
+        Map<Class<?>, Throwable> publicFieldLookupErrors = reflectionSupport.getPublicFieldLookupErrors();
+        Set<Class<?>> fieldLookupErrorClasses = new HashSet<>(declaredFieldLookupErrors.keySet());
+        fieldLookupErrorClasses.addAll(publicFieldLookupErrors.keySet());
+        fieldLookupErrorClasses.forEach(clazz -> {
             HostedType type = hMetaAccess.lookupJavaType(clazz);
-            runtimeMetadataEncoder.addFieldLookupError(type, error);
+            runtimeMetadataEncoder.addFieldLookupErrors(type, declaredFieldLookupErrors.get(clazz), publicFieldLookupErrors.get(clazz));
         });
 
-        reflectionSupport.getMethodLookupErrors().forEach((clazz, error) -> {
+        Map<Class<?>, Throwable> declaredMethodLookupErrors = reflectionSupport.getDeclaredMethodLookupErrors();
+        Map<Class<?>, Throwable> publicMethodLookupErrors = reflectionSupport.getPublicMethodLookupErrors();
+        Set<Class<?>> methodLookupErrorClasses = new HashSet<>(declaredMethodLookupErrors.keySet());
+        methodLookupErrorClasses.addAll(publicMethodLookupErrors.keySet());
+        methodLookupErrorClasses.forEach(clazz -> {
             HostedType type = hMetaAccess.lookupJavaType(clazz);
-            runtimeMetadataEncoder.addMethodLookupError(type, error);
+            runtimeMetadataEncoder.addMethodLookupErrors(type, declaredMethodLookupErrors.get(clazz), publicMethodLookupErrors.get(clazz));
         });
 
-        reflectionSupport.getConstructorLookupErrors().forEach((clazz, error) -> {
+        Map<Class<?>, Throwable> declaredConstructorLookupErrors = reflectionSupport.getDeclaredConstructorLookupErrors();
+        Map<Class<?>, Throwable> publicConstructorLookupErrors = reflectionSupport.getPublicConstructorLookupErrors();
+        Set<Class<?>> constructorLookupErrorClasses = new HashSet<>(declaredConstructorLookupErrors.keySet());
+        constructorLookupErrorClasses.addAll(publicConstructorLookupErrors.keySet());
+        constructorLookupErrorClasses.forEach(clazz -> {
             HostedType type = hMetaAccess.lookupJavaType(clazz);
-            runtimeMetadataEncoder.addConstructorLookupError(type, error);
+            runtimeMetadataEncoder.addConstructorLookupErrors(type, declaredConstructorLookupErrors.get(clazz), publicConstructorLookupErrors.get(clazz));
         });
 
         reflectionSupport.getRecordComponentLookupErrors().forEach((clazz, error) -> {
@@ -941,11 +954,11 @@ public abstract class NativeImageCodeCache {
 
         void addClassLookupError(HostedType declaringClass, Throwable exception);
 
-        void addFieldLookupError(HostedType declaringClass, Throwable exception);
+        void addFieldLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException);
 
-        void addMethodLookupError(HostedType declaringClass, Throwable exception);
+        void addMethodLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException);
 
-        void addConstructorLookupError(HostedType declaringClass, Throwable exception);
+        void addConstructorLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException);
 
         void addRecordComponentsLookupError(HostedType declaringClass, Throwable exception);
 
