@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,9 +81,10 @@ public abstract class RuntimeState {
     @CompilationFinal(dimensions = 1) private WasmTag[] tags;
 
     /**
-     * The passive elem instances that can be used to lazily initialize tables. They can potentially
-     * be dropped after using them. They can be set to null even in compiled code, therefore they
-     * cannot be compilation final.
+     * The elem instances that can be used to lazily initialize tables and arrays. Passive segments
+     * contain their initial values until they are dropped. Active, declarative, and dropped segments
+     * are represented as {@code null}. Entries can be set to null even in compiled code, therefore
+     * they cannot be compilation final.
      */
     @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
 
@@ -143,7 +144,7 @@ public abstract class RuntimeState {
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
         this.dataInstanceDropped = new boolean[module.dataInstanceCount()];
-        this.elementInstances = null;
+        this.elementInstances = new Object[module.elemInstanceCount()][];
         this.startFunctionIndex = -1;
     }
 
@@ -363,34 +364,18 @@ public abstract class RuntimeState {
         return length;
     }
 
-    private void ensureElemInstanceCapacity(int index) {
-        if (elementInstances == null) {
-            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
-        } else if (index >= elementInstances.length) {
-            final Object[][] nElementInstanceData = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
-            System.arraycopy(elementInstances, 0, nElementInstanceData, 0, elementInstances.length);
-            elementInstances = nElementInstanceData;
-        }
-    }
-
     void setElemInstance(int index, Object[] data) {
         assert data != null;
-        ensureElemInstanceCapacity(index);
+        assert index < elementInstances.length;
         elementInstances[index] = data;
     }
 
     public void dropElemInstance(int index) {
-        if (elementInstances == null) {
-            return;
-        }
         assert index < elementInstances.length;
         elementInstances[index] = null;
     }
 
     public Object[] elemInstance(int index) {
-        if (elementInstances == null) {
-            return null;
-        }
         assert index < elementInstances.length;
         return elementInstances[index];
     }
