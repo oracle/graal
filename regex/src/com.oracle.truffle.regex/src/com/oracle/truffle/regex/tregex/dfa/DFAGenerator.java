@@ -1394,7 +1394,7 @@ public final class DFAGenerator implements JsonConvertible {
         visited.set(unanchoredInitialState.getId());
         bfsTraversalCur.clear();
         bfsTraversalCur.add(unanchoredInitialState.getSuccessors());
-        outer: while (!bfsTraversalCur.isEmpty()) {
+        while (!bfsTraversalCur.isEmpty()) {
             RegexRootNode.checkThreadInterrupted();
             bfsTraversalNext.clear();
             for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
@@ -1409,15 +1409,24 @@ public final class DFAGenerator implements JsonConvertible {
                         literalFirstDFAState = target;
                     }
                     if (targetStateSet.contains(literalLastState)) {
-                        literalLastDFAState = target;
-                        bfsTraversalNext.clear();
-                        break outer;
+                        if (literalLastDFAState == null) {
+                            literalLastDFAState = target;
+                        } else if (literalLastDFAState != target) {
+                            // found a state containing the literal's end that is NOT dominated by the first occurrence
+                            // of such a state, implying that there are at least two parallel paths through the DFA that
+                            // could be taken on the literal's first occurrence, which is not supported by
+                            // DFAFindInnerLiteralStateNode - bail out.
+                            bfsTraversalNext.clear();
+                            return;
+                        }
+                    } else {
+                        bfsExpand(target);
                     }
-                    bfsExpand(target);
                 }
             }
             bfsSwapLists();
         }
+        bfsTraversalNext.clear();
 
         if (literalFirstDFAState == null || literalLastDFAState == null) {
             // may happen when transitions to the literal have been pruned during DFA generation
