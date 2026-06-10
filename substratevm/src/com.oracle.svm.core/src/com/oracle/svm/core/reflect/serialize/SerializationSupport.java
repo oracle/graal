@@ -43,6 +43,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -274,6 +275,7 @@ public class SerializationSupport {
                 previousConditions.addCondition(cnd);
             }
         }
+        PredefinedClassesSupport.registerSerializableLambdasForCapturingClass(lambdaCapturingClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
