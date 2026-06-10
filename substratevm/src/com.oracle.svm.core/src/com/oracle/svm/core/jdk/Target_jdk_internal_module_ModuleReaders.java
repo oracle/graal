@@ -258,6 +258,15 @@ final class Target_jdk_internal_jimage_ImageReader_ModuleReaders {
 final class Target_jdk_internal_jimage_ImageLocation_ModuleReaders {
 }
 
+/// Shares the runtime support used by the substituted JDK module readers in this file.
+/// This helper has three related responsibilities:
+/// 1. Serve module resources that were embedded into the image so they appear through the normal
+/// JDK module-reader APIs.
+/// 2. Restore build-time module readers whose original jar locations were redacted in the image
+/// heap by reconnecting them to matching jars from the runtime module path.
+/// 3. Compare restored runtime locations for redacted module references so boot-layer augmentation
+/// can distinguish a representable runtime module-path module from an incompatible module coming
+/// from some other source such as `--upgrade-module-path`.
 final class ResourceBasedModuleReaderSupport {
 
     private ResourceBasedModuleReaderSupport() {
@@ -416,6 +425,10 @@ final class ResourceBasedModuleReaderSupport {
         }
     }
 
+    /// Gets the runtime `--module-path` resolved location for `moduleName`.
+    ///
+    /// This is the location used to restore a redacted build-time module reader back to a concrete
+    /// runtime jar when the module is present on the runtime module path.
     static Optional<URI> getRuntimeModuleLocation(String moduleName) {
         return findRuntimeModuleReference(moduleName).flatMap(ModuleReference::location);
     }

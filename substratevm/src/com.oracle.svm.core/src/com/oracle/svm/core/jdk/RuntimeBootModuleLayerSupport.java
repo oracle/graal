@@ -513,7 +513,10 @@ public final class RuntimeBootModuleLayerSupport {
                                     .map(ModuleReference::descriptor) //
                                     .map(ModuleDescriptor::name) //
                                     .filter(name -> observableModuleFinder.find(name).isPresent()) //
-                                    .forEach(roots::add);
+                                    .forEach(mn -> {
+                                        roots.add(mn);
+                                        explicitRoots.add(mn);
+                                    });
                     case ALL_DEFAULT -> addAllDefaultModules = true;
                     case ALL_SYSTEM -> addAllSystemModules = true;
                     default -> {
@@ -610,19 +613,36 @@ public final class RuntimeBootModuleLayerSupport {
         return buildTimeReference != null && !isCompatibleModuleReference(buildTimeReference, moduleReference.get());
     }
 
-    /// Tests whether two module references describe the same representable module.
+    /// Tests whether two module references describe the same runtime-representable module.
+    ///
+    /// For example, a module loaded at build-time from `file:///app/modules/foo.jar` remains compatible
+    /// with a runtime reference to that same jar. A module preserved in the image with a redacted
+    /// location such as `file:///REDACTED/foo` is also compatible when its
+    /// [restored path][ResourceBasedModuleReaderSupport#getRuntimeModuleLocation(String)] is on
+    /// `--module-path` (e.g. `--module-path=/app/modules/foo.jar`).
+    /// In contrast, a redacted build-time reference for `foo` is not compatible with a runtime
+    /// reference coming only from `--upgrade-module-path`, because redacted path restoration ignores
+    /// `--upgrade-module-path`.
     private static boolean isCompatibleModuleReference(ModuleReference buildTimeReference, ModuleReference runtimeReference) {
         if (!buildTimeReference.descriptor().equals(runtimeReference.descriptor())) {
             return false;
         }
         Optional<URI> buildTimeLocation = buildTimeReference.location();
         Optional<URI> runtimeLocation = runtimeReference.location();
-        return buildTimeLocation.equals(runtimeLocation) || isRedactedLocation(buildTimeLocation, buildTimeReference.descriptor().name());
-    }
-
-    /// Tests whether `location` is the image-heap redaction for the module's build-time file path.
-    private static boolean isRedactedLocation(Optional<URI> location, String moduleName) {
-        return location.map(URI::toString).filter(value -> value.equals("file:///REDACTED/" + moduleName)).isPresent();
+        if (buildTimeLocation.equals(runtimeLocation)) {
+            return true;
+        }
+        if (buildTimeLocation.isEmpty()) {
+            return false;
+        }
+        String moduleName = buildTimeReference.descriptor().name();
+        String redactedModuleName = ResourceBasedModuleReaderSupport.getRedactedModuleName(buildTimeLocation.get());
+        if (redactedModuleName == null) {
+            // Build-time module location was not redacted
+            return false;
+        }
+        assert moduleName.equals(redactedModuleName);
+        return ResourceBasedModuleReaderSupport.getRuntimeModuleLocation(moduleName).equals(runtimeLocation);
     }
 
     /// Finds a build-time module reference preserved in any built-in loader.
