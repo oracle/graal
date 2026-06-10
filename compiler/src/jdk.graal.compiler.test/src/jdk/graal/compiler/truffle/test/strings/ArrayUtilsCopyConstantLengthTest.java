@@ -103,7 +103,7 @@ public class ArrayUtilsCopyConstantLengthTest extends ArrayUtilsCopyTest {
         Assume.assumeTrue(ArrayCopyWithConversionsNode.canLowerConstantLengthCopy(maxVectorSizeBytes, Stride.S4, Stride.S4, false, length));
         constantArgs[4] = length;
         ArgSupplier destination = ArrayUtilsCopyTest::initializedDestination;
-        test(getResolvedJavaMethod("copy"), null, source, sourceIndex, destination, destinationIndex, length);
+        test(getArrayCopyS4(), null, source, sourceIndex, destination, destinationIndex, length);
     }
 
     @Override

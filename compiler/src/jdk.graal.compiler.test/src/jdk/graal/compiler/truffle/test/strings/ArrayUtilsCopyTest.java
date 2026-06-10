@@ -35,6 +35,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.ArrayUtils;
 
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsSingleKillNode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
 public class ArrayUtilsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsSingleKillNode> {
@@ -78,15 +79,14 @@ public class ArrayUtilsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsS
         return source;
     }
 
-    public static int[] copy(int[] source, int sourceIndex, int[] destination, int destinationIndex, int length) {
-        ArrayUtils.arraycopy(source, sourceIndex, destination, destinationIndex, length);
-        return destination;
+    protected ResolvedJavaMethod getArrayCopyS4() {
+        return getResolvedJavaMethod(ArrayUtils.class, "arraycopyS4", int[].class, int.class, int[].class, int.class, int.class);
     }
 
     @Test
     public void testCopy() {
         ArgSupplier destination = ArrayUtilsCopyTest::initializedDestination;
-        test(getResolvedJavaMethod("copy"), null, source, sourceIndex, destination, destinationIndex, length);
+        test(getArrayCopyS4(), null, source, sourceIndex, destination, destinationIndex, length);
     }
 
     protected static int[] initializedDestination() {
