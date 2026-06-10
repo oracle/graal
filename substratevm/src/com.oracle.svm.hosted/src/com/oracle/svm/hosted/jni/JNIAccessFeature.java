@@ -69,6 +69,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
@@ -77,8 +79,10 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.jni.functions.JNIFunctions;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -474,8 +478,17 @@ public class JNIAccessFeature implements Feature {
         AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
         return JNIReflectionDictionary.currentLayer().addOrUpdateClass(classObj, access.getHostVM().dynamicHub(analysisClass), preserved, _ -> {
             analysisClass.registerAsReachable("is accessed via JNI");
+            registerTypeForRuntimeAccess(classObj, analysisClass, access);
             return new JNIAccessibleClass(classObj, preserved);
         });
+    }
+
+    private static void registerTypeForRuntimeAccess(Class<?> classObj, AnalysisType analysisClass, DuringAnalysisAccessImpl access) {
+        access.getHostVM().dynamicHub(analysisClass).setJNIAccessible();
+        if (PredefinedClassesSupport.isPredefined(classObj) || !JNIFunctions.Support.useClassRegistriesInFindClass()) {
+            return;
+        }
+        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(classObj.getClassLoader()), classObj);
     }
 
     private static void addNegativeClassLookup(String className) {

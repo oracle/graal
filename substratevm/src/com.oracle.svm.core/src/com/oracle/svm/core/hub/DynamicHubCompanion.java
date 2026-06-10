@@ -32,7 +32,6 @@ import java.security.ProtectionDomain;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
+import com.oracle.svm.shared.BuildPhaseProvider;
 
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -91,6 +91,7 @@ public final class DynamicHubCompanion {
 
     /** Similar to {@code DynamicHub.flags}, but set later during the image build. */
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterHostedUniverse.class) //
+    @LayeredFieldValue(transformer = JNIAccessibleFlagTransformer.class) //
     @Stable byte additionalFlags;
 
     //
@@ -251,6 +252,41 @@ public final class DynamicHubCompanion {
         public Result update(DynamicHubCompanion receiver) {
             assert receiver.arrayHub != null : "update should only be called when a valid arrayHub is available";
             return new Result(receiver.arrayHub, false);
+        }
+    }
+
+    /**
+     * A class installed in an earlier layer can be registered for JNI access in a later layer. In
+     * that case, update the already installed companion with the newly set JNI-accessible bit.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static class JNIAccessibleFlagTransformer extends LayeredFieldValueTransformer<DynamicHubCompanion> {
+        boolean appLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
+
+        @Override
+        public boolean isValueAvailable(@SuppressWarnings("unused") DynamicHubCompanion receiver) {
+            return BuildPhaseProvider.isReadyForCompilation();
+        }
+
+        @Override
+        public Result transform(DynamicHubCompanion receiver) {
+            boolean jniAccessible = DynamicHub.isJNIAccessibleFlagSet(receiver.additionalFlags);
+            return new Result(receiver.additionalFlags, !jniAccessible && !appLayer);
+        }
+
+        @Override
+        public boolean isUpdateAvailable(DynamicHubCompanion receiver) {
+            /*
+             * Wait until setSharedData has finalized the instantiated bit before caching the
+             * one-shot update result for the complete additionalFlags field.
+             */
+            return BuildPhaseProvider.isReadyForCompilation() && DynamicHub.isJNIAccessibleFlagSet(receiver.additionalFlags);
+        }
+
+        @Override
+        public Result update(DynamicHubCompanion receiver) {
+            assert DynamicHub.isJNIAccessibleFlagSet(receiver.additionalFlags) : "update should only be called when JNI accessibility was enabled";
+            return new Result(receiver.additionalFlags, false);
         }
     }
 }

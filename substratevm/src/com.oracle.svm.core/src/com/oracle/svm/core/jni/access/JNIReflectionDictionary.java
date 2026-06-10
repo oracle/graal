@@ -219,6 +219,33 @@ public final class JNIReflectionDictionary {
         classesByName.putIfAbsent(typeName, NEGATIVE_CLASS_LOOKUP);
     }
 
+    /**
+     * Looks up a class across all layers. Positive metadata takes precedence over negative metadata,
+     * so a negative entry does not terminate the search.
+     */
+    private static JNIAccessibleClass lookupClassByName(CharSequence name) {
+        if (!ClassNameSupport.isValidJNIName(name)) {
+            return NEGATIVE_CLASS_LOOKUP;
+        }
+
+        JNIAccessibleClass negativeResult = null;
+        for (var dictionary : layeredSingletons()) {
+            JNIAccessibleClass clazz = dictionary.classesByName.get(name);
+            if (clazz != null) {
+                if (!clazz.isNegative()) {
+                    return clazz;
+                }
+                negativeResult = NEGATIVE_CLASS_LOOKUP;
+            }
+        }
+        return negativeResult;
+    }
+
+    public static boolean isNegativeClassLookup(CharSequence name) {
+        JNIAccessibleClass clazz = lookupClassByName(name);
+        return clazz != null && clazz.isNegative();
+    }
+
     @Platforms(HOSTED_ONLY.class)
     public void addLinkage(JNINativeLinkage linkage) {
         assert !isSealed() : "The JNIReflectionDictionary is already sealed";
@@ -260,18 +287,7 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIAccessibleClass getJniAccessibleClass(CharSequence name) {
-        JNIAccessibleClass result = null;
-        for (var dictionary : layeredSingletons()) {
-            JNIAccessibleClass clazz = dictionary.classesByName.get(name);
-            if (clazz == null && !ClassNameSupport.isValidJNIName(name)) {
-                result = NEGATIVE_CLASS_LOOKUP;
-            } else if (clazz != null) {
-                result = clazz;
-                if (!result.isNegative()) {
-                    break;
-                }
-            }
-        }
+        JNIAccessibleClass result = lookupClassByName(name);
         if (MetadataTracer.enabled() && (result != null || ClassNameSupport.isValidJNIName(name))) {
             // trace if class exists (positive query) or name is valid (negative query)
             MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
