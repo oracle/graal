@@ -30,17 +30,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+AllowJRTFileSystem",
-                "--add-modules=java.xml",
-                "--enable-url-protocols=all"
+                "--enable-url-protocols=all",
+                "--features=com.oracle.svm.test.AllURLProtocolTest$TestFeature"
 })
 public class AllURLProtocolTest {
-    private static final String JDK_CATALOG_RESOURCE = "jdk/xml/internal/jdkcatalog/JDKCatalog.xml";
+    private static final String EMBEDDED_JDK_MODULE_RESOURCE = "java/lang/Object.class";
 
     @Test
     public void allModeEnablesKnownJDKProtocols() throws Exception {
@@ -64,7 +66,7 @@ public class AllURLProtocolTest {
         Path fakeJavaHome = Files.createTempDirectory("native-image-no-runtime-modules");
         try {
             System.setProperty("java.home", fakeJavaHome.toString());
-            try (InputStream stream = URI.create("jrt:/java.xml/" + JDK_CATALOG_RESOURCE).toURL().openStream()) {
+            try (InputStream stream = URI.create("jrt:/java.base/" + EMBEDDED_JDK_MODULE_RESOURCE).toURL().openStream()) {
                 Assert.assertNotEquals(-1, stream.read());
             }
         } finally {
@@ -74,6 +76,13 @@ public class AllURLProtocolTest {
                 System.setProperty("java.home", previousJavaHome);
             }
             Files.deleteIfExists(fakeJavaHome);
+        }
+    }
+
+    public static final class TestFeature implements Feature {
+        @Override
+        public void beforeAnalysis(BeforeAnalysisAccess access) {
+            RuntimeResourceAccess.addResource(Object.class.getModule(), EMBEDDED_JDK_MODULE_RESOURCE);
         }
     }
 }

@@ -35,33 +35,17 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransformServiceClassesAndResources;
 
-import java.io.IOException;
-import java.lang.module.ModuleReader;
-import java.lang.module.ResolvedModule;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.jdk.JRTSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
-    private static final String JDK_CATALOG_RESOURCE_PREFIX = "jdk/xml/internal/jdkcatalog/";
-    private static final String JRT_URL_STREAM_HANDLER_CLASS = "com.oracle.svm.core.jdk.JavaNetSubstitutions$JRTURLStreamHandler";
-
-    private static final Set<AccessCondition> jdkCatalogResourceConditions = new HashSet<>();
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (RuntimeClassLoading.isSupported()) {
@@ -76,7 +60,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             registerApiReachabilityHandlers(access);
             initializeJdkCatalog();
         }
-        registerJrtCatalogResourceAccess(access);
     }
 
     private static void registerApiReachabilityHandlers(BeforeAnalysisAccess access) {
@@ -127,46 +110,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
     private static void registerOnImplementationClassReachable(BeforeAnalysisAccess access, XMLParsersRegistration registration) {
         for (String className : registration.xmlParserClasses()) {
             access.registerReachabilityHandler(a -> registration.registerConfig(a, className), type(access, className));
-        }
-    }
-
-    static void registerJdkCatalogResources() {
-        registerJdkCatalogResources(AccessCondition.unconditional());
-    }
-
-    private static synchronized void registerJdkCatalogResources(AccessCondition condition) {
-        var javaXmlResolvedModule = JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml");
-        if (javaXmlResolvedModule.isEmpty()) {
-            return;
-        }
-        if (!jdkCatalogResourceConditions.add(condition)) {
-            return;
-        }
-
-        String javaXmlModuleName = javaXmlResolvedModule.get().getName();
-        Module javaXmlModule = ModuleLayer.boot().findModule(javaXmlModuleName).orElseThrow(() -> VMError.shouldNotReachHere("Could not resolve hosted java.xml module"));
-        Optional<ResolvedModule> resolvedModule = ModuleLayer.boot().configuration().findModule(javaXmlModuleName);
-        VMError.guarantee(resolvedModule.isPresent());
-
-        try (ModuleReader reader = resolvedModule.get().reference().open()) {
-            reader.list()
-                            .filter(entry -> entry.startsWith(JDK_CATALOG_RESOURCE_PREFIX))
-                            .forEach(entry -> RuntimeResourceSupport.singleton().addResource(condition, javaXmlModule, entry,
-                                            "JDK XML catalog resources"));
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static void registerJrtCatalogResourceAccess(BeforeAnalysisAccess access) {
-        if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-            Class<?> handlerClass = ReflectionUtil.lookupClass(JRT_URL_STREAM_HANDLER_CLASS);
-            /*
-             * Use build-time reachability here. The resources need to be present once the Native
-             * Image JRT handler is in the image, but access must not emit a run-time typeReached
-             * check for internal helper classes.
-             */
-            access.registerReachabilityHandler(_ -> registerJdkCatalogResources(), handlerClass);
         }
     }
 
