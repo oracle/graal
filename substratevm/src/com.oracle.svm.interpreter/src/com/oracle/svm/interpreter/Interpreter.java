@@ -614,6 +614,13 @@ public final class Interpreter {
                         .newline();
     }
 
+    public static final class JNIDowncallRoot {
+        @NeverInline("needed for JNI caller-sensitive stack walks")
+        public static Object execute(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
+            return InterpreterStubSection.leaveInterpreterJNI(seedMethod, args);
+        }
+    }
+
     public static final class IntrinsicRoot {
         @NeverInline("needed far stack walking")
         public static Object execute(InterpreterFrame frame, InterpreterResolvedJavaMethod method, SignaturePolymorphicIntrinsic intrinsic, boolean forceStayInInterpreter) {

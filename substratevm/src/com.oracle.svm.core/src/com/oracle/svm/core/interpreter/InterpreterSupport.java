@@ -214,6 +214,8 @@ public abstract class InterpreterSupport {
         return prepareSignature(method.getSignature(), method.hasReceiver(), method.getDeclaringClass());
     }
 
+    public abstract Class<?> toClass(ResolvedJavaType resolvedJavaType);
+
     public abstract PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
 
     public abstract PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);

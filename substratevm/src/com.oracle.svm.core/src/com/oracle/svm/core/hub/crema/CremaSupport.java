@@ -92,8 +92,6 @@ public interface CremaSupport {
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind);
 
-    Class<?> toClass(ResolvedJavaType resolvedJavaType);
-
     default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);

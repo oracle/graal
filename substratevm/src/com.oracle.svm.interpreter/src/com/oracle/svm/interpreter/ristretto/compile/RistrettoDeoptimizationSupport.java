@@ -329,7 +329,7 @@ public class RistrettoDeoptimizationSupport {
     static InterpreterFrameSourceInfo createStackTraceCallerInfo(RistrettoVirtualInterpreterFrame current, InterpreterFrameSourceInfo callerInfo) {
         InterpreterResolvedJavaMethod interpretedMethod = current.getMethod();
         int bci = current.getCurrentBci();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, bci, current.getFrame(),
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, current.getFrame(),
                         callerInfo);
     }
 

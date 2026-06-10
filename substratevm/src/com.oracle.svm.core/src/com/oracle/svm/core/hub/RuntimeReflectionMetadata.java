@@ -38,6 +38,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.shared.util.VMError;
 
@@ -201,7 +202,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         if (javaType instanceof UnresolvedJavaType unresolvedJavaType) {
             return CremaSupport.singleton().resolveOrThrow(unresolvedJavaType, accessingType);
         } else /* resolved type */ {
-            return CremaSupport.singleton().toClass((ResolvedJavaType) javaType);
+            return InterpreterSupport.singleton().toClass((ResolvedJavaType) javaType);
         }
     }
 
