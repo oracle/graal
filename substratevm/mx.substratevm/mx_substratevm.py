@@ -2637,8 +2637,7 @@ def hellomodule(args):
         if runtime_class_loading:
             # Assert that QName is loaded from the runtime JRT filesystem by
             # runtime-loaded code, not made AOT-reachable in the image build.
-            # Runtime module-path resource URLs use the JDK jar: URL protocol.
-            moduletest_build_args = svm_experimental_options(['-H:AbortOnTypeReachable=javax.xml.namespace.QName']) + ['--enable-url-protocols=jar'] + moduletest_build_args
+            moduletest_build_args = svm_experimental_options(['-H:AbortOnTypeReachable=javax.xml.namespace.QName']) + moduletest_build_args
         built_image = native_image(
             ['--verbose'] + svm_experimental_options(['-H:Path=' + build_dir]) + args + moduletest_build_args
         )

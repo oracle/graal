@@ -32,6 +32,7 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.Collection;
 import java.util.Hashtable;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -45,12 +46,14 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.InternalFeature.InternalFeatureAccess;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -72,7 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import sun.net.NetProperties;
 
-@TargetClass(java.net.URL.class)
+@TargetClass(value = java.net.URL.class, onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
 final class Target_java_net_URL {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
@@ -101,8 +104,8 @@ final class Target_java_net_URL {
     private static native URLStreamHandler lookupViaProperty(String protocol);
 
     /**
-     * Same as in the JDK except: disabled protocols are rejected before any handler lookup, jrt
-     * handlers use Native Image JRT support when enabled, and resource is not overrideable.
+     * Same as in the JDK except: disabled protocols are rejected before any handler lookup, resource
+     * is not overrideable, and the default factory has Native Image handling for resource and jrt.
      */
     @Substitute
     @TargetElement(name = "getURLStreamHandler")
@@ -175,12 +178,7 @@ final class Target_java_net_URL {
                 case "file":
                     return new sun.net.www.protocol.file.Handler();
                 case JavaNetSubstitutions.RESOURCE_PROTOCOL:
-                    return new URLStreamHandler() {
-                        @Override
-                        protected URLConnection openConnection(URL url) {
-                            return new ResourceURLConnection(url);
-                        }
-                    };
+                    return JavaNetSubstitutions.createResourceURLStreamHandler();
                 case "jrt":
                     if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
                         return JavaNetSubstitutions.newJRTURLStreamHandler();
@@ -202,6 +200,26 @@ final class Target_java_net_URL {
         }
     }
 
+}
+
+@TargetClass(value = java.net.URL.class, onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+final class Target_java_net_URL_WithRuntimeClassLoading {
+
+    @Alias
+    @KeepOriginal
+    @TargetElement(name = "getURLStreamHandler")
+    private static native URLStreamHandler getURLStreamHandlerOriginal(String protocol);
+
+    @Substitute
+    private static URLStreamHandler getURLStreamHandler(String protocol) {
+        if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
+            return null;
+        }
+        if (JavaNetSubstitutions.RESOURCE_PROTOCOL.equalsIgnoreCase(protocol)) {
+            return JavaNetSubstitutions.createResourceURLStreamHandler();
+        }
+        return getURLStreamHandlerOriginal(protocol);
+    }
 }
 
 @TargetClass(className = "sun.net.spi.DefaultProxySelector")
@@ -256,12 +274,16 @@ class JavaNetFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            ImageSingletons.add(URLProtocolsSupport.class, new URLProtocolsSupport(SubstrateOptions.DisableURLProtocols.getValue().values()));
+            ImageSingletons.add(URLProtocolsSupport.class,
+                            new URLProtocolsSupport(SubstrateOptions.DisableURLProtocols.getValue().values()));
+        }
+        if (RuntimeClassLoading.isSupported()) {
+            return;
         }
 
         LinkedHashSet<String> protocols = new LinkedHashSet<>();
         for (String protocol : SubstrateOptions.EnableURLProtocols.getValue().values()) {
-            if (JavaNetSubstitutions.isAllURLProtocolsOption(protocol) || JavaNetSubstitutions.isRuntimeURLProtocolsOption(protocol)) {
+            if (JavaNetSubstitutions.isAllURLProtocolsOption(protocol)) {
                 protocols.addAll(JavaNetSubstitutions.KNOWN_JDK_PROTOCOLS);
             } else {
                 protocols.add(protocol);
@@ -278,7 +300,7 @@ final class URLProtocolsSupport {
     private final Set<String> disabledProtocols;
 
     URLProtocolsSupport(Collection<String> disabledProtocols) {
-        this.disabledProtocols = Set.copyOf(disabledProtocols);
+        this.disabledProtocols = new HashSet<>(disabledProtocols);
     }
 
     boolean isDisabled(String protocol) {
@@ -296,10 +318,6 @@ public final class JavaNetSubstitutions {
 
     static boolean isAllURLProtocolsOption(String protocol) {
         return ALL_PROTOCOLS.equals(protocol);
-    }
-
-    static boolean isRuntimeURLProtocolsOption(String protocol) {
-        return RUNTIME_PROTOCOLS.equals(protocol);
     }
 
     static boolean isDisabledURLProtocol(String protocol) {
@@ -330,13 +348,14 @@ public final class JavaNetSubstitutions {
         } catch (ClassNotFoundException | LinkageError e) {
             LogUtils.warning("Registering the " + protocol + " URL protocol failed. This protocol will not be available at runtime. The protocol was set with " +
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, protocol) +
-                            "Cause of the failure: " + e.getMessage());
+                            ". Cause of the failure: " + e.getMessage());
         }
     }
 
     static void unsupported(String protocol, String handlerClassName) {
         throw sneakyThrow(new MalformedURLException("Accessing a URL protocol that was not enabled. The URL protocol " + protocol +
-                        " is supported but not enabled by default. It must be enabled by adding the " + handlerClassName + " to reachability metadata."));
+                        " is supported but not enabled by default. It must be enabled by adding the " + handlerClassName +
+                        " to reachability metadata."));
     }
 
     @SuppressWarnings("unchecked")
@@ -346,6 +365,15 @@ public final class JavaNetSubstitutions {
 
     static URLStreamHandler newJRTURLStreamHandler() {
         return new JRTURLStreamHandler();
+    }
+
+    static URLStreamHandler createResourceURLStreamHandler() {
+        return new URLStreamHandler() {
+            @Override
+            protected URLConnection openConnection(URL url) {
+                return new ResourceURLConnection(url);
+            }
+        };
     }
 
     private static final class JRTURLStreamHandler extends URLStreamHandler {

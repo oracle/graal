@@ -4,8 +4,9 @@ Run-time class loading, also called Crema, allows `ClassLoader.defineClass` to w
 It is enabled at build time with the `-H:+RuntimeClassLoading` option.
 
 ## Extra Setup
+
 While `-H:+RuntimeClassLoading` is sufficient to allow `defineClass` to work, additional setup may be needed depending on the specific use case.
-* If jar files are to be loaded with a `URLClassLoader`, use the build-time `-H:EnableURLProtocols=jar` option.
+* If jar files are to be loaded with a `URLClassLoader`, register the `sun.net.www.protocol.jar.Handler` constructor in reachability metadata.
 * If JDK classes need to be loaded at run time (e.g. to allow a dynamically loaded app to access JDK classes not in the image),
   set `-H:+AllowJRTFileSystem` at build time, and ensure the `java.home` system property points to a JDK at run time.
   For example, pass `-Djava.home=...` when starting the native image.
