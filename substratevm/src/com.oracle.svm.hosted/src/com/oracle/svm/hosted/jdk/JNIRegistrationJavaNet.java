@@ -99,8 +99,14 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                         method(a, "java.net.Inet4AddressImpl", "lookupAllHostAddr", String.class),
                         method(a, "java.net.Inet6AddressImpl", "lookupAllHostAddr", String.class, int.class));
 
+        /*
+         * NetworkInterface.init uses JNI FindClass to look up java/net/NetworkInterface while
+         * initializing that same runtime-initialized class. Register the JNI metadata when the
+         * class is reachable so this lookup does not depend on reachability of the native
+         * initializer itself.
+         */
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerNetworkInterfaceInit,
-                        method(a, "java.net.NetworkInterface", "init"));
+                        type(a, "java.net.NetworkInterface"));
 
         if (this.hasPlatformSocketOptions) {
             /* Support for the libextnet. */
