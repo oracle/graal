@@ -41,6 +41,7 @@
 package com.oracle.truffle.runtime.hotspot.libgraal;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilationId;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
@@ -70,6 +71,8 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 
+import java.nio.ByteBuffer;
+
 /**
  * Native methods linked to libgraal entry points.
  */
@@ -80,17 +83,6 @@ final class TruffleToLibGraalCalls {
      */
     @TruffleToLibGraal(Id.InitializeIsolate)
     static native boolean initializeIsolate(long isolateThreadAddress, Class<?> runtimeClass);
-
-    /**
-     * Registers a Truffle runtime. Returns <code>true</code> if this was the first runtime
-     * registered and <code>false</code> if there were previous calls to
-     * {@link #registerRuntime(long, Object)}.
-     */
-    @TruffleToLibGraal(RegisterRuntime)
-    static native boolean registerRuntime(long isolateThreadAddress, Object truffleRuntime);
-
-    @TruffleToLibGraal(InitializeRuntime)
-    static native long initializeRuntime(long isolateThreadAddress, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate);
 
     @TruffleToLibGraal(Id.ListCompilerOptions)
     static native byte[] listCompilerOptions(long isolateThreadAddress);
@@ -164,4 +156,18 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(GetCompilerVersion)
     static native String getCompilerVersion(long isolateThreadAddress);
+
+    @TruffleToLibGraal(GetCompilationId)
+    static native long getCompilationId(long isolateThreadAddress, long handle);
+
+    @TruffleToLibGraal(InitializeRuntime)
+    static native long initializeRuntime(long isolateThreadAddress, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate, ByteBuffer javaInstrumentationActive);
+
+    /**
+     * Registers a Truffle runtime. Returns <code>true</code> if this was the first runtime
+     * registered and <code>false</code> if there were previous calls to
+     * {@link #registerRuntime(long, TruffleCompilerRuntime, ByteBuffer)}.
+     */
+    @TruffleToLibGraal(RegisterRuntime)
+    static native boolean registerRuntime(long isolateThreadAddress, TruffleCompilerRuntime truffleRuntime, ByteBuffer javaInstrumentationActive);
 }

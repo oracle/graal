@@ -47,8 +47,6 @@ import java.util.function.Supplier;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -163,41 +161,6 @@ public interface TruffleCompilerRuntime {
      * @param installedCode code that has just been installed in the code cache
      */
     void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
-
-    /**
-     * Returns Truffle related method information during host compilation. Do not call this method
-     * directly use PartialEvaluator#getMethodInfo instead.
-     *
-     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
-     */
-    @Deprecated(since = "25.1")
-    @SuppressWarnings("deprecation")
-    PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method);
-
-    /**
-     * Returns Truffle related method information during host compilation. Do not call this method
-     * directly use TruffleHostEnvironment#getHostMethodInfo instead.
-     *
-     * @see #getPartialEvaluationMethodInfo(ResolvedJavaMethod) for guest compilation related
-     *      information.
-     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
-     */
-    @Deprecated(since = "25.1")
-    @SuppressWarnings("deprecation")
-    HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method);
-
-    /**
-     * Gets an object describing how a read of {@code field} can be constant folded based on Truffle
-     * annotations. Do not call this method directly use PartialEvaluator#getConstantFieldInfo
-     * instead.
-     *
-     * @return {@code null} if there are no constant folding related Truffle annotations on
-     *         {@code field}
-     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
-     */
-    @Deprecated(since = "25.1")
-    @SuppressWarnings("deprecation")
-    ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
 
     /**
      * Gets the {@link TruffleCompilable} represented by {@code constant}.
@@ -347,12 +310,6 @@ public interface TruffleCompilerRuntime {
      * @throws NoClassDefFoundError if resolution fails and {@code required == true}
      */
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
-
-    /**
-     * Determines if {@code type} is a value type. Reference comparisons (==) between value type
-     * instances have undefined semantics and can either return true or false.
-     */
-    boolean isValueType(ResolvedJavaType type);
 
     /**
      * Determines if the exception which happened during the compilation is suppressed and should be
