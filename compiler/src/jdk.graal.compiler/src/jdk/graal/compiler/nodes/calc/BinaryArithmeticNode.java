@@ -53,6 +53,8 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
+import jdk.graal.compiler.vector.nodes.simd.SimdBroadcastNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.meta.Constant;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
@@ -78,6 +80,21 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         ArithmeticOpTable table = getArithmeticOpTable(forX);
         assert table.equals(getArithmeticOpTable(forY)) : Assertions.errorMessage("Invalid table ops", forX, table, forY, getArithmeticOpTable(forY));
         return getOp(table);
+    }
+
+    /**
+     * Creates an integer constant compatible with either a scalar integer stamp or a SIMD stamp with
+     * integer lanes.
+     */
+    public static ValueNode createIntegerConstant(Stamp stamp, long value) {
+        if (stamp instanceof IntegerStamp) {
+            return ConstantNode.forIntegerStamp(stamp, value);
+        } else if (stamp instanceof SimdStamp simdStamp) {
+            Stamp componentStamp = simdStamp.getComponent(0);
+            GraalError.guarantee(componentStamp instanceof IntegerStamp, "expected integer SIMD component stamp: %s", componentStamp);
+            return new SimdBroadcastNode(ConstantNode.forIntegerStamp(componentStamp, value), simdStamp.getVectorLength());
+        }
+        throw GraalError.shouldNotReachHereUnexpectedValue(stamp); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
