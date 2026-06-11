@@ -375,7 +375,7 @@ class ExportTrieElement extends MachOObjectFile.LinkEditElement {
 
         for (MachOSymtab.Entry ent : ((LinkEditSegment64Command) owner.getLinkEditSegment()).getSymtab().getSortedEntries()) {
             if (ent.isExternal() && ent.isDefined()) {
-                // FIXME: do we really want the vaddr?
+                // Validate this section VADDR + symbol offset encoding against Mach-O dynamic loader expectations if exported-symbol trie usage expands.
                 long symbolVaddr = (int) alreadyDecided.get(ent.getDefinedSection()).getDecidedValue(LayoutDecision.Kind.VADDR) + ent.getDefinedOffset();
                 addSymbol(ent.getNameInObject(), symbolVaddr);
             }

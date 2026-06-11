@@ -78,13 +78,17 @@ public class ELFObjectFile extends ObjectFile {
     private final SectionHeaderTable sht;
     protected ELFSection interp;
 
+    /*
+     * These defaults capture the currently supported native ELF targets. Revisit them if support
+     * for non-little-endian, non-SYSV, or 32-bit ELF targets is added.
+     */
     private ELFEncoding dataEncoding = ELFEncoding.getSystemNativeValue();
     private char version;
     private ELFOsAbi osabi = ELFOsAbi.getSystemNativeValue();
     private char abiVersion;
     private ELFClass fileClass = ELFClass.getSystemNativeValue();
     private ELFMachine machine;
-    private long processorFlags; // FIXME: to encapsulate (EF_* in elf.h)
+    private long processorFlags;
     private final boolean runtimeDebugInfoGeneration;
 
     private ELFObjectFile(int pageSize, ELFMachine machine, boolean runtimeDebugInfoGeneration) {
@@ -414,7 +418,7 @@ public class ELFObjectFile extends ObjectFile {
         }
 
         public static ELFEncoding getSystemNativeValue() {
-            return ELFDATA2LSB; // FIXME: query
+            return ELFDATA2LSB;
         }
     }
 
@@ -437,7 +441,7 @@ public class ELFObjectFile extends ObjectFile {
         }
 
         public static ELFOsAbi getSystemNativeValue() {
-            return ELFOSABI_SYSV; // FIXME: query system
+            return ELFOSABI_SYSV;
         }
     }
 
@@ -459,7 +463,7 @@ public class ELFObjectFile extends ObjectFile {
         }
 
         public static ELFClass getSystemNativeValue() {
-            return ELFCLASS64; // FIXME: query system
+            return ELFCLASS64;
         }
     }
 
@@ -551,7 +555,6 @@ public class ELFObjectFile extends ObjectFile {
 
             public void write(OutputAssembler out) {
                 ident.write(out);
-                // FIXME: the following is specific to 64-bit ELF files
                 out.write2Byte(type.toShort());
                 out.write2Byte(machine.toShort());
                 out.write4Byte(version);
@@ -660,12 +663,6 @@ public class ELFObjectFile extends ObjectFile {
             }
             contents.shstrndx = sawShStrTab ? index : 0;
             contents.write(oa);
-
-            if (contentHint != null) {
-                // FIXME: (for roundtripping) now we've written our own content,
-                // if we were passed a hint,
-                // check it's equal (verbatim) to the hint content
-            }
             return oa.getBlob();
         }
 
@@ -984,11 +981,6 @@ public class ELFObjectFile extends ObjectFile {
             // we get our content by writing EntryStructs to a bytebuffer
             OutputAssembler oa = AssemblyBuffer.createOutputAssembler(getDataEncoding().toByteOrder());
             write(oa, alreadyDecided);
-            if (contentHint != null) {
-                // FIXME: (for roundtripping) now we've written our own content,
-                // if we were passed a hint,
-                // check it's equal (verbatim) to the hint content
-            }
             return oa.getBlob();
         }
 
