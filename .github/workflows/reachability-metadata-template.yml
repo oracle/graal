@@ -74,21 +74,16 @@ jobs:
         repository: oracle/graalvm-reachability-metadata
         ref: master
         path: ${{ env.REACHABILITY_METADATA_PATH }}
-    - name: Set up JAVA_HOME
-      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
-      with:
-        distribution: 'oracle'
-        java-version: '25'
     - name: "Populate matrix"
       id: set-matrix
+      working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
       run: |
-        cd ${{ env.REACHABILITY_METADATA_PATH }}
-        ./gradlew generateMatrixMatchingCoordinates -Pcoordinates=all
+        ./gradlew --quiet generateTopCoordinatesByMetricMatrix --metric=dynamic-accesses --limit=256
 
   test-all-metadata:
     name: ${{ matrix.coordinates }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ contains(inputs.NATIVE_IMAGE_OPTIONS || '', '-H:Preserve=all') && 'ubuntu-8core-32gb' || 'ubuntu-latest' }}
+    timeout-minutes: 45
     needs: [build-graalvm, populate-matrix]
     strategy:
         fail-fast: false
@@ -115,4 +110,4 @@ jobs:
           bash ./.github/workflows/scripts/disable-docker.sh
       - name: "Run '${{ matrix.coordinates }}' tests${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}"
         run: |
-          ./gradlew test -Pcoordinates=${{ matrix.coordinates }}
+          ./gradlew test -Pcoordinates=${{ matrix.coordinates }} -PskipJacoco=true
