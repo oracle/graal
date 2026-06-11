@@ -8,6 +8,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-67169) Added POSIX support for Native Image JFR emergency dumps. When an out-of-memory error occurs while a JFR recording is active, Native Image can preserve in-memory recording data in an emergency JFR file.
 * (GR-75640) Added experimental support for Native Image layered images on Darwin.
 * (GR-53498) Added experimental support for Native Image layered images on AArch64.
+* (GR-76207) `-H:Preserve` now preserves reached lambda proxy classes whose capturing classes are preserved.
 * (GR-73717) Added support for collecting conditional reachability metadata from a native image at run time using `-XX:TraceMetadataConditionPackages`.
 * (GR-75222) Deprecated `native-image-utils generate-filters`. The native-image agent applies built-in filters by default; pass custom filter JSON directly with `caller-filter-file=<path>` or `access-filter-file=<path>` when additional filtering is needed.
 * (GR-73875) Added `--print-options` flag to `native-image` for printing available build options in table, markdown, or JSON format. Automated generation of option documentation from `@Option` annotations, eliminating manual maintenance of option tables.

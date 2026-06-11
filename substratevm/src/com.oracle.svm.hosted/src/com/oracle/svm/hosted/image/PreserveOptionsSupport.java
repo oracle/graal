@@ -33,6 +33,8 @@ import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSe
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
+import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -41,6 +43,7 @@ import java.security.Provider;
 import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
@@ -69,6 +72,7 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -216,55 +220,27 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         final RuntimeProxyRegistrySupport proxy = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
         final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
         final AccessCondition always = AccessCondition.unconditional();
+        final Set<String> preservedClassNames = new HashSet<>();
 
         classesToPreserve.forEach(c -> {
-            registerType(reflection, c);
+            preservedClassNames.add(c.getName());
+            registerPreservedClass(reflection, resources, proxy, always, c);
+        });
 
-            /* Register array types for each type up to dimension 2 */
-            Class<?> arrayType = c.arrayType();
-            registerType(reflection, arrayType);
-            registerType(reflection, arrayType.arrayType());
-
-            /* Register every single-interface proxy */
-            // GR-62293 can't register proxies from jdk modules.
-            if (c.getModule() == null && c.isInterface()) {
-                proxy.registerProxy(always, true, c);
-            }
-
-            try {
-                for (Field declaredField : c.getDeclaredFields()) {
-                    reflection.register(always, false, true, declaredField);
+        bb.getHostVM().registerClassReachabilityListener((access, reachedClass) -> {
+            if (LambdaUtils.isLambdaClass(reachedClass)) {
+                String capturingClass = LambdaUtils.capturingClass(reachedClass.getName());
+                if (!preservedClassNames.contains(capturingClass)) {
+                    return;
                 }
-            } catch (LinkageError e) {
-                /* If we can't link we can not register for reflection */
-            }
-            if (SubstrateOptions.JNI.getValue()) {
-                final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
-                jni.register(always, true, c);
-                try {
-                    for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, true, declaredMethod);
-                    }
-                    for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, true, declaredConstructor);
-                    }
-                    for (Field declaredField : c.getDeclaredFields()) {
-                        jni.register(always, false, true, declaredField);
-                    }
-                } catch (LinkageError e) {
-                    /* If we can't link we can not register for JNI and reflection */
+                registerPreservedClass(reflection, resources, proxy, always, reachedClass);
+                registerPreservedClassHierarchyMetadata(reflection, serialization, always, reachedClass);
+                if (Serializable.class.isAssignableFrom(reachedClass)) {
+                    serialization.registerIncludingAssociatedClasses(always, reachedClass);
+                    serialization.register(always, true, SerializedLambda.class);
+                    serialization.registerLambdaCapturingClass(always, capturingClass);
                 }
-            }
-
-            // if we register as unsafe allocated earlier there are build-time
-            // initialization errors
-            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
-                reflection.registerUnsafeAllocation(always, true, c);
-            }
-
-            /* Register resource bundles */
-            if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
-                resources.addResourceBundles(always, true, c.getTypeName());
+                access.requireAnalysisIteration();
             }
         });
 
@@ -274,13 +250,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            try {
-                reflection.register(always, false, true, c.getFields());
-                reflection.register(always, true, c.getMethods());
-            } catch (LinkageError e) {
-                /* If we can't link we can not register fields and methods */
-            }
-            serialization.register(always, true, c);
+            registerPreservedClassHierarchyMetadata(reflection, serialization, always, c);
         });
 
         for (String className : guestTypes.getClassNamesToPreserve()) {
@@ -288,6 +258,70 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 reflection.registerClassLookup(always, true, className);
             }
         }
+    }
+
+    private static void registerPreservedClass(RuntimeReflectionSupport reflection,
+                    RuntimeResourceSupport<AccessCondition> resources, RuntimeProxyRegistrySupport proxy,
+                    AccessCondition always, Class<?> c) {
+        registerType(reflection, c);
+
+        /* Register array types for each type up to dimension 2 */
+        Class<?> arrayType = c.arrayType();
+        registerType(reflection, arrayType);
+        registerType(reflection, arrayType.arrayType());
+
+        /* Register every single-interface proxy */
+        // GR-62293 can't register proxies from jdk modules.
+        if (c.getModule() == null && c.isInterface()) {
+            proxy.registerProxy(always, true, c);
+        }
+
+        try {
+            for (Field declaredField : c.getDeclaredFields()) {
+                reflection.register(always, false, true, declaredField);
+            }
+        } catch (LinkageError e) {
+            /* If we can't link we can not register for reflection */
+        }
+        if (SubstrateOptions.JNI.getValue()) {
+            final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+            jni.register(always, true, c);
+            try {
+                for (Method declaredMethod : c.getDeclaredMethods()) {
+                    jni.register(always, true, declaredMethod);
+                }
+                for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
+                    jni.register(always, true, declaredConstructor);
+                }
+                for (Field declaredField : c.getDeclaredFields()) {
+                    jni.register(always, false, true, declaredField);
+                }
+            } catch (LinkageError e) {
+                /* If we can't link we can not register for JNI and reflection */
+            }
+        }
+
+        // if we register as unsafe allocated earlier there are build-time
+        // initialization errors
+        if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+            reflection.registerUnsafeAllocation(always, true, c);
+        }
+
+        /* Register resource bundles */
+        if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
+            resources.addResourceBundles(always, true, c.getTypeName());
+        }
+    }
+
+    private static void registerPreservedClassHierarchyMetadata(RuntimeReflectionSupport reflection,
+                    RuntimeSerializationSupport<AccessCondition> serialization, AccessCondition always, Class<?> c) {
+        try {
+            reflection.register(always, false, true, c.getFields());
+            reflection.register(always, true, c.getMethods());
+        } catch (LinkageError e) {
+            /* If we can't link we can not register fields and methods */
+        }
+        serialization.register(always, true, c);
     }
 
     public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
