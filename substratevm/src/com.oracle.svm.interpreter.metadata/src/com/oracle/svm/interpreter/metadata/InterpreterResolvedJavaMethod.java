@@ -354,12 +354,14 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
 
-    public InterpreterResolvedJavaMethod forFailing(InterpreterResolvedObjectType targetDeclaringClass, MethodRefHolder failingNativeEntryPoint, int vtablePos) {
+    public InterpreterResolvedJavaMethod forFailing(InterpreterResolvedObjectType targetDeclaringClass, MethodRefHolder failingNativeEntryPoint, PreparedSignature entryPointSignature, int vtablePos) {
         assert RuntimeClassLoading.isSupported();
         return new InterpreterResolvedJavaMethod(name, 0, 0,
                         ACC_PUBLIC | ACC_NATIVE | ACC_SYNTHETIC | ACC_HIDDEN | ACC_INTERNAL,
                         targetDeclaringClass,
-                        signature, preparedSignature, signatureSymbol,
+                        signature,
+                        entryPointSignature,
+                        signatureSymbol,
                         /*- code */ null,
                         /*- exceptionHandlers */ null,
                         /*- LineNumberTable */ null,

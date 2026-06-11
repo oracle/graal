@@ -1188,7 +1188,11 @@ public class CremaSupportImpl implements CremaSupport {
         private InterpreterResolvedJavaMethod failingMethod(InterpreterResolvedJavaMethod resolved, ErrorType errorType, int vtablePosForFailure) {
             FailingMethodKey key = new FailingMethodKey(resolved.getSymbolicName(), resolved.getSymbolicSignature(), errorType);
             return failingMethods.computeIfAbsent(key,
-                            _ -> resolved.forFailing(partialType.getThisJavaType(), InterpreterKnownCompiledEntryPoints.forErrorType(errorType), vtablePosForFailure));
+                            _ -> resolved.forFailing(
+                                            partialType.getThisJavaType(),
+                                            InterpreterKnownCompiledEntryPoints.forErrorType(errorType),
+                                            InterpreterKnownCompiledEntryPoints.getStubSignature(),
+                                            vtablePosForFailure));
         }
 
         protected abstract InterpreterResolvedJavaMethod[] createDeclaredMethods();
