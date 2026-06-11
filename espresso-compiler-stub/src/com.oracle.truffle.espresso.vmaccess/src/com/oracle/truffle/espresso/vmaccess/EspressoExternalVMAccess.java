@@ -32,7 +32,6 @@ import java.nio.ByteOrder;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -386,30 +385,6 @@ final class EspressoExternalVMAccess implements VMAccess {
         }
         Value value = espressoConstant.getValue();
         return new EspressoExternalResolvedJavaPackage(this, value);
-    }
-
-    @Override
-    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        /*
-         * Obtain jdk.internal.loader.BootLoader.packages() from the guest and materialize it to an
-         * array to bridge into a Java Stream on the host.
-         */
-        Value bootLoaderMeta = requireMetaObject("jdk.internal.loader.BootLoader");
-        Value stream = bootLoaderMeta.getMember("packages").execute();
-        // Stream#toArray() -> Object[]
-        Value array = stream.invokeMember("toArray");
-        if (array == null || array.isNull()) {
-            return Stream.empty();
-        }
-        long size = array.getArraySize();
-        Stream.Builder<ResolvedJavaPackage> builder = Stream.builder();
-        for (long i = 0; i < size; i++) {
-            Value pkg = array.getArrayElement(i);
-            if (pkg != null && !pkg.isNull()) {
-                builder.add(new EspressoExternalResolvedJavaPackage(this, pkg));
-            }
-        }
-        return builder.build();
     }
 
     @Override
