@@ -519,7 +519,13 @@ public final class ArrayUtils {
         }
         assert !(source == destination && sourceIndex != destinationIndex && sourceIndex < destinationIndex + length && destinationIndex < sourceIndex +
                         length) : "source and destination regions must not overlap";
+        arraycopyS4(source, sourceIndex, destination, destinationIndex, length);
+    }
+
+    // wrapper for testing purposes, do not remove
+    private static int[] arraycopyS4(int[] source, int sourceIndex, int[] destination, int destinationIndex, int length) {
         stubArraycopyS4(source, sourceIndex, destination, destinationIndex, length);
+        return destination;
     }
 
     private static boolean regionOutOfBounds(int lengthA, int offsetA, int lengthB, int offsetB, int regionLength) {
