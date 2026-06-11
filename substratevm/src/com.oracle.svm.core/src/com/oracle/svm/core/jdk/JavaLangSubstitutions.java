@@ -81,6 +81,7 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOpera
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.Modules;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -666,17 +667,6 @@ final class Target_jdk_internal_loader_BootLoader {
     // Checkstyle: resume
 
     @Substitute
-    static Package getDefinedPackage(String name) {
-        if (name != null) {
-            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                            null, null, null, null, null);
-            return SubstrateUtil.cast(pkg, Package.class);
-        } else {
-            return null;
-        }
-    }
-
-    @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     public static Stream<Package> packages() {
         Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
@@ -695,6 +685,24 @@ final class Target_jdk_internal_loader_BootLoader {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L907-L924")
     private static String[] getSystemPackageNames() {
         return ClassRegistries.getSystemPackageNames();
+    }
+
+    /**
+     * Looks up the source location for a package already known to the boot loader.
+     *
+     * This method returns a non-null location only after at least one boot-loaded class in
+     * {@code internalPackageName} has been loaded. For appended boot class path entries, the
+     * package source is recorded when runtime class loading reads a class from that package; this
+     * method does not scan the boot class path for packages with no loaded classes.
+     *
+     * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L44-L52")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
+    private static String getSystemPackageLocation(String internalPackageName) {
+        return ClassRegistries.getSystemPackageLocation(internalPackageName);
     }
 
     @SuppressWarnings({"unused", "restricted"})
@@ -728,6 +736,30 @@ final class Target_jdk_internal_loader_BootLoader {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
+}
+
+@TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
+final class Target_jdk_internal_loader_BootLoader_PackageHelper {
+
+    /// Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
+    ///
+    /// This intentionally accepts only `jrt:/` module locations. The original JDK implementation also
+    /// recognizes exploded-module `file:/` locations under `JAVA_HOME/modules`, but `JAVA_HOME` might
+    /// not be set at image run time and Native Image does not support exploded boot modules. For
+    /// classes loaded from `-Xbootclasspath/a:`, `location` will be a file system path without
+    /// a `file:/` prefix.
+    @Substitute
+    private static Module findModule(String location) {
+        String moduleName = location.startsWith("jrt:/") ? location.substring(5) : null;
+        if (moduleName != null) {
+            Module module = Modules.findLoadedModule(moduleName).orElse(null);
+            if (module == null) {
+                throw new InternalError(moduleName + " not loaded");
+            }
+            return module;
+        }
+        return null;
+    }
 }
 
 final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {

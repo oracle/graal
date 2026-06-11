@@ -30,6 +30,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class GetPackageTest {
+    /**
+     * Checks that class package metadata is available for an included JDK class.
+     */
     @Test
     public void testGetPackage() {
         try {
@@ -37,5 +40,16 @@ public class GetPackageTest {
         } catch (Throwable t) {
             Assert.fail("Unexpected exception: " + t);
         }
+    }
+
+    /**
+     * Checks that {@code Package.getPackage} only returns packages defined by the boot loader.
+     */
+    @SuppressWarnings("deprecation")
+    @Test
+    public void testGetDefinedPackage() {
+        Assert.assertNotNull(Package.getPackage("java.lang"));
+        Assert.assertNull(Package.getPackage(""));
+        Assert.assertNull(Package.getPackage("com.oracle.svm.test.package.does.not.exist"));
     }
 }

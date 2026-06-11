@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
+import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -105,17 +106,22 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
     // synchronized until parallel class loading is implemented (GR-62338)
     @Override
     public synchronized Class<?> doLoadClass(Symbol<Type> type) {
-        String pkg = packageFromType(type);
+        String internalPackageName = packageFromType(type);
         try {
-            byte[] bytes = pkg == null ? null : loadFromJImage(type, pkg);
+            byte[] bytes = internalPackageName == null ? null : loadFromJImage(type, internalPackageName);
+            ClassFileBytes classFileBytes = null;
             if (bytes == null) {
                 /* Preserve boot class path append semantics by looking there after the jimage. */
-                bytes = loadFromAppendedBootClassPathBytes(type);
+                classFileBytes = loadFromAppendedBootClassPathBytes(type);
+                bytes = classFileBytes == null ? null : classFileBytes.bytes();
             }
             if (bytes == null) {
                 return null;
             }
             Class<?> loaded = defineClass(type, bytes, 0, bytes.length, ClassDefinitionInfo.EMPTY);
+            if (classFileBytes != null) {
+                ClassRegistries.recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
+            }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
             return loaded;
         } catch (IOException e) {
@@ -123,8 +129,8 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         }
     }
 
-    private byte[] loadFromJImage(Symbol<Type> type, String pkg) throws IOException {
-        String moduleName = ClassRegistries.getBootModuleForPackage(pkg);
+    private byte[] loadFromJImage(Symbol<Type> type, String internalPackageName) throws IOException {
+        String moduleName = ClassRegistries.getBootModuleForPackage(internalPackageName);
         if (moduleName == null) {
             return null;
         }
@@ -140,16 +146,19 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         return Files.readAllBytes(classPath);
     }
 
-    private static byte[] loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
-        return BootLoaderClassPathSupport.getResourceBytes(TypeSymbols.typeToName(type) + ".class");
+    private static ClassFileBytes loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
+        return BootLoaderClassPathSupport.getClassBytes(TypeSymbols.typeToName(type).toString());
     }
 
+    /**
+     * Extracts an internal package name from a type descriptor.
+     */
     private static String packageFromType(Symbol<Type> type) {
         int lastSlash = type.lastIndexOf((byte) '/');
         if (lastSlash == -1) {
             return null;
         }
-        return type.subSequence(1, lastSlash).toString().replace('/', '.');
+        return type.subSequence(1, lastSlash).toString();
     }
 
     @Override
