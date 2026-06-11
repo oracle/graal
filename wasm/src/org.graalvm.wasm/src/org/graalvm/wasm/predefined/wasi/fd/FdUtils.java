@@ -71,7 +71,25 @@ public final class FdUtils {
     }
 
     public static void validateU32MemoryRange(WasmMemory memory, int address, int length) {
-        Objects.checkFromIndexSize(Integer.toUnsignedLong(address), Integer.toUnsignedLong(length), WasmMemoryLibrary.getUncached().byteSize(memory));
+        validateU32MemoryRange(address, length, WasmMemoryLibrary.getUncached().byteSize(memory));
+    }
+
+    private static void validateU32MemoryRange(int address, int length, long memoryByteSize) {
+        Objects.checkFromIndexSize(Integer.toUnsignedLong(address), Integer.toUnsignedLong(length), memoryByteSize);
+    }
+
+    private static void validateIovecArray(int iovecArrayAddress, int iovecCount, long memoryByteSize) {
+        Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecArrayAddress), Integer.toUnsignedLong(iovecCount) * Iovec.BYTES, memoryByteSize);
+    }
+
+    private static void validateIovecBuffers(WasmMemory memory, int iovecArrayAddress, int iovecCount, long memoryByteSize) {
+        final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        for (int i = 0; i < iovecCount; i++) {
+            final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
+            final int start = Iovec.readBuf(null, memoryLib, memory, iovecAddress);
+            final int len = Iovec.readBufLen(null, memoryLib, memory, iovecAddress);
+            validateU32MemoryRange(start, len, memoryByteSize);
+        }
     }
 
     static LinkOption[] linkOptions(boolean followSymlinks) {
@@ -82,19 +100,17 @@ public final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
-        if (iovecCount < 0) {
-            return Errno.Inval;
-        }
-
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesWritten = 0;
         try {
-            validateU32MemoryRange(memory, sizeAddress, Integer.BYTES);
+            final long memoryByteSize = memoryLib.byteSize(memory);
+            validateIovecArray(iovecArrayAddress, iovecCount, memoryByteSize);
+            validateU32MemoryRange(sizeAddress, Integer.BYTES, memoryByteSize);
+            validateIovecBuffers(memory, iovecArrayAddress, iovecCount, memoryByteSize);
             for (int i = 0; i < iovecCount; i++) {
-                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
-                validateU32MemoryRange(memory, start, len);
                 memoryLib.copyToStream(memory, node, stream, start, len);
                 totalBytesWritten += len;
             }
@@ -112,19 +128,17 @@ public final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
-        if (iovecCount < 0) {
-            return Errno.Inval;
-        }
-
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesRead = 0;
         try {
-            validateU32MemoryRange(memory, sizeAddress, Integer.BYTES);
+            final long memoryByteSize = memoryLib.byteSize(memory);
+            validateIovecArray(iovecArrayAddress, iovecCount, memoryByteSize);
+            validateU32MemoryRange(sizeAddress, Integer.BYTES, memoryByteSize);
+            validateIovecBuffers(memory, iovecArrayAddress, iovecCount, memoryByteSize);
             for (int i = 0; i < iovecCount; i++) {
-                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
-                validateU32MemoryRange(memory, start, len);
                 final int bytesRead = memoryLib.copyFromStream(memory, node, stream, start, len);
                 if (bytesRead == -1) {
                     break;

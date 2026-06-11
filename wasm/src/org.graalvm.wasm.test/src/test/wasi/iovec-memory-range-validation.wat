@@ -45,6 +45,25 @@
     (memory 1)
     (export "memory" (memory 0))
     (func (export "_main") (result i32) (local $ret i32)
+        ;; fd_read validates all iovecs before reading. An invalid second iovec
+        ;; must not partially fill the first buffer.
+        (i32.store (i32.const 64) (i32.const 128))
+        (i32.store (i32.const 68) (i32.const 1))
+        (i32.store (i32.const 72) (i32.const 0))
+        (i32.store (i32.const 76) (i32.const -1))
+        (i32.store8 (i32.const 128) (i32.const 0))
+
+        (local.set $ret
+            (call $fd_read
+                (i32.const 0)  ;; stdin
+                (i32.const 64) ;; iovs
+                (i32.const 2)  ;; iovs_len
+                (i32.const 32) ;; output size address
+            )
+        )
+        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -1))))
+        (if (i32.ne (i32.load8_u (i32.const 128)) (i32.const 0)) (then (return (i32.const -2))))
+
         ;; Iovec with buf_len = u32::MAX. This is a WASI u32 length, not a
         ;; negative Java length, and it is invalid for one-page memory.
         (i32.store (i32.const 64) (i32.const 0))
@@ -58,7 +77,7 @@
                 (i32.const 32) ;; output size address
             )
         )
-        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -1))))
+        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -3))))
 
         (local.set $ret
             (call $fd_read
@@ -68,7 +87,31 @@
                 (i32.const 32) ;; output size address
             )
         )
-        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -2))))
+        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -4))))
+
+        ;; iovs_len is a WASI u32. 0xffffffff is a huge iovec array length,
+        ;; not a negative Java count, and it is invalid for one-page memory.
+        (local.set $ret
+            (call $fd_write
+                (i32.const 1)  ;; stdout
+                (i32.const 64) ;; iovs
+                (i32.const -1) ;; iovs_len: u32::MAX
+                (i32.const 32) ;; output size address
+            )
+        )
+        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -5))))
+
+        (i32.store8 (i32.const 128) (i32.const 0))
+        (local.set $ret
+            (call $fd_read
+                (i32.const 0)  ;; stdin
+                (i32.const 64) ;; iovs
+                (i32.const -1) ;; iovs_len: u32::MAX
+                (i32.const 32) ;; output size address
+            )
+        )
+        (if (i32.eq (local.get $ret) (i32.const 0)) (then (return (i32.const -6))))
+        (if (i32.ne (i32.load8_u (i32.const 128)) (i32.const 0)) (then (return (i32.const -7))))
 
         (i32.const 0)
     )

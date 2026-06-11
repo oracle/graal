@@ -45,8 +45,6 @@
 
 package org.graalvm.wasm.predefined.wasi.types;
 
-import java.util.Objects;
-
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
@@ -63,27 +61,23 @@ public final class Iovec {
     public static final int BYTES = 8;
 
     /** Reads the address of the buffer to be filled. */
-    public static int readBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int iovecAddress) {
-        long addr = Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecAddress), Integer.BYTES, WasmMemoryLibrary.getUncached().byteSize(memory));
-        return memoryLib.load_i32(memory, node, addr);
+    public static int readBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, long iovecAddress) {
+        return memoryLib.load_i32(memory, node, iovecAddress);
     }
 
     /** Writes the address of the buffer to be filled. */
-    public static void writeBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int iovecAddress, int value) {
-        long addr = Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecAddress), Integer.BYTES, WasmMemoryLibrary.getUncached().byteSize(memory));
-        memoryLib.store_i32(memory, node, addr, value);
+    public static void writeBuf(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, long iovecAddress, int value) {
+        memoryLib.store_i32(memory, node, iovecAddress, value);
     }
 
     /** Reads the length of the buffer to be filled. */
-    public static int readBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int iovecAddress) {
-        long addr = Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecAddress) + 4, Integer.BYTES, WasmMemoryLibrary.getUncached().byteSize(memory));
-        return memoryLib.load_i32(memory, node, addr);
+    public static int readBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, long iovecAddress) {
+        return memoryLib.load_i32(memory, node, iovecAddress + Integer.BYTES);
     }
 
     /** Writes the length of the buffer to be filled. */
-    public static void writeBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int iovecAddress, int value) {
-        long addr = Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecAddress) + 4, Integer.BYTES, WasmMemoryLibrary.getUncached().byteSize(memory));
-        memoryLib.store_i32(memory, node, addr, value);
+    public static void writeBufLen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, long iovecAddress, int value) {
+        memoryLib.store_i32(memory, node, iovecAddress + Integer.BYTES, value);
     }
 
 }
