@@ -153,9 +153,15 @@ If you get errors related to `--initialize-at-build-time`, follow the suggestion
 
 For a practical demonstration, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
 
+You can combine `-H:Preserve` with [metadata tracing from a native image](AutomaticMetadataCollection.md#dynamic-metadata-collection-from-a-native-image) to collect reachability metadata from a representative run:
+```shell
+native-image -H:+UnlockExperimentalVMOptions -H:+MetadataTracingSupport -H:-UnlockExperimentalVMOptions -H:Preserve=package=com.example.library.* ...
+./application -XX:TraceMetadata=path=metadata-output -XX:TraceMetadataConditionPackages=com.example.application
+```
+
 #### Memory Requirements
 
-Native Image compilation is memory-intensive, particularly when building large projects or when using -`H:Preserve=all` or `--pgo-instrument`.
+Native Image compilation is memory-intensive, particularly when building large projects or when using `-H:Preserve=all` or `--pgo-instrument`.
 
 If you encounter `OutOfMemoryError: Java heap space` you can:
 

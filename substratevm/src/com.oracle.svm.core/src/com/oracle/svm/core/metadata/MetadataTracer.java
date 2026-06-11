@@ -94,8 +94,8 @@ public final class MetadataTracer {
                           output format may change at any time.
 
                         Example usage:
-                            -H:TraceMetadata=path=trace_output_directory
-                            -H:TraceMetadata=path=trace_output_directory,merge=false
+                            -XX:TraceMetadata=path=trace_output_directory
+                            -XX:TraceMetadata=path=trace_output_directory,merge=false
                         """;
 
         @Option(help = TRACE_METADATA_HELP, stability = OptionStability.EXPERIMENTAL)//
