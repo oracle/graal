@@ -1614,7 +1614,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.end();
             // A deoptimization can float up to this location (e.g., when the first instruction is
             // an unreached branch condition).
-            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().string(" && wasCompiled").end().startBlock();
+            b.startIf().string("wasCompiled && ").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
             b.lineComment("Leave slow deoptimized method and reenter continueAt for faster execution");
             b.statement("return startState");
             b.end();
@@ -1798,7 +1798,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
         if (tier.isCached()) {
             b.lineComment("Detect if a tier-down occurred during the loop iteration");
-            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().string(" && wasCompiled").end().startBlock();
+            b.startIf().string("wasCompiled && ").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
             b.lineComment("Leave slow deoptimized method and reenter continueAt for faster execution");
             if (this.handlerLayout.isTailCall()) {
                 b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "vstate.sp"));
