@@ -64,6 +64,7 @@ import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.BootClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -684,7 +685,7 @@ final class Target_jdk_internal_loader_BootLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3003-L3007")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L907-L924")
     private static String[] getSystemPackageNames() {
-        return ClassRegistries.getSystemPackageNames();
+        return BootClassRegistry.getSystemPackageNames();
     }
 
     /**
@@ -698,11 +699,38 @@ final class Target_jdk_internal_loader_BootLoader {
      * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
      */
     @Substitute
+    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L44-L52")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
     private static String getSystemPackageLocation(String internalPackageName) {
-        return ClassRegistries.getSystemPackageLocation(internalPackageName);
+        return BootClassRegistry.getSystemPackageLocation(internalPackageName);
+    }
+
+    /**
+     * Gets a package that has already been defined to the boot loader.
+     *
+     * The original JDK method can lazily define a package when
+     * {@code getSystemPackageLocation} finds a package in the VM's boot loader package table. This
+     * substitution keeps that shape, but the SVM location lookup is backed by
+     * {@link BootClassRegistry}: it returns a location only for packages that have already become
+     * visible to the boot loader through image build metadata or successful runtime class loading.
+     * This prevents module-descriptor entries from making unloaded boot-module packages observable.
+     */
+    @Substitute
+    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/classes/jdk/internal/loader/BootLoader.java#L193-L201")
+    private static Package getDefinedPackage(String packageName) {
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
+        Package definedPackage = systemClassLoader.getDefinedPackage(packageName);
+        if (definedPackage == null) {
+            String location = getSystemPackageLocation(packageName.replace('.', '/'));
+            if (location != null) {
+                definedPackage = Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), location);
+            }
+        }
+        return definedPackage;
     }
 
     @SuppressWarnings({"unused", "restricted"})
@@ -740,6 +768,9 @@ final class Target_jdk_internal_loader_BootLoader {
 
 @TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
 final class Target_jdk_internal_loader_BootLoader_PackageHelper {
+
+    @Alias
+    static native Package definePackage(String packageName, String location);
 
     /// Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
     ///

@@ -29,8 +29,6 @@ import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
@@ -72,7 +70,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -136,21 +133,6 @@ public final class ClassRegistries implements ParsingContext {
     private final AbstractClassRegistry bootRegistry;
 
     /**
-     * Maps boot loader packages in internal form (e.g. {@code java/lang}) to their defining module.
-     */
-    private final EconomicMap<String, String> bootPackageToModule;
-
-    /**
-     * Maps loaded boot-append package names in internal form (e.g. {@code org/example}) to the
-     * {@code -Xbootclasspath/a:} entry (e.g. {@code /path/to/boot-append.jar}) that supplied
-     * the first successfully defined class in the package.
-     * <p>
-     * GR-76444: Remove this field and use jdk.internal.loader.BuiltinClassLoader.packageToModule
-     * as the canonical source for named boot-module package lookup.
-     */
-    private static final ConcurrentHashMap<String, String> loadedBootAppendPackageLocations = new ConcurrentHashMap<>();
-
-    /**
      * Holds all class names known to the image build. The value linked to each name is a
      * conditional value specifying when the name can be queried at run-time, and holding a
      * Throwable object if querying the class with this name should throw a specific error at
@@ -166,14 +148,7 @@ public final class ClassRegistries implements ParsingContext {
             bootRegistry = new AOTClassRegistry(null);
         }
         buildTimeRegistries = new ConcurrentHashMap<>();
-        bootPackageToModule = computeBootPackageToModuleMap();
         knownClassNames = EconomicMap.create();
-    }
-
-    private static EconomicMap<String, String> computeBootPackageToModuleMap() {
-        EconomicMap<String, String> bootPackageToModule = EconomicMap.create();
-        JVMCIReflectionUtil.bootLoaderPackages().forEach(p -> bootPackageToModule.put(p.getName().replace('.', '/'), p.module().getName()));
-        return bootPackageToModule;
     }
 
     public static ClassRegistries currentLayer() {
@@ -187,71 +162,6 @@ public final class ClassRegistries implements ParsingContext {
     public static ClassRegistries runtimeLastLayer() {
         var singletons = layeredSingletons();
         return singletons[singletons.length - 1];
-    }
-
-    /**
-     * Finds the boot module that defines `internalPackageName`.
-     */
-    static String getBootModuleForPackage(String internalPackageName) {
-        for (var singleton : layeredSingletons()) {
-            var module = singleton.bootPackageToModule.get(internalPackageName);
-            if (module != null) {
-                return module;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Returns the boot loader package location in the format expected by
-     * {@code BootLoader.PackageHelper}.
-     *
-     * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
-     */
-    public static String getSystemPackageLocation(String internalPackageName) {
-        String module = getBootModuleForPackage(internalPackageName);
-        if (module != null) {
-            return "jrt:/" + module;
-        }
-        return getBootLoaderPackageLocation(internalPackageName);
-    }
-
-    /**
-     * Records the package source for `internalClassName` after a boot-append class has loaded.
-     */
-    public static void recordBootAppendPackageLocation(String internalClassName, String location) {
-        int lastSlash = internalClassName.lastIndexOf('/');
-        if (lastSlash != -1 && location != null) {
-            loadedBootAppendPackageLocations.putIfAbsent(internalClassName.substring(0, lastSlash), location);
-        }
-    }
-
-    /**
-     * Looks up the boot loader class path entry that provided `internalPackageName`.
-     *
-     * This is only for boot loader package discovery after a runtime-loaded boot class has made the
-     * package observable. It must not be used as a general class path package lookup.
-     */
-    private static String getBootLoaderPackageLocation(String internalPackageName) {
-        return loadedBootAppendPackageLocations.get(internalPackageName);
-    }
-
-    /**
-     * Returns boot loader package names in internal form, matching `BootLoader.getSystemPackageNames`.
-     */
-    public static String[] getSystemPackageNames() {
-        Set<String> systemPackageNames = new HashSet<>();
-        for (var singleton : layeredSingletons()) {
-            for (var key : singleton.bootPackageToModule.getKeys()) {
-                systemPackageNames.add(key);
-            }
-        }
-        /*
-         * Runtime-loaded boot-append classes define their packages after image startup, so they
-         * live outside the build-time boot module package map.
-         */
-        systemPackageNames.addAll(loadedBootAppendPackageLocations.keySet());
-        return systemPackageNames.toArray(String[]::new);
     }
 
     public static Class<?> findBootstrapClass(String name) {

@@ -260,6 +260,15 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class)//
     volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
 
+    /// The packages defined in this class loader. A package is defined in this class
+    /// loader when a class in the package is loaded by this class loader.
+    ///
+    /// During image building, `ClassLoaderFeature` transforms this field to only contain packages
+    /// for reachable build-time classes. See `ClassLoaderFeature.PackageMapTransformer` for
+    /// more detail.
+    @Alias //
+    ConcurrentHashMap<String, ?> packages;
+
     /**
      * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
      */
@@ -280,6 +289,9 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias
     native Stream<Package> packages();
+
+    @Alias
+    native Package getDefinedPackage(String name);
 
     @Substitute
     private static Target_java_lang_AssertionStatusDirectives retrieveDirectives() {
@@ -445,10 +457,6 @@ final class Target_java_lang_AssertionStatusDirectives {
     @Alias String[] packages;
     @Alias boolean[] packageEnabled;
     @Alias boolean deflt;
-}
-
-@TargetClass(className = "java.lang.NamedPackage") //
-final class Target_java_lang_NamedPackage {
 }
 
 @TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")

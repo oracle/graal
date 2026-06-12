@@ -34,6 +34,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.ProviderNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,6 +46,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;
+import com.oracle.svm.core.jdk.BootLoaderPackageAccess;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -68,6 +72,11 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
                       This can be done as a run-time command line argument `-Djava.home=`, or programmatically with `System.setProperty("java.home", ...`""".replace("\n", System.lineSeparator());
     private static final Object NO_JRT_FS = new Object();
     private volatile Object jrtFS;
+
+    /// Maps loaded boot-append package names in internal form (e.g. `org/example`) to the
+    /// `-Xbootclasspath/a:` entry (e.g. `/path/to/boot-append.jar`) that supplied the first
+    /// successfully defined class in the package.
+    private static final ConcurrentHashMap<String, String> loadedBootAppendPackageLocations = new ConcurrentHashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public BootClassRegistry() {
@@ -120,7 +129,9 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
             }
             Class<?> loaded = defineClass(type, bytes, 0, bytes.length, ClassDefinitionInfo.EMPTY);
             if (classFileBytes != null) {
-                ClassRegistries.recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
+                recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
+            } else {
+                BootLoaderPackageAccess.defineBootModulePackageForPackage(internalPackageName);
             }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
             return loaded;
@@ -130,7 +141,7 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
     }
 
     private byte[] loadFromJImage(Symbol<Type> type, String internalPackageName) throws IOException {
-        String moduleName = ClassRegistries.getBootModuleForPackage(internalPackageName);
+        String moduleName = getBootModuleForPackage(internalPackageName);
         if (moduleName == null) {
             return null;
         }
@@ -148,6 +159,52 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
 
     private static ClassFileBytes loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
         return BootLoaderClassPathSupport.getClassBytes(TypeSymbols.typeToName(type).toString());
+    }
+
+    /// Finds the boot module that declares `internalPackageName`.
+    static String getBootModuleForPackage(String internalPackageName) {
+        return BootLoaderPackageAccess.bootModuleNameForPackage(internalPackageName);
+    }
+
+    /// Finds the boot module for `internalPackageName` after the package is defined to the boot
+    /// loader.
+    private static String getDefinedBootModuleForPackage(String internalPackageName) {
+        return BootLoaderPackageAccess.definedBootModuleNameForPackage(internalPackageName);
+    }
+
+    /// Returns the boot loader package location in the format expected by `BootLoader.PackageHelper`.
+    ///
+    /// @param internalPackageName package name in internal form (e.g. `org/foo/impl`)
+    public static String getSystemPackageLocation(String internalPackageName) {
+        String module = getDefinedBootModuleForPackage(internalPackageName);
+        if (module != null) {
+            return "jrt:/" + module;
+        }
+        return getBootLoaderPackageLocation(internalPackageName);
+    }
+
+    /// Records the package source for `internalClassName` after a boot-append class has loaded.
+    private static void recordBootAppendPackageLocation(String internalClassName, String location) {
+        int lastSlash = internalClassName.lastIndexOf('/');
+        if (lastSlash != -1 && location != null) {
+            loadedBootAppendPackageLocations.putIfAbsent(internalClassName.substring(0, lastSlash), location);
+        }
+    }
+
+    /// Looks up the boot loader class path entry that provided `internalPackageName`.
+    ///
+    /// This is only for boot loader package discovery after a runtime-loaded boot class has made the
+    /// package observable. It must not be used as a general class path package lookup.
+    private static String getBootLoaderPackageLocation(String internalPackageName) {
+        return loadedBootAppendPackageLocations.get(internalPackageName);
+    }
+
+    /// Returns boot loader package names in internal form, matching `BootLoader.getSystemPackageNames`.
+    public static String[] getSystemPackageNames() {
+        Set<String> systemPackageNames = new HashSet<>();
+        BootLoaderPackageAccess.addSystemPackageNames(systemPackageNames);
+        systemPackageNames.addAll(loadedBootAppendPackageLocations.keySet());
+        return systemPackageNames.toArray(String[]::new);
     }
 
     /**
