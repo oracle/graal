@@ -1565,35 +1565,6 @@ suite = {
     }""",
             "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
           },
-          "com/ibm/icu/impl/ZoneMeta.java" : {
-            "private static String\\[] ZONEIDS = null;" : "private static volatile String[] ZONEIDS = null;",
-            """private static synchronized String\\[] getZoneIDs\\(\\) \\{[\\s\\S]*?return ZONEIDS;
-    }""" : """
-    private static String[] getZoneIDs() {
-        String[] result = ZONEIDS;
-        if (result == null) {
-            synchronized (ZoneMeta.class) {
-                result = ZONEIDS;
-                if (result == null) {
-                    try {
-                        UResourceBundle top = UResourceBundle.getBundleInstance(
-                                ICUData.ICU_BASE_NAME, ZONEINFORESNAME, ICUResourceBundle.ICU_DATA_CLASS_LOADER);
-                        result = top.getStringArray(kNAMES);
-                    } catch (MissingResourceException ex) {
-                        // throw away..
-                    }
-                    if (result == null) {
-                        result = new String[0];
-                    }
-                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
-                        ZONEIDS = result;
-                    }
-                }
-            }
-        }
-        return result;
-    }""",
-          },
           "com/ibm/icu/lang/UCharacter.java" : {
             "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
             "UPropertyAliases\\.INSTANCE" : "UPropertyAliases.getInstance()",
