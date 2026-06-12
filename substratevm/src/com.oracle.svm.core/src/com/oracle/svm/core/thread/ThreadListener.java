@@ -31,7 +31,7 @@ import com.oracle.svm.shared.Uninterruptible;
 public interface ThreadListener {
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @SuppressWarnings("unused")
-    default void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
+    default void afterThreadStart(IsolateThread isolateThread, Thread javaThread) {
     }
 
     default void beforeThreadRun() {
@@ -47,7 +47,7 @@ public interface ThreadListener {
 
     /**
      * Implementations must not throw any exceptions. Note that this method is called on listeners
-     * in the reverse order of {@link #beforeThreadStart}.
+     * in the reverse order of {@link #afterThreadStart}.
      */
     @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     @SuppressWarnings("unused")

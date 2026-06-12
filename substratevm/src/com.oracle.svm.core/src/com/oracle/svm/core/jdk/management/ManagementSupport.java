@@ -198,7 +198,7 @@ public final class ManagementSupport implements ThreadListener {
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
-    public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
+    public void afterThreadStart(IsolateThread isolateThread, Thread javaThread) {
         threadMXBean.noteThreadStart(javaThread);
     }
 
