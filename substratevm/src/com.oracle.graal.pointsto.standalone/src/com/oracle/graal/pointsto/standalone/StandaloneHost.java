@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,6 +31,7 @@ import java.util.Optional;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -49,35 +50,114 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Standalone host-VM integration for points-to analysis.
+ *
+ * The host delegates standalone build-time class-initialization policy to a dedicated support
+ * object and exposes the resulting decisions through the {@link HostVM} contract used by shared
+ * analysis code.
+ */
 public class StandaloneHost extends HostVM {
-    private final String imageName;
-    /*
-     * By default, there is no eager class initialization nor delayed class initialization in
-     * standalone analysis, so we don't need do any actual class initialization work here. Setting
-     * this field to true changes that behavior and allows class initialization.
+    /**
+     * Standalone-owned outcome of the build-time-initialization decision for one reachable type.
      */
-    private final boolean initializeClasses;
+    public enum ClassInitializationOutcome {
+        PENDING,
+        INITIALIZED,
+        RUNTIME_ONLY,
+        FAILED;
 
-    private final boolean isClosedTypeWorld;
+        /**
+         * Returns whether shadow-heap snapshotting may use build-time static values for the type.
+         */
+        public boolean allowsStaticFieldSnapshotting() {
+            return this == INITIALIZED;
+        }
+    }
 
-    public StandaloneHost(OptionValues options, String imageName, boolean initializeClasses, boolean isClosedTypeWorld) {
+    private final String imageName;
+    private final boolean closedTypeWorld;
+    private final StandaloneClassInitializationSupport classInitializationSupport;
+
+    public StandaloneHost(OptionValues options, String imageName, StandaloneClassInitializationStrategy classInitializationStrategy, boolean closedTypeWorld) {
         super(options, /*- ClassLoader not supported. */ null);
         this.imageName = imageName;
-        this.initializeClasses = initializeClasses;
-        this.isClosedTypeWorld = isClosedTypeWorld;
+        this.closedTypeWorld = closedTypeWorld;
+        this.classInitializationSupport = new StandaloneClassInitializationSupport(classInitializationStrategy, StandaloneOptions.StandalonePrintClassInitializationFailures.getValue(options));
+    }
+
+    /**
+     * Initializes {@code type} only when the configured strategy currently allows eager
+     * initialization for that type and returns the standalone-owned outcome.
+     */
+    public ClassInitializationOutcome maybeInitializeAtBuildTime(AnalysisType type) {
+        return classInitializationSupport.maybeInitializeAtBuildTime(type);
+    }
+
+    /**
+     * Returns the current standalone-owned build-time-initialization outcome for {@code type}
+     * without starting a new initialization attempt.
+     */
+    public ClassInitializationOutcome getClassInitializationOutcome(AnalysisType type) {
+        return classInitializationSupport.getOutcome(type);
+    }
+
+    /**
+     * Registers {@code field} for a later retry when the declaring class is still waiting for
+     * standalone build-time initialization. The returned outcome is re-read after registration so a
+     * caller that races with initialization completion can immediately follow the completed state
+     * instead of waiting for a retry that may already have run.
+     */
+    public ClassInitializationOutcome registerPendingStaticFieldRead(AnalysisField field) {
+        return classInitializationSupport.registerPendingStaticFieldRead(field);
+    }
+
+    /**
+     * Returns whether end-of-analysis reporting of class-initialization failures that fall back to
+     * runtime handling is enabled.
+     */
+    public boolean shouldPrintClassInitializationFailures() {
+        return classInitializationSupport.shouldPrintFailures();
+    }
+
+    /**
+     * Returns the total number of build-time class-initialization attempts that failed and fell
+     * back to runtime handling during the current analysis.
+     */
+    public int getClassInitializationFailureCount() {
+        return classInitializationSupport.getFailureCount();
+    }
+
+    /**
+     * Returns the number of distinct classes whose first fallback-triggering initialization
+     * failure was recorded during the current analysis.
+     */
+    public int getClassInitializationFailureTypeCount() {
+        return classInitializationSupport.getFailureTypeCount();
+    }
+
+    /**
+     * Formats the first recorded class-initialization failure for each class that fell back to
+     * runtime handling.
+     */
+    public String formatClassInitializationFailures() {
+        return classInitializationSupport.formatFailures();
     }
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        return type.getWrapped().isInitialized();
+        return classInitializationSupport.isInitialized(type);
     }
 
     @Override
     public void onTypeReachable(BigBang bb, AnalysisType type) {
         AnalysisError.guarantee(type.isReachable(), "Registering and initializing a type that was not yet marked as reachable: %s", type.toJavaName());
-        if (initializeClasses) {
-            type.getWrapped().initialize();
-        }
+        maybeInitializeAtBuildTime(type);
+    }
+
+    @Override
+    public boolean shouldStoreAnalyzedGraph(@SuppressWarnings("unused") BigBang bb, @SuppressWarnings("unused") AnalysisMethod method) {
+        return false;
     }
 
     @Override
@@ -103,7 +183,7 @@ public class StandaloneHost extends HostVM {
 
     @Override
     public boolean isClosedTypeWorld() {
-        return isClosedTypeWorld;
+        return closedTypeWorld;
     }
 
     /**

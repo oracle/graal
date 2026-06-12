@@ -271,13 +271,25 @@ public abstract class HostVM {
     }
 
     /**
-     * Can be overwritten to run code before a method is created.
+     * Can be overwritten to run code before a method's type-flow graph is created.
      *
      * @param bb the analysis engine
      * @param method the newly created method
      * @param graph the method graph
      */
     public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+    }
+
+    /**
+     * Controls whether the post-analysis graph should be preserved on the {@link AnalysisMethod}
+     * after type-flow creation completed.
+     *
+     * Hosted Native Image keeps this graph for later strengthening and compilation phases.
+     * Standalone analysis can override this when the analysis result is consumed directly and no
+     * later phase needs {@link AnalysisMethod#getAnalyzedGraph()}.
+     */
+    public boolean shouldStoreAnalyzedGraph(@SuppressWarnings("unused") BigBang bb, @SuppressWarnings("unused") AnalysisMethod method) {
+        return true;
     }
 
     /**
