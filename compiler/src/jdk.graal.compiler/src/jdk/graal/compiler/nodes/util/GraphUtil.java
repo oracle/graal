@@ -870,7 +870,12 @@ public class GraphUtil {
 
             } else if (current instanceof ValuePhiNode phi) {
                 if (visitedPhiInputMap == null) {
-                    visitedPhiInputMap = EconomicMap.create();
+                    /*
+                     * We may look up array lengths during canonicalization of nodes that aren't
+                     * part of the graph yet. We must use the system hashcode for those,
+                     * Node.hashCode must only be called on nodes that are part of the graph.
+                     */
+                    visitedPhiInputMap = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
                 }
                 return filterArrayLengthResult(phiArrayLength(phi, mode, constantReflection, visitedPhiInputMap), allowOnlyConstantResult);
 
