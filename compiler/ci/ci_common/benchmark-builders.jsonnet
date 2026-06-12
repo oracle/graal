@@ -4,10 +4,12 @@
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
   local bench = (import 'benchmark-suites.libsonnet'),
+  local pr_bench_settings = (import '../../../ci/ci_common/pr-bench-settings.libsonnet'),
   local hw = bc.bench_hw,
 
   # GR-49532 TODO add 'throughput' metric and 'top-tier-throughput' secondary_metrics
   local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['binary-size', 'max-rss', 'top-tier-throughput'], baseline_benchmarking: true}},
+  local PR_bench_crema_awfy = {unicorn_pull_request_benchmarking:: pr_bench_settings.crema_awfy_pr_bench},
 
   local main_builds = std.flattenArrays([
     [
@@ -95,11 +97,13 @@
   for suite in metrics_suites
   ]),
 
-  local crema_builds = [
-    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + crema_config
+  local crema_builds = std.flattenArrays([
+    [
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema + PR_bench_crema_awfy,
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint + PR_bench_crema_awfy,
+    ]
   for jdk in cc.product_jdks
-  for crema_config in [cc.crema, cc.crema_xint]
-  ],
+  ]),
 
   local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds +
                      shenandoah_builds + aarch64_builds + metrics_builds + crema_builds,

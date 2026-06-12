@@ -24,21 +24,24 @@
 
   // suite definitions
   // *****************
-  awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
+  awfy_template(capture_crema_libjvm_size=false):: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
     local is_xint = std.objectHasAll(self.environment, "JVM_CONFIG") && utils.contains(self.environment["JVM_CONFIG"], "xint"),
     // Required for Havlak in interpreter mode to avoid a stack overflow.
     local awfy_vm_args = self.extra_vm_args + (if is_xint then ["-Xss16m"] else []),
     local awfy_run_args = if is_xint then ["--", "-i", "5"] else [],
+    local crema_libjvm_file_size_run = if capture_crema_libjvm_size then [self.crema_libjvm_file_size_cmd] else [],
     suite:: "awfy",
     run+: [
       self.benchmark_cmd + [self.suite + ":*", "--"] + awfy_vm_args + awfy_run_args
-    ],
+    ] + crema_libjvm_file_size_run,
     timelimit: "1:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
+
+  awfy: self.awfy_template(),
 
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",

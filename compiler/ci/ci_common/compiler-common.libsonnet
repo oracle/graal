@@ -84,6 +84,19 @@
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
       (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else []),
+    crema_libjvm_file_size_cmd::
+      ["mx",
+      "--kill-with-sigquit",
+      "benchmark",
+      "--results-file",
+      "${BENCH_RESULTS_FILE_PATH}",
+      "--append-results",
+      "--machine-name=${MACHINE_NAME}",
+      "--tracker=none",
+      "file-size:lib:jvm",
+      "--",
+      "--jvm=${JVM}",
+      "--jvm-config=${JVM_CONFIG}"],
     restrict_threads:: null,  # can be overridden to restrict the benchmark to the given number of threads. If null, will use one full NUMA node
     benchmark_cmd:: if self.should_use_hwloc then bench_common.hwloc_cmd(self.plain_benchmark_cmd, self.restrict_threads, self.default_numa_node, self.hyperthreading, self.threads_per_node) else self.plain_benchmark_cmd,
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
