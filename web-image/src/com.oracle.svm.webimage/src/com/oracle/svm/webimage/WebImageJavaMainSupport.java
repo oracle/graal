@@ -116,7 +116,7 @@ public abstract class WebImageJavaMainSupport extends JavaMainSupport {
 
     private static void startMainThread() {
         // Creates the main thread.
-        PlatformThreads.singleton().assignMainThread();
+        PlatformThreads.singleton().assignMainThreadObject();
         Isolates.assignStartTime();
     }
 

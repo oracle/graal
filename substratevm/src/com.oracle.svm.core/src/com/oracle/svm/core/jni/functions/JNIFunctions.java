@@ -1734,7 +1734,7 @@ public final class JNIFunctions {
                  * DetachCurrentThread and DestroyJavaVM never return a more specific error than
                  * JNI_ERR on HotSpot. So, we need to do the same.
                  */
-                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
                 return convertCEntryPointErrorToJNIError(code, false);
             }
         }
@@ -1746,7 +1746,7 @@ public final class JNIFunctions {
                  * AttachCurrentThread and AttachCurrentThreadAsDaemon never return a more specific
                  * error than JNI_ERR on HotSpot. So, we need to do the same.
                  */
-                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false);
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false);
                 return convertCEntryPointErrorToJNIError(code, false);
             }
         }
@@ -2068,7 +2068,7 @@ public final class JNIFunctions {
     static class JNIJavaVMUnimplementedPrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
         static void enter(JNIJavaVM vm) {
-            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
+            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
             if (error != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(error, UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE.get());
             }

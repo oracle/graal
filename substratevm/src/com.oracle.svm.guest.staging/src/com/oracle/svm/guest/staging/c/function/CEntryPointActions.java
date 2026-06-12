@@ -61,20 +61,23 @@ public final class CEntryPointActions {
      * context. If the thread has already been attached, this does not cause the operation to fail.
      *
      * @param isolate an existing isolate.
-     * @param startedByIsolate Whether the current thread has been launched directly by the isolate
-     *            (as opposed to being an externally started thread), which makes the isolate
-     *            responsible for cleanups when the thread detaches.
-     * @param ensureJavaThread when set to true, {@code PlatformThreads#ensureCurrentAssigned()} is
-     *            called to ensure that the Java {@link Thread} is fully initialized. If the
-     *            parameter is set to false, the initialization must be done manually (early after
-     *            the prologue).
+     * @param ensureJavaThread when set to true,
+     *            {@code PlatformThreads#ensureAttachedThreadHasThreadObject()} is called to
+     *            ensure that the Java {@link Thread} is fully initialized. If the parameter is set
+     *            to false, the initialization must be done manually (early after the prologue).
      *
      * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
-    public static native int enterAttachThread(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread);
-
-    /** @see #enterAttachThread(Isolate, boolean, boolean) */
     public static native int enterAttachThread(Isolate isolate, boolean ensureJavaThread);
+
+    /**
+     * Enters a context for the current thread using a preallocated {@link IsolateThread}. This is
+     * only intended for threads that were started by the isolate that allocated the
+     * {@link IsolateThread}.
+     *
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
+     */
+    public static native int enterAttachNewlyStartedThread(IsolateThread thread);
 
     /**
      * Enters an existing context for the current thread (for example, one created with
