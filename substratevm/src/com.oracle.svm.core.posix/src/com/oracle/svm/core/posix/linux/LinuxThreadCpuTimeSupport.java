@@ -54,6 +54,7 @@ public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         if (!includeSystemTime) {
             int tid = (int) VMThreads.getOSThreadId(CurrentIsolate.getCurrentThread()).rawValue();
+            assert tid != 0 : "OS thread id must be initialized before querying thread CPU time";
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
         }
         return fastThreadCpuTime(LinuxTime.CLOCK_THREAD_CPUTIME_ID());
@@ -64,10 +65,12 @@ public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         if (!includeSystemTime) {
             int tid = (int) VMThreads.getOSThreadId(isolateThread).rawValue();
+            assert tid != 0 : "OS thread id must be initialized before querying thread CPU time";
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
         }
 
         pthread_t pthread = (pthread_t) VMThreads.getOSThreadHandle(isolateThread);
+        assert pthread.isNonNull() : "OS thread handle must be initialized before querying thread CPU time";
         return fastCpuTime(pthread);
     }
 
