@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,9 @@ public final class Target_org_graalvm_continuations_IdentityHashCodes {
     public static int setHashCode(StaticObject o, int hashcode, Meta meta, EspressoLanguage language) {
         assert language.canSetCustomIdentityHashCode();
         assert !StaticObject.isNull(o) && hashcode > 0;
+        if (o.isStaticStorage()) {
+            return System.identityHashCode(o);
+        }
         if (o.isArray()) {
             language.getArrayHashCodeProperty().compareAndExchangeInt(o, 0, hashcode);
         } else {
@@ -91,6 +94,9 @@ public final class Target_org_graalvm_continuations_IdentityHashCodes {
     }
 
     private static int getHashCode(StaticObject o, Meta meta, EspressoLanguage language) {
+        if (o.isStaticStorage()) {
+            return System.identityHashCode(o);
+        }
         return o.isArray()
                         ? language.getArrayHashCodeProperty().getInt(o)
                         : meta.java_lang_Object_0systemHashCode.getInt(o);

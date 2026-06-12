@@ -248,7 +248,7 @@ public class MethodTypeFlowBuilder {
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
-            registerUsedElements(bb, graph, bb.usePredicates());
+            registerUsedElements(graph, bb.usePredicates());
 
             return true;
         } catch (Throwable ex) {
@@ -282,7 +282,21 @@ public class MethodTypeFlowBuilder {
         }
     }
 
+    /**
+     * Seeds the analysis state with facts extracted directly from the graph.
+     */
     public static void registerUsedElements(AbstractAnalysisEngine bb, StructuredGraph graph, boolean usePredicates) {
+        registerUsedElementsInternal(bb, graph, usePredicates);
+    }
+
+    /**
+     * Seeds the analysis state with facts extracted directly from the graph.
+     */
+    protected void registerUsedElements(StructuredGraph parsedGraph, boolean usePredicates) {
+        registerUsedElementsInternal(bb, parsedGraph, usePredicates);
+    }
+
+    private static void registerUsedElementsInternal(AbstractAnalysisEngine bb, StructuredGraph graph, boolean usePredicates) {
         var method = (AnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
@@ -363,8 +377,8 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn) : cn;
                     if (!ignoreConstant(bb, cn)) {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                        type.registerAsInstantiated(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
-                        registerEmbeddedRoot(bb, cn);
+                        BytecodePosition position = AbstractAnalysisEngine.sourcePosition(cn);
+                        registerObjectConstantRoot(bb, root, type, position);
                     }
                 }
 
@@ -499,8 +513,12 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    private static void registerEmbeddedRoot(AbstractAnalysisEngine bb, ConstantNode cn) {
-        bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), AbstractAnalysisEngine.sourcePosition(cn));
+    /**
+     * Registers an object constant with the default precise semantics used by core analysis.
+     */
+    private static void registerObjectConstantRoot(AbstractAnalysisEngine bb, JavaConstant constantValue, AnalysisType stampedType, BytecodePosition position) {
+        stampedType.registerAsInstantiated(new EmbeddedRootScan(position, constantValue));
+        bb.getUniverse().registerEmbeddedRoot(constantValue, position);
     }
 
     private static void registerForeignCall(AbstractAnalysisEngine bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
@@ -668,8 +686,7 @@ public class MethodTypeFlowBuilder {
                                 assert type.isInstantiated() : type;
                                 JavaConstant constantValue = node.asJavaConstant();
                                 BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
-                                JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(constantValue, new EmbeddedRootScan(position, constantValue));
-                                ConstantTypeFlow constantSource = new ConstantTypeFlow(position, type, TypeState.forConstant(this.bb, heapConstant, type));
+                                ConstantTypeFlow constantSource = createObjectConstantSource(type, constantValue, position);
                                 flowsGraph.addMiscEntryFlow(constantSource);
                                 return constantSource;
                             });
@@ -699,6 +716,15 @@ public class MethodTypeFlowBuilder {
             result = ((LimitedValueProxy) result).getOriginalNode();
         }
         return result;
+    }
+
+    /**
+     * Creates the source flow for an object constant encountered in the graph.
+     */
+    private ConstantTypeFlow createObjectConstantSource(AnalysisType stampedType, JavaConstant constantValue, BytecodePosition position) {
+        assert stampedType.isInstantiated() : stampedType;
+        JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(constantValue, new EmbeddedRootScan(position, constantValue));
+        return new ConstantTypeFlow(position, stampedType, TypeState.forConstant(bb, heapConstant, stampedType));
     }
 
     protected void apply(boolean forceReparse, Object reason) {
@@ -754,7 +780,9 @@ public class MethodTypeFlowBuilder {
             insertPlaceholderParamAndReturnFlows();
         }
 
-        method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, flowsGraph.getNodeFlows().getKeys()));
+        if (bb.getHostVM().shouldStoreAnalyzedGraph(bb, method)) {
+            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, flowsGraph.getNodeFlows().getKeys()));
+        }
     }
 
     /**
@@ -1090,10 +1118,10 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(node) : node;
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                     result = TypeFlowBuilder.create(bb, method, getPredicate(), node, ConstantTypeFlow.class, () -> {
+                        assert type.isInstantiated() : type;
                         JavaConstant constantValue = node.asJavaConstant();
                         BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
-                        JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(constantValue, new EmbeddedRootScan(position, constantValue));
-                        ConstantTypeFlow constantSource = new ConstantTypeFlow(position, type, TypeState.forConstant(bb, heapConstant, type));
+                        ConstantTypeFlow constantSource = createObjectConstantSource(type, constantValue, position);
                         flowsGraph.addMiscEntryFlow(constantSource);
                         return constantSource;
                     });

@@ -36,9 +36,9 @@ Main entry and orchestration class:
 
 - `StandaloneOptions`
     - standalone-specific options:
-        - `AnalysisTargetAppCP`
-        - `AnalysisEntryPointsFile`
-        - `ReportsPath`
+        - `StandaloneAnalysisTargetAppCP`
+        - `StandaloneAnalysisEntryPointsFile`
+        - `StandaloneAnalysisReportsPath`
     - report directory helper: `StandaloneOptions.reportsPath(...)`.
 - `MethodConfigReader`
     - parses and registers entry methods from configured entrypoint file.
@@ -61,8 +61,24 @@ Main entry and orchestration class:
 
 ## Validation workflow
 
-1. `mx unittest com.oracle.graal.pointsto.standalone.test`
-2. `mx helloworld` (from `substratevm`) when hosted integration behavior is touched.
+Preferred workflow:
+
+1. `mx -p <same-suite-root> build -f`
+2. `mx -p <same-suite-root> standalone-pointsto-unittest host`
+3. `mx -p <same-suite-root> --dy /espresso-compiler-stub build -f`
+4. `mx -p <same-suite-root> --dy /espresso-compiler-stub standalone-pointsto-unittest espresso`
+5. `mx helloworld` (from `substratevm`) when hosted integration behavior is touched.
+
+Rules:
+
+- Keep the same suite root for build and test.
+- Keep the same dynamic-import context for build and test.
+- When Espresso is involved, `--dy /espresso-compiler-stub` is part of the required context, not an
+  optional add-on.
+- `standalone-pointsto-unittest` defaults to `com.oracle.graal.pointsto.standalone.test` but also
+  accepts a narrower test spec such as
+  `com.oracle.graal.pointsto.standalone.test.LargeReachabilityTest` or
+  `com.oracle.graal.pointsto.standalone.test.LargeReachabilityTest#testReachabilityOver5000Methods`.
 
 ## Related AGENTS files
 

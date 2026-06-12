@@ -415,17 +415,31 @@ public class ObjectScanner {
             return hosted.toValueString();
         }
 
-        Object obj = constantAsObject(bb, hosted);
-        String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
+        /*
+         * The scan fast path only needs reachability. Guest-backed identityHashCode/toString are
+         * used exclusively for optional diagnostics such as reports and verifier messages, so this
+         * generic GuestAccess fallback stays off the main scanning path.
+         */
+        String str = type.toJavaName() + '@' + Integer.toHexString(originalIdentityHashCode(hosted));
         if (appendToString) {
             try {
-                str += ": " + limit(obj.toString(), 80).replace(System.lineSeparator(), "");
-            } catch (Throwable e) {
+                str += ": " + limit(originalToString(hosted), 80).replace(System.lineSeparator(), "");
+            } catch (Throwable ignored) {
                 // ignore any error in creating the string representation
             }
         }
 
         return str;
+    }
+
+    private static int originalIdentityHashCode(JavaConstant constant) {
+        return GuestAccess.get().getProviders().getConstantReflection().identityHashCode(constant);
+    }
+
+    private static String originalToString(JavaConstant constant) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant stringConstant = access.invoke(access.elements.java_lang_Object_toString, constant);
+        return access.asHostString(stringConstant);
     }
 
     public static String limit(String value, int length) {

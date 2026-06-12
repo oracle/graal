@@ -26,15 +26,13 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import java.io.File;
 import java.lang.reflect.Executable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ForkJoinPool;
 import java.util.List;
-import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -54,15 +52,18 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
-import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.plugins.PointstoGraphBuilderPlugins;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
+import com.oracle.graal.pointsto.standalone.heap.StandaloneFieldValueAvailabilitySupport;
+import com.oracle.graal.pointsto.standalone.heap.StandaloneHostedValuesProvider;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
+import com.oracle.graal.pointsto.standalone.meta.StandaloneSnippetReflectionProvider;
+import com.oracle.graal.pointsto.standalone.plugins.StandaloneClassInitializationPlugin;
 import com.oracle.graal.pointsto.standalone.plugins.StandaloneReplacementsImpl;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
@@ -94,18 +95,7 @@ import jdk.vm.ci.meta.Signature;
 
 public final class PointsToAnalyzer {
 
-    /**
-     * Name of the {@code VMAccess.Builder} service that is used to create the {@link VMAccess}
-     * based on espresso guest context.
-     */
-    private static final String DEFAULT_VM_ACCESS_NAME = "espresso";
-    private static final String VM_ACCESS_PROPERTY_PREFIX = "com.oracle.graal.pointsto.standalone.vmaccess.";
-    private static final String VM_ACCESS_MODULE_PATH_PROPERTY = VM_ACCESS_PROPERTY_PREFIX + "modulepath";
-    private static final String VM_ACCESS_UPGRADE_MODULE_PATH_PROPERTY = VM_ACCESS_PROPERTY_PREFIX + "upgrade.modulepath";
-    private static final String VM_ACCESS_JAVA_HOME_PROPERTY = VM_ACCESS_PROPERTY_PREFIX + "java.home";
-    private static final String VM_ACCESS_NAME_PROPERTY = VM_ACCESS_PROPERTY_PREFIX + "name";
-    private static final List<String> BASE_VM_ACCESS_MODULES = List.of("jdk.graal.compiler", "java.scripting");
-    private static final String ESPRESSO_LOG_LEVEL_PROPERTY = "espresso.test.log.level";
+    private static final String COMMON_POOL_THREAD_FACTORY_PROPERTY = "java.util.concurrent.ForkJoinPool.common.threadFactory";
 
     static {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
@@ -116,18 +106,46 @@ public final class PointsToAnalyzer {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
+        configureCommonPoolWorkerThreadFactory();
     }
 
     /**
-     * Due to GR-73534, we cannot create multiple {@link VMAccess} instances backed by espresso in
-     * the same process, so we reuse the first one in that case.
+     * The default JDK common-pool workers clear ordinary {@link ThreadLocal} state between
+     * top-level tasks. Standalone Espresso VMAccess can attach guest state lazily to a worker
+     * thread, so preserve that state unless the embedding JVM already configured a different common
+     * pool factory explicitly.
      *
-     * This cache is process-global, so reusing it across analyzers is only correct as long as the
-     * effective standalone VMAccess configuration stays the same, especially the target application
-     * class path and the selected VMAccess mode.
+     * This is a process-wide setting for {@link ForkJoinPool#commonPool()}, not a standalone-local
+     * knob. If it is applied before the common pool is initialized then unrelated application work
+     * using the common pool in the same JVM will also observe
+     * {@link StandaloneCommonPoolWorkerThreadFactory}. That broader behavior change is currently an
+     * accepted tradeoff for standalone's embedding use case.
      */
-    private static ClassLoaderAccess cachedAccess;
-    private static String cachedClasspath;
+    private static void configureCommonPoolWorkerThreadFactory() {
+        if (GraalServices.getSavedProperty(COMMON_POOL_THREAD_FACTORY_PROPERTY) == null) {
+            System.setProperty(COMMON_POOL_THREAD_FACTORY_PROPERTY, StandaloneCommonPoolWorkerThreadFactory.class.getName());
+        }
+    }
+
+    /**
+     * Espresso-backed standalone analysis relies on a common-pool worker factory that preserves
+     * worker-local guest state across top-level tasks. If the process initialized the common pool
+     * too early with a different factory, fail fast before analysis starts instead of running with
+     * a silently ineffective safepoint workaround.
+     */
+    private static void validateCommonPoolWorkerThreadFactory() {
+        if (!StandaloneVMAccessSupport.requiresStandaloneCommonPoolWorkerFactory()) {
+            return;
+        }
+        ForkJoinPool.ForkJoinWorkerThreadFactory actualFactory = ForkJoinPool.commonPool().getFactory();
+        AnalysisError.guarantee(actualFactory instanceof StandaloneCommonPoolWorkerThreadFactory,
+                        "Standalone Espresso analysis requires ForkJoinPool.commonPool() to use %s, but found %s. " +
+                                        "Set -D%s=%s at JVM startup before the common pool is initialized.",
+                        StandaloneCommonPoolWorkerThreadFactory.class.getName(),
+                        actualFactory.getClass().getName(),
+                        COMMON_POOL_THREAD_FACTORY_PROPERTY,
+                        StandaloneCommonPoolWorkerThreadFactory.class.getName());
+    }
 
     private final OptionValues options;
     private final StandalonePointsToAnalysis bigbang;
@@ -148,11 +166,11 @@ public final class PointsToAnalyzer {
         this.classLoaderAccess = classLoaderAccess;
         this.directEntryMethods = List.copyOf(directEntryMethods);
         Providers originalProviders = GuestAccess.get().getProviders();
-        SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
+        SnippetReflectionProvider originalSnippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
-        debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
+        debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
         analysisName = getAnalysisName(mainEntryClass);
-        StandaloneHost standaloneHost = new StandaloneHost(options, analysisName, false, true);
+        StandaloneHost standaloneHost = new StandaloneHost(options, analysisName, createClassInitializationStrategy(), StandaloneOptions.StandaloneClosedTypeWorld.getValue(options));
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
 
@@ -160,13 +178,16 @@ public final class PointsToAnalyzer {
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
                         analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
+        WordTypes aWordTypes = new WordTypes(aMetaAccess, wordKind);
+        StandaloneSnippetReflectionProvider snippetReflection = new StandaloneSnippetReflectionProvider(null, originalSnippetReflection, aWordTypes);
+        StandaloneFieldValueAvailabilitySupport fieldValueAvailabilitySupport = new StandaloneFieldValueAvailabilitySupport(standaloneHost);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aMetaAccess, aUniverse, originalProviders.getConstantReflection(),
-                        originalProviders.getSnippetReflection(), classLoaderAccess.isFullyIsolated());
-        StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess, originalProviders.getConstantFieldProvider(), false);
+                        originalSnippetReflection, classLoaderAccess.isFullyIsolated(), fieldValueAvailabilitySupport);
+        StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess, originalProviders.getConstantFieldProvider());
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider(aUniverse);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), null,
-                        originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
+                        originalProviders.getStampProvider(), snippetReflection, aWordTypes,
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
         Replacements replacements = new StandaloneReplacementsImpl(aProviders, new ResolvedJavaMethodBytecodeProvider(), originalProviders.getCodeCache().getTarget());
         aProviders = aProviders.copyWith(replacements);
@@ -176,17 +197,18 @@ public final class PointsToAnalyzer {
                         debugContext, new TimerCollection(), classInclusionPolicy);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
-        HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
+        HostedValuesProvider hostedValuesProvider = new StandaloneHostedValuesProvider(aMetaAccess, aUniverse, fieldValueAvailabilitySupport);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), classLoaderAccess, hostedValuesProvider);
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
+        snippetReflection.setHeapScanner(heapScanner);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
-        /* Register already created types as assignable. */
+        /* Register already created types as assignable and replay full reachability handling. */
         aUniverse.getTypes().forEach(t -> {
             t.registerAsAssignable(bigbang);
             if (t.isReachable()) {
-                bigbang.onTypeReachable(t);
+                aUniverse.onTypeReachable(t);
             }
         });
         /*
@@ -227,8 +249,7 @@ public final class PointsToAnalyzer {
             bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
 
             GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-            NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
-            plugins.setClassInitializationPlugin(classInitializationPlugin);
+            plugins.setClassInitializationPlugin(new StandaloneClassInitializationPlugin(standaloneHost));
             aProviders.setGraphBuilderPlugins(plugins);
             PointstoGraphBuilderPlugins.registerArrayPlugins(plugins.getInvocationPlugins());
             PointstoGraphBuilderPlugins.registerSystemPlugins(plugins.getInvocationPlugins());
@@ -237,9 +258,13 @@ public final class PointsToAnalyzer {
         bigbang.markInitializationFinished();
     }
 
+    private StandaloneClassInitializationStrategy createClassInitializationStrategy() {
+        return new BuildTimeHeapClassInitializationStrategy(options);
+    }
+
     private String getAnalysisName(String entryClass) {
-        String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
-        String entryPointsFileOptionName = StandaloneOptions.AnalysisEntryPointsFile.getName();
+        String entryPointsFile = StandaloneOptions.StandaloneAnalysisEntryPointsFile.getValue(options);
+        String entryPointsFileOptionName = StandaloneOptions.StandaloneAnalysisEntryPointsFile.getName();
         mainEntryIsSet = entryClass != null && !entryClass.isBlank();
         entrypointsAreSet = entryPointsFile != null && entryPointsFile.length() != 0;
         directEntryMethodsAreSet = !directEntryMethods.isEmpty();
@@ -301,94 +326,11 @@ public final class PointsToAnalyzer {
             }
         }
         OptionValues options = PointsToOptionParser.getInstance().parse(optionArgs.toArray(new String[0]));
-        String classpath = StandaloneOptions.AnalysisTargetAppCP.getValue(options);
-        AnalysisError.guarantee(classpath != null, "Must specify analysis target application's classpath with -H:%s", StandaloneOptions.AnalysisTargetAppCP.getName());
-        if (cachedAccess == null) {
-            cachedAccess = initializeCachedAccess(classpath);
-            cachedClasspath = classpath;
-        } else {
-            AnalysisError.guarantee(cachedClasspath.equals(classpath),
-                            "Standalone analysis reuses a process-global VMAccess cache and cannot switch classpath from '%s' to '%s' within the same process.",
-                            cachedClasspath, classpath);
-        }
-        return new PointsToAnalyzer(mainEntryClass, options, cachedAccess, Arrays.asList(entryMethods));
-    }
-
-    /**
-     * Creates the process-global {@link ClassLoaderAccess} used by standalone analysis.
-     */
-    private static ClassLoaderAccess initializeCachedAccess(String classpath) {
-        VMAccess access = buildVmAccess(classpath);
-        GuestAccess.plantConfiguration(access);
-        return new ClassLoaderAccess(access);
-    }
-
-    /**
-     * Builds the {@link VMAccess} used to resolve guest application types for the requested target
-     * class path.
-     */
-    private static VMAccess buildVmAccess(String classpath) {
-        VMAccess.Builder builder = getVmAccessBuilder();
-        builder.classPath(Arrays.asList(classpath.split(File.pathSeparator)));
-        configureVmAccessBuilder(builder);
-        return builder.build();
-    }
-
-    /**
-     * Applies the standalone analysis defaults shared by host-backed and fully isolated
-     * {@link VMAccess} configurations.
-     */
-    private static void configureVmAccessBuilder(VMAccess.Builder builder) {
-        String modulePath = GraalServices.getSavedProperty(VM_ACCESS_MODULE_PATH_PROPERTY);
-        if (modulePath != null) {
-            builder.modulePath(Arrays.asList(modulePath.split(File.pathSeparator)));
-        }
-        String upgradeModulePath = GraalServices.getSavedProperty(VM_ACCESS_UPGRADE_MODULE_PATH_PROPERTY);
-        if (upgradeModulePath != null) {
-            builder.systemProperty("jdk.module.upgrade.path", String.join(File.pathSeparator, upgradeModulePath.split(File.pathSeparator)));
-        }
-        builder.addModules(BASE_VM_ACCESS_MODULES);
-        builder.enableAssertions(true);
-        builder.enableSystemAssertions(true);
-        String logLevel = GraalServices.getSavedProperty(ESPRESSO_LOG_LEVEL_PROPERTY);
-        if (logLevel != null) {
-            builder.vmOption("--log.level=" + logLevel);
-        }
-        if (builder.isFullyIsolated()) {
-            /*
-             * Make sure we use the modules prepared for GraalVM.
-             */
-            String javaHome = GraalServices.getSavedProperty(VM_ACCESS_JAVA_HOME_PROPERTY, GraalServices.getSavedProperty("java.home"));
-            AnalysisError.guarantee(javaHome != null, "Missing required property java.home.");
-            builder.vmOption("JavaHome=" + javaHome);
-            /*
-             * This is needed for Word types.
-             */
-            builder.addModule("org.graalvm.word");
-            builder.addModule("org.graalvm.nativeimage.guest.staging");
-        }
-    }
-
-    /**
-     * Looks up the requested {@code VMAccess.Builder} service and defaults to the espresso-backed
-     * builder when no explicit selection was saved.
-     */
-    private static VMAccess.Builder getVmAccessBuilder() {
-        String requestedAccessName = GraalServices.getSavedProperty(VM_ACCESS_NAME_PROPERTY, DEFAULT_VM_ACCESS_NAME);
-        ServiceLoader<VMAccess.Builder> loader = ServiceLoader.load(VMAccess.Builder.class);
-        VMAccess.Builder selected = null;
-        for (VMAccess.Builder builder : loader) {
-            if (requestedAccessName.equals(builder.getVMAccessName())) {
-                selected = builder;
-                break;
-            }
-        }
-        if (selected == null) {
-            AnalysisError.shouldNotReachHere("No VMAccess.Builder service found with name " +
-                            requestedAccessName + ". Found: " +
-                            loader.stream().map(p -> p.get().getVMAccessName()).collect(Collectors.joining(", ")));
-        }
-        return selected;
+        String classpath = StandaloneOptions.StandaloneAnalysisTargetAppCP.getValue(options);
+        AnalysisError.guarantee(classpath != null, "Must specify analysis target application's classpath with -H:%s", StandaloneOptions.StandaloneAnalysisTargetAppCP.getName());
+        VMAccess access = StandaloneVMAccessSupport.getOrCreateVMAccess(classpath);
+        validateCommonPoolWorkerThreadFactory();
+        return new PointsToAnalyzer(mainEntryClass, options, new ClassLoaderAccess(access), Arrays.asList(entryMethods));
     }
 
     /**
@@ -413,13 +355,6 @@ public final class PointsToAnalyzer {
             return vmAccess.isFullyIsolated();
         }
 
-        public boolean isClassAllowed(AnalysisType type) {
-            /*
-             * GR-70770 - Analysis of classes loaded by the boot class loader should eventually be
-             * supported as well.
-             */
-            return vmAccess.lookupBootClassLoaderType(type.toJavaName()) == null;
-        }
     }
 
     @SuppressWarnings("try")
@@ -429,7 +364,7 @@ public final class PointsToAnalyzer {
         int exitCode = 0;
         Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(bigbang);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
-        try (Timer t = new Timer("analysis", analysisName)) {
+        try (Timer t = new Timer("analysis", analysisName, bigbang.getUniverse(), (StandaloneHost) bigbang.getHostVM())) {
             StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(bigbang);
             bigbang.getUniverse().setConcurrentAnalysisAccess(config);
             bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
@@ -494,7 +429,7 @@ public final class PointsToAnalyzer {
         }
 
         if (entrypointsAreSet) {
-            String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
+            String entryPointsFile = StandaloneOptions.StandaloneAnalysisEntryPointsFile.getValue(options);
             MethodConfigReader.readMethodFromFile(entryPointsFile, bigbang, classLoaderAccess, m -> {
                 registerUserEntryMethod(m, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });

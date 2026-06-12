@@ -60,6 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class MethodConfigReader {
 
     private static final String READ_ENTRY_POINTS = "ReadEntryPoints";
+    private static final int MAX_REPORTED_MISSING_ENTRY_POINTS = 20;
 
     /**
      * Read methods from the specified file. For each parsed method, execute the specified action.
@@ -81,15 +82,18 @@ public class MethodConfigReader {
             AnalysisError.shouldNotReachHere(e);
         }
         int totalSize = methodNameList.size();
-        int num = forMethodList(bigbang.getDebug(), methodNameList, bigbang, classLoaderAccess, actionForEachMethod);
+        EntryPointReadResult readResult = forMethodList(bigbang.getDebug(), methodNameList, bigbang, classLoaderAccess, actionForEachMethod);
         StringBuilder sb = new StringBuilder();
         sb.append("==Reading analysis entry points status==").append(System.lineSeparator());
-        sb.append(num).append(" out of ").append(totalSize).append(" methods are read from ").append(file).append(System.lineSeparator());
-        if (num < totalSize) {
-            sb.append("To see the details about the missing methods, please append option -H:").append(DebugOptions.Log.getName()).append("=").append(READ_ENTRY_POINTS).append(":3")
-                            .append(System.lineSeparator());
-        }
+        sb.append(readResult.resolvedMethods()).append(" out of ").append(totalSize).append(" methods are read from ").append(file).append(System.lineSeparator());
         System.out.println(sb.toString());
+        AnalysisError.guarantee(readResult.unresolvedMethods().isEmpty(),
+                        "Could not register %d analysis entry point(s) from %s.%nMissing entries:%n%s%nAppend option -H:%s=%s:3 for per-entry diagnostics.",
+                        readResult.unresolvedMethods().size(),
+                        file,
+                        formatMissingEntryPoints(readResult.unresolvedMethods()),
+                        DebugOptions.Log.getName(),
+                        READ_ENTRY_POINTS);
     }
 
     /**
@@ -109,8 +113,10 @@ public class MethodConfigReader {
     }
 
     @SuppressWarnings("try")
-    public static int forMethodList(DebugContext debug, List<String> methods, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod) {
+    public static EntryPointReadResult forMethodList(DebugContext debug, List<String> methods, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess,
+                    Consumer<AnalysisMethod> actionForEachMethod) {
         AtomicInteger validMethodsNum = new AtomicInteger(0);
+        List<String> unresolvedMethods = new ArrayList<>();
         try (DebugContext.Scope s = debug.scope(READ_ENTRY_POINTS)) {
             methods.stream().forEach(method -> {
                 if (!method.isBlank()) {
@@ -118,6 +124,7 @@ public class MethodConfigReader {
                         workWithMethod(method, bigbang, classLoaderAccess, actionForEachMethod);
                         validMethodsNum.incrementAndGet();
                     } catch (Throwable t) {
+                        unresolvedMethods.add(method);
                         // Checkstyle: Allow raw info or warning printing - begin
                         debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method %s as analysis root method. Reason: %s", method, t.getMessage());
                         // Checkstyle: Allow raw info or warning printing - end
@@ -125,7 +132,25 @@ public class MethodConfigReader {
                 }
             });
         }
-        return validMethodsNum.get();
+        return new EntryPointReadResult(validMethodsNum.get(), List.copyOf(unresolvedMethods));
+    }
+
+    private static String formatMissingEntryPoints(List<String> unresolvedMethods) {
+        int reportedMethods = Math.min(unresolvedMethods.size(), MAX_REPORTED_MISSING_ENTRY_POINTS);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < reportedMethods; i++) {
+            if (i > 0) {
+                sb.append(System.lineSeparator());
+            }
+            sb.append(unresolvedMethods.get(i));
+        }
+        if (unresolvedMethods.size() > reportedMethods) {
+            sb.append(System.lineSeparator()).append("... and ").append(unresolvedMethods.size() - reportedMethods).append(" more");
+        }
+        return sb.toString();
+    }
+
+    public record EntryPointReadResult(int resolvedMethods, List<String> unresolvedMethods) {
     }
 
     private static void workWithMethod(String method, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod)
