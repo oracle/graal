@@ -84,6 +84,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -92,9 +93,11 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -138,6 +141,7 @@ public class PermissionsFeature implements Feature {
     private static final String CLINIT = "<clinit>";
     private static final Comparator<BaseMethodNode> CALLERS_COMPARATOR = Comparator.comparing(PermissionsFeature::isSystemOrSafeClass).//
                     thenComparing(new BaseMethodNodeComparator());
+    private static final Comparator<AnalysisMethod> INVOKE_COMPARATOR = new AnalysisMethodComparator();
 
     public enum ActionKind {
         Ignore,
@@ -195,6 +199,9 @@ public class PermissionsFeature implements Feature {
                           - All: Reports all call paths for all violations.
                         """, type = OptionType.Expert)//
         public static final HostedOptionKey<CollectMode> TruffleTCKCollectMode = new HostedOptionKey<>(CollectMode.SinglePrivilegedMethodUsage);
+
+        @Option(help = "Path to a file where the Truffle TCK permissions inverted call graph is dumped.", type = OptionType.Expert)//
+        public static final HostedOptionKey<String> TruffleTCKDumpCallGraph = new HostedOptionKey<>(null);
     }
 
     /**
@@ -474,6 +481,29 @@ public class PermissionsFeature implements Feature {
                 }
             }
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
+            String dumpCallGraph = Options.TruffleTCKDumpCallGraph.getValue();
+            if (dumpCallGraph != null) {
+                Path callGraphPath = Paths.get(dumpCallGraph);
+                try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(callGraphPath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                                StandardOpenOption.TRUNCATE_EXISTING))) {
+                    for (Map.Entry<BaseMethodNode, Set<BaseMethodNode>> e : cg.entrySet()) {
+                        out.print(e.getKey().getId());
+                        out.print(" -> [");
+                        boolean first = true;
+                        for (BaseMethodNode methodNode : e.getValue()) {
+                            if (first) {
+                                first = false;
+                            } else {
+                                out.print(", ");
+                            }
+                            out.print(methodNode.getId());
+                        }
+                        out.println("]");
+                    }
+                } catch (IOException e) {
+                    throw UserError.abort(e, "Cannot write generated call graph to %s", callGraphPath);
+                }
+            }
             List<List<BaseMethodNode>> report = new ArrayList<>();
             int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
             maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
@@ -617,7 +647,9 @@ public class PermissionsFeature implements Feature {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
+                Collection<AnalysisMethod> callees = invoke.getOriginalCallees();
+                Iterable<AnalysisMethod> ordered = callees.size() > 1 ? callees.stream().sorted(INVOKE_COMPARATOR).toList() : callees;
+                for (AnalysisMethod callee : ordered) {
                     AnalysisMethodNode calleeNode = new AnalysisMethodNode(callee);
                     if (callee.isImplementationInvoked()) {
                         Set<BaseMethodNode> parents = visited.get(calleeNode);
@@ -638,9 +670,23 @@ public class PermissionsFeature implements Feature {
                             }
                             callPathContainsTarget |= add;
                         } else if (!isBacktrace(calleeNode, path) || isBackTraceOverLanguageMethod(calleeNode, path)) {
-                            parents.add(mNode);
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
-                            callPathContainsTarget = true;
+                            /*
+                             * The outer branch handles already visited callees that are either not on the current
+                             * path, or are back edges that must be kept because they cross a language method. A
+                             * visited node with an empty caller set can also mean "this subtree was already proven
+                             * not to reach a target", so do not blindly propagate it to the current caller. Keep it
+                             * only when:
+                             * - it is a backtrace: together with the outer condition this means
+                             *   isBackTraceOverLanguageMethod(...) is true, so the recursive edge closes a path over a
+                             *   language method and is part of a violation;
+                             * - it is itself a target privileged method; or
+                             * - it already has parents, meaning a previous traversal found a path from it to a target.
+                             */
+                            if (isBacktrace(calleeNode, path) || targets.contains(calleeNode) || !parents.isEmpty()) {
+                                parents.add(mNode);
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
+                                callPathContainsTarget = true;
+                            }
                         } else {
                             if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
                                 debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
@@ -1494,6 +1540,34 @@ public class PermissionsFeature implements Feature {
             String k1 = o1.getId();
             String k2 = o2.getId();
             return k1.compareTo(k2);
+        }
+    }
+
+    static final class AnalysisMethodComparator implements Comparator<AnalysisMethod> {
+
+        @Override
+        public int compare(AnalysisMethod m1, AnalysisMethod m2) {
+            int res = removeLambdaHash(m1.getDeclaringClass().toClassName()).compareTo(removeLambdaHash(m2.getDeclaringClass().toClassName()));
+            if (res != 0) {
+                return res;
+            }
+            res = m1.getName().compareTo(m2.getName());
+            if (res != 0) {
+                return res;
+            }
+            return m1.getSignature().toString().compareTo(m2.getSignature().toString());
+        }
+
+        /**
+         *
+         * Lambda function names are not completely deterministic e.g. in name
+         * Lambda$7ad16f47b695d909/0x00000007c0b4c630.accept(java.lang.Object):void hash part is not
+         * deterministic. In order to avoid comparing based on that part, we need to eliminate hash
+         * part from name of lambda function.
+         *
+         */
+        private static String removeLambdaHash(String className) {
+            return className.contains("$$Lambda") ? className.replaceAll("/[0-9a-fA-Fx]*$", "") : className;
         }
     }
 }

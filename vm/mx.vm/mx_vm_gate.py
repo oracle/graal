@@ -655,7 +655,14 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
     success = False
     try:
         report_file = join(svmbuild, "language_permissions.log")
-        print_call_tree_options = ['-H:+PrintAnalysisCallTree'] if print_call_tree else []
+        call_graph_file = join(svmbuild, "call_graph.txt")
+        if print_call_tree:
+            print_call_tree_options = [
+                '-H:+PrintAnalysisCallTree',
+                f'-H:TruffleTCKDumpCallGraph={call_graph_file}',
+            ]
+        else:
+            print_call_tree_options = []
         options = mx.get_runtime_jvm_args(dists, exclude_names=['substratevm:SVM']) + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
         ] + mx_sdk_vm_impl.svm_experimental_options([
@@ -700,8 +707,13 @@ Reported call paths:
             if fail_on_error:
                 mx.abort(message)
             else:
-                reports_folder = os.path.join(svmbuild, 'reports') if print_call_tree else None
-                return message, reports_folder
+                if print_call_tree:
+                    reports_folder = os.path.join(svmbuild, 'reports')
+                    call_tree = call_graph_file
+                else:
+                    reports_folder = None
+                    call_tree = None
+                return message, reports_folder, call_tree
         else:
             success = True
     finally:
@@ -712,7 +724,7 @@ Reported call paths:
 
 def gate_truffle_native_tck_smoke_test(tasks):
 
-    def _copy_call_tree(source_folder):
+    def _copy_call_tree(source_folder, inverted_call_tree):
         """
         Copies native-image call tree from a temporary folder to the current working directory
         and compresses it with gzip algorithm. Such a file can be preserved when the build fails.
@@ -727,6 +739,12 @@ def gate_truffle_native_tck_smoke_test(tasks):
             with open(call_tree_file, "rb") as f_in:
                 with gzip.open(dest_file, "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
+        if inverted_call_tree:
+            dest_file = "inverted_call_tree.txt.gz"
+            with open(inverted_call_tree, "rb") as f_in:
+                with gzip.open(dest_file, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
 
     with Task('Truffle Native TCK Smoke Test', tasks, tags=[VmGateTasks.truffle_native_tck]) as t:
         if t:
@@ -738,34 +756,41 @@ def gate_truffle_native_tck_smoke_test(tasks):
                                           ['-H:TruffleTCKCollectMode=All'])
                 privileged_calls = result[0]
                 reports_folder = result[1]
-                if 'Failed: Language TCKSmokeTestLanguage performs privileged calls.' not in privileged_calls:
-                    _copy_call_tree(reports_folder)
-                    mx.abort("Expected failure, log:\n" + privileged_calls)
+                call_tree = result[2]
+                try:
+                    if 'Failed: Language TCKSmokeTestLanguage performs privileged calls.' not in privileged_calls:
+                        _copy_call_tree(reports_folder, call_tree)
+                        mx.abort("Expected failure, log:\n" + privileged_calls)
 
-                must_have_methods = [
-                    'PrivilegedCallNode.callConstructorReflectively',
-                    'PrivilegedCallNode.callMethodHandle',
-                    'PrivilegedCallNode.callMethodReflectively',
-                    'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
-                    'PrivilegedCallNode.doInterrupt',
-                    'PrivilegedCallNode.doPolymorphicCall',
-                    'PrivilegedCallNode.doPrivilegedCall',
-                    'ServiceImpl.execute',
-                    'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
-                    'UnsafeCallNode.doUnsafeAccess',
-                    'DeniedURLNode.doURLOf'
-                ]
-                must_not_have_methods = [
-                    'AllowedURLNode.doURLOf'
-                ]
-                for method in must_have_methods:
-                    if method not in privileged_calls:
-                        _copy_call_tree(reports_folder)
-                        mx.abort(f"Missing {method} call in the log.\nLog content:\n" + privileged_calls)
-                for method in must_not_have_methods:
-                    if method in privileged_calls:
-                        _copy_call_tree(reports_folder)
-                        mx.abort(f"Found {method} call in the log.\nLog content:\n" + privileged_calls)
+                    must_have_methods = [
+                        'PrivilegedCallNode.callConstructorReflectively',
+                        'PrivilegedCallNode.callMethodHandle',
+                        'PrivilegedCallNode.callMethodReflectively',
+                        'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
+                        'PrivilegedCallNode.doInterrupt',
+                        'PrivilegedCallNode.doPolymorphicCall',
+                        'PrivilegedCallNode.doPrivilegedCall',
+                        'ServiceImpl.execute',
+                        'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
+                        'UnsafeCallNode.doUnsafeAccess',
+                        'DeniedURLNode.doURLOf'
+                    ]
+                    must_not_have_methods = [
+                        'AllowedURLNode.doURLOf'
+                    ]
+                    for method in must_have_methods:
+                        if method not in privileged_calls:
+                            _copy_call_tree(reports_folder, call_tree)
+                            mx.abort(f"Missing {method} call in the log.\nLog content:\n" + privileged_calls)
+                    for method in must_not_have_methods:
+                        if method in privileged_calls:
+                            _copy_call_tree(reports_folder, call_tree)
+                            mx.abort(f"Found {method} call in the log.\nLog content:\n" + privileged_calls)
+                finally:
+                    if reports_folder:
+                        mx.rmtree(reports_folder)
+                    if call_tree:
+                        os.unlink(call_tree)
 
 def gate_truffle_native_tck_js(tasks):
     with Task('JavaScript Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_js]) as t:
