@@ -1,0 +1,5 @@
+# Based on GraalVM CE base, adding lib:jvm, removing other images
+DYNAMIC_IMPORTS=/sdk,/truffle,/compiler,/substratevm,/web-image
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmjava,svmt,svmsl,tflc,tflsm
+NATIVE_IMAGES=lib:jvm
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
