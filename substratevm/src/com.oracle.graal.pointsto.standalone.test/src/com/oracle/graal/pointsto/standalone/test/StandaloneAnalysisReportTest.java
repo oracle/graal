@@ -26,22 +26,25 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
+import static org.junit.Assume.assumeTrue;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.nio.file.Path;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.oracle.graal.pointsto.standalone.StandaloneOptions;
 import com.oracle.graal.pointsto.standalone.test.classes.ClassEqualityCase;
 
 /**
  * Verifies standalone analysis report emission using {@link ClassEqualityCase} as a small input.
  */
 public class StandaloneAnalysisReportTest extends StandaloneAnalysisTest {
+    private static final String REPORTS_PATH_OPTION = "-H:" + StandaloneOptions.StandaloneAnalysisReportsPath.getName() + "=";
+
     /*
      * Takes an arbitrary small fixture because the report tests care about emitted files rather
      * than about any fixture-specific reachability nuance.
@@ -66,7 +69,7 @@ public class StandaloneAnalysisReportTest extends StandaloneAnalysisTest {
     public void testPrintAnalysisCallTree() {
         Path testTmpDir = temporaryFolder.getRoot().toPath();
         runAnalysis(TEST_CLASS,
-                        "-H:ReportsPath=" + testTmpDir,
+                        REPORTS_PATH_OPTION + testTmpDir,
                         "-H:+PrintAnalysisCallTree");
         File reportDir = testTmpDir.resolve("reports").toFile();
         assertTrue(reportDir.isDirectory());
@@ -75,18 +78,16 @@ public class StandaloneAnalysisReportTest extends StandaloneAnalysisTest {
     }
 
     /**
-     * Verifies object-tree report generation for {@link ClassEqualityCase} when that report becomes
-     * meaningful for the fixture.
-     *
-     * The test is currently ignored because the analyzed code does not produce a useful object tree
-     * yet, but the expected setup and output checks remain documented here for future re-enabling.
+     * Verifies object-tree report generation for {@link ClassEqualityCase} under the unified
+     * standalone heap model.
      */
     @Test
-    @Ignore("There is no class initialization yet, so object-tree reporting is not meaningful for this fixture.")
     public void testPrintAnalysisObjectTree() {
+        assumeTrue("Object-tree reporting currently requires host VMAccess because Espresso external JVMCI cannot materialize Class objects for report formatting.",
+                        "host".equals(System.getProperty("com.oracle.graal.pointsto.standalone.vmaccess.name")));
         Path testTmpDir = temporaryFolder.getRoot().toPath();
         runAnalysis(TEST_CLASS,
-                        "-H:ReportsPath=" + testTmpDir,
+                        REPORTS_PATH_OPTION + testTmpDir,
                         "-H:+PrintImageObjectTree");
         File reportDir = testTmpDir.resolve("reports").toFile();
         assertTrue(reportDir.isDirectory());

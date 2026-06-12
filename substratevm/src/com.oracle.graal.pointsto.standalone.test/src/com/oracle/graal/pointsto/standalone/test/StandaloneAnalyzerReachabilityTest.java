@@ -72,7 +72,15 @@ public class StandaloneAnalyzerReachabilityTest extends StandaloneAnalysisTest {
         int times = 5;
         int i = 0;
         while (i++ < times) {
-            testPointstoAnalyzer();
+            runAnalysis(StandaloneAnalyzerReachabilityCase.class);
+            Class<StandaloneAnalyzerReachabilityCase.C> classC = StandaloneAnalyzerReachabilityCase.C.class;
+            Class<StandaloneAnalyzerReachabilityCase.D> classD = StandaloneAnalyzerReachabilityCase.D.class;
+            assertReachable(findClass(classC));
+            assertReachable(findClass(StandaloneAnalyzerReachabilityCase.C1.class));
+            assertReachable(findClass(StandaloneAnalyzerReachabilityCase.C2.class));
+            assertNotReachable(findClass(classD));
+            assertReachable(findField(classC, "val"));
+            assertNotReachable(findField(classD, "val"));
         }
     }
 }

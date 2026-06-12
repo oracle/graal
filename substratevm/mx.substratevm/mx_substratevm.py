@@ -1109,7 +1109,7 @@ def jvm_unittest(args):
     return mx_unittest.unittest(['--suite', 'substratevm'] + args)
 
 
-@mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso]')
+@mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso] [test-spec] [analysis-option ...]')
 def standalone_pointsto_unittest(args):
     def espresso_vmargs():
         if not mx.suite('espresso-compiler-stub', fatalIfMissing=False):
@@ -1131,14 +1131,28 @@ def standalone_pointsto_unittest(args):
             '-Dcom.oracle.graal.pointsto.standalone.vmaccess.java.home=' + graaljdk_home,
         ]
 
-    if len(args) > 1 or (args and args[0] not in ('host', 'espresso')):
-        mx.abort('Usage: mx standalone-pointsto-unittest [host|espresso]')
+    common_pool_factory_property = '-Djava.util.concurrent.ForkJoinPool.common.threadFactory=com.oracle.graal.pointsto.standalone.StandaloneCommonPoolWorkerThreadFactory'
 
-    requested_vmaccess = args[0] if args else 'espresso'
+    requested_vmaccess = 'espresso'
+    requested_test_spec = 'com.oracle.graal.pointsto.standalone.test'
+    external_analysis_args = []
+    remaining_args = list(args)
+
+    if remaining_args and remaining_args[0] in ('host', 'espresso'):
+        requested_vmaccess = remaining_args.pop(0)
+    if remaining_args and not remaining_args[0].startswith('-H:'):
+        requested_test_spec = remaining_args.pop(0)
+    if any(not arg.startswith('-H:') for arg in remaining_args):
+        mx.abort('Usage: mx standalone-pointsto-unittest [host|espresso] [test-spec] [analysis-option ...]')
+    external_analysis_args = remaining_args
+
     unittest_args = [
+        common_pool_factory_property,
         '-Dcom.oracle.graal.pointsto.standalone.vmaccess.name=' + requested_vmaccess,
-        'com.oracle.graal.pointsto.standalone.test',
     ]
+    unittest_args.extend('-Dcom.oracle.graal.pointsto.standalone.test.analysis.option.' + str(i) + '=' + option for i, option in enumerate(external_analysis_args))
+    unittest_args.append('-Dcom.oracle.graal.pointsto.standalone.test.analysis.option.count=' + str(len(external_analysis_args)))
+    unittest_args.append(requested_test_spec)
     if requested_vmaccess == 'espresso':
         unittest_args = espresso_vmargs() + unittest_args
     return jvm_unittest(unittest_args)
