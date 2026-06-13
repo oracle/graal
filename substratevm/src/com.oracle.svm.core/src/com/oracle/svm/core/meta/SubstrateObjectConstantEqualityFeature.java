@@ -48,7 +48,6 @@ final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class SubstrateObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

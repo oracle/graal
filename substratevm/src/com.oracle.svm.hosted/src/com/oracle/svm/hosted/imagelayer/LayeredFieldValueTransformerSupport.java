@@ -116,6 +116,11 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(LayeredFieldValueTransformerSupport.class, this);
+    }
+
+    @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return ImageLayerBuildingSupport.buildingImageLayer();
     }

@@ -265,7 +265,6 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class RestrictHeapAccessCalleesFeature implements InternalFeature {
 
     /** This is called early, to register in the VMConfiguration. */

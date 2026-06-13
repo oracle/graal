@@ -58,6 +58,11 @@ public class LayeredImageHooks implements InternalFeature {
         return ImageLayerBuildingSupport.buildingImageLayer();
     }
 
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(LayeredImageHooks.class, this);
+    }
+
     @Fold
     public static LayeredImageHooks singleton() {
         return ImageSingletons.lookup(LayeredImageHooks.class);

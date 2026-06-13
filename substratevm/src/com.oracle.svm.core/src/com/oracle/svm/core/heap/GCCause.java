@@ -138,6 +138,11 @@ class GCCauseFeature implements InternalFeature {
     List<String> registeredGCCauses;
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(GCCauseFeature.class, this);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
             /*

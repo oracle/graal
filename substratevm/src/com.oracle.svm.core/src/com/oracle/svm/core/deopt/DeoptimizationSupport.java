@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.Uninterruptible;
@@ -39,6 +40,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -63,6 +65,7 @@ public class DeoptimizationSupport {
      */
     @Fold
     public static boolean enabled() {
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "DeoptimizationSupport.enabled() must not be called before the feature registration is finished.");
         return ImageSingletons.contains(DeoptimizationCanaryFeature.class);
     }
 

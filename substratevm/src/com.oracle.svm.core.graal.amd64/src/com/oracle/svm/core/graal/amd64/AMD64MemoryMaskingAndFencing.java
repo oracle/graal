@@ -146,7 +146,6 @@ public class AMD64MemoryMaskingAndFencing {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class AMD64MemoryMaskingAndFencingFeature implements InternalFeature {
 
     @Override

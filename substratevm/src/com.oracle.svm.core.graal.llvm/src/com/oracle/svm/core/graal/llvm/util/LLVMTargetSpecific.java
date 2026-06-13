@@ -196,7 +196,6 @@ public interface LLVMTargetSpecific {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
@@ -324,7 +323,6 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;
@@ -487,7 +485,6 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.RISCV64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
     private static final int RISCV64_FP_IDX = 8;
     private static final int RISCV64_SP_IDX = 2;

@@ -66,6 +66,11 @@ public final class TruffleNFIFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(TruffleNFIFeature.class, this);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(new NativeObjectReplacer(access));
     }

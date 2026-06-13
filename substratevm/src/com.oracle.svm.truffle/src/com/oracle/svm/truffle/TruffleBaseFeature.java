@@ -352,6 +352,11 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(TruffleBaseFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         /*
          * The actual check is now performed in the Truffle API (TruffleAPIFeature). This fallback

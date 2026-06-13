@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.classloading;
+package com.oracle.svm.test;
 
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.junit.Test;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeInstanceReferenceMapSupport;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+@NativeImageBuildArgs({
+                "--features=com.oracle.svm.test.FeatureSingletonFutureDefaultTest$ExplicitFeature",
+                "--future-defaults=explicit-feature-singleton-registration"
+})
+public class FeatureSingletonFutureDefaultTest {
+    public static final class ExplicitFeature implements Feature {
+        @Override
+        public List<Class<? extends Feature>> getRequiredFeatures() {
+            return List.of(RequiredFeature.class);
+        }
 
-@AutomaticallyRegisteredFeature
-public class RuntimeClassLoadingFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return RuntimeClassLoading.isSupported();
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            if (ImageSingletons.contains(ExplicitFeature.class)) {
+                throw new AssertionError("Explicit --features entry was unexpectedly published as an ImageSingleton");
+            }
+            if (ImageSingletons.contains(RequiredFeature.class)) {
+                throw new AssertionError("Required feature reached from an explicit --features entry was unexpectedly published as an ImageSingleton");
+            }
+        }
     }
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(ClassRegistryFeature.class);
+    public static final class RequiredFeature implements Feature {
     }
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeInstanceReferenceMapSupport.class, new RuntimeInstanceReferenceMapSupport());
+    @Test
+    public void testFeatureSingletonCompatibilityDisabled() {
     }
 }

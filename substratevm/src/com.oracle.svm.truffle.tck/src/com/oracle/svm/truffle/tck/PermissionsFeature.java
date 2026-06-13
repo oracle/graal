@@ -46,6 +46,9 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.BundleMember;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -134,7 +137,12 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
  * report file using {@code -H:TruffleTCKPermissionsReportFile} option and specify the language
  * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class PermissionsFeature implements Feature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(PermissionsFeature.class, this);
+    }
 
     private static final String CONFIG = "truffle-language-permissions-config.json";
     private static final String INIT = "<init>";

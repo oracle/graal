@@ -308,6 +308,11 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(TruffleFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(RuntimeCompiledMethodSupport.class, new TruffleRuntimeCompiledMethodSupport());
 

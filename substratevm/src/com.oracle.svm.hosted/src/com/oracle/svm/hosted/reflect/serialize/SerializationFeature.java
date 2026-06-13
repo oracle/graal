@@ -123,6 +123,11 @@ public class SerializationFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(SerializationFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();

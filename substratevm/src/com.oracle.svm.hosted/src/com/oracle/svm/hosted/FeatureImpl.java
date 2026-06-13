@@ -164,10 +164,10 @@ public class FeatureImpl {
         }
     }
 
-    public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements Feature.IsInConfigurationAccess {
+    abstract static class RegistrationAccessBase extends FeatureAccessImpl {
         private final MetaAccessProvider metaAccess;
 
-        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+        RegistrationAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
         }
@@ -187,21 +187,28 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
-        private final MetaAccessProvider metaAccess;
+    public static class IsInConfigurationAccessImpl extends RegistrationAccessBase implements Feature.IsInConfigurationAccess {
+
+        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, metaAccess, debugContext);
+        }
+    }
+
+    public static class OnRegistrationAccessImpl extends RegistrationAccessBase implements Feature.OnRegistrationAccess {
+
+        OnRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, metaAccess, debugContext);
+        }
+    }
+
+    public static class AfterRegistrationAccessImpl extends RegistrationAccessBase implements Feature.AfterRegistrationAccess {
         private MainEntryPoint mainEntryPoint;
 
         public AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess,
                         MainEntryPoint mainEntryPoint,
                         DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, debugContext);
-            this.metaAccess = metaAccess;
+            super(featureHandler, imageClassLoader, metaAccess, debugContext);
             this.mainEntryPoint = mainEntryPoint;
-        }
-
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return metaAccess;
         }
 
         public void setMainEntryPoint(MainEntryPoint mainEntryPoint) {
@@ -230,15 +237,6 @@ public class FeatureImpl {
         @Override
         public ForeignAccess getForeignAccess() {
             return ForeignAccessImpl.singleton();
-        }
-
-        @Override
-        public ResolvedJavaType findTypeByName(String className) {
-            Class<?> clazz = findClassByName(className);
-            if (clazz == null) {
-                return null;
-            }
-            return getMetaAccess().lookupJavaType(clazz);
         }
     }
 

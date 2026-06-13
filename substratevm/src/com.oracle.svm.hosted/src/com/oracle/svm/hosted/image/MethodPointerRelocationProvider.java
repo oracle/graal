@@ -75,7 +75,6 @@ public class MethodPointerRelocationProvider {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class MethodPointerRelocationProviderFeature implements InternalFeature {
 
     @Override

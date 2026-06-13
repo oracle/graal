@@ -70,6 +70,11 @@ public class ContinuationsFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(ContinuationsFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(supported == null);
 

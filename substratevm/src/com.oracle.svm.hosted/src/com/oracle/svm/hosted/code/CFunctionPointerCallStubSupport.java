@@ -71,7 +71,6 @@ public final class CFunctionPointerCallStubSupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class CFunctionPointerCallStubSupportFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {

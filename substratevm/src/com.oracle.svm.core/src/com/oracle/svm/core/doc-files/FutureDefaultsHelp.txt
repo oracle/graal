@@ -1,4 +1,4 @@
-Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles'. The preferred usage is '--future-defaults=all'.
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'.
 
 The meaning of each possible option is as follows:
   'all' - is the preferred option, and it enables all other behaviors.
@@ -14,3 +14,5 @@ The meaning of each possible option is as follows:
   'run-time-initialize-file-system-providers' - shifts away from build-time initialization for 'java.nio.file.spi.FileSystemProvider'. Unless you store 'FileSystemProvider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
 
   'run-time-initialize-resource-bundles' - shifts away from build-time initialization for 'java.util.ResourceBundle'. Unless you store 'ResourceBundle'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+
+  'explicit-feature-singleton-registration' - stops automatically publishing user features reached from '--features' as 'ImageSingletons'. If code needs feature-singleton lookup compatibility, the feature must register its feature object explicitly.

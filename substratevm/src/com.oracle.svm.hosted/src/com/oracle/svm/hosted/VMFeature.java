@@ -61,6 +61,11 @@ public class VMFeature implements InternalFeature {
     private static final String valueSeparator = "=";
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(VMFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(VM.class, new VM(determineVMInfo()));
     }

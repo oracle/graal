@@ -103,6 +103,11 @@ public final class BytecodeHandlerFeature implements InternalFeature {
         return Options.BytecodeInterpreterTailCallThreading.getValue();
     }
 
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(BytecodeHandlerFeature.class, this);
+    }
+
     public boolean isBytecodeHandler(ResolvedJavaMethod method) {
         if (bytecodeHandlers == null) {
             throw new IllegalStateException("Bytecode handlers not yet initialized");
