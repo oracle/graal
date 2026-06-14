@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,6 +110,19 @@ public class ConstantsBufferTest {
     }
 
     @Test
+    public void addNullDoesNotAliasStaleEntry() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        assertEquals(0, b.add(1234));
+        assertArrayEquals(new Object[]{1234}, b.materialize());
+
+        int reserved = b.addNull();
+        int constant = b.add(1234);
+        assertNotEquals(reserved, constant);
+        assertArrayEquals(new Object[]{null, 1234}, b.materialize());
+        b.clear();
+    }
+
+    @Test
     public void clearShrinksLargeBuffer() {
         ConstantsBuffer b = new ConstantsBuffer();
         IntStream.range(0, 600).forEach(b::add);
@@ -168,6 +181,20 @@ public class ConstantsBufferTest {
         }
         assertEquals(608, b.materialize().length);
         b.clear();
+    }
+
+    @Test
+    public void testsNullsTransitionToHash() {
+        for (int nulls = 0; nulls < 16; nulls++) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            int i0 = b.add(4L);
+            for (int i = 0; i < nulls; i++) {
+                b.addNull();
+            }
+            int i1 = b.add(4L);
+            assertEquals("constants must match with " + nulls + " nulls.", i0, i1);
+        }
+
     }
 
     /** distinct objects that all share the same hashCode to stress collision handling. */
