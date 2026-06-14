@@ -103,6 +103,7 @@ class DirectoryFd extends Fd {
      * location, and rejects lexical escapes from the preopened virtual root.
      */
     private TruffleFile resolveVirtualFile(Node node, WasmMemory memory, int pathAddress, int pathLength) {
+        FdUtils.validateU32MemoryRange(memory, pathAddress, pathLength);
         final String path = memory.readString(pathAddress, pathLength, node);
         return preopenedRoot.containedVirtualFile(virtualFile.resolve(path));
     }
@@ -274,6 +275,8 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             hostChildFile.createDirectory();
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (UnsupportedOperationException e) {
@@ -294,6 +297,8 @@ class DirectoryFd extends Fd {
         final TruffleFile hostChildFile;
         try {
             hostChildFile = resolveHostFile(node, memory, pathAddress, pathLength, flags);
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (SecurityException e) {
@@ -329,6 +334,8 @@ class DirectoryFd extends Fd {
             if (isSet(fstFlags, Fstflags.MtimNow)) {
                 hostChildFile.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions);
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (SecurityException e) {
@@ -355,6 +362,8 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             newHostChildFile.createLink(oldHostChildFile);
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (UnsupportedOperationException e) {
@@ -375,13 +384,12 @@ class DirectoryFd extends Fd {
             return Errno.Notcapable;
         }
 
-        final TruffleFile virtualChildFile = resolveVirtualFile(node, memory, pathAddress, pathLength);
-        if (virtualChildFile == null) {
-            return Errno.Noent;
-        }
-
         final boolean followSymlinks = isSet(dirFlags, Lookupflags.SymlinkFollow);
         try {
+            final TruffleFile virtualChildFile = resolveVirtualFile(node, memory, pathAddress, pathLength);
+            if (virtualChildFile == null) {
+                return Errno.Noent;
+            }
             final boolean createRequested = isSet(childOflags, Oflags.Creat);
             final boolean exclusiveRequested = isSet(childOflags, Oflags.Excl);
             final FinalSymlinkPolicy finalSymlinkPolicy;
@@ -436,6 +444,8 @@ class DirectoryFd extends Fd {
                 WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IllegalArgumentException e) {
             return Errno.Inval;
         } catch (SecurityException e) {
@@ -467,6 +477,7 @@ class DirectoryFd extends Fd {
             return Errno.Notcapable;
         }
         try {
+            FdUtils.validateU32MemoryRange(memory, bufAddress, bufLength);
             Collection<TruffleFile> children = virtualFile.list();
             List<TruffleFile> entries = new ArrayList<>(children.size() + 2);
             entries.add(virtualFile.resolve("."));
@@ -520,6 +531,8 @@ class DirectoryFd extends Fd {
                 currentEntry++;
             }
             memories.store_i32(memory, node, sizeAddress, bufPointer - bufAddress);
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return Errno.Io;
         }
@@ -552,10 +565,13 @@ class DirectoryFd extends Fd {
             if (virtualLink == null) {
                 return Errno.Noent.ordinal();
             }
+            FdUtils.validateU32MemoryRange(memory, buf, bufLen);
             final String content = virtualLink.getPath();
             int bytesWritten = memory.writeString(node, content, buf, bufLen);
             WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, bytesWritten);
             return Errno.Success.ordinal();
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault.ordinal();
         } catch (IOException e) {
             return errnoForIoException(e).ordinal();
         } catch (UnsupportedOperationException e) {
@@ -579,6 +595,8 @@ class DirectoryFd extends Fd {
                 return Errno.Notdir;
             }
             hostChildFile.delete();
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (SecurityException e) {
@@ -606,6 +624,8 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             oldHostChildFile.move(newHostChildFile);
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (UnsupportedOperationException e) {
@@ -631,6 +651,8 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             newHostChildFile.createSymbolicLink(oldHostChildFile);
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (UnsupportedOperationException e) {
@@ -655,6 +677,8 @@ class DirectoryFd extends Fd {
                 return Errno.Isdir;
             }
             hostChildFile.delete();
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return errnoForIoException(e);
         } catch (SecurityException e) {

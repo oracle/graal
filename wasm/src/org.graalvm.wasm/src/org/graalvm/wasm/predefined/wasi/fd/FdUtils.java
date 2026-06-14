@@ -41,8 +41,14 @@
 
 package org.graalvm.wasm.predefined.wasi.fd;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.nodes.Node;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.LinkOption;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.wasi.types.Dirent;
@@ -52,20 +58,38 @@ import org.graalvm.wasm.predefined.wasi.types.Filestat;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.graalvm.wasm.predefined.wasi.types.Iovec;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.LinkOption;
-import java.util.concurrent.TimeUnit;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.nodes.Node;
 
-final class FdUtils {
+public final class FdUtils {
 
     static final LinkOption[] FOLLOW_LINKS = new LinkOption[0];
     static final LinkOption[] NOFOLLOW_LINKS = new LinkOption[]{LinkOption.NOFOLLOW_LINKS};
 
     private FdUtils() {
 
+    }
+
+    public static void validateU32MemoryRange(WasmMemory memory, int address, int length) {
+        validateU32MemoryRange(address, length, WasmMemoryLibrary.getUncached().byteSize(memory));
+    }
+
+    private static void validateU32MemoryRange(int address, int length, long memoryByteSize) {
+        Objects.checkFromIndexSize(Integer.toUnsignedLong(address), Integer.toUnsignedLong(length), memoryByteSize);
+    }
+
+    private static void validateIovecArray(int iovecArrayAddress, int iovecCount, long memoryByteSize) {
+        Objects.checkFromIndexSize(Integer.toUnsignedLong(iovecArrayAddress), Integer.toUnsignedLong(iovecCount) * Iovec.BYTES, memoryByteSize);
+    }
+
+    private static void validateIovecBuffers(WasmMemory memory, int iovecArrayAddress, int iovecCount, long memoryByteSize) {
+        final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        for (int i = 0; i < iovecCount; i++) {
+            final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
+            final int start = Iovec.readBuf(null, memoryLib, memory, iovecAddress);
+            final int len = Iovec.readBufLen(null, memoryLib, memory, iovecAddress);
+            validateU32MemoryRange(start, len, memoryByteSize);
+        }
     }
 
     static LinkOption[] linkOptions(boolean followSymlinks) {
@@ -76,22 +100,27 @@ final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
-
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesWritten = 0;
         try {
+            final long memoryByteSize = memoryLib.byteSize(memory);
+            validateIovecArray(iovecArrayAddress, iovecCount, memoryByteSize);
+            validateU32MemoryRange(sizeAddress, Integer.BYTES, memoryByteSize);
+            validateIovecBuffers(memory, iovecArrayAddress, iovecCount, memoryByteSize);
             for (int i = 0; i < iovecCount; i++) {
-                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
                 memoryLib.copyToStream(memory, node, stream, start, len);
                 totalBytesWritten += len;
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return Errno.Io;
         }
 
-        WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, totalBytesWritten);
+        memoryLib.store_i32(memory, node, sizeAddress, totalBytesWritten);
         return Errno.Success;
     }
 
@@ -99,12 +128,15 @@ final class FdUtils {
         if (stream == null) {
             return Errno.Acces;
         }
-
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         int totalBytesRead = 0;
         try {
+            final long memoryByteSize = memoryLib.byteSize(memory);
+            validateIovecArray(iovecArrayAddress, iovecCount, memoryByteSize);
+            validateU32MemoryRange(sizeAddress, Integer.BYTES, memoryByteSize);
+            validateIovecBuffers(memory, iovecArrayAddress, iovecCount, memoryByteSize);
             for (int i = 0; i < iovecCount; i++) {
-                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final long iovecAddress = Integer.toUnsignedLong(iovecArrayAddress) + (long) i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memoryLib, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memoryLib, memory, iovecAddress);
                 final int bytesRead = memoryLib.copyFromStream(memory, node, stream, start, len);
@@ -113,15 +145,20 @@ final class FdUtils {
                 }
                 totalBytesRead += bytesRead;
             }
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
         } catch (IOException e) {
             return Errno.Io;
         }
 
-        WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, totalBytesRead);
+        memoryLib.store_i32(memory, node, sizeAddress, totalBytesRead);
         return Errno.Success;
     }
 
     static Errno writeToStreamAt(Node node, WasmMemory memory, OutputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        if (offset < 0) {
+            return Errno.Inval;
+        }
         try {
             long currentOffset = channel.position();
             try {
@@ -136,6 +173,9 @@ final class FdUtils {
     }
 
     static Errno readFromStreamAt(Node node, WasmMemory memory, InputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        if (offset < 0) {
+            return Errno.Inval;
+        }
         try {
             long currentOffset = channel.position();
             try {
