@@ -833,7 +833,7 @@ public final class TruffleLogger {
     }
 
     private int getLevelNum() {
-        if (!levelNumStable.isValid()) {
+        if (CompilerDirectives.isPartialEvaluationConstant(this) && !levelNumStable.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return levelNum;
@@ -962,8 +962,12 @@ public final class TruffleLogger {
         }
 
         synchronized void addLogLevelsForVMObject(final Object vmObject, final Map<String, Level> addedLevels) {
+            /*
+             * During pre-initialized context patching, the same vmObject can be configured again.
+             * Remove any existing registration first to keep activeContexts canonical.
+             */
+            Set<String> toRemove = removeContext(vmObject);
             activeContexts.add(new ContextWeakReference(vmObject, contextsRefQueue, addedLevels));
-            final Set<String> toRemove = collectRemovedLevels();
             reconfigure(addedLevels, toRemove);
         }
 
@@ -984,12 +988,15 @@ public final class TruffleLogger {
         }
 
         synchronized boolean isLoggable(final String loggerName, final Level level) {
-
+            /*
+             * Capture the context cardinality before processing queued GCed contexts. Reference
+             * cleanup may transition from multi-context to single-context without recomputing
+             * cached logger levels.
+             */
+            boolean isSingleContext = activeContexts.size() == 1;
             final Set<String> toRemove = collectRemovedLevels();
             if (!toRemove.isEmpty()) {
                 reconfigure(Collections.emptyMap(), toRemove);
-                // Logger's effective level may changed
-                return getLogger(loggerName).isLoggable(level);
             }
             final Map<String, Level> current = LanguageAccessor.engineAccess().getLogLevels(getSPI());
             if (current == null) {
@@ -999,7 +1006,7 @@ public final class TruffleLogger {
                 final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
             }
-            if (activeContexts.size() == 1) {
+            if (isSingleContext) {
                 return true;
             }
             final int currentLevel = computeLevel(loggerName, current);
@@ -1120,6 +1127,7 @@ public final class TruffleLogger {
         }
 
         private Set<String> removeContext(Object vmObject) {
+            assert Thread.holdsLock(this);
             final Set<String> toRemove = collectRemovedLevels();
             for (Iterator<ContextWeakReference> it = activeContexts.iterator(); it.hasNext();) {
                 final ContextWeakReference ref = it.next();
@@ -1392,6 +1400,7 @@ public final class TruffleLogger {
             }
 
             private void updateChildParentsImpl(final TruffleLogger parentLogger) {
+                assert Thread.holdsLock(LoggerCache.this);
                 if (children == null || children.isEmpty()) {
                     return;
                 }
