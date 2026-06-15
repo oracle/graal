@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,22 +43,16 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.ObjectHandle;
-import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
@@ -75,19 +69,15 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -96,6 +86,9 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -113,16 +106,12 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
-    private static final Field FIELDHOLDER_STATUS_FIELD = ImageInfo.inImageCode()
-                    ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus")
-                    : null;
-
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
 
-    protected static final CEntryPointLiteral<CFunctionPointer> threadStartRoutine = CEntryPointLiteral.create(PlatformThreads.class, "threadStartRoutine", ThreadStartData.class);
+    protected static final CEntryPointLiteral<CFunctionPointer> threadStartRoutine = CEntryPointLiteral.create(PlatformThreads.class, "threadStartRoutine", IsolateThread.class);
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -135,7 +124,7 @@ public abstract class PlatformThreads {
      * a small window of time, threads are still accounted for in this count while they are already
      * attached. We use this counter to avoid missing threads during tear-down.
      */
-    private final AtomicInteger unattachedStartedThreads = new AtomicInteger(0);
+    private final UninterruptibleUtils.AtomicInteger unattachedStartedThreads = new UninterruptibleUtils.AtomicInteger(0);
 
     /** The default group for new Threads that are attached without an explicit group. */
     final ThreadGroup mainGroup;
@@ -420,31 +409,16 @@ public abstract class PlatformThreads {
      * Ensures that a {@link Thread} object for the current thread exists. If a {@link Thread}
      * already exists, this method is a no-op. The current thread must have already been attached.
      *
-     * @return true if a new thread was created; false if a {@link Thread} object had already been
-     *         assigned.
-     */
-    public static boolean ensureCurrentAssigned() {
-        /*
-         * The thread was manually attached and started as a java.lang.Thread, so we consider it a
-         * daemon thread.
-         */
-        return ensureCurrentAssigned(null, null, true);
-    }
-
-    /**
-     * Ensures that a {@link Thread} object for the current thread exists. If a {@link Thread}
-     * already exists, this method is a no-op. The current thread must have already been attached.
-     *
      * @param name the thread's name, or {@code null} for a default name.
      * @param group the thread group, or {@code null} for the default thread group.
      * @param asDaemon the daemon status of the new thread.
      * @return true if a new thread was created; false if a {@link Thread} object had already been
      *         assigned.
      */
-    public static boolean ensureCurrentAssigned(String name, ThreadGroup group, boolean asDaemon) {
+    public static boolean ensureCurrentThreadHasThreadObject(String name, ThreadGroup group, boolean asDaemon) {
         if (currentThread.get() == null) {
             Thread thread = fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
-            assignCurrent(thread);
+            assignThreadObjectToCurrentThread(thread);
             /*
              * This must be done after setting the current thread since `getSystemClassLoader` might
              * trigger class initialization (e.g., when `jdk.internal.loader.ClassLoaders` is
@@ -457,59 +431,49 @@ public abstract class PlatformThreads {
         return false;
     }
 
-    /**
-     * Assign a {@link Thread} object to the current thread, which must have already been attached
-     * as an {@link IsolateThread}.
-     */
     @Uninterruptible(reason = "Ensure consistency of nonDaemonThreads.")
-    static void assignCurrent(Thread thread) {
-        if (!VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()) && thread.isDaemon()) {
+    private static void assignThreadObjectToCurrentThread(Thread thread) {
+        assert !VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread());
+        if (thread.isDaemon()) {
             /* Correct the value of nonDaemonThreads, now that we have a Thread object. */
             decrementNonDaemonThreads();
         }
 
-        /*
-         * First of all, ensure we are in RUNNABLE state. If this thread was started by the current
-         * isolate, we race with the thread that launched us to set the status and we could still be
-         * in status NEW.
-         */
         setThreadStatus(thread, ThreadStatus.RUNNABLE);
-        assignCurrent0(thread);
+        assignThreadObject0(CurrentIsolate.getCurrentThread(), thread, true);
     }
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
-    private static void assignCurrent0(Thread thread) {
-        assignCurrent0(thread, true);
+    static void assignThreadObjectToNewlyStartedThread(IsolateThread isolateThread, Thread newThread, Thread parentThread) {
+        assert VMThreads.wasStartedByCurrentIsolate(isolateThread);
+        assert toTarget(newThread).parentThreadId == 0;
+        toTarget(newThread).parentThreadId = JavaThreads.getThreadId(parentThread);
+
+        assert getThreadStatus(newThread) == ThreadStatus.NEW : "Started thread must still be NEW.";
+        setThreadStatus(newThread, ThreadStatus.RUNNABLE);
+
+        assignThreadObject0(isolateThread, newThread, false);
     }
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
-    private static void assignCurrent0(Thread thread, boolean notifyThreadStart) {
-        VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
-        JavaThreads.currentVThreadId.set(JavaThreads.getThreadId(thread));
-        currentThread.set(thread);
+    private static void assignThreadObject0(IsolateThread isolateThread, Thread thread, boolean notifyThreadStart) {
+        assert getThreadStatus(thread) != ThreadStatus.NEW : "published threads must be at least runnable so that isAlive() returns a correct value";
+
+        VMError.guarantee(currentThread.get(isolateThread) == null, "overwriting existing java.lang.Thread");
+        JavaThreads.currentVThreadId.set(isolateThread, JavaThreads.getThreadId(thread));
+        currentThread.set(isolateThread, thread);
 
         assert toTarget(thread).isolateThread.isNull();
-        toTarget(thread).isolateThread = CurrentIsolate.getCurrentThread();
+        toTarget(thread).isolateThread = isolateThread;
         if (notifyThreadStart) {
-            ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
+            ThreadListenerSupport.get().afterThreadStart(isolateThread, thread);
         }
     }
 
-    /**
-     * Returns the virtual thread that is mounted on the given platform thread, or {@code null} if
-     * no virtual thread is mounted.
-     */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static Thread getMountedVirtualThread(Thread thread) {
-        assert thread == currentThread.get() || VMOperation.isInProgressAtSafepoint();
-        assert !isVirtual(thread);
-        return toTarget(thread).vthread;
-    }
-
     @Uninterruptible(reason = "Called during isolate creation.")
-    public void assignMainThread() {
+    public void assignMainThreadObject() {
         /* The thread that creates the isolate is considered the "main" thread. */
-        assignCurrent0(mainThread);
+        assignThreadObject0(CurrentIsolate.getCurrentThread(), mainThread, true);
 
         /*
          * Note that we can't call ThreadListenerSupport.beforeThreadRun() because the isolate is
@@ -521,7 +485,7 @@ public abstract class PlatformThreads {
      * Releases the preallocated main {@link Thread} from the launcher thread without detaching the
      * launcher thread from the isolate.
      */
-    @Uninterruptible(reason = "Transfers the main Thread object from the launcher thread to the runner thread.", calleeMustBe = false)
+    @Uninterruptible(reason = "Just because of the caller. The thread is already attached and set up at this point.")
     public void releaseMainThreadFromCurrent() {
         VMError.guarantee(currentThread.get() == mainThread, "current thread is not the main Java thread");
 
@@ -533,18 +497,32 @@ public abstract class PlatformThreads {
          */
         ThreadListenerSupport.get().afterThreadRun();
 
+        // GR-76396: this unpublishes a Thread object without terminating the thread, which can
+        // have unexpected side effects.
         toTarget(mainThread).isolateThread = Word.nullPointer();
         JavaThreads.currentVThreadId.set(0L);
         currentThread.set(null);
     }
 
-    /**
-     * Assigns the preallocated main {@link Thread} to the current attached isolate thread.
-     */
-    @Uninterruptible(reason = "The main Thread object is assigned before running application code.", calleeMustBe = false)
-    public void assignMainThreadToCurrent() {
-        assignCurrent0(mainThread, false);
+    /** Reassigns the preallocated main {@link Thread} to the current {@link IsolateThread}. */
+    @Uninterruptible(reason = "Just because of the caller. The thread is already attached and set up at this point.", calleeMustBe = false)
+    public void reassignMainThreadObject() {
+        assignThreadObject0(CurrentIsolate.getCurrentThread(), mainThread, false);
+        // GR-76396: ThreadListenerSupport.get().beforeThreadRun() is called twice for the main
+        // thread (same java.lang.Thread object but different IsolateThreads). afterThreadStart()
+        // is only called once, but the call happens on the wrong IsolateThread.
         ThreadListenerSupport.get().beforeThreadRun();
+    }
+
+    /**
+     * Returns the virtual thread that is mounted on the given platform thread, or {@code null} if
+     * no virtual thread is mounted.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Thread getMountedVirtualThread(Thread thread) {
+        assert thread == currentThread.get() || VMOperation.isInProgressAtSafepoint();
+        assert !isVirtual(thread);
+        return toTarget(thread).vthread;
     }
 
     /**
@@ -791,56 +769,26 @@ public abstract class PlatformThreads {
         }
     }
 
-    @RawStructure
-    protected interface ThreadStartData extends PointerBase {
-
-        @RawField
-        ObjectHandle getThreadHandle();
-
-        @RawField
-        void setThreadHandle(ObjectHandle handle);
-
-        @RawField
-        Isolate getIsolate();
-
-        @RawField
-        void setIsolate(Isolate vm);
-    }
-
-    protected <T extends ThreadStartData> T prepareStart(Thread thread, int startDataSize) {
-        T startData = Word.nullPointer();
-        ObjectHandle threadHandle = Word.zero();
-        try {
-            startData = NativeMemory.malloc(startDataSize, NmtCategory.Threading);
-            threadHandle = ObjectHandles.getGlobal().create(thread);
-
-            startData.setIsolate(CurrentIsolate.getIsolate());
-            startData.setThreadHandle(threadHandle);
-        } catch (Throwable e) {
-            if (startData.isNonNull()) {
-                freeStartData(startData);
-            }
-            if (threadHandle.notEqual(Word.zero())) {
-                ObjectHandles.getGlobal().destroy(threadHandle);
-            }
-            throw e;
+    /** This method must not throw any exceptions. */
+    protected IsolateThread prepareThreadStart(Thread thread) {
+        IsolateThread isolateThread = VMThreads.singleton().allocateIsolateThread();
+        if (isolateThread.isNull()) {
+            return Word.nullPointer();
         }
 
-        /* To ensure that we have consistent thread counts, no exception must be thrown. */
-        try {
-            int numThreads = unattachedStartedThreads.incrementAndGet();
-            assert numThreads > 0;
+        VMThreads.singleton().initializeNewlyStartedThread(isolateThread, CurrentIsolate.getIsolate());
+        ThreadLocalHandshake.requestHandshake(isolateThread);
 
-            if (!thread.isDaemon()) {
-                incrementNonDaemonThreads();
-            }
-            return startData;
-        } catch (Throwable e) {
-            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+        int numThreads = unattachedStartedThreads.incrementAndGet();
+        assert numThreads > 0;
+
+        if (!thread.isDaemon()) {
+            incrementNonDaemonThreads();
         }
+        return isolateThread;
     }
 
-    protected void undoPrepareStartOnError(Thread thread, ThreadStartData startData) {
+    protected void undoPrepareStartOnError(Thread thread, IsolateThread isolateThread) {
         if (!thread.isDaemon()) {
             decrementNonDaemonThreads();
         }
@@ -848,7 +796,7 @@ public abstract class PlatformThreads {
         int numThreads = unattachedStartedThreads.decrementAndGet();
         assert numThreads >= 0;
 
-        freeStartData(startData);
+        VMThreads.singleton().freeIsolateThread(isolateThread);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -878,46 +826,82 @@ public abstract class PlatformThreads {
         }
     }
 
-    protected static void freeStartData(ThreadStartData startData) {
-        NativeMemory.free(startData);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void decrementUnattachedStartedThreads() {
+        int numThreads = singleton().unattachedStartedThreads.decrementAndGet();
+        assert numThreads >= 0;
     }
 
-    void startThread(Thread thread, long stackSize) {
-        boolean started = doStartThread(thread, stackSize);
-        if (!started) {
-            throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
+    /**
+     * Starts the Java thread by creating a new OS thread and waiting for its initial startup
+     * handshake. The method returns only after the new {@link IsolateThread} is attached and the
+     * parent has assigned the {@link Thread} object to it, so thread-list consumers can observe a
+     * fully initialized thread immediately after {@link Thread#start()} returns.
+     *
+     * @return {@code true} if the OS thread was started successfully, or {@code false} if thread
+     *         creation failed before the new thread could run.
+     */
+    @RestrictHeapAccess(reason = "Simplifies error handling.", access = NO_ALLOCATION)
+    public boolean startThread(Target_java_lang_Thread targetThread) {
+        /* Prevent stack overflow errors and recurring callback execution. */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            Thread thread = JavaThreads.fromTarget(targetThread);
+            long stackSize = PlatformThreads.getRequestedStackSize(thread, true);
+
+            /* Run the platform-specific code that tries to start the thread. */
+            IsolateThread isolateThread = PlatformThreads.singleton().doStartThread(thread, stackSize);
+            if (isolateThread.isNull()) {
+                return false;
+            }
+
+            /*
+             * Wait until the new IsolateThread is attached and therefore fully initialized and
+             * visible to the GC.
+             */
+            ThreadLocalHandshake.waitUntilSuspended(isolateThread);
+            PlatformThreads.assignThreadObjectToNewlyStartedThread(isolateThread, thread, Thread.currentThread());
+            ThreadLocalHandshake.releaseHandshake(isolateThread);
+            return true;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown during thread creation.", e);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     /**
-     * Start a new OS thread. The implementation must call {@link #prepareStart} after preparations
-     * and before starting the thread. The new OS thread must call {@link #threadStartRoutine}.
+     * Start a new OS thread. The implementation must call {@link #prepareThreadStart} after
+     * preparations and before starting the thread. The new OS thread must call
+     * {@link #threadStartRoutine}. This method must not throw any exceptions.
      *
-     * @return {@code false} if the thread could not be started, {@code true} on success.
+     * @return the {@link IsolateThread} of the new thread, or {@code null} if the thread could not
+     *         be started.
      */
-    protected abstract boolean doStartThread(Thread thread, long stackSize);
+    @RestrictHeapAccess(reason = "Simplifies error handling.", access = NO_ALLOCATION)
+    protected abstract IsolateThread doStartThread(Thread thread, long stackSize);
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = ThreadStartRoutinePrologue.class, epilogue = CEntryPointSetup.LeaveDetachThreadEpilogue.class)
-    protected static WordBase threadStartRoutine(ThreadStartData data) {
-        ObjectHandle threadHandle = data.getThreadHandle();
-        freeStartData(data);
+    @Uninterruptible(reason = "Prevent stack overflow checks and recurring callbacks until the thread is fully set up.", calleeMustBe = false)
+    protected static WordBase threadStartRoutine(IsolateThread isolateThread) {
+        /*
+         * Before the thread was attached, its yellow zone was made available to prevent stack
+         * overflow checks and recurring callback execution. Now that we have reached
+         * uninterruptible code, we can protect it again.
+         */
+        StackOverflowCheck.singleton().protectYellowZone();
 
-        threadStartRoutine(threadHandle);
+        Thread javaThread = Thread.currentThread();
+        singleton().afterThreadStart(javaThread);
+        ThreadListenerSupport.get().afterThreadStart(isolateThread, javaThread);
+        threadStartRoutine(javaThread);
         return Word.nullPointer();
     }
 
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
-    protected static void threadStartRoutine(ObjectHandle threadHandle) {
-        Thread thread = ObjectHandles.getGlobal().get(threadHandle);
-
+    protected static void threadStartRoutine(Thread thread) {
         try {
-            assignCurrent(thread);
-            ObjectHandles.getGlobal().destroy(threadHandle);
-
-            singleton().unattachedStartedThreads.decrementAndGet();
-            singleton().beforeThreadRun(thread);
-
             if (VMThreads.isTearingDown()) {
                 /*
                  * As a newly started thread, we might not have been interrupted like the Java
@@ -926,6 +910,7 @@ public abstract class PlatformThreads {
                 currentThread.get().interrupt();
             }
 
+            singleton().setNativeName(thread, thread.getName());
             ThreadListenerSupport.get().beforeThreadRun();
             thread.run();
         } catch (Throwable ex) {
@@ -933,8 +918,9 @@ public abstract class PlatformThreads {
         }
     }
 
-    /** Hook for subclasses. */
-    protected void beforeThreadRun(@SuppressWarnings("unused") Thread thread) {
+    /** Hook for subclasses. Only executed for threads that are started by an isolate. */
+    @Uninterruptible(reason = "Prevent stack overflow checks and recurring callbacks until the thread is fully set up.")
+    protected void afterThreadStart(@SuppressWarnings("unused") Thread thread) {
     }
 
     /**
@@ -1166,11 +1152,6 @@ public abstract class PlatformThreads {
         toTarget(thread).holder.threadStatus = threadStatus;
     }
 
-    static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
-        assert !isVirtual(thread);
-        return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isAlive(Thread thread) {
         int threadStatus = getThreadStatus(thread);
@@ -1331,8 +1312,8 @@ public abstract class PlatformThreads {
 
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "prologue")
-        static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
+        static void enter(IsolateThread thread) {
+            int code = CEntryPointActions.enterAttachNewlyStartedThread(thread);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

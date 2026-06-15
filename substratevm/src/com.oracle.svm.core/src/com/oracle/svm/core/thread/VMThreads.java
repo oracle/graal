@@ -52,17 +52,18 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.core.thread.OSThreadId;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -215,7 +216,9 @@ public abstract class VMThreads {
      * to 0.
      */
     @Uninterruptible(reason = "Thread state not set up.")
-    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
+    public IsolateThread allocateIsolateThread() {
+        int isolateThreadSize = VMThreadLocalSupport.singleton().sizeOfIsolateThread();
+
         /*
          * We prefer to have the IsolateThread aligned on cache-line boundary, to avoid false
          * sharing with native memory allocated before it. But until we have the real cache line
@@ -223,8 +226,7 @@ public abstract class VMThreads {
          * lead to correctness problems.
          */
         UnsignedWord alignment = Word.unsigned(64);
-
-        UnsignedWord memorySize = Word.unsigned(isolateThreadSize).add(alignment);
+        UnsignedWord memorySize = Word.unsigned(isolateThreadSize).add(alignment.subtract(1));
         Pointer memory = UntrackedNullableNativeMemory.calloc(memorySize);
         if (memory.isNull()) {
             return Word.nullPointer();
@@ -232,9 +234,23 @@ public abstract class VMThreads {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+
+        /* Initialize the data structures for thread-local handshakes. */
+        if (!ThreadLocalHandshake.initializeThreadLocalData(isolateThread)) {
+            UntrackedNullableNativeMemory.free(memory);
+            return Word.nullPointer();
+        }
+
         /* Set to the sentinel value denoting the thread is detached. */
         nextTL.set(isolateThread, isolateThread);
         return isolateThread;
+    }
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    public void initializeNewlyStartedThread(IsolateThread thread, Isolate isolate) {
+        assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
+        IsolateTL.set(thread, isolate);
+        StartedByCurrentIsolate.getAddress(thread).writeByte(0, (byte) 1);
     }
 
     @Uninterruptible(reason = "Thread state no longer set up.")
@@ -246,6 +262,7 @@ public abstract class VMThreads {
     /** Free the native memory allocated by {@link #allocateIsolateThread}. */
     @Uninterruptible(reason = "Thread state no longer set up.")
     protected void freeIsolateThread(IsolateThread thread) {
+        ThreadLocalHandshake.destroyThreadLocalData(thread);
         Pointer memory = unalignedIsolateThreadMemoryTL.get(thread);
         UntrackedNullableNativeMemory.free(memory);
     }
@@ -296,23 +313,31 @@ public abstract class VMThreads {
     }
 
     /** Adds the given {@link IsolateThread} to the list of running threads. */
-    @Uninterruptible(reason = "Thread is not attached yet.")
+    @Uninterruptible(reason = "Thread is initially not attached yet. After attaching, it has STATUS_IN_NATIVE.")
     @NeverInline("Thread register is set in caller, prevent reads from floating before that.")
     public int attachCurrentThread(boolean startedByCurrentIsolate) {
-        StartedByCurrentIsolate.getAddress().writeByte(0, (byte) (startedByCurrentIsolate ? 1 : 0));
-        return attachCurrentThread();
-    }
-
-    @Uninterruptible(reason = "Thread is not attached yet. After attaching, it has STATUS_IN_NATIVE.")
-    private int attachCurrentThread() {
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         assert StatusSupport.isStatusCreated(currentThread) : "Status should be initialized on creation.";
+
+        /* Try to initialize the stack boundaries. */
+        if (!StackOverflowCheck.singleton().initialize()) {
+            return CEntryPointErrors.UNKNOWN_STACK_BOUNDARIES;
+        }
+
+        /* Set well-known thread-local values before publishing the thread. */
+        StartedByCurrentIsolate.getAddress().writeByte(0, (byte) (startedByCurrentIsolate ? 1 : 0));
         OSThreadIdTL.set(getCurrentOSThreadId());
         OSThreadHandleTL.set(getCurrentOSThreadHandle());
 
-        /* Set initial safepoint counter value before making the thread visible. */
+        /* Set initial safepoint counter value before publishing the thread. */
         assert !RecurringCallbackSupport.isCallbackInstalled(currentThread);
         SafepointCheckCounter.setVolatile(SafepointCheckCounter.MAX_VALUE);
+
+        /*
+         * Enable the yellow zone. This ensures that we don't do any stack overflow checks or execute
+         * any recurring callbacks until the thread is fully set up.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
 
         /*
          * Acquire the ThreadsLock with non-exclusive write access so that concurrent readers are
@@ -332,7 +357,9 @@ public abstract class VMThreads {
             numAttachedThreads++;
             assert numAttachedThreads > 0;
 
-            if (!wasStartedByCurrentIsolate(currentThread)) {
+            if (wasStartedByCurrentIsolate(currentThread)) {
+                PlatformThreads.decrementUnattachedStartedThreads();
+            } else {
                 /* Treat attached threads as non-daemon threads until we know better. */
                 PlatformThreads.incrementNonDaemonThreads();
             }
@@ -354,6 +381,9 @@ public abstract class VMThreads {
          */
         IsolateThreadCache.set(currentThread);
 
+        if (startedByCurrentIsolate) {
+            ThreadLocalHandshake.blockForHandshake();
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 

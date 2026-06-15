@@ -64,6 +64,7 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.locale.LocaleSupport;
@@ -73,6 +74,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -177,7 +179,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, boolean ensuringJavaThread);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, BooleanPointer wasAlreadyAttachedPtr);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
@@ -187,6 +189,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, boolean wasAlreadyAttached);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception);
@@ -366,7 +371,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
         }
 
-        int error = enterAttachThread0(isolate, true, true, false);
+        int error = enterAttachThread0(isolate, true, false, Word.nullPointer());
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -573,26 +578,31 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static int attachThreadSnippet(Isolate isolate, boolean ensureJavaThread) {
         writeCurrentVMThread(Word.nullPointer());
 
-        int error = runtimeCall(ATTACH_THREAD, isolate, ensureJavaThread);
+        BooleanPointer wasAlreadyAttachedPtr = UnsafeStackValue.getShared(SizeOf.get(BooleanPointer.class));
+        int error = runtimeCall(ATTACH_THREAD, isolate, wasAlreadyAttachedPtr);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
 
         ThreadStatusTransition.fromNativeToJava(false);
+
+        boolean wasAlreadyAttached = wasAlreadyAttachedPtr.read();
         if (ensureJavaThread) {
-            error = runtimeCall(ENSURE_JAVA_THREAD);
+            error = runtimeCall(ENSURE_JAVA_THREAD, wasAlreadyAttached);
             if (error != CEntryPointErrors.NO_ERROR) {
-                /* Thread was already detached. */
+                /* Error handling already detached and freed the IsolateThread. */
                 return error;
             }
         }
 
-        /*
-         * When the thread got attached, its yellow zone was made available to prevent stack
-         * overflow checks and recurring callback execution. Now that the thread is fully set up,
-         * protect the yellow zone again.
-         */
-        runtimeCall(PROTECT_YELLOW_ZONE);
+        if (!wasAlreadyAttached) {
+            /*
+             * When the thread got attached, its yellow zone was made available to prevent stack
+             * overflow checks and recurring callback execution. Now that the thread is fully set up,
+             * protect the yellow zone again.
+             */
+            runtimeCall(PROTECT_YELLOW_ZONE);
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -611,29 +621,32 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int attachThread(Isolate isolate, boolean isEnsureJavaThreadCalledLater) {
-        return enterAttachThread0(isolate, isEnsureJavaThreadCalledLater, true, false);
+    private static int attachThread(Isolate isolate, BooleanPointer wasAlreadyAttachedPtr) {
+        return enterAttachThread0(isolate, true, false, wasAlreadyAttachedPtr);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
-    private static int enterAttachThread0(Isolate isolate, boolean isEnsureJavaThreadCalledLater, boolean allowAttach, boolean inCrashHandler) {
+    private static int enterAttachThread0(Isolate isolate, boolean allowAttach, boolean inCrashHandler, BooleanPointer wasAlreadyAttachedPtr) {
         int error = Isolates.checkIsolate(isolate);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
 
         initBaseRegisters(Isolates.getHeapBase(isolate));
-        return enterAttachThread1(isolate, isEnsureJavaThreadCalledLater, allowAttach, inCrashHandler);
+        return enterAttachThread1(isolate, allowAttach, inCrashHandler, wasAlreadyAttachedPtr);
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
     @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
-    private static int enterAttachThread1(Isolate isolate, boolean isEnsureJavaThreadCalledLater, boolean allowAttach, boolean inCrashHandler) {
+    private static int enterAttachThread1(Isolate isolate, boolean allowAttach, boolean inCrashHandler, BooleanPointer wasAlreadyAttachedPtr) {
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
 
         IsolateThread thread = VMThreads.singleton().findIsolateThreadToEnterCurrentOSThread(inCrashHandler);
+        if (wasAlreadyAttachedPtr.isNonNull()) {
+            wasAlreadyAttachedPtr.write(thread.isNonNull());
+        }
 
         if (thread.isNull()) { // not attached
             if (!allowAttach) {
@@ -645,10 +658,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(thread);
             if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
                 verifyIsolateThread(thread, true);
-            }
-
-            if (isEnsureJavaThreadCalledLater && !PlatformThreads.isCurrentAssigned()) {
-                throw VMError.shouldNotReachHere("thread was already attached but does not have a Thread object and we would assign one");
             }
         }
         return CEntryPointErrors.NO_ERROR;
@@ -703,7 +712,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int enterFromCrashHandler(Isolate isolate) {
-        return enterAttachThread0(isolate, false, false, true);
+        return enterAttachThread0(isolate, false, true, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
@@ -724,9 +733,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread is no longer attached in error case.", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int ensureJavaThread() {
+    private static int ensureJavaThread(boolean wasAlreadyAttached) {
+        VMError.guarantee(!wasAlreadyAttached || PlatformThreads.isCurrentAssigned(), "thread was already attached but does not have a Thread object and we would assign one");
+
         try {
-            PlatformThreads.ensureAttachedThreadHasThreadObject(null, null, true);
+            PlatformThreads.ensureCurrentThreadHasThreadObject(null, null, true);
             return CEntryPointErrors.NO_ERROR;
         } catch (Throwable e) {
             int result = CEntryPointErrors.UNCAUGHT_EXCEPTION;

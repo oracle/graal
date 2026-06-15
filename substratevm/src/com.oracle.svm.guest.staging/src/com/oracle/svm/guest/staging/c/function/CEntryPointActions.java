@@ -62,7 +62,7 @@ public final class CEntryPointActions {
      *
      * @param isolate an existing isolate.
      * @param ensureJavaThread when set to true,
-     *            {@code PlatformThreads#ensureAttachedThreadHasThreadObject()} is called to
+     *            {@code PlatformThreads#ensureCurrentThreadHasThreadObject()} is called to
      *            ensure that the Java {@link Thread} is fully initialized. If the parameter is set
      *            to false, the initialization must be done manually (early after the prologue).
      *

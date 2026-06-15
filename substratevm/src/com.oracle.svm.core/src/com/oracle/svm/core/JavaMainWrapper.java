@@ -67,7 +67,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -79,6 +78,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -296,9 +296,9 @@ public class JavaMainWrapper {
 
     private static void runShutdown0() {
         try {
-            PlatformThreads.ensureAttachedThreadHasThreadObject("DestroyJavaVM", null, false);
+            PlatformThreads.ensureCurrentThreadHasThreadObject("DestroyJavaVM", null, false);
         } catch (Throwable e) {
-            Log.log().string("PlatformThreads.ensureAttachedThreadHasThreadObject() failed during shutdown: ").exception(e).newline();
+            Log.log().string("PlatformThreads.ensureCurrentThreadHasThreadObject() failed during shutdown: ").exception(e).newline();
             return;
         }
 

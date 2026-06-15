@@ -251,7 +251,7 @@ public class JfrThreadLocal implements ThreadListener {
     /**
      * Allocation JFR events can be emitted along the allocation slow path. In some cases, when the
      * slow path may be taken, a {@link Thread} object may not yet be assigned to the current
-     * thread, see {@link PlatformThreads#ensureAttachedThreadHasThreadObject(String, ThreadGroup,
+     * thread, see {@link PlatformThreads#ensureCurrentThreadHasThreadObject(String, ThreadGroup,
      * boolean)} where a {@link Thread} object must be created before it can be assigned to the
      * current thread. This may happen during shutdown in {@link JavaMainWrapper}. Therefore, this
      * method must account for the case where {@link JavaThreads#getCurrentThreadOrNull()} returns

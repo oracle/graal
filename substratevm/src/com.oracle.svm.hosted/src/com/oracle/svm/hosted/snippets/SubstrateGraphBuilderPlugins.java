@@ -1031,7 +1031,16 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerStackValuePlugins(InvocationPlugins plugins) {
         registerStackValuePlugins(new Registration(plugins, StackValue.class), true);
-        registerStackValuePlugins(new Registration(plugins, UnsafeStackValue.class), false);
+        Registration unsafeStackValue = new Registration(plugins, UnsafeStackValue.class);
+        registerStackValuePlugins(unsafeStackValue, false);
+        unsafeStackValue.register(new RequiredInvocationPlugin("getShared", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sizeNode) {
+                long size = longValue(b, targetMethod, sizeNode, "size");
+                b.addPush(JavaKind.Object, StackValueNode.createShared(1, size, b, false));
+                return true;
+            }
+        });
 
         Registration unsafeLateStackValue = new Registration(plugins, UnsafeLateStackValue.class);
         unsafeLateStackValue.register(new RequiredInvocationPlugin("get", int.class) {
