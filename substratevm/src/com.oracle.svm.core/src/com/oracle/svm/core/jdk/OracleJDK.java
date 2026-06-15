@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-package com.oracle.svm.core.dcmd;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
-import com.oracle.svm.core.VM;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
-
-@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L59-L68")
-public class VMVersionDmd extends AbstractDCmd {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public VMVersionDmd() {
-        super("VM.version", "Print JVM version information.", Impact.Low);
+public final class OracleJDK implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return isOracleJDK();
     }
 
-    @Override
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L234-L246")
-    public String execute(DCmdArguments args) throws Throwable {
-        VM vm = ImageSingletons.lookup(VM.class);
-        return vm.formattedVmVersion + System.lineSeparator() + vm.formattedJdkVersion;
+    static boolean isOracleJDK() {
+        return JVMCIVersionCheck.isOracleJDK(GraalServices.getSavedProperties());
     }
 }

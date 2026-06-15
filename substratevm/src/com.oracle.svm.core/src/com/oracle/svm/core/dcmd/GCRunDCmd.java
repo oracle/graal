@@ -32,7 +32,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L251-L262")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L251-L262")
 public class GCRunDCmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public GCRunDCmd() {

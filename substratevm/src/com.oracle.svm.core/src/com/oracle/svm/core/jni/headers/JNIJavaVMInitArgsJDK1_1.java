@@ -37,7 +37,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
  */
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JDK1_1InitArgs")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/include/jvm.h#L1141-L1169")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/hotspot/share/include/jvm.h#L1141-L1169")
 public interface JNIJavaVMInitArgsJDK1_1 extends PointerBase {
     /** Gets the JNI version field. */
     @CField("version")

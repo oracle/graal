@@ -57,27 +57,27 @@ import jdk.graal.compiler.options.Option;
  * requests. At the moment, only jcmd is supported.
  */
 public abstract class AttachListenerThread extends Thread {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L176-L178")//
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L176-L178")//
     protected static final int ATTACH_ERROR_BAD_VERSION = 101;
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L171")//
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L171")//
     protected static final int NAME_LENGTH_MAX_V1 = 16;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L172")//
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L172")//
     protected static final int ARG_LENGTH_MAX_V1 = 1024;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L173")//
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L173")//
     protected static final int ARG_COUNT_MAX_V1 = 3;
 
     private static final String JCMD_COMMAND_STRING = "jcmd";
 
     @SuppressWarnings("this-escape")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L668-L682")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L668-L682")
     public AttachListenerThread() {
         super(PlatformThreads.singleton().systemGroup, "Attach Listener");
         this.setDaemon(true);
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L586-L651")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L586-L651")
     public void run() {
         try {
             while (true) {
@@ -99,7 +99,7 @@ public abstract class AttachListenerThread extends Thread {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L364-L410")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L364-L410")
     private static void handleJcmd(AttachOperation op) {
         try {
             /* jcmd only uses the first argument. */
@@ -110,8 +110,8 @@ public abstract class AttachListenerThread extends Thread {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/diagnosticFramework.cpp#L382-L418")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/diagnosticFramework.cpp#L429-L446")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/diagnosticFramework.cpp#L382-L418")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/diagnosticFramework.cpp#L429-L446")
     private static String parseAndExecute(String input) throws Throwable {
         String[] args = StringUtil.split(input, " ");
         String cmdName = args[0];
@@ -148,7 +148,7 @@ public abstract class AttachListenerThread extends Thread {
 
     protected abstract AttachOperation dequeue();
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L845-L906")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L845-L906")
     protected static AttachOperation readRequest(AttachSocketChannel channel) {
         int ver = readInt(channel);
         if (ver < 0) {
@@ -200,7 +200,7 @@ public abstract class AttachListenerThread extends Thread {
         return op;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L735-L803")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L735-L803")
     private static AttachOperation readRequestData(AttachSocketChannel channel, int bufferSize, int minStringCount, int minReadSize) {
         Pointer buffer = NativeMemory.malloc(bufferSize, NmtCategory.Serviceability);
         try {
@@ -294,13 +294,13 @@ public abstract class AttachListenerThread extends Thread {
         return new AttachOperation(channel, name, args);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L805-L820")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L822-L843")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L805-L820")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L822-L843")
     private static void parseOptions() {
         /* "streaming" is the only option at the moment, and we don't support it. */
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L704-L733")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L704-L733")
     private static int readInt(AttachSocketChannel channel) {
         int maxValue = Integer.MAX_VALUE / 20;
         CCharPointer chPtr = StackValue.get(CCharPointer.class);
@@ -325,7 +325,7 @@ public abstract class AttachListenerThread extends Thread {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L71-L74")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L71-L74")
     private interface Version {
         int V1 = 1;
         int V2 = 2;
@@ -338,7 +338,7 @@ public abstract class AttachListenerThread extends Thread {
          * This method should only be called directly if we don't have an {@link AttachOperation}
          * yet.
          */
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L921-L934")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L921-L934")
         public void writeReply(int result, String message) {
             /* Send the return code. */
             byte[] lineBreak = System.lineSeparator().getBytes(StandardCharsets.UTF_8);
@@ -354,14 +354,14 @@ public abstract class AttachListenerThread extends Thread {
             }
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L908-L919")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.cpp#L908-L919")
         protected abstract void write(byte[] data);
 
         public abstract void close();
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L167-L304")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L141-L158")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/share/services/attachListener.hpp#L167-L304")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L141-L158")
     public static class AttachOperation {
         private final AttachSocketChannel channel;
         private final String name;
@@ -381,8 +381,8 @@ public abstract class AttachListenerThread extends Thread {
             return args;
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L323-L325")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L107-L109")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L323-L325")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L107-L109")
         public void complete(int result, String message) {
             channel.writeReply(result, message);
             channel.close();

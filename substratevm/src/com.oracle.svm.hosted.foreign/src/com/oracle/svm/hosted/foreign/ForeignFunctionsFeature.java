@@ -688,8 +688,8 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             this.adaptUpcallForIMRMethod = ReflectionUtil.lookupMethod(SharedUtils.class, "adaptUpcallForIMR", MethodHandle.class, boolean.class);
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L117-L135")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L191-L210")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+25/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L117-L135")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L191-L210")
         @Override
         public DirectUpcall createKey(AbiUtils abiUtils, DirectUpcallDesc desc) {
             MethodHandle target = desc.mh();
@@ -772,8 +772,8 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
          * Looks up a field of type {@link UnaryOperator}, reads its value and returns it. There
          * must be exactly one such field that is readable. Otherwise, an Error is thrown.
          */
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L201-L207")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L201-L207")
         private static UnaryOperator<MethodHandle> lookupAndReadUnaryOperatorField(AbstractLinker.UpcallStubFactory outerFactory, boolean inMemoryReturn) {
             AbstractLinker.UpcallStubFactory upcallStubFactory = outerFactory;
 
@@ -827,7 +827,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
      * {@link com.oracle.svm.hosted.methodhandles.MethodHandleFeature#beforeAnalysis}) does not
      * trigger.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/java/lang/invoke/VarHandles.java#L313-L344") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/java/lang/invoke/VarHandles.java#L313-L344") //
     private static final List<String> VAR_HANDLE_SEGMENT_ACCESSORS = List.of(
                     "VarHandleSegmentAsBooleans",
                     "VarHandleSegmentAsBytes",
@@ -918,7 +918,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
      * and are known to never access a (potentially already closed) memory session. Thus, such
      * callees can be excluded during verification.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java")
     protected void initSafeArenaAccessors(BeforeAnalysisAccessImpl access) throws NoSuchMethodException {
         MetaAccessProvider metaAccess = access.getMetaAccess();
 
@@ -1054,7 +1054,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
      * Invocation plugin to initialize the ValueLayouts' VarHandle cache (which is annotated
      * with @Stable) early. This should enable intrinsification of the VarHandles.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+4/src/java.base/share/classes/jdk/internal/foreign/layout/ValueLayouts.java#L69-L70")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.2+4/src/java.base/share/classes/jdk/internal/foreign/layout/ValueLayouts.java#L69-L70")
     private static final class FoldValueLayoutVarHandlePlugin extends RequiredInvocationPlugin {
         private final Class<?> receiverClass;
         private final Function<Object, VarHandle> varHandleInvoker;

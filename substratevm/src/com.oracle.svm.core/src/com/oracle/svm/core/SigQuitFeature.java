@@ -67,7 +67,7 @@ final class RegisterSigQuitHandlerStartupHook implements RuntimeSupport.Hook {
 
 class SigQuitHandler implements Signal.Handler {
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/runtime/os.cpp#L388-L433")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/runtime/os.cpp#L388-L433")
     public void handle(Signal arg0) {
         if (VMInspectionOptions.hasJCmdSupport() && AttachApiSupport.singleton().isInitTrigger()) {
             AttachApiSupport.singleton().initialize();

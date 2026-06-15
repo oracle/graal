@@ -145,7 +145,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
     private URL findResourceOnClassPath(String name) {
         ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
         URL url = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceURL(loader, name) : null;
@@ -164,7 +164,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L497-L504")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L497-L504")
     private Enumeration<URL> findResourcesOnClassPath(String name) throws IOException {
         ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
         List<URL> embeddedResources = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceListURLs(loader, name) : List.of();

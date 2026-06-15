@@ -121,7 +121,7 @@ public class LocaleSupport {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+5/src/java.base/share/classes/jdk/internal/util/SystemProps.java#L131-L141")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+5/src/java.base/share/classes/jdk/internal/util/SystemProps.java#L131-L141")
     public synchronized LocaleData getLocale() {
         /* This method is only called a few times, so need to optimize the locking. */
         if (locale != null) {
@@ -171,7 +171,7 @@ public class LocaleSupport {
      * If a locale system property is set at image build-time or as a command-line option at
      * run-time (-D...), then we don't want to use the default value that the C code determined.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+5/src/java.base/share/classes/jdk/internal/util/SystemProps.java#L178-L209")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+5/src/java.base/share/classes/jdk/internal/util/SystemProps.java#L178-L209")
     private static LocaleAspect getLocaleAspect(String baseKey, String displayKey, String formatKey,
                     String defaultBase, String defaultDisplay, String defaultFormat) {
         /*

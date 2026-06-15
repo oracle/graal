@@ -560,7 +560,7 @@ public final class ClassInitializationInfo {
      * explicitly don't do any optimizations in that regard.
      */
     @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1184-L1364")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1184-L1364")
     private void tryInitialize0(DynamicHub hub) {
         assert !Platform.includedIn(NATIVE_ONLY.class) || StackOverflowCheck.singleton().isYellowZoneAvailable();
         /*
@@ -759,7 +759,7 @@ public final class ClassInitializationInfo {
 
     /** Eagerly initialize superinterfaces that declare default methods. May throw exceptions. */
     @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1099-L1117")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1099-L1117")
     private static void initializeSuperInterfaces(DynamicHub hub) {
         assert hub.hasDefaultMethods() : "caller should have checked this";
         for (DynamicHub iface : hub.getInterfaces()) {
@@ -802,8 +802,8 @@ public final class ClassInitializationInfo {
      * Acquire lock, set state, and notify all waiting threads. This method must not throw any
      * exceptions as this could result in deadlocks.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1367-L1380")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L802-L811")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1367-L1380")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L802-L811")
     private void setInitializationStateAndNotify(InitState state) {
         try {
             setInitializationStateAndNotify0(state);
@@ -831,7 +831,7 @@ public final class ClassInitializationInfo {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1675-L1715")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1675-L1715")
     private void invokeClassInitializer(DynamicHub hub) {
         if (runtimeClassInitializer == null) {
             return;

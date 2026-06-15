@@ -174,7 +174,7 @@ public final class MemoryUtil {
         return Stream.of("-Xmx", "-Xms", "-XX:MaxRAMPercentage=", "-XX:MaximumHeapSizePercent=").anyMatch(flag::startsWith);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+10/src/hotspot/share/runtime/arguments.cpp#L1530-L1532")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+10/src/hotspot/share/runtime/arguments.cpp#L1530-L1532")
     private static long determineMaxHeapBasedOnMemoryFlags(List<String> memoryFlags, long heuristicMaxMemory, long totalMemory) {
         // Priority: Xmx, MaxRAMPercentage, MaximumHeapSizePercent
         var xmx = getMaxMemoryFlagValue("-Xmx", memoryFlags, totalMemory);
@@ -214,7 +214,7 @@ public final class MemoryUtil {
         return max;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+10/src/hotspot/share/utilities/parseInteger.hpp#L105-L160")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+10/src/hotspot/share/utilities/parseInteger.hpp#L105-L160")
     public static long parseMemoryFlagValue(String flag, long totalMemory) {
         if (flag.startsWith("-Xmx") || flag.startsWith("-Xms")) {
             String valuePart = flag.substring(4);

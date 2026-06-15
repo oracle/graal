@@ -122,7 +122,7 @@ public final class Target_java_lang_invoke_MemberName {
 final class Target_java_lang_invoke_MemberName_Factory {
     @Substitute
     @SuppressWarnings("static-method")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/b685ea54081fcf54a6567dddb49b63435a6e1ea4/src/java.base/share/classes/java/lang/invoke/MemberName.java#L937-L973")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/b685ea54081fcf54a6567dddb49b63435a6e1ea4/src/java.base/share/classes/java/lang/invoke/MemberName.java#L937-L973")
     private Target_java_lang_invoke_MemberName resolve(byte refKind, Target_java_lang_invoke_MemberName ref, Class<?> lookupClass, int allowedModes,
                     boolean speculativeResolve) {
         Target_java_lang_invoke_MemberName m = ref.clone();

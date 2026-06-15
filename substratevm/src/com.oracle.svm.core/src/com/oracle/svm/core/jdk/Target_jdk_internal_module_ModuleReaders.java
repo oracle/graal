@@ -79,7 +79,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L421-L427")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L421-L427")
     Optional<URI> find(String name) throws IOException {
         Objects.requireNonNull(name);
         if (closed) {
@@ -99,7 +99,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L445-L452")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L445-L452")
     Optional<ByteBuffer> read(String name) throws IOException {
         Objects.requireNonNull(name);
         if (closed) {
@@ -146,7 +146,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L246-L255")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L246-L255")
     static JarFile newJarFile(String path) {
         /*
          * A baked ModuleReferences.newJarModule() supplier can lazily create its JarModuleReader at
@@ -162,7 +162,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L247-L250")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L247-L250")
     Target_jdk_internal_module_ModuleReferences_JarModuleReader(String path, URI uri) {
         SubstrateUtil.cast(this, Target_jdk_internal_module_ModuleReferences_SafeCloseModuleReader.class).constructor();
         JarFile jarFile = newJarFile(path);
@@ -172,7 +172,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L252-L254")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L252-L254")
     JarEntry getEntry(String name) {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         return jarFile.getJarEntry(Objects.requireNonNull(name));
@@ -180,7 +180,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L258-L270")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L258-L270")
     Optional<URI> implFind(String name) {
         Objects.requireNonNull(name);
         String embeddedModuleName = ResourceBasedModuleReaderSupport.getRuntimeModuleName(this);
@@ -198,7 +198,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L273-L280")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L273-L280")
     Optional<InputStream> implOpen(String name) throws IOException {
         Objects.requireNonNull(name);
         String embeddedModuleName = ResourceBasedModuleReaderSupport.getRuntimeModuleName(this);
@@ -216,7 +216,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L283-L288")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L283-L288")
     Stream<String> implList() {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         if (jarFile == null) {
@@ -233,7 +233,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L291-L293")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L291-L293")
     void implClose() throws IOException {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         if (jarFile != null) {

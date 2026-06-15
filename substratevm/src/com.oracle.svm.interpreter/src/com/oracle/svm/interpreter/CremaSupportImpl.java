@@ -1560,7 +1560,7 @@ public class CremaSupportImpl implements CremaSupport {
         throw VMError.shouldNotReachHere("refKind: " + refKind);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/hotspot/share/prims/methodHandles.cpp#L735-L749")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/prims/methodHandles.cpp#L735-L749")
     private static SignaturePolymorphicIntrinsic getSignaturePolymorphicIntrinsicID(InterpreterResolvedObjectType resolutionKlass, int refKind, Symbol<Name> name) {
         SignaturePolymorphicIntrinsic mhMethodId = null;
         if (ParserKlass.isSignaturePolymorphicHolderType(resolutionKlass.getSymbolicType())) {

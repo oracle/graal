@@ -190,9 +190,9 @@ public class JfrManager {
         FlightRecorder.addPeriodicEvent(EndChunkNativePeriodicEvents.class, EndChunkNativePeriodicEvents::emit);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L219-L247")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L146-L180")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L130-L144")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L219-L247")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L146-L180")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L130-L144")
     private static void initRecording() {
         Target_jdk_jfr_internal_dcmd_DCmdStart cmd = new Target_jdk_jfr_internal_dcmd_DCmdStart();
         String[] result = SubstrateUtil.cast(cmd, Target_jdk_jfr_internal_dcmd_AbstractDCmd.class).execute("internal", SubstrateOptions.StartFlightRecording.getValue(), ',');

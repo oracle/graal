@@ -651,7 +651,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
      * @param cl the class for which a constructor is to be found
      * @return the generated constructor, or null if none is available
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#L311-L332")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+22/src/java.base/share/classes/jdk/internal/reflect/ReflectionFactory.java#L311-L332")
     private Constructor<?> getConstructorForSerialization(Class<?> cl) {
         Class<?> initCl = cl;
         while (Serializable.class.isAssignableFrom(initCl)) {
