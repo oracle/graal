@@ -107,7 +107,6 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.HostedModuleSupport;
@@ -648,7 +647,7 @@ public final class NativeImageClassLoaderSupport {
                 }
             }
         });
-        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(StringUtil.split(m, ","))).forEach(moduleName -> {
+        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().forEach(moduleName -> {
             if (ALL_UNNAMED.equals(moduleName)) {
                 ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
             } else {
