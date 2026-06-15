@@ -549,7 +549,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "value");
             TypeMirror proxiedType = getTypeMirror(context, mirrorValue);
 
-            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mir, "name");
+            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+            if (!name.isEmpty() && !validateOperationName(model, mir, nameValue, name, false)) {
+                continue;
+            }
 
             if (proxiedType.getKind() != TypeKind.DECLARED) {
                 model.addError(mir, mirrorValue, "Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
@@ -584,7 +588,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
             customOperationDeclared = true;
 
-            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mir, "name");
+            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+            if (!validateOperationName(model, mir, nameValue, name, false)) {
+                continue;
+            }
 
             AnnotationValue operatorValue = ElementUtils.getAnnotationValue(mir, "operator");
             Operator operator = Operator.valueOf(((VariableElement) operatorValue.getValue()).getSimpleName().toString());
@@ -713,6 +721,18 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    static boolean validateOperationName(MessageContainer container, AnnotationMirror mirror, AnnotationValue value, String name, boolean proxyable) {
+        if (name.contains("_") || name.contains("$") || !SourceVersion.isIdentifier(name)) {
+            String message = "Operation name must be a valid Java identifier and must not contain '_' or '$'.";
+            if (proxyable) {
+                message += " Specify an explicit operation name using @OperationProxy(name = \"...\").";
+            }
+            container.addError(mirror, value, message);
+            return false;
+        }
+        return true;
     }
 
     /**

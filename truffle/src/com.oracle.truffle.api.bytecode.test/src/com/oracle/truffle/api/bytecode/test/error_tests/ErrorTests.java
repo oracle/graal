@@ -87,6 +87,9 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings({"unused", "static-method", "truffle-inlining", "truffle-guard"})
 public class ErrorTests {
+    private static final String INVALID_OPERATION_NAME = "Operation name must be a valid Java identifier and must not contain '_' or '$'.";
+    private static final String INVALID_PROXYABLE_OPERATION_NAME = INVALID_OPERATION_NAME + " Specify an explicit operation name using @OperationProxy(name = \"...\").";
+
     @ExpectError("Bytecode DSL class must be declared abstract.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     public static class MustBeDeclaredAbstract extends RootNode implements BytecodeRootNode {
@@ -750,10 +753,17 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Operation class name cannot contain underscores.")
+        @ExpectError(INVALID_OPERATION_NAME)
         @Operation
         public static final class Underscored_Operation {
         }
+
+        @ExpectError(INVALID_OPERATION_NAME)
+        @Operation
+        // Checkstyle: stop
+        public static final class Dollar$Operation {
+        }
+        // Checkstyle: resume
 
         @ExpectError("@Operation and @Instrumentation cannot be used at the same time. Remove one of the annotations to resolve this.")
         @Operation
@@ -800,6 +810,7 @@ public class ErrorTests {
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadVariadicOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Dollar%", // ecj, javac report different qualified names
                     "Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
     })
     @OperationProxy(NonFinalOperationProxy.class)
@@ -808,6 +819,7 @@ public class ErrorTests {
     @OperationProxy(NonStaticMemberOperationProxy.class)
     @OperationProxy(BadVariadicOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
+    @OperationProxy(Dollar$OperationProxy.class)
     @OperationProxy(UnproxyableOperationProxy.class)
     public abstract static class OperationProxyErrorTests extends RootNode implements BytecodeRootNode {
         protected OperationProxyErrorTests(ErrorLanguage language, FrameDescriptor frameDescriptor) {
@@ -953,10 +965,17 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Operation class name cannot contain underscores.")
+    @ExpectError(INVALID_PROXYABLE_OPERATION_NAME)
     @OperationProxy.Proxyable
     public static final class Underscored_Operation_Proxy {
     }
+
+    @ExpectError(INVALID_PROXYABLE_OPERATION_NAME)
+    @OperationProxy.Proxyable
+    // Checkstyle: stop
+    public static final class Dollar$OperationProxy {
+    }
+    // Checkstyle: resume
 
     public static final class UnproxyableOperationProxy {
         @Specialization
@@ -999,6 +1018,26 @@ public class ErrorTests {
     @OperationProxy(value = SubOperation.class, name = "MyOperation")
     public abstract static class DuplicateOperationNameTest extends RootNode implements BytecodeRootNode {
         protected DuplicateOperationNameTest(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @ExpectError({INVALID_OPERATION_NAME, INVALID_OPERATION_NAME, INVALID_OPERATION_NAME})
+    @OperationProxy(value = AddOperation.class, name = "Bad_Name")
+    @OperationProxy(value = AddOperation.class, name = "Bad$Name")
+    @OperationProxy(value = AddOperation.class, name = "1Bad")
+    public abstract static class InvalidOperationProxyNameTest extends RootNode implements BytecodeRootNode {
+        protected InvalidOperationProxyNameTest(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @ExpectError(INVALID_OPERATION_NAME)
+    @ShortCircuitOperation(name = "Bad$Name", operator = Operator.AND_RETURN_VALUE)
+    public abstract static class InvalidShortCircuitOperationNameTest extends RootNode implements BytecodeRootNode {
+        protected InvalidShortCircuitOperationNameTest(ErrorLanguage language, FrameDescriptor builder) {
             super(language, builder);
         }
     }

@@ -190,6 +190,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (customOperation == null) {
             return null;
         }
+        BytecodeDSLParser.validateOperationName(customOperation, null, null, name, isProxy());
 
         AnnotationValue forceCachedValue = ElementUtils.getAnnotationValue(mirror, "forceCached", false);
         if (forceCachedValue != null) {
@@ -209,7 +210,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         OperationModel operation = customOperation.operation;
 
-        validateCustomOperation(customOperation, typeElement, mirror, name);
+        validateCustomOperation(customOperation, typeElement, mirror);
         ConstantOperandsModel constantOperands = getConstantOperands(customOperation, typeElement, mirror);
         operation.constantOperands = constantOperands;
         if (customOperation.hasErrors()) {
@@ -728,10 +729,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     /**
      * Validates the operation specification. Reports any errors on the {@link customOperation}.
      */
-    private void validateCustomOperation(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror, String name) {
-        if (name.contains("_")) {
-            customOperation.addError("Operation class name cannot contain underscores.");
-        }
+    private void validateCustomOperation(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror) {
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
         if (isNode) {
             if (isProxy()) {
