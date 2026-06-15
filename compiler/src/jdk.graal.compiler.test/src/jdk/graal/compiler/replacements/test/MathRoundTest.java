@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,8 @@ public class MathRoundTest extends GraalCompilerTest {
                     Integer.MAX_VALUE, Integer.MAX_VALUE - 0.5f, Integer.MAX_VALUE + 0.5f,
                     Integer.MIN_VALUE, Integer.MIN_VALUE - 0.5f, Integer.MIN_VALUE + 0.5f,
                     Float.MIN_VALUE, -Float.MIN_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE,
-                    Float.MIN_NORMAL, -Float.MIN_NORMAL, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY,
+                    Float.MIN_NORMAL, -Float.MIN_NORMAL, 123456.75f, -123456.75f,
+                    0x1.fffffep22f, -0x1.fffffep22f, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY,
                     Float.NaN, Float.intBitsToFloat(0x7fffffff)};
 
     public static int roundFloat(float f) {
@@ -51,7 +52,8 @@ public class MathRoundTest extends GraalCompilerTest {
                     Long.MAX_VALUE, Long.MAX_VALUE - 0.5d, Long.MAX_VALUE + 0.5d,
                     Long.MIN_VALUE, Long.MIN_VALUE - 0.5d, Long.MIN_VALUE + 0.5d,
                     Double.MIN_VALUE, -Double.MIN_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE,
-                    Double.MIN_NORMAL, -Double.MIN_NORMAL, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
+                    Double.MIN_NORMAL, -Double.MIN_NORMAL, 123456789.75d, -123456789.75d,
+                    0x1.fffffffffffffp51, -0x1.fffffffffffffp51, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
                     Double.NaN, Double.longBitsToDouble(0x7fffffff_ffffffffL)};
 
     public static long roundDouble(double d) {
