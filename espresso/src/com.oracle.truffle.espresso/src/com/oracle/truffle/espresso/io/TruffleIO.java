@@ -125,6 +125,7 @@ public final class TruffleIO implements ContextAccess {
     private static final int FD_STDOUT = 1;
     private static final int FD_STDERR = 2;
     public static final int INVALID_FD = -1;
+    private static final int DEFAULT_BACKLOG = 50;
 
     // region API
 
@@ -299,17 +300,15 @@ public final class TruffleIO implements ContextAccess {
                 if (server) {
                     // ServerSocketChannel
                     channel = ServerSocketChannel.open(family);
-                    channelWrapper = new ServerTCPChannelWrapper(channel, 1);
                 } else {
                     // SocketChannel
                     channel = SocketChannel.open(family);
-                    channelWrapper = new ChannelWrapper(channel, 1);
                 }
             } else {
                 // DatagramChannel
                 channel = DatagramChannel.open(StandardProtocolFamily.INET);
-                channelWrapper = new ChannelWrapper(channel, 1);
             }
+            channelWrapper = new ChannelWrapper(channel, 1);
             channel.setOption(StandardSocketOptions.SO_REUSEADDR, reuse);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
@@ -377,20 +376,10 @@ public final class TruffleIO implements ContextAccess {
         ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
         Objects.requireNonNull(channelWrapper);
         InetAddress inetAddress = libsState.net.fromGuestInetAddress(addr, preferIPv6);
-        if (channelWrapper instanceof ServerTCPChannelWrapper serverTcpChannelWrapper) {
-            /*
-             * We shouldn't call bind directly on the ServerSocketChannel since we lack the backlog
-             * parameter which will be provided by the listen method. Thus, we cache the arguments
-             * but wait with the bind.
-             */
-            serverTcpChannelWrapper.setTCPBindInformation(inetAddress, port);
-        } else {
-            // actually binds the network channel in this case.
-            try {
-                getNetworkChannel(channelWrapper.channel).bind(new InetSocketAddress(inetAddress, port));
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
+        try {
+            getNetworkChannel(channelWrapper.channel).bind(new InetSocketAddress(inetAddress, port));
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -521,17 +510,18 @@ public final class TruffleIO implements ContextAccess {
      * {@link TruffleIO#bind(StaticObject, FDAccess, boolean, StaticObject, int, LibsState)}.
      */
     @TruffleBoundary
-    public void listen(@JavaType(Object.class) StaticObject self,
-                    FDAccess fdAccess, int backlog) {
+    public void listen(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self,
+                    @SuppressWarnings("unused") FDAccess fdAccess,
+                    int backlog) {
         assert getContext().getEnv().isSocketIOAllowed();
-        ServerTCPChannelWrapper tcpWrapper = getServerTCPChannelWrapper(self, fdAccess);
-        ServerSocketChannel channel = (ServerSocketChannel) tcpWrapper.channel;
-        try {
-            channel.bind(new InetSocketAddress(tcpWrapper.inetAddress, tcpWrapper.port), backlog);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
+        /*
+         * GR-76599: We always use the default value for the backlog parameter so we can call bind
+         * on the host channel immediately in the native bind substitution and not wait for the
+         * guest native listen call as this causes issues for ServerSockets.
+         */
+        if (backlog != DEFAULT_BACKLOG) {
+            LibsState.getLogger().warning("The provided backlog value (" + backlog + ") was ignored. espresso-no-native always uses the default value: (" + DEFAULT_BACKLOG + ")");
         }
-
     }
 
     /**
@@ -549,21 +539,11 @@ public final class TruffleIO implements ContextAccess {
             int fd = getFD(self, fdAccess);
             NetworkChannel networkChannel = getNetworkChannel(fd);
             InetSocketAddress socketAddress = (InetSocketAddress) networkChannel.getLocalAddress();
-            InetAddress inetAddress = null;
+            InetAddress inetAddress;
             if (socketAddress != null) {
                 inetAddress = socketAddress.getAddress();
             } else {
-                /*
-                 * The host socket is bound once listen is called. On the other hand, the guest
-                 * socket is bound by the call to bind (which proceeds the listen call. Thus, we
-                 * need to check if we have cached the bind information.
-                 */
-                ServerTCPChannelWrapper tcpSocket = boundServerTCPChannel(fd);
-                if (tcpSocket != null) {
-                    inetAddress = tcpSocket.inetAddress;
-                } else {
-                    throw Throw.throwIOException("Unbound Socket", context);
-                }
+                throw Throw.throwIOException("Unbound Socket", context);
             }
             return context.getLibsState().net.convertInetAddr(inetAddress);
         } catch (IOException e) {
@@ -583,28 +563,10 @@ public final class TruffleIO implements ContextAccess {
             if (socketAddress != null) {
                 return socketAddress.getPort();
             }
-            /*
-             * The host socket is bound once listen is called. On the other hand, the guest socket
-             * is bound by the call to bind (which proceeds the listen call. Thus, we need to check
-             * if we have cached the bind information.
-             */
-            ServerTCPChannelWrapper tcpSocket = boundServerTCPChannel(fd);
-            if (tcpSocket != null) {
-                return tcpSocket.port;
-            }
             throw Throw.throwIOException("Unbound Socket", context);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
-    }
-
-    private ServerTCPChannelWrapper boundServerTCPChannel(int fd) {
-        if (files.getOrDefault(fd, null) instanceof ServerTCPChannelWrapper serverTcpChannelWrapper) {
-            if (serverTcpChannelWrapper.inetAddress != null) {
-                return serverTcpChannelWrapper;
-            }
-        }
-        return null;
     }
 
     /**
@@ -1203,20 +1165,6 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
-    private static class ServerTCPChannelWrapper extends ChannelWrapper {
-        InetAddress inetAddress;
-        int port;
-
-        ServerTCPChannelWrapper(Channel channel, int cnt) {
-            super(channel, cnt, null);
-        }
-
-        void setTCPBindInformation(InetAddress inetAddress, int port) {
-            this.inetAddress = inetAddress;
-            this.port = port;
-        }
-    }
-
     public TruffleIO(EspressoContext context) {
         this.context = context;
 
@@ -1560,18 +1508,6 @@ public final class TruffleIO implements ContextAccess {
         }
         // NetworkChannel are backed by the host, thus it would be very suspicious if we reach here.
         throw Throw.throwIOException("The fd does not refer to a NetworkChannel", context);
-    }
-
-    private ServerTCPChannelWrapper getServerTCPChannelWrapper(@JavaType(Object.class) StaticObject self,
-                    FDAccess fdAccess) {
-        ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
-        Objects.requireNonNull(channelWrapper);
-        if (channelWrapper instanceof ServerTCPChannelWrapper tcpWrapper) {
-            return tcpWrapper;
-        }
-        // ServerTCPChannelWrapper are backed by the host, thus it would be very suspicious if we
-        // reach here.
-        throw Throw.throwIOException("The fd does not refer to a ServerTCPChannelWrapper", context);
     }
 
     private ServerSocketChannel getServerSocketChannel(@JavaType(Object.class) StaticObject self,
