@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.phases.common.inlining.info;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.graph.Node;
@@ -69,7 +70,7 @@ public interface InlineInfo {
      * candidate is tied to one receiver type.
      */
     default ResolvedJavaType receiverTypeAt(int index) {
-        assert index >= 0;
+        assert index >= 0 : Assertions.errorMessage(index);
         return null;
     }
 
