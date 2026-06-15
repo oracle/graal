@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.phases.common.inlining.DirectedInliningRules;
 import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
 import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
@@ -51,6 +52,14 @@ public class MethodInvocation {
     private final InlineInfo callee;
     private final double probability;
     private final double relevance;
+    private final ResolvedJavaMethod callerMethod;
+    /**
+     * BCI of the invoke in the compilation root that produced the inlined graph represented by this
+     * invocation. This is not the BCI of the selected invoke in {@link #callerMethod}; selected
+     * invokes use their own {@code Invoke.bci()}.
+     */
+    private final int rootInvokeBci;
+    private final DirectedInliningRules.Callsite[] callsites;
 
     private int processedGraphs;
 
@@ -77,10 +86,18 @@ public class MethodInvocation {
      */
     private final BitSet freshlyInstantiatedArguments;
 
-    public MethodInvocation(InlineInfo info, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
+    /**
+     * @param rootInvokeBci BCI of the invoke in the compilation root that produced this invocation's
+     *            inlined graph, or the directed-inlining sentinel for the root invocation
+     */
+    public MethodInvocation(InlineInfo info, double probability, double relevance, ResolvedJavaMethod callerMethod, int rootInvokeBci, DirectedInliningRules.Callsite[] callsites,
+                    BitSet freshlyInstantiatedArguments) {
         this.callee = info;
         this.probability = probability;
         this.relevance = relevance;
+        this.callerMethod = callerMethod;
+        this.rootInvokeBci = rootInvokeBci;
+        this.callsites = callsites;
         this.freshlyInstantiatedArguments = freshlyInstantiatedArguments;
     }
 
@@ -102,12 +119,32 @@ public class MethodInvocation {
         return callee;
     }
 
+    public MethodInvocation withCallee(InlineInfo newCallee) {
+        return new MethodInvocation(newCallee, probability, relevance, callerMethod, rootInvokeBci, callsites, freshlyInstantiatedArguments);
+    }
+
     public double probability() {
         return probability;
     }
 
     public double relevance() {
         return relevance;
+    }
+
+    public ResolvedJavaMethod callerMethod() {
+        return callerMethod;
+    }
+
+    /**
+     * Returns the compilation-root invoke BCI for directed rule matching. The caller invoke BCI for a
+     * selected call site is read from the {@code Invoke} currently being matched.
+     */
+    public int rootInvokeBci() {
+        return rootInvokeBci;
+    }
+
+    public DirectedInliningRules.Callsite[] callsites() {
+        return callsites;
     }
 
     public boolean isRoot() {
@@ -120,7 +157,13 @@ public class MethodInvocation {
         InlineableGraph ig = (InlineableGraph) elem;
         final double invokeProbability = probability * callee.probabilityAt(index);
         final double invokeRelevance = relevance * callee.relevanceAt(index);
-        return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability, invokeRelevance, freshlyInstantiatedArguments, null);
+        ResolvedJavaMethod concreteMethod = callee.methodAt(index);
+        ResolvedJavaMethod declaredMethod = callee.invoke().getTargetMethod();
+        if (declaredMethod == null) {
+            declaredMethod = concreteMethod;
+        }
+        return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability, invokeRelevance, freshlyInstantiatedArguments, null, rootInvokeBci, callsites,
+                        declaredMethod, callee.receiverTypeAt(index), concreteMethod);
     }
 
     @Override
