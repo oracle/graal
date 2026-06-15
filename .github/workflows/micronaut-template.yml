@@ -49,6 +49,8 @@ on:
 
 env:
   MICRONAUT_CORE_PATH: ${{ github.workspace }}/micronaut-core
+  # Micronaut Launch generates -H:+SharedArenaSupport by default. Keep experimental
+  # options unlocked until https://github.com/micronaut-projects/micronaut-starter/issues/3121 is fixed.
   MICRONAUT_NATIVE_IMAGE_OPTIONS: -H:+UnlockExperimentalVMOptions ${{ inputs.NATIVE_IMAGE_OPTIONS }}
   MICRONAUT_JAVA_VERSION: 25
   # Enforce experimental option checking in CI (GR-47922)

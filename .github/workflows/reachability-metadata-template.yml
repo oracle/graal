@@ -74,11 +74,51 @@ jobs:
         repository: oracle/graalvm-reachability-metadata
         ref: master
         path: ${{ env.REACHABILITY_METADATA_PATH }}
+    - name: Set up Java
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+      with:
+        distribution: 'graalvm'
+        java-version: '25'
     - name: "Populate matrix"
       id: set-matrix
       working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
       run: |
-        ./gradlew --quiet generateTopCoordinatesByMetricMatrix --metric=dynamic-accesses --limit=256
+        ./gradlew --quiet listTopCoordinatesByMetric --metric=dynamic-accesses --limit=256 > "${RUNNER_TEMP}/reachability-metadata-coordinates.txt"
+        python3 - <<'PY'
+        import json
+        import os
+        from pathlib import Path
+
+        coordinates_file = Path(os.environ["RUNNER_TEMP"]) / "reachability-metadata-coordinates.txt"
+        coordinates = [
+            line.strip()
+            for line in coordinates_file.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+
+        metadata_root = Path(os.environ["REACHABILITY_METADATA_PATH"]) / "metadata"
+        missing = []
+        for coordinate in coordinates:
+            group, artifact, version = coordinate.split(":", 2)
+            index_file = metadata_root / group / artifact / "index.json"
+            if not index_file.exists():
+                missing.append(coordinate)
+                continue
+            index = json.loads(index_file.read_text(encoding="utf-8"))
+            if not any(
+                version in entry.get("tested-versions", [])
+                and (metadata_root / group / artifact / entry.get("metadata-version", "")).is_dir()
+                for entry in index
+            ):
+                missing.append(coordinate)
+
+        if missing:
+            raise SystemExit("Unknown reachability metadata coordinates: " + ", ".join(missing))
+
+        github_output = Path(os.environ["GITHUB_OUTPUT"])
+        with github_output.open("a", encoding="utf-8") as out:
+            out.write(f"matrix={json.dumps({'coordinates': coordinates})}\n")
+        PY
 
   test-all-metadata:
     name: ${{ matrix.coordinates }}
