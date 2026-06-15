@@ -6627,10 +6627,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile calcCodePointLengthProfile,
                         @Cached InlinedConditionProfile fixedProfile,
                         @Cached InlinedConditionProfile validProfile,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
-                        @Cached InlinedConditionProfile stride1MustMaterializeProfile,
-                        @Cached InlinedConditionProfile stride2MustMaterializeProfile,
-                        @Cached InlinedConditionProfile singleByteProfile) {
+                        @Cached TStringInternalNodes.SubstringInternalNode substringInternalNode) {
             a.checkEncoding(encoding);
             Object dataA = a.data();
             try {
@@ -6657,11 +6654,7 @@ public final class TruffleString extends AbstractTruffleString {
                 final int codeRangeA = getCodeRangeForIndexCalculation(this, a, arrayA, offsetA, encoding, impreciseAProfile);
                 int fromIndexRaw = codePointIndexToRaw(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, 0, fromIndex, false, fixedProfile, validProfile);
                 int lengthRaw = codePointIndexToRaw(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, fromIndexRaw, length, true, fixedProfile, validProfile);
-                return TStringInternalNodes.substring(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, fromIndexRaw, lengthRaw, lazy && a.isImmutable(),
-                                calcAttributesNode,
-                                stride1MustMaterializeProfile,
-                                stride2MustMaterializeProfile,
-                                singleByteProfile);
+                return substringInternalNode.execute(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, fromIndexRaw, lengthRaw, lazy);
             } finally {
                 Reference.reachabilityFence(dataA);
             }
@@ -6709,10 +6702,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile emptyProfile,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
-                        @Cached InlinedConditionProfile stride1MustMaterializeProfile,
-                        @Cached InlinedConditionProfile stride2MustMaterializeProfile,
-                        @Cached InlinedConditionProfile singleByteProfile) {
+                        @Cached TStringInternalNodes.SubstringInternalNode substringInternalNode) {
             a.checkEncoding(expectedEncoding);
             final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
             final int length = rawIndex(byteLength, expectedEncoding);
@@ -6737,11 +6727,7 @@ public final class TruffleString extends AbstractTruffleString {
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 final int strideA = a.stride();
-                return TStringInternalNodes.substring(this, a, arrayA, offsetA, lengthA, strideA, a.codeRange(), expectedEncoding, fromIndex, length, lazy && a.isImmutable(),
-                                calcAttributesNode,
-                                stride1MustMaterializeProfile,
-                                stride2MustMaterializeProfile,
-                                singleByteProfile);
+                return substringInternalNode.execute(this, a, arrayA, offsetA, lengthA, strideA, a.codeRange(), expectedEncoding, fromIndex, length, lazy);
             } finally {
                 Reference.reachabilityFence(dataA);
             }

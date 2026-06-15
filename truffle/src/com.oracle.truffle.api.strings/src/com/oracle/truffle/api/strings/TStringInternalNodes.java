@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1262,16 +1262,88 @@ final class TStringInternalNodes {
         }
     }
 
-    static TruffleString substring(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
-                    boolean lazy,
-                    CalcStringAttributesNode calcAttributesNode,
-                    InlinedConditionProfile stride1MustMaterializeProfile,
-                    InlinedConditionProfile stride2MustMaterializeProfile,
-                    InlinedConditionProfile singleByteProfile) {
-        assert length > 0;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, fromIndex == 0 && length == lengthA && a instanceof TruffleString)) {
-            return (TruffleString) a;
-        } else {
+    abstract static class SubstringInternalNode extends AbstractInternalNode {
+
+        abstract TruffleString execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
+                        boolean lazy);
+
+        @Specialization
+        static TruffleString substringImmutable(Node node, TruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
+                        boolean lazy,
+                        @Cached @Shared CalcStringAttributesNode calcAttributesNode,
+                        @Cached @Shared InlinedConditionProfile stride1MustMaterializeProfile,
+                        @Cached @Shared InlinedConditionProfile stride2MustMaterializeProfile,
+                        @Cached @Shared InlinedConditionProfile singleByteProfile) {
+            assert length > 0;
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, fromIndex == 0 && length == lengthA)) {
+                return a;
+            } else {
+                long attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, strideA, encoding, fromIndex, codeRangeA);
+                int codeRange = StringAttributes.getCodeRange(attrs);
+                int codePointLength = StringAttributes.getCodePointLength(attrs);
+                final int newStride = Stride.fromCodeRange(codeRange, encoding);
+                if (singleByteProfile.profile(node, length == 1 && newStride == 0 && encoding.isSupported())) {
+                    return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, lengthA, strideA, fromIndex));
+                }
+                CompilerAsserts.partialEvaluationConstant(lazy);
+                final Object data;
+                final int offset;
+                final long regionOffset = offsetA + (fromIndex << strideA);
+                if (lazy) {
+                    if (isUTF16Or32(encoding) && stride1MustMaterializeProfile.profile(node, strideA == 1 && newStride == 0)) {
+                        offset = 0;
+                        final byte[] newBytes = new byte[length];
+                        TStringOps.arraycopyWithStride(node,
+                                        arrayA, regionOffset, 1, 0,
+                                        newBytes, byteArrayBaseOffset(), 0, 0, length);
+                        data = newBytes;
+                    } else if (encoding == Encoding.UTF_32 && stride2MustMaterializeProfile.profile(node, strideA == 2 && newStride < 2)) {
+                        // Always materialize 4-byte UTF-32 strings when they can be compacted.
+                        // Otherwise, they could get re-interpreted as UTF-16 and break the
+                        // assumption that all UTF-16 strings are stride 0 or 1.
+                        offset = 0;
+                        final byte[] newBytes = new byte[length << newStride];
+                        if (newStride == 0) {
+                            TStringOps.arraycopyWithStride(node,
+                                            arrayA, regionOffset, 2, 0,
+                                            newBytes, byteArrayBaseOffset(), 0, 0, length);
+                        } else {
+                            assert newStride == 1;
+                            TStringOps.arraycopyWithStride(node,
+                                            arrayA, regionOffset, 2, 0,
+                                            newBytes, byteArrayBaseOffset(), 1, 0, length);
+                        }
+                        data = newBytes;
+                    } else {
+                        if (arrayA == null) {
+                            if (isUnsupportedEncoding(encoding)) {
+                                if (!JCodings.JCODINGS_ENABLED) {
+                                    throw CompilerDirectives.shouldNotReachHere();
+                                }
+                                // avoid conflicts in NativePointer#getBytes
+                                data = ((NativePointer) a.data()).copy();
+                            } else {
+                                data = a.data();
+                            }
+                        } else {
+                            data = arrayA;
+                        }
+                        offset = a.offset() + (fromIndex << strideA);
+                    }
+                } else {
+                    data = TStringOps.arraycopyOfWithStride(node, arrayA, regionOffset, length, strideA, length, newStride);
+                    offset = 0;
+                }
+                return TruffleString.createFromArray(data, offset, length, newStride, encoding, codePointLength, codeRange);
+            }
+        }
+
+        @Specialization
+        static TruffleString substringMutable(Node node, MutableTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
+                        @SuppressWarnings("unused") boolean lazy,
+                        @Cached @Shared CalcStringAttributesNode calcAttributesNode,
+                        @Cached @Shared InlinedConditionProfile singleByteProfile) {
+            assert length > 0;
             long attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, strideA, encoding, fromIndex, codeRangeA);
             int codeRange = StringAttributes.getCodeRange(attrs);
             int codePointLength = StringAttributes.getCodePointLength(attrs);
@@ -1279,56 +1351,9 @@ final class TStringInternalNodes {
             if (singleByteProfile.profile(node, length == 1 && newStride == 0 && encoding.isSupported())) {
                 return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, lengthA, strideA, fromIndex));
             }
-            CompilerAsserts.partialEvaluationConstant(lazy);
-            final Object data;
-            final int offset;
             final long regionOffset = offsetA + (fromIndex << strideA);
-            if (lazy) {
-                if (isUTF16Or32(encoding) && stride1MustMaterializeProfile.profile(node, strideA == 1 && newStride == 0)) {
-                    offset = 0;
-                    final byte[] newBytes = new byte[length];
-                    TStringOps.arraycopyWithStride(node,
-                                    arrayA, regionOffset, 1, 0,
-                                    newBytes, byteArrayBaseOffset(), 0, 0, length);
-                    data = newBytes;
-                } else if (encoding == Encoding.UTF_32 && stride2MustMaterializeProfile.profile(node, strideA == 2 && newStride < 2)) {
-                    // Always materialize 4-byte UTF-32 strings when they can be compacted.
-                    // Otherwise, they could get re-interpreted as UTF-16 and break the
-                    // assumption that all UTF-16 strings are stride 0 or 1.
-                    offset = 0;
-                    final byte[] newBytes = new byte[length << newStride];
-                    if (newStride == 0) {
-                        TStringOps.arraycopyWithStride(node,
-                                        arrayA, regionOffset, 2, 0,
-                                        newBytes, byteArrayBaseOffset(), 0, 0, length);
-                    } else {
-                        assert newStride == 1;
-                        TStringOps.arraycopyWithStride(node,
-                                        arrayA, regionOffset, 2, 0,
-                                        newBytes, byteArrayBaseOffset(), 1, 0, length);
-                    }
-                    data = newBytes;
-                } else {
-                    if (arrayA == null) {
-                        if (isUnsupportedEncoding(encoding)) {
-                            if (!JCodings.JCODINGS_ENABLED) {
-                                throw CompilerDirectives.shouldNotReachHere();
-                            }
-                            // avoid conflicts in NativePointer#getBytes
-                            data = ((NativePointer) a.data()).copy();
-                        } else {
-                            data = a.data();
-                        }
-                    } else {
-                        data = arrayA;
-                    }
-                    offset = a.offset() + (fromIndex << strideA);
-                }
-            } else {
-                data = TStringOps.arraycopyOfWithStride(node, arrayA, regionOffset, length, strideA, length, newStride);
-                offset = 0;
-            }
-            return TruffleString.createFromArray(data, offset, length, newStride, encoding, codePointLength, codeRange);
+            final Object data = TStringOps.arraycopyOfWithStride(node, arrayA, regionOffset, length, strideA, length, newStride);
+            return TruffleString.createFromArray(data, 0, length, newStride, encoding, codePointLength, codeRange);
         }
     }
 
