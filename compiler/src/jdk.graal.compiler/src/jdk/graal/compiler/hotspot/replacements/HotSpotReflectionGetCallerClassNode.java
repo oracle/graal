@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
@@ -47,7 +48,7 @@ public final class HotSpotReflectionGetCallerClassNode extends ReflectionGetCall
     }
 
     @Override
-    protected boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
+    protected boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, MetaAccessExtensionProvider metaAccessExtensionProvider, ResolvedJavaMethod method) {
         return ((HotSpotResolvedJavaMethod) method).ignoredBySecurityStackWalk();
     }
 }

@@ -743,6 +743,11 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     @Override
+    public boolean isLambdaFormCompiled() {
+        return interpreterMethod.isLambdaFormCompiled();
+    }
+
+    @Override
     public CFunctionPointer getAOTEntrypoint() {
         assert !SubstrateUtil.HOSTED;
         assert SubstrateOptions.useRistretto();

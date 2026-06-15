@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -48,7 +49,7 @@ public abstract class ReflectionGetCallerClassNode extends MacroWithExceptionNod
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess(), tool.getConstantReflection());
+        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess(), tool.getMetaAccessExtensionProvider(), tool.getConstantReflection());
         if (callerClassNode != null) {
             return callerClassNode;
         }
@@ -62,7 +63,7 @@ public abstract class ReflectionGetCallerClassNode extends MacroWithExceptionNod
      * @param metaAccess
      * @return ConstantNode of the caller class, or null
      */
-    private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess, MetaAccessExtensionProvider metaAccessExtensionProvider, ConstantReflectionProvider constantReflection) {
         // Walk back up the frame states to find the caller at the required depth.
         FrameState state = stateAfter();
 
@@ -81,7 +82,7 @@ public abstract class ReflectionGetCallerClassNode extends MacroWithExceptionNod
                     }
                     break;
                 default:
-                    if (!ignoredBySecurityStackWalk(metaAccess, method)) {
+                    if (!ignoredBySecurityStackWalk(metaAccess, metaAccessExtensionProvider, method)) {
                         // We have reached the desired frame; return the holder class.
                         ResolvedJavaType callerClass = method.getDeclaringClass();
                         return ConstantNode.forConstant(constantReflection.asJavaClass(callerClass), metaAccess);
@@ -94,5 +95,5 @@ public abstract class ReflectionGetCallerClassNode extends MacroWithExceptionNod
 
     protected abstract boolean isCallerSensitive(ResolvedJavaMethod method);
 
-    protected abstract boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method);
+    protected abstract boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, MetaAccessExtensionProvider metaAccessExtensionProvider, ResolvedJavaMethod method);
 }

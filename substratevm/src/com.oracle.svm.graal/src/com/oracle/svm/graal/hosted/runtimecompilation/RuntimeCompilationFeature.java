@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -1293,6 +1294,11 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return AnalysisMetaAccessExtensionProvider.isLambdaFormCompiledMethod(method);
     }
 
     @Override

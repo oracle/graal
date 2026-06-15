@@ -25,7 +25,9 @@
 package jdk.graal.compiler.hotspot.meta;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -36,9 +38,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
     private final ConstantReflectionProvider constantReflection;
+    private final GraalHotSpotVMConfig config;
 
-    public HotSpotMetaAccessExtensionProvider(ConstantReflectionProvider constantReflection) {
+    public HotSpotMetaAccessExtensionProvider(ConstantReflectionProvider constantReflection, GraalHotSpotVMConfig config) {
         this.constantReflection = constantReflection;
+        this.config = config;
     }
 
     @Override
@@ -59,6 +63,12 @@ public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionPr
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         return true;
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return config.VMINTRINSIC_COMPILED_LAMBDA_FORM != -1 && method instanceof HotSpotResolvedJavaMethod hotSpotMethod &&
+                        hotSpotMethod.intrinsicId() == config.VMINTRINSIC_COMPILED_LAMBDA_FORM;
     }
 
     @Override

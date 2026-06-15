@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
@@ -680,5 +682,10 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
          * trivially statically bound.
          */
         return null;
+    }
+
+    @Override
+    public boolean isInternalVMMethods() {
+        return AnnotationUtil.isAnnotationPresent(this, InternalVMMethod.class);
     }
 }

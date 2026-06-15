@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.nodes;
 
 import com.oracle.svm.core.jdk.StackTraceUtils;
 
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
@@ -52,7 +53,7 @@ public final class SubstrateReflectionGetCallerClassNode extends ReflectionGetCa
     }
 
     @Override
-    protected boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
-        return StackTraceUtils.ignoredBySecurityStackWalk(metaAccess, method);
+    protected boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, MetaAccessExtensionProvider metaAccessExtensionProvider, ResolvedJavaMethod method) {
+        return StackTraceUtils.ignoredBySecurityStackWalk(metaAccess, metaAccessExtensionProvider, method);
     }
 }
