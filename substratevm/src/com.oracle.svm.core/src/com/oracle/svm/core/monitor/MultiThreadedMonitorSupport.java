@@ -209,15 +209,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated")
     private static void slowPathMonitorEnter(Object obj) {
-        /*
-         * A stack overflow error in the locking code would be reported as a fatal error, since
-         * there must not be any exceptions flowing out of the monitor code. Enabling the yellow
-         * zone prevents stack overflows.
-         */
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is deadlocked");
         try {
             singleton().monitorEnter(obj, MonitorInflationCause.MONITOR_ENTER);
 
@@ -241,18 +234,33 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * an exception.
              */
             throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorEnter", ex);
-
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. " +
                     "Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
-    public void monitorEnter(Object obj, MonitorInflationCause cause) {
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    public final void monitorEnter(Object obj, MonitorInflationCause cause) {
+        /*
+         * A stack overflow error for a monitorenter bytecode would be unexpected and cannot be
+         * thrown reliably (see slow path). On other code paths, a stack overflow in the middle of
+         * monitor code still poses a danger of corrupting state, although, unlike for exit, wait,
+         * and notify, no specific failure pattern is known for acquiring a monitor. In any case,
+         * enabling the yellow zone prevents stack overflows to begin with.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is deadlocked");
+        try {
+            monitorEnterImpl(obj, cause);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
+    protected void monitorEnterImpl(Object obj, MonitorInflationCause cause) {
         JavaMonitor monitor;
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
@@ -283,9 +291,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated")
     private static void slowPathMonitorExit(Object obj) {
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             /*
              * Monitor inflation cannot happen here because Graal enforces structured locking and
@@ -310,15 +317,23 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * IllegalMonitorStateException.
              */
             throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorExit", ex);
+        }
+    }
 
+    @Override
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    public final void monitorExit(Object obj, MonitorInflationCause cause) {
+        /* A stack overflow here could release the lock without waking a successor. */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            monitorExitImpl(obj, cause);
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
-    @Override
-    public void monitorExit(Object obj, MonitorInflationCause cause) {
+    protected void monitorExitImpl(Object obj, MonitorInflationCause cause) {
         JavaMonitor monitor;
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
@@ -371,9 +386,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return lockObject != null && lockObject.isLocked();
     }
 
-    @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")
     @Override
-    protected void doWait(Object obj, long timeoutMillis) throws InterruptedException {
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    protected final void doWait(Object obj, long timeoutMillis) throws InterruptedException {
+        /* A stack overflow here could return control to the caller without reacquiring the lock. */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            doWaitImpl(obj, timeoutMillis);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")
+    private void doWaitImpl(Object obj, long timeoutMillis) throws InterruptedException {
         /*
          * Our monitor implementation does not pin virtual threads, so avoid
          * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned
@@ -407,7 +433,21 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     @Override
-    public void notify(Object obj, boolean notifyAll) {
+    @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
+    public final void notify(Object obj, boolean notifyAll) {
+        /*
+         * A stack overflow here might skip threads to notify, and might drop a thread entirely when
+         * transferring waiters to the lock contender queue, leaving it stranded.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            notifyImpl(obj, notifyAll);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    protected void notifyImpl(Object obj, boolean notifyAll) {
         /* Make sure the current thread holds the lock on the receiver. */
         JavaMonitor lock = ensureLocked(obj, MonitorInflationCause.NOTIFY);
         /* Find the wait/notify condition of the receiver. */
