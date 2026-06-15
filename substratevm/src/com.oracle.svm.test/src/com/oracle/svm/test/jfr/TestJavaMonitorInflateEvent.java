@@ -124,7 +124,7 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
                 foundCauseEnter = true;
             }
 
-            checkTopStackFrame(event, "monitorEnter", "createMonitorAndAddToMap", "getOrCreateMonitorFromObject");
+            checkTopStackFrame(event, "monitorEnterImpl", "createMonitorAndAddToMap", "getOrCreateMonitorFromObject");
         }
         assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
     }
