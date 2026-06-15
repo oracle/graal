@@ -113,12 +113,6 @@ public class ICU4JFeature implements Feature {
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterName",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/unames\\.icu$"),
                         new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty$LayoutProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ulayout\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UPropertyAliases",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/pnames\\.icu$"),
-                        new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationRoot",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/coll/ucadata\\.icu$"),
                         new ResourceEntry(List.of(
