@@ -2247,7 +2247,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
                 b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
                 b.startStatement().string("newTag = ").staticReference(parent.parent.frameTagsElement.getObject()).end();
-                parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
+                parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQuickeningName());
                 b.startStatement();
                 BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string(localsFrame).string("slot").string(value.localName()).end();
                 b.end();
@@ -2266,7 +2266,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
             b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
             b.startStatement().string("newTag = ").staticReference(parent.parent.frameTagsElement.getObject()).end();
-            parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
+            parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string(localsFrame).string("slot").string(value.localName()).end();
             b.end();

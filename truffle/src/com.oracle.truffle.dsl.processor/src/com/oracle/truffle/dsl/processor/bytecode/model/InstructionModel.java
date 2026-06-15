@@ -337,8 +337,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     private int byteLength = OPCODE_WIDTH;
     public final InstructionKind kind;
-    public final String name;
-    public final String quickeningName;
+    private final InstructionName instructionName;
     public final Signature signature;
     public CodeTypeElement nodeType;
     public NodeData nodeData;
@@ -425,9 +424,8 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public InstructionModel(InstructionKind kind, String name, Signature signature) {
         this.kind = kind;
-        this.name = name;
+        this.instructionName = InstructionName.create(kind, name);
         this.signature = signature;
-        this.quickeningName = null;
         this.quickeningBase = null;
         this.quickeningKind = QuickeningKind.BASE;
         this.specializedType = null;
@@ -439,9 +437,8 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public InstructionModel(InstructionModel base, String quickeningName, Signature signature, QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
         this.kind = base.kind;
-        this.name = base.name + "$" + quickeningName;
+        this.instructionName = base.instructionName.withQuickening(quickeningName);
         this.signature = signature;
-        this.quickeningName = quickeningName;
         this.quickeningBase = base;
         this.quickeningKind = quickeningKind;
         this.specializedType = specializedType;
@@ -554,7 +551,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public String getQuickeningName() {
-        return quickeningName;
+        return instructionName.quickeningName;
     }
 
     public InstructionModel getQuickeningRoot() {
@@ -562,18 +559,6 @@ public final class InstructionModel implements PrettyPrintable {
             return quickeningBase.getQuickeningRoot();
         }
         return this;
-    }
-
-    public String getQualifiedQuickeningName() {
-        InstructionModel current = this;
-        List<String> quickeningNames = new ArrayList<>();
-        while (current != null) {
-            if (current.quickeningName != null) {
-                quickeningNames.add(0, current.quickeningName.replace('#', '_'));
-            }
-            current = current.quickeningBase;
-        }
-        return String.join("$", quickeningNames);
     }
 
     public boolean hasQuickenings() {
@@ -599,7 +584,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     @Override
     public void pp(PrettyPrinter printer) {
-        printer.print("Instruction %s", name);
+        printer.print("Instruction %s", getName());
         printer.field("kind", kind);
         printer.field("byteLength", byteLength);
         printer.field("encoding", prettyPrintEncoding());
@@ -794,45 +779,15 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public String getName() {
-        return name;
+        return instructionName.instructionName;
     }
 
     public String getInternalName() {
-        String operationName = switch (kind) {
-            case CUSTOM -> {
-                if (!name.startsWith("c.")) {
-                    throw new AssertionError("Unexpected custom operation name: " + name);
-                }
-                yield name.substring(2) + "_";
-            }
-            case CUSTOM_SHORT_CIRCUIT -> {
-                if (!name.startsWith("sc.")) {
-                    throw new AssertionError("Unexpected short-circuit custom operation name: " + name);
-                }
-                yield name.substring(3) + "_";
-            }
-            default -> name;
-        };
-        StringBuilder b = new StringBuilder(operationName);
-        for (int i = 0; i < b.length(); i++) {
-            char c = b.charAt(i);
-            switch (c) {
-                case '.':
-                    if (i + 1 < b.length()) {
-                        b.setCharAt(i + 1, Character.toUpperCase(b.charAt(i + 1)));
-                    }
-                    b.deleteCharAt(i);
-                    break;
-                case '#':
-                    b.setCharAt(i, '$');
-                    break;
-            }
-        }
-        return b.toString();
+        return instructionName.internalName;
     }
 
     public String getConstantName() {
-        return ElementUtils.createConstantName(getInternalName());
+        return instructionName.constantName;
     }
 
     public SpecializationData resolveSingleSpecialization() {
@@ -850,7 +805,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     @Override
     public String toString() {
-        return String.format("Instruction(%s)", name);
+        return String.format("Instruction(%s)", getName());
     }
 
     public String prettyPrintEncoding() {
@@ -977,13 +932,13 @@ public final class InstructionModel implements PrettyPrintable {
          */
         if (getInstructionLength() % INSTRUCTION_ALIGNMENT != 0) {
             throw new AssertionError(String.format("All instructions should be short-aligned, but instruction %s has length %s.",
-                            name, getInstructionLength()));
+                            getName(), getInstructionLength()));
         }
 
         for (InstructionImmediate immediate : immediates) {
             if (immediate.kind.width == ImmediateWidth.SHORT && immediate.offset() % INSTRUCTION_ALIGNMENT != 0) {
                 throw new AssertionError(String.format("Immediate %s of instruction %s should be short-aligned, but it appears at offset %s.",
-                                immediate.name, name, immediate.offset()));
+                                immediate.name, getName(), immediate.offset()));
             }
         }
     }

@@ -4549,7 +4549,7 @@ final class BuilderElement extends AbstractElement {
         List<InstructionImmediate> immediates = instr.getImmediates();
         if (argumentsLength != immediates.size()) {
             throw new AssertionError(
-                            "Invalid number of immediates for instruction " + instr.name + ". Expected " + immediates.size() + " but got " + argumentsLength + ". Immediates: " +
+                            "Invalid number of immediates for instruction " + instr.getName() + ". Expected " + immediates.size() + " but got " + argumentsLength + ". Immediates: " +
                                             String.join(", ", arguments));
         }
 

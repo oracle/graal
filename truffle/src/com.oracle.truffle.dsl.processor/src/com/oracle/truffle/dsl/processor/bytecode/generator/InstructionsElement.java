@@ -169,7 +169,7 @@ final class InstructionsElement extends AbstractElement {
         for (InstructionModel instruction : parent.model.getInstructions()) {
             b.startCase().tree(parent.createInstructionConstant(instruction)).end();
             b.startCaseBlock();
-            b.startReturn().doubleQuote(instruction.name).end();
+            b.startReturn().doubleQuote(instruction.getName()).end();
             b.end();
         }
         b.end();

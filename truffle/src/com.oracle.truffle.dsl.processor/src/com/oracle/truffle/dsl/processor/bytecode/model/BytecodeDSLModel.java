@@ -505,10 +505,11 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     private InstructionModel instruction(InstructionModel instr) {
-        if (instructions.containsKey(instr.name)) {
-            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", instr.name));
+        String instructionName = instr.getName();
+        if (instructions.containsKey(instructionName)) {
+            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", instructionName));
         }
-        instructions.put(instr.name, instr);
+        instructions.put(instructionName, instr);
         return instr;
     }
 
@@ -599,7 +600,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
             newInstructions.put(name, instruction);
             for (InstructionModel derivedInstruction : instruction.getFlattenedQuickenedInstructions()) {
-                newInstructions.put(derivedInstruction.name, derivedInstruction);
+                newInstructions.put(derivedInstruction.getName(), derivedInstruction);
             }
         }
 
@@ -615,7 +616,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                     throw new AssertionError(String.format(
                                     "All quickenings must have the same instruction length as the root instruction. " +
                                                     "Invalid instruction length %s for instruction %s. Expected length %s from root %s.",
-                                    m.getInstructionLength(), m.name, root.getInstructionLength(), root.name));
+                                    m.getInstructionLength(), m.getName(), root.getInstructionLength(), root.getName()));
                 }
             }
         }
@@ -842,7 +843,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         List<InstructionModel> sortedInstructions = this.instructions.values().stream().sorted((o1, o2) -> Integer.compare(o1.kind.ordinal(), o2.kind.ordinal())).toList();
         this.instructions.clear();
         for (InstructionModel instr : sortedInstructions) {
-            this.instructions.put(instr.name, instr);
+            this.instructions.put(instr.getName(), instr);
         }
 
     }

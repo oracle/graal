@@ -1775,7 +1775,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
         Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                        .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+                        .sorted(Comparator.comparing(InstructionModel::getName)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
 
         List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
                         .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
@@ -1988,7 +1988,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             // we share execute methods with return type quickenings.
             return executeMethodName(instruction.quickeningBase, tier);
         }
-        return "execute" + instruction.getQualifiedQuickeningName() + (tier.isUncached() ? "$uncached" : "");
+        return "execute" + instruction.getQuickeningName() + (tier.isUncached() ? "$uncached" : "");
     }
 
     /**
