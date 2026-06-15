@@ -5114,6 +5114,7 @@ final class BuilderElement extends AbstractElement {
         private CodeExecutableElement fixLocalsBeforeRewriteMethod;
         private CodeExecutableElement fixSourcesBeforeRewriteMethod;
         private CodeExecutableElement fixOperationStackBeforeRewriteMethod;
+        private CodeExecutableElement fixRewrittenBciDeltasBeforeRewriteMethod;
 
         RootStackElement() {
             super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "RootStackElement");
@@ -5209,6 +5210,7 @@ final class BuilderElement extends AbstractElement {
                     this.fixExceptionHandlersBeforeRewriteMethod = createFixExceptionHandlersBeforeRewrite();
                     this.fixSourcesBeforeRewriteMethod = builderSourceInfoTable.createFixSourcesBeforeRewriteMethod();
                     this.fixOperationStackBeforeRewriteMethod = createFixOperationStackBeforeRewrite();
+                    this.fixRewrittenBciDeltasBeforeRewriteMethod = createFixRewrittenBciDeltasBeforeRewrite();
                     this.fixBuilderStateBeforeRewriteMethod = createFixBuilderStateBeforeRewrite();
                 }
                 for (int i = 0; i < model.instructionRewriterModel.rules.length; i++) {
@@ -5343,6 +5345,7 @@ final class BuilderElement extends AbstractElement {
                 this.addOptional(fixLocalsBeforeRewriteMethod);
                 this.addOptional(fixSourcesBeforeRewriteMethod);
                 this.addOptional(fixOperationStackBeforeRewriteMethod);
+                this.addOptional(fixRewrittenBciDeltasBeforeRewriteMethod);
             }
             this.add(createToString());
         }
@@ -6511,6 +6514,49 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
+        private CodeExecutableElement createFixRewrittenBciDeltasBeforeRewrite() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixRewrittenBciDeltasBeforeRewrite");
+            ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(type(IntBinaryOperator.class), "remapBci"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "Fix up previously-recorded rewritten BCI delta entries that overlap or follow the rewritten range."));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(type(int.class), "firstAffected", "rewrittenBciDeltasIndex");
+            b.lineComment("Entries are sorted; scan backward to find the affected suffix.");
+            b.startFor().string("int i = rewrittenBciDeltasIndex - 2; i >= 0; i -= 2").end().startBlock();
+            b.startIf().string("rewrittenBciDeltas[i] <= startBci").end().startBlock();
+            b.statement("break");
+            b.end();
+            b.statement("firstAffected = i");
+            b.end();
+
+            b.startIf().string("firstAffected == rewrittenBciDeltasIndex").end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            b.declaration(type(int.class), "writeIndex", "firstAffected");
+            b.lineComment("Remap entries from low-to-high.");
+            b.startFor().string("int readIndex = firstAffected; readIndex < rewrittenBciDeltasIndex; readIndex += 2").end().startBlock();
+            b.declaration(type(int.class), "newRewrittenBci", "remapBci.applyAsInt(startBci, rewrittenBciDeltas[readIndex])");
+            b.declaration(type(int.class), "delta", "rewrittenBciDeltas[readIndex + 1]");
+            b.startIf().string("writeIndex > 0 && rewrittenBciDeltas[writeIndex - 2] == newRewrittenBci").end().startBlock();
+            b.lineComment("If entry maps to the same bci as the previous entry, combine them.");
+            b.statement("rewrittenBciDeltas[writeIndex - 1] += delta");
+            b.end().startElseBlock();
+            b.lineComment("Else, emit new entry.");
+            b.statement("rewrittenBciDeltas[writeIndex] = newRewrittenBci");
+            b.statement("rewrittenBciDeltas[writeIndex + 1] = delta");
+            b.statement("writeIndex += 2");
+            b.end();
+            b.end();
+
+            b.statement("rewrittenBciDeltasIndex = writeIndex");
+
+            return ex;
+        }
+
         private CodeExecutableElement createFixBuilderStateBeforeRewrite() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "fixBuilderStateBeforeRewrite");
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
@@ -6524,6 +6570,7 @@ final class BuilderElement extends AbstractElement {
                 b.startStatement().startCall(null, fixLocalsBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
             }
             b.startStatement().startCall(null, fixSourcesBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
+            b.startStatement().startCall(null, fixRewrittenBciDeltasBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
             b.startStatement().startCall(null, fixOperationStackBeforeRewriteMethod).string("startBci").string("remapBci").end(2);
 
             return ex;

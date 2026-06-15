@@ -423,6 +423,103 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         assertEquals(42L, node.getCallTarget().call(123L));
     }
 
+    @Test
+    public void testBranchCleanupRewrites() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("branchCleanupRewrites", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginReturn();
+            for (int i = 0; i < 5; i++) {
+                b.beginAdd();
+                b.emitLoadArgument(0);
+            }
+
+            b.beginBlock();
+            b.emitBranch(lbl);
+            b.emitLoadArgument(0);
+            b.endBlock();
+
+            for (int i = 0; i < 5; i++) {
+                b.endAdd();
+            }
+            b.endReturn();
+
+            b.emitLabel(lbl);
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "branch",
+                        "load.constant",
+                        "return");
+        List<Instruction> oldInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertEquals(42L, node.getCallTarget().call(123L));
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "load.argument",
+                        "load.argument",
+                        "load.argument",
+                        "pop",
+                        "pop",
+                        "pop",
+                        "pop",
+                        "pop",
+                        "branch",
+                        "load.constant",
+                        "return");
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertUpdatedInstructions(oldInstructions, newInstructions, 10, 11, 12);
+    }
+
+    @Test
+    public void testNestedTryFinallyBranchDuringReturn() {
+        // This is a regression test that revealed the need to remap the delta remap table.
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("nestedTryFinallyBranchDuringReturn", b -> {
+            b.beginRoot();
+
+            BytecodeLabel lbl = b.createLabel();
+            b.beginTryFinally(() -> {
+                b.beginTryFinally(() -> b.emitBranch(lbl));
+                emitReturn(b, 2);
+                b.endTryFinally();
+            });
+            emitReturn(b, 1);
+            b.endTryFinally();
+
+            b.emitLabel(lbl);
+            emitReturn(b, 42);
+
+            b.endRoot();
+        });
+
+        List<Instruction> oldInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertEquals(42L, node.getCallTarget().call());
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        assertEquals(42L, node.getCallTarget().call());
+        for (Instruction oldInstruction : oldInstructions) {
+            Instruction newInstruction = oldInstruction.getLocation().update().getInstruction();
+            assertEquals(oldInstruction.getName(), newInstruction.getName());
+        }
+    }
+
     /**
      * Rewriting complicates bci translation. We should generate and use the necessary metadata to remap a bci from the rewritten world to the non-rewritten world.
      */
