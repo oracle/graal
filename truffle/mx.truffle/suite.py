@@ -1507,25 +1507,6 @@ suite = {
         return result;
     }""",
           },
-          "com/ibm/icu/impl/UPropertyAliases.java" : {
-            "public static final UPropertyAliases INSTANCE;" : "private static volatile UPropertyAliases INSTANCE;",
-            "static \\{([\\s\\S]*?)INSTANCE = new UPropertyAliases\\(\\);([\\s\\S]*?)\n    }" : """
-    public static UPropertyAliases getInstance() {
-        UPropertyAliases result = INSTANCE;
-        if (result == null) {
-            synchronized (UPropertyAliases.class) {
-                result = INSTANCE;
-                if (result == null) {
-                    \\g<1>result = new UPropertyAliases();\\g<2>
-                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
-                        INSTANCE = result;
-                    }
-                }
-            }
-        }
-        return result;
-    }""",
-          },
           "com/ibm/icu/impl/locale/LikelySubtags.java" : {
             "public static final LikelySubtags INSTANCE = new LikelySubtags\\(Data\\.load\\(\\)\\);" : """
     private static volatile LikelySubtags INSTANCE;
@@ -1567,7 +1548,6 @@ suite = {
           },
           "com/ibm/icu/lang/UCharacter.java" : {
             "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
-            "UPropertyAliases\\.INSTANCE" : "UPropertyAliases.getInstance()",
           },
           "com/ibm/icu/text/DateTimePatternGenerator.java" : {
             "LOCALE_TO_ALLOWED_HOUR\\.get" : "getLocaleToAllowedHour().get",
@@ -1594,9 +1574,6 @@ suite = {
           },
           "com/ibm/icu/text/NameUnicodeTransliterator.java" : {
             "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
-          },
-          "com/ibm/icu/text/UnicodeSet.java" : {
-            "UPropertyAliases\\.INSTANCE" : "UPropertyAliases.getInstance()",
           },
           "com/ibm/icu/util/LocaleMatcher.java" : {
             "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
