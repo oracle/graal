@@ -60,7 +60,7 @@ import jdk.internal.misc.Unsafe;
  * </ul>
  */
 @BasedOnJDKClass(AbstractQueuedLongSynchronizer.class)
-abstract class JavaMonitorQueuedSynchronizer {
+public abstract class JavaMonitorQueuedSynchronizer {
     // Node status bits, also used as argument and return values
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative

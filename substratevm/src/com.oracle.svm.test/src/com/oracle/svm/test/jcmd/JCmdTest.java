@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +40,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 
 import org.graalvm.nativeimage.Platform;
 import org.junit.BeforeClass;
@@ -49,7 +52,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 
 public class JCmdTest {
     @BeforeClass
-    public static void checkForJFR() {
+    public static void checkForJcmd() {
         assumeTrue("skipping JCmd tests", VMInspectionOptions.hasJCmdSupport());
     }
 
@@ -76,8 +79,7 @@ public class JCmdTest {
         checkJCmdConnection();
 
         /* Delete the socket file. */
-        String tempDir = System.getProperty("java.io.tmpdir");
-        Path attachFile = Paths.get(tempDir, ".java_pid" + ProcessHandle.current().pid());
+        Path attachFile = getTempFilePath(".java_pid", "");
         boolean deletedSocketFile = Files.deleteIfExists(attachFile);
         assertTrue(deletedSocketFile);
 
@@ -128,6 +130,91 @@ public class JCmdTest {
         assertOutputContainsLines(jcmd, "Stopped recording \"JCmdTest\".");
     }
 
+    @Test
+    public void testThreadPrint() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("Thread.print");
+        assertOutputContainsStrings(jcmd, "Threads dumped.");
+    }
+
+    @Test
+    public void testThreadDumpToTextFile() throws IOException, InterruptedException {
+        BlockerHelper blocker = new BlockerHelper();
+        CountDownLatch parked = new CountDownLatch(1);
+
+        Thread parkedThread = new Thread(() -> {
+            parked.countDown();
+            LockSupport.park(blocker);
+        }, "test-park-blocker-thread");
+
+        parkedThread.start();
+
+        /* Wait until parkedThread is parked. */
+        parked.await();
+        while (!parkedThread.getState().equals(Thread.State.WAITING)) {
+            Thread.sleep(10);
+        }
+
+        Path textFile = getTempFilePath("test_thread_dump", ".txt");
+        Process jcmd = runJCmd("Thread.dump_to_file", textFile.toString());
+        assertOutputContainsStrings(jcmd, "Created");
+        assertTrue(Files.size(textFile) > 0);
+        checkThreadDump(textFile);
+        assertTrue(Files.deleteIfExists(textFile));
+
+        /* Unpark the thread and wait until it terminates. */
+        LockSupport.unpark(parkedThread);
+        parkedThread.join();
+    }
+
+    private static void checkThreadDump(Path textFile) throws IOException {
+        String dump = Files.readString(textFile);
+        assertTrue("Dump should contain the blocked thread's name", dump.contains("test-park-blocker-thread"));
+        assertTrue("Dump should contain the thread's state", dump.contains("WAITING"));
+        assertTrue("Dump should contain text 'parking to wait for'", dump.contains("parking to wait for"));
+        assertTrue("Dump should report the blocker object", dump.contains(BlockerHelper.class.getSimpleName()));
+        assertTrue("Dump should report the process ID", dump.contains(String.valueOf(ProcessHandle.current().pid())));
+        assertTrue("Dump should report at least some stacktrace lines", dump.contains("    at "));
+    }
+
+    @Test
+    public void testThreadDumpToJsonFile() throws IOException, InterruptedException {
+        Path jsonFile = getTempFilePath("test_thread_dump", ".json");
+        Process jcmd = runJCmd("Thread.dump_to_file", "-format=json", jsonFile.toString());
+        assertOutputContainsStrings(jcmd, "Created");
+        assertTrue(Files.size(jsonFile) > 0);
+        assertTrue(Files.deleteIfExists(jsonFile));
+    }
+
+    @Test
+    public void testVM() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("VM.command_line");
+        assertOutputContainsStrings(jcmd, "VM Arguments:", "java_command:");
+
+        jcmd = runJCmd("VM.native_memory");
+        assertOutputContainsStrings(jcmd, "Native memory tracking");
+
+        jcmd = runJCmd("VM.system_properties");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.uptime");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.version");
+        assertOutputContainsStrings(jcmd, "GraalVM");
+    }
+
+    @Test
+    public void testGC() throws IOException, InterruptedException {
+        Path dumpFile = getTempFilePath("heap_dump", ".hprof");
+        Process jcmd = runJCmd("GC.heap_dump", dumpFile.toString());
+        assertOutputContainsStrings(jcmd, "Dumped to:");
+        assertTrue(Files.size(dumpFile) > 0);
+        assertTrue(Files.deleteIfExists(dumpFile));
+
+        jcmd = runJCmd("GC.run");
+        assertOutputContainsStrings(jcmd, "Command executed successfully");
+    }
+
     private static void checkJCmdConnection() throws IOException, InterruptedException {
         Process jcmd = runJCmd("help");
         assertOutputContainsLines(jcmd, "help");
@@ -174,5 +261,13 @@ public class JCmdTest {
             fail("jcmd returned with exit code " + exitCode + ": " + lineBreak + String.join(lineBreak, lines));
         }
         return lines;
+    }
+
+    private static Path getTempFilePath(String prefix, String suffix) {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        return Paths.get(tempDir, prefix + ProcessHandle.current().pid() + suffix);
+    }
+
+    private static final class BlockerHelper {
     }
 }
