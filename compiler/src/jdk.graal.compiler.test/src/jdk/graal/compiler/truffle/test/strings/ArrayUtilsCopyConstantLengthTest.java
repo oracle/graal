@@ -147,7 +147,7 @@ public class ArrayUtilsCopyConstantLengthTest extends ArrayUtilsCopyTest {
 
     private int expectedChunkCount(int log2Stride) {
         int byteLength = length << log2Stride;
-        int chunkSize = Integer.highestOneBit(Math.min(byteLength, maxVectorSizeBytes()));
+        int chunkSize = ArrayCopyWithConversionsNode.constantLengthCopyChunkSize(byteLength, maxVectorSizeBytes());
         return (byteLength + chunkSize - 1) / chunkSize;
     }
 

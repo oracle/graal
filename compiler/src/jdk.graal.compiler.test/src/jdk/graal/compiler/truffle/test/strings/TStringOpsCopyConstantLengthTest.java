@@ -191,7 +191,7 @@ public class TStringOpsCopyConstantLengthTest extends TStringOpsTest<ArrayCopyWi
     }
 
     private int expectedChunkCount() {
-        int chunkSize = Integer.highestOneBit(Math.min(length, maxVectorSizeBytes()));
+        int chunkSize = ArrayCopyWithConversionsNode.constantLengthCopyChunkSize(length, maxVectorSizeBytes());
         return (length + chunkSize - 1) / chunkSize;
     }
 

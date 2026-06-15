@@ -119,7 +119,7 @@ public final class ArrayCopyWithConversionsSingleKillNode extends AbstractMemory
         }
 
         int byteLength = constantLength << strideDst.log2;
-        int chunkSize = Integer.highestOneBit(Math.min(byteLength, maxVectorSizeBytes));
+        int chunkSize = ArrayCopyWithConversionsNode.constantLengthCopyChunkSize(byteLength, maxVectorSizeBytes);
 
         ValueNode nonNullArraySrc = createNullCheckedValue(arraySrc, tool);
         ValueNode nonNullArrayDst = createNullCheckedValue(arrayDst, tool);
