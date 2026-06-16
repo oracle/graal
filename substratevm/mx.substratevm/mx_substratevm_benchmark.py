@@ -28,6 +28,7 @@ import os
 import tempfile
 import zipfile
 import re
+import json
 from glob import glob
 from pathlib import Path
 from typing import List, Optional
@@ -523,6 +524,52 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             """
             return super().produceHarnessCommand(cmd, suite)
 
+        def _setup_graalhost(self, cmd, suite):
+            output_dir = bm_exec_context().get("vm").config.output_dir
+            graalhost_config_file = output_dir / "graalhost-config.json"
+            with open(graalhost_config_file, "w", encoding="utf-8") as graalhost_config_handle:
+                ports = {
+                    "vanilla-hello-world": 8010,
+                    "micronaut-hello-world": 8000,
+                    "micronaut-shopcart": 8001,
+                    "micronaut-similarity": 8002,
+                    "micronaut-pegasus": 21000,
+                    "quarkus-hello-world": 8003,
+                    "quarkus-tika": 8004,
+                    "spring-hello-world": 8005,
+                    "spring-petclinic": 8006,
+                    "helidon-hello-world": 8007,
+                    "vertx-hello-world": 8011,
+                    "ktor-hello-world": 8008,
+                    "play-scala-hello-world": 8009,
+                }
+                port = ports[suite.benchmarkName()]
+                graalhost_config = {
+                    "default_socket": {
+                        "port": port,
+                    },
+                    "listen_socket": {
+                        "port": port,
+                    },
+                    "fsmappings": [
+                        {"concrete": "/dev/null", "virt": "/dev/null", "mutable": True},
+                        {"concrete": "/dev/random", "virt": "/dev/random"},
+                        {"concrete": "/dev/urandom", "virt": "/dev/urandom"},
+                        {"concrete": "/", "virt": "/", "mutable": True},
+                        {"concrete": str(output_dir), "virt": str(output_dir), "mutable": True},
+                    ],
+                    "testing_default_mappings": True,
+                    "working_dir": "/",
+                    "fd_limit": 4096,
+                }
+                json.dump(graalhost_config, graalhost_config_handle, indent=4)
+
+            graalhost_cmd = ["graalhost", "--enable_resolving_env_refs", f"--run_config=@{graalhost_config_file}", "--log_to=syslog", "--run"]
+            self._updateCommandOption(cmd, "--cmd-app-prefix", "-p", " ".join(graalhost_cmd), append=True)
+            taskset_cmd = ["taskset", "-c", "0-3"]
+            self._updateCommandOption(cmd, "--startup-cmd-app-prefix", None, " ".join(taskset_cmd))
+            self._updateCommandOption(cmd, "--startup-cmd-app-prefix", None, " ".join(graalhost_cmd), append=True)
+
         def produceHarnessCommand(self, cmd, suite):
             """Maps a NativeImageVM command into a command tailored for the Barista harness.
 
@@ -565,7 +612,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             barista_bench_name = suite.baristaHarnessBenchmarkName()
             barista_workload = suite.baristaHarnessBenchmarkWorkload()
 
-            # Provide image built in the previous stage to the Barista harnesss using the `--app-executable` option
+            # Provide image built in the previous stage to the Barista harness using the `--app-executable` option
             ni_barista_cmd = [str(suite.baristaHarnessPath()), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
@@ -581,8 +628,11 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             else:
                 # Add explicit run stage args
                 ni_barista_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", bm_suite_args)
+            if not stage.is_instrument() and bm_exec_context().get("vm").graalhost_graalos:
+                # Don't run instrument stages on graalhost because of issues regarding the iprof generation
+                self._setup_graalhost(ni_barista_cmd, suite)
             if nivm_cmd_prefix:
-                self._updateCommandOption(ni_barista_cmd, "--cmd-app-prefix", "-p", " ".join(nivm_cmd_prefix))
+                self._updateCommandOption(ni_barista_cmd, "--cmd-app-prefix", "-p", " ".join(nivm_cmd_prefix), append=True)
             if nivm_app_options:
                 self._updateCommandOption(ni_barista_cmd, "--app-args", "-a", " ".join(nivm_app_options))
             ni_barista_cmd += [barista_bench_name]
