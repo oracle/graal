@@ -129,9 +129,14 @@ public final class NativeImageClassLoaderSupport {
 
     private final UnmodifiableEconomicSet<Path> imageProvidedJars;
     /**
-     * Cleared by {@link #computePathEntryDigests()} on first call.
+     * Cleared by {@link #getPathEntryDigests()} on first call.
      */
     private PathDigests pathDigests;
+    /**
+     * Cached after the mutable {@link #pathDigests} have been aggregated because a single
+     * classloader can be reused to build multiple layered images in the same process.
+     */
+    private List<PathDigestEntry> pathDigestEntries;
     private final Class<?> explodedModuleReaderClass;
 
     private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
@@ -320,14 +325,16 @@ public final class NativeImageClassLoaderSupport {
     }
 
     /**
-     * The temporary {@link PathDigestEntry} object is used to create the list of
+     * The temporary {@link PathDigests} object is used to create the list of
      * {@link PathDigestEntry} tuples. Note that the {@code pathDigests} field is cleared after the
-     * first time this method is called.
+     * first time this method is called, and subsequent calls return the cached entries.
      */
-    public List<PathDigestEntry> computePathEntryDigests() {
-        List<PathDigestEntry> res = PathDigestEntry.aggregatePathDigests(pathDigests);
-        pathDigests = null;
-        return res;
+    public List<PathDigestEntry> getPathEntryDigests() {
+        if (pathDigests != null) {
+            pathDigestEntries = List.copyOf(PathDigestEntry.aggregatePathDigests(pathDigests));
+            pathDigests = null;
+        }
+        return pathDigestEntries;
     }
 
     public void initializePathDigests(Path digestIgnoreRelativePath) {
@@ -350,6 +357,7 @@ public final class NativeImageClassLoaderSupport {
         }
 
         pathDigests = new PathDigests(filterIgnoredPathEntries(imagecp, digestIgnorePaths), filterIgnoredPathEntries(imagemp, digestIgnorePaths));
+        pathDigestEntries = null;
     }
 
     private static List<Path> filterIgnoredPathEntries(List<Path> pathEntries, List<Path> digestIgnorePaths) {

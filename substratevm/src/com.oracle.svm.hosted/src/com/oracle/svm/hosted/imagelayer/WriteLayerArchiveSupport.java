@@ -57,7 +57,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
                             "' needs to start with '" + SHARED_LIB_NAME_PREFIX + "'");
         }
         builderArguments = new ArrayList<>(classLoaderSupport.getHostedOptionParser().getArguments());
-        buildPathDigests = new ArrayList<>(classLoaderSupport.computePathEntryDigests());
+        buildPathDigests = new ArrayList<>(classLoaderSupport.getPathEntryDigests());
     }
 
     @Override
