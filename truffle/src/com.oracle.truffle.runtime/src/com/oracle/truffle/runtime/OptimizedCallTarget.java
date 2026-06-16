@@ -702,10 +702,15 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             bypassedInstalledCode = true;
         }
         ensureInitialized();
+
+        // Branchless saturating increment. If the increment overflows, the sign-extension term
+        // wraps the counter back to Integer.MAX_VALUE and avoids exception-based overflow handling.
         int intCallCount = this.callCount;
-        this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
+        intCallCount = (intCallCount + 1) + ((intCallCount + 1) >> 31);
         int intLoopCallCount = this.callAndLoopCount;
-        this.callAndLoopCount = intLoopCallCount == Integer.MAX_VALUE ? intLoopCallCount : ++intLoopCallCount;
+        intLoopCallCount = (intLoopCallCount + 1) + ((intLoopCallCount + 1) >> 31);
+        this.callCount = intCallCount;
+        this.callAndLoopCount = intLoopCallCount;
 
         // Check if call target is hot enough to compile
         if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
@@ -763,14 +768,18 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
+        // Branchless saturating increment. If the increment overflows, the sign-extension term
+        // wraps the counter back to Integer.MAX_VALUE and avoids exception-based overflow handling.
         int firstTierCallCount = this.callCount;
-        this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
+        firstTierCallCount = (firstTierCallCount + 1) + ((firstTierCallCount + 1) >> 31);
         int firstTierLoopCallCount = this.callAndLoopCount;
-        this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
-        if (!compilationFailed //
-                        && !isSubmittedForCompilation()//
-                        && firstTierCallCount >= engine.callThresholdInFirstTier //
-                        && firstTierLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInFirstTier)) {
+        firstTierLoopCallCount = (firstTierLoopCallCount + 1) + ((firstTierLoopCallCount + 1) >> 31);
+        this.callCount = firstTierCallCount;
+        this.callAndLoopCount = firstTierLoopCallCount;
+        if (firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInFirstTier) //
+                        && !compilationFailed //
+                        && !isSubmittedForCompilation()) {
             return lastTierCompile();
         }
         return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package org.graalvm.truffle.benchmark;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
@@ -63,31 +62,43 @@ public class FirstTierBenchmark extends TruffleBenchmark {
 
     public static final String TEST_LANGUAGE = "bm";
     static final int ITERATIONS = 5_000_000;
+    static final int SETUP_ITERATIONS = 10_000;
+    static final String LOW_COMPILATION_THRESHOLD = "5";
+    static final String HIGH_LAST_TIER_COMPILATION_THRESHOLD = Integer.toString((ITERATIONS + SETUP_ITERATIONS) * 3);
 
-    public static abstract class BaseSetup {
+    public abstract static class BaseSetup {
 
         final Context context;
         RootNode root;
         CallTarget target;
 
-        public BaseSetup() {
+        public BaseSetup(boolean multiTier) {
             Context.Builder b = Context.newBuilder(TEST_LANGUAGE);
             b.allowExperimentalOptions(true);
             b.option("engine.BackgroundCompilation", "false");
             b.option("engine.DynamicCompilationThresholds", "false");
-            applyOptions(b);
+            b.option("engine.MultiTier", Boolean.toString(multiTier));
+            if (multiTier) {
+                b.option("engine.FirstTierCompilationThreshold", LOW_COMPILATION_THRESHOLD);
+                b.option("engine.LastTierCompilationThreshold", HIGH_LAST_TIER_COMPILATION_THRESHOLD);
+            } else {
+                b.option("engine.SingleTierCompilationThreshold", LOW_COMPILATION_THRESHOLD);
+            }
             context = b.build();
         }
 
         @Setup(Level.Invocation)
         public void setup() {
             context.enter(); // binds a valid polyglot engine
-            root = createRootNode();
-            target = root.getCallTarget();
-            for (int i = 0; i < 10000; i++) {
-                target.call((Node) null);
+            try {
+                root = createRootNode();
+                target = root.getCallTarget();
+                for (int i = 0; i < SETUP_ITERATIONS; i++) {
+                    target.call((Node) null);
+                }
+            } finally {
+                context.leave();
             }
-            context.leave();
         }
 
         @TearDown
@@ -95,19 +106,14 @@ public class FirstTierBenchmark extends TruffleBenchmark {
             context.close();
         }
 
-        protected abstract void applyOptions(Context.Builder b);
-
         protected abstract RootNode createRootNode();
     }
 
     @State(Scope.Benchmark)
     public static class CallFirstTierSetup extends BaseSetup {
 
-        @Override
-        protected void applyOptions(Builder b) {
-            b.option("engine.MultiTier", "true");
-            b.option("engine.LastTierCompilationThreshold", "10000000");
-            b.option("engine.SingleTierCompilationThreshold", "10000000");
+        public CallFirstTierSetup() {
+            super(true);
         }
 
         @Override
@@ -133,10 +139,8 @@ public class FirstTierBenchmark extends TruffleBenchmark {
     @State(Scope.Benchmark)
     public static class CallLastTierSetup extends BaseSetup {
 
-        @Override
-        protected void applyOptions(Builder b) {
-            b.option("engine.MultiTier", "false");
-            b.option("engine.LastTierCompilationThreshold", "5");
+        public CallLastTierSetup() {
+            super(false);
         }
 
         @Override
@@ -162,11 +166,8 @@ public class FirstTierBenchmark extends TruffleBenchmark {
     @State(Scope.Benchmark)
     public static class BackEdgeFirstTierSetup extends BaseSetup {
 
-        @Override
-        protected void applyOptions(Builder b) {
-            b.option("engine.MultiTier", "true");
-            b.option("engine.LastTierCompilationThreshold", "10000000");
-            b.option("engine.SingleTierCompilationThreshold", "10000000");
+        public BackEdgeFirstTierSetup() {
+            super(true);
         }
 
         @Override
@@ -193,11 +194,8 @@ public class FirstTierBenchmark extends TruffleBenchmark {
     @State(Scope.Benchmark)
     public static class BackEdgeLastTierSetup extends BaseSetup {
 
-        @Override
-        protected void applyOptions(Builder b) {
-            b.option("engine.MultiTier", "false");
-            b.option("engine.LastTierCompilationThreshold", "5");
-            b.option("engine.SingleTierCompilationThreshold", "5");
+        public BackEdgeLastTierSetup() {
+            super(false);
         }
 
         @Override
