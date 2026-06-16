@@ -97,9 +97,8 @@ class ToolchainTestBuildTask(mx.BuildTask):
     def build(self):
         mx_util.ensure_dir_exists(self.subject.get_output_root())
 
-        toolchainPath = mx.distribution('LLVM_TOOLCHAIN').output
-        clang = os.path.join(toolchainPath, 'bin', 'clang')
-        clangxx = os.path.join(toolchainPath, 'bin', 'clang++')
+        toolchainPath = mx.distribution('ZIG_DIR').output
+        zig = os.path.join(toolchainPath, 'zig')
 
         def runTest(cmd, onError=None, rerunOnFailure=False):
             out = mx.OutputCapture()
@@ -116,11 +115,7 @@ class ToolchainTestBuildTask(mx.BuildTask):
         def runCompile(compiler, src, binary, onError):
             sourceFile = self.subject.getSource(src)
             binFile = self.subject.getOutput(binary)
-            if mx.is_darwin():
-                compileCmd = ["xcrun", compiler]
-            else:
-                compileCmd = [compiler, "-fuse-ld=lld"]
-            runTest(compileCmd + [sourceFile, '-o', binFile], onError=onError, rerunOnFailure=True)
+            runTest([zig, compiler, sourceFile, '-o', binFile], onError=onError, rerunOnFailure=True)
             out = runTest([binFile], onError=lambda status:
                 mx.abort(f"{os.path.basename(compiler)} could compile {src}, but the result doesn't work. It returned with exit code {status}.")
             )
@@ -129,11 +124,11 @@ class ToolchainTestBuildTask(mx.BuildTask):
             if result != expected:
                 mx.abort(f"{os.path.basename(compiler)} could compile {src}, but the result does not match (expected: \"{expected}\", got: \"{result}\").")
 
-        runCompile(clang, "hello.c", "hello", onError=lambda status:
+        runCompile("cc", "hello.c", "hello", onError=lambda status:
             mx.abort("The LLVM toolchain does not work. Do you have development packages installed?")
         )
 
-        runCompile(clangxx, "hello.cc", "hello-cxx", onError=lambda status: check_multiple_gcc_issue(clang))
+        runCompile("c++", "hello.cc", "hello-cxx", onError=lambda status: check_multiple_gcc_issue("c++"))
 
     def clean(self, forBuild=False):
         if os.path.exists(self.subject.get_output_root()):

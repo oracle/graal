@@ -82,6 +82,10 @@ public abstract class CCompilerInvoker {
     }
 
     public static CCompilerInvoker create(Path tempDirectory) {
+        String userDefinedPath = SubstrateOptions.CCompilerPath.getValue();
+        if (userDefinedPath == null) {
+            return new ZigCCompilerInvoker(tempDirectory);
+        }
         OS hostOS = OS.getCurrent();
         switch (hostOS) {
             case LINUX:
@@ -110,6 +114,207 @@ public abstract class CCompilerInvoker {
         err.getMessages().forEach(messages::add);
         messages.add("To prevent native-toolchain checking provide command-line option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.CheckToolchain, "-"));
         return UserError.abort(messages);
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    public static class ZigCCompilerInvoker extends CCompilerInvoker {
+
+        ZigCCompilerInvoker(Path tempDirectory) {
+            super(tempDirectory);
+        }
+
+        @Override
+        public List<String> createCompilerCommand(
+            List<String> options,
+            Path target,
+            Path... input
+        ) {
+            List<String> wrappedOptions = new ArrayList<String>(options);
+            wrappedOptions.addFirst(getTarget());
+            wrappedOptions.addFirst("-target");
+            wrappedOptions.addFirst("cc");
+            return super.createCompilerCommand(
+                compilerInfo.compilerPath,
+                wrappedOptions,
+                target,
+                input
+            );
+        }
+
+        protected String getArch() {
+            if (Platform.includedIn(Platform.AARCH64.class)) {
+                return "aarch64";
+            }
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                return "x86_64";
+            }
+            if (Platform.includedIn(Platform.RISCV64.class)) {
+                return "riscv64";
+            }
+            throw UserError.abort("Unsupported platform");
+        }
+
+        protected String getOs() {
+            if (Platform.includedIn(Platform.LINUX.class)) {
+                return "linux";
+            }
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                return "windows";
+            }
+            if (Platform.includedIn(Platform.MACOS.class)) {
+                return "macos";
+            }
+            throw UserError.abort("Unsupported platform");
+        }
+
+        protected String getLibc() {
+            if (Platform.includedIn(Platform.MACOS.class)) {
+                return "none";
+            }
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                return "gnu";
+            }
+            if (Platform.includedIn(Platform.LINUX.class)) {
+                if (LibCBase.targetLibCIs(MuslLibC.class)) {
+                    return "musl";
+                }
+                if (LibCBase.targetLibCIs(GLibC.class)) {
+                    return "gnu";
+                }
+            }
+            throw UserError.abort("Unsupported platform");
+        }
+
+        protected String getTarget() {
+            return getArch() + "-" + getOs() + "-" + getLibc();
+        }
+
+        @Override
+        protected void verify() {
+            // No-op
+        }
+
+        @Override
+        public void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue) {
+            NativeLibraries nativeLibraries = NativeLibraries.singleton();
+            if (nativeLibraries == null) {
+                return;
+            }
+            File prefixDir = tempDirectory.resolve("root").toAbsolutePath().toFile();
+            prefixDir.mkdirs();
+            String prefix = prefixDir.toString();
+            for (String lib : nativeLibraries.getLibraries()) {
+                this.compileLib(prefix, lib);
+            }
+        }
+
+        protected Path getLibPath(String name) {
+            String libDir = System.getProperty("sun.boot.library.path");
+            if (libDir != null) {
+                Path libPath = Paths.get(libDir, "graalvm", "lib", "lib"+name);
+                if (Files.exists(libPath)) {
+                    return libPath;
+                }
+                return null;
+            }
+            return null;
+        }
+
+        protected void compileLib(String prefix, String name) {
+            Path libPath = getLibPath(name);
+            if (libPath == null) {
+                return;
+            }
+            Process compilerProcess = null;
+
+            // FIXME(@izaakschroeder): Add null check
+            String libDir = System.getProperty("sun.boot.library.path");
+            String jdkDir = Paths.get(libDir, "..").resolve().toAbsolutePath().toString();
+
+
+            List<String> compilerCommand = Arrays.asList(
+                getDefaultCompiler(),
+                "build",
+                "--release=fast",
+                "--search-prefix", jdkDir,
+                "--search-prefix", prefix,
+                "--prefix", prefix,
+                "-Dtarget="+getTarget()
+            );
+            try {
+                ProcessBuilder processBuilder = FileUtils.prepareCommand(compilerCommand, libPath);
+                processBuilder.redirectErrorStream(true);
+                processBuilder.environment().put("LC_ALL", "C");
+                FileUtils.traceCommand(processBuilder);
+                compilerProcess = processBuilder.start();
+
+                List<String> lines;
+                try (InputStream inputStream = compilerProcess.getInputStream()) {
+                    lines = FileUtils.readAllLines(inputStream);
+                    FileUtils.traceCommandOutput(lines);
+                }
+                compilerProcess.waitFor();
+
+                if (compilerProcess.exitValue() != 0) {
+                    String errorMessage = "Unable to compile %s library %s:%n%s";
+                    throw UserError.abort(errorMessage, name, SubstrateUtil.getShellCommandString(compilerCommand, false), lines.stream().map(str -> "  " + str).collect(Collectors.joining(System.lineSeparator())));
+                }
+                return;
+            } catch (InterruptedException ex) {
+                throw new InterruptImageBuilding("Interrupted during building library " + name);
+            } catch (IOException e) {
+                throw UserError.abort(e, "Building library %s failed: %s", name, SubstrateUtil.getShellCommandString(compilerCommand, false));
+            } finally {
+                if (compilerProcess != null) {
+                    compilerProcess.destroy();
+                }
+            }
+
+
+        }
+
+        @Override
+        protected String getDefaultCompiler() {
+            // sun.boot.library.path
+            String libDir = System.getProperty("sun.boot.library.path");
+            if (libDir != null) {
+                Path binPath = Paths.get(libDir, "graalvm", "zig");
+                return binPath.toAbsolutePath().toString();
+            }
+            return "zig";
+        }
+
+        @Override
+        protected CompilerInfo createCompilerInfo(
+            Path compilerPath,
+            Scanner scanner
+        ) {
+            try {
+
+                scanner.useDelimiter("[. -]");
+                scanner.skip("\\p{Zs}*");
+                int major = scanner.nextInt();
+                int minor0 = scanner.nextInt();
+                int minor1 = scanner.nextInt();
+                return new CompilerInfo(
+                    compilerPath,
+                    "zig",
+                    "Zig Compiler",
+                    "zig",
+                    major,
+                    minor0,
+                    minor1,
+                    getTarget()
+                );
+            } catch (NoSuchElementException e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected List<String> getVersionInfoOptions() {
+            return List.of("version");
+        }
     }
 
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
@@ -493,6 +698,7 @@ public abstract class CCompilerInvoker {
             try (InputStream compilerErrors = getCompilerErrorStream(compilingProcess)) {
                 lines = FileUtils.readAllLines(compilerErrors);
                 FileUtils.traceCommandOutput(lines);
+
             }
             boolean errorReported = false;
             for (String line : lines) {
@@ -552,12 +758,15 @@ public abstract class CCompilerInvoker {
         if (userDefinedPath != null) {
             compilerPath = Paths.get(userDefinedPath);
         } else {
-            String executableName = asExecutableName(getDefaultCompiler());
-            Optional<Path> optCompilerPath = lookupSearchPath(executableName);
+            compilerPath = Paths.get(asExecutableName(getDefaultCompiler()));
+
+        }
+        if (!compilerPath.isAbsolute()) {
+            Optional<Path> optCompilerPath = lookupSearchPath(compilerPath.getFileName().toString());
             if (optCompilerPath.isPresent()) {
                 compilerPath = optCompilerPath.get();
             } else {
-                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", executableName);
+                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", compilerPath);
             }
         }
         if (Files.isDirectory(compilerPath) || !Files.isExecutable(compilerPath)) {

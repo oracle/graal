@@ -686,9 +686,8 @@ suite = {
         },
         "linux": {
           "<others>": {
-            "toolchain": "sdk:LLVM_NINJA_TOOLCHAIN",
-            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-stdlib=libc++"],
-            "ldlibs": ["-ldl", "-pthread", "-stdlib=libc++", "-static-libstdc++", "-l:libc++abi.a"],
+            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "ldlibs": ["-ldl", "-pthread"],
           },
         },
         "darwin": {

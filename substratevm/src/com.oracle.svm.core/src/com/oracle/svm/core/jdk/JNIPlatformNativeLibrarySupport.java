@@ -111,4 +111,5 @@ final class Target_java_io_FileOutputStream_JNI {
 @Platforms({Platform.DARWIN.class, Platform.LINUX.class})
 @CLibrary("z")
 class ZLib {
+
 }
