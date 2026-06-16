@@ -40,8 +40,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jfr.JfrTicks;
@@ -231,9 +229,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. " +
-                    "Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
-
     @Override
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
     public final void monitorEnter(Object obj, MonitorInflationCause cause) {
@@ -253,7 +248,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     protected void monitorEnterImpl(Object obj, MonitorInflationCause cause) {
         JavaMonitor monitor;
         int monitorOffset = getMonitorOffset(obj);
@@ -324,7 +318,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     protected void monitorExitImpl(Object obj, MonitorInflationCause cause) {
         JavaMonitor monitor;
         int monitorOffset = getMonitorOffset(obj);
