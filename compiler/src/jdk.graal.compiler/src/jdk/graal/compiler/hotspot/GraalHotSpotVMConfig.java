@@ -471,16 +471,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long pollingPageReturnHandler = getFieldValue("CompilerToVM::Data::SharedRuntime_polling_page_return_handler", Long.class, "address");
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
-    public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
-
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
     public final long sha256ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address");
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
     public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address");
-
-    public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
-    public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
 
     public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address");
     public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address");

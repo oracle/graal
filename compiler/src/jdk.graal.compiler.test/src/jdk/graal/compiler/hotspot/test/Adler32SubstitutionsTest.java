@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,17 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
+
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.zip.Adler32;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import org.junit.Test;
 
 /**
@@ -37,6 +42,11 @@ import org.junit.Test;
  */
 @SuppressWarnings("javadoc")
 public class Adler32SubstitutionsTest extends GraalCompilerTest {
+
+    private void assumeAdler32UpdateBytesIntrinsicSupported() {
+        assumeTrue("Adler32 update bytes intrinsic is not supported by target architecture",
+                        Adler32UpdateBytesNode.isSupported(getTarget().arch));
+    }
 
     public static long update(byte[] input) {
         Adler32 adler = new Adler32();
@@ -63,6 +73,13 @@ public class Adler32SubstitutionsTest extends GraalCompilerTest {
         int off = 0;
         int len = buf.length;
         test("updateBytes", buf, off, len);
+    }
+
+    @Test
+    public void testUpdateBytesUsesAdler32StubNode() {
+        assumeAdler32UpdateBytesIntrinsicSupported();
+        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("updateBytes"));
+        assertTrue(graph.getNodes().filter(Adler32UpdateBytesNode.class).isNotEmpty());
     }
 
     @Test

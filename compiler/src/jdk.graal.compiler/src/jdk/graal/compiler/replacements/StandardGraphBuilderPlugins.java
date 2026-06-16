@@ -197,6 +197,7 @@ import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
 import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
@@ -438,6 +439,37 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return CRC32UpdateBytesNode.isSupported(arch);
+            }
+        });
+
+        Registration adler32 = new Registration(plugins, "java.util.zip.Adler32");
+        adler32.register(new ConditionalInvocationPlugin("updateBytes", int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode buf, ValueNode off, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullBuf = b.nullCheckedValue(buf);
+                    ValueNode bufAddr = helper.arrayElementPointer(nonNullBuf, JavaKind.Byte, off);
+                    b.addPush(JavaKind.Int, new Adler32UpdateBytesNode(adler, bufAddr, len));
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return Adler32UpdateBytesNode.isSupported(arch);
+            }
+        });
+        adler32.register(new ConditionalInvocationPlugin("updateByteBuffer", int.class, long.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode addr, ValueNode off, ValueNode len) {
+                ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
+                b.addPush(JavaKind.Int, new Adler32UpdateBytesNode(adler, bufAddr, len));
+                return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return Adler32UpdateBytesNode.isSupported(arch);
             }
         });
 

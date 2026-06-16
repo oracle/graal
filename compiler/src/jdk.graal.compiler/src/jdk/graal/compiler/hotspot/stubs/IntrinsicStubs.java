@@ -28,6 +28,7 @@ import jdk.graal.compiler.lir.GeneratedStubsHolder;
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
@@ -80,6 +81,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "hotspot", sources = {
+                Adler32UpdateBytesNode.class,
                 AESNode.class,
                 ArrayCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,

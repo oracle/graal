@@ -746,6 +746,11 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitAdler32UpdateBytes(EnumSet<?> runtimeCheckedCPUFeatures, Value adler, Value bufferAddress, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitDilithiumAlmostNtt(Value coeffs, Value zetas) {
         throw GraalError.unimplemented("No specialized implementation available");
     }

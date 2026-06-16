@@ -76,7 +76,6 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
@@ -267,7 +266,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, config);
                 registerAESPlugins(invocationPlugins);
-                registerAdler32Plugins(invocationPlugins, config);
                 registerSHAPlugins(invocationPlugins, config);
                 registerUnsafePlugins(invocationPlugins, config);
                 registerArrayPlugins(invocationPlugins, config);
@@ -1046,40 +1044,6 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) {
                 return resolveTypeAESCrypt(context);
-            }
-        });
-    }
-
-    private static void registerAdler32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, "java.util.zip.Adler32");
-        r.register(new ConditionalInvocationPlugin("updateBytes", int.class, byte[].class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode src, ValueNode off, ValueNode len) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode addr = helper.arrayElementPointer(src, JavaKind.Byte, off);
-                    ForeignCallNode call = new ForeignCallNode(HotSpotBackend.UPDATE_BYTES_ADLER32, adler, addr, len);
-                    b.addPush(JavaKind.Int, call);
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.updateBytesAdler32 != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("updateByteBuffer", int.class, long.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode adler, ValueNode addr, ValueNode off, ValueNode len) {
-                ValueNode buff = b.add(new ComputeObjectAddressNode(addr, off));
-                ForeignCallNode call = new ForeignCallNode(HotSpotBackend.UPDATE_BYTES_ADLER32, adler, buff, len);
-                b.addPush(JavaKind.Int, call);
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.updateBytesAdler32 != 0L;
             }
         });
     }

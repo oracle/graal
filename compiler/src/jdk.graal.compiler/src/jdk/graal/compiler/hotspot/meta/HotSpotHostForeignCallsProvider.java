@@ -52,7 +52,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
@@ -147,6 +146,7 @@ import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
@@ -621,9 +621,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.sha3ImplCompressMultiBlock != 0L) {
             registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
         }
-        if (c.updateBytesAdler32 != 0L) {
-            registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
-        }
         if (c.intpolyMontgomeryMultP256 != 0L) {
             registerForeignCall(INTPOLY_MONTGOMERYMULT_P256, c.intpolyMontgomeryMultP256, NativeCall);
         }
@@ -706,6 +703,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberAddPoly3Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Kyber12To16Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberBarrettReduceNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Adler32UpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32UpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CRC32CUpdateBytesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DilithiumNode.DilithiumAlmostInverseNttNode.STUB);
