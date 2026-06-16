@@ -67,6 +67,10 @@ import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Binding;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.ImmediatePattern;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Literal;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Wildcard;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSectionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
@@ -692,6 +696,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         // load.constant _, store.local x, clear.local x -> clear.local x
         rules.add(rule(delete(p(loadConstantInstruction), pStoreLocal("x")), identity(p(clearLocalInstruction, "x"))));
 
+        for (int stackValueCount = 1; stackValueCount <= 8; stackValueCount++) {
+            // Elide cleanup instructions when returning from a block with stack values.
+            // store.stackvalue k, pop * (k - 1), return -> return
+            List<InstructionPatternModel> cleanup = new ArrayList<>(stackValueCount);
+            cleanup.add(new InstructionPatternModel(storeStackValueInstruction, new ImmediatePattern[]{lit(stackValueCount)}));
+            for (int i = 1; i < stackValueCount; i++) {
+                cleanup.add(p(popInstruction));
+            }
+            rules.add(rule(delete(cleanup.toArray(InstructionPatternModel[]::new)), identity(p(returnInstruction))));
+        }
+
         return rules.toArray(InstructionRewriteRuleModel[]::new);
     }
 
@@ -708,12 +723,35 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {
-        String[] finalImmediates = immediates;
+        ImmediatePattern[] finalImmediates;
         if (immediates.length == 0 && !instruction.getEncodedImmediates().isEmpty()) {
             // Provide an empty array of immediates if immediates weren't provided.
-            finalImmediates = new String[instruction.getEncodedImmediates().size()];
+            finalImmediates = createWildcards(instruction.getEncodedImmediates().size());
+        } else {
+            finalImmediates = parseImmediateBindings(immediates);
         }
         return new InstructionPatternModel(instruction, finalImmediates);
+    }
+
+    private static ImmediatePattern lit(long value) {
+        return new Literal(value);
+    }
+
+    private static ImmediatePattern[] parseImmediateBindings(String[] immediates) {
+        ImmediatePattern[] result = new ImmediatePattern[immediates.length];
+        for (int i = 0; i < immediates.length; i++) {
+            String immediate = immediates[i];
+            result[i] = immediate == null ? new Wildcard() : new Binding(immediate);
+        }
+        return result;
+    }
+
+    private static ImmediatePattern[] createWildcards(int count) {
+        ImmediatePattern[] result = new ImmediatePattern[count];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = new Wildcard();
+        }
+        return result;
     }
 
     /**
@@ -721,9 +759,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      * immediate layout differences that can vary between configurations.
      */
     private InstructionPatternModel pStoreLocal(String localBinding) {
-        String[] immediates = new String[storeLocalOperation.instruction().getEncodedImmediates().size()];
-        immediates[0] = localBinding;
-        return p(storeLocalOperation.instruction(), immediates);
+        ImmediatePattern[] immediates = createWildcards(storeLocalOperation.instruction().getEncodedImmediates().size());
+        immediates[0] = new Binding(localBinding);
+        return new InstructionPatternModel(storeLocalOperation.instruction(), immediates);
     }
 
     public short getInstructionStartIndex() {

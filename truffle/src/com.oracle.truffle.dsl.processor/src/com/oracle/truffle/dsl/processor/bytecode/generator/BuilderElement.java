@@ -109,8 +109,11 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleMod
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ImmediateReference;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedBinding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedInstructionPatternModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedLiteral;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedWildcard;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
@@ -6733,23 +6736,30 @@ final class BuilderElement extends AbstractElement {
             // Step 3: Check rewrite conditions.
             if (rewriteRule.hasImmediateConstraints()) {
                 b.startIf();
-                boolean firstCondition = true;
+                List<CodeTree> conditions = new ArrayList<>();
                 for (int i = 0; i < rewriteRule.lhs.length; i++) {
                     ResolvedInstructionPatternModel resolvedPattern = rewriteRule.lhs[i];
                     for (int j = 0; j < resolvedPattern.immediates().length; j++) {
                         ResolvedImmediate resolvedImmediate = resolvedPattern.immediates()[j];
-                        if (resolvedImmediate != null && resolvedImmediate.constraint() != null) {
-                            if (!firstCondition) {
-                                b.string(" || ");
-                            }
-                            firstCondition = false;
-                            b.variable(immediateLocals.get(resolvedImmediate.name()));
-                            b.string(" != ");
-                            b.tree(BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", resolvedImmediate.immediate(),
-                                            getImmediateOffsetInPattern(rewriteRule, new ImmediateReference(i, j))));
+                        CodeTree condition = createImmediateConstraintCondition(rewriteRule, immediateLocals, resolvedImmediate, new ImmediateReference(i, j));
+                        if (condition != null) {
+                            conditions.add(condition);
                         }
                     }
                 }
+                if (conditions.isEmpty()) {
+                    throw new AssertionError("Expected at least one immediate constraint for rewrite rule " + rewriteRule);
+                }
+
+                boolean firstCondition = true;
+                for (CodeTree condition : conditions) {
+                    if (!firstCondition) {
+                        b.string(" || ");
+                    }
+                    firstCondition = false;
+                    b.tree(condition);
+                }
+
                 b.end().startBlock();
                 b.lineComment("No rewrite performed. Update the rewrite state and continue.");
                 b.startAssign(instructionRewriteState);
@@ -6785,8 +6795,8 @@ final class BuilderElement extends AbstractElement {
             }
 
             /*
-             * Note: The lhs and rhs have the same net stack effect, but one side may use more
-             * temporary stack space. The builder must allocate enough stack space for either
+             * Note: The lhs and rhs usually have the same net stack effect, but one side may use
+             * more temporary stack space. The builder must allocate enough stack space for either
              * instruction sequence to ensure a stable frame size.
              *
              * In other words, even if the rhs uses less stack space than the lhs, we cannot
@@ -6815,8 +6825,16 @@ final class BuilderElement extends AbstractElement {
             // Then, emit each instruction on the RHS.
             for (int i = 0; i < rewriteRule.rhs.length; i++) {
                 ResolvedInstructionPatternModel resolvedPattern = rewriteRule.rhs[i];
+                boolean isLastInstruction = i == rewriteRule.rhs.length - 1;
+                int emittedStackEffect = resolvedPattern.instruction().getStackEffect();
 
-                if (i == rewriteRule.rhs.length - 1) {
+                if (isLastInstruction) {
+                    if (rewriteRule.endsWithReturn() && rewriteRule.lhsStackEffect() != rewriteRule.rhsStackEffect()) {
+                        int valuesLeftOnStack = rewriteRule.rhsStackEffect() - rewriteRule.lhsStackEffect();
+                        emittedStackEffect += rewriteRule.lhsStackEffect() - rewriteRule.rhsStackEffect();
+                        b.lineComment("The rewrite leaves " + valuesLeftOnStack + " value(s) on the stack, which is OK since the sequence ends in a return.");
+                        b.lineComment("Use a stack effect of " + emittedStackEffect + " to restore the stack height expected by the builder.");
+                    }
                     b.startReturn(); // return last instruction bci
                 } else {
                     b.startStatement();
@@ -6825,13 +6843,19 @@ final class BuilderElement extends AbstractElement {
                 // The doEmitInstruction method may not exist yet; just reference it by name.
                 b.startCall(getDoEmitInstructionName(resolvedPattern.instruction().getInstructionEncoding(), false));
                 b.tree(parent.createInstructionConstant(resolvedPattern.instruction()));
-                b.string(resolvedPattern.instruction().getStackEffect());
+                b.string(Integer.toString(emittedStackEffect));
                 for (var resolvedImmediate : resolvedPattern.immediates()) {
-                    CodeVariableElement immediateLocal = immediateLocals.get(resolvedImmediate.name());
-                    if (resolvedImmediate.immediate().kind().isUnsigned()) {
-                        b.string(BytecodeRootNodeElement.safeCastUnsignedShort(immediateLocal.getName().toString()));
+                    if (resolvedImmediate instanceof ResolvedBinding binding) {
+                        CodeVariableElement immediateLocal = immediateLocals.get(binding.name());
+                        if (resolvedImmediate.immediate().kind().isUnsigned()) {
+                            b.string(BytecodeRootNodeElement.safeCastUnsignedShort(immediateLocal.getName()));
+                        } else {
+                            b.variable(immediateLocal);
+                        }
+                    } else if (resolvedImmediate instanceof ResolvedLiteral literal) {
+                        b.string(formatImmediateLiteral(literal));
                     } else {
-                        b.variable(immediateLocal);
+                        throw new AssertionError("Only bound immediates are supported on the rhs of rewrite rules.");
                     }
                 }
                 b.end(2);
@@ -7164,22 +7188,53 @@ final class BuilderElement extends AbstractElement {
             return getInstructionOffsetInPattern(rewriteRule, immediateReference.instructionIndex()) + immediate.offset();
         }
 
+        private CodeTree createImmediateConstraintCondition(InstructionRewriteRuleModel rewriteRule, Map<String, CodeVariableElement> immediateLocals, ResolvedImmediate resolvedImmediate,
+                        ImmediateReference immediateReference) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            if (resolvedImmediate instanceof ResolvedBinding binding && binding.constraint() != null) {
+                b.variable(immediateLocals.get(binding.name()));
+            } else if (resolvedImmediate instanceof ResolvedLiteral literal) {
+                b.string(formatImmediateLiteral(literal));
+            } else {
+                return null;
+            }
+            CodeTree readImmediate = BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", resolvedImmediate.immediate(), getImmediateOffsetInPattern(rewriteRule, immediateReference));
+            b.string(" != ").tree(readImmediate);
+            return b.build();
+        }
+
+        private static String formatImmediateLiteral(ResolvedLiteral literal) {
+            long value = literal.value();
+            ImmediateWidth width = literal.immediate().encoding().width();
+            return switch (width) {
+                case NONE -> throw new AssertionError("Non-encoded immediates cannot be used in instruction patterns.");
+                case BYTE -> "(byte) " + value;
+                case SHORT -> "(short) " + value;
+                case INT -> Long.toString(value);
+                case LONG -> value + "L";
+            };
+        }
+
         private Map<String, ImmediateReference> getImmediatesToLoad(InstructionRewriteRuleModel rewriteRule) {
             Map<String, ImmediateReference> result = new HashMap<>();
             for (ResolvedInstructionPatternModel instructionPattern : rewriteRule.lhs) {
                 for (ResolvedImmediate immediatePattern : instructionPattern.immediates()) {
-                    if (immediatePattern == null || immediatePattern.constraint() == null) {
-                        continue;
+                    if (immediatePattern instanceof ResolvedBinding binding && binding.constraint() != null) {
+                        result.put(binding.name(), binding.constraint());
                     }
-                    result.put(immediatePattern.name(), immediatePattern.constraint());
                 }
             }
             for (ResolvedInstructionPatternModel instructionPattern : rewriteRule.rhs) {
                 for (ResolvedImmediate immediatePattern : instructionPattern.immediates()) {
-                    if (immediatePattern.constraint() == null) {
+                    if (immediatePattern instanceof ResolvedWildcard) {
                         throw new AssertionError("All immediates on the rhs of a rewrite rule should be bound.");
                     }
-                    result.put(immediatePattern.name(), immediatePattern.constraint());
+                    if (immediatePattern instanceof ResolvedBinding binding) {
+                        if (binding.constraint() == null) {
+                            throw new AssertionError("All immediate bindings on the rhs of a rewrite rule should be bound.");
+                        }
+                        result.put(binding.name(), binding.constraint());
+                    }
                 }
             }
             return result;

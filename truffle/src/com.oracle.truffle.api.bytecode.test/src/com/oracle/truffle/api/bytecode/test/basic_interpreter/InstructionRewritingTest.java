@@ -288,6 +288,21 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testStackValueReturnCleanup1() {
+        assertStackValueReturnCleanup(1);
+    }
+
+    @Test
+    public void testStackValueReturnCleanup3() {
+        assertStackValueReturnCleanup(3);
+    }
+
+    @Test
+    public void testStackValueReturnCleanup8() {
+        assertStackValueReturnCleanup(8);
+    }
+
+    @Test
     public void testClearLocalDuplicate() {
         BasicInterpreter node = parseNode("clearLocalDuplicate", (BasicInterpreterBuilder b) -> {
             b.beginRoot();
@@ -319,6 +334,50 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
                             "return");
         }
         assertEquals(42L, node.getCallTarget().call());
+    }
+
+    private static <T extends BasicInterpreterBuilder> StackValue emitBindStackValue(T b, long value) {
+        b.beginBindStackValue();
+        b.emitLoadConstant(value);
+        return b.endBindStackValue();
+    }
+
+    private void assertStackValueReturnCleanup(int numStackValues) {
+        BasicInterpreter node = parseNode("stackValueReturnCleanup" + numStackValues, (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginBlock();
+            for (int i = 0; i < numStackValues; i++) {
+                emitBindStackValue(b, 100L + i);
+            }
+            b.emitLoadConstant(42L);
+            b.endBlock();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node, stackValueReturnCleanupInstructions(numStackValues, run.hasInstructionRewriting()));
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    private static String[] stackValueReturnCleanupInstructions(int numStackValues, boolean rewritten) {
+        int cleanupInstructionCount = rewritten ? 0 : numStackValues;
+        String[] result = new String[numStackValues + 1 + cleanupInstructionCount + 1];
+        int index = 0;
+        for (int i = 0; i < numStackValues + 1; i++) {
+            result[index++] = "load.constant";
+        }
+        if (!rewritten) {
+            result[index++] = "store.stackvalue";
+            for (int i = 1; i < numStackValues; i++) {
+                result[index++] = "pop";
+            }
+        }
+        result[index++] = "return";
+        assertEquals(result.length, index);
+        return result;
     }
 
     @Test

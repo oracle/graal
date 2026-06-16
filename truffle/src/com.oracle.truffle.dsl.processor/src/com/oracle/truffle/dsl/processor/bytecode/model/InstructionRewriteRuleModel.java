@@ -50,6 +50,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Binding;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.ImmediatePattern;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Literal;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Wildcard;
 
 public class InstructionRewriteRuleModel implements Comparable<InstructionRewriteRuleModel> {
     public final ResolvedInstructionPatternModel[] lhs;
@@ -58,6 +62,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     private final RewriteSection[] sections;
     private final RewriteKind rewriteKind;
     private InstructionRewriterModel parent;
+    private boolean endsWithReturn;
 
     public enum RewriteSectionKind {
         DELETE,
@@ -87,12 +92,47 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     }
 
     /**
-     * Models a resolved immediate in an instruction pattern, with a computed offset and a
-     * constraint (i.e., an immediate this immediate should match), if available.
+     * Models a resolved immediate in an instruction pattern.
      */
-    public record ResolvedImmediate(InstructionImmediate immediate, String name, ImmediateReference constraint) {
-        public int offset() {
-            return immediate.offset();
+    public sealed interface ResolvedImmediate permits ResolvedWildcard, ResolvedBinding, ResolvedLiteral {
+        InstructionImmediate immediate();
+
+        default int offset() {
+            return immediate().offset();
+        }
+    }
+
+    public record ResolvedWildcard(InstructionImmediate immediate) implements ResolvedImmediate {
+        public ResolvedWildcard {
+            Objects.requireNonNull(immediate);
+        }
+
+        @Override
+        public String toString() {
+            return "_";
+        }
+    }
+
+    public record ResolvedBinding(InstructionImmediate immediate, String name, ImmediateReference constraint) implements ResolvedImmediate {
+        public ResolvedBinding {
+            Objects.requireNonNull(immediate);
+            Objects.requireNonNull(name);
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    public record ResolvedLiteral(InstructionImmediate immediate, long value) implements ResolvedImmediate {
+        public ResolvedLiteral {
+            Objects.requireNonNull(immediate);
+        }
+
+        @Override
+        public String toString() {
+            return Long.toString(value);
         }
     }
 
@@ -103,7 +143,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     public record ResolvedInstructionPatternModel(int offset, InstructionModel instruction, ResolvedImmediate[] immediates) {
         @Override
         public final String toString() {
-            return "%s(%s)".formatted(instruction.getName(), Stream.of(immediates).map(r -> (r == null) ? "_" : r.name()).collect(Collectors.joining(", ")));
+            return "%s(%s)".formatted(instruction.getName(), Stream.of(immediates).map(Object::toString).collect(Collectors.joining(", ")));
         }
     }
 
@@ -159,58 +199,60 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
          * subsequent occurrences become immediate constraints.
          */
         int offset = 0;
+        boolean lhsEndsWithReturn = false;
         for (int i = 0; i < lhsPattern.length; i++) {
             InstructionModel instruction = lhsPattern[i].instruction();
+            if (instruction.kind == InstructionModel.InstructionKind.RETURN) {
+                if (i != lhsPattern.length - 1) {
+                    throw new IllegalArgumentException("Return can only be the final instruction on the lhs of rewrite rule %s.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
+                }
+                lhsEndsWithReturn = true;
+            }
+
             List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
             ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
-                String binding = lhsPattern[i].immediates()[j];
-                if (binding == null) {
-                    // LHS can omit bindings for unused immediates.
-                    continue;
-                }
-                ImmediateReference constraint = this.bindings.putIfAbsent(binding, new ImmediateReference(i, j));
-                immediates[j] = new ResolvedImmediate(encodedImmediates.get(j), binding, constraint);
+                immediates[j] = resolveLhsImmediate(lhsPattern[i].immediates()[j], encodedImmediates.get(j), new ImmediateReference(i, j));
             }
             this.lhs[i] = new ResolvedInstructionPatternModel(offset, instruction, immediates);
             offset += instruction.getInstructionLength();
         }
 
         /*
-         * Then, resolve the RHS using the same process. All instructions on the RHS should have
-         * immediates with bindings declared on the LHS.
+         * Then, resolve the RHS. All instructions on the RHS should have immediates specified
+         * either as literals or as bindings declared on the LHS.
          */
         offset = 0;
+        boolean rhsEndsWithReturn = false;
         for (int i = 0; i < rhsPattern.length; i++) {
             InstructionModel instruction = rhsPattern[i].instruction();
+            if (instruction.kind == InstructionModel.InstructionKind.RETURN) {
+                if (i != rhsPattern.length - 1) {
+                    throw new IllegalArgumentException("Return can only be the final instruction on the rhs of rewrite rule %s.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
+                }
+                rhsEndsWithReturn = true;
+            }
             List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
             ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
-                String binding = rhsPattern[i].immediates()[j];
-                if (binding == null) {
-                    throw new IllegalArgumentException(
-                                    "Instruction %s in the rhs of rewrite rule %s is missing an immediate binding. All immediates for instructions on the rhs must be specified.".formatted(
-                                                    rhsPattern[i].instruction().getName(),
-                                                    formatRewriteRule(lhsPattern, rhsPattern, -1)));
-                }
-                ImmediateReference constraint = this.bindings.get(binding);
-                if (constraint == null) {
-                    throw new IllegalArgumentException("Found unbound immediate %s in the rhs of rewrite rule %s. No corresponding immediate was bound on the lhs.".formatted(binding,
-                                    formatRewriteRule(lhsPattern, rhsPattern, -1)));
-                }
-                immediates[j] = new ResolvedImmediate(encodedImmediates.get(j), binding, constraint);
+                immediates[j] = resolveRhsImmediate(rhsPattern[i].immediates()[j], encodedImmediates.get(j), lhsPattern, rhsPattern, i);
             }
             this.rhs[i] = new ResolvedInstructionPatternModel(offset, instruction, immediates);
             offset += instruction.getInstructionLength();
         }
 
+        if (lhsEndsWithReturn != rhsEndsWithReturn) {
+            throw new IllegalArgumentException("Rewrite rule %s cannot end with a return on only one side.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
+        }
+
         int lhsStackEffect = stackEffect(lhs);
         int rhsStackEffect = stackEffect(rhs);
-        if (lhsStackEffect != rhsStackEffect) {
+        if (lhsStackEffect != rhsStackEffect && !lhsEndsWithReturn) {
             throw new IllegalArgumentException(
-                            "The instructions on the lhs and rhs of rewrite rule %s have different stack effects (%d vs. %d).".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1), lhsStackEffect,
-                                            rhsStackEffect));
+                            "The instructions on the lhs and rhs of rewrite rule %s have different stack effects (%d vs. %d).".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1),
+                                            lhsStackEffect, rhsStackEffect));
         }
+        this.endsWithReturn = lhsEndsWithReturn;
     }
 
     public RewriteKind getRewriteKind() {
@@ -224,7 +266,9 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     public boolean hasImmediateConstraints() {
         for (var resolvedPattern : lhs) {
             for (var resolvedImmediate : resolvedPattern.immediates()) {
-                if (resolvedImmediate != null && resolvedImmediate.constraint() != null) {
+                if (resolvedImmediate instanceof ResolvedBinding binding && binding.constraint() != null) {
+                    return true;
+                } else if (resolvedImmediate instanceof ResolvedLiteral) {
                     return true;
                 }
             }
@@ -233,7 +277,19 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     }
 
     public int stackEffect() {
+        return lhsStackEffect();
+    }
+
+    public int lhsStackEffect() {
         return stackEffect(lhs);
+    }
+
+    public int rhsStackEffect() {
+        return stackEffect(rhs);
+    }
+
+    public boolean endsWithReturn() {
+        return endsWithReturn;
     }
 
     private static int stackEffect(ResolvedInstructionPatternModel[] instructions) {
@@ -279,6 +335,68 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
             }
         }
         return rhs.toArray(InstructionPatternModel[]::new);
+    }
+
+    private ResolvedImmediate resolveLhsImmediate(ImmediatePattern immediatePattern, InstructionImmediate instructionImmediate, ImmediateReference immediateReference) {
+        if (immediatePattern instanceof Wildcard) {
+            return new ResolvedWildcard(instructionImmediate);
+        } else if (immediatePattern instanceof Binding binding) {
+            ImmediateReference constraint = this.bindings.putIfAbsent(binding.name(), immediateReference);
+            return new ResolvedBinding(instructionImmediate, binding.name(), constraint);
+        } else if (immediatePattern instanceof Literal literal) {
+            return resolveLiteralImmediate(instructionImmediate, literal);
+        }
+        throw new AssertionError("Unexpected immediate pattern: " + immediatePattern);
+    }
+
+    private ResolvedImmediate resolveRhsImmediate(ImmediatePattern immediatePattern, InstructionImmediate instructionImmediate, InstructionPatternModel[] lhsPattern,
+                    InstructionPatternModel[] rhsPattern, int rhsInstructionIndex) {
+        if (immediatePattern instanceof Wildcard) {
+            throw new IllegalArgumentException(
+                            "Instruction %s in the rhs of rewrite rule %s is missing an immediate binding. All immediates for instructions on the rhs must be specified.".formatted(
+                                            rhsPattern[rhsInstructionIndex].instruction().getName(),
+                                            formatRewriteRule(lhsPattern, rhsPattern, -1)));
+        } else if (immediatePattern instanceof Binding binding) {
+            ImmediateReference constraint = this.bindings.get(binding.name());
+            if (constraint == null) {
+                throw new IllegalArgumentException("Found unbound immediate %s in the rhs of rewrite rule %s. No corresponding immediate was bound on the lhs.".formatted(binding.name(),
+                                formatRewriteRule(lhsPattern, rhsPattern, -1)));
+            }
+            return new ResolvedBinding(instructionImmediate, binding.name(), constraint);
+        } else if (immediatePattern instanceof Literal literal) {
+            return resolveLiteralImmediate(instructionImmediate, literal);
+        }
+        throw new AssertionError("Unexpected immediate pattern: " + immediatePattern);
+    }
+
+    private static ResolvedLiteral resolveLiteralImmediate(InstructionImmediate instructionImmediate, Literal literal) {
+        validateLiteralValue(instructionImmediate, literal);
+        return new ResolvedLiteral(instructionImmediate, literal.value());
+    }
+
+    private static void validateLiteralValue(InstructionImmediate instructionImmediate, Literal literal) {
+        InstructionModel.ImmediateKind kind = instructionImmediate.kind();
+        if (kind.width == InstructionModel.ImmediateWidth.NONE) {
+            throw new AssertionError("Literal immediates must be encoded.");
+        }
+        int bits = kind.width.byteSize * Byte.SIZE;
+        long value = literal.value();
+        long min;
+        long max;
+        if (kind.width == InstructionModel.ImmediateWidth.LONG) {
+            min = kind.isUnsigned() ? 0 : Long.MIN_VALUE;
+            max = Long.MAX_VALUE;
+        } else if (kind.isUnsigned()) {
+            min = 0;
+            max = (1L << bits) - 1;
+        } else {
+            long limit = 1L << (bits - 1);
+            min = -limit;
+            max = limit - 1;
+        }
+        if (value < min || max < value) {
+            throw new IllegalArgumentException("Immediate literal %d does not fit immediate %s with kind %s.".formatted(value, instructionImmediate.name(), kind));
+        }
     }
 
     public ResolvedImmediate resolveImmediateReference(ImmediateReference immediateReference) {
