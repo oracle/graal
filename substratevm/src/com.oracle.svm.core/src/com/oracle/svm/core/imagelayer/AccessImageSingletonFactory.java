@@ -27,43 +27,65 @@ package com.oracle.svm.core.imagelayer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.graal.nodes.ContainsImageSingletonNode;
 import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public abstract class LoadImageSingletonFactory {
+public abstract class AccessImageSingletonFactory {
+    public static final long MISSING_APPLICATION_LAYER_ONLY_SINGLETON_OFFSET = -1L;
 
     public record SingletonAccessInfo(CGlobalDataInfo tableBase, int offset) {
 
     }
 
-    /**
-     * Provides compiler-relevant information about the value which will be loaded.
-     */
-    public interface LoadImageSingletonData {
+    /** Provides compiler-relevant information for accessing the singleton table. */
+    public interface ImageSingletonAccessData {
 
-        Class<?> getLoadType();
+        String getKeyName();
 
         SingletonAccessInfo getAccessInfo();
 
         boolean isApplicationLayerConstant();
+    }
+
+    /** Provides compiler-relevant information about the value which will be loaded. */
+    public interface LoadImageSingletonData extends ImageSingletonAccessData {
+
+        Class<?> getAccessType();
+
+        boolean isApplicationLayerOnly();
 
         ConstantNode asApplicationLayerConstant(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflectionProvider);
     }
 
+    /**
+     * Provides compiler-relevant information for checking an application-layer singleton's
+     * presence.
+     */
+    public interface ContainsImageSingletonData extends ImageSingletonAccessData {
+    }
+
     protected abstract LoadImageSingletonData getApplicationLayerOnlyImageSingletonInfo(Class<?> clazz);
+
+    protected abstract ContainsImageSingletonData getApplicationLayerOnlyContainsImageSingletonInfo(Class<?> clazz);
 
     protected abstract LoadImageSingletonData getLayeredImageSingletonInfo(Class<?> clazz);
 
     public static LoadImageSingletonNode loadApplicationOnlyImageSingleton(Class<?> clazz, MetaAccessProvider metaAccess) {
-        LoadImageSingletonData singletonInfo = ImageSingletons.lookup(LoadImageSingletonFactory.class).getApplicationLayerOnlyImageSingletonInfo(clazz);
+        LoadImageSingletonData singletonInfo = ImageSingletons.lookup(AccessImageSingletonFactory.class).getApplicationLayerOnlyImageSingletonInfo(clazz);
         return LoadImageSingletonNode.createLoadImageSingleton(singletonInfo, metaAccess);
     }
 
+    public static ContainsImageSingletonNode containsApplicationOnlyImageSingleton(Class<?> clazz) {
+        ContainsImageSingletonData singletonInfo = ImageSingletons.lookup(AccessImageSingletonFactory.class).getApplicationLayerOnlyContainsImageSingletonInfo(clazz);
+        return ContainsImageSingletonNode.createContainsImageSingleton(singletonInfo);
+    }
+
     public static LoadImageSingletonNode loadLayeredImageSingleton(Class<?> clazz, MetaAccessProvider metaAccess) {
-        LoadImageSingletonData singletonInfo = ImageSingletons.lookup(LoadImageSingletonFactory.class).getLayeredImageSingletonInfo(clazz);
+        LoadImageSingletonData singletonInfo = ImageSingletons.lookup(AccessImageSingletonFactory.class).getLayeredImageSingletonInfo(clazz);
         return LoadImageSingletonNode.createLoadImageSingleton(singletonInfo, metaAccess);
     }
 }

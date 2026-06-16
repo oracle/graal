@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
 import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -57,8 +57,8 @@ import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.imagelayer.AccessImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.CodeLocation;
-import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -219,7 +219,7 @@ public class CGlobalDataFeature implements InternalFeature {
                         ConstantNode classConstant = ConstantNode.forConstant(cGlobalDataPointerSingletonClass, b.getMetaAccess(), b.getGraph());
 
                         /* Load the array containing all the singletons. */
-                        ValueNode layers = b.add(ImageSingletons.lookup(LoadImageSingletonFeature.class).loadMultiLayeredImageSingleton(b, classConstant));
+                        ValueNode layers = b.add(ImageSingletons.lookup(AccessImageSingletonFeature.class).loadMultiLayeredImageSingleton(b, classConstant));
 
                         /*
                          * Get the layer number of the CGlobalDataInfo to get the index to use in

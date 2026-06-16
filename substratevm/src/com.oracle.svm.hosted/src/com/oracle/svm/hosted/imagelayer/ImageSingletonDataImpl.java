@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.getCrossLayerSingletonMappingInfo;
+import static com.oracle.svm.hosted.imagelayer.AccessImageSingletonFeature.getCrossLayerSingletonMappingInfo;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
+import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.util.VMError;
@@ -38,38 +38,60 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-class LoadImageSingletonDataImpl implements LoadImageSingletonFactory.LoadImageSingletonData {
+final class ImageSingletonSlotData {
 
-    private final Class<?> key;
-    private final SlotRecordKind kind;
-    private boolean applicationLayerConstant;
+    final Class<?> key;
+    final SlotRecordKind kind;
+    private boolean requiresSlot;
 
-    LoadImageSingletonDataImpl(Class<?> key, SlotRecordKind kind) {
+    ImageSingletonSlotData(Class<?> key, SlotRecordKind kind) {
         this.key = key;
         this.kind = kind;
     }
 
-    public Class<?> getKey() {
-        return key;
+    void requireSlot() {
+        assert kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON : kind;
+        requiresSlot = true;
     }
 
-    public SlotRecordKind getKind() {
-        return kind;
+    boolean requiresSlot() {
+        return requiresSlot;
     }
 
-    @Override
-    public Class<?> getLoadType() {
+    public Class<?> getAccessType() {
         return kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON ? key : key.arrayType();
     }
+}
+
+abstract class ImageSingletonDataImpl implements AccessImageSingletonFactory.ImageSingletonAccessData {
+
+    final ImageSingletonSlotData slotData;
+    private boolean applicationLayerConstant;
+
+    ImageSingletonDataImpl(ImageSingletonSlotData slotData) {
+        this.slotData = slotData;
+    }
+
+    final Class<?> getKey() {
+        return slotData.key;
+    }
+
+    final SlotRecordKind getKind() {
+        return slotData.kind;
+    }
 
     @Override
-    public LoadImageSingletonFactory.SingletonAccessInfo getAccessInfo() {
-        VMError.guarantee(!applicationLayerConstant, "this node should instead be constant folded");
+    public final String getKeyName() {
+        return getKey().getName();
+    }
+
+    @Override
+    public AccessImageSingletonFactory.SingletonAccessInfo getAccessInfo() {
         CrossLayerSingletonMappingInfo singleton = getCrossLayerSingletonMappingInfo();
         assert singleton.singletonTableStart != null;
         CGlobalDataInfo cglobal = CGlobalDataFeature.singleton().registerAsAccessedOrGet(singleton.singletonTableStart);
-        int slotNum = singleton.currentKeyToSlotInfoMap.get(key).slotNum();
-        return new LoadImageSingletonFactory.SingletonAccessInfo(cglobal, slotNum * singleton.referenceSize);
+        int slotNum = singleton.currentKeyToSlotInfoMap.get(getKey()).slotNum();
+        return new AccessImageSingletonFactory.SingletonAccessInfo(cglobal, slotNum * singleton.referenceSize);
     }
 
     void setApplicationLayerConstant() {
@@ -77,22 +99,52 @@ class LoadImageSingletonDataImpl implements LoadImageSingletonFactory.LoadImageS
     }
 
     @Override
-    public boolean isApplicationLayerConstant() {
+    public final boolean isApplicationLayerConstant() {
         return applicationLayerConstant;
+    }
+}
+
+class LoadImageSingletonDataImpl extends ImageSingletonDataImpl implements AccessImageSingletonFactory.LoadImageSingletonData {
+
+    LoadImageSingletonDataImpl(ImageSingletonSlotData slotData) {
+        super(slotData);
+    }
+
+    @Override
+    public Class<?> getAccessType() {
+        return slotData.getAccessType();
+    }
+
+    @Override
+    public boolean isApplicationLayerOnly() {
+        return getKind() == SlotRecordKind.APPLICATION_LAYER_SINGLETON;
+    }
+
+    @Override
+    public AccessImageSingletonFactory.SingletonAccessInfo getAccessInfo() {
+        VMError.guarantee(!isApplicationLayerConstant(), "this node should instead be constant folded");
+        return super.getAccessInfo();
     }
 
     @Override
     public ConstantNode asApplicationLayerConstant(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflectionProvider) {
         VMError.guarantee(isApplicationLayerConstant());
-        return switch (kind) {
+        return switch (getKind()) {
             case APPLICATION_LAYER_SINGLETON -> {
-                Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, false);
+                Object singleton = LayeredImageSingletonSupport.singleton().lookup(getKey(), true, false);
                 yield ConstantNode.forConstant(snippetReflectionProvider.forObject(singleton), metaAccess);
             }
             case MULTI_LAYERED_SINGLETON -> {
-                var multiLayerArray = ImageSingletons.lookup(LoadImageSingletonFeature.class).getMultiLayerConstant(key, metaAccess, snippetReflectionProvider);
+                var multiLayerArray = ImageSingletons.lookup(AccessImageSingletonFeature.class).getMultiLayerConstant(getKey(), metaAccess, snippetReflectionProvider);
                 yield ConstantNode.forConstant(multiLayerArray, 1, true, metaAccess);
             }
         };
+    }
+}
+
+final class ContainsImageSingletonDataImpl extends ImageSingletonDataImpl implements AccessImageSingletonFactory.ContainsImageSingletonData {
+
+    ContainsImageSingletonDataImpl(ImageSingletonSlotData slotData) {
+        super(slotData);
     }
 }
