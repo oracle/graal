@@ -38,6 +38,10 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.DARWIN_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
+import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.OS;
@@ -268,8 +272,8 @@ public class NativeGCOptions {
             return;
         }
 
-        if (!Platform.includedIn(Platform.LINUX_AMD64.class) && !Platform.includedIn(Platform.LINUX_AARCH64.class) && !Platform.includedIn(Platform.DARWIN_AARCH64.class)) {
-            throw UserError.abort("The option '%s' can only be used on linux/amd64, linux/aarch64, or darwin/aarch64.", optionKey.getName());
+        if (!Platform.includedIn(LINUX_AMD64.class) && !Platform.includedIn(LINUX_AARCH64.class) && !Platform.includedIn(DARWIN_AARCH64.class) && !Platform.includedIn(WINDOWS_AMD64.class)) {
+            throw UserError.abort("The option '%s' can only be used on Linux/amd64, Linux/aarch64, macOS/aarch64, or Windows/amd64.", optionKey.getName());
         } else if (!SubstrateOptions.useG1GC()) {
             throw UserError.abort("The option '%s' can only be used with the G1 ('--gc=G1') garbage collector.", optionKey.getName());
         }
