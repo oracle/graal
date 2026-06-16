@@ -1155,6 +1155,34 @@ suite = {
             "testProject": True,
         },
 
+        "com.oracle.svm.hosted.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "SVM",
+                "compiler:GRAAL_TEST",
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.module",
+                ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM,Test",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance": "24+",
+            "jacoco": "exclude",
+            "testProject": True,
+        },
+
         "com.oracle.svm.libjvm": {
             "subDir": "src",
             "sourceDirs": [
@@ -2782,6 +2810,21 @@ suite = {
             "mx:JUNIT_TOOL",
             "sdk:NATIVEIMAGE",
             "SVM_DRIVER",
+          ],
+          "testDistribution" : True,
+        },
+
+        "SVM_HOSTED_TESTS" : {
+          "subDir": "src",
+          "relpath" : True,
+          "dependencies" : [
+            "com.oracle.svm.hosted.test",
+          ],
+          "unittestConfig" : "svm-invariants-tests",
+          "distDependencies": [
+            "mx:JUNIT_TOOL",
+            "SVM",
+            "compiler:GRAAL_TEST",
           ],
           "testDistribution" : True,
         },
