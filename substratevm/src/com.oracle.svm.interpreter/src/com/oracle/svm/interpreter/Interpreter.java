@@ -1771,7 +1771,7 @@ public final class Interpreter {
         JavaKind returnKind;
         int parameterSlots;
         boolean hasReceiver;
-        boolean needsInterfaceReceiverCheck;
+        boolean requiresSymbolicTypeCheck = false;
 
         if (opcode == INVOKEDYNAMIC) {
             int fullCPI = BytecodeStream.readCPI4(code, curBCI);
@@ -1829,7 +1829,7 @@ public final class Interpreter {
             returnKind = seedSignature.getReturnKind();
             hasReceiver = !seedMethod.isStatic();
             parameterSlots = seedSignature.slotsForParameters(hasReceiver);
-            needsInterfaceReceiverCheck = false;
+            requiresSymbolicTypeCheck = false;
         } else {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(method, code, curBCI, opcode);
             symbolicHolder = linkedInvoke.symbolicHolder;
@@ -1839,7 +1839,7 @@ public final class Interpreter {
             returnKind = linkedInvoke.returnKind;
             hasReceiver = linkedInvoke.hasReceiver;
             parameterSlots = linkedInvoke.parameterSlots;
-            needsInterfaceReceiverCheck = linkedInvoke.needsInterfaceReceiverCheck;
+            requiresSymbolicTypeCheck = linkedInvoke.requiresSymbolicTypeCheck;
             if (linkedInvoke.appendix != null) {
                 InterpreterFrameUtil.putObject(callerFrame, top, linkedInvoke.appendix);
                 invokeTop = top + 1;
@@ -1855,7 +1855,7 @@ public final class Interpreter {
             final Object receiver = calleeArgs[0];
             profileType(methodProfile, curBCI, receiver);
             nullCheck(receiver);
-            if (needsInterfaceReceiverCheck) {
+            if (requiresSymbolicTypeCheck) {
                 ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
                 if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
                     throw SemanticJavaException.raise(new IncompatibleClassChangeError(
@@ -1899,6 +1899,13 @@ public final class Interpreter {
 
         InterpreterResolvedJavaMethod seedMethod;
         CallKind callKind;
+
+        // Ensure receivers of an interface method call actually implement the declared
+        // interface. This is not checked by the verifier, so we need to dynamically
+        // check that property. Note: this condition covers both INVOKEINTERFACE, and
+        // INVOKESPECIAL of an interface method.
+        boolean requiresSymbolicTypeCheck = getConstantPool(method).tagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF;
+
         try {
             ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
                             CremaRuntimeAccess.getInstance(),
@@ -1924,7 +1931,7 @@ public final class Interpreter {
             traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
         }
 
-        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, opcode);
+        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, requiresSymbolicTypeCheck);
         linkedInvoke = getConstantPool(method).cacheLinkedInvoke(cpi, opcode, linkedInvoke);
         return linkedInvoke;
     }
