@@ -67,7 +67,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
                         ((OptimizedTruffleRuntime) Truffle.getRuntime()).doCompile(callTarget, task);
                     } finally {
                         callTarget.compiledTier(task.tier());
-                        task.finished();
+                        task.finish();
                     }
                 } else {
                     /*
@@ -82,7 +82,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
                         OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
                         runtime.getListener().onCompilationDequeued(callTarget, null, "Stale compilation task", task.tier());
                     }
-                    task.finished();
+                    task.finish();
                 }
             }
         }
@@ -111,6 +111,11 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
     private final Consumer<CompilationTask> action;
     private final EngineData engineData;
     private volatile Future<?> future;
+    /*
+     * Cancellation before CompilationTask.start() and the executor path both complete tasks that
+     * did not start compilation. Coordinate those paths so only one of them resets the target.
+     */
+    private boolean completionHandled;
     private volatile boolean cancelled;
     volatile BooleanSupplier cancelledPredicate;
     private volatile boolean started;
@@ -198,9 +203,9 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
-            if (!started) {
+            if (!started && claimCompletion()) {
                 future.cancel(false);
-                finished();
+                resetCompilationTask();
             }
             return true;
         }
@@ -211,7 +216,21 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         cancelled = false;
     }
 
-    public void finished() {
+    private void finish() {
+        if (claimCompletion()) {
+            resetCompilationTask();
+        }
+    }
+
+    private synchronized boolean claimCompletion() {
+        if (!completionHandled) {
+            completionHandled = true;
+            return true;
+        }
+        return false;
+    }
+
+    private void resetCompilationTask() {
         final OptimizedCallTarget target = targetRef.get();
         if (target != null) {
             target.resetCompilationTask();
