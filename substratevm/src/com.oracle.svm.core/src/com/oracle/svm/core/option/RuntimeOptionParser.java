@@ -77,12 +77,12 @@ public final class RuntimeOptionParser {
     /**
      * The prefix for Graal style options available in an application based on Substrate VM.
      */
-    static final String GRAAL_OPTION_PREFIX = "-Djdk.graal.";
+    private static final String GRAAL_OPTION_PREFIX = "-Djdk.graal.";
 
     /**
      * The legacy prefix for Graal style options available in an application based on Substrate VM.
      */
-    static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
+    private static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
 
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
@@ -136,53 +136,16 @@ public final class RuntimeOptionParser {
                     "-Xdebug",
                     "-Xcheck:jni");
 
-    /// Parse and consume all standard options and system properties supported by Substrate VM. The
-    /// returned array contains all arguments that were not consumed, i.e., were not recognized as
-    /// options.
-    ///
-    /// Note that the logic of whether to parse options must be in sync with
-    /// [IsolateArgumentParser#shouldParseArguments].
-    public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        String[] args = initialArgs;
-        if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parseStandardOptions(args, ignoreUnrecognized);
-        } else if (RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && IsolateArgumentParser.isCompilationIsolate()) {
-            /*
-             * Compilation isolates always need to parse the Native Image options that the main
-             * isolate passes to them.
-             */
-            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, null, null, X_OPTION_PREFIX, ignoreUnrecognized);
-        }
-        return args;
-    }
-
     /** All reachable options. */
     private final EconomicMap<String, OptionDescriptor> options = ImageHeapMap.createNonLayeredMap();
 
-    private static final class ParseContext {
-        /// Whether to preserve the Java option handling behavior that existed before GR-74762.
-        final boolean legacyJavaOptionMode = SubstrateOptions.LegacyJavaOptionMode.getValue();
-
-        /// Collects system properties to initialize after recognized options are parsed.
-        final EconomicMap<String, String> properties = EconomicMap.create();
-
-        /// Next numbered-property slot for decoded `--add-modules` options.
-        int addModulesIndex;
-
-        /// Next numbered-property slot for decoded `--add-reads` options.
-        int addReadsIndex;
-
-        /// Next numbered-property slot for decoded `--add-exports` options.
-        int addExportsIndex;
-
-        /// Next numbered-property slot for decoded `--add-opens` options.
-        int addOpensIndex;
-
-        /// Next numbered-property slot for decoded `--enable-native-access` options.
-        int enableNativeAccessIndex;
-
-        /// Whether parsing already warned about an ignored reserved internal module property.
-        boolean warnedInternalModuleProperty;
+    /**
+     * Returns the singleton instance that is created during native image generation and stored in
+     * the {@link ImageSingletons}.
+     */
+    @Fold
+    public static RuntimeOptionParser singleton() {
+        return ImageSingletons.lookup(RuntimeOptionParser.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -194,23 +157,109 @@ public final class RuntimeOptionParser {
         return Optional.ofNullable(options.get(optionName));
     }
 
-    /**
-     * Returns the singleton instance that is created during native image generation and stored in
-     * the {@link ImageSingletons}.
-     */
-    @Fold
-    public static RuntimeOptionParser singleton() {
-        return ImageSingletons.lookup(RuntimeOptionParser.class);
+    public Iterable<OptionDescriptor> getDescriptors() {
+        return options.getValues();
     }
 
-    private String[] parseStandardOptions(String[] initialArgs, boolean ignoreUnrecognized) {
+    /// Parse and consume all standard options and system properties supported by Substrate VM. The
+    /// returned array contains all arguments that were not consumed, i.e., were not recognized as
+    /// options.
+    ///
+    /// Note that the logic of whether to parse options must be in sync with
+    /// [IsolateArgumentParser#shouldParseArguments].
+    public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
+        boolean parseRuntimeOptions = SubstrateOptions.ParseRuntimeOptions.getValue() ||
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && IsolateArgumentParser.isCompilationIsolate();
+        if (!parseRuntimeOptions) {
+            return initialArgs;
+        }
+
         ParseContext context = new ParseContext();
         String[] args = parseJavaVMOptions(initialArgs, context);
-        args = parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, LEGACY_GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, ignoreUnrecognized);
+        args = singleton().parse(args, ignoreUnrecognized);
         if (!context.legacyJavaOptionMode) {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
         return args;
+    }
+
+    /**
+     * Parses {@code args} and sets/updates runtime option values for the elements matching a
+     * runtime option.
+     *
+     * @param args arguments to be parsed
+     * @return elements in {@code args} that do not match any runtime options
+     * @throws IllegalArgumentException if an element in {@code args} is invalid. The parse error is
+     *             described by {@link Throwable#getMessage()}.
+     */
+    private String[] parse(String[] args, boolean ignoreUnrecognized) {
+        int newIdx = 0;
+        EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+        for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
+            String arg = args[oldIdx];
+            if (arg.startsWith(NORMAL_OPTION_PREFIX)) {
+                parseOptionAtRuntime(arg, NORMAL_OPTION_PREFIX, BooleanOptionFormat.PLUS_MINUS, values, ignoreUnrecognized);
+            } else if (arg.startsWith(GRAAL_OPTION_PREFIX)) {
+                parseOptionAtRuntime(arg, GRAAL_OPTION_PREFIX, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
+            } else if (arg.startsWith(LEGACY_GRAAL_OPTION_PREFIX)) {
+                parseOptionAtRuntime(arg, LEGACY_GRAAL_OPTION_PREFIX, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
+            } else if (arg.startsWith(X_OPTION_PREFIX) && XOptions.parse(arg.substring(X_OPTION_PREFIX.length()), values)) {
+                // option value was already parsed and added to the map
+            } else {
+                assert newIdx <= oldIdx;
+                args[newIdx] = arg;
+                newIdx += 1;
+            }
+        }
+
+        if (!values.isEmpty()) {
+            RuntimeOptionValues.singleton().update(values);
+        }
+        if (newIdx == args.length) {
+            /* We can be allocation free and just return the original arguments. */
+            return args;
+        } else {
+            return Arrays.copyOf(args, newIdx);
+        }
+    }
+
+    /**
+     * Parse one option at runtime and set its value.
+     *
+     * @param arg argument to be parsed
+     * @param optionPrefix prefix for the runtime option
+     * @throws IllegalArgumentException if {@code arg} is invalid. The parse error is described by
+     *             {@link Throwable#getMessage()}.
+     */
+    public void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean ignoreUnrecognized) {
+        Predicate<OptionKey<?>> isHosted = _ -> false;
+        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
+        if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
+            SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
+                            options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
+            System.exit(0);
+        }
+        if (!parseResult.isValid()) {
+            if (parseResult.optionUnrecognized() && ignoreUnrecognized) {
+                return;
+            }
+            throw new IllegalArgumentException(parseResult.getError());
+        }
+
+        // Print a warning if the option is deprecated.
+        OptionKey<?> option = parseResult.getOptionKey();
+        OptionDescriptor descriptor = option.getDescriptor();
+        if (descriptor != null && descriptor.isDeprecated()) {
+            Log log = Log.log();
+            // Checkstyle: Allow raw info or warning printing - begin
+            log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
+            // Checkstyle: Allow raw info or warning printing - end
+            String deprecationMessage = descriptor.getDeprecationMessage();
+            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
+                log.string(": ").string(deprecationMessage);
+            }
+            log.newline();
+        }
     }
 
     /// Parses the Java VM options that HotSpot handles in `arguments.cpp`. This parser phase is
@@ -470,89 +519,29 @@ public final class RuntimeOptionParser {
         return new IllegalArgumentException("The option '" + arg + "' is not supported by Native Image");
     }
 
-    /**
-     * Parses {@code args} and sets/updates runtime option values for the elements matching a
-     * runtime option.
-     *
-     * @param args arguments to be parsed
-     * @param normalOptionPrefix prefix for normal Native Image runtime options
-     * @param graalOptionPrefix prefix for Graal-style options
-     * @param xOptionPrefix prefix for X-options
-     * @return elements in {@code args} that do not match any runtime options
-     * @throws IllegalArgumentException if an element in {@code args} is invalid. The parse error is
-     *             described by {@link Throwable#getMessage()}.
-     */
-    public String[] parse(String[] args, String normalOptionPrefix, String graalOptionPrefix, String legacyGraalOptionPrefix, String xOptionPrefix, boolean ignoreUnrecognized) {
-        int newIdx = 0;
-        EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-        for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
-            String arg = args[oldIdx];
-            if (arg.startsWith(normalOptionPrefix)) {
-                parseOptionAtRuntime(arg, normalOptionPrefix, BooleanOptionFormat.PLUS_MINUS, values, ignoreUnrecognized);
-            } else if (graalOptionPrefix != null && arg.startsWith(graalOptionPrefix)) {
-                parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
-            } else if (legacyGraalOptionPrefix != null && arg.startsWith(legacyGraalOptionPrefix)) {
-                parseOptionAtRuntime(arg, legacyGraalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
-            } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values)) {
-                // option value was already parsed and added to the map
-            } else {
-                assert newIdx <= oldIdx;
-                args[newIdx] = arg;
-                newIdx += 1;
-            }
-        }
+    private static final class ParseContext {
+        /// Whether to preserve the Java option handling behavior that existed before GR-74762.
+        final boolean legacyJavaOptionMode = SubstrateOptions.LegacyJavaOptionMode.getValue();
 
-        if (!values.isEmpty()) {
-            RuntimeOptionValues.singleton().update(values);
-        }
-        if (newIdx == args.length) {
-            /* We can be allocation free and just return the original arguments. */
-            return args;
-        } else {
-            return Arrays.copyOf(args, newIdx);
-        }
-    }
+        /// Collects system properties to initialize after recognized options are parsed.
+        final EconomicMap<String, String> properties = EconomicMap.create();
 
-    /**
-     * Parse one option at runtime and set its value.
-     *
-     * @param arg argument to be parsed
-     * @param optionPrefix prefix for the runtime option
-     * @throws IllegalArgumentException if {@code arg} is invalid. The parse error is described by
-     *             {@link Throwable#getMessage()}.
-     */
-    public void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean ignoreUnrecognized) {
-        Predicate<OptionKey<?>> isHosted = _ -> false;
-        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
-        if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
-            SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
-                            options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
-            System.exit(0);
-        }
-        if (!parseResult.isValid()) {
-            if (parseResult.optionUnrecognized() && ignoreUnrecognized) {
-                return;
-            }
-            throw new IllegalArgumentException(parseResult.getError());
-        }
+        /// Next numbered-property slot for decoded `--add-modules` options.
+        int addModulesIndex;
 
-        // Print a warning if the option is deprecated.
-        OptionKey<?> option = parseResult.getOptionKey();
-        OptionDescriptor descriptor = option.getDescriptor();
-        if (descriptor != null && descriptor.isDeprecated()) {
-            Log log = Log.log();
-            // Checkstyle: Allow raw info or warning printing - begin
-            log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
-            // Checkstyle: Allow raw info or warning printing - end
-            String deprecationMessage = descriptor.getDeprecationMessage();
-            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
-                log.string(": ").string(deprecationMessage);
-            }
-            log.newline();
-        }
-    }
+        /// Next numbered-property slot for decoded `--add-reads` options.
+        int addReadsIndex;
 
-    public Iterable<OptionDescriptor> getDescriptors() {
-        return options.getValues();
+        /// Next numbered-property slot for decoded `--add-exports` options.
+        int addExportsIndex;
+
+        /// Next numbered-property slot for decoded `--add-opens` options.
+        int addOpensIndex;
+
+        /// Next numbered-property slot for decoded `--enable-native-access` options.
+        int enableNativeAccessIndex;
+
+        /// Whether parsing already warned about an ignored reserved internal module property.
+        boolean warnedInternalModuleProperty;
     }
 }
