@@ -33,23 +33,23 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.container.Container;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
+public class LinuxPhysicalMemorySupportImpl extends PlatformPhysicalMemorySupport {
 
     private static final long K = 1024;
 
@@ -65,11 +65,9 @@ public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     @Override
     public long usedSize() {
-        /*
-         * Note: we use getCachedMemoryLimitInBytes() because we don't want to mutate the state, and
-         * we assume that the memory limits have be queried before calling this method.
-         */
-        assert !(Container.singleton().isContainerized() && Container.singleton().getCachedMemoryLimitInBytes() > 0) : "Should be using OperatingSystemMXBean";
+        if (Container.singleton().isContainerized() && Container.singleton().getMemoryLimitInBytes() > 0) {
+            return super.usedSize();
+        }
         /* Non-containerized Linux uses /proc/meminfo. */
         return getUsedSizeFromProcMemInfo();
     }
@@ -132,8 +130,8 @@ class LinuxPhysicalMemorySupportFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(PhysicalMemorySupport.class)) {
-            ImageSingletons.add(PhysicalMemorySupport.class, new LinuxPhysicalMemorySupportImpl());
+        if (!ImageSingletons.contains(PlatformPhysicalMemorySupport.class)) {
+            ImageSingletons.add(PlatformPhysicalMemorySupport.class, new LinuxPhysicalMemorySupportImpl());
         }
     }
 }
