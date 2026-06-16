@@ -255,7 +255,7 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode im
      */
     private void lowerConstantLengthCopy(int constantLength, int maxVectorSizeBytes) {
         int byteLength = constantLength << strideDst.log2;
-        int chunkSize = Integer.highestOneBit(Math.min(byteLength, maxVectorSizeBytes));
+        int chunkSize = constantLengthCopyChunkSize(byteLength, maxVectorSizeBytes);
         FixedWithNextNode last = lowerToReadWriteCopy(this, arraySrc, offsetSrc, arrayDst, offsetDst,
                         chunkOffsets(byteLength, chunkSize), accessStamp(chunkSize), getLocationIdentity(), LocationIdentity.any(), stateAfter());
 
@@ -316,8 +316,16 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode im
             return false;
         }
         int byteLength = (int) byteLengthLong;
-        int chunkSize = Integer.highestOneBit(Math.min(byteLength, maxVectorSizeBytes));
+        int chunkSize = constantLengthCopyChunkSize(byteLength, maxVectorSizeBytes);
         return chunkSize != 0 && chunkCount(byteLength, chunkSize) <= MAX_CONSTANT_COPY_CHUNKS;
+    }
+
+    /**
+     * MaxVectorSizeBytes restricts SIMD access sizes only. Scalar long/int/short/byte accesses
+     * are available even when SIMD is disabled.
+     */
+    public static int constantLengthCopyChunkSize(int byteLength, int maxVectorSizeBytes) {
+        return Integer.highestOneBit(Math.min(byteLength, Math.max(maxVectorSizeBytes, Long.BYTES)));
     }
 
     static int maxVectorSizeBytes(LoweringTool tool) {
