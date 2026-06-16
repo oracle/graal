@@ -145,7 +145,8 @@ public final class BuildTimeInterpreterUniverse {
         String name = universe.dedup(resolvedJavaType.getName());
         Class<?> clazz = OriginalClassProvider.getJavaClass(resolvedJavaType);
         ResolvedJavaType originalType = MetadataUtil.requireNonNull(resolvedJavaType);
-        int modifiers = resolvedJavaType.getModifiers();
+        // Substituted classes can use a package-private target holder even when the original class is public.
+        int modifiers = OriginalClassProvider.getOriginalType(resolvedJavaType).getModifiers();
         InterpreterResolvedJavaType componentType;
         if (originalType.isArray()) {
             componentType = universe.getOrCreateType(originalType.getComponentType());
