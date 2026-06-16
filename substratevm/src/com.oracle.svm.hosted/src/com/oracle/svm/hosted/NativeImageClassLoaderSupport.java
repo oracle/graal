@@ -36,6 +36,7 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -83,6 +84,7 @@ import java.util.zip.ZipFile;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
@@ -115,6 +117,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.internal.module.Modules;
 import jdk.internal.module.Resources;
 
@@ -379,6 +382,36 @@ public final class NativeImageClassLoaderSupport {
     public List<ClassLoader> getClassLoaders() {
         VMError.guarantee(classLoaders != null, "Invalid access to classLoaders before getting set up");
         return classLoaders;
+    }
+
+    /**
+     * Pre-initializes the dynamic modules that {@link Proxy} creates for public-interface proxy
+     * classes.
+     *
+     * {@link Proxy} assigns names such as {@code jdk.proxyN} lazily, when the first
+     * public-interface proxy class is created for a class loader. The assigned module name depends
+     * on the class loader and on the order in which proxy modules are allocated. For layered image
+     * builds, that order must be stable between layer creation and later layer use, otherwise
+     * classes in different layers can observe different dynamic proxy module names.
+     *
+     * To make the allocation deterministic, create a harmless throw-away proxy class for each
+     * relevant class loader before proxy creation can be triggered indirectly by class loading,
+     * configuration parsing, or analysis. {@link Runnable} is used only as a simple public
+     * interface; the generated proxy classes themselves are not used.
+     */
+    @SuppressWarnings("deprecation")
+    public void preinitializeProxyDynamicModules() {
+        Set<ClassLoader> loaders = new EconomicHashSet<>(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        loaders.add(null);
+        loaders.add(ClassLoader.getPlatformClassLoader());
+        NativeImageSystemClassLoader systemClassLoader = NativeImageSystemClassLoader.singleton();
+        loaders.add(systemClassLoader.defaultSystemClassLoader);
+        loaders.add(systemClassLoader);
+        loaders.addAll(getClassLoaders());
+
+        for (ClassLoader loader : loaders) {
+            Proxy.getProxyClass(loader, Runnable.class);
+        }
     }
 
     public ModuleFinder getModulePathsFinder() {
