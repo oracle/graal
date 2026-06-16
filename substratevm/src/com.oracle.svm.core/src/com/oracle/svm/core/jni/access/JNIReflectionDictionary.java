@@ -44,6 +44,7 @@ import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -109,10 +111,35 @@ public final class JNIReflectionDictionary {
     }
 
     private final EconomicMap<CharSequence, JNIAccessibleClass> classesByName = ImageHeapMap.createNonLayeredMap(WRAPPED_CSTRING_EQUIVALENCE);
-    private final EconomicMap<Class<?>, JNIAccessibleClass> classesByClassObject = ImageHeapMap.createNonLayeredMap();
+    /**
+     * JNI registrations are collected during analysis, before final {@link DynamicHub} type IDs are
+     * assigned, so the hosted-time map {@link #classesByHub} uses {@link DynamicHubKey}s to
+     * deduplicate repeated class registrations and merge their method/field metadata. Before
+     * compilation, once type IDs are stable, the entries are copied to classesByTypeID for runtime
+     * lookup. Runtime layered-image lookup must not use {@link Class} or {@link DynamicHub} object
+     * keys because their identity/hash behavior is not stable across layers.
+     */
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
+    private EconomicMap<Integer, JNIAccessibleClass> classesByTypeID = null;
+    @Platforms(HOSTED_ONLY.class) //
+    private EconomicMap<DynamicHubKey, JNIAccessibleClass> classesByHub = EconomicMap.create();
     private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.createNonLayeredMap();
 
     private JNIReflectionDictionary() {
+    }
+
+    /**
+     * Maps that are conceptually indexed by {@link Class} need different keys before and after type
+     * IDs are assigned. Hosted maps can use {@link DynamicHub} keys to identify classes while
+     * registrations are still collected, but image heap maps need to be keyed by
+     * {@link DynamicHub#getTypeID()}, which is stable at run time. This hosted-only wrapper is used
+     * for the first map to ensure that {@link DynamicHub} keys do not leak into the image.
+     */
+    @Platforms(HOSTED_ONLY.class)
+    private record DynamicHubKey(DynamicHub hub) {
+        int getTypeID() {
+            return hub.getTypeID();
+        }
     }
 
     private static void dump(boolean condition, String label) {
@@ -143,8 +170,8 @@ public final class JNIReflectionDictionary {
                     }
                 }
 
-                ps.println(" classesByClassObject:");
-                MapCursor<Class<?>, JNIAccessibleClass> cursor = dictionary.classesByClassObject.getEntries();
+                ps.println(" classesByTypeID:");
+                MapCursor<Integer, JNIAccessibleClass> cursor = dictionary.classesByTypeID.getEntries();
                 while (cursor.advance()) {
                     ps.print("  ");
                     ps.println(cursor.getKey());
@@ -154,11 +181,13 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
-        JNIAccessibleClass existing = classesByClassObject.get(classObj);
+    public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, DynamicHub hub, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
+        assert !isSealed() : "The JNIReflectionDictionary is already sealed";
+        DynamicHubKey key = new DynamicHubKey(hub);
+        JNIAccessibleClass existing = classesByHub.get(key);
         if (existing == null) {
             JNIAccessibleClass instance = mappingFunction.apply(classObj);
-            classesByClassObject.put(classObj, instance);
+            classesByHub.put(key, instance);
             String name = instance.getJNIName();
             classesByName.put(name, instance);
             return instance;
@@ -172,17 +201,39 @@ public final class JNIReflectionDictionary {
 
     @Platforms(HOSTED_ONLY.class)
     public void addNegativeClassLookupIfAbsent(String typeName) {
+        assert !isSealed() : "The JNIReflectionDictionary is already sealed";
         classesByName.putIfAbsent(typeName, NEGATIVE_CLASS_LOOKUP);
     }
 
     @Platforms(HOSTED_ONLY.class)
     public void addLinkage(JNINativeLinkage linkage) {
+        assert !isSealed() : "The JNIReflectionDictionary is already sealed";
         nativeLinkages.put(linkage, linkage);
     }
 
     @Platforms(HOSTED_ONLY.class)
     public Iterable<JNIAccessibleClass> getClasses() {
-        return classesByClassObject.getValues();
+        return classesByHub == null ? classesByTypeID.getValues() : classesByHub.getValues();
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public void seal() {
+        VMError.guarantee(classesByTypeID == null, "The DynamicHub keys should only be populated once");
+        classesByTypeID = EconomicMap.create();
+        MapCursor<DynamicHubKey, JNIAccessibleClass> cursor = classesByHub.getEntries();
+        while (cursor.advance()) {
+            classesByTypeID.put(cursor.getKey().getTypeID(), cursor.getValue());
+        }
+        classesByHub = null;
+    }
+
+    private boolean isSealed() {
+        return classesByHub == null;
+    }
+
+    private static JNIAccessibleClass getJniAccessibleClass(JNIReflectionDictionary dictionary, Class<?> classObject) {
+        int typeId = DynamicHub.fromClass(classObject).getTypeID();
+        return dictionary.classesByTypeID.get(typeId);
     }
 
     public static Class<?> getClassObjectByName(CharSequence name) {
@@ -195,17 +246,23 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIAccessibleClass getJniAccessibleClass(CharSequence name) {
+        JNIAccessibleClass result = null;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
             if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
-                clazz = NEGATIVE_CLASS_LOOKUP;
-            } else if (MetadataTracer.enabled()) {
-                // trace if class exists (positive query) or name is valid (negative query)
-                MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
+                result = NEGATIVE_CLASS_LOOKUP;
+            } else if (clazz != null) {
+                result = clazz;
+                if (!result.isNegative()) {
+                    break;
+                }
             }
-            return checkClass(clazz, name.toString());
         }
-        return null;
+        if (MetadataTracer.enabled() && (result != null || ClassNameSupport.isValidJNIName(name.toString()))) {
+            // trace if class exists (positive query) or name is valid (negative query)
+            MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
+        }
+        return checkClass(result, name.toString());
     }
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
@@ -290,7 +347,7 @@ public final class JNIReflectionDictionary {
         }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
-            JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
+            JNIAccessibleClass clazz = getJniAccessibleClass(dictionary, classObject);
             if (clazz != null) {
                 foundClass = true;
                 JNIAccessibleMethod method = clazz.getMethod(descriptor);
@@ -349,7 +406,7 @@ public final class JNIReflectionDictionary {
         }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
-            JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
+            JNIAccessibleClass clazz = getJniAccessibleClass(dictionary, classObject);
             if (clazz != null) {
                 foundClass = true;
                 JNIAccessibleField field = clazz.getField(name);
@@ -401,7 +458,7 @@ public final class JNIReflectionDictionary {
 
     public static String getFieldNameByID(Class<?> classObject, JNIFieldId id) {
         for (var dictionary : layeredSingletons()) {
-            JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
+            JNIAccessibleClass clazz = getJniAccessibleClass(dictionary, classObject);
             if (clazz != null) {
                 UnmodifiableMapCursor<CharSequence, JNIAccessibleField> fieldsCursor = clazz.getFields();
                 while (fieldsCursor.advance()) {

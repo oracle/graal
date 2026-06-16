@@ -452,8 +452,8 @@ public class JNIAccessFeature implements Feature {
         if (reflectivityFilter.shouldExclude(classObj)) {
             return null;
         }
-        return JNIReflectionDictionary.currentLayer().addOrUpdateClass(classObj, preserved, _ -> {
-            AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
+        AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
+        return JNIReflectionDictionary.currentLayer().addOrUpdateClass(classObj, access.getHostVM().dynamicHub(analysisClass), preserved, _ -> {
             analysisClass.registerAsReachable("is accessed via JNI");
             return new JNIAccessibleClass(classObj, preserved);
         });
@@ -598,6 +598,7 @@ public class JNIAccessFeature implements Feature {
     public void beforeCompilation(BeforeCompilationAccess a) {
         CompilationAccessImpl access = (CompilationAccessImpl) a;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        JNIReflectionDictionary.currentLayer().seal();
         for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             UnmodifiableMapCursor<CharSequence, JNIAccessibleField> cursor = clazz.getFields();
             while (cursor.advance()) {

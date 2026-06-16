@@ -37,21 +37,21 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -204,14 +204,11 @@ public class SerializationSupport {
     }
 
     /**
-     * This class is used as key in maps that use {@link Class} as key at runtime in layered images,
-     * because the hash code of {@link Class} objects cannot be injected in extension layers and is
-     * thus inconsistent across layers. The state of those maps is then incorrect at run time. The
-     * {@link DynamicHub} cannot be used directly either as its hash code at run time is the one of
-     * the {@link Class} object.
-     * <p>
-     * Temporary key for maps ideally indexed by their {@link Class} or {@link DynamicHub}. At
-     * runtime, these maps should be indexed by {@link DynamicHub#getTypeID}
+     * Maps that are conceptually indexed by {@link Class} need different keys before and after type
+     * IDs are assigned. Hosted maps can use {@link DynamicHub} keys to identify classes while
+     * registrations are still collected, but image heap maps need to be keyed by
+     * {@link DynamicHub#getTypeID()}, which is stable at run time. This hosted-only wrapper is used
+     * for the first map to ensure that {@link DynamicHub} keys do not leak into the image.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public record DynamicHubKey(DynamicHub hub) {
