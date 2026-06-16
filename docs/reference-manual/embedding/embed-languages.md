@@ -17,6 +17,7 @@ permalink: /reference-manual/embed-languages/
 * [Host Access](#host-access)
 * [Runtime Optimization Support](#runtime-optimization-support)
 * [Polyglot Isolates](#polyglot-isolates)
+* [Managing Internal Resources](#managing-internal-resources)
 * [Build Native Executables from Polyglot Applications](#build-native-executables-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed Guest Languages in Java](#embed-guest-languages-in-java)
@@ -117,6 +118,8 @@ Complete the steps in this section to create a sample polyglot application that 
 5. [Download and install GraalVM](../../getting-started/get-started.md) by setting the value of the `JAVA_HOME` environment variable to the location of a GraalVM JDK.
 
 6. Run `mvn package exec:exec` to build and execute the sample code.
+
+On first use, languages may unpack internal resources, such as standard libraries, into a cache folder. See [Managing Internal Resources](#managing-internal-resources) for details.
 
 You now have a polyglot application that consists of a Java host application and guest language code, running on GraalVM.
 You can use this application with other code examples to demonstrate more advanced capabilities of the GraalVM Polyglot API.
@@ -677,6 +680,55 @@ In Linux environments that support Memory Protection Keys, use the `--engine.Mem
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
 GraalVM only enables access to the engine's heap when executing code of the polyglot isolate.
 
+## Managing Internal Resources
+
+Some Graal languages and tools include files that are part of the language implementation rather than the host application.
+These files are called **internal resources** and can include standard libraries, native libraries, or other language runtime files.
+They are shipped with the language or tool artifacts and are made available on disk when the implementation needs them as regular files.
+
+### Resource Location
+
+You may want to manage internal resource location explicitly when your application runs in a container with a read-only home directory, or when each application should have a private cache.
+
+The default location is:
+
+* Linux: `$XDG_CACHE_HOME/org.graalvm.polyglot` when `XDG_CACHE_HOME` is set to an absolute path, otherwise `${user.home}/.cache/org.graalvm.polyglot`
+* macOS: `${user.home}/Library/Caches/org.graalvm.polyglot`
+* Windows: `${user.home}/AppData/Local/org.graalvm.polyglot`
+
+You can customize this location in an OS-agnostic way with:
+
+```bash
+java -Dpolyglot.engine.userResourceCache=/path/to/cache ...
+```
+
+The cache directory can be safely cleared when no application is using it. GraalVM recreates the required entries on the next run. The framework never clears the cache automatically.
+
+### Manually preparing internal resources
+
+Manually preparing internal resources is useful for deployments with:
+
+* a read-only file system where the application cannot write resources during startup
+* strict startup-time requirements where avoiding first-use unpacking helps reduce initial startup time
+
+For native executables, build with `-H:-IncludeLanguageResources -H:+CopyLanguageResources` to keep resources out of the executable and create a separate `resources` directory next to the native executable or shared library. At run time, resources are automatically picked up from that `resources` directory, unless you override the location with `polyglot.engine.resourcePath`.
+
+For other Java runtimes, run a small Java application with the required languages and tools on its class or module path during the build or installation step, and use [`Engine.copyResources(Path, String...)`](<https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)>) to copy resources into the directory:
+
+```java
+Path resources = Path.of("/opt/myapp/graalvm-resources");
+Engine.copyResources(resources, "js", "python");
+```
+
+If no language or tool ids are provided, resources for all available languages and tools are copied.
+At run time, point the application at the generated directory:
+
+```bash
+java -Dpolyglot.engine.resourcePath=/opt/myapp/graalvm-resources ...
+```
+
+This redirects all internal resource lookups to that directory. Ensure that it contains resources for every language and tool used by the application. Regenerate the directory when you change GraalVM or language dependencies. The directory produced by `copyResources` can be prepared once and deployed read-only.
+
 ## Build Native Executables from Polyglot Applications
 
 With Polyglot version 23.1 on GraalVM for JDK 21 and later, no special configuration is required to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
@@ -724,15 +776,16 @@ To build a native executable with the above configuration, run:
 mvn -Pnative package
 ```
 
-Building a native executable from a polyglot application, for example, a Java-host application embedding Python, automatically captures all the internal resources required by the included languages and tools.
+Building a native executable from a polyglot application, for example, a Java-host application embedding Python, automatically captures the internal resources required by the included languages and tools.
 By default, the resources are included in the native executable itself.
 The inclusion of resources in the native executable can be disabled by `-H:-IncludeLanguageResources`.
-Another option is a separate _resources_ directory containing all the required files.
+Another option is a separate `resources` directory containing all the required files.
 To switch to this option, use `-H:+CopyLanguageResources`. This is the default behavior when `-H:+IncludeLanguageResources` is not supported, i.e., with Graal Languages earlier than 24.2.x (see the [versions roadmap](https://www.graalvm.org/release-calendar/)).
 When `-H:+CopyLanguageResources` is used, the language runtime will look for the resources directory relative to the native executable or the shared library.
 At run time, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
 To disable the capturing of resources altogether, add both `-H:-IncludeLanguageResources` and `-H:-CopyLanguageResources` to build-time options.
 Note that some languages may not support running without their resources.
+For more information about managing internal resources at run time, see [Managing Internal Resources](#managing-internal-resources).
 
 With Graal Languages version 23.1 and newer the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource directory option.
 The language home options remain functional for compatibility reasons but may be removed in future releases.
