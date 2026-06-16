@@ -1360,6 +1360,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case NEW:
             case NEWARRAY:
             case ANEWARRAY:
+            case MULTIANEWARRAY:
                 return;
         }
         throw new GraalError("bytecode %s can't use precise deopts", Bytecodes.nameOf(bytecode));
