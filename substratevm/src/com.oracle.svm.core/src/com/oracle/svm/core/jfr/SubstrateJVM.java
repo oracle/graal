@@ -85,7 +85,7 @@ import jdk.jfr.internal.LogTag;
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class SubstrateJVM {
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L569") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L553") //
     private static final String OUT_OF_MEMORY = "Out of Memory";
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
@@ -770,7 +770,7 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L559-L572")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L546-L556")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/service/jfrRecorderService.cpp#L510-L526")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     public void dumpOnOutOfMemoryError() {
