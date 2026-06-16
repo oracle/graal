@@ -239,58 +239,74 @@ public abstract class ObjectFile {
      * Abstract notions of relocation.
      */
     public enum RelocationKind {
-
-        UNKNOWN,
+        UNKNOWN(-1),
         /**
          * The relocation's symbol provides an address whose absolute value (plus addend) supplies
          * the fixup bytes.
          */
-        DIRECT_1,
-        DIRECT_2,
-        DIRECT_4,
-        DIRECT_8,
+        DIRECT_1(1),
+        DIRECT_2(2),
+        DIRECT_4(4),
+        DIRECT_8(8),
         /**
          * The relocation's symbol provides an address whose image-base-relative value (plus addend)
          * supplies the fixup bytes.
          */
-        ADDR32NB_4,
+        ADDR32NB_4(4),
         /**
          * The index of the object file section containing the relocation's symbol supplies the
          * fixup bytes. (used in CodeView debug information)
          */
-        SECTION_2,
+        SECTION_2(2),
         /**
          * The address of the object file section containing the relocation's symbol (plus addend)
          * supplies the fixup bytes. (used in CodeView debug information)
          */
-        SECREL_4,
+        SECREL_4(4),
         /**
          * The relocation's symbol provides an address whose PC-relative value (plus addend)
          * supplies the fixup bytes.
          */
-        PC_RELATIVE_1,
-        PC_RELATIVE_2,
-        PC_RELATIVE_4,
-        PC_RELATIVE_8,
+        PC_RELATIVE_1(1),
+        PC_RELATIVE_2(2),
+        PC_RELATIVE_4(4),
+        PC_RELATIVE_8(8),
         /**
-         * AArch64-specific relocation types.
+         * AArch64-specific relocation types (instructions are 4 bytes).
          */
-        AARCH64_R_MOVW_UABS_G0,
-        AARCH64_R_MOVW_UABS_G0_NC,
-        AARCH64_R_MOVW_UABS_G1,
-        AARCH64_R_MOVW_UABS_G1_NC,
-        AARCH64_R_MOVW_UABS_G2,
-        AARCH64_R_MOVW_UABS_G2_NC,
-        AARCH64_R_MOVW_UABS_G3,
-        AARCH64_R_AARCH64_ADR_PREL_PG_HI21,
-        AARCH64_R_AARCH64_ADD_ABS_LO12_NC,
-        AARCH64_R_LD_PREL_LO19,
-        AARCH64_R_GOT_LD_PREL19,
-        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST64_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST32_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST16_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC;
+        AARCH64_R_MOVW_UABS_G0(4),
+        AARCH64_R_MOVW_UABS_G0_NC(4),
+        AARCH64_R_MOVW_UABS_G1(4),
+        AARCH64_R_MOVW_UABS_G1_NC(4),
+        AARCH64_R_MOVW_UABS_G2(4),
+        AARCH64_R_MOVW_UABS_G2_NC(4),
+        AARCH64_R_MOVW_UABS_G3(4),
+        AARCH64_R_AARCH64_ADR_PREL_PG_HI21(4),
+        AARCH64_R_AARCH64_ADD_ABS_LO12_NC(4),
+        AARCH64_R_LD_PREL_LO19(4),
+        AARCH64_R_GOT_LD_PREL19(4),
+        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST64_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST32_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST16_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC(4);
+
+        private final int size;
+
+        RelocationKind(int size) {
+            this.size = size;
+        }
+
+        /**
+         * The number of bytes affected by this relocation,  e.g., the size of an instruction for
+         * which an immediate is patched (even if that immediate itself is smaller).
+         */
+        public int getRelocationSize() {
+            if (size < 0) {
+                throw new UnsupportedOperationException();
+            }
+            return size;
+        }
 
         public static RelocationKind getDirect(int relocationSize) {
             switch (relocationSize) {
@@ -358,36 +374,6 @@ public abstract class ObjectFile {
                     return true;
             }
             return false;
-        }
-
-        public static int getRelocationSize(RelocationKind kind) {
-            switch (kind) {
-                case DIRECT_1:
-                case PC_RELATIVE_1:
-                    return 1;
-                case DIRECT_2:
-                case PC_RELATIVE_2:
-                case SECTION_2:
-                    return 2;
-                case DIRECT_4:
-                case PC_RELATIVE_4:
-                case ADDR32NB_4:
-                case SECREL_4:
-                    return 4;
-                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
-                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
-                    // AArch64 instructions are 4 bytes
-                    return 4;
-                case DIRECT_8:
-                case PC_RELATIVE_8:
-                    return 8;
-            }
-            // other types should not be queried
-            throw new IllegalArgumentException("Invalid RelocationKind provided: " + kind);
         }
     }
 

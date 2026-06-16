@@ -162,7 +162,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
          * NOTE: x86-64 Mach-O does not support explicit addends, and inline addends are applied
          * even during dynamic linking.
          */
-        int length = ObjectFile.RelocationKind.getRelocationSize(k);
+        int length = k.getRelocationSize();
         /*
          * The addend is passed as a method parameter. The initial implicit addend value within the
          * instruction does not need to be read, as it is noise.
@@ -190,7 +190,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
         switch (k) {
             case DIRECT_4:
             case DIRECT_8:
-                sbb.writeTruncatedLong(addend, ObjectFile.RelocationKind.getRelocationSize(k));
+                sbb.writeTruncatedLong(addend, k.getRelocationSize());
                 break;
             case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
             case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:

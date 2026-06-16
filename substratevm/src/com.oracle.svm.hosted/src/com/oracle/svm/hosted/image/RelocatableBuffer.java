@@ -27,7 +27,8 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.SortedMap;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.function.ObjIntConsumer;
 
@@ -37,6 +38,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.site.Reference;
@@ -47,7 +49,7 @@ import jdk.vm.ci.code.site.Reference;
  */
 public final class RelocatableBuffer {
     private final ByteBuffer byteBuffer;
-    private final SortedMap<Integer, Info> relocations;
+    private final NavigableMap<Integer, Info> relocations;
 
     public RelocatableBuffer(long size, ByteOrder byteOrder) {
         int intSize = NumUtil.safeToInt(size);
@@ -55,12 +57,33 @@ public final class RelocatableBuffer {
         this.relocations = new TreeMap<>();
     }
 
-    public void addRelocationWithoutAddend(int key, ObjectFile.RelocationKind relocationKind, Object targetObject) {
-        addRelocationWithAddend(key, relocationKind, 0, targetObject);
+    public void addRelocationWithoutAddend(int offset, ObjectFile.RelocationKind relocationKind, Object targetObject) {
+        addRelocationWithAddend(offset, relocationKind, 0, targetObject);
     }
 
-    public void addRelocationWithAddend(int key, ObjectFile.RelocationKind relocationKind, long addend, Object targetObject) {
-        relocations.put(key, new Info(relocationKind, addend, targetObject));
+    public void addRelocationWithAddend(int offset, ObjectFile.RelocationKind relocationKind, long addend, Object targetObject) {
+        Info info = new Info(relocationKind, addend, targetObject);
+        assert checkNoOverlaps(offset, info);
+        Info existing = relocations.put(offset, info);
+        VMError.guarantee(existing == null, "Offset %d already has relocation %s when inserting: %s", offset, existing, info);
+    }
+
+    private boolean checkNoOverlaps(int offset, Info info) {
+        Map.Entry<Integer, Info> previous = relocations.floorEntry(offset);
+        if (previous != null) {
+            checkNoOverlap(previous.getKey(), previous.getValue(), offset, info);
+        }
+        Map.Entry<Integer, Info> next = relocations.higherEntry(offset);
+        if (next != null) {
+            checkNoOverlap(offset, info, next.getKey(), next.getValue());
+        }
+        return true;
+    }
+
+    private static void checkNoOverlap(int firstOffset, Info firstInfo, int secondOffset, Info secondInfo) {
+        assert firstOffset <= secondOffset;
+        int firstSize = firstInfo.getRelocationSize();
+        assert (long) firstOffset + firstSize <= secondOffset : String.format("Relocation %s at offset %d overlaps with relocation %s at offset %d", firstInfo, firstOffset, secondInfo, secondOffset);
     }
 
     public boolean hasRelocations() {
@@ -99,7 +122,7 @@ public final class RelocatableBuffer {
         }
 
         public int getRelocationSize() {
-            return ObjectFile.RelocationKind.getRelocationSize(relocationKind);
+            return relocationKind.getRelocationSize();
         }
 
         public ObjectFile.RelocationKind getRelocationKind() {
