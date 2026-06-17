@@ -32,6 +32,10 @@ import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -50,6 +54,16 @@ public final class BuildPhaseProviderImpl implements BuildPhaseProvider {
     public static void init() {
         BuildPhaseProviderImpl provider = new BuildPhaseProviderImpl();
         ImageSingletons.add(BuildPhaseProvider.class, provider);
+        if (GuestAccess.get().isFullyIsolated()) {
+            registerGuestBuildPhaseProvider(provider);
+        }
+    }
+
+    private static void registerGuestBuildPhaseProvider(BuildPhaseProviderImpl provider) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(BuildPhaseProvider.class);
+        JavaConstant callback = access.createCallback(provider, key);
+        GuestImageSingletonSupport.add(key, callback);
     }
 
     static BuildPhaseProviderImpl singleton() {
