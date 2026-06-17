@@ -222,7 +222,7 @@ public final class JNIFunctions {
             return JNIErrors.JNI_ERR();
         }
         JNIObjectHandles.ensureLocalCapacity(capacity);
-        return 0;
+        return JNIErrors.JNI_OK();
     }
 
     /*

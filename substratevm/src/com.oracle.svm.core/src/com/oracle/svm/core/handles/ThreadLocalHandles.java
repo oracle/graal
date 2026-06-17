@@ -30,11 +30,11 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of local object handles, which are bound to a specific thread and can be created
@@ -78,12 +78,13 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
     }
 
     public int pushFrame(int capacity) {
+        /* Grow the backing arrays before changing the frame state so allocation failures leave it consistent. */
+        ensureCapacity(capacity);
         if (frameCount == frameStack.length) {
             growFrameStack();
         }
         frameStack[frameCount] = top;
         frameCount++;
-        ensureCapacity(capacity);
         return frameCount;
     }
 
@@ -173,15 +174,32 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         return currentFrameCount;
     }
 
+    /**
+     * Ensures that at least {@code capacity} additional handles can be created. If this method
+     * fails, the handle state must be kept consistent so that we can recover from failures.
+     */
     public void ensureCapacity(int capacity) {
-        int minLength = top + capacity;
-        if (minLength >= objects.length) {
-            growCapacity(minLength);
+        if (capacity < 0) {
+            throw new IllegalArgumentException("Capacity must not be negative: " + capacity);
+        }
+
+        int minLength = Math.addExact(top, capacity);
+
+        if (minLength > objects.length) {
+            int expandedLength;
+            try {
+                expandedLength = Math.multiplyExact(objects.length, 2);
+            } catch (ArithmeticException e) {
+                expandedLength = Integer.MAX_VALUE;
+            }
+            int newLength = Math.max(minLength, expandedLength);
+            growCapacity(newLength);
         }
     }
 
     @NeverInline("Decrease code size of JNI entry points by not inlining allocations")
-    private void growCapacity(int minLength) {
-        objects = Arrays.copyOf(objects, minLength * 2);
+    private void growCapacity(int newLength) {
+        assert newLength > objects.length;
+        objects = Arrays.copyOf(objects, newLength);
     }
 }
