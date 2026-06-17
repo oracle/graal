@@ -36,7 +36,7 @@ import com.oracle.svm.core.CPUFeatureAccessImpl;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;

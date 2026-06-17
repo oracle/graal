@@ -41,7 +41,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.hosted.webimage.JSGraphBuilderPlugins;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryCopyNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryFillNode;

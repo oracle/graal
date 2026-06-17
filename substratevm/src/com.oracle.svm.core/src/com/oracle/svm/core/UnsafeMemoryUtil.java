@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
