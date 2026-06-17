@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
-## Version 25.1.0
+## Version 25.1.3
 
 * Adopted a bytecode-handler-based design for the WebAssembly interpreter, improving interpreted performance on Native Image.
 * Implemented the [exception handling](https://github.com/WebAssembly/exception-handling) proposal. This feature is enabled by default and can be disabled with the experimental option `wasm.Exceptions=false`.
