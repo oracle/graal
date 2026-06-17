@@ -120,6 +120,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.MethodRefHolder;
