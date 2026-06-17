@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -35,8 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -59,6 +58,7 @@ import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -101,7 +101,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * We call {@link #recordVirtualCallTarget} to register a virtual call that must be added as a root
  * in a subsequent layer. The logic for installing roots in subsequent layers is performed in
- * {@link #beforeAnalysis}.
+ * {@link #duringSetup}.
  */
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -157,16 +157,56 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     @Override
+    public void duringSetup(Feature.DuringSetupAccess a) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            Map<Integer, List<Integer>> priorVirtualCallTargetsMap = getPriorVirtualCallTargetsByDeclaringType();
+            DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+            access.registerOnTypeCreatedCallback(type -> registerInstantiatedCallbackForCurrentLayerType(type, priorVirtualCallTargetsMap));
+        }
+    }
+
+    @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
         wordSize = SubstrateTarget.getWordSize();
-        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-            var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            getPriorVirtualCallTargets().forEach(aMethod -> {
-                config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
-            });
-        }
         LayeredImageHooks.singleton().registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
         LayeredImageHooks.singleton().registerPatchedWordWrittenCallback(this::onPatchedWordWritten);
+    }
+
+    private static Map<Integer, List<Integer>> getPriorVirtualCallTargetsByDeclaringType() {
+        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        Map<Integer, List<Integer>> result = new HashMap<>();
+        for (DynamicHubInfoData.Loader hubInfo : loader.getDynamicHubInfos()) {
+            var locallyDeclaredSlots = hubInfo.getLocallyDeclaredSlotsHostedMethodIndexes();
+            for (int i = 0; i < locallyDeclaredSlots.size(); i++) {
+                PersistedHostedMethodData.Loader methodData = loader.getHostedMethodData(locallyDeclaredSlots.get(i));
+                if (methodData.getIsVirtualCallTarget()) {
+                    int methodId = methodData.getMethodId();
+                    assert methodId != PriorDispatchMethod.UNPERSISTED_METHOD_ID;
+                    result.computeIfAbsent(hubInfo.getTypeId(), _ -> new ArrayList<>()).add(methodId);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static void registerInstantiatedCallbackForCurrentLayerType(AnalysisType type, Map<Integer, List<Integer>> priorVirtualCallTargetsMap) {
+        type.registerInstantiatedCallback(access -> registerPriorVirtualCallTargetsForInstantiatedType(access, type, priorVirtualCallTargetsMap));
+    }
+
+    private static void registerPriorVirtualCallTargetsForInstantiatedType(Feature.DuringAnalysisAccess access, AnalysisType type, Map<Integer, List<Integer>> priorVirtualCallTargetsMap) {
+        var config = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        type.forAllSuperTypes(superType -> {
+            if (superType.isInSharedLayer()) {
+                List<Integer> methodIds = priorVirtualCallTargetsMap.get(superType.getId());
+                if (methodIds != null) {
+                    for (int methodId : methodIds) {
+                        AnalysisMethod method = loader.getAnalysisMethodForBaseLayerId(methodId);
+                        config.registerAsRoot(method, false, "in prior layer dispatch table");
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -241,15 +281,6 @@ public class LayeredDispatchTableFeature implements InternalFeature {
             }
         }
         return unresolvedSymbols;
-    }
-
-    static Stream<AnalysisMethod> getPriorVirtualCallTargets() {
-        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        var methods = loader.getHostedMethods();
-        return StreamSupport.stream(methods.spliterator(), false).filter(PersistedHostedMethodData.Loader::getIsVirtualCallTarget).map(data -> {
-            assert data.getMethodId() != PriorDispatchMethod.UNPERSISTED_METHOD_ID;
-            return loader.getAnalysisMethodForBaseLayerId(data.getMethodId());
-        });
     }
 
     public static LayeredDispatchTableFeature singleton() {
