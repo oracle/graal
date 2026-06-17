@@ -13,6 +13,8 @@ local tools_java_home = {
   },
 };
 
+local gate_triggering_suites = ["wasm", "sdk", "truffle", "compiler", "vm"];
+
 jdks + wasm_common +
 {
   wasm_suite_root:: 'wasm',
@@ -66,5 +68,5 @@ jdks + wasm_common +
     },
   ],
 
-  builds: utils.add_defined_in(_builds, std.thisFile),
+  builds: utils.add_defined_in([utils.add_gate_predicate(b, gate_triggering_suites) for b in _builds], std.thisFile),
 }
