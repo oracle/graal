@@ -845,8 +845,8 @@ public class CompileQueue {
             runOnExecutor(() -> {
                 universe.getMethods().forEach(method -> {
                     assert method.isOriginalMethod();
-                    for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                        HostedMethod hMethod = (HostedMethod) multiMethod;
+                    for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                        HostedMethod hMethod = (HostedMethod) methodVariant;
                         if (hMethod.compilationInfo.getCompilationGraph() != null) {
                             executor.execute(new SingleCallsiteInlineTask(hMethod));
                         }
@@ -862,8 +862,8 @@ public class CompileQueue {
                 runOnExecutor(() -> {
                     universe.getMethods().forEach(method -> {
                         assert method.isOriginalMethod();
-                        for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                            HostedMethod hMethod = (HostedMethod) multiMethod;
+                        for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                            HostedMethod hMethod = (HostedMethod) methodVariant;
                             if (shouldEvaluateRootForSingleCallsiteInlining(hMethod)) {
                                 executor.execute(new SingleCallsiteInlineTask(hMethod));
                             }

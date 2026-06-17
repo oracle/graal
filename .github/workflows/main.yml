@@ -130,10 +130,10 @@ jobs:
           - os: ubuntu-24.04
             env:
               JDK_VERSION: "latest"
-              GATE_TAGS: "build,debuginfotest"
+              GATE_TAGS: "build,debuginfotest,scismoketest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "latest"
+              JDK_VERSION: "25"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
