@@ -63,7 +63,7 @@ public class TestThreadStartEvents extends JfrRecordingTest {
                 foundEvent = true;
             }
 
-            checkTopStackFrame(event, "beforeThreadStart");
+            checkTopStackFrame(event, "afterThreadStart");
         }
         assertTrue(foundEvent);
     }

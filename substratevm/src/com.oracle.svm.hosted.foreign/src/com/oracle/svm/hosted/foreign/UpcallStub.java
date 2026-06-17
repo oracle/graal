@@ -224,7 +224,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          */
         assert !savedRegisters.contains(registers.methodHandleOrReceiver());
         assert !savedRegisters.contains(registers.isolate());
-        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
+        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
                         ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));

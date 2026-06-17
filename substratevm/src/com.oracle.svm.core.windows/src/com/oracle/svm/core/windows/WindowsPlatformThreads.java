@@ -26,10 +26,10 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -37,17 +37,17 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -64,41 +64,38 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     WindowsPlatformThreads() {
     }
 
+    /** This method must not throw any exceptions. */
     @Override
-    protected boolean doStartThread(Thread thread, long stackSize) {
+    protected IsolateThread doStartThread(Thread thread, long stackSize) {
+        assert StackOverflowCheck.singleton().isYellowZoneAvailable();
+
         int threadStackSize = NumUtil.safeToUInt(stackSize);
         int initFlag = 0;
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
-
-        /*
-         * Prevent stack overflow errors so that starting the thread and reverting back to a safe
-         * state (in case of an error) works reliably.
-         */
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            return doStartThread0(thread, threadStackSize, initFlag);
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
-        }
+        return doStartThread0(thread, threadStackSize, initFlag);
     }
 
-    /** Starts a thread to the point so that it is executing. */
-    private boolean doStartThread0(Thread thread, int threadStackSize, int initFlag) {
-        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
-        try {
-            WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, Word.nullPointer());
-            if (osThreadHandle.isNull()) {
-                undoPrepareStartOnError(thread, startData);
-                return false;
-            }
-            WinBase.CloseHandle(osThreadHandle);
-            return true;
-        } catch (Throwable e) {
-            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+    /**
+     * Starts a thread to the point so that it is executing. This method must not throw any
+     * exceptions.
+     */
+    private IsolateThread doStartThread0(Thread thread, int threadStackSize, int initFlag) {
+        assert StackOverflowCheck.singleton().isYellowZoneAvailable();
+
+        IsolateThread isolateThread = prepareThreadStart(thread);
+        if (isolateThread.isNull()) {
+            return Word.nullPointer();
         }
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
+        if (osThreadHandle.isNull()) {
+            undoPrepareStartOnError(thread, isolateThread);
+            return Word.nullPointer();
+        }
+        WinBase.CloseHandle(osThreadHandle);
+        return isolateThread;
     }
 
     @Override

@@ -34,8 +34,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -44,6 +42,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
@@ -273,20 +273,10 @@ public final class Target_java_lang_Thread {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private void start0() {
-        parentThreadId = JavaThreads.getThreadId(Thread.currentThread());
-        long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this), true);
-        try {
-            PlatformThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
-        } catch (Throwable t) {
-            parentThreadId = 0; // should not be accessed if thread could not start, but reset still
-            throw t;
+        boolean started = PlatformThreads.singleton().startThread(this);
+        if (!started) {
+            throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
         }
-        /*
-         * The threadStatus must be RUNNABLE before returning so the caller can safely use
-         * Thread.join() on the launched thread, but the thread could also already have changed its
-         * state itself. Atomically switch from NEW to RUNNABLE if it has not.
-         */
-        PlatformThreads.compareAndSetThreadStatus(JavaThreads.fromTarget(this), ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute
@@ -352,8 +342,10 @@ public final class Target_java_lang_Thread {
     @Delete
     private static native StackTraceElement[][] dumpThreads(Thread[] threads);
 
-    @Delete
-    private static native Thread[] getThreads();
+    @Substitute
+    private static Thread[] getThreads() {
+        return PlatformThreads.getAllThreads();
+    }
 
     @Substitute
     private boolean alive() {
@@ -402,11 +394,6 @@ public final class Target_java_lang_Thread {
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return PlatformThreads.getAllStackTraces();
-    }
-
-    @Substitute
-    private static Thread[] getAllThreads() {
-        return PlatformThreads.getAllThreads();
     }
 
     /**

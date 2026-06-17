@@ -25,7 +25,9 @@
 
 package com.oracle.svm.webimage.threads;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -46,10 +48,11 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageJSJavaThreads extends PlatformThreads {
 
+    /** This method must not throw any exceptions. */
     @Override
-    protected boolean doStartThread(Thread thread, long stackSize) {
+    protected IsolateThread doStartThread(Thread thread, long stackSize) {
         // Not supported
-        return false;
+        return Word.nullPointer();
     }
 
     @Override

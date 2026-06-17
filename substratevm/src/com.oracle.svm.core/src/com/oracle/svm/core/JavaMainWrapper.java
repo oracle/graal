@@ -67,7 +67,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -79,6 +78,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -296,9 +296,9 @@ public class JavaMainWrapper {
 
     private static void runShutdown0() {
         try {
-            PlatformThreads.ensureCurrentAssigned("DestroyJavaVM", null, false);
+            PlatformThreads.ensureCurrentThreadHasThreadObject("DestroyJavaVM", null, false);
         } catch (Throwable e) {
-            Log.log().string("PlatformThreads.ensureCurrentAssigned() failed during shutdown: ").exception(e).newline();
+            Log.log().string("PlatformThreads.ensureCurrentThreadHasThreadObject() failed during shutdown: ").exception(e).newline();
             return;
         }
 
@@ -445,13 +445,13 @@ public class JavaMainWrapper {
          * The launcher-created thread is joined explicitly by the initial thread, so attach it as
          * an external thread rather than using the isolate-started thread cleanup path.
          */
-        int code = CEntryPointActions.enterAttachThread((Isolate) data, false, false);
+        int code = CEntryPointActions.enterAttachThread((Isolate) data, false);
         if (code != CEntryPointErrors.NO_ERROR) {
             CEntryPointActions.failFatally(code, ATTACH_MAIN_THREAD_ERROR_MESSAGE.get());
             return Word.signed(1);
         }
         try {
-            PlatformThreads.singleton().assignMainThreadToCurrent();
+            PlatformThreads.singleton().reassignMainThreadObject();
             int exitStatus = runCore();
             CEntryPointSetup.LeaveDetachThreadEpilogue.leave();
             return Word.signed(exitStatus);

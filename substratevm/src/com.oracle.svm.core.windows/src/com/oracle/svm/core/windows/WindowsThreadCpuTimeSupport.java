@@ -57,6 +57,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         HANDLE hThread = (HANDLE) VMThreads.getOSThreadHandle(isolateThread);
+        assert hThread.isNonNull() : "OS thread handle must be initialized before querying thread CPU time";
         return getThreadCpuTime(hThread, includeSystemTime);
     }
 

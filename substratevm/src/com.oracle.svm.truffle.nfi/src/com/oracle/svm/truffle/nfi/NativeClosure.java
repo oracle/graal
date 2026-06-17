@@ -250,7 +250,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -324,7 +324,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -380,7 +380,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -437,7 +437,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }

@@ -380,7 +380,7 @@ public final class JNIInvocationInterface {
              * case neither AttachCurrentThread nor this routine have any effect on the daemon
              * status of the thread."
              */
-            PlatformThreads.ensureCurrentAssigned(name, group, asDaemon);
+            PlatformThreads.ensureCurrentThreadHasThreadObject(name, group, asDaemon);
         }
 
         static void releaseCurrentThreadOwnedMonitors() {

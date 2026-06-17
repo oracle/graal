@@ -57,6 +57,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         int machThread = (int) VMThreads.getOSThreadId(isolateThread).rawValue();
+        assert machThread != 0 : "OS thread id must be initialized before querying thread CPU time";
         return getThreadCpuTime(machThread, includeSystemTime);
     }
 
