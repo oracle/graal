@@ -33,7 +33,7 @@ import java.lang.reflect.RecordComponent;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;

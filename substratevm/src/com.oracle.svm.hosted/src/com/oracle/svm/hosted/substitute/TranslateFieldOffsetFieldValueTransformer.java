@@ -28,7 +28,7 @@ import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
