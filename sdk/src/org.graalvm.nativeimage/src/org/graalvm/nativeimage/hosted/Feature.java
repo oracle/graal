@@ -171,7 +171,7 @@ public interface Feature {
     /**
      * Access methods available for {@link Feature#onRegistration}.
      *
-     * @since 25.1.0
+     * @since 25.1.3
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface OnRegistrationAccess extends FeatureAccess {
@@ -587,7 +587,7 @@ public interface Feature {
      *
      * @param access The supported operations that the feature can perform at this time
      *
-     * @since 25.1.0
+     * @since 25.1.3
      */
     default void onRegistration(OnRegistrationAccess access) {
     }

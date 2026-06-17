@@ -1,6 +1,6 @@
 # Espresso Changelog
 
-## Version 25.1.0
+## Version 25.1.3
 ### Internal changes
 * Added branch profiles. It generates branch probability hints for the JIT compiler and therefore improves peak performance in some cases.
 
