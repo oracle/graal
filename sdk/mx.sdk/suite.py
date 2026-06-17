@@ -1006,6 +1006,7 @@ suite = {
                                              org.graalvm.nativeimage.builder,
                                              org.graalvm.nativeimage.configure,
                                              org.graalvm.nativeimage.shared,
+                                             org.graalvm.nativeimage.guest.staging,
                                              com.oracle.svm.svm_enterprise,
                                              org.graalvm.extraimage.builder,
                                              org.graalvm.truffle.runtime.svm,
