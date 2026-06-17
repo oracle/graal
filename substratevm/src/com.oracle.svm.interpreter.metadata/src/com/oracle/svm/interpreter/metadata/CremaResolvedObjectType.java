@@ -106,7 +106,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         // filter out constructors
         ArrayList<CremaResolvedJavaMethod> result = new ArrayList<>();
         for (InterpreterResolvedJavaMethod declaredMethod : getDeclaredMethods()) {
-            if (!declaredMethod.isConstructor()) {
+            if (!declaredMethod.isConstructor() && !declaredMethod.isInternal()) {
                 result.add((CremaResolvedJavaMethod) declaredMethod);
             }
         }

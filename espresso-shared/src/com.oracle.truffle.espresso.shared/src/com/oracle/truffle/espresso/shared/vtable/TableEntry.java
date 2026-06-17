@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.shared.meta;
+package com.oracle.truffle.espresso.shared.vtable;
 
-import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.shared.meta.Named;
+import com.oracle.truffle.espresso.shared.meta.Signed;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
- * The errors that can happen during {@link LinkResolver resolution}.
+ * Represents anything that can be put in a method table.
+ *
+ * @param <C> The class providing access to the VM-side java {@link Class}.
+ * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
+ * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public enum ErrorType {
-    AbstractMethodError,
-    IllegalAccessError,
-    IncompatibleClassChangeError,
-    LinkageError,
-    NoSuchFieldError,
-    NoSuchMethodError,
+public interface TableEntry<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named, Signed, ModifiersProvider {
 }

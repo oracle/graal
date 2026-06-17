@@ -1425,6 +1425,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
     private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {
         return switch (errorType) {
+            case AbstractMethodError -> meta.java_lang_AbstractMethodError;
             case IllegalAccessError -> meta.java_lang_IllegalAccessError;
             case NoSuchFieldError -> meta.java_lang_NoSuchFieldError;
             case NoSuchMethodError -> meta.java_lang_NoSuchMethodError;
@@ -1453,6 +1454,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         }
         if (klass == meta.java_lang_LinkageError) {
             return ErrorType.LinkageError;
+        }
+        if (klass == meta.java_lang_AbstractMethodError) {
+            return ErrorType.AbstractMethodError;
         }
         return null;
     }

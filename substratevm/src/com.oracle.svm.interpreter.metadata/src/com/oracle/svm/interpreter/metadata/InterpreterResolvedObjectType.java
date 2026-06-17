@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -57,6 +58,8 @@ import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
 import com.oracle.svm.espresso.shared.meta.TypeAccess;
+import com.oracle.svm.espresso.shared.vtable.TableEntry;
+import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -92,17 +95,105 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     private final String sourceFileName;
 
-    public static class VTableHolder {
+    /**
+     * Holds the interpreter-side dispatch table for this type.
+     * <p>
+     * <h2>Classes</h2>
+     * For non-interface classes, this dispatch table consists of 4 parts:
+     * <ul>
+     * <li>The inherited superclass vtable. Entries in this part may be overridden by this class'
+     * declared method if applicable.</li>
+     * <li>The {@link VTable#isVirtualEntry(TableEntry) virtual} declared methods of the current
+     * class. Some of these declared methods may not be appended, if they override a method in the
+     * super's table that has equivalent access control.</li>
+     * <li>The implicit interface methods, which are methods declared in any superinterface (or their
+     * superinterfaces) that are not implemented by this class or its superclasses.</li>
+     * <li>The concatenated interface tables.</li>
+     * </ul>
+     * <p>
+     * The dispatch table for non-interface classes therefore has this shape:
+     *
+     * <pre>
+     * index:  0        superLen      mirandaMethodsStart   classVtableLength      vtable.length
+     *         |           |                   |                     |                   |
+     *         v           v                   v                     v                   v
+     *         +-----------+-------------------+---------------------+-------------------+
+     *         | super's   | holder's declared | implicit interface  | concatenated      |
+     *         | class     | methods appended  | methods appended    | itables           |
+     *         | vtable    | to class vtable   | to class vtable     |                   |
+     *         +-----------+-------------------+---------------------+-------------------+
+     *
+     * superLen = holder.getSuperClass().getClassVtableLength()
+     * </pre>
+     * <p>
+     * Note: Entries in the mirandas or the itables may be {@code failing} methods if the selection
+     * logic should fail. These are synthetic internal methods that we create to represent such
+     * failures, and are methods that immediately throw. Though such methods advertise this holder as
+     * their declaring class, they do not appear in the declared methods array.
+     * <p>
+     * <h2>Interfaces</h2>
+     * For interfaces, the table holds the interface dispatch table prototype rather than a class
+     * vtable plus itables layout.
+     * <p>
+     * Here is its shape:
+     *
+     * <pre>
+     * index:  0                                    vtable.length
+     *         |                                          |
+     *         v                                          v
+     *         +------------------------------------------+
+     *         | holder's declared | failing implicit     |
+     *         | methods appended  | interface methods    |
+     *         | to table          | appended to table    |
+     *         +------------------------------------------+
+     *
+     * classVtableLength == 0
+     * mirandaMethodsStart == UNKNOWN
+     * </pre>
+     * <p>
+     * Note: Interfaces do not expose the concept of implicit interface methods, but a selection
+     * conflict may still arise from their superinterfaces. In this particular case, like for the
+     * concrete class case, we create a synthetic internal method that we add to the declared methods
+     * and the dispatch table prototype.
+     * <p>
+     * Unlike for concrete classes, such failing methods do appear in the declared methods of
+     * interfaces, such that they can be found and selected for {@code INVOKESPECIAL} call sites.
+     * These entries are however marked as {@link InterpreterResolvedJavaMethod#isInternal()
+     * internal}, such that they cannot be reflected upon.
+     */
+    public static class VTableHolder extends AbstractList<InterpreterResolvedJavaMethod> {
+        public static final int UNKNOWN = -1;
+
         @UnknownObjectField(availability = AfterAnalysis.class) //
         public InterpreterResolvedObjectType holder;
         @UnknownObjectField(availability = AfterAnalysis.class) //
         public InterpreterResolvedJavaMethod[] vtable;
-        public int classVtableLength;
 
-        public VTableHolder(InterpreterResolvedObjectType holder, InterpreterResolvedJavaMethod[] vtable, int classVtableLength) {
+        public int classVtableLength;
+        public int mirandaMethodsStart;
+
+        public VTableHolder(InterpreterResolvedObjectType holder, InterpreterResolvedJavaMethod[] vtable, int classVtableLength, int mirandaMethodsStart) {
             this.holder = holder;
             this.vtable = vtable;
             this.classVtableLength = classVtableLength;
+            this.mirandaMethodsStart = mirandaMethodsStart;
+        }
+
+        @Override
+        public InterpreterResolvedJavaMethod get(int index) {
+            return vtable[index];
+        }
+
+        @Override
+        public int size() {
+            return vtable.length;
+        }
+
+        public List<InterpreterResolvedJavaMethod> getImplicitInterfaceMethodsList() {
+            if (mirandaMethodsStart == UNKNOWN) {
+                return null;
+            }
+            return subList(mirandaMethodsStart, classVtableLength);
         }
     }
 
@@ -439,9 +530,15 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     public final void setVtable(InterpreterResolvedJavaMethod[] vtable, int classVtableLength) {
+        setVtable(vtable, classVtableLength, VTableHolder.UNKNOWN);
+    }
+
+    public final void setVtable(InterpreterResolvedJavaMethod[] vtable, int classVtableLength, int mirandaMethodsStart) {
         // The stored table may include interface dispatch tail entries beyond the class vtable.
         VMError.guarantee(classVtableLength >= 0 && classVtableLength <= vtable.length, "Invalid class vtable length");
-        this.vtableHolder = new VTableHolder(this, vtable, classVtableLength);
+        VMError.guarantee((mirandaMethodsStart >= 0 && mirandaMethodsStart <= classVtableLength) || mirandaMethodsStart == VTableHolder.UNKNOWN,
+                        "Invalid miranda methods range");
+        this.vtableHolder = new VTableHolder(this, vtable, classVtableLength, mirandaMethodsStart);
     }
 
     public final int getClassVtableLength() {
@@ -632,8 +729,10 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public List<InterpreterResolvedJavaMethod> getImplicitInterfaceMethodsList() {
-        // GR-70607: get mirandas.
-        return null;
+        if (vtableHolder == null) {
+            return null;
+        }
+        return vtableHolder.getImplicitInterfaceMethodsList();
     }
 
     @Override

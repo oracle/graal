@@ -40,14 +40,14 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
  * A representation of a type in the process of being created, providing access to the data
- * necessary for building method tables. There should be no {@code null} entries in any of the
+ * necessary for building tables. There should be no {@code null} entries in any of the
  * {@link List} or {@link EconomicMap} returned by the methods of this interface.
  *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named {
+public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named, ModifiersProvider {
     /**
      * The vtable of the declared superclass of this type, as would be constructed by a previous
      * call to {@link VTable#create(PartialType)}.
@@ -70,7 +70,7 @@ public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAcce
     /**
      * The list of methods this type declares.
      */
-    List<? extends PartialMethod<C, M, F>> getDeclaredMethodsList();
+    List<? extends TableEntry<C, M, F>> getDeclaredMethodsList();
 
     /**
      * Whether {@link PartialType this type} will share the same runtime package as the given
@@ -89,7 +89,7 @@ public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAcce
      * This method is needed for runtimes that do not use the default
      * {@link VTable#create(PartialType)}
      */
-    default PartialMethod<C, M, F> fallbackLookup(@SuppressWarnings("unused") Symbol<Name> name, @SuppressWarnings("unused") Symbol<Signature> signature,
+    default TableEntry<C, M, F> fallbackLookup(@SuppressWarnings("unused") Symbol<Name> name, @SuppressWarnings("unused") Symbol<Signature> signature,
                     @SuppressWarnings("unused") boolean includePrivate) {
         return null;
     }
