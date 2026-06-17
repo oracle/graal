@@ -73,6 +73,18 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         this.linkage = createLinkage(method);
     }
 
+    boolean isBuiltInFunction() {
+        return linkage.isBuiltInFunction();
+    }
+
+    String getShortName() {
+        return linkage.getShortName();
+    }
+
+    String getLongName() {
+        return linkage.getLongName();
+    }
+
     private static JNINativeLinkage createLinkage(ResolvedJavaMethod method) {
         String className = method.getDeclaringClass().getName();
         String descriptor = method.getSignature().toMethodDescriptor();

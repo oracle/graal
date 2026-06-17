@@ -53,6 +53,10 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
     private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
         accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework CoreServices");
+        // GR-76168: framework SystemConfiguration should not be necessary
+        if (ClassRegistries.respectClassLoader()) {
+            accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework SystemConfiguration");
+        }
     });
 
     @Override

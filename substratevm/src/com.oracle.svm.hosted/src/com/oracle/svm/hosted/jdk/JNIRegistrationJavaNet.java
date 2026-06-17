@@ -108,21 +108,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
             /* Support for the libextnet. */
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
                             method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
-            if (isWindows()) {
-                a.registerReachabilityHandler(JNIRegistrationJavaNet::linkWindowsExtNet,
-                                method(a, "jdk.net.WindowsSocketOptions", "keepAliveOptionsSupported0"),
-                                method(a, "jdk.net.WindowsSocketOptions", "setIpDontFragment0", int.class, boolean.class, boolean.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getIpDontFragment0", int.class, boolean.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveProbes0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveProbes0", int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveTime0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveTime0", int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveIntvl0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveIntvl0", int.class));
-            }
         }
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit, method(a, "sun.net.spi.DefaultProxySelector", "init"));
+        // GR-76168: getSystemProxies should not be necessary
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit,
+                        method(a, "sun.net.spi.DefaultProxySelector", "init"),
+                        method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class));
 
         if (isWindows()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerResolverConfigurationImplInit0,
@@ -169,14 +160,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
     }
 
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
-        if (isRunOnce(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate)) {
-            return; /* Already registered. */
-        }
-
-        if (isWindows()) {
-            linkWindowsExtNet(a);
-        }
-
         String implClassName;
         if (isLinux()) {
             implClassName = "jdk.net.LinuxSocketOptions";
@@ -188,22 +171,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         }
         JVMCIRuntimeReflection.register(type(a, implClassName));
         JVMCIRuntimeReflection.register(constructor(a, implClassName));
-    }
-
-    private static void linkWindowsExtNet(DuringAnalysisAccess a) {
-        if (isRunOnce(JNIRegistrationJavaNet::linkWindowsExtNet)) {
-            return; /* Already registered. */
-        }
-        VMError.guarantee(isWindows(), "Unexpected platform");
-
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        /*
-         * extnet contains native methods for platform socket options, but the Windows library does
-         * not define JNI_OnLoad_extnet.
-         */
-        if (access.getNativeLibraries().hasStaticLibrary("extnet")) {
-            access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
-        }
     }
 
     private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {

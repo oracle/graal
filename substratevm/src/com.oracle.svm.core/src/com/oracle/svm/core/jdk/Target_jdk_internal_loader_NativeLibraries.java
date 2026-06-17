@@ -151,10 +151,7 @@ final class Target_jdk_internal_loader_NativeLibraries_LibraryPaths {
         if (!SubstrateUtil.HOSTED) {
             USER_PATHS = Target_jdk_internal_loader_ClassLoaderHelper.parsePath(Target_jdk_internal_util_StaticProperty.javaLibraryPath());
             String[] sysPath = Target_jdk_internal_loader_ClassLoaderHelper.parsePath(Target_jdk_internal_util_StaticProperty.sunBootLibraryPath());
-            /*
-             * Keep the image directory as an SVM-specific fallback for shared-library images whose
-             * local runtime libraries are not part of the JDK boot library directory.
-             */
+            // TODO GR-76139
             String imageDirectory = NativeLibraries.getImageDirectory();
             if (imageDirectory != null) {
                 sysPath = Arrays.copyOf(sysPath, sysPath.length + 1);

@@ -35,7 +35,6 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -58,9 +57,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ClassRegistries.respectClassLoader()) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
@@ -104,12 +101,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         } else {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        /* libextnet on Windows (introduced in Java 19) does not contain an OnLoad method,
-         * so we dynamically load it if we respect classloaders.
-         */
-        if (!ClassRegistries.respectClassLoader()) {
-            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
         System.loadLibrary("extnet");
     }
 

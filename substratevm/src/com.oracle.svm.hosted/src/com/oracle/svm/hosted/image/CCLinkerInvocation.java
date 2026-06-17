@@ -81,7 +81,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     protected final List<String> additionalPreOptions = new ArrayList<>();
     protected final List<String> nativeLinkerOptions = new ArrayList<>();
     protected final List<Path> inputFilenames = new ArrayList<>();
-    protected final List<Path> wholeArchiveInputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
@@ -122,10 +121,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addInputFile(int index, Path filename) {
         inputFilenames.add(index, filename);
-    }
-
-    public void addWholeArchiveInputFile(Path filename) {
-        wholeArchiveInputFilenames.add(filename);
     }
 
     @Override
@@ -222,8 +217,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("-Wl," + rpath);
         }
 
-        cmd.addAll(getWholeArchiveInputFileCommand());
-
         cmd.addAll(getLibrariesCommand());
 
         cmd.addAll(getNativeLinkerOptions());
@@ -234,10 +227,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         return cmd;
-    }
-
-    protected List<String> getWholeArchiveInputFileCommand() {
-        return wholeArchiveInputFilenames.stream().map(Path::toString).collect(Collectors.toList());
     }
 
     protected List<String> getLibrariesCommand() {
@@ -326,7 +315,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                  * reference within this library.
                  */
                 additionalPreOptions.add("-Wl,-Bsymbolic");
-            } else if (imageKind == AbstractImage.NativeImageKind.SHARED_LIBRARY && ClassRegistries.respectClassLoader()) {
+            } else if (imageKind == AbstractImage.NativeImageKind.SHARED_LIBRARY) {
                 /*
                  * NativeLibraries.c is linked into the image and calls JVM_FindLibraryEntry. Keep
                  * those calls bound to this image's implementation instead of allowing HotSpot's
@@ -335,33 +324,25 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,-Bsymbolic-functions");
             }
 
-            /*
-             * In class-loader-aware mode, JDK NativeLibraries resolves statically linked JDK
-             * libraries through JVM_FindLibraryEntry. Those lookups currently
-             * use the dynamic symbol table, so a version script would hide symbols that are needed
-             * to extract symbols built-in JNI libraries. TODO GR-75585: investigate how we can avoid these symbol exports.
-             */
-            if (!ClassRegistries.respectClassLoader()) {
-                /* Use --version-script to control the visibility of image symbols. */
-                try {
-                    StringBuilder exportedSymbols = new StringBuilder();
-                    exportedSymbols.append("{\n");
-                    /* Only exported symbols are global ... */
-                    Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
-                    if (!globalSymbols.isEmpty()) {
-                        exportedSymbols.append("global:\n");
-                        globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
-                    }
-                    /* ... everything else is local. */
-                    exportedSymbols.append("local: *;\n");
-                    exportedSymbols.append("};");
-
-                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
-                    additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
-                } catch (IOException e) {
-                    VMError.shouldNotReachHere(e);
+            /* Use --version-script to control the visibility of image symbols. */
+            try {
+                StringBuilder exportedSymbols = new StringBuilder();
+                exportedSymbols.append("{\n");
+                /* Only exported symbols are global ... */
+                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
+                if (!globalSymbols.isEmpty()) {
+                    exportedSymbols.append("global:\n");
+                    globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
                 }
+                /* ... everything else is local. */
+                exportedSymbols.append("local: *;\n");
+                exportedSymbols.append("};");
+
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
+                additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere(e);
             }
 
             additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
@@ -369,17 +350,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
-        }
-
-        @Override
-        protected List<String> getWholeArchiveInputFileCommand() {
-            List<String> cmd = new ArrayList<>();
-            if (!wholeArchiveInputFilenames.isEmpty()) {
-                cmd.add("-Wl,--whole-archive");
-                wholeArchiveInputFilenames.stream().map(Path::toString).forEach(cmd::add);
-                cmd.add("-Wl,--no-whole-archive");
-            }
-            return cmd;
         }
 
         @Override
@@ -487,25 +457,17 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
 
             /*
-             * In class-loader-aware mode, JDK NativeLibraries resolves statically linked JDK
-             * libraries through JVM_FindLibraryEntry. Those lookups currently
-             * use the dynamic symbol table, so a version script would hide symbols that are needed
-             * to extract symbols built-in JNI libraries. TODO GR-75585: investigate how we can avoid these symbol exports.
+             * On Darwin we use -exported_symbols_list to ensure only our defined entrypoints end up
+             * as global symbols in the dynamic symbol table of the image.
              */
-            if (!ClassRegistries.respectClassLoader()) {
-                /*
-                 * On Darwin we use -exported_symbols_list to ensure only our defined entrypoints end up
-                 * as global symbols in the dynamic symbol table of the image.
-                 */
-                try {
-                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols().map("_"::concat)).collect(Collectors.toSet());
-                    Files.write(exportedSymbolsPath, globalSymbols);
-                    additionalPreOptions.add("-Wl,-exported_symbols_list");
-                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-                } catch (IOException e) {
-                    VMError.shouldNotReachHere(e);
-                }
+            try {
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols().map("_"::concat)).collect(Collectors.toSet());
+                Files.write(exportedSymbolsPath, globalSymbols);
+                additionalPreOptions.add("-Wl,-exported_symbols_list");
+                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere(e);
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
@@ -518,11 +480,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
-        }
-
-        @Override
-        protected List<String> getWholeArchiveInputFileCommand() {
-            return wholeArchiveInputFilenames.stream().map(path -> "-Wl,-force_load," + path).collect(Collectors.toList());
         }
 
         @Override
@@ -610,20 +567,14 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
-            Set<Path> wholeArchiveInputFiles = Set.copyOf(wholeArchiveInputFilenames);
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
-                if (!wholeArchiveInputFiles.contains(staticLibrary)) {
-                    cmd.add(staticLibrary.toString());
-                }
+                cmd.add(staticLibrary.toString());
             }
 
             /* Add linker options. */
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
-            for (Path staticLibrary : wholeArchiveInputFilenames) {
-                cmd.add("/WHOLEARCHIVE:" + staticLibrary);
-            }
 
             /* Use page size alignment to support memory mapping of the image heap. */
             cmd.add("/FILEALIGN:4096");
@@ -663,16 +614,16 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
-            /* JDK-8295231 removed implicit linking via pragma directives in source files. */
-            cmd.add("mswsock.lib");
 
-            if (!wholeArchiveInputFilenames.isEmpty()) {
-                /* Whole-archived JDK static JNI libraries pull in additional Windows SDK dependencies. */
+            // GR-76168: added libraries should not be necessary
+            if (ClassRegistries.respectClassLoader()) {
                 cmd.add("winhttp.lib");
-                cmd.add("ole32.lib");
                 cmd.add("shell32.lib");
+                cmd.add("ole32.lib");
             }
 
+            /* JDK-8295231 removed implicit linking via pragma directives in source files. */
+            cmd.add("mswsock.lib");
             if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == AbstractImage.NativeImageKind.EXECUTABLE) {
                 /*
                  * Enable wildcard expansion in command line arguments, see
@@ -730,13 +681,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             inv.addInputFile(filename);
         }
 
-        Set<Path> staticJniLibraries = ClassRegistries.respectClassLoader() ? Set.copyOf(nativeLibs.getStaticJniLibrariesAndDependencies()) : Set.of();
         for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
-            if (staticJniLibraries.contains(staticLibraryPath)) {
-                inv.addWholeArchiveInputFile(staticLibraryPath);
-            } else {
-                inv.addInputFile(staticLibraryPath);
-            }
+            inv.addInputFile(staticLibraryPath);
         }
 
         return inv;

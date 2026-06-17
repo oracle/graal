@@ -139,9 +139,8 @@ public final class JNINativeLinkage {
 
     @Override
     public String toString() {
-        String shortName = getShortName();
         return MetaUtil.internalNameToJava(getDeclaringClassName(), true, false) + "." + name + descriptor +
-                        " [symbol: " + shortName + " or " + shortName + "__" + getSignature() + "]";
+                        " [symbol: " + getShortName() + " or " + getLongName() + "]";
 
     }
 
@@ -156,7 +155,7 @@ public final class JNINativeLinkage {
             String shortName = getShortName();
             entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortName, getName()));
             if (entryPoint.isNull()) {
-                String longName = shortName + "__" + getSignature();
+                String longName = getLongName();
                 entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longName, getName()));
                 if (entryPoint.isNull()) {
                     throw new UnsatisfiedLinkError(toString());
@@ -176,12 +175,16 @@ public final class JNINativeLinkage {
         return null;
     }
 
-    private String getShortName() {
+    public String getShortName() {
         StringBuilder sb = new StringBuilder("Java_");
         mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
         sb.append('_');
         mangleName(getName(), 0, name.length(), sb);
         return sb.toString();
+    }
+
+    public String getLongName() {
+        return getShortName() + "__" + getSignature();
     }
 
     private String getSignature() {
