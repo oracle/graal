@@ -24,19 +24,18 @@
  */
 package com.oracle.svm.core;
 
-import java.util.function.BooleanSupplier;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class BuildPhaseProvider {
+public final class BuildPhaseProviderImpl implements BuildPhaseProvider {
 
     private boolean featureRegistrationFinished;
     private boolean setupFinished;
@@ -49,128 +48,95 @@ public final class BuildPhaseProvider {
     private boolean heapLayoutFinished;
 
     public static void init() {
-        ImageSingletons.add(BuildPhaseProvider.class, new BuildPhaseProvider());
+        BuildPhaseProviderImpl provider = new BuildPhaseProviderImpl();
+        ImageSingletons.add(BuildPhaseProvider.class, provider);
     }
 
-    static BuildPhaseProvider singleton() {
-        return ImageSingletons.lookup(BuildPhaseProvider.class);
+    static BuildPhaseProviderImpl singleton() {
+        return (BuildPhaseProviderImpl) ImageSingletons.lookup(BuildPhaseProvider.class);
     }
 
-    BuildPhaseProvider() {
+    BuildPhaseProviderImpl() {
     }
 
     public static void markFeatureRegistrationFinished() {
         singleton().featureRegistrationFinished = true;
     }
 
-    public static boolean isFeatureRegistrationFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().featureRegistrationFinished;
-    }
-
     public static void markSetupFinished() {
         singleton().setupFinished = true;
-    }
-
-    public static boolean isSetupFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().setupFinished;
     }
 
     public static void markAnalysisStarted() {
         singleton().analysisStarted = true;
     }
 
-    public static boolean isAnalysisStarted() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().analysisStarted;
-    }
-
     public static void markAnalysisFinished() {
         singleton().analysisFinished = true;
-    }
-
-    public static boolean isAnalysisFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().analysisFinished;
     }
 
     public static void markHostedUniverseBuilt() {
         singleton().hostedUniverseBuilt = true;
     }
 
-    public static boolean isHostedUniverseBuilt() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().hostedUniverseBuilt;
-    }
-
     public static void markReadyForCompilation() {
         singleton().readyForCompilation = true;
-    }
-
-    public static boolean isReadyForCompilation() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().readyForCompilation;
     }
 
     public static void markCompileQueueFinished() {
         singleton().compileQueueFinished = true;
     }
 
-    public static boolean isCompileQueueFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().compileQueueFinished;
-    }
-
     public static void markCompilationFinished() {
         singleton().compilationFinished = true;
-    }
-
-    public static boolean isCompilationFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().compilationFinished;
     }
 
     public static void markHeapLayoutFinished() {
         singleton().heapLayoutFinished = true;
     }
 
-    public static boolean isHeapLayoutFinished() {
-        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().heapLayoutFinished;
+    @Override
+    public boolean featureRegistrationFinished() {
+        return featureRegistrationFinished;
     }
 
-    public static class AfterAnalysis implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isAnalysisFinished();
-        }
+    @Override
+    public boolean setupFinished() {
+        return setupFinished;
     }
 
-    public static class AfterHostedUniverse implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isHostedUniverseBuilt();
-        }
+    @Override
+    public boolean analysisStarted() {
+        return analysisStarted;
     }
 
-    public static class ReadyForCompilation implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isReadyForCompilation();
-        }
+    @Override
+    public boolean analysisFinished() {
+        return analysisFinished;
     }
 
-    public static class CompileQueueFinished implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isCompileQueueFinished();
-        }
+    @Override
+    public boolean hostedUniverseBuilt() {
+        return hostedUniverseBuilt;
     }
 
-    public static class AfterCompilation implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isCompilationFinished();
-        }
+    @Override
+    public boolean readyForCompilation() {
+        return readyForCompilation;
     }
 
-    public static class AfterHeapLayout implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return BuildPhaseProvider.isHeapLayoutFinished();
-        }
+    @Override
+    public boolean compileQueueFinished() {
+        return compileQueueFinished;
     }
 
+    @Override
+    public boolean compilationFinished() {
+        return compilationFinished;
+    }
+
+    @Override
+    public boolean heapLayoutFinished() {
+        return heapLayoutFinished;
+    }
 }
