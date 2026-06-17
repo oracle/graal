@@ -19,11 +19,24 @@ jdks + wasm_common +
 
   graal_suite_root:: '/compiler',
 
+  local gate_graalwasm_downstream_js_testv8 = $.setup_common + {
+    run+: [
+      # Check out the graal-js suite imported by vm.
+      ['mx', '-p', '../vm', '--dynamicimports', '/graal-js', 'sforceimports'],
+      ['cd', '../../js/graal-js'],
+      ['mx', 'sversions'],
+      ['mx', '--dynamicimports', '/wasm', 'build'],
+      ['mx', '--dynamicimports', '/wasm', 'testv8', 'gate', 'polyglot', 'regex=.*wasm.*'],
+    ],
+    timelimit: '45:00',
+  },
+
   local _builds = [
     # Gates.
     $.jdkLatest + $.linux_amd64     + $.tier1        + $.gate_graalwasm_style       + tools_java_home                                              + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
 
     $.jdkLatest + $.linux_amd64     + $.tier2        + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
+    $.jdkLatest + $.linux_amd64     + $.tier2        + gate_graalwasm_downstream_js_testv8                                                         + {name: 'gate-graalwasm-downstream-js-testv8' + self.name_suffix},
   ] + [
     $.jdkLatest + platform          + $.tier3        + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix}
     for platform in [$.linux_aarch64, $.windows_amd64, $.darwin_aarch64]
