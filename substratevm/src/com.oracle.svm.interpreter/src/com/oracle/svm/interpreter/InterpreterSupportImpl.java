@@ -54,8 +54,6 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.jni.headers.JNIEnvironment;
-import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -147,24 +145,21 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     public PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-
-        ResolvedJavaType envType = DynamicHub.fromClass(JNIEnvironment.class).getInterpreterType();
-        ResolvedJavaType handleType = DynamicHub.fromClass(JNIObjectHandle.class).getInterpreterType();
-        VMError.guarantee(envType != null && handleType != null);
+        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
 
         int parameterCount = signature.getParameterCount(false);
         JavaType[] parameterTypes = new JavaType[parameterCount + 2];
         int[] argumentTypes = new int[parameterTypes.length];
-        parameterTypes[0] = envType;
-        parameterTypes[1] = handleType;
+        parameterTypes[0] = wordType;
+        parameterTypes[1] = wordType;
         for (int i = 0; i < parameterCount; i++) {
             JavaType parameterType = signature.getParameterType(i, accessingClass);
-            parameterTypes[i + 2] = parameterType.getJavaKind() == JavaKind.Object ? handleType : parameterType;
+            parameterTypes[i + 2] = parameterType.getJavaKind() == JavaKind.Object ? wordType : parameterType;
         }
 
         JavaType returnType = signature.getReturnType(accessingClass);
         if (returnType.getJavaKind() == JavaKind.Object) {
-            returnType = handleType;
+            returnType = wordType;
         }
 
         CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(SubstrateCallingConventionKind.Native.toType(true), returnType, parameterTypes,
