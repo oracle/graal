@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,36 +138,41 @@ public final class MethodProfile {
     }
 
     public long profileMethodEntry() {
-        return ++((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter;
+        return ++getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class).counter;
     }
 
     public long getProfileEntryCount() {
-        return ((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter;
+        return getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class).counter;
     }
 
     public void profileBranch(int bci, boolean taken) {
         if (taken) {
-            ((BranchProfile) getAtBCI(bci, BranchProfile.class)).incrementTakenCounter();
+            getAtBCI(bci, BranchProfile.class).incrementTakenCounter();
         } else {
-            ((BranchProfile) getAtBCI(bci, BranchProfile.class)).incrementNotTakenCounter();
+            getAtBCI(bci, BranchProfile.class).incrementNotTakenCounter();
         }
     }
 
     public JavaTypeProfile getTypeProfile(int bci) {
-        return ((TypeProfile) getAtBCI(bci, TypeProfile.class)).toTypeProfile();
+        return getAtBCI(bci, TypeProfile.class).toTypeProfile();
+    }
+
+    public TriState getNullSeen(int bci) {
+        TypeProfile typeProfile = getAtBCI(bci, TypeProfile.class);
+        return typeProfile == null ? TriState.UNKNOWN : typeProfile.getNullSeen();
     }
 
     public double getBranchTakenProbability(int bci) {
-        return ((BranchProfile) getAtBCI(bci, BranchProfile.class)).takenProfile();
+        return getAtBCI(bci, BranchProfile.class).takenProfile();
     }
 
     public void profileType(int bci, ResolvedJavaType type) {
-        ((TypeProfile) getAtBCI(bci, TypeProfile.class)).incrementTypeProfile(type);
+        getAtBCI(bci, TypeProfile.class).incrementTypeProfile(type);
     }
 
     public void profileReceiver(int bci, Object receiver) {
         if (receiver == null) {
-            // TODO GR-71949 - profile nullSeen
+            getAtBCI(bci, TypeProfile.class).markNullSeen();
             return;
         }
         ResolvedJavaType type = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
@@ -209,20 +214,20 @@ public final class MethodProfile {
      * 
      * @return null if there's no profile
      */
-    private synchronized InterpreterProfile getAtBCI(int bci, Class<? extends InterpreterProfile> clazz) {
+    private synchronized <T extends InterpreterProfile> T getAtBCI(int bci, Class<T> clazz) {
         int lastIndexLocal = lastIndex;
         for (int i = lastIndexLocal; i < profiles.length; i++) {
             InterpreterProfile profile = profiles[i];
             if (profile.getBci() == bci && profile.getClass() == clazz) {
                 lastIndex = i;
-                return profile;
+                return clazz.cast(profile);
             }
         }
         for (int i = 0; i < lastIndexLocal; i++) {
             InterpreterProfile profile = profiles[i];
             if (profile.getBci() == bci && profile.getClass() == clazz) {
                 lastIndex = i;
-                return profile;
+                return clazz.cast(profile);
             }
         }
         return null;
@@ -372,6 +377,11 @@ public final class MethodProfile {
         private final long[] counts;
 
         /**
+         * Tracks whether a null receiver or value was observed for this profiled bytecode.
+         */
+        private volatile boolean nullSeen;
+
+        /**
          * We profile interpreter types but when we export the information to the compiler as a type
          * profile we need to use ristretto types.
          */
@@ -397,7 +407,24 @@ public final class MethodProfile {
          * {@link #toTypeProfile()} .
          */
         public double notRecordedProbability() {
-            return toTypeProfile().getNotRecordedProbability();
+            JavaTypeProfile typeProfile = toTypeProfile();
+            if (typeProfile == null) {
+                throw new IllegalStateException("No JavaTypeProfile recorded at bci " + bci);
+            }
+            return typeProfile.getNotRecordedProbability();
+        }
+
+        public void markNullSeen() {
+            if (!nullSeen) {
+                nullSeen = true;
+            }
+        }
+
+        public TriState getNullSeen() {
+            if (nullSeen) {
+                return TriState.TRUE;
+            }
+            return counter == 0L ? TriState.UNKNOWN : TriState.FALSE;
         }
 
         /**
@@ -466,8 +493,10 @@ public final class MethodProfile {
 
         public JavaTypeProfile toTypeProfile() {
             final int profiledTypeCount = getProfiledTypeCount();
-            if (profiledTypeCount == 0 || counter == 0L) {
-                // nothing recorded
+            if (profiledTypeCount == 0) {
+                return getNullSeen() == TriState.TRUE ? new JavaTypeProfile(TriState.TRUE, 0.0, new JavaTypeProfile.ProfiledType[0]) : null;
+            }
+            if (counter == 0L) {
                 return null;
             }
             // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
@@ -487,14 +516,14 @@ public final class MethodProfile {
             Arrays.sort(ptypes);
             double notRecordedTypeProbability = profiledTypeCount < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
             assert notRecordedTypeProbability == 0 || profiledTypeCount == types.length;
-            // TODO GR-71949 - null seen
-            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedTypeProbability, ptypes);
+            return new JavaTypeProfile(getNullSeen(), notRecordedTypeProbability, ptypes);
         }
 
         @Override
         public String toString() {
+            JavaTypeProfile typeProfile = toTypeProfile();
             StringBuilder sb = new StringBuilder(128);
-            sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(counter);
+            sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(counter).append(", nullSeen=").append(getNullSeen());
             int limit = Math.min(getProfiledTypeCount(), types.length);
             sb.append(", types=[");
             for (int i = 0; i < limit; i++) {
@@ -515,7 +544,7 @@ public final class MethodProfile {
             } else {
                 sb.append(", freeSlots=").append(types.length - limit);
             }
-            sb.append(", notRecorded=").append(notRecordedProbability());
+            sb.append(", notRecorded=").append(typeProfile == null ? "n/a" : typeProfile.getNotRecordedProbability());
             sb.append('}');
             return sb.toString();
         }
