@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.blocking;
 
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Provides the {@link BlockingSupport} with the representation of guest languages interruptions.
@@ -42,21 +43,24 @@ import com.oracle.truffle.api.TruffleSafepoint;
  * <p>
  * Note that the guest interrupted status is not cleared by the implementation. It is up to the
  * language implementor to clear it or not when observing an interruption.
- * <p>
- * The {@link #EMPTY} guest interrupter is provided for languages that do not have well-specified
- * interruption semantics. This interrupter can be used to still benefit from the safepoint-able
- * blocking methods of this package, but be aware that no early escape from the blocking operations
- * will be possible.
  */
 public interface GuestInterrupter<T> extends TruffleSafepoint.Interrupter {
-    GuestInterrupter<Object> EMPTY = new GuestInterrupter<>() {
+    /**
+     * This {@link GuestInterrupter} is used when interruption is not expected. An example of can be
+     * found in the {@code FOREIGN_MARKER} in
+     * {@link com.oracle.truffle.espresso.runtime.staticobject.StaticObject}.
+     */
+    GuestInterrupter<Object> THROW_INTERRUPTER = new GuestInterrupter<>() {
         @Override
         public void guestInterrupt(Thread t, Object guestThread) {
+            // as this is only used as ForeignMarker we throw here
+            throw EspressoError.shouldNotReachHere("ForeignMarker should not be used as Lock");
         }
 
         @Override
         public boolean isGuestInterrupted(Thread t, Object guestThread) {
-            return false;
+            // as this is only used as ForeignMarker we throw here
+            throw EspressoError.shouldNotReachHere("ForeignMarker should not be used as Lock");
         }
     };
 

@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.io;
 
 import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
+import static com.oracle.truffle.espresso.threads.ThreadState.IN_NATIVE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -89,10 +90,11 @@ import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.threads.Transition;
 
 /**
  * Provides IO functionality in EspressoLibs mode (see
@@ -399,9 +401,13 @@ public final class TruffleIO implements ContextAccess {
                     FDAccess fdAccess, @JavaType(FileDescriptor.class) StaticObject newfd, SocketAddress[] ret) {
         assert getContext().getEnv().isSocketIOAllowed();
         ServerSocketChannel serverSocketChannel = getServerSocketChannel(self, fdAccess);
+        /*
+         * Transition to make accept() uninterruptible by the guest.
+         * See com.oracle.truffle.espresso.threads.ThreadAccess.interruptHostIfResponsive for further explanation.
+         */
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
             // accept the connection
-            // todo (GR-69946) add uninterruptible support
             SocketChannel clientSocket = serverSocketChannel.accept();
             if (clientSocket == null) {
                 return this.ioStatusSync.UNAVAILABLE;
@@ -413,10 +419,14 @@ public final class TruffleIO implements ContextAccess {
             // return the remoteAddress
             ret[0] = clientSocket.getRemoteAddress();
             return 1;
+        } catch (ClosedByInterruptException e) {
+            throw handleAndThrowClosedByInterrupt();
         } catch (AsynchronousCloseException e) {
             return ioStatusSync.UNAVAILABLE;
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        } finally {
+            transition.restore(context);
         }
     }
 
@@ -426,11 +436,19 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public boolean finishConnect(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
+        /*
+         * Transition to make finishConnect() uninterruptible by the guest.
+         * See com.oracle.truffle.espresso.threads.ThreadAccess.interruptHostIfResponsive for further explanation.
+         */
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
-            // todo (GR-69946) add uninterruptible support
             return getSocketChannel(self, fdAccess).finishConnect();
+        } catch (ClosedByInterruptException e) {
+            throw handleAndThrowClosedByInterrupt();
         } catch (IOException e) {
             return false;
+        } finally {
+            transition.restore(context);
         }
     }
 
@@ -466,11 +484,19 @@ public final class TruffleIO implements ContextAccess {
     public boolean connect(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, SocketAddress remote) {
         assert getContext().getEnv().isSocketIOAllowed();
+        /*
+         * Transition to make connect() uninterruptible by the guest.
+         * See com.oracle.truffle.espresso.threads.ThreadAccess.interruptHostIfResponsive for further explanation.
+         */
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
-            // todo (GR-69946) add uninterruptible support
             return getSocketChannel(self, fdAccess).connect(remote);
+        } catch (ClosedByInterruptException e) {
+            throw handleAndThrowClosedByInterrupt();
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        } finally {
+            transition.restore(context);
         }
     }
 
@@ -617,7 +643,7 @@ public final class TruffleIO implements ContextAccess {
      * The file descriptor {@code fd} is associated with a channel, which must be an instance of
      * {@link SelectableChannel}. If the channel is not selectable, an {@link IOException} is
      * thrown.
-     * 
+     *
      * @param self A file descriptor holder
      * @param fdAccess How to get the file descriptor from the holder
      * @param selector The selector to register with
@@ -668,6 +694,12 @@ public final class TruffleIO implements ContextAccess {
         if (fd == -1) {
             return false;
         }
+        // possibly warn if std are being closed
+        if (fd == FD_STDIN || fd == FD_STDERR ||
+                        fd == FD_STDOUT) {
+            warnStdStreamClosed(fd);
+        }
+
         setFD(fileDesc, -1);
         Channel channel = getChannel(fd);
         boolean toReturn = closeImpl(fd);
@@ -675,6 +707,14 @@ public final class TruffleIO implements ContextAccess {
             context.getLibsState().pollerCleanSelectionKey(fd);
         }
         return toReturn;
+    }
+
+    private void warnStdStreamClosed(int fd) {
+        if (getContext().isClosing()) {
+            // do not warn when Espresso is closing
+            return;
+        }
+        LibsState.getLogger().warning("std with fd = " + fd + " was detached even though Espresso is not closing");
     }
 
     /**
@@ -766,19 +806,22 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public int writeBytes(int fd,
                     ByteBuffer bytes) {
+        /*
+         * Transition to make writeBytes() uninterruptible by the guest.
+         * See com.oracle.truffle.espresso.threads.ThreadAccess.interruptHostIfResponsive for further explanation.
+         */
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
             WritableByteChannel writableChannel = getWritableChannel(fd);
             return convertReturnVal(writableChannel.write(bytes), writableChannel);
         } catch (ClosedByInterruptException e) {
-            // todo (GR-69946) add uninterruptible support
-            if (context.getThreadAccess().isGuestInterrupted(Thread.currentThread(), null)) {
-                throw Throw.throwIOException(e, context);
-            }
-            throw JavaSubstitution.unimplemented();
+            throw handleAndThrowClosedByInterrupt();
         } catch (NonWritableChannelException e) {
             throw Throw.throwNonWritable(context);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        } finally {
+            transition.restore(context);
         }
     }
 
@@ -930,16 +973,23 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public int readBytes(int fd,
                     ByteBuffer buffer) {
+        /*
+         * Transition to make readBytes() uninterruptible by the guest.
+         * See com.oracle.truffle.espresso.threads.ThreadAccess.interruptHostIfResponsive for further explanation.
+         */
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
             ReadableByteChannel readableChannel = getReadableChannel(fd);
-            return convertReturnVal(readableChannel.read(buffer), readableChannel);
+            int bytesRead = readableChannel.read(buffer);
+            return convertReturnVal(bytesRead, readableChannel);
         } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
         } catch (ClosedByInterruptException e) {
-            // todo (GR-69946) add uninterruptible support
-            throw JavaSubstitution.unimplemented();
+            throw handleAndThrowClosedByInterrupt();
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        } finally {
+            transition.restore(context);
         }
     }
 
@@ -1566,6 +1616,28 @@ public final class TruffleIO implements ContextAccess {
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
+    }
+
+    /**
+     * Handles {@link ClosedByInterruptException} in substitutions which should be uninterruptible
+     * by guest semantics.
+     */
+    private EspressoException handleAndThrowClosedByInterrupt() {
+        /*
+         * We ensure we are not guest-interruptible in {@linkplain
+         * ThreadAccess#guestInterrupt(Thread, StaticObject)}. However, there is nothing preventing
+         * us from being host-interrupted (Thread.interrupt() being called somewhere in host code).
+         * Thus, when reaching here we (most likely) have been host interrupted. Let's just throw
+         * ClosedByInterrupt in that case even though it might not be expected by the guest.
+         *
+         * Additionally, there is no easy way to assert that we have been host-interrupted: The guest thread could
+         * be interrupted and not trigger the host interrupt (due to uninterruptiblilty) but then
+         * short time after, independently of the guest interrupt, Thread.interrupt() gets called
+         * somewhere in host code. In this case
+         * threadAccess.isGuestInterrupted(Thread.currentThread(), guestThread); is true even though
+         * we were host interupted.
+         */
+        throw Throw.throwClosedByInterruptException(context);
     }
 
     private SeekableByteChannel getSeekableChannel(int fd) {

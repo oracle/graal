@@ -63,7 +63,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create(BlockingSupport.UNINTERRUPTIBLE);
+    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create(BlockingSupport.THROW_ON_INTERRUPT);
 
     private final Klass klass; // != PrimitiveKlass
 

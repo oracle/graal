@@ -57,7 +57,8 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         if (g == null) {
             g = getThreadFromHost(t);
         }
-        doInterrupt(g);
+        doInterruptGuest(g);
+        interruptHostIfResponsive(t, g);
     }
 
     @Override
@@ -66,7 +67,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         if (g == null) {
             g = getThreadFromHost(t);
         }
-        return isInterrupted(g, false);
+        return isGuestInterrupted(g, false);
     }
 
     @Override
@@ -355,9 +356,9 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     }
 
     /**
-     * Implementation of {@link Thread#isInterrupted()}.
+     * Implementation of the guests {@link Thread#isInterrupted()}.
      */
-    public boolean isInterrupted(StaticObject guest, boolean clear) {
+    public boolean isGuestInterrupted(StaticObject guest, boolean clear) {
         if (getContext().getJavaVersion().java13OrEarlier() && !isAlive(guest)) {
             return false;
         }
@@ -388,7 +389,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         getContext().getBlockingSupport().guestInterrupt(getHost(guest), guest);
     }
 
-    private void doInterrupt(StaticObject guest) {
+    private void doInterruptGuest(StaticObject guest) {
         if (getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
             meta.java_lang_Thread_0interrupted.setBoolean(guest, true, true);
@@ -396,6 +397,35 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         VM vm = getVM();
         if (vm.needsThreadInterruptedNotification() && isAlive(guest)) {
             vm.notifyThreadInterrupted(guest, true);
+        }
+    }
+
+    private void interruptHostIfResponsive(Thread host, StaticObject guest) {
+        /*
+         * In the context of EspressoNoNative we substitute native methods of java standard libraries
+         * using public java API. Some of those native methods are supposed to be uninterruptible but
+         * their naive implementation is inherently interruptible.
+         *
+         * For such substitutions we avoid being guest interrupted by transitioning the thread to native
+         * before doing the uninterruptible operation (See com.oracle.truffle.espresso.io.TruffleIO.readBytes(int, java.nio.ByteBuffer)).
+         * Then here we check if the thread is in native before calling interrupt.
+         *
+         * Going forward one has to be careful when calling interrupt in the host as it might
+         * trigger ClosedByInterruptExceptions for such "uninterruptible" substitutions.
+         *
+         * Implementation details: We did not introduce a new ThreadState for those "uninterruptible"
+         * substitutions and instead just reused the IN_NATIVE ThreadState. As a consequence threads
+         * which are truly in native will now cease to be (host) interrupted. This is okay as threads
+         * in native are agnostic to java interrupts anyway.
+         */
+        blockNativeTransitions(guest, true);
+        try {
+            // Make sure thread is initialized and responsive (i.e. not in native)
+            if (host != null && isResponsive(guest)) {
+                host.interrupt(); // Host interrupt to wake up the thread.
+            }
+        } finally {
+            blockNativeTransitions(guest, false);
         }
     }
 
@@ -450,7 +480,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         host.setPriority(getPriority(guest));
         String guestName = getContext().getThreadAccess().getThreadName(guest);
         host.setName(guestName);
-        if (isInterrupted(guest, false)) {
+        if (isGuestInterrupted(guest, false)) {
             host.interrupt();
         }
         // Prepare guest thread

@@ -236,7 +236,7 @@ public final class Target_java_lang_Thread {
         try {
             meta.getContext().getBlockingSupport().sleep(unit.toNanos(amount), location);
         } catch (GuestInterruptedException e) {
-            if (meta.getThreadAccess().isInterrupted(thread, true)) {
+            if (meta.getThreadAccess().isGuestInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
             meta.getThreadAccess().checkDeprecatedThreadStatus(thread);
@@ -279,7 +279,7 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java13OrEarlier.class)
     public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear,
                     @Inject EspressoContext context) {
-        return context.getThreadAccess().isInterrupted(self, clear);
+        return context.getThreadAccess().isGuestInterrupted(self, clear);
     }
 
     @TruffleBoundary

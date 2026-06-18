@@ -203,9 +203,9 @@ public interface EspressoLock {
      * <p>
      * If the current thread:
      * <ul>
-     * <li>is {@linkplain GuestInterrupter#guestInterrupt(Thread, Object) guest interrupted} on
-     * entry to this method; or
-     * <li>is {@linkplain GuestInterrupter#guestInterrupt(Thread, Object) guest interrupted} while
+     * <li>is {@linkplain BlockingSupport#guestInterrupt(Thread, Object) guest interrupted} on entry
+     * to this method; or
+     * <li>is {@linkplain BlockingSupport#guestInterrupt(Thread, Object) guest interrupted} while
      * waiting,
      * </ul>
      * then {@link GuestInterruptedException} is thrown. It is not specified, in the first case,

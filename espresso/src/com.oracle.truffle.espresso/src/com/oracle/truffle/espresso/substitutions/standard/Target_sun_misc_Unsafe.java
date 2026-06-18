@@ -782,7 +782,7 @@ public final class Target_sun_misc_Unsafe {
 
     private static boolean parkReturnCondition(StaticObject thread, Meta meta) {
         return consumeUnparkSignal(thread, meta) || // balancing unpark
-                        meta.getThreadAccess().isInterrupted(thread, false);
+                        meta.getThreadAccess().isGuestInterrupted(thread, false);
     }
 
     private static boolean consumeUnparkSignal(StaticObject self, Meta meta) {

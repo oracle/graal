@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
  * </p>
  */
 public final class BlockingSupport<T> {
-    public static final BlockingSupport<Object> UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
+    public static final BlockingSupport<Object> THROW_ON_INTERRUPT = create(GuestInterrupter.THROW_INTERRUPTER);
 
     private BlockingSupport(GuestInterrupter<T> guestInterrupter) {
         this.guestInterrupter = guestInterrupter;
@@ -153,10 +153,6 @@ public final class BlockingSupport<T> {
      */
     public void guestInterrupt(Thread t, T guest) {
         guestInterrupter.guestInterrupt(t, guest);
-
-        if (t != null) { // Make sure thread is initialized
-            t.interrupt(); // Host interrupt to wake up the thread.
-        }
     }
 
     private static Interruptible<Long> sleepInterruptible() {

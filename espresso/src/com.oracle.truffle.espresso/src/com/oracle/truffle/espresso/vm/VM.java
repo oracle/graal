@@ -935,7 +935,7 @@ public final class VM extends NativeEnv {
             }
         } catch (GuestInterruptedException e) {
             profiler.profile(0);
-            if (getThreadAccess().isInterrupted(currentThread, true)) {
+            if (getThreadAccess().isGuestInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
             getThreadAccess().checkDeprecatedThreadStatus(currentThread);
