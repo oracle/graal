@@ -40,6 +40,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -299,15 +300,15 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private static boolean shouldOutline(WriteBarrierNode barrier) {
-        SerialGCOptions.OutlineWriteBarriers outlining = SerialGCOptions.WriteBarrierOutlining.getValue();
-        if (outlining == SerialGCOptions.OutlineWriteBarriers.Always) {
+        SubstrateGCOptions.OutlineWriteBarriers outlining = SubstrateGCOptions.WriteBarrierOutlining.getValue();
+        if (outlining == SubstrateGCOptions.OutlineWriteBarriers.Always) {
             return true;
-        } else if (outlining == SerialGCOptions.OutlineWriteBarriers.Never) {
+        } else if (outlining == SubstrateGCOptions.OutlineWriteBarriers.Never) {
             return false;
         }
 
         OptionValues graphOptions = barrier.graph().getOptions();
-        if (GraalOptions.ReduceCodeSize.getValue(graphOptions) && outlining == SerialGCOptions.OutlineWriteBarriers.Auto) {
+        if (GraalOptions.ReduceCodeSize.getValue(graphOptions) && outlining == SubstrateGCOptions.OutlineWriteBarriers.Auto) {
             return true;
         }
 
@@ -315,7 +316,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
          * Newly allocated objects are likely in the young generation, so we can outline the write
          * barrier with minimal performance impact.
          */
-        assert outlining == SerialGCOptions.OutlineWriteBarriers.Auto || outlining == SerialGCOptions.OutlineWriteBarriers.YoungOnly;
+        assert outlining == SubstrateGCOptions.OutlineWriteBarriers.Auto || outlining == SubstrateGCOptions.OutlineWriteBarriers.YoungOnly;
         return barrier instanceof SerialWriteBarrierNode serialBarrier && serialBarrier.getBaseStatus().likelyYoung();
     }
 
