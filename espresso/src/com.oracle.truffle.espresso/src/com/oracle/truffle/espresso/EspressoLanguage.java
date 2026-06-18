@@ -157,6 +157,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;
     @CompilationFinal private int maxStackTraceDepth;
+    @CompilationFinal private boolean implicitInteropEnabled;
     // endregion Options
 
     // region Allocation
@@ -258,6 +259,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         externalJvmciEnabled = env.getOptions().get(EspressoOptions.ExposeJVMCIHelper);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
         maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
+        implicitInteropEnabled = env.getOptions().get(EspressoOptions.EnableImplicitInterop);
 
         useTRegex = env.getOptions().get(EspressoOptions.UseTRegex);
         if (useTRegex && !env.getInternalLanguages().containsKey("regex")) {
@@ -867,6 +869,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public int getMaxStackTraceDepth() {
         return maxStackTraceDepth;
+    }
+
+    @Idempotent
+    public boolean isImplicitInteropEnabled() {
+        return implicitInteropEnabled;
     }
 
     @SuppressWarnings("static-method")

@@ -53,6 +53,7 @@ import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.NEW;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.POP;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.RETURN;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.SIPUSH;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.SWAP;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.V1_8;
 
 import java.lang.reflect.Modifier;
@@ -107,9 +108,11 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private static final String JL_OBJECT = "java/lang/Object";
     private static final String JL_THROWABLE = "java/lang/Throwable";
+    private static final String JL_CLASS_CAST_EXCEPTION = "java/lang/ClassCastException";
     private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
     private static final String TYPE_LITERAL_TYPE = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;";
     private static final String INTEROP = "com/oracle/truffle/espresso/polyglot/Interop";
+    private static final String GUEST_UNSUPPORTED_TYPE_EXCEPTION = "com/oracle/truffle/espresso/polyglot/UnsupportedTypeException";
     private static final int VARARGS = 0x00000080;
 
     private final Meta meta;
@@ -877,7 +880,10 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             Label startBlock = new Label();
             Label endBlock = new Label();
             Label runtimeHandler = new Label();
+            Label unsupportedTypeExceptionHandler = new Label();
             Label throwableHandler = new Label();
+
+            mv.visitTryCatchBlock(startBlock, endBlock, unsupportedTypeExceptionHandler, GUEST_UNSUPPORTED_TYPE_EXCEPTION);
 
             List<Klass> catchList = computeUniqueCatchList(exceptionTypes);
             if (!catchList.isEmpty()) {
@@ -886,8 +892,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                                     dotToSlash(ex.getNameAsString()));
                 }
 
-                mv.visitTryCatchBlock(startBlock, endBlock, throwableHandler,
-                                JL_THROWABLE);
+                mv.visitTryCatchBlock(startBlock, endBlock, throwableHandler, JL_THROWABLE);
             }
             mv.visitLabel(startBlock);
 
@@ -935,6 +940,15 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
 
             mv.visitLabel(endBlock);
+
+            // Catch UnsupportedTypeException and throw a ClassCastException
+            mv.visitLabel(unsupportedTypeExceptionHandler);
+            mv.visitTypeInsn(NEW, JL_CLASS_CAST_EXCEPTION);
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESPECIAL, JL_CLASS_CAST_EXCEPTION, "<init>", "()V", false);
+            mv.visitInsn(SWAP);
+            mv.visitMethodInsn(INVOKEVIRTUAL, JL_CLASS_CAST_EXCEPTION, "initCause", "(Ljava/lang/Throwable;)Ljava/lang/Throwable;", false);
+            mv.visitInsn(ATHROW);
 
             // Generate exception handler
             mv.visitLabel(runtimeHandler);

@@ -27,10 +27,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -118,6 +120,39 @@ public abstract class ToEspressoNode extends EspressoNode {
             }
         }
         return ToReference.getUncachedToReference(targetType, meta);
+    }
+
+    public static StaticObject tryWrapHostPrimitiveArray(InteropLibrary interop, Object value, ArrayKlass targetType, Meta meta) {
+        if (!interop.isHostObject(value)) {
+            return null;
+        }
+        Object hostValue;
+        try {
+            hostValue = interop.asHostObject(value);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("asHostObject contract violated");
+        } catch (HeapIsolationException e) {
+            return null;
+        }
+        if (hostValue == null) {
+            return StaticObject.NULL;
+        }
+        return switch (targetType.getComponentType().getJavaKind()) {
+            case Byte -> hostValue instanceof byte[] hostByteArray ? StaticObject.wrap(hostByteArray, meta) : null;
+            /*
+             * host boolean[] -> guest boolean[] is impossible as guest boolean[] is represented by
+             * a wrapped host byte[]
+             */
+            case Boolean -> null;
+            case Char -> hostValue instanceof char[] hostCharArray ? StaticObject.wrap(hostCharArray, meta) : null;
+            case Short -> hostValue instanceof short[] hostShortArray ? StaticObject.wrap(hostShortArray, meta) : null;
+            case Int -> hostValue instanceof int[] hostIntArray ? StaticObject.wrap(hostIntArray, meta) : null;
+            case Long -> hostValue instanceof long[] hostLongArray ? StaticObject.wrap(hostLongArray, meta) : null;
+            case Float -> hostValue instanceof float[] hostFloatArray ? StaticObject.wrap(hostFloatArray, meta) : null;
+            case Double -> hostValue instanceof double[] hostDoubleArray ? StaticObject.wrap(hostDoubleArray, meta) : null;
+            default -> null; // component type is not primitive
+        };
     }
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
@@ -219,14 +254,19 @@ public abstract class ToEspressoNode extends EspressoNode {
         public static Object doArray(Object value, ArrayKlass targetType,
                         @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
+                        @Cached InlinedBranchProfile error,
+                        @Bind("getLanguage()") EspressoLanguage language) throws UnsupportedTypeException {
             Meta meta = EspressoContext.get(node).getMeta();
-            if (targetType == meta._byte_array) {
+            StaticObject wrapped = tryWrapHostPrimitiveArray(interop, value, targetType, meta);
+            if (wrapped != null) {
+                return wrapped;
+            }
+            if (language.isImplicitInteropEnabled() && targetType == meta._byte_array) {
                 if (interop.hasBufferElements(value) && !isHostString(value)) {
                     return StaticObject.createForeign(EspressoLanguage.get(node), meta._byte_array, value, interop);
                 }
             }
-            if (interop.hasArrayElements(value) && !isHostString(value)) {
+            if (language.isImplicitInteropEnabled() && interop.hasArrayElements(value) && !isHostString(value)) {
                 return StaticObject.createForeign(EspressoLanguage.get(node), targetType, value, interop);
             }
             error.enter(node);
@@ -251,7 +291,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                 // check if there's a specific type mapping available
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverter.execute(metaName);
                 if (converter != null) {
-                    StaticObject foreignWrapper = StaticObject.createForeign(EspressoLanguage.get(node), targetType.getRawType(), value, interop);
+                    EspressoContext context = EspressoContext.get(node);
+                    StaticObject foreignWrapper = StaticObject.createForeign(EspressoLanguage.get(node), context.getMeta().java_lang_Object, value, interop);
                     if (targetType instanceof ParameterizedEspressoType parameterizedEspressoType) {
                         EspressoLanguage.get(node).getTypeArgumentProperty().setObject(foreignWrapper, parameterizedEspressoType.getTypeArguments());
                     }
@@ -361,10 +402,15 @@ public abstract class ToEspressoNode extends EspressoNode {
             if (result != null) {
                 return result;
             }
-            if (targetType.getRawType() instanceof ObjectKlass rawType) {
+            if (EspressoLanguage.get(node).isImplicitInteropEnabled() && targetType.getRawType() instanceof ObjectKlass rawType) {
                 checkHasAllFieldsOrThrow(value, rawType, interop, meta);
                 return StaticObject.createForeign(EspressoLanguage.get(node), rawType, value, interop);
             }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getRawType().getTypeAsString());
+        }
+
+        @Fallback
+        public static Object doUnsupported(Object value, EspressoType targetType) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, targetType.getRawType().getTypeAsString());
         }
     }

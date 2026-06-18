@@ -157,9 +157,13 @@ public class PolyglotTypeMappings {
             warn(current);
         }
 
-        // primitive array types
+        /*
+         * primitive array types: when the input is a host array, the converter tries to put the
+         * input into an array wrapper first, making the conversion possible even when implicit
+         * interop is disabled. However, this is impossible for boolean[], as a host byte array is
+         * required as the content of the array wrapper.
+         */
         converters.put("byte[]", new BuiltinArrayTypeConverter(meta._byte_array));
-        converters.put("boolean[]", new BuiltinArrayTypeConverter(meta._boolean_array));
         converters.put("char[]", new BuiltinArrayTypeConverter(meta._char_array));
         converters.put("short[]", new BuiltinArrayTypeConverter(meta._short_array));
         converters.put("int[]", new BuiltinArrayTypeConverter(meta._int_array));
@@ -167,18 +171,22 @@ public class PolyglotTypeMappings {
         converters.put("float[]", new BuiltinArrayTypeConverter(meta._float_array));
         converters.put("double[]", new BuiltinArrayTypeConverter(meta._double_array));
 
-        // boxed primitives
-        converters.put("java.lang.Byte[]", new BuiltinArrayTypeConverter(meta.java_lang_Byte.array()));
-        converters.put("java.lang.Boolean[]", new BuiltinArrayTypeConverter(meta.java_lang_Boolean.array()));
-        converters.put("java.lang.Character[]", new BuiltinArrayTypeConverter(meta.java_lang_Character.array()));
-        converters.put("java.lang.Short[]", new BuiltinArrayTypeConverter(meta.java_lang_Short.array()));
-        converters.put("java.lang.Integer[]", new BuiltinArrayTypeConverter(meta.java_lang_Integer.array()));
-        converters.put("java.lang.Long[]", new BuiltinArrayTypeConverter(meta.java_lang_Long.array()));
-        converters.put("java.lang.Float[]", new BuiltinArrayTypeConverter(meta.java_lang_Float.array()));
-        converters.put("java.lang.Double[]", new BuiltinArrayTypeConverter(meta.java_lang_Double.array()));
+        if (meta.getLanguage().isImplicitInteropEnabled()) {
+            converters.put("boolean[]", new BuiltinArrayTypeConverter(meta._boolean_array));
 
-        // String array type
-        converters.put("java.lang.String[]", new BuiltinArrayTypeConverter(meta.java_lang_String_array));
+            // boxed primitives
+            converters.put("java.lang.Byte[]", new BuiltinArrayTypeConverter(meta.java_lang_Byte.array()));
+            converters.put("java.lang.Boolean[]", new BuiltinArrayTypeConverter(meta.java_lang_Boolean.array()));
+            converters.put("java.lang.Character[]", new BuiltinArrayTypeConverter(meta.java_lang_Character.array()));
+            converters.put("java.lang.Short[]", new BuiltinArrayTypeConverter(meta.java_lang_Short.array()));
+            converters.put("java.lang.Integer[]", new BuiltinArrayTypeConverter(meta.java_lang_Integer.array()));
+            converters.put("java.lang.Long[]", new BuiltinArrayTypeConverter(meta.java_lang_Long.array()));
+            converters.put("java.lang.Float[]", new BuiltinArrayTypeConverter(meta.java_lang_Float.array()));
+            converters.put("java.lang.Double[]", new BuiltinArrayTypeConverter(meta.java_lang_Double.array()));
+
+            // String array type
+            converters.put("java.lang.String[]", new BuiltinArrayTypeConverter(meta.java_lang_String_array));
+        }
 
         // common java.* exception types where only exception message is expected to be transferred
         converters.put("java.lang.ClassCastException", new BuiltinExceptionTypeConverter(meta.java_lang_ClassCastException));
@@ -422,15 +430,22 @@ public class PolyglotTypeMappings {
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso, EspressoType espressoType) throws UnsupportedTypeException {
             if (!interop.hasArrayElements(value)) {
-                boundaryThrow(value);
+                boundaryThrow(value, "foreign object has no array elements");
+            }
+            StaticObject wrapped = ToEspressoNode.tryWrapHostPrimitiveArray(interop, value, klass, meta);
+            if (wrapped != null) {
+                return wrapped;
+            }
+            if (!meta.getLanguage().isImplicitInteropEnabled()) {
+                boundaryThrow(value, "implicit interop is disabled");
             }
             return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
         }
 
         @TruffleBoundary
-        private void boundaryThrow(Object value) throws UnsupportedTypeException {
+        private void boundaryThrow(Object value, String reason) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value},
-                            EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), "foreign object has no array elements"));
+                            EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), reason));
         }
     }
 

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CONTAINS_UNHIDDEN_FIELDS;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Boolean;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Byte;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Char;
@@ -412,6 +413,12 @@ public final class GuestAllocator implements LanguageAccess {
         assert foreignObject != null;
         assert klass == null || !klass.isAbstract() || klass.isArray();
         assert klass == null || klass != klass.getMeta().java_lang_Class;
+        if (!lang.isImplicitInteropEnabled()) {
+            if (klass != null && (!(klass instanceof ObjectKlass objectKlass) || (objectKlass.getKlassVersion().getModifiers() & ACC_CONTAINS_UNHIDDEN_FIELDS) != 0)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("A foreign object typed " + klass.getTypeAsString() + " is created while implicit interop is disabled.");
+            }
+        }
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         lang.getForeignProperty().setObject(newObj, foreignObject);
         if (klass != null) {

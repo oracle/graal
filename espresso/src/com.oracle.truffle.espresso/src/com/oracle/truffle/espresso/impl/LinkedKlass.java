@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CONTAINS_UNHIDDEN_FIELDS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 import java.lang.reflect.Modifier;
@@ -121,6 +122,12 @@ public final class LinkedKlass {
         int flags = parserKlass.getFlags();
         if (hasFinalizer) {
             flags |= ACC_FINALIZER;
+        }
+        for (LinkedField lkField : instanceFields) {
+            if (!lkField.isHidden()) {
+                flags |= ACC_CONTAINS_UNHIDDEN_FIELDS;
+                break;
+            }
         }
         return flags;
     }
