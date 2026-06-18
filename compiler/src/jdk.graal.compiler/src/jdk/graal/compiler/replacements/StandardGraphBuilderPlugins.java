@@ -228,6 +228,8 @@ import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
@@ -2723,6 +2725,62 @@ public class StandardGraphBuilderPlugins {
                 return GHASHProcessBlocksNode.isSupported(arch);
             }
         });
+    }
+
+    public static class IntegerPolynomialP256MontgomeryMultPlugin extends ConditionalInvocationPlugin {
+
+        public IntegerPolynomialP256MontgomeryMultPlugin() {
+            super("mult", Receiver.class, long[].class, long[].class, long[].class);
+        }
+
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return IntegerPolynomialP256MontgomeryMultNode.isSupported(arch);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                receiver.get(true);
+                ValueNode aNotNull = b.nullCheckedValue(aIn);
+                ValueNode bNotNull = b.nullCheckedValue(bIn);
+                ValueNode rNotNull = b.nullCheckedValue(rOut);
+
+                ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+                ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
+
+                b.add(new IntegerPolynomialP256MontgomeryMultNode(aStart, bStart, rStart));
+                return true;
+            }
+        }
+    }
+
+    public static class IntegerPolynomialAssignPlugin extends ConditionalInvocationPlugin {
+
+        public IntegerPolynomialAssignPlugin() {
+            super("conditionalAssign", int.class, long[].class, long[].class);
+        }
+
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return IntegerPolynomialAssignNode.isSupported(arch);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode set, ValueNode aIn, ValueNode bIn) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode aNotNull = b.nullCheckedValue(aIn);
+                ValueNode bNotNull = b.nullCheckedValue(bIn);
+
+                ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+                ValueNode aLength = helper.arraylength(aNotNull);
+
+                b.add(new IntegerPolynomialAssignNode(set, aStart, bStart, aLength));
+                return true;
+            }
+        }
     }
 
     public static class Poly1305ProcessBlocksPlugin extends ConditionalInvocationPlugin {

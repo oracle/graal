@@ -148,6 +148,8 @@ import jdk.graal.compiler.lir.amd64.AMD64GaloisCounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.amd64.AMD64HaltOp;
 import jdk.graal.compiler.lir.amd64.AMD64IndexOfZeroOp;
+import jdk.graal.compiler.lir.amd64.AMD64IntegerPolynomialAssignOp;
+import jdk.graal.compiler.lir.amd64.AMD64IntegerPolynomialP256MontgomeryMultOp;
 import jdk.graal.compiler.lir.amd64.AMD64Kyber12To16Op;
 import jdk.graal.compiler.lir.amd64.AMD64KyberAddPoly2Op;
 import jdk.graal.compiler.lir.amd64.AMD64KyberAddPoly3Op;
@@ -1202,6 +1204,35 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rR, r);
 
         append(new AMD64Poly1305ProcessBlocksOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rInput, rLength, rAccumulator, rR));
+    }
+
+    @Override
+    public void emitIntegerPolynomialAssign(Value set, Value a, Value b, Value length) {
+        RegisterValue rSet = rdi.asValue(set.getValueKind());
+        RegisterValue rA = rsi.asValue(a.getValueKind());
+        RegisterValue rB = rdx.asValue(b.getValueKind());
+        RegisterValue rLength = rcx.asValue(length.getValueKind());
+
+        emitMove(rSet, set);
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rLength, length);
+
+        append(new AMD64IntegerPolynomialAssignOp(rSet, rA, rB, rLength));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void emitIntegerPolynomialP256MontgomeryMult(EnumSet<?> runtimeCheckedCPUFeatures, Value a, Value b, Value r) {
+        RegisterValue rA = rdi.asValue(a.getValueKind());
+        RegisterValue rB = rsi.asValue(b.getValueKind());
+        RegisterValue rR = rdx.asValue(r.getValueKind());
+
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rR, r);
+
+        append(new AMD64IntegerPolynomialP256MontgomeryMultOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rA, rB, rR));
     }
 
     @Override

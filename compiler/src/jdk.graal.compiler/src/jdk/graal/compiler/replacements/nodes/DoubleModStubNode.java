@@ -71,11 +71,11 @@ public final class DoubleModStubNode extends FixedWithNextNode implements Intrin
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX, FMA);
+        return EnumSet.of(FMA, AVX);
     }
 
     public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
-        return EnumSet.of(AVX, AVX2, FMA, AVX512F, AVX512BW, AVX512DQ, AVX512VL);
+        return EnumSet.of(FMA, AVX, AVX2, AVX512F, AVX512DQ, AVX512BW, AVX512VL);
     }
 
     public static boolean isSupported(Architecture arch) {

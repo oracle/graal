@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.meta;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
@@ -176,6 +174,8 @@ import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolynomialAssignPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolynomialP256MontgomeryMultPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
@@ -183,6 +183,8 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -281,7 +283,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config);
                 registerPoly1305Plugin(invocationPlugins);
-                registerP256Plugins(invocationPlugins, config);
+                registerIntegerPolynomialPlugins(invocationPlugins);
                 registerDualPivotQuicksortPlugins(invocationPlugins, config, target.arch);
 
                 if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
@@ -1126,55 +1128,28 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerIntegerPolynomialPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256");
-        r.register(new ConditionalInvocationPlugin("mult", Receiver.class, long[].class, long[].class, long[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    receiver.get(true);
-                    ValueNode aNotNull = b.nullCheckedValue(aIn);
-                    ValueNode bNotNull = b.nullCheckedValue(bIn);
-                    ValueNode rNotNull = b.nullCheckedValue(rOut);
-
-                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
-                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
-                    ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
-
-                    b.add(new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart));
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.intpolyMontgomeryMultP256 != 0L;
-            }
-        });
+        r.register(new HotSpotIntegerPolynomialP256MontgomeryMultPlugin());
 
         r = new Registration(plugins, "sun.security.util.math.intpoly.IntegerPolynomial");
-        r.register(new ConditionalInvocationPlugin("conditionalAssign", int.class, long[].class, long[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode set, ValueNode aIn, ValueNode bIn) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode aNotNull = b.nullCheckedValue(aIn);
-                    ValueNode bNotNull = b.nullCheckedValue(bIn);
+        r.register(new HotSpotIntegerPolynomialAssignPlugin());
+    }
 
-                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
-                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+    private static final class HotSpotIntegerPolynomialP256MontgomeryMultPlugin extends IntegerPolynomialP256MontgomeryMultPlugin {
 
-                    ValueNode aLength = helper.arraylength(aNotNull);
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(arch);
+        }
+    }
 
-                    b.add(new ForeignCallNode(INTPOLY_ASSIGN, set, aStart, bStart, aLength));
-                }
-                return true;
-            }
+    private static final class HotSpotIntegerPolynomialAssignPlugin extends IntegerPolynomialAssignPlugin {
 
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.intpolyAssign != 0L;
-            }
-        });
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(arch);
+        }
     }
 
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, Architecture arch) {

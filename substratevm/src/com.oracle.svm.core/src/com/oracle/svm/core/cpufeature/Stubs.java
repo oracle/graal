@@ -70,6 +70,8 @@ import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
@@ -166,6 +168,12 @@ public final class Stubs {
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
                 return GHASH_CPU_FEATURES_AMD64;
+            }
+            if (IntegerPolynomialAssignNode.class.equals(klass)) {
+                return IntegerPolynomialAssignNode.maxFeaturesAMD64();
+            }
+            if (IntegerPolynomialP256MontgomeryMultNode.class.equals(klass)) {
+                return IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64();
             }
             if (KyberNttNode.class.equals(klass) ||
                             KyberInverseNttNode.class.equals(klass) ||

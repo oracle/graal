@@ -35,8 +35,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
@@ -159,6 +157,8 @@ import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroForeignCalls;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
@@ -621,12 +621,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.sha3ImplCompressMultiBlock != 0L) {
             registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
         }
-        if (c.intpolyMontgomeryMultP256 != 0L) {
-            registerForeignCall(INTPOLY_MONTGOMERYMULT_P256, c.intpolyMontgomeryMultP256, NativeCall);
-        }
-        if (c.intpolyAssign != 0L) {
-            registerForeignCall(INTPOLY_ASSIGN, c.intpolyAssign, NativeCall);
-        }
         if (c.stubDoubleKeccak != 0L) {
             registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
         }
@@ -690,6 +684,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ElectronicCodeBookAESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GaloisCounterModeAESNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GHASHProcessBlocksNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, IntegerPolynomialAssignNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, IntegerPolynomialP256MontgomeryMultNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Poly1305ProcessBlocksNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA1Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA256Node.STUB);

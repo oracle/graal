@@ -49,50 +49,61 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_128, size = NodeSize.SIZE_128)
-public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
+public class IntegerPolynomialAssignNode extends MemoryKillStubIntrinsicNode {
 
-    public static final NodeClass<Poly1305ProcessBlocksNode> TYPE = NodeClass.create(Poly1305ProcessBlocksNode.class);
+    public static final NodeClass<IntegerPolynomialAssignNode> TYPE = NodeClass.create(IntegerPolynomialAssignNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
 
-    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("poly1305ProcessBlocks",
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("intpolyAssign",
                     void.class,
-                    new Class<?>[]{Pointer.class, int.class, Pointer.class, Pointer.class},
+                    new Class<?>[]{int.class, Pointer.class, Pointer.class, int.class},
                     HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);
 
-    @Input protected ValueNode input;
-    @Input protected ValueNode length;
-    @Input protected ValueNode accumulator;
-    @Input protected ValueNode r;
+    private final ForeignCallDescriptor foreignCallDescriptor;
 
-    public Poly1305ProcessBlocksNode(ValueNode input, ValueNode length, ValueNode accumulator, ValueNode r) {
-        this(input, length, accumulator, r, null);
+    @Input protected ValueNode set;
+    @Input protected ValueNode a;
+    @Input protected ValueNode b;
+    @Input protected ValueNode length;
+
+    public IntegerPolynomialAssignNode(ValueNode set, ValueNode a, ValueNode b, ValueNode length) {
+        this(set, a, b, length, null);
     }
 
-    public Poly1305ProcessBlocksNode(ValueNode input, ValueNode length, ValueNode accumulator, ValueNode r, EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
-        this.input = input;
+    public IntegerPolynomialAssignNode(ValueNode set, ValueNode a, ValueNode b, ValueNode length, EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, set, a, b, length, runtimeCheckedCPUFeatures, STUB);
+    }
+
+    protected IntegerPolynomialAssignNode(NodeClass<? extends IntegerPolynomialAssignNode> type, ValueNode set, ValueNode a, ValueNode b, ValueNode length, EnumSet<?> runtimeCheckedCPUFeatures,
+                    ForeignCallDescriptor foreignCallDescriptor) {
+        super(type, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
+        this.foreignCallDescriptor = foreignCallDescriptor;
+        this.set = set;
+        this.a = a;
+        this.b = b;
         this.length = length;
-        this.accumulator = accumulator;
-        this.r = r;
     }
 
     @Override
     public ValueNode[] getForeignCallArguments() {
-        return new ValueNode[]{input, length, accumulator, r};
+        return new ValueNode[]{set, a, b, length};
     }
 
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
         return KILLED_LOCATIONS;
+    }
+
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
+        return EnumSet.of(AVX, AVX2, AVX_IFMA);
     }
 
     public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
@@ -102,20 +113,14 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL, AVX512_IFMA);
     }
 
-    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX, AVX2, AVX_IFMA);
-    }
-
     @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
         return switch (arch) {
             case AMD64 amd64 -> {
-                // GR-76192: SVM uses this static predicate to match the generated stub and
-                // foreign-call registration until alternative intrinsic-stub feature sets are
-                // modeled explicitly.
+                // SVM uses this static predicate to match the generated stub and foreign-call
+                // registration until alternative intrinsic-stub feature sets are modeled explicitly.
                 yield amd64.getFeatures().containsAll(maxFeaturesAMD64());
             }
-            case AArch64 aarch64 -> true;
             default -> false;
         };
     }
@@ -124,33 +129,24 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     public static boolean isSupportedForRuntimeCheckedStub(Architecture arch) {
         return switch (arch) {
             case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64()) || amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            case AArch64 aarch64 -> true;
             default -> false;
         };
     }
 
-    /*
-     * GR-76192: SVM registers Poly1305 only for this feature set so the plugin predicate and the
-     * generated stub feature region cannot diverge.
-     */
     @NodeIntrinsic
-    @GenerateStub(name = "poly1305ProcessBlocks", minimumCPUFeaturesAMD64 = "maxFeaturesAMD64")
-    public static native void apply(Pointer input, int length, Pointer accumulator, Pointer r);
+    @GenerateStub(name = "intpolyAssign", minimumCPUFeaturesAMD64 = "maxFeaturesAMD64")
+    public static native void apply(int set, Pointer a, Pointer b, int length);
 
     @NodeIntrinsic
-    public static native void apply(Pointer input,
-                    int length,
-                    Pointer accumulator,
-                    Pointer r,
-                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    public static native void apply(int set, Pointer a, Pointer b, int length, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return STUB;
+        return foreignCallDescriptor;
     }
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitPoly1305ProcessBlocks(runtimeCheckedCPUFeatures, gen.operand(input), gen.operand(length), gen.operand(accumulator), gen.operand(r));
+        gen.getLIRGeneratorTool().emitIntegerPolynomialAssign(gen.operand(set), gen.operand(a), gen.operand(b), gen.operand(length));
     }
 }
