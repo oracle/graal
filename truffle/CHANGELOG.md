@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 25.1
+* GR-76434: Added `engine.DynamicCompilationThresholdsHighLoadSlope` to tune dynamic compilation threshold scaling under high compilation queue load. The default value of `engine.DynamicCompilationThresholdsMinNormalLoad` is now `0`, which disables low-load threshold reduction by default.
 * GR-71645: Host adapter instances created with `TruffleLanguage.Env#createHostAdapter` now delegate unresolved direct member operations to the original guest object, while Java host members and the special `super` and `this` adapter members take precedence.
 * GR-75236: Added engine option `engine.CompilerThreadStackSize` to set the requested stack size of Truffle compiler threads. By default compiler threads use `640KB` stack space. The requested size is rounded up to implementation-specific minima and page sizes as needed.
 * GR-73900: Added `Engine.persistCache(Engine.CancellationCallback)` to persist the auxiliary engine cache into an in-memory `ByteBuffer` with callback-based cancellation support.
