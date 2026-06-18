@@ -48,28 +48,23 @@ public final class BootLoaderPackageAccess {
         return BootClassRegistry.bootModuleNameForPackage(internalPackageName);
     }
 
-    /// Defines the boot module package `internalPackageName` after runtime class loading has defined a class in it.
+    /// Ensures a NamedPackage object for the package `internalPackageName`
+    /// exists in the `ClassLoader.packages` field of the boot loader.
     ///
     /// @param internalPackageName package name in internal format (e.g. `java/util`)
-    public static void defineBootModulePackageForPackage(String internalPackageName) {
+    /// @param module the boot module containing a class in the package
+    public static void ensureNamedPackageExists(String internalPackageName, Module module) {
         String packageName = internalPackageName.replace('/', '.');
-        Target_jdk_internal_loader_BuiltinClassLoader bootLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        Target_java_lang_ClassLoader bootClassLoader = SubstrateUtil.cast(bootLoader, Target_java_lang_ClassLoader.class);
-        if (bootClassLoader.getDefinedPackage(packageName) == null) {
-            String moduleName = BootClassRegistry.bootModuleNameForPackage(internalPackageName);
-            if (moduleName != null) {
-                Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), "jrt:/" + moduleName);
-            }
-        }
+        Target_java_lang_ClassLoader bootLoader = SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), Target_java_lang_ClassLoader.class);
+        bootLoader.getNamedPackage(packageName, module);
     }
 
     /// Adds package names already defined to the boot loader to `internalPackageNames`.
     ///
     /// @param internalPackageNames set of package names in internal format (e.g. `java/util`)
     public static void addSystemPackageNames(Set<String> internalPackageNames) {
-        Target_jdk_internal_loader_BuiltinClassLoader bootLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        Target_java_lang_ClassLoader bootClassLoader = SubstrateUtil.cast(bootLoader, Target_java_lang_ClassLoader.class);
-        for (String packageName : bootClassLoader.packages.keySet()) {
+        Target_java_lang_ClassLoader bootLoader = SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), Target_java_lang_ClassLoader.class);
+        for (String packageName : bootLoader.packages.keySet()) {
             internalPackageNames.add(packageName.replace('.', '/'));
         }
     }

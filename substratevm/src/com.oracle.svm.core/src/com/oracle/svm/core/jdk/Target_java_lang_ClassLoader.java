@@ -267,7 +267,10 @@ public final class Target_java_lang_ClassLoader {
     /// for reachable build-time classes. See `ClassLoaderFeature.PackageMapTransformer` for
     /// more detail.
     @Alias //
-    ConcurrentHashMap<String, ?> packages;
+    ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages;
+
+    @Alias
+    native Target_java_lang_NamedPackage getNamedPackage(String pn, Module m);
 
     /**
      * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
@@ -457,6 +460,10 @@ final class Target_java_lang_AssertionStatusDirectives {
     @Alias String[] packages;
     @Alias boolean[] packageEnabled;
     @Alias boolean deflt;
+}
+
+@TargetClass(className = "java.lang.NamedPackage") //
+final class Target_java_lang_NamedPackage {
 }
 
 @TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")

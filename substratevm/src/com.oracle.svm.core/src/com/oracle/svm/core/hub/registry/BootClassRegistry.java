@@ -137,7 +137,7 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
             if (classFileBytes != null) {
                 recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
             } else {
-                BootLoaderPackageAccess.defineBootModulePackageForPackage(internalPackageName);
+                BootLoaderPackageAccess.ensureNamedPackageExists(internalPackageName, loaded.getModule());
             }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
             return loaded;

@@ -743,9 +743,6 @@ final class Target_jdk_internal_loader_BootLoader {
 @TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
 final class Target_jdk_internal_loader_BootLoader_PackageHelper {
 
-    @Alias
-    static native Package definePackage(String packageName, String location);
-
     /// Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
     ///
     /// This intentionally accepts only `jrt:/` module locations. The original JDK implementation also
