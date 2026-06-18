@@ -31,10 +31,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
+import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -73,7 +73,7 @@ public class OperatingSystem {
     }
 
     public UnsignedWord getPhysicalMemorySize() {
-        UnsignedWord value = ImageSingletons.lookup(PhysicalMemory.PhysicalMemorySupport.class).size();
+        UnsignedWord value = ImageSingletons.lookup(PlatformPhysicalMemorySupport.class).size();
         cachedPhysicalMemorySize = value;
         return value;
     }

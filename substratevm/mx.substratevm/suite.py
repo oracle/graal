@@ -2409,6 +2409,9 @@ suite = {
                 },
                 "<others>": {
                     "layout": {
+                        "./": [
+                            "file:src/com.oracle.svm.core/src/com/oracle/svm/core/gc/shared/include",
+                        ],
                         # on all other os's we don't want libc specific subdirectories
                         "include/": [
                             "dependency:com.oracle.svm.native.libchelper/include/*",

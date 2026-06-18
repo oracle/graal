@@ -24,29 +24,30 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.posix.headers.darwin.Sysctl;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
-class DarwinPhysicalMemorySupportImpl implements PhysicalMemorySupport {
-
+public class DarwinPhysicalMemorySupportImpl extends PlatformPhysicalMemorySupport {
     @Override
     public UnsignedWord size() {
         CIntPointer namePointer = UnsafeStackValue.get(2, CIntPointer.class);
@@ -58,9 +59,24 @@ class DarwinPhysicalMemorySupportImpl implements PhysicalMemorySupport {
         physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
         final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, Word.nullPointer(), 0);
         if (sysctlResult != 0) {
-            Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
-            throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
+            Log.log().string("DarwinPhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
+            throw VMError.shouldNotReachHere("DarwinPhysicalMemorySupportImpl.size() failed.");
         }
         return physicalMemoryPointer.read();
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class DarwinPhysicalMemorySupportFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(PlatformPhysicalMemorySupport.class)) {
+            ImageSingletons.add(PlatformPhysicalMemorySupport.class, new DarwinPhysicalMemorySupportImpl());
+        }
     }
 }

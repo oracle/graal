@@ -24,46 +24,22 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.management.ManagementFactory;
-
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import com.sun.management.OperatingSystemMXBean;
-import org.graalvm.word.impl.Word;
 
 /**
  * Contains static methods to get configuration of physical memory.
  */
 public class PhysicalMemory {
-
-    /** Implemented by operating-system specific code. */
-    public interface PhysicalMemorySupport {
-        /** Get the size of physical memory from the OS. */
-        UnsignedWord size();
-
-        /**
-         * Returns the amount of used physical memory in bytes, or -1 if not supported.
-         *
-         * This is used as a fallback in case {@link java.lang.management.OperatingSystemMXBean}
-         * cannot be used.
-         *
-         * @see PhysicalMemory#usedSize()
-         */
-        default long usedSize() {
-            return -1L;
-        }
-    }
-
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
@@ -93,15 +69,7 @@ public class PhysicalMemory {
 
     /** Returns the amount of used physical memory in bytes, or -1 if not supported. */
     public static long usedSize() {
-        // Windows, macOS, and containerized Linux use the OS bean.
-        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ||
-                        Platform.includedIn(Platform.MACOS.class) ||
-                        (Container.singleton().isContainerized() && Container.singleton().getMemoryLimitInBytes() > 0)) {
-            OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-            return osBean.getTotalMemorySize() - osBean.getFreeMemorySize();
-        }
-
-        return ImageSingletons.lookup(PhysicalMemory.PhysicalMemorySupport.class).usedSize();
+        return ImageSingletons.lookup(PlatformPhysicalMemorySupport.class).usedSize();
     }
 
     /**

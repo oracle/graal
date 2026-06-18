@@ -40,6 +40,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -234,13 +235,25 @@ public class NativeGCOptions {
         ArrayList<Field> result = new ArrayList<>();
         for (Class<?> clazz : optionClasses) {
             for (Field field : clazz.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) && OptionKey.class.isAssignableFrom(field.getType())) {
+                if (Modifier.isStatic(field.getModifiers()) && OptionKey.class.isAssignableFrom(field.getType()) && isOptionAvailable(field)) {
                     field.setAccessible(true);
                     result.add(field);
                 }
             }
         }
         return result;
+    }
+
+    /**
+     * Some options are platform-specific. We need to filter those to prevent that the C++ side
+     * complains that those options don't exist.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static boolean isOptionAvailable(Field field) {
+        if (!OS.LINUX.isCurrent()) {
+            return !field.getName().equals(UseContainerSupport.getName());
+        }
+        return true;
     }
 
     private static void validatePowerOfTwo(HostedOptionKey<Integer> optionKey) {
@@ -255,8 +268,8 @@ public class NativeGCOptions {
             return;
         }
 
-        if (!Platform.includedIn(Platform.LINUX_AMD64.class) && !Platform.includedIn(Platform.LINUX_AARCH64.class)) {
-            throw UserError.abort("The option '%s' can only be used on linux/amd64 or linux/aarch64.", optionKey.getName());
+        if (!Platform.includedIn(Platform.LINUX_AMD64.class) && !Platform.includedIn(Platform.LINUX_AARCH64.class) && !Platform.includedIn(Platform.DARWIN_AARCH64.class)) {
+            throw UserError.abort("The option '%s' can only be used on linux/amd64, linux/aarch64, or darwin/aarch64.", optionKey.getName());
         } else if (!SubstrateOptions.useG1GC()) {
             throw UserError.abort("The option '%s' can only be used with the G1 ('--gc=G1') garbage collector.", optionKey.getName());
         }
