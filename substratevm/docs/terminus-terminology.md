@@ -5,6 +5,9 @@ Project Terminus uses two related sets of terms:
 - Lifecycle terms describe when code or state is used.
 - Context terms describe which VM context owns code or state.
 
+For the broader design, see [Project Terminus](project-terminus.md).
+For API migration guidance, see [Project Terminus Migration Guide](terminus-migration.md).
+
 These terms are related, but they are not interchangeable.
 In particular, prefer **build-time code** over "hosted code" when discussing code that exists only while building an image.
 Do not use "hosted context" as a synonym for the builder context, because build-time code can also run in the guest context.

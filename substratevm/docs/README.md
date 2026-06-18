@@ -39,3 +39,7 @@ are unlikely to affect you unless you're working on container related code.
 Gate output artifacts (including any JFR dumps) are placed under `mxbuild/svmbuild`.  
 
 Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx gate` is invoked by GraalVM's CI system.
+
+## Project Terminus
+
+- [Project Terminus](project-terminus.md): overview and design direction for Native Image self-hosting.

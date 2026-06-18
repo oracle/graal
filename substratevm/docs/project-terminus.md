@@ -6,6 +6,11 @@ The goal is for Native Image to build a native executable of itself, so the resu
 The public tracking issue is [Project Terminus: Self-hosting Native Image](https://github.com/oracle/graal/issues/12236).
 Reference epic: `GR-66203`.
 
+Related documents:
+
+- [Project Terminus Terminology](terminus-terminology.md)
+- [Project Terminus Migration Guide](terminus-migration.md)
+
 ## Goals
 
 - Build Native Image as a native executable that does not require a host JVM.
