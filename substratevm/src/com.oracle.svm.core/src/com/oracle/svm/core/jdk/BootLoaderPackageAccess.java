@@ -24,44 +24,14 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.hub.registry.BootClassRegistry;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 /// Exposes package-private boot loader substitution state to `BootClassRegistry`.
 public final class BootLoaderPackageAccess {
     private BootLoaderPackageAccess() {
-    }
-
-    /// Lazily initialized map of a package name to the name of the
-    /// boot-loader loaded module whose descriptor [includes the package][java.lang.module.ModuleDescriptor#packages()].
-    private static volatile Map<String, String> bootPackageNameToModuleName;
-
-    /// Finds the boot-loader loaded module whose descriptor [includes][java.lang.module.ModuleDescriptor#packages()] `internalPackageName`.
-    ///
-    /// @param internalPackageName package name in internal format (e.g. `java/util`)
-    /// @return `null` if `internalPackageName` is not listed in any boot-loader loaded module descriptor
-    public static String bootModuleNameForPackage(String internalPackageName) {
-        String packageName = internalPackageName.replace('/', '.');
-        if (bootPackageNameToModuleName == null) {
-            synchronized (BootLoaderPackageAccess.class) {
-                if (bootPackageNameToModuleName == null) {
-                    Map<String, String> result = new HashMap<>();
-                    for (Module m : ModuleLayer.boot().modules()) {
-                        if (m.getClassLoader() == null) {
-                            for (String p : m.getDescriptor().packages()) {
-                                result.put(p, m.getName());
-                            }
-                        }
-                    }
-                    // Create an immutable copy of the map
-                    bootPackageNameToModuleName = Map.copyOf(result);
-                }
-            }
-        }
-        return bootPackageNameToModuleName.get(packageName);
     }
 
     /// Finds the named boot module for `internalPackageName` already defined to the boot loader.
@@ -75,7 +45,7 @@ public final class BootLoaderPackageAccess {
         if (!bootClassLoader.packages.containsKey(packageName)) {
             return null;
         }
-        return bootModuleNameForPackage(internalPackageName);
+        return BootClassRegistry.bootModuleNameForPackage(internalPackageName);
     }
 
     /// Defines the boot module package `internalPackageName` after runtime class loading has defined a class in it.
@@ -86,7 +56,7 @@ public final class BootLoaderPackageAccess {
         Target_jdk_internal_loader_BuiltinClassLoader bootLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
         Target_java_lang_ClassLoader bootClassLoader = SubstrateUtil.cast(bootLoader, Target_java_lang_ClassLoader.class);
         if (bootClassLoader.getDefinedPackage(packageName) == null) {
-            String moduleName = bootModuleNameForPackage(internalPackageName);
+            String moduleName = BootClassRegistry.bootModuleNameForPackage(internalPackageName);
             if (moduleName != null) {
                 Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), "jrt:/" + moduleName);
             }
