@@ -707,32 +707,6 @@ final class Target_jdk_internal_loader_BootLoader {
         return BootClassRegistry.getSystemPackageLocation(internalPackageName);
     }
 
-    /**
-     * Gets a package that has already been defined to the boot loader.
-     *
-     * The original JDK method can lazily define a package when
-     * {@code getSystemPackageLocation} finds a package in the VM's boot loader package table. This
-     * substitution keeps that shape, but the SVM location lookup is backed by
-     * {@link BootClassRegistry}: it returns a location only for packages that have already become
-     * visible to the boot loader through image build metadata or successful runtime class loading.
-     * This prevents module-descriptor entries from making unloaded boot-module packages observable.
-     */
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/classes/jdk/internal/loader/BootLoader.java#L193-L201")
-    private static Package getDefinedPackage(String packageName) {
-        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
-        Package definedPackage = systemClassLoader.getDefinedPackage(packageName);
-        if (definedPackage == null) {
-            String location = getSystemPackageLocation(packageName.replace('.', '/'));
-            if (location != null) {
-                definedPackage = Target_jdk_internal_loader_BootLoader_PackageHelper.definePackage(packageName.intern(), location);
-            }
-        }
-        return definedPackage;
-    }
-
     @SuppressWarnings({"unused", "restricted"})
     @Substitute
     private static void loadLibrary(String name) {
