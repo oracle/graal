@@ -1407,15 +1407,6 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Class<?> toClass(ResolvedJavaType resolvedJavaType) {
-        /*
-         * A resolved java type, at runtime, will always have a Java class. Hence, the below will
-         * never throw the implicit NPE as checked by getJavaClass().
-         */
-        return ((InterpreterResolvedJavaType) resolvedJavaType).getJavaClass();
-    }
-
-    @Override
     public Class<?> resolveOrThrow(Symbol<Type> type, ResolvedJavaType accessingClass) {
         int arrayDimensions = TypeSymbols.getArrayDimensions(type);
         Symbol<Type> elementalType;

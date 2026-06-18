@@ -58,20 +58,23 @@ public final class InterpreterFrameSourceInfo extends FrameSourceInfo {
         Objects.requireNonNull(sourceMethodName);
     }
 
-    public static InterpreterFrameSourceInfo forInterpretedMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, int bci, Object interpreterFrame,
-                    InterpreterFrameSourceInfo callerInfo) {
+    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci, Object interpreterFrame, InterpreterFrameSourceInfo callerInfo) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, interpreterFrame, callerInfo);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, interpreterFrame, callerInfo);
     }
 
-    public static InterpreterFrameSourceInfo forInterpretedMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, int bci) {
+    public static InterpreterFrameSourceInfo forInterpretedMethod(ResolvedJavaMethod interpretedMethod, int bci) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, null);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, null);
     }
 
-    public static InterpreterFrameSourceInfo forNativeMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
+    public static InterpreterFrameSourceInfo forNativeMethod(ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
         String sourceMethodName = interpretedMethod.getName();
-        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, LINENUMBER_NATIVE, -1, interpretedMethod, interpreterFrame);
+        return new InterpreterFrameSourceInfo(sourceClass(interpretedMethod), sourceMethodName, LINENUMBER_NATIVE, -1, interpretedMethod, interpreterFrame);
+    }
+
+    private static Class<?> sourceClass(ResolvedJavaMethod interpretedMethod) {
+        return InterpreterSupport.singleton().toClass(interpretedMethod.getDeclaringClass());
     }
 
     private static int sourceLineNumber(ResolvedJavaMethod interpretedMethod, int bci) {

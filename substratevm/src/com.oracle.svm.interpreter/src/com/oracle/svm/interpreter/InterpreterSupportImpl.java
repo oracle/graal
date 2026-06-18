@@ -30,6 +30,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -93,16 +94,18 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     private final int interpretedFrameSlot;
     private final int intrinsicMethodSlot;
     private final int intrinsicFrameSlot;
+    private final int interpreterJNIDowncallMethodSlot;
     private final ConcurrentHashMap<PreparedSignature, PreparedSignature> preparedSignatures;
     private final ConcurrentHashMap<PreparedSignature, PreparedSignature> preparedJNISignatures;
 
-    InterpreterSupportImpl(int bciSlot, int startBCISlot, int interpretedMethodSlot, int interpretedFrameSlot, int intrinsicMethodSlot, int intrinsicFrameSlot) {
+    InterpreterSupportImpl(int bciSlot, int startBCISlot, int interpretedMethodSlot, int interpretedFrameSlot, int intrinsicMethodSlot, int intrinsicFrameSlot, int interpreterJNIDowncallMethodSlot) {
         this.bciSlot = bciSlot;
         this.startBCISlot = startBCISlot;
         this.interpretedMethodSlot = interpretedMethodSlot;
         this.interpretedFrameSlot = interpretedFrameSlot;
         this.intrinsicMethodSlot = intrinsicMethodSlot;
         this.intrinsicFrameSlot = intrinsicFrameSlot;
+        this.interpreterJNIDowncallMethodSlot = interpreterJNIDowncallMethodSlot;
         this.preparedSignatures = new ConcurrentHashMap<>();
         this.preparedJNISignatures = new ConcurrentHashMap<>();
     }
@@ -186,6 +189,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
+    public Class<?> toClass(ResolvedJavaType resolvedJavaType) {
+        /*
+         * A resolved java type, at runtime, will always have a Java class. Hence, the below will
+         * never throw the implicit NPE as checked by getJavaClass().
+         */
+        return ((InterpreterResolvedJavaType) resolvedJavaType).getJavaClass();
+    }
+
+    @Override
     public DeoptimizedFrame createInterpreterDeoptimizedFrame(SubstrateInstalledCode installedCode, Deoptimizer deoptimizer, CodePointer pc, FrameInfoQueryResult frameInfo,
                     CodeInfoQueryResult physicalFrame, boolean eager) {
         if (!(installedCode instanceof RistrettoInstalledCode rCode)) {
@@ -226,7 +238,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInterpreterRoot(FrameInfoQueryResult frameInfo) {
-        return isInterpreterBytecodeRoot(frameInfo) || isInterpreterIntrinsicRoot(frameInfo);
+        return isInterpreterBytecodeRoot(frameInfo) || isInterpreterIntrinsicRoot(frameInfo) || isInterpreterJNIDowncallRoot(frameInfo);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -237,6 +249,11 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isInterpreterIntrinsicRoot(FrameInfoQueryResult frameInfo) {
         return Interpreter.IntrinsicRoot.class == frameInfo.getSourceClass();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean isInterpreterJNIDowncallRoot(FrameInfoQueryResult frameInfo) {
+        return Interpreter.JNIDowncallRoot.class == frameInfo.getSourceClass();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -269,6 +286,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return null;
         }
         FrameInfoQueryResult.ValueInfo valueInfo = valueInfos[intrinsicMethodSlot];
+        return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
+    }
+
+    private InterpreterResolvedJavaMethod readInterpreterJNIDowncallMethod(FrameInfoQueryResult frameInfo, Pointer sp) {
+        FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
+        if (interpreterJNIDowncallMethodSlot >= valueInfos.length) {
+            return null;
+        }
+        FrameInfoQueryResult.ValueInfo valueInfo = valueInfos[interpreterJNIDowncallMethodSlot];
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
@@ -350,6 +376,10 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             InterpreterFrame interpreterFrame = readIntrinsicFrame(frameInfo, sp);
             return createIntrinsicMethodFrameInfo(frameInfo, intrinsicMethod, interpreterFrame);
         }
+        if (isInterpreterJNIDowncallRoot(frameInfo)) {
+            InterpreterResolvedJavaMethod nativeMethod = readInterpreterJNIDowncallMethod(frameInfo, sp);
+            return createNativeMethodFrameInfo(frameInfo, nativeMethod);
+        }
         throw VMError.shouldNotReachHereAtRuntime();
     }
 
@@ -393,7 +423,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             VMError.shouldNotReachHere(sb.toString());
         }
         InterpreterFrameSourceInfo stackTraceCallerInfo = interpreterFrame.getStackTraceCallerInfo();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, bci, interpreterFrame, stackTraceCallerInfo);
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, interpreterFrame, stackTraceCallerInfo);
     }
 
     private static FrameSourceInfo createIntrinsicMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod intrinsicMethod, InterpreterFrame interpreterFrame) {
@@ -408,7 +438,14 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             sb.append(") at ").append(frameInfo.getSourceReference());
             VMError.shouldNotReachHere(sb.toString());
         }
-        return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod.getDeclaringClass().getJavaClass(), intrinsicMethod, interpreterFrame);
+        return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod, interpreterFrame);
+    }
+
+    private static FrameSourceInfo createNativeMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod nativeMethod) {
+        if (nativeMethod == null) {
+            VMError.shouldNotReachHere("Failed to retrieve interpreter JNI downcall method at " + frameInfo.getSourceReference());
+        }
+        return InterpreterFrameSourceInfo.forNativeMethod(nativeMethod, null);
     }
 
     @Override
@@ -425,7 +462,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
          * the method object but does not carry the normal source-class/source-method fields.
          */
         InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, frameInfo.getBci());
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci());
     }
 
     @Override

@@ -839,7 +839,7 @@ public final class InterpreterToVM {
         // All done, we can do the call.
         try {
             if (callRuntimeLoadedJNI) {
-                return InterpreterStubSection.leaveInterpreterJNI(target, calleeArgs);
+                return Interpreter.JNIDowncallRoot.execute(target, calleeArgs);
             } else if (callAOTEntryPoint) {
                 return InterpreterStubSection.leaveInterpreter(target.getNativeEntryPoint(), target, calleeArgs);
             } else {
