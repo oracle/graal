@@ -42,4 +42,4 @@ Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx ga
 
 ## Project Terminus
 
-- [Project Terminus](project-terminus.md): overview and design direction for Native Image self-hosting.
+- [Project Terminus](project-terminus.md): overview and design direction for self-hosting Native Image.

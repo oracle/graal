@@ -19,11 +19,14 @@ Do not use "hosted context" as a synonym for the builder context, because build-
 <details>
 <summary>Diagram maintenance</summary>
 
-The editable diagram source is available in [terminus-terminology.drawio](images/terminus-terminology.drawio).
+The editable diagram source is embedded in [terminus-terminology.svg](images/terminus-terminology.svg).
+Open the SVG in diagrams.net or draw.io to edit it.
 After editing the diagram, regenerate the SVG from the _images_ directory:
+
 ```shell
-drawio --export --output terminus-terminology.svg terminus-terminology.drawio
+drawio --export --embed-diagram --output terminus-terminology.svg terminus-terminology.svg
 ```
+
 </details>
 
 ## Terms

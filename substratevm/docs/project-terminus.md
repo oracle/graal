@@ -31,14 +31,14 @@ That opens the door to running the builder in environments where porting or supp
 
 ## Build Time and Run Time
 
-Project Terminus uses these terms.
-For a more detailed terminology diagram, see [Project Terminus Terminology](terminus-terminology.md).
+Differentiating and defining the terms "build time" and "run time" is vital for a deep and clear understanding of Terminus.
+A detailed [Project Terminus Terminology](terminus-terminology.md) diagram helps separate those terms.
 
 - Build time is the execution of Native Image that processes classes and JAR files to build a native executable.
 - Run time is the execution of the generated native executable.
 
 The current implementation historically mixes build-time and run-time state because the builder uses the HotSpot heap as the source heap for image heap construction.
-Project Terminus separates those concerns more explicitly.
+Project Terminus separates those concerns by using technically separate contexts.
 
 ## Host and Guest Contexts
 
