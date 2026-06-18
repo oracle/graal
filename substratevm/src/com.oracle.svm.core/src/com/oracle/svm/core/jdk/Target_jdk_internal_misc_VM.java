@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Map;
 
-import com.oracle.svm.core.JavaMainWrapper.ArgsSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.ArgsSupport;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {

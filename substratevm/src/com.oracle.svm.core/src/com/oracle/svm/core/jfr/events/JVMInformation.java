@@ -28,7 +28,7 @@ import java.lang.management.ManagementFactory;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.shared.Uninterruptible;
 
 public class JVMInformation {
@@ -79,8 +79,8 @@ public class JVMInformation {
     public static JVMInformation getJVMInfo() {
         JVMInformation jvmInfo = new JVMInformation();
 
-        if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
-            JavaMainWrapper.JavaMainSupport support = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class);
+        if (ImageSingletons.contains(JavaMainSupport.class)) {
+            JavaMainSupport support = ImageSingletons.lookup(JavaMainSupport.class);
 
             jvmInfo.jvmName = System.getProperty("java.vm.name");
             jvmInfo.jvmVersion = System.getProperty("java.vm.version");
@@ -94,7 +94,8 @@ public class JVMInformation {
         return jvmInfo;
     }
 
-    private static String getVmArgs(JavaMainWrapper.JavaMainSupport support) {
+    /** Returns VM input arguments as a single command-line string. */
+    private static String getVmArgs(JavaMainSupport support) {
         StringBuilder vmArgs = new StringBuilder();
 
         for (String arg : support.getInputArguments()) {
