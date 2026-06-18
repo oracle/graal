@@ -86,6 +86,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import jdk.graal.compiler.lir.aarch64.AArch64Adler32UpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CountPositivesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CRC32CUpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CRC32UpdateBytesOp;
@@ -1023,6 +1024,21 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(rLen, length);
         append(new AArch64CRC32UpdateBytesOp(rResult, rCrc, rBuf, rLen));
         Variable result = newVariable(crc.getValueKind());
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitAdler32UpdateBytes(EnumSet<?> runtimeCheckedCPUFeatures, Value adler, Value bufferAddress, Value length) {
+        RegisterValue rResult = AArch64.r0.asValue(adler.getValueKind());
+        RegisterValue rAdler = AArch64.r0.asValue(adler.getValueKind());
+        RegisterValue rBuf = AArch64.r1.asValue(bufferAddress.getValueKind());
+        RegisterValue rLen = AArch64.r2.asValue(length.getValueKind());
+        emitMove(rAdler, adler);
+        emitMove(rBuf, bufferAddress);
+        emitMove(rLen, length);
+        append(new AArch64Adler32UpdateBytesOp(rResult, rAdler, rBuf, rLen));
+        Variable result = newVariable(adler.getValueKind());
         emitMove(result, rResult);
         return result;
     }

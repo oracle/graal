@@ -678,6 +678,7 @@ public abstract class AArch64ASIMDAssembler {
         PMULL(0b1110 << 12),
         USUBL(UBit | 0b0010 << 12),
         UMLAL(UBit | 0b1000 << 12),
+        UMULL(UBit | 0b1100 << 12),
         UMLSL(UBit | 0b1010 << 12),
 
         /*
@@ -3993,7 +3994,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.367 Unsigned Multiply-Add Long.<br>
+     * C7.2.367 UMLAL (vector). Unsigned Multiply-Add Long.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += uint_multiply(src1[i], src2[i])</code>
      *
@@ -4010,6 +4011,26 @@ public abstract class AArch64ASIMDAssembler {
         assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.UMLAL, false, elemSizeXX(srcESize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.367 UMLAL2 (vector). Unsigned Multiply-Add Long, second half.<br>
+     *
+     * <code>for i in 0..n-1 do dst[i] += uint_multiply(src1[i+n], src2[i+n])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void umlal2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
+
+        threeDifferentEncoding(ASIMDInstruction.UMLAL, true, elemSizeXX(srcESize), dst, src1, src2);
     }
 
     /**
@@ -4047,6 +4068,26 @@ public abstract class AArch64ASIMDAssembler {
         assert src.getRegisterCategory().equals(SIMD) : src;
 
         copyEncoding(ASIMDInstruction.UMOV, eSize == ElementSize.DoubleWord, eSize, dst, src, index);
+    }
+
+    /**
+     * C7.2.373 UMULL (vector). Unsigned Multiply Long.<br>
+     *
+     * <code>for i in 0..n-1 do dst[i] = uint_multiply(src1[i], src2[i])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void umullVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
+
+        threeDifferentEncoding(ASIMDInstruction.UMULL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
 
     /**

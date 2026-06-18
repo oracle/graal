@@ -130,6 +130,7 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import jdk.graal.compiler.lir.amd64.AMD64Adler32UpdateBytesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CountPositivesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CRC32CUpdateBytesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CRC32UpdateBytesOp;
@@ -1587,6 +1588,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rLen, length);
         append(new AMD64CRC32UpdateBytesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rResult, rCrc, rBuf, rLen));
         Variable result = newVariable(crc.getValueKind());
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitAdler32UpdateBytes(EnumSet<?> runtimeCheckedCPUFeatures, Value adler, Value bufferAddress, Value length) {
+        RegisterValue rResult = AMD64.rax.asValue(adler.getValueKind());
+        RegisterValue rAdler = AMD64.rdi.asValue(adler.getValueKind());
+        RegisterValue rBuf = AMD64.rsi.asValue(bufferAddress.getValueKind());
+        RegisterValue rLen = AMD64.rdx.asValue(length.getValueKind());
+        emitMove(rAdler, adler);
+        emitMove(rBuf, bufferAddress);
+        emitMove(rLen, length);
+        append(new AMD64Adler32UpdateBytesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, getAVX3Threshold(), rResult, rAdler, rBuf, rLen));
+        Variable result = newVariable(adler.getValueKind());
         emitMove(result, rResult);
         return result;
     }

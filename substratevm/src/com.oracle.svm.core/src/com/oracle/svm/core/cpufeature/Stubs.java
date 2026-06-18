@@ -50,6 +50,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
@@ -105,23 +106,56 @@ public final class Stubs {
         public static final EnumSet<AMD64.CPUFeature> KYBER_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
+            if (Adler32UpdateBytesNode.class.equals(klass)) {
+                return Adler32UpdateBytesNode.maxFeaturesAMD64();
+            }
             if (AESNode.class.equals(klass)) {
                 return AESNode.minFeaturesAMD64();
             }
-            if (CounterModeAESNode.class.equals(klass)) {
-                return CounterModeAESNode.minFeaturesAMD64();
+            if (Base64DecodeBlockNode.class.equals(klass)) {
+                return Base64DecodeBlockNode.minFeaturesAMD64();
+            }
+            if (Base64EncodeBlockNode.class.equals(klass)) {
+                return Base64EncodeBlockNode.minFeaturesAMD64();
+            }
+            if (BigIntegerLeftShiftWorkerNode.class.equals(klass)) {
+                return BigIntegerLeftShiftWorkerNode.minFeaturesAMD64();
+            }
+            if (BigIntegerMontgomeryMultiplyNode.class.equals(klass) || BigIntegerMontgomerySquareNode.class.equals(klass)) {
+                return BASELINE_CPU_FEATURES_AMD64;
+            }
+            if (BigIntegerMulAddNode.class.equals(klass)) {
+                return BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64;
+            }
+            if (BigIntegerMultiplyToLenNode.class.equals(klass)) {
+                return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
+            }
+            if (BigIntegerRightShiftWorkerNode.class.equals(klass)) {
+                return BigIntegerRightShiftWorkerNode.minFeaturesAMD64();
+            }
+            if (BigIntegerSquareToLenNode.class.equals(klass)) {
+                return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
+            }
+            if (ChaCha20Node.class.equals(klass)) {
+                return ChaCha20Node.minFeaturesAMD64();
             }
             if (CipherBlockChainingAESNode.class.equals(klass)) {
                 return CipherBlockChainingAESNode.minFeaturesAMD64();
             }
-            if (ElectronicCodeBookAESNode.class.equals(klass)) {
-                return ElectronicCodeBookAESNode.minFeaturesAMD64();
+            if (CounterModeAESNode.class.equals(klass)) {
+                return CounterModeAESNode.minFeaturesAMD64();
+            }
+            if (CRC32CUpdateBytesNode.class.equals(klass)) {
+                return CRC32CUpdateBytesNode.maxFeaturesAMD64();
+            }
+            if (CRC32UpdateBytesNode.class.equals(klass)) {
+                return CRC32UpdateBytesNode.maxFeaturesAMD64();
             }
             if (isDilithiumNode(klass)) {
                 return DilithiumNode.minFeaturesAMD64();
             }
-            if (ChaCha20Node.class.equals(klass)) {
-                return ChaCha20Node.minFeaturesAMD64();
+            if (ElectronicCodeBookAESNode.class.equals(klass)) {
+                return ElectronicCodeBookAESNode.minFeaturesAMD64();
             }
             if (GaloisCounterModeAESNode.class.equals(klass)) {
                 return GaloisCounterModeAESNode.maxFeaturesAMD64();
@@ -129,32 +163,20 @@ public final class Stubs {
             if (GHASHProcessBlocksNode.class.equals(klass)) {
                 return GHASH_CPU_FEATURES_AMD64;
             }
-            if (Base64EncodeBlockNode.class.equals(klass)) {
-                return Base64EncodeBlockNode.minFeaturesAMD64();
+            if (KyberNttNode.class.equals(klass) ||
+                            KyberInverseNttNode.class.equals(klass) ||
+                            KyberNttMultNode.class.equals(klass) ||
+                            KyberAddPoly2Node.class.equals(klass) ||
+                            KyberAddPoly3Node.class.equals(klass) ||
+                            Kyber12To16Node.class.equals(klass) ||
+                            KyberBarrettReduceNode.class.equals(klass)) {
+                return KYBER_CPU_FEATURES_AMD64;
             }
-            if (Base64DecodeBlockNode.class.equals(klass)) {
-                return Base64DecodeBlockNode.minFeaturesAMD64();
+            if (MD5Node.class.equals(klass)) {
+                return BASELINE_CPU_FEATURES_AMD64;
             }
             if (Poly1305ProcessBlocksNode.class.equals(klass)) {
                 return Poly1305ProcessBlocksNode.maxFeaturesAMD64();
-            }
-            if (BigIntegerMultiplyToLenNode.class.equals(klass)) {
-                return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
-            }
-            if (BigIntegerMulAddNode.class.equals(klass)) {
-                return BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64;
-            }
-            if (BigIntegerSquareToLenNode.class.equals(klass)) {
-                return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
-            }
-            if (BigIntegerMontgomeryMultiplyNode.class.equals(klass) || BigIntegerMontgomerySquareNode.class.equals(klass)) {
-                return BASELINE_CPU_FEATURES_AMD64;
-            }
-            if (BigIntegerLeftShiftWorkerNode.class.equals(klass)) {
-                return BigIntegerLeftShiftWorkerNode.minFeaturesAMD64();
-            }
-            if (BigIntegerRightShiftWorkerNode.class.equals(klass)) {
-                return BigIntegerRightShiftWorkerNode.minFeaturesAMD64();
             }
             if (SHA1Node.class.equals(klass)) {
                 return SHA1Node.minFeaturesAMD64();
@@ -167,24 +189,6 @@ public final class Stubs {
             }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAMD64();
-            }
-            if (MD5Node.class.equals(klass)) {
-                return BASELINE_CPU_FEATURES_AMD64;
-            }
-            if (CRC32UpdateBytesNode.class.equals(klass)) {
-                return CRC32UpdateBytesNode.maxFeaturesAMD64();
-            }
-            if (CRC32CUpdateBytesNode.class.equals(klass)) {
-                return CRC32CUpdateBytesNode.maxFeaturesAMD64();
-            }
-            if (KyberNttNode.class.equals(klass) ||
-                            KyberInverseNttNode.class.equals(klass) ||
-                            KyberNttMultNode.class.equals(klass) ||
-                            KyberAddPoly2Node.class.equals(klass) ||
-                            KyberAddPoly3Node.class.equals(klass) ||
-                            Kyber12To16Node.class.equals(klass) ||
-                            KyberBarrettReduceNode.class.equals(klass)) {
-                return KYBER_CPU_FEATURES_AMD64;
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
