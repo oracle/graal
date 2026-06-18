@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public abstract class IntegerExactOverflowNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Simplifiable {
@@ -77,8 +78,10 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
     }
 
     /**
-     * Make sure the overflow detection nodes have the same order of inputs as the exact arithmetic
-     * nodes.
+     * Commutes this overflow check's inputs into a canonical order and performs deduplication.
+     * Coupling in {@link #simplify} cannot rely on the coupled exact arithmetic nodes having the
+     * same input order: {@link #simplify} may run before those nodes are canonicalized, and only
+     * one side of the coupled pair may contain a Pi-refined input.
      *
      * @return the original node or another node with the same inputs, ignoring ordering.
      */
@@ -118,13 +121,17 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
             // linked to the BeginNode of the false branch.
             List<? extends BinaryNode> coupledNodes = next.usages().filter(getCoupledType()).filter(n -> {
                 BinaryNode exact = (BinaryNode) n;
-                return exact.getX() == getX() && exact.getY() == getY();
+                /*
+                 * Commutative exact nodes are not guaranteed to be canonicalized when this method
+                 * runs. Match both input orders here, after skipping Pi nodes that can be
+                 * introduced on only one side of the coupled pair.
+                 */
+                return inputsMatch(exact, getX(), getY()) ||
+                                this instanceof BinaryCommutative && inputsMatch(exact, getY(), getX());
             }).snapshot();
 
+            // Exact arithmetic nodes use unrestricted result stamps, so the split does too.
             Stamp splitStamp = x.stamp(NodeView.DEFAULT).unrestricted();
-            if (!coupledNodes.isEmpty()) {
-                splitStamp = coupledNodes.iterator().next().stamp(NodeView.DEFAULT);
-            }
             IntegerExactArithmeticSplitNode split = graph().add(createSplit(splitStamp, next, overflow));
             ifNode.replaceAndDelete(split);
 
@@ -137,5 +144,10 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
              */
             safeDelete();
         }
+    }
+
+    private static boolean inputsMatch(BinaryNode exact, ValueNode x, ValueNode y) {
+        return GraphUtil.skipPi(exact.getX()) == GraphUtil.skipPi(x) &&
+                        GraphUtil.skipPi(exact.getY()) == GraphUtil.skipPi(y);
     }
 }
