@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
-## Version 25.1.0
+## Version 25.1.3
 * GR-72122: `--cpusampler.DumpInterval` and `--cpusampler.ResetAfterIntervalDump` options were added to dump the sampler output at a specified interval, optionally clearing all sampler data after each dump. Interval-based dumping is disabled by default; the sampler output is dumped only at the end.
   * `CPUSampler#addProcessSampleListener` was added to allow users to receive notifications when sampling results are processed. The new interval-based dumping feature uses this API internally.
 * GR-72763 [PR-12760](https://github.com/oracle/graal/pull/12760) Enhanced GraalVM Insight to allow tracking reads and writes of local variables

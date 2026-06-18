@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
-## Version 25.1.0
+## Version 25.1.3
 * Updated JS and Python regex flavors to Unicode 17.0.
 
 ## Version 25.0.0
