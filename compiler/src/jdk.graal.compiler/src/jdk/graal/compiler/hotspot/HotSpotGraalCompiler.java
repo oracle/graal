@@ -259,10 +259,15 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
          * root methods isn't required for correctness.
          */
 
+        /*
+         * Retry diagnostics must finish even after VM shutdown starts.
+         */
+        Cancellable cancellable = debug.inRetryCompilation() ? null : this;
+
         // @formatter:off
         return new StructuredGraph.Builder(options, debug, allowAssumptions).
                                    method(method).
-                                   cancellable(this).
+                                   cancellable(cancellable).
                                    entryBCI(entryBCI).
                                    speculationLog(speculationLog).
                                    profileProvider(profileProvider).

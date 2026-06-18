@@ -25,6 +25,7 @@
 package jdk.graal.compiler.debug;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -41,6 +42,10 @@ public class DiagnosticsOutputDirectory {
      */
     private static final String CLOSED = "\u0000";
 
+    private static final long CLOSE_WAIT_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(120);
+
+    private static final long CLOSE_WAIT_PROGRESS_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(15);
+
     public DiagnosticsOutputDirectory(OptionValues options) {
         this.options = options;
     }
@@ -48,6 +53,43 @@ public class DiagnosticsOutputDirectory {
     private final OptionValues options;
 
     private String path;
+
+    private int activeOutputScopes;
+
+    private boolean closing;
+
+    /**
+     * Opens a scope for code that may write files into this diagnostics directory.
+     *
+     * Closing this diagnostics directory waits until all open output scopes are closed before
+     * archiving and deleting the directory. Closing the returned object marks this scope as
+     * complete. If this was the last open scope, it notifies any thread that is waiting for that
+     * condition while closing this diagnostics directory.
+     *
+     * This method returns {@code null} if closing has already started.
+     */
+    public synchronized DebugCloseable openOutputScope() {
+        if (closing || CLOSED.equals(path)) {
+            return null;
+        }
+        activeOutputScopes++;
+        return new DebugCloseable() {
+            private boolean closed;
+
+            @Override
+            public void close() {
+                synchronized (DiagnosticsOutputDirectory.this) {
+                    if (!closed) {
+                        closed = true;
+                        activeOutputScopes--;
+                        if (activeOutputScopes == 0) {
+                            DiagnosticsOutputDirectory.this.notifyAll();
+                        }
+                    }
+                }
+            }
+        };
+    }
 
     /**
      * Gets the path to the output directory managed by this object, creating if it doesn't exist
@@ -60,6 +102,9 @@ public class DiagnosticsOutputDirectory {
     }
 
     private synchronized String getPath(boolean createIfNull) {
+        if (closing) {
+            return null;
+        }
         if (path == null && createIfNull) {
             path = createPath();
             String dir = PathUtilities.getAbsolutePath(path);
@@ -109,7 +154,41 @@ public class DiagnosticsOutputDirectory {
      * Archives and deletes the {@linkplain #getPath() output directory} if it exists.
      */
     private synchronized void archiveAndDelete() {
-        String outDir = getPath(false);
+        closing = true;
+        boolean interrupted = false;
+        long waitStart = System.nanoTime();
+        long deadline = waitStart + CLOSE_WAIT_TIMEOUT_NANOS;
+        while (activeOutputScopes != 0) {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+                String outDir = CLOSED.equals(path) ? null : path;
+                if (outDir == null) {
+                    TTY.printf("Warning: timed out waiting for %d Graal diagnostic output scope(s) to close before any diagnostic directory was created%n", activeOutputScopes);
+                } else {
+                    TTY.printf("Warning: timed out waiting for %d Graal diagnostic output scope(s) to close; leaving %s unarchived%n", activeOutputScopes, outDir);
+                }
+                return;
+            }
+            try {
+                TimeUnit.NANOSECONDS.timedWait(this, Math.min(remaining, CLOSE_WAIT_PROGRESS_INTERVAL_NANOS));
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+            if (activeOutputScopes != 0 && System.nanoTime() < deadline) {
+                TTY.printf("After waiting %d seconds, %d Graal diagnostic output scope(s) are still open; will wait before archiving until an overall limit of %d seconds%n",
+                                TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStart),
+                                activeOutputScopes,
+                                TimeUnit.NANOSECONDS.toSeconds(CLOSE_WAIT_TIMEOUT_NANOS));
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+
+        String outDir = CLOSED.equals(path) ? null : path;
         if (outDir != null) {
             // Notify other threads calling getPath() that the directory is deleted.
             // This attempts to mitigate other threads writing to the directory
