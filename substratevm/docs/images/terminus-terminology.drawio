@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" version="29.5.1">
+  <diagram id="iKYTfrEb95aANMlhn_hy" name="Page-1">
+    <mxGraphModel dx="2605" dy="1435" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="MTA0_AswAKCiOG2Sp2BP-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="590" width="390" x="-500" y="-160" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="220" width="370" x="-490" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="275" width="350" x="-90" y="-105" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="275" width="370" x="-490" y="-105" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-1" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="-650" y="180" as="sourcePoint" />
+            <mxPoint x="230" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-2" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;strokeWidth=5;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="-100" y="390" as="sourcePoint" />
+            <mxPoint x="-100" y="-90" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-3" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;rounded=0;" value="&lt;div&gt;&lt;font style=&quot;font-size: 23px;&quot;&gt;build time&lt;/font&gt;&lt;/div&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;(hosted)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="180" x="-700" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-4" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;run time&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="180" x="-700" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-5" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;builder (vm) context&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="210" x="-10" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;build-time&amp;nbsp;&lt;/font&gt;&lt;font style=&quot;font-size: 23px;&quot;&gt;guest context&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="310" x="-460" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillOpacity=100;fillColor=#d5e8d4;strokeColor=#82b366;align=left;" value="&lt;div align=&quot;left&quot;&gt;&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;JDK code&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Native Image runtime API&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Word API&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;SVM image code (GC, etc.)&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;div&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Application code&lt;/font&gt;&lt;/div&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="420" width="330" x="-470" y="-50" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillOpacity=100;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" value="&lt;div align=&quot;left&quot;&gt;&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Builder code:&lt;/font&gt;&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Graal compiler&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Analysis&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Heap snapshotting&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Object file...&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="290" x="-50" y="-30" as="geometry" />
+        </mxCell>
+        <mxCell id="GfOr3tnC4TD4fQFzug73-14" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;run-time guest context&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="270" x="-440" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="MTA0_AswAKCiOG2Sp2BP-4" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;rounded=0;fontColor=#333333;" value="&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Native Image hosted API&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Native Image hosted helpers&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Application features&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;" vertex="1">
+          <mxGeometry height="80" width="290" x="-450" y="-7.5" as="geometry" />
+        </mxCell>
+        <mxCell id="MTA0_AswAKCiOG2Sp2BP-6" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 19px;&quot;&gt;&lt;b&gt;guest context&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="-375" y="-140" as="geometry" />
+        </mxCell>
+        <mxCell id="C2dtNZkKGMzv1wSE4TkI-1" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="GfOr3tnC4TD4fQFzug73-12" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="-20" y="-160" as="sourcePoint" />
+            <mxPoint x="-190" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="C2dtNZkKGMzv1wSE4TkI-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontSize=21;" value="&lt;font&gt;This boundary is &lt;i&gt;Terminus&lt;/i&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="260" x="-10" y="-180" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

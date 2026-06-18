@@ -26,7 +26,8 @@ That opens the door to running the builder in environments where porting or supp
 
 ## Build Time and Run Time
 
-Project Terminus uses these terms:
+Project Terminus uses these terms.
+For a more detailed terminology diagram, see [Project Terminus Terminology](terminus-terminology.md).
 
 - Build time is the execution of Native Image that processes classes and JAR files to build a native executable.
 - Run time is the execution of the generated native executable.
