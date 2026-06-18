@@ -35,6 +35,23 @@ When migrating code for Terminus, prefer JVMCI- and VMAccess-based APIs over Jav
 | `Class.isAssignableFrom(Class)`                                                              | `ResolvedJavaType.isAssignableFrom(ResolvedJavaType)` or `ReflectionUtil.isAssignableFrom(Class, Class)` | Use `ResolvedJavaType` for runtime or guest types; `ReflectionUtil` is acceptable for known hosted literals when satisfying `VerifyReflectionUsage`. |
 | `ReflectionUtil.invokeMethod(...)`, `Method.invoke(...)`, and ordinary reflective invocation | `GuestAccess.get().invoke(...)`                                                                          | Preferred invocation path for guest methods. |
 
+## Moving code from host/core to guest or shared modules
+
+When moving runtime code from host/core modules into `com.oracle.svm.shared`,
+`com.oracle.svm.guest.staging`, or `com.oracle.svm.guest`, adapt APIs and comments that
+were only valid because the code previously lived with hosted or compiler dependencies.
+
+| Host/core pattern | Guest/shared adaptation | Notes |
+| --- | --- | --- |
+| Moving `com.oracle.svm.core...` code to guest staging | Insert `guest.staging` after `com.oracle.svm`, e.g., `com.oracle.svm.core.memory` to `com.oracle.svm.guest.staging.core.memory` | Preserve the original package suffix so moves stay mechanical and match prior Terminus refactorings. |
+| `jdk.graal.compiler.api.replacements.Fold` | `com.oracle.svm.shared.meta.GuestFold` | Use for Fold-like constants in runtime/guest-side code without adding a `jdk.graal.compiler` dependency. Folding is performed in the guest context. |
+| Javadoc `{@link ...}` to a target that is no longer visible after the move | Use `{@code ...}` | Preserve the referenced name in Javadoc without adding guest/shared dependencies only to keep documentation links resolvable. |
+
+For reviewability, prefer splitting broad moves into one commit for the real code movement and
+non-mechanical adaptations, followed by a second commit for mechanical import and reference
+adjustments caused by the move. The final tree should be validated as a whole; the split is meant to
+show reviewers which diff carries semantic risk and which diff is import fallout.
+
 ## Practical guidance
 
 ### Prefer guest-context APIs over host reflection

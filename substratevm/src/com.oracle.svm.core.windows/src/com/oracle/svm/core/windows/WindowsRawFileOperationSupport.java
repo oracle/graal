@@ -45,7 +45,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport;

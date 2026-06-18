@@ -22,20 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging.core;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * The methods in this class are mainly used to fill or copy unmanaged (i.e., <b>non</b>-Java heap)
  * memory. None of the methods cares about Java semantics like GC barriers or the Java memory model.
- * The valid use cases are listed below. For all other use cases, use {@link JavaMemoryUtil}
- * instead.
+ * The valid use cases are listed below. For all other use cases, use {@code JavaMemoryUtil} instead.
  * <ul>
  * <li>Copying between unmanaged memory.</li>
  * <li>Filling unmanaged memory.</li>
@@ -159,7 +159,7 @@ public final class UnmanagedMemoryUtil {
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void copyWordsForward(Pointer from, Pointer to, UnsignedWord size) {
-        int wordSize = SubstrateTarget.getWordSize();
+        int wordSize = SubstrateGuestTarget.getWordSize();
         int stepSize = 4 * wordSize;
         Pointer src = from;
         Pointer dst = to;

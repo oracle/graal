@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.memory;
+package com.oracle.svm.guest.staging.core.memory;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -30,11 +30,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.shared.meta.GuestFold;
 
 /**
  * Manages native memory. This class explicitly does <b>NOT</b> support native memory tracking
@@ -120,15 +119,15 @@ public class UntrackedNullableNativeMemory {
      * is {@code null}.
      * <p>
      * Note that this method must <b>NOT</b> be used to free memory that was allocated via classes
-     * that support native memory tracking (e.g., {@link NativeMemory} or
-     * {@link NullableNativeMemory}).
+     * that support native memory tracking, e.g., {@code NativeMemory} or
+     * {@code NullableNativeMemory}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void free(PointerBase ptr) {
         memory().free(ptr);
     }
 
-    @Fold
+    @GuestFold
     static UnmanagedMemorySupport memory() {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class);
     }

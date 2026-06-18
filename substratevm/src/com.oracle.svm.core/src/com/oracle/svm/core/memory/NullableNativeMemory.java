@@ -34,12 +34,13 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nmt.NmtMallocHeader;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.shared.Uninterruptible;
 import org.graalvm.word.impl.Word;
 
 /**

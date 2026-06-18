@@ -34,7 +34,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccessImpl;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;

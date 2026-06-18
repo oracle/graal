@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging.core;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
