@@ -31,10 +31,10 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 /** Constants for policy tunables. */
 interface AdaptiveCollectionPolicy2Tunables {
@@ -448,8 +448,8 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
     /** Should be called at the end of a major collection. */
     private void majorCollectionEnd() {
         majorTimer.stop();
+        recordGcDuration(majorTimer.lastStartedNanoTime(), majorTimer.totalNanos());
         double majorPauseInSeconds = TimeUtils.nanosToSecondsDouble(majorTimer.totalNanos());
-        recordGcDuration(majorPauseInSeconds);
         trimmedMajorGcTimeSeconds.add(majorPauseInSeconds);
     }
 
@@ -685,15 +685,15 @@ abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy im
         return trimmedMajorGcTimeSeconds.getSum();
     }
 
-    void recordGcDuration(double gcDuration) {
-        gcSamples.recordSample(gcDuration);
+    void recordGcDuration(long gcStartNanoTime, long gcDurationNanos) {
+        gcSamples.recordSample(gcStartNanoTime, gcDurationNanos);
     }
 
     /** Percent of GC wall-clock time. */
     double gcTimePercent() {
-        double totalTime = gcSamples.trimmedWindowDuration();
-        double gcTime = gcSamples.durationSum();
-        double gcPercent = gcTime / totalTime;
+        long totalTime = gcSamples.trimmedWindowDurationNanos();
+        long gcTime = gcSamples.durationSumNanos();
+        double gcPercent = (double) gcTime / totalTime;
         assert gcPercent <= 1.0;
         assert gcPercent >= 0;
         return gcPercent;
@@ -768,10 +768,9 @@ abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy im
     void minorCollectionEnd(UnsignedWord edenCapacityBytes) {
         minorTimer.stop();
 
-        double minorPauseInSeconds = TimeUtils.nanosToSecondsDouble(minorTimer.totalNanos());
-        double minorPauseInMs = minorPauseInSeconds * 1000;
+        recordGcDuration(minorTimer.lastStartedNanoTime(), minorTimer.totalNanos());
 
-        recordGcDuration(minorPauseInSeconds);
+        double minorPauseInSeconds = TimeUtils.nanosToSecondsDouble(minorTimer.totalNanos());
         trimmedMinorGcTimeSeconds.add(minorPauseInSeconds);
 
         if (!youngGenPolicyIsReady) {
@@ -785,6 +784,7 @@ abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy im
         }
 
         double edenSizeInMbytes = UnsignedUtils.toDouble(edenCapacityBytes) / (1024 * 1024);
+        double minorPauseInMs = minorPauseInSeconds * 1000;
         minorPauseYoungEstimator.update(edenSizeInMbytes, minorPauseInMs);
     }
 }
@@ -792,48 +792,45 @@ abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy im
 /**
  * A ring buffer with fixed size to record the most recent samples of GC duration (minor and major)
  * so that we can calculate mutator-wall-clock-time percentage for the given window.
+ *
+ * We use nanoseconds in longs to avoid issues from floating-point conversion.
  */
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp") // actually:jdk-26+25
 final class GCSampleRingBuffer {
-    private final double[] startInstants = new double[NUM_OF_GC_SAMPLE];
-    private final double[] durations = new double[NUM_OF_GC_SAMPLE];
-    private double durationSum = 0.0;
+    private final long[] startInstantsNanos = new long[NUM_OF_GC_SAMPLE];
+    private final long[] durationsNanos = new long[NUM_OF_GC_SAMPLE];
+    private long durationSumNanos = 0L;
     private int sampleIndex = 0;
     private int numOfSamples = 0;
 
-    double durationSum() {
-        return durationSum;
+    long durationSumNanos() {
+        return durationSumNanos;
     }
 
     /** Records a GC duration into the ring buffer. */
-    void recordSample(double gcDuration) {
+    void recordSample(long gcStartNanoTime, long gcDurationNanos) {
         if (numOfSamples < NUM_OF_GC_SAMPLE) {
             numOfSamples++;
         } else {
             assert numOfSamples == NUM_OF_GC_SAMPLE;
-            durationSum -= durations[sampleIndex];
+            durationSumNanos -= durationsNanos[sampleIndex];
         }
-        double gcStartInstant = elapsedTime() - gcDuration;
-        startInstants[sampleIndex] = gcStartInstant;
-        durations[sampleIndex] = gcDuration;
-        durationSum += gcDuration;
+        startInstantsNanos[sampleIndex] = gcStartNanoTime;
+        durationsNanos[sampleIndex] = gcDurationNanos;
+        durationSumNanos += gcDurationNanos;
 
         sampleIndex = (sampleIndex + 1) % NUM_OF_GC_SAMPLE;
     }
 
     /** Returns window length, i.e. time from oldest to now. */
-    double trimmedWindowDuration() {
-        double currentTime = elapsedTime();
-        double oldestGcStartInstant;
+    long trimmedWindowDurationNanos() {
+        long currentTimeNanos = System.nanoTime();
+        long oldestGcStartInstantNanos;
         if (numOfSamples < NUM_OF_GC_SAMPLE) {
-            oldestGcStartInstant = startInstants[0];
+            oldestGcStartInstantNanos = startInstantsNanos[0];
         } else {
-            oldestGcStartInstant = startInstants[sampleIndex];
+            oldestGcStartInstantNanos = startInstantsNanos[sampleIndex];
         }
-        return currentTime - oldestGcStartInstant;
-    }
-
-    private static double elapsedTime() {
-        return TimeUtils.nanosToSecondsDouble(System.nanoTime());
+        return currentTimeNanos - oldestGcStartInstantNanos;
     }
 }
