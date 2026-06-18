@@ -127,6 +127,7 @@ public class CGlobalDataFeature implements InternalFeature {
     private int totalSize = -1;
 
     private final Set<CodeLocation> seenCodeLocations = ImageLayerBuildingSupport.buildingImageLayer() ? ConcurrentHashMap.newKeySet() : null;
+    private final Set<String> appLayerForwardReferenceSymbols = ConcurrentHashMap.newKeySet();
 
     @SuppressWarnings("this-escape") //
     private final InitialLayerCGlobalTracking initialLayerCGlobalTracking = ImageLayerBuildingSupport.buildingInitialLayer() ? new InitialLayerCGlobalTracking(this) : null;
@@ -298,6 +299,7 @@ public class CGlobalDataFeature implements InternalFeature {
         if (tryCanonicalization && appLayerCGlobalTracking != null) {
             data = appLayerCGlobalTracking.getCanonicalRepresentation(data);
         }
+        registerAppLayerForwardReference(data);
 
         if (isLaidOut()) {
             var info = map.get(data);
@@ -365,6 +367,19 @@ public class CGlobalDataFeature implements InternalFeature {
         return map.entrySet().stream().filter(entry -> entry.getValue().isGlobalSymbol() && entry.getValue().isHiddenSymbol()).map(entry -> entry.getKey().symbolName).collect(Collectors.toSet());
     }
 
+    private void registerAppLayerForwardReference(CGlobalDataImpl<?> data) {
+        if (!data.appLayerForwardReference) {
+            return;
+        }
+        VMError.guarantee(ImageLayerBuildingSupport.buildingSharedLayer(), "Application layer forward references can only be registered in shared layers.");
+        VMError.guarantee(data.symbolName != null && data.isSymbolReference(), "Application layer forward references must be symbol references with symbol names: %s", data);
+        appLayerForwardReferenceSymbols.add(data.symbolName);
+    }
+
+    public boolean isAppLayerForwardReference(String symbolName) {
+        return symbolName != null && appLayerForwardReferenceSymbols.contains(symbolName);
+    }
+
     private Object replaceObject(Object obj) {
         if (obj instanceof CGlobalDataImpl<?> cglobal) {
             if (appLayerCGlobalTracking != null) {
@@ -425,7 +440,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     public interface SymbolConsumer {
-        void apply(int offset, String symbolName, boolean isGlobalSymbol);
+        void apply(int offset, String symbolName, boolean isGlobalSymbol, boolean isHiddenSymbol);
     }
 
     public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
@@ -445,10 +460,10 @@ public class CGlobalDataFeature implements InternalFeature {
                 bufferBytes.put(bytes, 0, bytes.length);
             }
             if (data.symbolName != null && !info.isSymbolReference()) {
-                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
+                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol(), info.isHiddenSymbol());
             }
             if (data.nonConstant && data.symbolName != null) {
-                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
+                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol(), info.isHiddenSymbol());
             }
         }
         if (initialLayerCGlobalTracking != null) {

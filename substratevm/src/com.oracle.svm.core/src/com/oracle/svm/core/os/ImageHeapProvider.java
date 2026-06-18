@@ -33,9 +33,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

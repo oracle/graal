@@ -241,11 +241,10 @@ public class PLTGOTFeature implements InternalFeature {
         // already been emitted.
         methodsForDirectGOTRelocation = null;
 
-        objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false);
-        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_BEGIN_SYMBOL_NAME, gotSection, 0, wordSize, false,
-                        SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionExtent.endOffset(), wordSize, false,
-                        SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+        objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false, false);
+        boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_BEGIN_SYMBOL_NAME, gotSection, 0, wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
+        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionExtent.endOffset(), wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
 
         if (PLTGOTOptions.PrintGOT.getValue()) {
             ReportUtils.report("GOT Section contents", SubstrateOptions.reportsPath(), "got", "txt", writer -> {

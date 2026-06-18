@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -45,8 +47,6 @@ import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -54,15 +54,18 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -95,6 +98,9 @@ import jdk.vm.ci.meta.JavaConstant;
  *  |  ..           | image heap field update patches       |
  *  ---------------------------------------------------------
  * </pre>
+ *
+ * On Windows, the PE/COFF runtime fixup table pointer is stored at offset 80 and variably-sized
+ * data starts at offset 88. This keeps the existing layout unchanged for other platforms.
  */
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -114,11 +120,12 @@ public final class ImageLayerSectionFeature implements InternalFeature {
     private static final int CODE_START_OFFSET = 64;
     private static final int NEXT_SECTION_OFFSET = 72;
     private static final int VARIABLY_SIZED_DATA_OFFSET = 80;
-    private static final int FIRST_SINGLETON_OFFSET = 88;
+    private static final int PECOFF_FIXUP_TABLE_OFFSET = VARIABLY_SIZED_DATA_OFFSET;
 
     private static final String CACHED_IMAGE_FDS_NAME = "__svm_layer_cached_image_fds";
     private static final String CACHED_IMAGE_HEAP_OFFSETS_NAME = "__svm_layer_cached_image_heap_offsets";
     private static final String CACHED_IMAGE_HEAP_RELOCATIONS_NAME = "__svm_layer_cached_image_heap_relocations";
+    public static final String PECOFF_FORWARD_SYMBOL_FIXUP_TABLE_SYMBOL_NAME = "__svm_pecoff_forward_symbol_fixup_table";
 
     private static final SignedWord UNASSIGNED_FD = signed(-1);
 
@@ -141,6 +148,10 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        if (Platform.includedIn(Platform.WINDOWS.class) && ImageLayerBuildingSupport.buildingSharedLayer() && ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            throw UserError.abort("PE/COFF image layers currently support only one shared layer before the final application layer.");
+        }
+
         CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
 
         CGlobalData<WordPointer> cachedImageFDs;
@@ -148,9 +159,9 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         CGlobalData<WordPointer> cachedImageHeapRelocations;
 
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+            cachedImageFDs = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_FDS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
             cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
@@ -165,7 +176,12 @@ public final class ImageLayerSectionFeature implements InternalFeature {
             cachedImageHeapRelocations = null;
         }
 
-        ImageSingletons.add(ImageLayerSection.class, new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations));
+        CGlobalData<CCharPointer> nextLayerSymbolNameData = null;
+        if (ImageLayerBuildingSupport.buildingSharedLayer() && Platform.includedIn(Platform.WINDOWS.class)) {
+            nextLayerSymbolNameData = CGlobalDataFactory.createCString(getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber));
+        }
+
+        ImageSingletons.add(ImageLayerSection.class, new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, nextLayerSymbolNameData));
     }
 
     private static byte[] createWords(int count, WordBase initialValue) {
@@ -201,7 +217,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
          * We need to allocate bytes for the section early. We don't know how large it needs to be
          * yet, so we reserve the maximum that we might need and truncate it later.
          */
-        int sectionMaxSize = VARIABLY_SIZED_DATA_OFFSET;
+        int sectionMaxSize = getVariablySizedDataOffset();
 
         int numSingletonSlots = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap().size();
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
@@ -241,8 +257,19 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             String nextLayerSymbolName = getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber);
-            // this symbol will be defined in the next layer's layer section
-            objectFile.createUndefinedSymbol(nextLayerSymbolName, false);
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                /*
+                 * PE/COFF needs a link-time definition; runtime patches the initial layer section
+                 * with the final application layer section.
+                 *
+                 * GR-58631: Middle shared layers are rejected above. Add per-layer section
+                 * metadata/exporting to patch the full chain.
+                 */
+                objectFile.createDefinedSymbol(nextLayerSymbolName, layeredImageSection, 0, 0, false, false, false);
+            } else {
+                // this symbol will be defined in the next layer's layer section
+                objectFile.createUndefinedSymbol(nextLayerSymbolName, false);
+            }
             layeredSectionData.markRelocationSite(NEXT_SECTION_OFFSET, ObjectFile.RelocationKind.DIRECT_8, nextLayerSymbolName, 0);
         } else {
             /*
@@ -253,11 +280,13 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         }
 
         // this symbol must be global when it will be read by the prior section
-        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
+        boolean layerNameIsGlobal = ImageLayerBuildingSupport.buildingExtensionLayer();
+        boolean layerNameIsExported = ImageLayerBuildingSupport.buildingApplicationLayer();
+        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, layerNameIsGlobal, layerNameIsExported);
 
         if (numSingletonSlots != 0) {
             assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";
-            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, FIRST_SINGLETON_OFFSET, 0, false, true);
+            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, getFirstSingletonOffset(), 0, false, true, true);
         }
     }
 
@@ -276,6 +305,9 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_PATCHED_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_PATCHED_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(CODE_START_OFFSET, ObjectFile.RelocationKind.DIRECT_8, NativeImage.getTextSectionStartSymbol(), 0);
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            layeredSectionData.markRelocationSite(PECOFF_FIXUP_TABLE_OFFSET, ObjectFile.RelocationKind.DIRECT_8, PECOFF_FORWARD_SYMBOL_FIXUP_TABLE_SYMBOL_NAME, 0);
+        }
 
         var config = (FeatureImpl.BeforeImageWriteAccessImpl) access;
 
@@ -290,7 +322,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         ByteBuffer buffer = ByteBuffer.wrap(layeredSectionData.getContent()).order(ByteOrder.LITTLE_ENDIAN);
 
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
-        buffer.position(VARIABLY_SIZED_DATA_OFFSET);
+        buffer.position(getVariablySizedDataOffset());
         buffer.putLong(singletonTableInfo.length);
         for (long imageSingletonOffset : singletonTableInfo) {
             if (referenceSize == 4) {
@@ -362,12 +394,25 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         buffer.position(buffer.position() + longsCount * Long.BYTES);
     }
 
+    /**
+     * On PE/COFF, the runtime needs a fixed slot for the forward-symbol fixup table pointer. Keep
+     * the common fixed entries unchanged and place the Windows-only slot at the first otherwise
+     * variably-sized-data word.
+     */
+    private static int getVariablySizedDataOffset() {
+        return Platform.includedIn(Platform.WINDOWS.class) ? VARIABLY_SIZED_DATA_OFFSET + Long.BYTES : VARIABLY_SIZED_DATA_OFFSET;
+    }
+
+    private static int getFirstSingletonOffset() {
+        return getVariablySizedDataOffset() + Long.BYTES;
+    }
+
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     private static class ImageLayerSectionImpl extends ImageLayerSection {
 
         ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
-                        CGlobalData<WordPointer> cachedImageHeapRelocations) {
-            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations);
+                        CGlobalData<WordPointer> cachedImageHeapRelocations, CGlobalData<CCharPointer> nextLayerSectionSymbolName) {
+            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, nextLayerSectionSymbolName);
         }
 
         @Override
@@ -383,8 +428,9 @@ public final class ImageLayerSectionFeature implements InternalFeature {
                 case HEAP_WRITEABLE_PATCHED_END -> HEAP_WRITABLE_PATCHED_END_OFFSET;
                 case CODE_START -> CODE_START_OFFSET;
                 case NEXT_SECTION -> NEXT_SECTION_OFFSET;
-                case VARIABLY_SIZED_DATA -> VARIABLY_SIZED_DATA_OFFSET;
-                case FIRST_SINGLETON -> FIRST_SINGLETON_OFFSET;
+                case FIXUP_TABLE -> PECOFF_FIXUP_TABLE_OFFSET;
+                case VARIABLY_SIZED_DATA -> getVariablySizedDataOffset();
+                case FIRST_SINGLETON -> getFirstSingletonOffset();
             };
         }
     }

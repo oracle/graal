@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -83,9 +84,8 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(OSThreadHandle.class).registerAsReachable("Core type");
         metaAccess.lookupJavaType(ReflectionUtil.lookupClass("com.oracle.svm.core.hub.DynamicHub$ClassRedefinedCountAccessors")).registerAsReachable("Core type");
         metaAccess.lookupJavaType(ReflectionUtil.lookupClass("com.oracle.svm.core.hub.DynamicHub$EnumConstantsSupplier")).registerAsReachable("Core type");
-        var pthread = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.posix.headers.Pthread$pthread_t");
-        if (pthread != null) {
-            metaAccess.lookupJavaType(pthread).registerAsReachable("Core type");
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
+            metaAccess.lookupJavaType(ReflectionUtil.lookupClass("com.oracle.svm.core.posix.headers.Pthread$pthread_t")).registerAsReachable("Core type");
         }
     }
 

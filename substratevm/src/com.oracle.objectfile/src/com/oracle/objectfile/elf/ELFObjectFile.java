@@ -189,9 +189,9 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported) {
         ELFSymtab symtab = createSymbolTable();
-        return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
+        return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode, isExported);
     }
 
     @Override
@@ -1195,13 +1195,13 @@ public class ELFObjectFile extends ObjectFile {
          * that they get updated if the section is merged with DWARF content from other ELF objects
          * during image linking.
          */
-        createDefinedSymbol(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfLineSectionImpl.getSectionName(), elfLineSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfStrSectionImpl.getSectionName(), elfStrSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfLineStrSectionImpl.getSectionName(), elfLineStrSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfRangesSectionImpl.getSectionName(), elfRangesSectionImpl.getElement(), 0, 0, false, false);
-        createDefinedSymbol(elfLocSectionImpl.getSectionName(), elfLocSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfLineSectionImpl.getSectionName(), elfLineSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfStrSectionImpl.getSectionName(), elfStrSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfLineStrSectionImpl.getSectionName(), elfLineStrSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfRangesSectionImpl.getSectionName(), elfRangesSectionImpl.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(elfLocSectionImpl.getSectionName(), elfLocSectionImpl.getElement(), 0, 0, false, false, false);
         /*
          * The byte[] for each implementation's content are created and written under
          * getOrDecideContent. Doing that ensures that all dependent sections are filled in and then

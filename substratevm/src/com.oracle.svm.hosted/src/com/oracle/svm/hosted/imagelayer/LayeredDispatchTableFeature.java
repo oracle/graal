@@ -597,7 +597,17 @@ public class LayeredDispatchTableFeature implements InternalFeature {
                      */
                     symbol = computeUnresolvedMethodSymbol(slotInfo, deduplicatedMethodMap, symbolNameSupplier);
                     if (unresolvedVTableSymbolNames.add(symbol)) {
-                        objectFile.createUndefinedSymbol(symbol, true);
+                        if (objectFile.getFormat() == ObjectFile.Format.PECOFF) {
+                            /*
+                             * On Windows (PE/COFF), DLLs cannot have unresolved external symbols.
+                             * Define unresolved vtable symbols as placeholder entries at offset 0
+                             * in the text section. The extension/application layer will resolve
+                             * them to actual methods or InvalidMethodPointerHandler at runtime.
+                             */
+                            objectFile.createDefinedSymbol(symbol, textSection, 0, 0, true, true, false);
+                        } else {
+                            objectFile.createUndefinedSymbol(symbol, true);
+                        }
                     }
                 }
             } else {
@@ -638,7 +648,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
             CompilationResult result = codeCache.compilationResultFor(method);
 
             final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(symbol, textSection, method.getCodeAddressOffset(), size, true, true);
+            objectFile.createDefinedSymbol(symbol, textSection, method.getCodeAddressOffset(), size, true, true, true);
         }
 
         /*
@@ -651,7 +661,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
                     CompilationResult result = codeCache.compilationResultFor(invalidMethod);
 
                     final int size = result == null ? 0 : result.getTargetCodeSize();
-                    objectFile.createDefinedSymbol(symbol, textSection, invalidMethod.getCodeAddressOffset(), size, true, true);
+                    objectFile.createDefinedSymbol(symbol, textSection, invalidMethod.getCodeAddressOffset(), size, true, true, true);
                 }
             });
         }

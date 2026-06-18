@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 public interface LinkerInvocation {
 
@@ -65,6 +66,9 @@ public interface LinkerInvocation {
 
     default boolean shouldRunFallback(@SuppressWarnings("unused") String message) {
         return false;
+    }
+
+    default void verifyLinkerOutput(@SuppressWarnings("unused") List<String> lines, @SuppressWarnings("unused") Set<String> allowedUnresolvedSymbols) {
     }
 
     void addNativeLinkerOption(String option);

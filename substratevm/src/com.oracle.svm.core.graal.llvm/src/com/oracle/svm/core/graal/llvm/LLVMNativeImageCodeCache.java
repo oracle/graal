@@ -308,7 +308,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
                     String symbolName = (String) dataPatch.note;
                     if (data.symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
-                        objectFile.createDefinedSymbol(symbolName, dataSection, info.getOffset() + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
+                        objectFile.createDefinedSymbol(symbolName, dataSection, info.getOffset() + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {
                     DataSectionReference reference = (DataSectionReference) dataPatch.reference;
@@ -317,7 +317,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
                     String symbolName = (String) dataPatch.note;
                     if (objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
-                        objectFile.createDefinedSymbol(symbolName, rodataSection, offset, 0, false, true);
+                        objectFile.createDefinedSymbol(symbolName, rodataSection, offset, 0, false, true, true);
                     }
                 }
             }
@@ -340,7 +340,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
-            protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
+            protected void defineMethodSymbol(String name, boolean global, boolean exported, Element section, HostedMethod method, CompilationResult result) {
                 ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, true);
                 if (global) {
                     globalSymbols.add(symbol);

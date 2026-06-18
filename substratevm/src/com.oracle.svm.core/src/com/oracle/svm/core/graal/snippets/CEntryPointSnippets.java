@@ -82,6 +82,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerRuntimeSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -313,6 +314,15 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean validPageSize = UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize) && UnsignedUtils.isAMultiple(runtimePageSize, minimumPageSize);
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
+        }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * Prepare early runtime state needed by image layers. Layer-forward CGlobalData must
+             * not be read before this point because the preparation may patch its symbol
+             * references.
+             */
+            ImageLayerRuntimeSupport.singleton().patchForwardSymbolReferences();
         }
 
         /* Initialize process-wide state such as the locale support. */

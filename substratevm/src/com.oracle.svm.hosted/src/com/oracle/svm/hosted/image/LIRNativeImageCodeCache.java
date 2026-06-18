@@ -510,9 +510,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         @Override
-        protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
+        protected void defineMethodSymbol(String name, boolean global, boolean exported, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
             final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global, exported);
         }
     }
 

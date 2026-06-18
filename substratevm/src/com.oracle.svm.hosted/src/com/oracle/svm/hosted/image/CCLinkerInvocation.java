@@ -35,6 +35,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -528,6 +531,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     private static class WindowsCCLinkerInvocation extends CCLinkerInvocation {
+        private static final Pattern UNRESOLVED_EXTERNAL_SYMBOL_PATTERN = Pattern.compile("\\bLNK(?:2001|2019): unresolved external symbol (\\S+)");
 
         private final String imageName;
 
@@ -561,6 +565,32 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         @Override
+        public void verifyLinkerOutput(List<String> lines, Set<String> allowedUnresolvedSymbols) {
+            if (imageKind != AbstractImage.NativeImageKind.IMAGE_LAYER) {
+                return;
+            }
+
+            Set<String> unresolvedSymbols = new TreeSet<>();
+            for (String line : lines) {
+                Matcher matcher = UNRESOLVED_EXTERNAL_SYMBOL_PATTERN.matcher(line);
+                if (matcher.find()) {
+                    unresolvedSymbols.add(matcher.group(1));
+                }
+            }
+
+            if (unresolvedSymbols.isEmpty()) {
+                return;
+            }
+
+            Set<String> unexpectedSymbols = new TreeSet<>(unresolvedSymbols);
+            unexpectedSymbols.removeAll(allowedUnresolvedSymbols);
+            if (!unexpectedSymbols.isEmpty()) {
+                throw UserError.abort("Linking the image layer produced unexpected unresolved PE/COFF symbols: %s. Allowed unresolved symbols are: %s",
+                                unexpectedSymbols, new TreeSet<>(allowedUnresolvedSymbols));
+            }
+        }
+
+        @Override
         public List<String> getCommand() {
             List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
 
@@ -575,6 +605,18 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
+
+            if (imageKind == AbstractImage.NativeImageKind.IMAGE_LAYER) {
+                /*
+                 * Image layer DLLs have forward references to symbols defined in the application
+                 * layer (e.g. CGlobalData forSymbol references, delayed method symbols). On
+                 * ELF/Mach-O, these are undefined symbols resolved by the dynamic linker at load
+                 * time. On PE/COFF, we must allow the link to succeed with unresolved externals.
+                 * The application layer exports the required symbols and Windows runtime support
+                 * patches the recorded forward-reference slots at isolate startup.
+                 */
+                cmd.add("/FORCE:UNRESOLVED");
+            }
 
             /* Use page size alignment to support memory mapping of the image heap. */
             cmd.add("/FILEALIGN:4096");
@@ -606,6 +648,16 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
             for (String library : nativeLibs.getLibraries()) {
                 cmd.add(library + ".lib");
+            }
+
+            if (imageKind.isExecutable && ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                /*
+                 * Application layer executables can be small enough that the link does not pull in
+                 * any MSVC-built object with a /DEFAULTLIB:msvcrt directive. The GraalVM-generated
+                 * object file does not contain such directives, so add the CRT import library
+                 * explicitly for mainCRTStartup.
+                 */
+                cmd.add("msvcrt.lib");
             }
 
             // Add required Windows Libraries

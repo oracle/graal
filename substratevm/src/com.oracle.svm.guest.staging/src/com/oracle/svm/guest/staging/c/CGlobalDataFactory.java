@@ -71,6 +71,28 @@ public final class CGlobalDataFactory {
     }
 
     /**
+     * Create a reference to a symbol that is expected to be defined by the application layer.
+     * Calling {@link CGlobalData#get()} on the returned object at runtime returns the referenced
+     * symbol's address.
+     */
+    public static <T extends PointerBase> CGlobalData<T> forApplicationLayerSymbol(String symbolName) {
+        return forApplicationLayerSymbol(symbolName, false);
+    }
+
+    /**
+     * Create a reference to a symbol that is expected to be defined by the application layer. This
+     * introduces a linking dependency on that symbol in the image.
+     *
+     * @param nonConstant if {@code true}, the returned value is not restricted to be used as a
+     *            build time constant. For example, it can be stored in and retrieved from a map. If
+     *            {@code false}, the returned value must be a build time constant (e.g., accessed
+     *            from a static final field).
+     */
+    public static <T extends PointerBase> CGlobalData<T> forApplicationLayerSymbol(String symbolName, boolean nonConstant) {
+        return new CGlobalDataImpl<>(symbolName, nonConstant, true);
+    }
+
+    /**
      * Create a chunk of data that is dimensioned and initialized to contain the provided string's
      * contents as {@linkplain Utf8#stringToUtf8(String, boolean) zero-terminated modified UTF-8}.
      */

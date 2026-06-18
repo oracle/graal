@@ -130,7 +130,7 @@ public class InitialLayerCGlobalTracking {
                     // create symbol name
                     layeredSymbolName = String.format("%s_%s", LAYERED_CGLOBAL_SYMBOL_PREFIX, symbolCount);
                     symbolCount++;
-                    createSymbol.apply(info.getOffset(), layeredSymbolName, true);
+                    createSymbol.apply(info.getOffset(), layeredSymbolName, true, false);
                 }
             }
             var prev = toPersistLayeredSymbolNameMap.put(info, layeredSymbolName);

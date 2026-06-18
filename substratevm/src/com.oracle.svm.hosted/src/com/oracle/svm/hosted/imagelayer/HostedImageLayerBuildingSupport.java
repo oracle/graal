@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -411,11 +412,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     /**
-     * Currently layered images are only supported on {@link LINUX}, {@link DARWIN}, {@link AMD64}
-     * and {@link AARCH64}.
+     * Currently layered images are supported on Linux AMD64/AArch64, Darwin AMD64/AArch64, and
+     * Windows AMD64.
      */
     private static boolean supportedPlatform(Platform platform) {
-        return (platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64);
+        return ((platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64)) || platform instanceof WINDOWS_AMD64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
@@ -524,6 +525,22 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
         nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
         String libName = archiveSupport.getSharedLibraryBaseName();
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            /*
+             * On Windows, the linker doesn't auto-prepend "lib" like Unix linkers do (-lfoo finds
+             * libfoo.so). Use the full layer name so the linker finds the import library.
+             */
+            libName = LayerArchiveSupport.SHARED_LIB_NAME_PREFIX + libName;
+            /*
+             * The import library (.lib) is not included in the .nil archive - only the DLL is. Add
+             * the directory containing the .nil file as a library path so the linker can find the
+             * import library that was generated alongside the layer file.
+             */
+            Path nilDir = archiveSupport.getLayerFileDirectory();
+            if (nilDir != null) {
+                nativeLibs.getLibraryPaths().add(nilDir.toString());
+            }
+        }
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }

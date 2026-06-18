@@ -174,9 +174,9 @@ public final class MachOObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported) {
         MachOSymtab symtab = (MachOSymtab) getOrCreateSymbolTable();
-        return symtab.newDefinedEntry(name, (MachOSection) baseSection, position, size, isGlobal, isCode);
+        return symtab.newDefinedEntry(name, (MachOSection) baseSection, position, size, isGlobal, isCode, isExported);
     }
 
     @Override

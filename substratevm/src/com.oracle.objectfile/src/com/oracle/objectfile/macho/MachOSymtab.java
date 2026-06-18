@@ -463,7 +463,7 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
     }
 
     @Override
-    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
+    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode, boolean isExported) {
         return addEntry(new Entry(name, referencedSection, referencedOffset, isGlobal, isCode));
     }
 

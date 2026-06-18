@@ -60,6 +60,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
         private final int symType;
         private final PECoffSection referencedSection;
         private final PseudoSection pseudoSection;
+        private final boolean exported;
 
         @Override
         public boolean isDefined() {
@@ -87,7 +88,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
         }
 
         public boolean isNull() {
-            return name.isEmpty() && value == 0 && size == 0 && symClass == 0 && symType == 0 && referencedSection == null && pseudoSection == null;
+            return name.isEmpty() && value == 0 && size == 0 && symClass == 0 && symType == 0 && referencedSection == null && pseudoSection == null && !exported;
         }
 
         @Override
@@ -127,7 +128,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
             return size;
         }
 
-        private Entry(String name, long value, long size, int symclass, int symtype, PECoffSection referencedSection, PseudoSection pseudoSection) {
+        private Entry(String name, long value, long size, int symclass, int symtype, PECoffSection referencedSection, PseudoSection pseudoSection, boolean exported) {
             this.name = name;
             this.value = value;
             this.size = size;
@@ -135,21 +136,26 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
             this.symType = symtype;
             this.referencedSection = referencedSection;
             this.pseudoSection = pseudoSection;
+            this.exported = exported;
             assert ((referencedSection == null) != (pseudoSection == null)) || isNull();
         }
 
         // public constructor, for referencing a real section
-        Entry(String name, long value, long size, int symclass, int symtype, PECoffSection referencedSection) {
-            this(name, value, size, symclass, symtype, referencedSection, null);
+        Entry(String name, long value, long size, int symclass, int symtype, PECoffSection referencedSection, boolean exported) {
+            this(name, value, size, symclass, symtype, referencedSection, null, exported);
         }
 
         // public constructor for referencing a pseudosection
         Entry(String name, long value, long size, int symclass, int symtype, PseudoSection pseudoSection) {
-            this(name, value, size, symclass, symtype, null, pseudoSection);
+            this(name, value, size, symclass, symtype, null, pseudoSection, false);
         }
 
         PECoffSection getReferencedSection() {
             return referencedSection;
+        }
+
+        boolean isExported() {
+            return exported;
         }
     }
 
@@ -221,7 +227,8 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
                             (byte) e.getSymType(),
                             (byte) e.getSymClass(),
                             (byte) sectID,
-                            offset);
+                            offset,
+                            e.isExported());
             entriesToIndex.put(e, i++);
         }
 
@@ -260,14 +267,14 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
     }
 
     @Override
-    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
+    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode, boolean isExported) {
         int symClass;
         int symType;
 
         symClass = isGlobal ? IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL : IMAGE_SYMBOL.IMAGE_SYM_CLASS_STATIC;
         symType = isCode ? IMAGE_SYMBOL.IMAGE_SYM_DTYPE_FUNCTION : IMAGE_SYMBOL.IMAGE_SYM_DTYPE_NONE;
 
-        return addEntry(new Entry(name, referencedOffset, size, symClass, symType, (PECoffSection) referencedSection));
+        return addEntry(new Entry(name, referencedOffset, size, symClass, symType, (PECoffSection) referencedSection, isExported));
     }
 
     @Override

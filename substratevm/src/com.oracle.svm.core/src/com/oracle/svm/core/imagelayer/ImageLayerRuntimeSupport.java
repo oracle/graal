@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.imagelayer;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.windows.headers.WinBase;
-import com.oracle.svm.core.windows.headers.WinSock;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@AutomaticallyRegisteredImageSingleton(com.oracle.svm.core.headers.WindowsAPIsSupport.class)
+/**
+ * Runtime hook for platform-specific image-layer fixups that must run before process-wide
+ * initialization can access layer-dependent state.
+ */
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public class WindowsAPIsSupport implements com.oracle.svm.core.headers.WindowsAPIsSupport {
-    @Override
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public int getLastError() {
-        return WinBase.GetLastError();
+public class ImageLayerRuntimeSupport {
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static ImageLayerRuntimeSupport singleton() {
+        return ImageSingletons.lookup(ImageLayerRuntimeSupport.class);
     }
 
-    @Override
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public int wsaGetLastError() {
-        return WinSock.WSAGetLastError();
+    /** Called before process-wide initialization may access runtime state that needs layer fixups. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void patchForwardSymbolReferences() {
     }
 }
