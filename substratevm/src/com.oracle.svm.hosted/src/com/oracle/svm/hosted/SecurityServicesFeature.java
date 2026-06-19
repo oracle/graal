@@ -61,7 +61,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -89,6 +88,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -107,6 +107,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -127,6 +128,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -172,8 +174,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.build());
 
-        @Option(help = "Comma-separated list of additional security provider fully qualified class names to mark as used." +
-                        "Note that this option is only necessary if you use custom engine classes not available in JCA that are not JCA compliant.")//
+        @Option(help = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class for reflection, or build with -H:Preserve=all).",
+                        deprecated = true,
+                        deprecationMessage = "Register the security provider class for reflection instead; the tracing agent does this automatically.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
@@ -242,9 +245,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** All providers deemed to be used by this feature. */
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
 
-    /** Providers marked as used by the user. */
-    private final EconomicSet<String> manuallyMarkedUsedProviderClassNames = EconomicSet.create();
-
     private Field verificationResultsField;
     private Field providerListField;
     private Field oidTableField;
@@ -261,11 +261,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
 
+    private final Map<String, Provider> buildTimeProvidersByClassName = new HashMap<>();
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-            ImageSingletons.add(SecurityProvidersSupport.class, new SecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values()));
-        }
+        ImageSingletons.add(SecurityProvidersSupport.class, new SecurityProvidersSupport());
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
@@ -280,7 +280,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-            addManuallyConfiguredUsedProviders(a);
             verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
             providerListField = access.findField("sun.security.jca.Providers", "providerList");
             classCacheField = access.findField(Service.class, "classCache");
@@ -361,6 +360,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         loader = access.getImageClassLoader();
         jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
         /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
         access.ensureInitialized("java.security.cert.TrustAnchor");
@@ -387,6 +387,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         if (Options.EnableSecurityServicesFeature.getValue()) {
+            initializeServiceRegistrationData();
+            access.registerSubtypeReachabilityHandler((analysisAccess, providerClass) -> includeProviderClass(analysisAccess, providerClass), Provider.class);
+            registerManuallyConfiguredProvidersForReflection(access);
             registerServiceReachabilityHandlers(access);
         }
 
@@ -406,8 +409,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-            substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
-
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
                 // JVMCI migration blocked by GR-72131: Refactor security service code for project
                 // Terminus.
@@ -485,16 +486,31 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
     }
 
-    private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
+    private void registerManuallyConfiguredProvidersForReflection(BeforeAnalysisAccess access) {
+        BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         for (String value : Options.AdditionalSecurityProviders.getValue().values()) {
             for (String className : value.split(",")) {
                 Class<?> classByName = access.findClassByName(className);
                 UserError.guarantee(classByName != null,
                                 "Manually marked security provider class doesn't exist: %s. Make sure that the class name is correct and that the class is on the image builder classpath.", className);
-                trace("Marked provider %s as used", className);
-                manuallyMarkedUsedProviderClassNames.add(className);
+                if (shouldRegisterProviderClassForReflection(accessImpl, classByName)) {
+                    registerProviderClassForReflection(classByName);
+                }
             }
         }
+    }
+
+    private boolean shouldRegisterProviderClassForReflection(BeforeAnalysisAccessImpl access, Class<?> providerClass) {
+        if (!Provider.class.isAssignableFrom(providerClass)) {
+            return false;
+        }
+        ResolvedJavaType providerType;
+        try {
+            providerType = access.findTypeByName(providerClass.getName());
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
+        }
+        return providerType != null && access.getHostVM().platformSupported(providerType) && !substitutionProcessor.isDeleted(providerType);
     }
 
     public boolean shouldRemoveProvider(Provider p) {
@@ -507,7 +523,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (substitutionProcessor.isDeleted(GuestAccess.get().lookupType(p.getClass()))) {
             return true;
         }
-        return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
+        return true;
     }
 
     private static void traceRemovedProviders(List<Provider> removedProviders) {
@@ -629,10 +645,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerServiceReachabilityHandlers(BeforeAnalysisAccess access) {
-        ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
-        getSpiClassMethod = getSpiClassMethod();
-        availableServices = computeAvailableServices();
-
         /*
          * The JCA defines the list of standard service classes available in the JDK. Each service
          * class implements a series of getInstance() factory methods which return concrete service
@@ -673,6 +685,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         Optional<ResolvedJavaMethod> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
         defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), OriginalMethodProvider.getJavaMethod(m)));
+    }
+
+    private void initializeServiceRegistrationData() {
+        ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
+        getSpiClassMethod = getSpiClassMethod();
+        availableServices = computeAvailableServices();
+        buildTimeProvidersByClassName.clear();
+        for (Provider provider : Security.getProviders()) {
+            buildTimeProvidersByClassName.put(provider.getClass().getName(), provider);
+        }
     }
 
     private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
@@ -836,34 +858,65 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                  * support. See also Target_javax_crypto_JceSecurity.
                  */
                 Object result = getVerificationResult.invoke(null, provider);
-                if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-                    /*
-                     * Note that after verification, we move the result to a separate structure
-                     * since we don't want to keep the provider object in the image heap.
-                     *
-                     * The verification result can be either null, in case of success, or an
-                     * Exception, in case of failure. Null is interpreted as Boolean.TRUE at
-                     * runtime, signifying successful verification.
-                     */
-                    String providerName = provider.getName();
-                    SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-                    support.addVerifiedSecurityProvider(providerName, result instanceof Exception ? result : Boolean.TRUE);
-
-                    /*
-                     * If this provider is not yet loaded via the service loading mechanism, we need
-                     * to manually prepare reflection metadata now, so that service loading works at
-                     * runtime (see sun.security.jca.ProviderConfig.doLoadProvider).
-                     */
-                    String providerFQName = provider.getClass().getName();
-                    if (support.isSecurityProviderNotLoaded(providerFQName)) {
-                        Set<String> registeredProviders = new HashSet<>(); // noEconomicSet(unimplemented)
-                        ServiceLoaderFeature.registerProviderForRuntimeReflectionAccess(access, providerFQName, registeredProviders);
-                        ServiceLoaderFeature.registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), Provider.class.getName(), registeredProviders);
-                    }
-                }
+                /*
+                 * Note that after verification, we move the result to a separate structure since we
+                 * don't want to keep provider objects that were only instantiated for verification in
+                 * the image heap.
+                 *
+                 * The verification result can be either null, in case of success, or an Exception,
+                 * in case of failure. Null is interpreted as Boolean.TRUE at runtime, signifying
+                 * successful verification.
+                 */
+                SecurityProvidersSupport.singleton().addVerifiedSecurityProvider(provider.getName(), provider.getClass().getName(), result instanceof Exception ? result : Boolean.TRUE);
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
+        }
+    }
+
+    private void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
+        if (!isLoadableProviderClass(access, providerClass)) {
+            return;
+        }
+        Provider provider = buildTimeProvidersByClassName.get(providerClass.getName());
+        if (provider == null) {
+            provider = instantiateProvider(providerClass);
+        }
+        registerProvider(access, provider);
+        for (Service service : provider.getServices()) {
+            if (isValid(service)) {
+                registerService(access, service);
+            }
+        }
+    }
+
+    private boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
+        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive() || Modifier.isAbstract(providerClass.getModifiers())) {
+            return false;
+        }
+
+        DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
+        ResolvedJavaType providerType;
+        try {
+            providerType = accessImpl.findTypeByName(providerClass.getName());
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
+        }
+        if (providerType == null || !accessImpl.getHostVM().platformSupported(providerType) || substitutionProcessor.isDeleted(providerType)) {
+            return false;
+        }
+        return hasDeclaredNullaryConstructor(providerClass) || findProviderMethod(providerClass) != null;
+    }
+
+    private static Provider instantiateProvider(Class<?> providerClass) {
+        try {
+            Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+            if (constructor != null) {
+                return (Provider) constructor.newInstance();
+            }
+            return (Provider) findProviderMethod(providerClass).invoke(null);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere("Security provider class is reachable but cannot be instantiated: " + providerClass.getName(), ex);
         }
     }
 
@@ -895,6 +948,54 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         } else {
             trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
         }
+    }
+
+    private static void registerProviderClassForReflection(Class<?> providerClass) {
+        RuntimeReflection.register(providerClass);
+        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+        if (constructor != null) {
+            RuntimeReflection.register(constructor);
+        } else {
+            RuntimeReflection.registerConstructorLookup(providerClass);
+        }
+        Method providerMethod = findProviderMethod(providerClass);
+        if (providerMethod != null) {
+            RuntimeReflection.register(providerMethod);
+        } else {
+            RuntimeReflection.registerMethodLookup(providerClass, "provider");
+        }
+        trace("Registered provider %s for reflection", providerClass.getName());
+    }
+
+    private static boolean hasDeclaredNullaryConstructor(Class<?> providerClass) {
+        return findDeclaredNullaryConstructor(providerClass) != null;
+    }
+
+    private static Constructor<?> findDeclaredNullaryConstructor(Class<?> providerClass) {
+        return ReflectionUtil.lookupConstructor(true, providerClass);
+    }
+
+    private static Method findProviderMethod(Class<?> providerClass) {
+        Method nullaryProviderMethod = null;
+        try {
+            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                for (Method method : providerClass.getDeclaredMethods()) {
+                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) && method.getParameterCount() == 0 && method.getName().equals("provider") &&
+                                    Provider.class.isAssignableFrom(method.getReturnType())) {
+                        if (nullaryProviderMethod == null) {
+                            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityServicesFeature.class, providerClass);
+                            method.setAccessible(true);
+                            nullaryProviderMethod = method;
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+            }
+        } catch (SecurityException | LinkageError e) {
+            return null;
+        }
+        return nullaryProviderMethod;
     }
 
     /**
