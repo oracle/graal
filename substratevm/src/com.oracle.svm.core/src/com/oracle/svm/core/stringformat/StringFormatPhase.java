@@ -165,7 +165,7 @@ public final class StringFormatPhase extends BasePhase<Providers> {
          * We require that the format string is well formed and contains only a few supported format
          * specifiers.
          */
-        Deque<StringFormatSpecifier> formatSpecifiers = parseFormatString(formatString, argumentNodes, allowFormatterFallback);
+        Deque<StringFormatSpecifier> formatSpecifiers = parseFormatString(formatString, argumentNodes, allowFormatterFallback, isDecimalIntegerIntrinsicSupported(locale, providers));
         if (formatSpecifiers == null) {
             graph.getDebug().log("Format string is too complicated for intrinsification: %s", formatString);
             return;
@@ -175,12 +175,33 @@ public final class StringFormatPhase extends BasePhase<Providers> {
         rewriteInvoke(graph, callTarget, locale, formatSpecifiers, providers);
     }
 
+    private static boolean isDecimalIntegerIntrinsicSupported(ValueNode locale, CoreProviders providers) {
+        if (locale == null) {
+            return true;
+        }
+
+        /*
+         * Decimal integer formatting is locale sensitive. The direct runtime implementation knows
+         * zero digits for constant locales collected in the image heap and a few explicit numbering
+         * system extensions. A runtime-created non-constant locale can have a non-ASCII default
+         * zero digit even without such an extension, for example Locale.forLanguageTag("fa"). Use
+         * Formatter fallback for non-constant explicit-locale %d to preserve locale semantics
+         * conservatively without pulling Formatter into no-locale String.format users such as Hello
+         * World.
+         */
+        if (!locale.isJavaConstant()) {
+            return false;
+        }
+        Object localeObject = providers.getSnippetReflection().asObject(Object.class, locale.asJavaConstant());
+        return localeObject == null || localeObject instanceof Locale;
+    }
+
     /**
      * The format string parsing is adapted from the JDK code in {@link Formatter}. Unfortunately,
      * all relevant JDK methods and classes are non-public, so we cannot re-use the parsing code
      * from the JDK.
      */
-    private static Deque<StringFormatSpecifier> parseFormatString(String formatString, List<ValueNode> argumentNodes, boolean allowFormatterFallback) {
+    private static Deque<StringFormatSpecifier> parseFormatString(String formatString, List<ValueNode> argumentNodes, boolean allowFormatterFallback, boolean decimalIntegerIntrinsicSupported) {
         Deque<StringFormatSpecifier> formatSpecifiers = new ArrayDeque<>();
         int index = 0;
         int max = formatString.length();
@@ -307,7 +328,8 @@ public final class StringFormatPhase extends BasePhase<Providers> {
                 return null;
             }
 
-            boolean intrinsicSupported = isIntrinsicSupported(conversion, dateTime, hasPrecision, precisionString, alternate, zeroPad, hasWidth, widthString, intrinsicFlagsSupported);
+            boolean intrinsicSupported = isIntrinsicSupported(conversion, dateTime, hasPrecision, precisionString, alternate, zeroPad, hasWidth, widthString, intrinsicFlagsSupported,
+                            decimalIntegerIntrinsicSupported);
             if (intrinsicSupported) {
                 formatSpecifiers.addLast(new StringFormatSpecifier(conversion, argumentNodes.get(currentArgumentIndex), alternate, width, zeroPad ? '0' : ' ', precision));
             } else if (allowFormatterFallback) {
@@ -328,8 +350,11 @@ public final class StringFormatPhase extends BasePhase<Providers> {
     }
 
     private static boolean isIntrinsicSupported(char conversion, boolean dateTime, boolean hasPrecision, String precisionString, boolean alternate, boolean zeroPad, boolean hasWidth,
-                    String widthString, boolean intrinsicFlagsSupported) {
+                    String widthString, boolean intrinsicFlagsSupported, boolean decimalIntegerIntrinsicSupported) {
         if (dateTime || !intrinsicFlagsSupported || StringFormat.SUPPORTED_CONVERSIONS.indexOf(conversion) < 0) {
+            return false;
+        }
+        if (conversion == StringFormat.DECIMAL_INTEGER && !decimalIntegerIntrinsicSupported) {
             return false;
         }
         if (alternate && conversion != StringFormat.OCTAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER && conversion != StringFormat.HEXADECIMAL_INTEGER_UPPER) {

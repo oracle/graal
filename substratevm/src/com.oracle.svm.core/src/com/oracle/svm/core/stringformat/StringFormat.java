@@ -143,9 +143,7 @@ public final class StringFormat {
     }
 
     private static String format(boolean defaultLocale, Locale explicitLocale, String conversions, Object[] args) {
-        StringBuilder result = new StringBuilder();
-        /* Initialized lazily because it depends on the Locale. */
-        Character zeroChar = null;
+        FormatContext context = new FormatContext(defaultLocale, explicitLocale);
 
         int nextArgIndex = 0;
         int nextCharIndex = 0;
@@ -154,10 +152,10 @@ public final class StringFormat {
             Object arg = args[nextArgIndex++];
             FormatModifiers modifiers = readModifiers(conversions, nextCharIndex);
             nextCharIndex = modifiers.nextCharIndex;
-            zeroChar = appendArgument(defaultLocale, explicitLocale, result, zeroChar, null, arg, conversion, modifiers);
+            appendArgument(context, arg, conversion, modifiers);
         }
         assert nextCharIndex == conversions.length();
-        return result.toString();
+        return context.result.toString();
     }
 
     static String formatWithFormatterFallback(String conversions, Object[] args) {
@@ -169,11 +167,7 @@ public final class StringFormat {
     }
 
     private static String formatWithFormatterFallback(boolean defaultLocale, Locale explicitLocale, String conversions, Object[] args) {
-        StringBuilder result = new StringBuilder();
-        /* Formatter is created lazily, it might also involve looking up the default Locale. */
-        Formatter formatter = null;
-        /* Initialized lazily because it depends on the Locale. */
-        Character zeroChar = null;
+        FormatContext context = new FormatContext(defaultLocale, explicitLocale);
 
         int nextArgIndex = 0;
         int nextCharIndex = 0;
@@ -182,18 +176,17 @@ public final class StringFormat {
             if (conversion == FORMATTER) {
                 String format = (String) args[nextArgIndex++];
                 Object arg = args[nextArgIndex++];
-                formatter = ensureFormatter(formatter, defaultLocale, explicitLocale, result);
-                formatter.format(format, arg);
+                context.ensureFormatter().format(format, arg);
                 continue;
             }
 
             Object arg = args[nextArgIndex++];
             FormatModifiers modifiers = readModifiers(conversions, nextCharIndex);
             nextCharIndex = modifiers.nextCharIndex;
-            zeroChar = appendArgument(defaultLocale, explicitLocale, result, zeroChar, formatter, arg, conversion, modifiers);
+            appendArgument(context, arg, conversion, modifiers);
         }
         assert nextCharIndex == conversions.length();
-        return result.toString();
+        return context.result.toString();
     }
 
     private static FormatModifiers readModifiers(String conversions, int nextCharIndex) {
@@ -219,9 +212,7 @@ public final class StringFormat {
         return new FormatModifiers(alternate, width, padding, precision, charIndex);
     }
 
-    private static Character appendArgument(boolean defaultLocale, Locale explicitLocale, StringBuilder result, Character zeroChar, Formatter formatter, Object arg, char conversion,
-                    FormatModifiers modifiers) {
-        Character updatedZeroChar = zeroChar;
+    private static void appendArgument(FormatContext context, Object arg, char conversion, FormatModifiers modifiers) {
         if (arg == null) {
             String string;
             if (conversion == BOOLEAN) {
@@ -231,45 +222,71 @@ public final class StringFormat {
             } else {
                 string = isUpperCaseConversion(conversion) ? "NULL" : "null";
             }
-            appendString(result, string, modifiers.width, ' ', modifiers.precision);
-            return updatedZeroChar;
+            appendString(context.result, string, modifiers.width, ' ', modifiers.precision);
+            return;
         }
 
         switch (conversion) {
             case DECIMAL_INTEGER:
-                updatedZeroChar = ensureZeroChar(updatedZeroChar, defaultLocale, explicitLocale);
-                appendNumber(defaultLocale, explicitLocale, result, arg, conversion, updatedZeroChar.charValue(), modifiers.alternate, modifiers.width, modifiers.padding);
+                appendNumber(context.defaultLocale, context.explicitLocale, context.result, arg, conversion, context.ensureZeroChar(), modifiers.alternate, modifiers.width, modifiers.padding);
                 break;
             case OCTAL_INTEGER:
             case HEXADECIMAL_INTEGER:
             case HEXADECIMAL_INTEGER_UPPER:
-                appendNumber(defaultLocale, explicitLocale, result, arg, conversion, '0', modifiers.alternate, modifiers.width, modifiers.padding);
+                appendNumber(context.defaultLocale, context.explicitLocale, context.result, arg, conversion, '0', modifiers.alternate, modifiers.width, modifiers.padding);
                 break;
             case BOOLEAN:
             case BOOLEAN_UPPER:
-                appendBoolean(defaultLocale, explicitLocale, result, arg, conversion, modifiers.width, modifiers.precision);
+                appendBoolean(context.defaultLocale, context.explicitLocale, context.result, arg, conversion, modifiers.width, modifiers.precision);
                 break;
             case HASHCODE:
             case HASHCODE_UPPER:
-                appendHashCode(defaultLocale, explicitLocale, result, arg, conversion, modifiers.width, modifiers.precision);
+                appendHashCode(context.defaultLocale, context.explicitLocale, context.result, arg, conversion, modifiers.width, modifiers.precision);
                 break;
             case CHARACTER:
             case CHARACTER_UPPER:
-                appendCharacter(defaultLocale, explicitLocale, result, arg, conversion, modifiers.width);
+                appendCharacter(context.defaultLocale, context.explicitLocale, context.result, arg, conversion, modifiers.width);
                 break;
             case STRING:
             case STRING_UPPER:
                 if (arg instanceof Formattable) {
-                    Formatter stringFormatter = ensureFormatter(formatter, defaultLocale, explicitLocale, result);
+                    Formatter stringFormatter = context.ensureFormatter();
                     ((Formattable) arg).formatTo(stringFormatter, conversion == STRING_UPPER ? FormattableFlags.UPPERCASE : 0, modifiers.width, modifiers.precision);
                 } else {
-                    appendString(defaultLocale, explicitLocale, result, arg.toString(), conversion == STRING_UPPER, modifiers.width, modifiers.precision);
+                    appendString(context.defaultLocale, context.explicitLocale, context.result, arg.toString(), conversion == STRING_UPPER, modifiers.width, modifiers.precision);
                 }
                 break;
             default:
                 throw VMError.shouldNotReachHere("Illegal modifier " + conversion);
         }
-        return updatedZeroChar;
+    }
+
+    private static final class FormatContext {
+        final boolean defaultLocale;
+        final Locale explicitLocale;
+        final StringBuilder result = new StringBuilder();
+        Formatter formatter;
+        Character zeroChar;
+
+        FormatContext(boolean defaultLocale, Locale explicitLocale) {
+            this.defaultLocale = defaultLocale;
+            this.explicitLocale = explicitLocale;
+        }
+
+        Formatter ensureFormatter() {
+            if (formatter == null) {
+                formatter = defaultLocale ? new Formatter(result) : new Formatter(result, explicitLocale);
+            }
+            return formatter;
+        }
+
+        char ensureZeroChar() {
+            if (zeroChar == null) {
+                zeroChar = getZeroChar(defaultLocale ? Locale.getDefault(Locale.Category.FORMAT) : explicitLocale);
+            }
+            return zeroChar.charValue();
+        }
+
     }
 
     private static final class FormatModifiers {
@@ -442,23 +459,6 @@ public final class StringFormat {
             }
         }
         appendString(defaultLocale, explicitLocale, result, string, conversion == CHARACTER_UPPER, width, -1);
-    }
-
-    private static Formatter ensureFormatter(Formatter formatter, boolean defaultLocale, Locale explicitLocale, Appendable appendable) {
-        if (formatter != null) {
-            return formatter;
-        } else if (defaultLocale) {
-            return new Formatter(appendable);
-        } else {
-            return new Formatter(appendable, explicitLocale);
-        }
-    }
-
-    private static Character ensureZeroChar(Character zeroChar, boolean defaultLocale, Locale explicitLocale) {
-        if (zeroChar != null) {
-            return zeroChar;
-        }
-        return getZeroChar(defaultLocale ? Locale.getDefault(Locale.Category.FORMAT) : explicitLocale);
     }
 
     private static Locale upperCaseLocale(boolean defaultLocale, Locale explicitLocale) {
