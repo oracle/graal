@@ -63,6 +63,7 @@ import org.junit.Test;
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+AllowJRTFileSystem",
                 "-H:+RuntimeClassLoading",
+                "--add-modules=java.sql",
                 "--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED",
                 "--enable-url-protocols=jar",
                 "--initialize-at-run-time=jdk.internal.loader.ClassLoaders",
@@ -122,6 +123,14 @@ public class GetPackageRuntimeClassLoadingTest {
             }
         }
         Assert.fail("No runtime-loaded boot module package was materialized");
+    }
+
+    /**
+     * Checks that runtime boot class loading does not use platform-module package metadata.
+     */
+    @Test
+    public void testRuntimeLoadDoesNotLoadPlatformModulePackage() {
+        Assert.assertThrows(ClassNotFoundException.class, () -> Class.forName("java.sql.Driver", false, null));
     }
 
     /**

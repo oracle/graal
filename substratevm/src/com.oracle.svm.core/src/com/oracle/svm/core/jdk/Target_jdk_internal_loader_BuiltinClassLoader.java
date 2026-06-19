@@ -62,6 +62,9 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private volatile SoftReference<Map<String, List<URL>>> resourceCache;
 
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
+    static Map<String, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule> packageToModule;
+
     @Alias
     public native ModuleReference findModule(String name);
 
@@ -196,4 +199,14 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, innerClass = "LoadedModule")
 final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
+
+    @Alias
+    Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule(@SuppressWarnings("unused") Target_jdk_internal_loader_BuiltinClassLoader loader, @SuppressWarnings("unused") ModuleReference mref) {
+    }
+
+    @Alias
+    native String name();
+
+    @Alias
+    native Target_jdk_internal_loader_BuiltinClassLoader loader();
 }
