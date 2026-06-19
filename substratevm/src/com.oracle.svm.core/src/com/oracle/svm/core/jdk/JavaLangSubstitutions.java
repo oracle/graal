@@ -29,17 +29,13 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.net.URL;
-import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,8 +60,6 @@ import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.registry.BootClassRegistry;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -81,8 +75,6 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import jdk.internal.loader.ClassLoaderValue;
-import jdk.internal.module.Modules;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -120,15 +112,6 @@ final class Target_java_lang_Object {
     private void notifyAllSubst() {
         MonitorSupport.singleton().notify(this, true);
     }
-}
-
-@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper")
-final class Target_jdk_internal_loader_ClassLoaderHelper {
-    @Alias
-    static native File mapAlternativeName(File lib);
-
-    @Alias
-    static native String[] parsePath(String ldPath);
 }
 
 @TargetClass(java.lang.Enum.class)
@@ -647,119 +630,6 @@ final class Target_java_lang_NullPointerException {
     @Substitute
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
-        return null;
-    }
-}
-
-@TargetClass(value = jdk.internal.loader.ClassLoaders.class)
-final class Target_jdk_internal_loader_ClassLoaders {
-    @Alias
-    static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
-
-    @Alias
-    public static native ClassLoader platformClassLoader();
-}
-
-@TargetClass(value = jdk.internal.loader.BootLoader.class)
-final class Target_jdk_internal_loader_BootLoader {
-    // Checkstyle: stop
-    @Delete //
-    static String JAVA_HOME;
-    // Checkstyle: resume
-
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    public static Stream<Package> packages() {
-        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
-        return systemClassLoader.packages();
-    }
-
-    @Delete("only used by #packages()")
-    @TargetElement(name = "getSystemPackageNames", onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private static native String[] getSystemPackageNamesDeleted();
-
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L37-L41")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3003-L3007")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L907-L924")
-    private static String[] getSystemPackageNames() {
-        return BootClassRegistry.getSystemPackageNames();
-    }
-
-    /**
-     * Looks up the source location for a package already known to the boot loader.
-     *
-     * This method returns a non-null location only after at least one boot-loaded class in
-     * {@code internalPackageName} has been loaded. For appended boot class path entries, the
-     * package source is recorded when runtime class loading reads a class from that package; this
-     * method does not scan the boot class path for packages with no loaded classes.
-     *
-     * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
-     */
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L44-L52")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
-    private static String getSystemPackageLocation(String internalPackageName) {
-        return BootClassRegistry.getSystemPackageLocation(internalPackageName);
-    }
-
-    @SuppressWarnings({"unused", "restricted"})
-    @Substitute
-    private static void loadLibrary(String name) {
-        System.loadLibrary(name);
-    }
-
-    @Substitute
-    private static boolean hasClassPath() {
-        return true;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    public static URL findResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    public static Enumeration<URL> findResources(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    /**
-     * Most {@link ClassLoaderValue}s are reset. For the list of preserved transformers see
-     * {@link ClassLoaderValueMapFieldValueTransformer}.
-     */
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
-    static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
-    // Checkstyle: resume
-}
-
-@TargetClass(className = "jdk.internal.loader.BootLoader", innerClass = "PackageHelper")
-final class Target_jdk_internal_loader_BootLoader_PackageHelper {
-
-    /// Finds a boot module from the location format returned by `BootLoader.getSystemPackageLocation`.
-    ///
-    /// This intentionally accepts only `jrt:/` module locations. The original JDK implementation also
-    /// recognizes exploded-module `file:/` locations under `JAVA_HOME/modules`, but `JAVA_HOME` might
-    /// not be set at image run time and Native Image does not support exploded boot modules. For
-    /// classes loaded from `-Xbootclasspath/a:`, `location` will be a file system path without
-    /// a `file:/` prefix.
-    @Substitute
-    private static Module findModule(String location) {
-        String moduleName = location.startsWith("jrt:/") ? location.substring(5) : null;
-        if (moduleName != null) {
-            Module module = Modules.findLoadedModule(moduleName).orElse(null);
-            if (module == null) {
-                throw new InternalError(moduleName + " not loaded");
-            }
-            return module;
-        }
         return null;
     }
 }
