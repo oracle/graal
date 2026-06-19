@@ -208,7 +208,7 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         if (module != null) {
             return "jrt:/" + module;
         }
-        return getBootLoaderPackageLocation(internalPackageName);
+        return loadedBootAppendPackageLocations.get(internalPackageName);
     }
 
     /// Records the package source for `internalClassName` after a boot-append class has loaded.
@@ -217,14 +217,6 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         if (lastSlash != -1 && location != null) {
             loadedBootAppendPackageLocations.putIfAbsent(internalClassName.substring(0, lastSlash), location);
         }
-    }
-
-    /// Looks up the boot loader class path entry that provided `internalPackageName`.
-    ///
-    /// This is only for boot loader package discovery after a runtime-loaded boot class has made the
-    /// package observable. It must not be used as a general class path package lookup.
-    private static String getBootLoaderPackageLocation(String internalPackageName) {
-        return loadedBootAppendPackageLocations.get(internalPackageName);
     }
 
     /// Returns boot loader package names in internal form, matching `BootLoader.getSystemPackageNames`.
