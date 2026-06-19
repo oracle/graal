@@ -133,7 +133,7 @@ jobs:
               GATE_TAGS: "build,debuginfotest,scismoketest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "25"
+              JDK_VERSION: "latest"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
