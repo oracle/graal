@@ -34,6 +34,7 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 
 public interface ReflectionHostedSupport {
@@ -90,6 +91,8 @@ public interface ReflectionHostedSupport {
     Set<String> getKnownClassNames();
 
     int getReflectionClassesCount();
+
+    RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz);
 
     int getReflectionMethodsCount();
 

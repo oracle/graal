@@ -66,6 +66,7 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
@@ -297,6 +298,8 @@ public final class Resources {
     private long lastModifiedTime = INVALID_TIMESTAMP;
 
     private GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot;
+    @UnknownObjectField(types = GlobTrieNode.class, canBeNull = true, availability = BuildPhaseProvider.AfterAnalysis.class) //
+    private GlobTrieNode<RuntimeDynamicAccessMetadata> includePatternMetadataTrieRoot;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private Function<Module, Module> hostedToRuntimeModuleMapper;
@@ -324,6 +327,15 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setResourcesTrieRoot(GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot) {
         this.resourcesTrieRoot = resourcesTrieRoot;
+    }
+
+    public GlobTrieNode<RuntimeDynamicAccessMetadata> getIncludePatternMetadataTrieRoot() {
+        return includePatternMetadataTrieRoot;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setIncludePatternMetadataTrieRoot(GlobTrieNode<RuntimeDynamicAccessMetadata> includePatternMetadataTrieRoot) {
+        this.includePatternMetadataTrieRoot = includePatternMetadataTrieRoot;
     }
 
     public void forEachResource(BiConsumer<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> action) {
@@ -433,7 +445,7 @@ public final class Resources {
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
             ModuleResourceKey key = isNegativeQuery ? createLoaderIndependentNegativeQueryKey(m, resourceName) : createStorageKeyImpl(loaderKey, m, resourceName);
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
             if (isNegativeQuery) {
                 ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
                 if (entry == null) {
@@ -561,7 +573,7 @@ public final class Resources {
         }
         synchronized (resources) {
             updateTimeStamp();
-            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(false), new ResourceExceptionEntry(e));
+            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.alwaysAllow(false), new ResourceExceptionEntry(e));
             addResource(createStorageKey(injectedResourceLoaderKey(), module, resourceName), resourceEntry);
         }
     }
@@ -589,7 +601,7 @@ public final class Resources {
         }
         synchronized (resources) {
             updateTimeStamp();
-            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(false), new ResourceExceptionEntry(e));
+            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.alwaysAllow(false), new ResourceExceptionEntry(e));
             addResource(createStorageKey(owner, module, resourceName), resourceEntry);
         }
     }
@@ -626,14 +638,20 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
-            addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeDynamicAccessMetadata.createHosted(condition, false));
+            addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), condition);
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void addPattern(RequestedPattern pattern, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+    private void addPattern(RequestedPattern pattern, AccessCondition condition) {
         if (!previousLayerPatterns.contains(pattern.toString())) {
-            requestedPatterns.put(pattern, dynamicAccessMetadata);
+            /*
+             * Keep a single metadata entry per (module, pattern) and merge all conditions into it.
+             * This preserves unconditional registrations even when conditional entries are present.
+             */
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
+            RuntimeDynamicAccessMetadata registered = requestedPatterns.putIfAbsent(pattern, dynamicAccessMetadata);
+            (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
         }
     }
 
@@ -674,7 +692,7 @@ public final class Resources {
     public static ResourceStorageEntryBase getAtRuntime(ClassLoader loader, String name, boolean probe) {
         String loaderKey = resourceLoaderKey(loader);
         if (loader != null && loaderKey == null) {
-            return missingMetadata(null, name, probe);
+            return missingMetadata(null, name, probe, null);
         }
         return getAtRuntime(loaderKey, null, name, probe);
     }
@@ -711,8 +729,12 @@ public final class Resources {
                     traceResource(resourceName, moduleName);
                     return null;
                 }
+                RuntimeDynamicAccessMetadata unsatisfiedPatternMetadata = findUnsatisfiedMatchingIncludePattern(resourceName, moduleName);
+                if (unsatisfiedPatternMetadata == null && !resourceName.equals(canonicalResourceName)) {
+                    unsatisfiedPatternMetadata = findUnsatisfiedMatchingIncludePattern(canonicalResourceName, moduleName);
+                }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
-                return missingMetadata(module, resourceName, probe);
+                return missingMetadata(module, resourceName, probe, unsatisfiedPatternMetadata);
             } else {
                 // NB: Without exact reachability metadata, resource include patterns are not
                 // stored in the image heap, so we cannot reliably identify if the resource was
@@ -723,7 +745,7 @@ public final class Resources {
         }
         traceResource(resourceName, moduleName);
         if (!entry.getDynamicAccessMetadata().satisfied()) {
-            return missingMetadata(module, resourceName, probe);
+            return missingMetadata(module, resourceName, probe, entry.getDynamicAccessMetadata());
         }
 
         ResourceStorageEntryBase unconditionalEntry = entry.getValue();
@@ -794,21 +816,103 @@ public final class Resources {
      */
     private static boolean missingResourceMatchesIncludePattern(String resourceName, String moduleName) {
         VMError.guarantee(MissingRegistrationUtils.throwMissingRegistrationErrors(), "include patterns are only stored in the image with exact reachability metadata");
-        String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
         for (var r : layeredSingletons()) {
+            boolean matchedUnsatisfiedPatternInLayer = false;
             MapCursor<RequestedPattern, RuntimeDynamicAccessMetadata> cursor = r.requestedPatterns.getEntries();
             while (cursor.advance()) {
                 RequestedPattern moduleResourcePair = cursor.getKey();
-                if (Objects.equals(moduleName, moduleResourcePair.module) && matchResource(moduleResourcePair.pattern, resourceName) && cursor.getValue().satisfied()) {
-                    return true;
+                if (Objects.equals(moduleName, moduleResourcePair.module) && matchResource(moduleResourcePair.pattern, resourceName)) {
+                    if (cursor.getValue().satisfied()) {
+                        return true;
+                    }
+                    matchedUnsatisfiedPatternInLayer = true;
                 }
             }
 
-            if (CompressedGlobTrie.match(r.getResourcesTrieRoot(), glob)) {
+            if (matchedUnsatisfiedPatternInLayer) {
+                /*
+                 * A matching pattern exists but its condition is currently unsatisfied. Report this
+                 * as missing metadata instead of treating it as a successful include match.
+                 */
+                continue;
+            }
+
+            RuntimeDynamicAccessMetadata matchingGlobMetadata = findMatchingIncludeGlobMetadata(r, resourceName, moduleName);
+            if (matchingGlobMetadata != null) {
+                if (matchingGlobMetadata.satisfied()) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (CompressedGlobTrie.match(r.getResourcesTrieRoot(), GlobUtils.transformToTriePath(resourceName, moduleName))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static RuntimeDynamicAccessMetadata findMatchingIncludeGlobMetadata(Resources resources, String resourceName, String moduleName) {
+        GlobTrieNode<RuntimeDynamicAccessMetadata> globMetadataRoot = resources.getIncludePatternMetadataTrieRoot();
+        if (globMetadataRoot == null) {
+            return null;
+        }
+
+        List<RuntimeDynamicAccessMetadata> matchedGlobMetadata = CompressedGlobTrie.getRuntimeContentIfMatched(globMetadataRoot, GlobUtils.transformToTriePath(resourceName, moduleName));
+        if (matchedGlobMetadata == null) {
+            return null;
+        }
+
+        RuntimeDynamicAccessMetadata firstUnsatisfiedMatch = null;
+        for (RuntimeDynamicAccessMetadata metadata : matchedGlobMetadata) {
+            if (metadata.satisfied()) {
+                return metadata;
+            }
+            if (firstUnsatisfiedMatch == null) {
+                firstUnsatisfiedMatch = metadata;
+            }
+        }
+        return firstUnsatisfiedMatch;
+    }
+
+    private static RuntimeDynamicAccessMetadata findUnsatisfiedMatchingIncludePattern(String resourceName, String moduleName) {
+        VMError.guarantee(MissingRegistrationUtils.throwMissingRegistrationErrors(), "include patterns are only stored in the image with exact reachability metadata");
+        RuntimeDynamicAccessMetadata crossModuleFallback = null;
+        for (var r : layeredSingletons()) {
+            MapCursor<RequestedPattern, RuntimeDynamicAccessMetadata> cursor = r.requestedPatterns.getEntries();
+            while (cursor.advance()) {
+                RequestedPattern moduleResourcePair = cursor.getKey();
+                RuntimeDynamicAccessMetadata dynamicAccessMetadata = cursor.getValue();
+                if (matchResource(moduleResourcePair.pattern, resourceName) && !dynamicAccessMetadata.satisfied()) {
+                    if (Objects.equals(moduleName, moduleResourcePair.module)) {
+                        return dynamicAccessMetadata;
+                    }
+                    if (crossModuleFallback == null) {
+                        crossModuleFallback = dynamicAccessMetadata;
+                    }
+                }
+            }
+
+            RuntimeDynamicAccessMetadata matchingGlobMetadata = findMatchingIncludeGlobMetadata(r, resourceName, moduleName);
+            if (matchingGlobMetadata != null && !matchingGlobMetadata.satisfied()) {
+                return matchingGlobMetadata;
+            }
+        }
+        return crossModuleFallback;
+    }
+
+    private static RuntimeDynamicAccessMetadata findUnsatisfiedMetadata(Module module, String resourceName) {
+        String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
+        ConditionalRuntimeValue<ResourceStorageEntryBase> entry = getEntry(module, canonicalResourceName);
+        if (entry != null && !entry.getDynamicAccessMetadata().satisfied()) {
+            return entry.getDynamicAccessMetadata();
+        }
+        String moduleName = moduleName(module);
+        RuntimeDynamicAccessMetadata unsatisfiedPatternMetadata = findUnsatisfiedMatchingIncludePattern(resourceName, moduleName);
+        if (unsatisfiedPatternMetadata == null && !resourceName.equals(canonicalResourceName)) {
+            unsatisfiedPatternMetadata = findUnsatisfiedMatchingIncludePattern(canonicalResourceName, moduleName);
+        }
+        return unsatisfiedPatternMetadata;
     }
 
     private static ConditionalRuntimeValue<ResourceStorageEntryBase> getEntry(Module module, String canonicalResourceName) {
@@ -846,9 +950,9 @@ public final class Resources {
         return negativeQuery;
     }
 
-    private static ResourceStorageEntryBase missingMetadata(Module module, String resourceName, boolean probe) {
+    private static ResourceStorageEntryBase missingMetadata(Module module, String resourceName, boolean probe, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         if (!probe) {
-            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName, dynamicAccessMetadata);
         }
         return MISSING_METADATA_MARKER;
     }
@@ -910,7 +1014,7 @@ public final class Resources {
         ResourceStorageEntryBase entry = findResourceForInputStream(module, resourceName);
         if (entry == MISSING_METADATA_MARKER) {
             traceResourceMissingMetadata(resourceName, moduleName(module));
-            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName, findUnsatisfiedMetadata(module, resourceName));
             return null;
         } else if (entry == null) {
             return null;
@@ -953,6 +1057,7 @@ public final class Resources {
         }
 
         boolean missingMetadata = true;
+        RuntimeDynamicAccessMetadata missingMetadataDetails = null;
 
         List<URL> resourcesURLs = new ArrayList<>();
         String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
@@ -964,20 +1069,28 @@ public final class Resources {
         if (moduleName(module) == null) {
             for (Module m : ModuleLayer.boot().modules()) {
                 ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, true);
-                if (entry != MISSING_METADATA_MARKER) {
+                if (entry == MISSING_METADATA_MARKER) {
+                    if (missingMetadataDetails == null) {
+                        missingMetadataDetails = findUnsatisfiedMetadata(m, resourceName);
+                    }
+                } else {
                     missingMetadata = false;
                     addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, m, canonicalResourceName);
                 }
             }
         }
         ResourceStorageEntryBase explicitEntry = getAtRuntime(module, resourceName, true);
-        if (explicitEntry != MISSING_METADATA_MARKER) {
+        if (explicitEntry == MISSING_METADATA_MARKER) {
+            if (missingMetadataDetails == null) {
+                missingMetadataDetails = findUnsatisfiedMetadata(module, resourceName);
+            }
+        } else {
             missingMetadata = false;
             addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, canonicalResourceName);
         }
 
         if (missingMetadata) {
-            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName, missingMetadataDetails);
         }
 
         if (resourcesURLs.isEmpty()) {

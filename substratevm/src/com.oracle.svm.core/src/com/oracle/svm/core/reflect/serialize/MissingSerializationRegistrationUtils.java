@@ -32,6 +32,7 @@ import java.util.Set;
 
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 
 public final class MissingSerializationRegistrationUtils extends MissingRegistrationUtils {
 
@@ -39,17 +40,27 @@ public final class MissingSerializationRegistrationUtils extends MissingRegistra
         reportSerialization(cl, typeDescriptor(cl));
     }
 
+    public static void reportSerialization(Class<?> cl, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        reportSerialization(cl, typeDescriptor(cl), dynamicAccessMetadata);
+    }
+
     public static void reportSerialization(Class<?> cl, String serializedType) {
+        reportSerialization(cl, serializedType, null);
+    }
+
+    public static void reportSerialization(Class<?> cl, String serializedType, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         ConfigurationType type = getConfigurationType(cl);
         type.setSerializable();
 
-        MissingSerializationRegistrationError exception = new MissingSerializationRegistrationError(serializationMessage(elementToJSON(type), serializedType), cl);
+        MissingSerializationRegistrationError exception = new MissingSerializationRegistrationError(serializationMessage(elementToJSON(type), serializedType, dynamicAccessMetadata), cl);
         StackTraceElement responsibleClass = getResponsibleClass(exception);
         MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
-    private static String serializationMessage(String json, String typeDescriptor) {
-        return registrationMessage("serialize or deserialize", typeDescriptor, json, "", "reflection", "reflection");
+    private static String serializationMessage(String json, String typeDescriptor, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        return appendUnsatisfiedConditions(
+                        registrationMessage("serialize or deserialize", typeDescriptor, json, "", "reflection", "reflection"),
+                        dynamicAccessMetadata);
     }
 
     /*

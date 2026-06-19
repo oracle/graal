@@ -98,7 +98,7 @@ public final class Target_java_lang_reflect_Constructor {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
         assert constructorAccessor == null : "acquireConstructorAccessor() method must not be called if instance is in image heap.";
         if (constructorAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
-            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(dynamicAccessMetadata, SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessorFromMetadata;
     }

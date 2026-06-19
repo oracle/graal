@@ -275,7 +275,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName) {
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
         var registered = registeredBundles.putIfAbsent(baseName, dynamicAccessMetadata);
         (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
     }
@@ -292,6 +292,17 @@ public class LocalizationSupport {
             return registeredBundles.get(baseName).satisfied();
         }
         return false;
+    }
+
+    public RuntimeDynamicAccessMetadata getBundleLookupDynamicAccessMetadata(String baseName, Locale locale, Object controlOrStrategy) {
+        if (baseName == null || locale == null || controlOrStrategy == null) {
+            return null;
+        }
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = registeredBundles.get(baseName);
+        if (dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied()) {
+            return null;
+        }
+        return dynamicAccessMetadata;
     }
 
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {

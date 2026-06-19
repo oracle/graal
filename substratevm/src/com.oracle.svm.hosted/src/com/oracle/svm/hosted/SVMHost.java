@@ -269,7 +269,6 @@ public class SVMHost extends HostVM {
     private final ResolvedJavaType optionKeyType;
     private final ResolvedJavaType featureType;
 
-    private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
     private final MetaAccessProvider originalMetaAccess;
@@ -512,17 +511,7 @@ public class SVMHost extends HostVM {
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
         checkForbidden(type, UsageKind.Instantiated);
 
-        if (optionAllowUnsafeAllocationOfAllInstantiatedTypes != null) {
-            if (optionAllowUnsafeAllocationOfAllInstantiatedTypes) {
-                type.registerAsUnsafeAllocated("All types are registered as Unsafe allocated via option -H:+AllowUnsafeAllocationOfAllInstantiatedTypes");
-                typeToHub.get(type).setCanUnsafeAllocate();
-            } else {
-                /*
-                 * No default registration for unsafe allocation, setting the explicit option has
-                 * precedence over the generic ThrowMissingRegistrationError option.
-                 */
-            }
-        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
+        if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
             type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
             typeToHub.get(type).setCanUnsafeAllocate();
         }

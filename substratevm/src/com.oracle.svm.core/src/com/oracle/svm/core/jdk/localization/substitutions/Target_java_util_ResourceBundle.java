@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
@@ -63,9 +64,7 @@ final class Target_java_util_ResourceBundle {
 
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
-            if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
-                MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName);
-            }
+            ResourceBundleMissingRegistrationSupport.maybeReportResourceBundleAccess(callerModule, caller, baseName, locale, control);
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
                 @Override
                 public ResourceBundle get() {
@@ -82,9 +81,7 @@ final class Target_java_util_ResourceBundle {
                         ? loader.getUnnamedModule()
                         : BootLoader.getUnnamedModule();
 
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
-            MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName);
-        }
+        ResourceBundleMissingRegistrationSupport.maybeReportResourceBundleAccess(unnamedModule, caller, baseName, locale, control);
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
             @Override
             public ResourceBundle get() {
@@ -105,9 +102,7 @@ final class Target_java_util_ResourceBundle {
          * TODO GR-67556 - Implement proper module-aware LocalizationSupport bundle registration to
          * ensure we show MissingResourceRegistrationError in all relevant situations.
          */
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
-            MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
-        }
+        ResourceBundleMissingRegistrationSupport.maybeReportResourceBundleAccess(module, caller, baseName, locale, control);
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
     }
 
@@ -135,6 +130,17 @@ final class ResourceBundleMissingRegistrationSupport {
 
     static boolean shouldReport(Class<?> caller, String baseName, Locale locale, Control control) {
         return !isRuntimeLoaded(caller) && !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control);
+    }
+
+    static void maybeReportResourceBundleAccess(Module module, Class<?> caller, String baseName, Locale locale, Control control) {
+        if (shouldReport(caller, baseName, locale, control)) {
+            RuntimeDynamicAccessMetadata unsatisfiedConditionMetadata = getBundleLookupDynamicAccessMetadata(baseName, locale, control);
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName, unsatisfiedConditionMetadata);
+        }
+    }
+
+    static RuntimeDynamicAccessMetadata getBundleLookupDynamicAccessMetadata(String baseName, Locale locale, Control control) {
+        return ImageSingletons.lookup(LocalizationSupport.class).getBundleLookupDynamicAccessMetadata(baseName, locale, control);
     }
 
     private static boolean isRuntimeLoaded(Class<?> clazz) {

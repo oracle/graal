@@ -94,7 +94,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                  * This causes the internal structure of the proxyCache to be unusable in the
                  * application layer.
                  */
-                return Arrays.hashCode(Arrays.stream(interfaces).map(Class::getName).toArray());
+                String[] interfaceNames = new String[interfaces.length];
+                for (int i = 0; i < interfaces.length; i++) {
+                    interfaceNames[i] = interfaces[i].getName();
+                }
+                return Arrays.hashCode(interfaceNames);
             } else {
                 return Arrays.hashCode(interfaces);
             }
@@ -107,6 +111,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create("proxyCache");
+    private final EconomicMap<String, ProxyMetadataCandidate> proxyMetadataByInterfaceNames = ImageHeapMap.create("proxyMetadataByInterfaceNames");
+    private final EconomicMap<String, ProxyMetadataCandidate> proxyMetadataBySortedInterfaceNames = ImageHeapMap.create("proxyMetadataBySortedInterfaceNames");
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final EconomicMap<Class<?>, ClassLoader> proxyClassClassloaders = EconomicMap.create();
@@ -131,20 +137,32 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(intfs);
         ConditionalRuntimeValue<Object> conditionalValue = proxyCache.get(key);
         if (conditionalValue == null) {
-            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), createProxyClass(intfs, preserved));
+            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs));
             proxyCache.put(key, conditionalValue);
+            String[] interfaceNames = interfaceTypeNames(intfs);
+            addProxyMetadataCandidate(proxyMetadataByInterfaceNames, interfaceLookupKey(interfaceNames), conditionalValue, intfs);
+            addProxyMetadataCandidate(proxyMetadataBySortedInterfaceNames, interfaceLookupKey(sortedCopy(interfaceNames)), conditionalValue, intfs);
         } else if (!preserved) {
             conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
         conditionalValue.getDynamicAccessMetadata().addCondition(condition);
+        if (conditionalValue.getValueUnconditionally() instanceof Class<?> proxyClass) {
+            registerProxyReflectionMetadata(condition, proxyClass, intfs, preserved);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private Object createProxyClass(Class<?>[] interfaces, boolean preserved) {
+    private Object createProxyClass(Class<?>[] interfaces) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
-            boolean isPredefinedProxy = Arrays.stream(interfaces).anyMatch(PredefinedClassesSupport::isPredefined);
+            boolean isPredefinedProxy = false;
+            for (Class<?> intf : interfaces) {
+                if (PredefinedClassesSupport.isPredefined(intf)) {
+                    isPredefinedProxy = true;
+                    break;
+                }
+            }
             if (isPredefinedProxy) {
                 /*
                  * Treat the proxy as a predefined class so that we can set its class loader to the
@@ -154,24 +172,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                  */
                 PredefinedClassesSupport.registerClass(clazz);
                 RuntimeClassInitialization.initializeAtRunTime(clazz);
-            }
-
-            /*
-             * The constructor of the generated dynamic proxy class that takes a
-             * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
-             * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
-             * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
-             * be allocated at run time.
-             */
-            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-            reflectionSupport.register(AccessCondition.unconditional(), preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
-
-            /*
-             * The proxy class reflectively looks up the methods of the interfaces it implements to
-             * pass a Method object to InvocationHandler.
-             */
-            for (Class<?> intf : interfaces) {
-                reflectionSupport.register(AccessCondition.unconditional(), preserved, intf.getMethods());
             }
 
             /*
@@ -190,6 +190,35 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             return clazz;
         } catch (Throwable t) {
             return t;
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void registerProxyReflectionMetadata(AccessCondition condition, Class<?> proxyClass, Class<?>[] interfaces, boolean preserved) {
+        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+
+        /*
+         * Proxy.newProxyInstance first queries the generated proxy class for its constructor, so
+         * the proxy class itself must satisfy class-level reflection checks in addition to the
+         * constructor registration below.
+         */
+        reflectionSupport.register(condition, preserved, proxyClass);
+
+        /*
+         * The constructor of the generated dynamic proxy class that takes a
+         * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
+         * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)`,
+         * is registered for reflection so that dynamic proxy instances can be allocated at run
+         * time.
+         */
+        reflectionSupport.register(condition, preserved, ReflectionUtil.lookupConstructor(proxyClass, InvocationHandler.class));
+
+        /*
+         * The proxy class reflectively looks up the methods of the interfaces it implements to pass
+         * a Method object to InvocationHandler.
+         */
+        for (Class<?> intf : interfaces) {
+            reflectionSupport.register(condition, preserved, intf.getMethods());
         }
     }
 
@@ -246,12 +275,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
+        ProxyMetadataLookup proxyMetadataLookup = clazzOrError == null ? findMatchingMetadata(interfaces) : new ProxyMetadataLookup(clazzOrError.getDynamicAccessMetadata(), null);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = proxyMetadataLookup.metadata;
 
-        if (clazzOrError == null || !clazzOrError.getDynamicAccessMetadata().satisfied()) {
+        if (clazzOrError == null || !dynamicAccessMetadata.satisfied()) {
             if (nullIfMissing) {
                 return null;
             }
-            throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
+            throw MissingReflectionRegistrationUtils.reportProxyAccess(dynamicAccessMetadata, proxyMetadataLookup.interfaceOrderHint, interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError.getValue());
@@ -286,6 +317,97 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             return entry.getDynamicAccessMetadata().isPreserved();
         }
         return false;
+    }
+
+    private ProxyMetadataLookup findMatchingMetadata(Class<?>... interfaces) {
+        String[] interfaceNames = interfaceTypeNames(interfaces);
+        RuntimeDynamicAccessMetadata orderedMatch = null;
+        ProxyMetadataCandidate orderedCandidates = proxyMetadataByInterfaceNames.get(interfaceLookupKey(interfaceNames));
+        while (orderedCandidates != null) {
+            RuntimeDynamicAccessMetadata metadata = orderedCandidates.dynamicAccessMetadata;
+            if (!metadata.satisfied()) {
+                return new ProxyMetadataLookup(metadata, null);
+            }
+            if (orderedMatch == null) {
+                orderedMatch = metadata;
+            }
+            orderedCandidates = orderedCandidates.next;
+        }
+
+        ProxyMetadataCandidate unorderedCandidates = proxyMetadataBySortedInterfaceNames.get(interfaceLookupKey(sortedCopy(interfaceNames)));
+        while (unorderedCandidates != null) {
+            RuntimeDynamicAccessMetadata metadata = unorderedCandidates.dynamicAccessMetadata;
+            if (!metadata.satisfied() && !matchesInterfaceNames(unorderedCandidates.interfaces, interfaceNames)) {
+                String hint = createInterfaceOrderHint(interfaceNames, unorderedCandidates.interfaces);
+                return new ProxyMetadataLookup(metadata, hint);
+            }
+            unorderedCandidates = unorderedCandidates.next;
+        }
+        return new ProxyMetadataLookup(orderedMatch, null);
+    }
+
+    private static boolean matchesInterfaceNames(Class<?>[] cachedInterfaces, String[] interfaceNames) {
+        if (cachedInterfaces.length != interfaceNames.length) {
+            return false;
+        }
+        for (int i = 0; i < cachedInterfaces.length; i++) {
+            if (!cachedInterfaces[i].getTypeName().equals(interfaceNames[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String[] interfaceTypeNames(Class<?>[] interfaces) {
+        String[] interfaceNames = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceNames[i] = interfaces[i].getTypeName();
+        }
+        return interfaceNames;
+    }
+
+    private static String interfaceLookupKey(String[] interfaceNames) {
+        return proxyTypeDescriptor(interfaceNames);
+    }
+
+    private static String[] sortedCopy(String[] names) {
+        String[] result = names.clone();
+        Arrays.sort(result);
+        return result;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void addProxyMetadataCandidate(EconomicMap<String, ProxyMetadataCandidate> metadataIndex, String key, ConditionalRuntimeValue<Object> conditionalValue, Class<?>[] interfaces) {
+        metadataIndex.put(key, new ProxyMetadataCandidate(conditionalValue.getDynamicAccessMetadata(), interfaces, metadataIndex.get(key)));
+    }
+
+    private static String createInterfaceOrderHint(String[] requestedInterfaceNames, Class<?>[] registeredInterfaces) {
+        String requestedOrder = proxyTypeDescriptor(requestedInterfaceNames);
+        String registeredOrder = proxyTypeDescriptor(interfaceTypeNames(registeredInterfaces));
+        return "A proxy registration with the same interfaces exists but in a different order. Proxy interface order is significant. " +
+                        "Requested order: " + requestedOrder + ". Registered order: " + registeredOrder + ".";
+    }
+
+    private static final class ProxyMetadataCandidate {
+        private final RuntimeDynamicAccessMetadata dynamicAccessMetadata;
+        private final Class<?>[] interfaces;
+        private final ProxyMetadataCandidate next;
+
+        private ProxyMetadataCandidate(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?>[] interfaces, ProxyMetadataCandidate next) {
+            this.dynamicAccessMetadata = dynamicAccessMetadata;
+            this.interfaces = interfaces;
+            this.next = next;
+        }
+    }
+
+    private static final class ProxyMetadataLookup {
+        private final RuntimeDynamicAccessMetadata metadata;
+        private final String interfaceOrderHint;
+
+        private ProxyMetadataLookup(RuntimeDynamicAccessMetadata metadata, String interfaceOrderHint) {
+            this.metadata = metadata;
+            this.interfaceOrderHint = interfaceOrderHint;
+        }
     }
 
     private static RuntimeException incompatibleClassLoaders(ClassLoader provided, Class<?>[] interfaces) {

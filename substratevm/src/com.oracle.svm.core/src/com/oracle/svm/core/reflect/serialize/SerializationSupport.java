@@ -120,8 +120,12 @@ public class SerializationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private EconomicMap<HostedSerializationLookupKey, Object> hostedConstructorAccessors;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private EconomicMap<HostedSerializationLookupKey, RuntimeDynamicAccessMetadata> hostedConstructorAccessorMetadata;
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
     private EconomicMap<SerializationLookupKey, Object> constructorAccessors;
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
+    private EconomicMap<SerializationLookupKey, RuntimeDynamicAccessMetadata> constructorAccessorMetadata;
 
     /**
      * The constructor accessors need to be rescanned manually because the
@@ -132,7 +136,9 @@ public class SerializationSupport {
 
     public SerializationSupport() {
         hostedConstructorAccessors = EconomicMap.create();
+        hostedConstructorAccessorMetadata = EconomicMap.create();
         constructorAccessors = null;
+        constructorAccessorMetadata = null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -159,13 +165,21 @@ public class SerializationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Object addConstructorAccessor(DynamicHub declaringClass, DynamicHub targetConstructorClass, Object constructorAccessor) {
+    public Object addConstructorAccessor(AccessCondition cnd, boolean preserved, DynamicHub declaringClass, DynamicHub targetConstructorClass, Object constructorAccessor) {
         VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
         VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt(), "Called too early");
         HostedSerializationLookupKey key = new HostedSerializationLookupKey(new DynamicHubKey(declaringClass), new DynamicHubKey(targetConstructorClass));
         objectRescanner.accept(constructorAccessor);
         synchronized (hostedConstructorAccessors) {
-            return hostedConstructorAccessors.putIfAbsent(key, constructorAccessor);
+            Object previous = hostedConstructorAccessors.putIfAbsent(key, constructorAccessor);
+            var previousMetadata = hostedConstructorAccessorMetadata.putIfAbsent(key, RuntimeDynamicAccessMetadata.createHosted(cnd, preserved));
+            if (previousMetadata != null) {
+                previousMetadata.addCondition(cnd);
+                if (!preserved) {
+                    previousMetadata.setNotPreserved();
+                }
+            }
+            return previous;
         }
     }
 
@@ -243,12 +257,16 @@ public class SerializationSupport {
     public void replaceHubKeyWithTypeID() {
         VMError.guarantee(classes == null && hostedClasses != null, "The maps should only be replaced once");
         VMError.guarantee(constructorAccessors == null && hostedConstructorAccessors != null, "The maps should only be replaced once");
+        VMError.guarantee(constructorAccessorMetadata == null && hostedConstructorAccessorMetadata != null, "The maps should only be replaced once");
         classes = EconomicMap.create();
         replaceHubKeyWithTypeID(hostedClasses, classes, SerializationSupport::getTypeID);
         hostedClasses = null;
         constructorAccessors = EconomicMap.create();
         replaceHubKeyWithTypeID(hostedConstructorAccessors, constructorAccessors, SerializationSupport::replaceSerializationLookupKey);
         hostedConstructorAccessors = null;
+        constructorAccessorMetadata = EconomicMap.create();
+        replaceHubKeyWithTypeID(hostedConstructorAccessorMetadata, constructorAccessorMetadata, SerializationSupport::replaceSerializationLookupKey);
+        hostedConstructorAccessorMetadata = null;
     }
 
     private static <T, U, V> void replaceHubKeyWithTypeID(EconomicMap<T, U> hostedMap, EconomicMap<V, U> map, Function<T, V> converter) {
@@ -286,6 +304,7 @@ public class SerializationSupport {
     public static Object getRuntimeSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
         SubstrateUtil.guaranteeRuntimeOnly();
         Class<?> declaringClass = serializationTargetClass;
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = null;
 
         if (LambdaUtils.isLambdaClass(declaringClass)) {
             declaringClass = SerializedLambda.class;
@@ -297,15 +316,22 @@ public class SerializationSupport {
         for (var singleton : layeredSingletons()) {
             DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
             DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
-            Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
-            if (constructorAccessor != null) {
-                return constructorAccessor;
+            ConstructorAccessorLookup lookup = singleton.getSerializationConstructorAccessorLookup0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
+            if (lookup.constructorAccessor() == null) {
+                continue;
+            }
+            if (lookup.dynamicAccessMetadata() == null || lookup.dynamicAccessMetadata().satisfied()) {
+                return lookup.constructorAccessor();
+            }
+            if (dynamicAccessMetadata == null) {
+                dynamicAccessMetadata = lookup.dynamicAccessMetadata();
             }
         }
 
         String targetConstructorClassName = targetConstructorClass.getName();
         MissingSerializationRegistrationUtils.reportSerialization(declaringClass,
-                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
+                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'",
+                        dynamicAccessMetadata);
         return null;
     }
 
@@ -319,9 +345,9 @@ public class SerializationSupport {
         }
 
         VMError.guarantee(BuildPhaseProvider.isHostedUniverseBuilt(), "Called too early, hosted universe was not built yet.");
-        Object constructorAccessor = serializationSupport.getSerializationConstructorAccessor0(declaringClass, targetConstructorClass, declaringClass.getModifiers());
-        if (constructorAccessor != null) {
-            return constructorAccessor;
+        ConstructorAccessorLookup lookup = serializationSupport.getSerializationConstructorAccessorLookup0(declaringClass, targetConstructorClass, declaringClass.getModifiers());
+        if (lookup.constructorAccessor() != null) {
+            return lookup.constructorAccessor();
         }
 
         String targetConstructorClassName = targetConstructorClass.getName();
@@ -330,10 +356,14 @@ public class SerializationSupport {
         return null;
     }
 
-    public Object getSerializationConstructorAccessor0(DynamicHub declaringHub, DynamicHub rawTargetConstructorHub, int modifiers) {
+    private ConstructorAccessorLookup getSerializationConstructorAccessorLookup0(DynamicHub declaringHub, DynamicHub rawTargetConstructorHub, int modifiers) {
         VMError.guarantee(stubConstructorClass != null, "Called too early, no stub constructor yet.");
         DynamicHub targetConstructorHub = Modifier.isAbstract(modifiers) ? stubConstructorClass : rawTargetConstructorHub;
-        return constructorAccessors.get(new SerializationLookupKey(declaringHub.getTypeID(), targetConstructorHub.getTypeID()));
+        SerializationLookupKey key = new SerializationLookupKey(declaringHub.getTypeID(), targetConstructorHub.getTypeID());
+        return new ConstructorAccessorLookup(constructorAccessors.get(key), constructorAccessorMetadata.get(key));
+    }
+
+    private record ConstructorAccessorLookup(Object constructorAccessor, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
     }
 
     public static boolean isRegisteredForSerialization(DynamicHub hub) {
@@ -343,6 +373,17 @@ public class SerializationSupport {
             }
         }
         return false;
+    }
+
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataForSerialization(DynamicHub dynamicHub) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
+            var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
+            if (conditionSet != null) {
+                return conditionSet;
+            }
+        }
+        return null;
     }
 
     public boolean isRegisteredForSerialization0(DynamicHub dynamicHub) {

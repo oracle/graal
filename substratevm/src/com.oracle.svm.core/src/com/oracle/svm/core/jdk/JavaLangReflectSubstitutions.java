@@ -26,10 +26,13 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+
 import java.lang.reflect.Array;
 import java.util.Objects;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -416,11 +419,14 @@ final class Target_java_lang_reflect_Array {
         // get the ultimate outer array type
         DynamicHub arrayHub = DynamicHub.fromClass(componentType);
         for (int i = 0; i < dimensions.length; i++) {
-            DynamicHub maybeArrayHub = arrayHub.getOrCreateArrayHub();
-            if (maybeArrayHub == null) {
+            arrayHub = arrayHub.getOrCreateArrayHub();
+            if (arrayHub == null) {
                 throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
             }
-            arrayHub = maybeArrayHub;
+        }
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub.getDynamicAccessMetadata();
+        if (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length, dynamicAccessMetadata);
         }
 
         return Util_java_lang_reflect_Array.createMultiArrayAtIndex(0, arrayHub, dimensions);

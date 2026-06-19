@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -80,7 +81,7 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;
@@ -100,6 +101,7 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.util.ResourcesUtils;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
@@ -184,12 +186,16 @@ public class ResourcesFeature implements InternalFeature {
     private record ConditionalPattern(AccessCondition condition, String pattern, Object origin) {
     }
 
+    private record ConditionalGlob(AccessCondition condition, String module, String glob, Object origin) {
+    }
+
     private record CompiledConditionalPattern(AccessCondition condition, ResourcePattern compiledPattern, Object origin) {
     }
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Set<ConditionalPattern> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Set<ConditionalGlob> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<ConditionalPattern> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Set<ConditionalGlob> includePatternMetadataGlobs = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private ImageClassLoader imageClassLoader;
     private ModuleLocationIndex classpathModuleLocationIndex;
@@ -236,8 +242,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addGlob(AccessCondition condition, String module, String glob, Object origin) {
             String canonicalGlob = NativeImageResourcePathRepresentation.toCanonicalForm(glob);
-            String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
-            globWorkSet.add(new ConditionalPattern(condition, resolvedGlob, origin));
+            globWorkSet.add(new ConditionalGlob(condition, module, canonicalGlob, origin));
         }
 
         @Override
@@ -693,9 +698,18 @@ public class ResourcesFeature implements InternalFeature {
         /* prepare globs for resource registration */
         List<CompressedGlobTrie.GlobWithInfo<ConditionWithOrigin>> patternsWithInfo = globWorkSet
                         .stream()
-                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(entry.pattern(), new ConditionWithOrigin(entry.condition(), entry.origin()))).toList();
+                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(GlobUtils.transformToTriePath(entry.glob(), entry.module()), new ConditionWithOrigin(entry.condition(), entry.origin())))
+                        .toList();
         GlobTrieNode<ConditionWithOrigin> trie = CompressedGlobTrie.CompressedGlobTrieBuilder.build(patternsWithInfo);
         Resources.currentLayer().setResourcesTrieRoot(trie);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            for (ConditionalGlob glob : globWorkSet) {
+                TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) glob.condition();
+                if (reachabilityCondition.isRuntimeChecked() && !reachabilityCondition.isAlwaysTrue()) {
+                    access.registerAsUsed(reachabilityCondition.getType());
+                }
+            }
+        }
 
         /*
          * GR-58701: The SVM core is currently not included in the base layer of a Layered Image.
@@ -721,12 +735,14 @@ public class ResourcesFeature implements InternalFeature {
 
         ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
         /*
-         * register all included patterns in Resources singleton (if we are throwing
-         * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
+         * Register regex include patterns in the Resources singleton so runtime missing-metadata
+         * diagnostics can query them with the legacy simple matcher. Glob diagnostics use the
+         * dedicated metadata trie above instead of requestedPatterns.
          */
         if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
                             resourcePattern.compiledPattern.pattern.pattern()));
+            globWorkSet.forEach(glob -> collector.trackIncludePatternMetadata(glob.condition(), glob.module(), glob.glob(), glob.origin()));
         }
 
         /* if we have any entry in resource config file we should collect resources */
@@ -872,6 +888,10 @@ public class ResourcesFeature implements InternalFeature {
         public void registerIncludePattern(AccessCondition condition, String module, String pattern) {
             registerConditionalConfiguration(condition, cnd -> Resources.currentLayer().registerIncludePattern(cnd, module, pattern));
         }
+
+        public void trackIncludePatternMetadata(AccessCondition condition, String module, String pattern, Object origin) {
+            registerConditionalConfiguration(condition, cnd -> includePatternMetadataGlobs.add(new ConditionalGlob(cnd, module, pattern, origin)));
+        }
     }
 
     private static List<ConditionalPattern> getPatternsFromOption(AccumulatingLocatableMultiOptionValue.Strings option) {
@@ -879,6 +899,28 @@ public class ResourcesFeature implements InternalFeature {
                         .getValuesWithOrigins()
                         .map(e -> new ConditionalPattern(AccessCondition.unconditional(), e.value(), e.origin()))
                         .toList();
+    }
+
+    private static AccessCondition runtimeMetadataCondition(AccessCondition condition) {
+        VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
+        TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) condition;
+        if (reachabilityCondition.isAlwaysTrue() || !reachabilityCondition.isRuntimeChecked()) {
+            return AccessCondition.unconditional();
+        }
+        return condition;
+    }
+
+    private GlobTrieNode<RuntimeDynamicAccessMetadata> buildIncludePatternMetadataTrie() {
+        Map<String, RuntimeDynamicAccessMetadata> metadataByPattern = new LinkedHashMap<>();
+        for (ConditionalGlob glob : includePatternMetadataGlobs) {
+            String triePath = GlobUtils.transformToTriePath(glob.glob(), glob.module());
+            RuntimeDynamicAccessMetadata metadata = metadataByPattern.computeIfAbsent(triePath, _ -> RuntimeDynamicAccessMetadata.alwaysAllow(false));
+            metadata.addCondition(runtimeMetadataCondition(glob.condition()));
+        }
+        List<CompressedGlobTrie.GlobWithInfo<RuntimeDynamicAccessMetadata>> patternsWithInfo = metadataByPattern.entrySet().stream()
+                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(entry.getKey(), entry.getValue()))
+                        .toList();
+        return CompressedGlobTrie.CompressedGlobTrieBuilder.buildRuntimeContent(patternsWithInfo);
     }
 
     private static Set<CompiledConditionalPattern> compilePatternWorkset(Set<ConditionalPattern> patterns) {
@@ -938,6 +980,12 @@ public class ResourcesFeature implements InternalFeature {
         GlobTrieNode<ConditionWithOrigin> root = Resources.currentLayer().getResourcesTrieRoot();
         CompressedGlobTrie.removeNodes(root, (conditionWithOrigin) -> !access.isReachable(((TypeReachabilityCondition) conditionWithOrigin.condition()).getType()));
         CompressedGlobTrie.finalize(root);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            GlobTrieNode<RuntimeDynamicAccessMetadata> metadataRoot = buildIncludePatternMetadataTrie();
+            CompressedGlobTrie.finalize(metadataRoot);
+            Resources.currentLayer().setIncludePatternMetadataTrieRoot(metadataRoot);
+            includePatternMetadataGlobs = Set.of();
+        }
     }
 
     @Override
