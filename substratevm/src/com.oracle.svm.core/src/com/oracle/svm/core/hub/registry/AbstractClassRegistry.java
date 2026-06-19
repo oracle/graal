@@ -81,6 +81,21 @@ public abstract class AbstractClassRegistry {
         return null;
     }
 
+    public final Class<?> findLoadedClass(ByteSequence typeBytes) {
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (type != null) {
+            return findLoadedClass(type);
+        }
+        if (runtimeClasses != null) {
+            for (Symbol<Type> runtimeType : runtimeClasses.keySet()) {
+                if (runtimeType.hashCode() == typeBytes.hashCode() && runtimeType.contentEquals(typeBytes)) {
+                    return findLoadedClass(runtimeType);
+                }
+            }
+        }
+        return null;
+    }
+
     public abstract ClassLoader getClassLoader();
 
     public abstract Class<?> loadClass(Symbol<Type> name) throws ClassNotFoundException;

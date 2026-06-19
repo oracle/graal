@@ -164,6 +164,16 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
 
     /**
+     * Trims any implementation-specific storage so it does not retain unused capacity. This method
+     * does not change the mappings in this map. Implementations that do not retain trimmable
+     * storage may leave this method as a no-op.
+     *
+     * @since 25.1
+     */
+    default void trimToSize() {
+    }
+
+    /**
      * Creates a new map that guarantees insertion order on the key set with the default
      * {@link Equivalence#DEFAULT} comparison strategy for keys.
      *

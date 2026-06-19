@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub.registry;
 
 import java.lang.ref.WeakReference;
+import java.util.Collection;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -33,9 +34,12 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.NameSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
@@ -62,6 +66,8 @@ public final class SymbolsSupport {
     final NameSymbols names;
     final TypeSymbols types;
     final SignatureSymbols signatures;
+    @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
+    ImageSymbolSet imageSymbols;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SymbolsSupport() {
@@ -72,6 +78,30 @@ public final class SymbolsSupport {
         names = new NameSymbols(symbols);
         types = new TypeSymbols(symbols);
         signatures = new SignatureSymbols(symbols, types);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static SymbolsSupport hostedLookup() {
+        return LayeredImageSingletonSupport.singleton().lookup(SymbolsSupport.class, false, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void prepareSymbolsForImageHeap() {
+        hostedLookup().prepareSymbolsForImageHeap0();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void prepareSymbolsForImageHeap0() {
+        /*
+         * Keep build-time symbols in one immutable image-heap lookup table and leave the normal
+         * strong/weak maps empty for symbols created at runtime. The image table is only for
+         * symbols deliberately embedded in the image heap; symbols created after image startup keep
+         * using the runtime SymbolsImpl maps and their normal weak/strong semantics.
+         */
+        var imageSymbolList = symbols.drainSymbols();
+        if (!imageSymbolList.isEmpty()) {
+            imageSymbols = ImageSymbolSet.create(imageSymbolList);
+        }
     }
 
     public static TypeSymbols getTypes() {
@@ -112,6 +142,77 @@ public final class SymbolsSupport {
 }
 
 /**
+ * Immutable open-addressed lookup table for symbols that were already present during image
+ * building. The table preserves symbol identity by storing the original {@link Symbol} instances
+ * directly in the image heap while avoiding the runtime footprint of the mutable strong/weak maps
+ * used by {@link Symbols}.
+ */
+final class ImageSymbolSet {
+    /**
+     * Maximum table occupancy. Keeping at least one third of the slots empty bounds the expected
+     * number of linear-probing steps while still using less image-heap memory than the original
+     * maps.
+     */
+    private static final int MAX_LOAD_PERCENT = 66;
+
+    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
+    private final Symbol<?>[] table;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
+    private final int mask;
+
+    private ImageSymbolSet(Symbol<?>[] table) {
+        this.table = table;
+        this.mask = table.length - 1;
+    }
+
+    static ImageSymbolSet create(Collection<Symbol<?>> symbols) {
+        int tableSize = 1;
+        int symbolCount = symbols.size();
+        int roundedUpPercent = symbolCount * 100 + MAX_LOAD_PERCENT - 1;
+        int minimumTableSize = Math.max(1, roundedUpPercent / MAX_LOAD_PERCENT);
+        while (tableSize < minimumTableSize) {
+            tableSize <<= 1;
+        }
+        Symbol<?>[] table = new Symbol<?>[tableSize];
+        ImageSymbolSet result = new ImageSymbolSet(table);
+        for (Symbol<?> symbol : symbols) {
+            result.insert(symbol);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> Symbol<T> lookup(ByteSequence byteSequence) {
+        if (byteSequence == null) {
+            return null;
+        }
+        int index = hashIndex(byteSequence, mask);
+        while (true) {
+            Symbol<?> candidate = table[index];
+            if (candidate == null) {
+                return null;
+            }
+            if (candidate == byteSequence || (candidate.hashCode() == byteSequence.hashCode() && candidate.contentEquals(byteSequence))) {
+                return (Symbol<T>) candidate;
+            }
+            index = (index + 1) & mask;
+        }
+    }
+
+    private void insert(Symbol<?> symbol) {
+        int index = hashIndex(symbol, mask);
+        while (table[index] != null) {
+            index = (index + 1) & mask;
+        }
+        table[index] = symbol;
+    }
+
+    private static int hashIndex(ByteSequence byteSequence, int mask) {
+        return byteSequence.hashCode() & mask;
+    }
+}
+
+/**
  * This substitution class is here to avoid a massive refactoring of the symbols support. The only
  * part of this code that needs to be layer-aware is the Symbols class (and its implementation). We
  * simply need getOrCreate to act on the current layer at build-time, and the lookup and getOrCreate
@@ -134,6 +235,9 @@ final class Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl {
         for (var singleton : SymbolsSupport.layeredSingletons()) {
             var symbols = SubstrateUtil.cast(singleton.symbols, Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.class);
             Symbol<T> symbol = Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.originalLookup(symbols, byteSequence);
+            if (symbol == null) {
+                symbol = Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.imageLookup(singleton, byteSequence);
+            }
             if (symbol != null) {
                 return symbol;
             }
@@ -146,6 +250,12 @@ final class Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl {
         for (var singleton : SymbolsSupport.layeredSingletons()) {
             var symbols = SubstrateUtil.cast(singleton.symbols, Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.class);
             Symbol<T> symbol = Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.originalLookup(symbols, byteSequence);
+            if (symbol == null) {
+                symbol = Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.imageLookup(singleton, byteSequence);
+                if (symbol != null) {
+                    return symbol;
+                }
+            }
             if (symbol != null && !(ensureStrongReference && symbols.isWeak(symbol))) {
                 return symbol;
             }
@@ -153,8 +263,25 @@ final class Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl {
         return Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.originalGetOrCreate(this, byteSequence, ensureStrongReference);
     }
 
-    @Alias
-    public native boolean isWeak(Symbol<?> symbol);
+    @Substitute
+    public boolean isWeak(Symbol<?> symbol) {
+        assert lookup(symbol) == symbol;
+        /*
+         * A symbol found in an immutable image table is not represented by a runtime weak-map entry,
+         * so report it as non-weak. This is specific to symbols that were embedded in the image
+         * heap. It does not imply that runtime-created symbols are generally strong: symbols
+         * created after image startup keep the usual SymbolsImpl semantics, where strongMap
+         * membership determines whether the symbol is weak. Check all layers because the receiver
+         * may be a lower-layer symbol table while the symbol itself belongs to another layer.
+         */
+        for (var singleton : SymbolsSupport.layeredSingletons()) {
+            var symbols = SubstrateUtil.cast(singleton.symbols, Target_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.class);
+            if (Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl.imageLookup(singleton, symbol) == symbol || symbols.strongMap.get(symbol) == symbol) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 final class Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl {
@@ -181,6 +308,14 @@ final class Util_com_oracle_svm_espresso_classfile_descriptors_SymbolsImpl {
         } finally {
             symbols.readWriteLock.readLock().unlock();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T> Symbol<T> imageLookup(SymbolsSupport singleton, ByteSequence byteSequence) {
+        if (singleton.imageSymbols == null) {
+            return null;
+        }
+        return (Symbol<T>) singleton.imageSymbols.lookup(byteSequence);
     }
 
     @SuppressWarnings("unchecked")

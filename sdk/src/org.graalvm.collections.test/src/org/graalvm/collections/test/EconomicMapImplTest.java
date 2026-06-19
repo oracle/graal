@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -185,5 +185,163 @@ public class EconomicMapImplTest {
         assertEquals((Object) 2, iterator.next());
         assertNull(iterator.next());
         assertThrows(NoSuchElementException.class, iterator::next);
+    }
+
+    @Test
+    public void testTrimToSize() {
+        EconomicMap<String, Integer> map = EconomicMap.create(100);
+        for (int i = 0; i < 10; i++) {
+            map.put("key" + i, i);
+        }
+        map.removeKey("key3");
+        map.removeKey("key7");
+
+        map.trimToSize();
+
+        assertEquals(8, map.size());
+        for (int i = 0; i < 10; i++) {
+            Integer expected = (i == 3 || i == 7) ? null : i;
+            assertEquals(expected, map.get("key" + i));
+        }
+    }
+
+    @Test
+    public void testTrimToSizeAfterGrowingSingleMap() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+        for (int size = 1; size <= 64; size++) {
+            assertNull(map.put(new CollidingKey(size), size));
+
+            if (size % 3 == 0) {
+                assertEquals((Object) (size - 1), map.removeKey(new CollidingKey(size - 1)));
+            }
+            if (size % 8 == 0) {
+                map.trimToSize();
+            }
+
+            for (int i = 1; i <= size; i++) {
+                Integer expected = i % 3 == 2 && i < size ? null : i;
+                assertEquals(expected, map.get(new CollidingKey(i)));
+            }
+        }
+
+        for (int i = 1; i <= 64; i++) {
+            if (i % 3 == 2) {
+                assertNull(map.put(new CollidingKey(i), -i));
+            }
+        }
+        map.trimToSize();
+
+        assertEquals(64, map.size());
+        for (int i = 1; i <= 64; i++) {
+            Integer expected = i % 3 == 2 ? -i : i;
+            assertEquals(expected, map.get(new CollidingKey(i)));
+        }
+    }
+
+    @Test
+    public void testHashCollisions() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+        for (int i = 0; i < 32; i++) {
+            assertNull(map.put(new CollidingKey(i), i));
+        }
+
+        assertEquals((Object) 17, map.put(new CollidingKey(17), 1700));
+        assertEquals((Object) 1700, map.get(new CollidingKey(17)));
+        assertEquals((Object) 8, map.removeKey(new CollidingKey(8)));
+        assertNull(map.get(new CollidingKey(8)));
+        assertNull(map.put(new CollidingKey(100), 100));
+
+        for (int i = 0; i < 32; i++) {
+            Integer expected = i == 8 ? null : i == 17 ? 1700 : i;
+            assertEquals(expected, map.get(new CollidingKey(i)));
+        }
+        assertEquals((Object) 100, map.get(new CollidingKey(100)));
+    }
+
+    @Test
+    public void testHashTableSizeAtHalfOccupancy() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+        for (int i = 0; i < 9; i++) {
+            assertNull(map.put(new CollidingKey(i), i));
+        }
+
+        for (int i = 0; i < 9; i++) {
+            assertEquals((Object) i, map.get(new CollidingKey(i)));
+        }
+    }
+
+    @Test
+    public void testHashIteratorRemove() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+        for (int i = 0; i < 16; i++) {
+            map.put(new CollidingKey(i), i);
+        }
+
+        Iterator<CollidingKey> iterator = map.getKeys().iterator();
+        while (iterator.hasNext()) {
+            CollidingKey key = iterator.next();
+            if ((key.id & 1) == 0) {
+                iterator.remove();
+            }
+        }
+
+        assertEquals(8, map.size());
+        for (int i = 0; i < 16; i++) {
+            Integer expected = (i & 1) == 0 ? null : i;
+            assertEquals(expected, map.get(new CollidingKey(i)));
+        }
+    }
+
+    @Test
+    public void testTrimToSizeWithHashCollisions() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create(100);
+        for (int i = 0; i < 20; i++) {
+            map.put(new CollidingKey(i), i);
+        }
+        map.removeKey(new CollidingKey(3));
+        map.removeKey(new CollidingKey(7));
+
+        map.trimToSize();
+
+        assertEquals(18, map.size());
+        for (int i = 0; i < 20; i++) {
+            Integer expected = (i == 3 || i == 7) ? null : i;
+            assertEquals(expected, map.get(new CollidingKey(i)));
+        }
+    }
+
+    @Test
+    public void testThreeByteHashIndices() {
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create(1 << 16);
+        for (int i = 0; i < 20; i++) {
+            assertNull(map.put(new CollidingKey(i), i));
+        }
+
+        assertEquals((Object) 11, map.removeKey(new CollidingKey(11)));
+        assertNull(map.put(new CollidingKey(100), 100));
+
+        for (int i = 0; i < 20; i++) {
+            Integer expected = i == 11 ? null : i;
+            assertEquals(expected, map.get(new CollidingKey(i)));
+        }
+        assertEquals((Object) 100, map.get(new CollidingKey(100)));
+    }
+
+    private static final class CollidingKey {
+        private final int id;
+
+        private CollidingKey(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof CollidingKey other && id == other.id;
+        }
+
+        @Override
+        public int hashCode() {
+            return 42;
+        }
     }
 }
