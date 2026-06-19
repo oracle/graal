@@ -53,10 +53,6 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
     private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
         accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework CoreServices");
-        // GR-76168: framework SystemConfiguration should not be necessary
-        if (ClassRegistries.respectClassLoader()) {
-            accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework SystemConfiguration");
-        }
     });
 
     @Override
@@ -149,7 +145,15 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
                             method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class),
                             method(a, "sun.net.spi.DefaultProxySelector", "init")));
 
-            a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
+            if (ClassRegistries.respectClassLoader()) {
+                // GR-76168: frameworks should not be necessary
+                FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+                accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework CoreServices");
+                accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework SystemConfiguration");
+            } else {
+                a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
+            }
+
         }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
