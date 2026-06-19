@@ -350,9 +350,7 @@ public final class Resources {
             while (cursor.advance()) {
                 ModuleResourceKey key = cursor.getKey();
                 if (resourceName.equals(key.resource()) && Objects.equals(moduleName(module), key.getModuleName())) {
-                    ConditionalRuntimeValue<ResourceStorageEntryBase> current = cursor.getValue();
-                    RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata);
-                    cursor.setValue(new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally()));
+                    cursor.setValue(mergeResourceMetadata(cursor.getValue(), dynamicAccessMetadata));
                 }
             }
         }
@@ -476,11 +474,21 @@ public final class Resources {
         } else if (key.module() != null) {
             /*
              * If the entry already exists and it comes from a named module, it is the same entry
-             * that we registered at some point before.
+             * that we registered at some point before. Keep the first storage entry, but merge the
+             * dynamic access metadata from this registration so duplicate conditional
+             * registrations remain available when any of their conditions is satisfied.
              */
+            resources.put(key, mergeResourceMetadata(entry, dynamicAccessMetadata));
             return;
         }
         entry.getValueUnconditionally().addData(data);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static ConditionalRuntimeValue<ResourceStorageEntryBase> mergeResourceMetadata(ConditionalRuntimeValue<ResourceStorageEntryBase> current,
+                    RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata);
+        return new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

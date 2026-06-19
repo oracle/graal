@@ -324,9 +324,9 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         /*
-         * It is possible that one resource can be registered under different conditions
-         * (typeReachable). In some cases, few conditions will be satisfied, and we will try to
-         * register same resource for each satisfied condition. This function detects already
+         * It is possible that one resource can be registered under different conditions. In some
+         * cases, multiple conditions will be satisfied, and we will try to register the same
+         * resource for each satisfied condition. This function detects already
          * registered classpath resources so duplicate physical registrations can be skipped while
          * the caller still merges the later condition metadata into the stored entry.
          */
