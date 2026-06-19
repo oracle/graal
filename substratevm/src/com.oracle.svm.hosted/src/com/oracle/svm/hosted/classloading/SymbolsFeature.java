@@ -63,6 +63,8 @@ public class SymbolsFeature implements InternalFeature {
         if (RuntimeClassLoading.isSupported()) {
             Field strongMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "strongMap");
             access.registerFieldValueTransformer(strongMapField, new NewInstanceFieldValueTransformer());
+            Field weakMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "weakMap");
+            access.registerFieldValueTransformer(weakMapField, new NewInstanceFieldValueTransformer());
         }
     }
 
