@@ -491,6 +491,14 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                          * deoptimization, this will materialize the SIMD value as a vector object
                          * on the heap.
                          */
+                        ResolvedJavaType type = StampTool.typeOrNull((ValueNode) node);
+                        VectorAPIType vectorType = type == null ? null : VectorAPIType.ofType(type, context);
+                        if (vectorType == null) {
+                            graph.getDebug().log(DebugContext.DETAILED_LEVEL, "frame state usage %s for node %s prevents SIMD expansion because its Vector API type cannot be resolved",
+                                            usage, node);
+                            component.canExpand = false;
+                            break;
+                        }
                         continue;
                     } else if (node instanceof ValueNode value && shouldBox(value, usage, context)) {
                         // Manually box the vector node to disconnect the unexpected usage from the
