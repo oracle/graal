@@ -491,8 +491,9 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return false;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object getStaticStorage(boolean primitives, int layerNum) {
-        assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER : "Requesting static storage for a non-static field: " + layerNum;
+        assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
         if (primitives) {
             return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNum);
         } else {
@@ -660,14 +661,29 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public InterpreterResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
+        return findFieldWithOffset(offset, expectedKind, false);
+    }
+
+    public InterpreterResolvedJavaField findStaticFieldWithOffset(long offset, JavaKind expectedKind) {
+        return findFieldWithOffset(offset, expectedKind, true);
+    }
+
+    private InterpreterResolvedJavaField findFieldWithOffset(long offset, JavaKind expectedKind, boolean isStatic) {
         if (offset < 0) {
             return null;
         }
-        // Search all instance fields including superclasses
-        InterpreterResolvedJavaField[] fields = getInstanceFields(true);
-        for (InterpreterResolvedJavaField f : fields) {
+        // Search all fields
+        InterpreterResolvedJavaField result = findDeclaredFieldWithOffset(offset, expectedKind, isStatic);
+        if (result != null || isStatic || superclass == null) {
+            return result;
+        }
+        return superclass.findFieldWithOffset(offset, expectedKind, false);
+    }
+
+    private InterpreterResolvedJavaField findDeclaredFieldWithOffset(long offset, JavaKind expectedKind, boolean isStatic) {
+        for (InterpreterResolvedJavaField f : declaredFields) {
             // Compare offsets (stored as int at build time but passed as long here)
-            if (f.getOffset() == offset) {
+            if (f.getOffset() == offset && f.isStatic() == isStatic) {
                 // If an expected kind is provided, enforce it
                 if (expectedKind == null || expectedKind == f.getJavaKind()) {
                     return f;

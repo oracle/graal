@@ -31,6 +31,7 @@ import static com.oracle.svm.interpreter.InterpreterFeature.assertionsEnabled;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -107,6 +108,8 @@ public class CremaFeature implements InternalFeature {
             enterDirectInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, declaringClass,
                             "enterDirectInterpreterStub", InterpreterResolvedJavaMethod.class, Pointer.class);
             accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
+
+            access.registerAsInHeap(CremaJNIFieldIds.CremaJNIStaticFieldId.class);
         } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }

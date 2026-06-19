@@ -82,7 +82,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         }
     }
 
-    private static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
+    public static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
         return ReflectionObjectFactory.newField(
                         RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.crema;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
@@ -37,6 +39,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -45,6 +48,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -120,6 +124,16 @@ public interface CremaSupport {
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
 
+    /** Gets a runtime-loaded field declared by {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
+    CremaResolvedJavaField lookupCremaField(Class<?> clazz, String name, String signature, boolean isStatic);
+
+    /** Gets the runtime-loaded field metadata encoded by {@code fieldId} in the context of {@code clazz}. */
+    CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
+
+    /** Gets the static storage base encoded by a runtime-loaded static JNI field id. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive);
+
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
     Class<?> computeDeclaringClass(DynamicHub hub);
@@ -156,6 +170,7 @@ public interface CremaSupport {
 
     // endregion linking
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);
     }
