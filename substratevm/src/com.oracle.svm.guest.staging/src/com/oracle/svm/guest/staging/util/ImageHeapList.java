@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.guest.staging.util;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -30,11 +30,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import com.oracle.svm.shared.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A list that is filled at image build time while the static analysis is running, and then read at
