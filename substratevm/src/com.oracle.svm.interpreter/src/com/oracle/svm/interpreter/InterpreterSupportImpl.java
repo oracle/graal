@@ -376,10 +376,16 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpretedFrameData data) {
         VMError.guarantee(data.isFor(frameInfo), "Captured interpreter frame data does not belong to this frame");
+        FrameSourceInfo sourceInfo;
         if (data.isIntrinsic()) {
-            return createIntrinsicMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), (InterpreterFrame) data.getInterpreterFrame());
+            sourceInfo = createIntrinsicMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), (InterpreterFrame) data.getInterpreterFrame());
+        } else {
+            sourceInfo = createInterpretedMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), data.getBCI(), (InterpreterFrame) data.getInterpreterFrame());
         }
-        return createInterpretedMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), data.getBCI(), (InterpreterFrame) data.getInterpreterFrame());
+        if (sourceInfo == null) {
+            data.clear();
+        }
+        return sourceInfo;
     }
 
     private static FrameSourceInfo createInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod interpretedMethod, int bci, InterpreterFrame interpreterFrame) {
@@ -396,6 +402,14 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             }
             sb.append(") at ").append(frameInfo.getSourceReference());
             VMError.shouldNotReachHere(sb.toString());
+        }
+        if (interpreterFrame.isHiddenFromStackWalking()) {
+            /*
+             * A compiled OSR continuation leaves its replaced interpreter activation on the
+             * physical stack. While that compiled continuation is the live logical frame, hide the
+             * stale interpreter activation from source-level Java stack walkers.
+             */
+            return null;
         }
         InterpreterFrameSourceInfo stackTraceCallerInfo = interpreterFrame.getStackTraceCallerInfo();
         return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, bci, interpreterFrame, stackTraceCallerInfo);

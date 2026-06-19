@@ -50,32 +50,47 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
 
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
-        InterpreterResolvedJavaType accessingTypeResolved = null;
-        if (accessingClass != null) {
-            if (accessingClass instanceof RistrettoType rType) {
-                accessingTypeResolved = rType.getInterpreterType();
-            } else if (accessingClass instanceof SubstrateType sType) {
-                accessingTypeResolved = RistrettoUtils.toRType(sType).getInterpreterType();
-            } else {
-                throw GraalError.shouldNotReachHere("Unknown JVMCI type accessing signature " + accessingClass);
-            }
-        }
-
+        InterpreterResolvedJavaType accessingTypeResolved = toInterpreterType(accessingClass);
         JavaType returnType = interpreterSignature.getReturnType(accessingTypeResolved);
-        if (returnType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.getOrCreate(iType);
-        }
-        return returnType;
+        return toRistrettoType(returnType);
     }
 
     @Override
     public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-        InterpreterResolvedJavaType accessingTypeResolved = accessingClass == null ? null : ((RistrettoType) accessingClass).getInterpreterType();
+        InterpreterResolvedJavaType accessingTypeResolved = toInterpreterType(accessingClass);
         JavaType parameterType = interpreterSignature.getParameterType(index, accessingTypeResolved);
-        if (parameterType instanceof InterpreterResolvedJavaType iType) {
+        return toRistrettoType(parameterType);
+    }
+
+    /**
+     * Converts a JVMCI type used while resolving this signature back to the interpreter type model.
+     */
+    private static InterpreterResolvedJavaType toInterpreterType(ResolvedJavaType type) {
+        if (type == null) {
+            return null;
+        } else if (type instanceof RistrettoType rType) {
+            return rType.getInterpreterType();
+        } else if (type instanceof SubstrateType sType) {
+            return RistrettoUtils.toRType(sType).getInterpreterType();
+        }
+        throw GraalError.shouldNotReachHere("Unknown JVMCI type accessing signature " + type);
+    }
+
+    /**
+     * Converts interpreter or substrate JVMCI types to the Ristretto wrapper type expected by the
+     * runtime compiler.
+     */
+    private static JavaType toRistrettoType(JavaType type) {
+        if (type instanceof RistrettoType) {
+            return type;
+        }
+        if (type instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.getOrCreate(iType);
         }
-        return parameterType;
+        if (type instanceof SubstrateType sType) {
+            return RistrettoUtils.toRType(sType);
+        }
+        return type;
     }
 
     @Override

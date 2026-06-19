@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
 public final class RistrettoCompilationManager {
@@ -187,7 +186,7 @@ public final class RistrettoCompilationManager {
 
             for (var task : m.performedCompilations) {
                 RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s%n", task.getRMethod());
-                task.getRMethod().compilationState = RistrettoConstants.COMPILE_STATE_INIT_VAL;
+                task.getRMethod().resetCompilationStateForTesting();
                 if (task.getRMethod().installedCode != null) {
                     /*
                      * TODO GR-71160 - revert code installation, same as what deoptimization has to
@@ -196,6 +195,7 @@ public final class RistrettoCompilationManager {
                     task.getRMethod().installedCode.invalidate();
                 }
                 task.getRMethod().installedCode = null;
+                task.getRMethod().invalidateOSRInstalledCode();
                 task.getRMethod().resetProfile();
             }
             m.compilerExceptions.clear();

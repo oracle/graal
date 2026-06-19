@@ -51,6 +51,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -325,7 +326,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
              * a virtual object that was accessed via a local variable before would now have a
              * different value.
              */
-            Deoptimizer.invalidateMethodOfFrame(thread, sp, null, null, false);
+            Deoptimizer.invalidateMethodOfFrame(thread, sp, null, DeoptimizationReason.None, false);
         }
 
         /* We must be deoptimized now. */

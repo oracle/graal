@@ -508,6 +508,24 @@ public abstract class InterpreterStubSection {
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
     public static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod, Object[] args) {
         PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
+        return leaveInterpreter(compiledEntryPoint, args, compiledSignature);
+    }
+
+    /**
+     * Enters Ristretto OSR-compiled code without marshaling Java method-entry arguments.
+     *
+     * The OSR graph must not read Java ABI parameters. It materializes live locals and monitors through
+     * {@code RistrettoOSRSupport}'s thread-local transfer state instead. The original prepared signature is
+     * still used for the return kind and for the outgoing stack area size required by the leave stub.
+     */
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    public static Object leaveInterpreterOSR(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod) {
+        PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
+        return leaveInterpreter(compiledEntryPoint, null, compiledSignature);
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    private static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, Object[] args, PreparedSignature compiledSignature) {
         VMError.guarantee(compiledSignature != null);
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
         Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
@@ -555,53 +573,55 @@ public abstract class InterpreterStubSection {
         int gpIdx = 0;
         int fpIdx = 0;
 
-        int argCount = argumentTypes.length;
-        for (int i = 0; i < argCount; i++) {
-            Object arg = args[i];
-            assert gpIdx + fpIdx == i;
-            int cArgType = argumentTypes[i];
-            JavaKind argKind = PreparedSignature.getKind(cArgType);
-            switch (argKind) {
-                case Boolean:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (boolean) arg ? 1 : 0);
-                    gpIdx++;
-                    break;
-                case Byte:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (byte) arg);
-                    gpIdx++;
-                    break;
-                case Short:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (short) arg);
-                    gpIdx++;
-                    break;
-                case Char:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (char) arg);
-                    gpIdx++;
-                    break;
-                case Int:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (int) arg);
-                    gpIdx++;
-                    break;
-                case Long:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (long) arg);
-                    gpIdx++;
-                    break;
-                case Object:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, Word.objectToTrackedPointer(arg).rawValue());
-                    gpIdx++;
-                    break;
+        if (args != null) {
+            int argCount = argumentTypes.length;
+            for (int i = 0; i < argCount; i++) {
+                Object arg = args[i];
+                assert gpIdx + fpIdx == i;
+                int cArgType = argumentTypes[i];
+                JavaKind argKind = PreparedSignature.getKind(cArgType);
+                switch (argKind) {
+                    case Boolean:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (boolean) arg ? 1 : 0);
+                        gpIdx++;
+                        break;
+                    case Byte:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (byte) arg);
+                        gpIdx++;
+                        break;
+                    case Short:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (short) arg);
+                        gpIdx++;
+                        break;
+                    case Char:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (char) arg);
+                        gpIdx++;
+                        break;
+                    case Int:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (int) arg);
+                        gpIdx++;
+                        break;
+                    case Long:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (long) arg);
+                        gpIdx++;
+                        break;
+                    case Object:
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, Word.objectToTrackedPointer(arg).rawValue());
+                        gpIdx++;
+                        break;
 
-                case Float:
-                    accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Float.floatToRawIntBits((float) arg));
-                    fpIdx++;
-                    break;
-                case Double:
-                    accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Double.doubleToRawLongBits((double) arg));
-                    fpIdx++;
-                    break;
+                    case Float:
+                        accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Float.floatToRawIntBits((float) arg));
+                        fpIdx++;
+                        break;
+                    case Double:
+                        accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Double.doubleToRawLongBits((double) arg));
+                        fpIdx++;
+                        break;
 
-                default:
-                    throw VMError.shouldNotReachHereAtRuntime();
+                    default:
+                        throw VMError.shouldNotReachHereAtRuntime();
+                }
             }
         }
 
