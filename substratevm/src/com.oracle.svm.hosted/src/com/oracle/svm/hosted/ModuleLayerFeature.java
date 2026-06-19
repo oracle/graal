@@ -1262,14 +1262,12 @@ public class ModuleLayerFeature implements InternalFeature {
             return compactPackages;
         }
 
-        /**
-         * Gets the runtime built-in class loader that owns module metadata for `loader`.
-         *
-         * The JDK represents boot modules with a `null` module class loader, but
-         * `BuiltinClassLoader.packageToModule` stores `LoadedModule` entries against the boot
-         * `BuiltinClassLoader` instance. This method performs that conversion while preserving
-         * non-built-in class loaders as unsupported for the built-in loader maps.
-         */
+        /// Gets the runtime built-in class loader that owns module metadata for `loader`.
+        ///
+        /// The JDK represents boot modules with a `null` module class loader, but
+        /// `BuiltinClassLoader.packageToModule` stores `LoadedModule` entries against the boot
+        /// `BuiltinClassLoader` instance. This method performs that conversion while preserving
+        /// non-built-in class loaders as unsupported for the built-in loader maps.
         private BuiltinClassLoader runtimeBuiltinLoaderForModuleLoader(ClassLoader loader) {
             if (loader == null) {
                 try {
@@ -1477,16 +1475,14 @@ public class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        /**
-         * Rebuilds the runtime `BuiltinClassLoader.packageToModule` entries for packages selected
-         * by analysis.
-         *
-         * Each package is mapped to a fresh JDK `LoadedModule` instance whose loader and module
-         * reference match the synthesized runtime boot layer. The map is cleared before repopulating
-         * it so the final boot layer synthesis replaces the broader before-analysis prototype. The
-         * static field is transformed into `runtimePackageToModule` during image heap scanning, so
-         * rescanning that map is enough to keep the image heap and the JDK lookup table consistent.
-         */
+        /// Rebuilds the runtime `BuiltinClassLoader.packageToModule` entries for packages selected
+        /// by analysis.
+        ///
+        /// Each package is mapped to a fresh JDK `LoadedModule` instance whose loader and module
+        /// reference match the synthesized runtime boot layer. The map is cleared before repopulating
+        /// it so the final boot layer synthesis replaces the broader before-analysis prototype. The
+        /// static field is transformed into `runtimePackageToModule` during image heap scanning, so
+        /// rescanning that map is enough to keep the image heap and the JDK lookup table consistent.
         void patchBuiltinClassLoaderPackageToModuleField(AnalysisAccessBase accessImpl, Map<BuiltinClassLoader, Map<String, ModuleReference>> packageToModule) {
             runtimePackageToModule.clear();
             for (Map.Entry<BuiltinClassLoader, Map<String, ModuleReference>> loaderEntry : packageToModule.entrySet()) {

@@ -79,9 +79,7 @@ public class GetPackageRuntimeClassLoadingTest {
     private static final String MISMATCHED_BOOT_APPEND_CLASS_NAME = "bootappendmismatch.BootAppendFailedPackageClass";
     private static final String BOOT_APPEND_MARKER = "loaded from boot append path";
 
-    /**
-     * Registers JDK internals that the test uses to append boot class path entries at run time.
-     */
+    /// Registers JDK internals that the test uses to append boot class path entries at run time.
     public static class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -106,10 +104,8 @@ public class GetPackageRuntimeClassLoadingTest {
         }
     }
 
-    /**
-     * Checks that runtime boot class loading can still find a class before its package is
-     * observable through {@link Package}.
-     */
+    /// Checks that runtime boot class loading can still find a class before its package is observable
+    /// through `Package`.
     @SuppressWarnings("deprecation")
     @Test
     public void testRuntimeLoadFromUnmaterializedBootModulePackage() throws Exception {
@@ -125,9 +121,7 @@ public class GetPackageRuntimeClassLoadingTest {
         Assert.fail("No runtime-loaded boot module package was materialized");
     }
 
-    /**
-     * Checks that runtime boot class loading does not use platform-module package metadata.
-     */
+    /// Checks that runtime boot class loading does not use platform-module package metadata.
     @Test
     public void testRuntimeLoadDoesNotLoadPlatformModulePackage() {
         Assert.assertThrows(ClassNotFoundException.class, () -> Class.forName("java.sql.Driver", false, null));
@@ -228,26 +222,20 @@ public class GetPackageRuntimeClassLoadingTest {
         // @formatter:on
     }
 
-    /**
-     * Verifies that `clazz` came from the boot loader and exposes the generated marker method.
-     */
+    /// Verifies that `clazz` came from the boot loader and exposes the generated marker method.
     private static void assertBootAppendClassLoaded(Class<?> clazz) throws ReflectiveOperationException {
         Assert.assertNotNull(clazz);
         Assert.assertNull(clazz.getClassLoader());
         Assert.assertEquals(BOOT_APPEND_MARKER, clazz.getMethod("marker").invoke(null));
     }
 
-    /**
-     * Verifies that package enumeration includes a package defined by a runtime-loaded boot class.
-     */
+    /// Verifies that package enumeration includes a package defined by a runtime-loaded boot class.
     @SuppressWarnings("deprecation")
     private static void assertPackageVisibleToGetPackages(String packageName) {
         Assert.assertTrue(Arrays.stream(Package.getPackages()).anyMatch(p -> p.getName().equals(packageName)));
     }
 
-    /**
-     * Returns the package defined to the boot loader for `packageName`.
-     */
+    /// Returns the package defined to the boot loader for `packageName`.
     private static Package bootLoaderDefinedPackage(String packageName) throws ReflectiveOperationException {
         Class<?> bootLoaderClass = Class.forName("jdk.internal.loader.BootLoader");
         Method getDefinedPackageMethod = bootLoaderClass.getDeclaredMethod("getDefinedPackage", String.class);
@@ -255,9 +243,7 @@ public class GetPackageRuntimeClassLoadingTest {
         return (Package) getDefinedPackageMethod.invoke(null, packageName);
     }
 
-    /**
-     * Checks whether `module` is a system module loaded by the boot loader.
-     */
+    /// Checks whether `module` is a system module loaded by the boot loader.
     private static boolean isSystemBootModule(Module module) {
         return module.getClassLoader() == null && module.getLayer().configuration().findModule(module.getName())
                         .flatMap(resolvedModule -> resolvedModule.reference().location())
@@ -265,9 +251,7 @@ public class GetPackageRuntimeClassLoadingTest {
                         .orElse(false);
     }
 
-    /**
-     * Tries to load a class from `packageName` and returns true if the boot package becomes defined.
-     */
+    /// Tries to load a class from `packageName` and returns true if the boot package becomes defined.
     private static boolean tryRuntimeLoadFromPackage(FileSystem jrtFileSystem, Module module, String packageName) throws IOException, ReflectiveOperationException {
         Path packagePath = jrtFileSystem.getPath("/modules/" + module.getName() + "/" + packageName.replace('.', '/'));
         if (!Files.isDirectory(packagePath)) {
@@ -297,9 +281,7 @@ public class GetPackageRuntimeClassLoadingTest {
         return false;
     }
 
-    /**
-     * Converts a top-level class file path to a binary class name.
-     */
+    /// Converts a top-level class file path to a binary class name.
     private static String classNameFromClassFile(String packageName, Path classFile) {
         String fileName = classFile.getFileName().toString();
         if (!fileName.endsWith(".class") || fileName.indexOf('$') != -1 || fileName.equals("module-info.class") || fileName.equals("package-info.class")) {
@@ -308,16 +290,12 @@ public class GetPackageRuntimeClassLoadingTest {
         return packageName + "." + fileName.substring(0, fileName.length() - ".class".length());
     }
 
-    /**
-     * Checks that the runtime jrt file system can locate the JDK module image.
-     */
+    /// Checks that the runtime jrt file system can locate the JDK module image.
     private static void assertJavaHomeAvailableForJrt() {
         Assert.assertNotNull("java.home must be available for the runtime jrt file system", System.getProperty("java.home"));
     }
 
-    /**
-     * Appends `entry` to the boot loader's runtime class path using the JDK loader API.
-     */
+    /// Appends `entry` to the boot loader's runtime class path using the JDK loader API.
     private static void appendBootClassPath(Path entry) throws ReflectiveOperationException {
         Class<?> classLoadersClass = Class.forName("jdk.internal.loader.ClassLoaders");
         Method bootLoaderMethod = classLoadersClass.getDeclaredMethod("bootLoader");

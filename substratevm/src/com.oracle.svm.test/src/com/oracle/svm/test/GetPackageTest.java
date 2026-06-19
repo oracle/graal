@@ -82,19 +82,15 @@ public class GetPackageTest {
         assertUnmaterializedBootModulePackageNotVisible();
     }
 
-    /**
-     * Checks that the global JDK package table does not make platform-module packages look like
-     * packages defined to the boot loader.
-     */
+    /// Checks that the global JDK package table does not make platform-module packages look like
+    /// packages defined to the boot loader.
     @SuppressWarnings("deprecation")
     private static void assertNonBootModulePackageNotDefinedByBootLoader() {
         String packageName = findPlatformModulePackageNotDefinedToPlatformLoader();
         Assert.assertNull(Package.getPackage(packageName));
     }
 
-    /**
-     * Finds a platform module package that can only be returned if boot lookup claims it.
-     */
+    /// Finds a platform module package that can only be returned if boot lookup claims it.
     private static String findPlatformModulePackageNotDefinedToPlatformLoader() {
         ClassLoader platformClassLoader = ClassLoader.getPlatformClassLoader();
         Module platformModule = ModuleLayer.boot().findModule(PLATFORM_MODULE_NAME).orElseThrow(() -> new AssertionError("Missing module " + PLATFORM_MODULE_NAME));
@@ -113,9 +109,7 @@ public class GetPackageTest {
                         .orElseThrow(() -> new AssertionError("No unmaterialized platform module package could be checked"));
     }
 
-    /**
-     * Checks that a boot module descriptor package does not become visible before it is defined.
-     */
+    /// Checks that a boot module descriptor package does not become visible before it is defined.
     @SuppressWarnings("deprecation")
     private static void assertUnmaterializedBootModulePackageNotVisible() {
         String packageName = findUnmaterializedBootModulePackage();
@@ -123,9 +117,7 @@ public class GetPackageTest {
         Assert.assertNull(Package.getPackage(packageName));
     }
 
-    /**
-     * Finds a boot module package that has not been defined to the boot loader.
-     */
+    /// Finds a boot module package that has not been defined to the boot loader.
     private static String findUnmaterializedBootModulePackage() {
         Set<String> unmaterializedBootPackages = new TreeSet<>(bootModulePackages());
         unmaterializedBootPackages.removeAll(visiblePackageNames());
@@ -133,16 +125,12 @@ public class GetPackageTest {
         return unmaterializedBootPackages.iterator().next();
     }
 
-    /**
-     * Verifies that package enumeration includes {@code packageName}.
-     */
+    /// Verifies that package enumeration includes `packageName`.
     private static void assertPackageVisibleToGetPackages(String packageName) {
         Assert.assertTrue(visiblePackageNames().contains(packageName));
     }
 
-    /**
-     * Returns package names listed by system modules owned by the boot loader.
-     */
+    /// Returns package names listed by system modules owned by the boot loader.
     private static Set<String> bootModulePackages() {
         return ModuleLayer.boot().modules().stream()
                         .filter(GetPackageTest::isSystemModule)
@@ -152,9 +140,7 @@ public class GetPackageTest {
                         .collect(Collectors.toSet());
     }
 
-    /**
-     * Checks whether {@code module} is backed by a system module image entry.
-     */
+    /// Checks whether `module` is backed by a system module image entry.
     private static boolean isSystemModule(Module module) {
         return module.getLayer().configuration().findModule(module.getName())
                         .flatMap(resolvedModule -> resolvedModule.reference().location())
@@ -162,9 +148,7 @@ public class GetPackageTest {
                         .orElse(false);
     }
 
-    /**
-     * Returns package names visible to {@code Package.getPackages}.
-     */
+    /// Returns package names visible to `Package.getPackages`.
     private static Set<String> visiblePackageNames() {
         return Arrays.stream(Package.getPackages()).map(Package::getName).collect(Collectors.toSet());
     }
