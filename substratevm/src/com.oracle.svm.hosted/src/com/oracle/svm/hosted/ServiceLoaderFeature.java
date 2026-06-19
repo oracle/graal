@@ -43,7 +43,6 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -145,6 +144,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final EconomicSet<String> serviceProvidersToSkip = EconomicSet.create(SKIPPED_PROVIDERS);
+    private final EconomicSet<String> serviceLoadedSecurityProviders = EconomicSet.create();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -161,6 +161,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         }
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
         serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
+        serviceLoadedSecurityProviders.addAll(SecurityServicesFeature.Options.AdditionalSecurityProviders.getValue().values());
     }
 
     @Override
@@ -203,16 +204,22 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     void handleServiceClassIsReachable(DuringAnalysisAccess access, ResolvedJavaType serviceProvider, Collection<String> providers) {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        boolean isSecurityProviderService = serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class));
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
-                SecurityProvidersSupport.singleton().markSecurityProviderAsNotLoaded(provider);
-            } else {
-                registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
+            /*
+             * Security providers are included by SecurityServicesFeature when the provider class is
+             * explicitly registered for reflection or configured via AdditionalSecurityProviders.
+             * Do not let a service descriptor create the reflection registration that is supposed
+             * to prove explicit inclusion.
+             */
+            if (isSecurityProviderService && !serviceLoadedSecurityProviders.contains(provider)) {
+                continue;
             }
+            registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
         }
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.toClassName(), registeredProviders);
     }
