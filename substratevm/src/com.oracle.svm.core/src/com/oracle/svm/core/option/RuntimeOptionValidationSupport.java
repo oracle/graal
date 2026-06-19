@@ -37,7 +37,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.guest.staging.util.ImageHeapList;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
