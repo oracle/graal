@@ -52,11 +52,14 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.CompressBitsNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.MaxNode;
+import jdk.graal.compiler.nodes.calc.MinNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.OpMaskOrTestNode;
@@ -779,10 +782,10 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         ValueNode selector = blend.getSelector();
 
         // Try both permutations
-        if (!op.hasExactlyOneUsage() || AMD64AVX512ArithmeticLIRGenerator.getMaskedOpcode(vectorArch.arch, new MaskedOpMetaData(op), eKind, null) == null) {
+        if (!canLowerSimdBlendOp(vectorArch, op, other, eKind)) {
             op = blend.getFalseValues();
             other = blend.getTrueValues();
-            if (!op.hasExactlyOneUsage() || AMD64AVX512ArithmeticLIRGenerator.getMaskedOpcode(vectorArch.arch, new MaskedOpMetaData(op), eKind, null) == null) {
+            if (!canLowerSimdBlendOp(vectorArch, op, other, eKind)) {
                 return;
             }
 
@@ -790,8 +793,12 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
             selector = blend.graph().addOrUniqueWithInputs(NotNode.create(selector));
         }
 
-        if (other.isConstant() && other.asConstant().isDefaultForKind()) {
-            // Set other to null to signify zero-masking behavior
+        if (!requiresMergeMasking(op, eKind) && ((SimdStamp) other.stamp(NodeView.DEFAULT)).isAllZeros()) {
+            /*
+             * Set other to null to signify zero-masking behavior. Some operations need
+             * merge-masking because their lowering uses the background as an input or emits a
+             * separate operation before blending.
+             */
             other = null;
         }
         AVX512MaskedOpNode newNode = switch (op) {
@@ -799,10 +806,32 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
             case UnaryArithmeticNode<?> u -> AVX512MaskedOpNode.createUnaryArithmetic(u, other, selector, u.getValue());
             case ReinterpretNode r -> AVX512MaskedOpNode.createReinterpret(r, other, selector);
             case BinaryArithmeticNode<?> b -> AVX512MaskedOpNode.createBinaryArithmetic(b, other, selector, b.getX(), b.getY());
+            case ShiftNode<?> s -> AVX512MaskedOpNode.createShift(s, other, selector, s.getX(), s.getY());
+            case FusedMultiplyAddNode f -> AVX512MaskedOpNode.createFusedMultiplyAdd(f, other, selector, f.getX(), f.getY(), f.getZ());
             default -> throw GraalError.shouldNotReachHereUnexpectedValue(op);
         };
         newNode = blend.graph().unique(newNode);
         blend.replaceAtUsagesAndDelete(newNode);
+    }
+
+    /**
+     * Checks whether the blend can be folded into a masked AVX-512 operation.
+     */
+    private static boolean canLowerSimdBlendOp(VectorAMD64 vectorArch, ValueNode op, ValueNode other, AMD64Kind eKind) {
+        if (!op.hasExactlyOneUsage() || AMD64AVX512ArithmeticLIRGenerator.getMaskedOpcode(vectorArch.arch, new MaskedOpMetaData(op), eKind, null) == null) {
+            return false;
+        }
+        if (op instanceof ShiftNode<?> shift && !(shift.getY().stamp(NodeView.DEFAULT) instanceof SimdStamp)) {
+            return false;
+        }
+        if (op instanceof FusedMultiplyAddNode fma && other != fma.getX()) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean requiresMergeMasking(ValueNode op, AMD64Kind eKind) {
+        return op instanceof FusedMultiplyAddNode || ((eKind == AMD64Kind.SINGLE || eKind == AMD64Kind.DOUBLE) && (op instanceof MinNode || op instanceof MaxNode));
     }
 
     private static void lowerSimdMaskAnd(VectorAMD64 vectorArch, AndNode and) {

@@ -136,6 +136,12 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVBLENDMPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVBLENDMPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVDIVPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVDIVPS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVFMADD213PD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVFMADD213PS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMAXPD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMAXPS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMINPD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMINPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMULPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVMULPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVORPD;
@@ -246,6 +252,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
@@ -268,11 +275,17 @@ import jdk.graal.compiler.nodes.calc.AbsNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.MaxNode;
+import jdk.graal.compiler.nodes.calc.MinNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.vector.nodes.simd.MaskedOpMetaData;
 import jdk.graal.compiler.vector.nodes.simd.SimdPermuteWithVectorIndicesNode;
@@ -1953,10 +1966,19 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
         } else {
             avxSize = AVXKind.getRegisterSize(srcKind);
         }
+        if (isFloatingPointMinMax(meta, eKind)) {
+            Value fixedMinMax = emitMathMinMax(resultKind, src1, src2, meta.op() == MinNode.class ? AMD64MathMinMaxFloatOp.Min : AMD64MathMinMaxFloatOp.Max);
+            return emitVectorBlend(background, fixedMinMax, mask);
+        }
         Variable result = getLIRGen().newVariable(resultKind);
 
         NormalizedMaskedOp normalizedOp = NormalizedMaskedOp.make(getMaskedOpcode(getArchitecture(), meta, eKind, srcEKind), avxSize, src1, src2);
+        Value normalizedSrc1 = normalizedOp.src1;
         Value normalizedSrc2 = normalizedOp.src2;
+        if (normalizedSrc2 != null && !background.equals(normalizedSrc1) && background.equals(normalizedSrc2) && eKind.isInteger() && meta.commutative()) {
+            normalizedSrc2 = normalizedSrc1;
+            normalizedSrc1 = background;
+        }
         if (normalizedOp.opcode == EVPERMILPD) {
             /*
              * EVPERMILPD uses the SECOND bit in each element as the index. See also
@@ -1966,14 +1988,36 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
             getLIRGen().append(new AMD64VectorBinary.AVXBinaryConstOp(EVPSLLQ, getRegisterSize(tmp), tmp, asAllocatable(src2), 1));
             normalizedSrc2 = tmp;
         }
-        AVX512MaskedOp.AVX512MaskedMergeOp lirOp;
+        LIRInstruction lirOp;
         if (normalizedSrc2 == null) {
-            lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), Value.ILLEGAL, asAllocatable(normalizedOp.src1()));
+            lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), Value.ILLEGAL, asAllocatable(normalizedSrc1));
+        } else if (background.equals(normalizedSrc1)) {
+            lirOp = new AVX512MaskedOp.AVX512MaskedInPlaceMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), asAllocatable(normalizedSrc2));
         } else {
-            lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), asAllocatable(normalizedOp.src1()),
+            lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), asAllocatable(normalizedSrc1),
                             asAllocatable(normalizedSrc2));
         }
         getLIRGen().append(lirOp);
+        return result;
+    }
+
+    private static boolean isFloatingPointMinMax(MaskedOpMetaData meta, AMD64Kind eKind) {
+        return (eKind == AMD64Kind.SINGLE || eKind == AMD64Kind.DOUBLE) && (meta.op() == MinNode.class || meta.op() == MaxNode.class);
+    }
+
+    /**
+     * Emits masked FMA for {@code src1 * src2 + src3} when {@code src1} is also the background.
+     */
+    public Value emitMaskedFmaOp(LIRKind resultKind, Value mask, Value src1, Value src2, Value src3) {
+        AMD64Kind kind = (AMD64Kind) resultKind.getPlatformKind();
+        AVXSize avxSize = AVXKind.getRegisterSize(kind);
+        AMD64Assembler.VexRVMOp opcode = switch (kind.getScalar()) {
+            case SINGLE -> EVFMADD213PS;
+            case DOUBLE -> EVFMADD213PD;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar());
+        };
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AVX512MaskedOp.AVX512MaskedFmaOp(opcode, avxSize, result, asAllocatable(mask), asAllocatable(src1), asAllocatable(src2), asAllocatable(src3)));
         return result;
     }
 
@@ -2078,6 +2122,32 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                 case DOUBLE -> EVDIVPD;
                 default -> null;
             };
+        } else if (op == FusedMultiplyAddNode.class) {
+            return switch (dstEKind) {
+                case SINGLE -> EVFMADD213PS;
+                case DOUBLE -> EVFMADD213PD;
+                default -> null;
+            };
+        } else if (op == MinNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPMINSB;
+                case WORD -> EVPMINSW;
+                case DWORD -> EVPMINSD;
+                case QWORD -> EVPMINSQ;
+                case SINGLE -> EVMINPS;
+                case DOUBLE -> EVMINPD;
+                default -> null;
+            };
+        } else if (op == MaxNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPMAXSB;
+                case WORD -> EVPMAXSW;
+                case DWORD -> EVPMAXSD;
+                case QWORD -> EVPMAXSQ;
+                case SINGLE -> EVMAXPS;
+                case DOUBLE -> EVMAXPD;
+                default -> null;
+            };
         } else if (op == AndNode.class) {
             return switch (dstEKind) {
                 case DWORD -> EVPANDD;
@@ -2100,6 +2170,27 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                 case QWORD -> EVPXORQ;
                 case SINGLE -> EVXORPS;
                 case DOUBLE -> EVXORPD;
+                default -> null;
+            };
+        } else if (op == LeftShiftNode.class) {
+            return switch (dstEKind) {
+                case WORD -> AMD64Assembler.VexRVMOp.EVPSLLVW;
+                case DWORD -> AMD64Assembler.VexRVMOp.EVPSLLVD;
+                case QWORD -> AMD64Assembler.VexRVMOp.EVPSLLVQ;
+                default -> null;
+            };
+        } else if (op == RightShiftNode.class) {
+            return switch (dstEKind) {
+                case WORD -> AMD64Assembler.VexRVMOp.EVPSRAVW;
+                case DWORD -> AMD64Assembler.VexRVMOp.EVPSRAVD;
+                case QWORD -> AMD64Assembler.VexRVMOp.EVPSRAVQ;
+                default -> null;
+            };
+        } else if (op == UnsignedRightShiftNode.class) {
+            return switch (dstEKind) {
+                case WORD -> AMD64Assembler.VexRVMOp.EVPSRLVW;
+                case DWORD -> AMD64Assembler.VexRVMOp.EVPSRLVD;
+                case QWORD -> AMD64Assembler.VexRVMOp.EVPSRLVQ;
                 default -> null;
             };
         } else if (op == SimdPermuteWithVectorIndicesNode.class) {
