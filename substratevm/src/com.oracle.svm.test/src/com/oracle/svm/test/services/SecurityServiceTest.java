@@ -24,12 +24,22 @@
  */
 package com.oracle.svm.test.services;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.Iterator;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 import java.util.Set;
 
+import javax.crypto.Mac;
+import javax.crypto.MacSpi;
+
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -54,7 +64,13 @@ public class SecurityServiceTest {
     private static final String OMITTED_PROVIDER_ALGORITHM = "SHA256withECDSA";
     private static final String OMITTED_PROVIDER_SERVICE = "Signature";
     private static final String OMITTED_PROVIDER_ERROR = "SHA256withECDSA Signature not available";
-    private static final String OMITTED_PROVIDER_OPTION = "-H:AdditionalSecurityProviders=sun.security.ec.SunEC";
+    private static final String OMITTED_PROVIDER_HINT = "-H:Preserve=all";
+    private static final String REFLECTION_METADATA_PROVIDER_CLASS_NAME = "com.oracle.svm.test.services.SecurityServiceTest$ReflectionMetadataProvider";
+    private static final String REFLECTION_METADATA_PROVIDER_NAME = "reflection-metadata-provider";
+    private static final String REFLECTION_METADATA_PROVIDER_ALGORITHM = "reflection-metadata-algo";
+    private static final String REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM = "reflection-metadata-mac";
+    private static final String SERVICE_LOADED_PROVIDER_CLASS_NAME = "com.oracle.svm.test.services.SecurityServiceTest$ServiceLoadedProvider";
+    private static final String SERVICE_LOADED_PROVIDER_ALGORITHM = "service-loaded-provider-algo";
 
     public static class TestFeature implements Feature {
         @Override
@@ -63,7 +79,8 @@ public class SecurityServiceTest {
             Security.addProvider(new NoOpProvider());
             Security.addProvider(new NoOpProviderTwo());
             // open sun.security.jca.GetInstance
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, JCACompliantNoOpService.class, ReflectionUtil.lookupClass(false, "sun.security.jca.GetInstance"));
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, JCACompliantNoOpService.class,
+                            ReflectionUtil.lookupClass(false, "sun.security.jca.GetInstance"));
         }
 
         @Override
@@ -132,6 +149,37 @@ public class SecurityServiceTest {
         }
     }
 
+    @Test
+    public void testReflectionMetadataProviderRegistration() throws Exception {
+        Provider provider = (Provider) Class.forName(REFLECTION_METADATA_PROVIDER_CLASS_NAME).getDeclaredConstructor().newInstance();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("Provider should be registered.", position > 0);
+            JCACompliantNoOpService service = JCACompliantNoOpService.getInstance(REFLECTION_METADATA_PROVIDER_ALGORITHM);
+            Assert.assertNotNull("No service instance was created", service);
+            Assert.assertEquals("Unexpected service implementation class", ReflectionMetadataNoOpServiceImpl.class.getName(), service.getClass().getName());
+            Assert.assertNotNull("No JCE service instance was created", Mac.getInstance(REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM, provider));
+        } finally {
+            Security.removeProvider(REFLECTION_METADATA_PROVIDER_NAME);
+        }
+    }
+
+    @Test
+    public void testServiceLoaderProviderWithoutMetadataIsOmitted() {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
+
+        try {
+            boolean foundProvider = ServiceLoader.load(Provider.class).stream()
+                            .anyMatch(provider -> provider.type().getName().equals(SERVICE_LOADED_PROVIDER_CLASS_NAME));
+            Assert.assertFalse("Service descriptors alone must not include security providers.", foundProvider);
+        } catch (ServiceConfigurationError e) {
+            Assert.fail("Service-only security provider should be omitted, not left as an unloadable service entry: " + e);
+        }
+
+        Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
+    }
+
     @Delete
     @TargetClass(className = "sun.security.pkcs11.SunPKCS11")
     static final class Target_sun_security_pkcs11_SunPKCS11 {
@@ -155,8 +203,9 @@ public class SecurityServiceTest {
         } catch (SecurityException e) {
             Assert.assertTrue("Missing provider message should mention the provider name.", e.getMessage().contains("SunEC"));
             Assert.assertTrue("Missing provider message should mention the provider class.", e.getMessage().contains("sun.security.ec.SunEC"));
-            Assert.assertTrue("Missing provider message should mention AdditionalSecurityProviders.",
-                            e.getMessage().contains("-H:AdditionalSecurityProviders=sun.security.ec.SunEC"));
+            Assert.assertTrue("Missing provider message should mention the tracing agent.", e.getMessage().contains("tracing agent"));
+            Assert.assertTrue("Missing provider message should mention reflection metadata.", e.getMessage().contains("reachability-metadata.json"));
+            Assert.assertTrue("Missing provider message should mention preserve all.", e.getMessage().contains(OMITTED_PROVIDER_HINT));
         }
     }
 
@@ -169,7 +218,7 @@ public class SecurityServiceTest {
         } catch (NoSuchAlgorithmException e) {
             Assert.assertEquals(OMITTED_PROVIDER_ERROR, e.getMessage());
             Assert.assertFalse("Generic discovery should not use the explicit-provider diagnostic yet.",
-                            e.getMessage().contains(OMITTED_PROVIDER_OPTION));
+                            e.getMessage().contains(OMITTED_PROVIDER_HINT));
         }
     }
 
@@ -182,7 +231,7 @@ public class SecurityServiceTest {
         } catch (NoSuchAlgorithmException e) {
             Assert.assertEquals(OMITTED_PROVIDER_ERROR, e.getMessage());
             Assert.assertFalse("Generic discovery should not use the explicit-provider diagnostic yet.",
-                            e.getMessage().contains(OMITTED_PROVIDER_OPTION));
+                            e.getMessage().contains(OMITTED_PROVIDER_HINT));
         }
     }
 
@@ -256,5 +305,59 @@ public class SecurityServiceTest {
     }
 
     public static class JcaCompliantNoOpServiceImpl extends JCACompliantNoOpService {
+    }
+
+    public static final class ReflectionMetadataNoOpServiceImpl extends JCACompliantNoOpService {
+    }
+
+    public static final class ReflectionMetadataProvider extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public ReflectionMetadataProvider() {
+            super(REFLECTION_METADATA_PROVIDER_NAME, 1.0, "Provider registered through reflection metadata");
+            putService(new Service(this, "JCACompliantNoOpService", REFLECTION_METADATA_PROVIDER_ALGORITHM,
+                            ReflectionMetadataNoOpServiceImpl.class.getName(), null, null));
+            putService(new Service(this, "Mac", REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM, ReflectionMetadataMacSpi.class.getName(), null, null));
+        }
+    }
+
+    public static final class ReflectionMetadataMacSpi extends MacSpi {
+        @Override
+        protected int engineGetMacLength() {
+            return 0;
+        }
+
+        @Override
+        protected void engineInit(Key key, AlgorithmParameterSpec params) throws InvalidKeyException, InvalidAlgorithmParameterException {
+        }
+
+        @Override
+        protected void engineUpdate(byte input) {
+        }
+
+        @Override
+        protected void engineUpdate(byte[] input, int offset, int len) {
+        }
+
+        @Override
+        protected byte[] engineDoFinal() {
+            return new byte[0];
+        }
+
+        @Override
+        protected void engineReset() {
+        }
+    }
+
+    public static final class ServiceLoadedProvider extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public ServiceLoadedProvider() {
+            super("service-loaded-provider", 1.0, "Provider registered only through META-INF/services");
+            putService(new Service(this, "JCACompliantNoOpService", SERVICE_LOADED_PROVIDER_ALGORITHM,
+                            ReflectionMetadataNoOpServiceImpl.class.getName(), null, null));
+        }
     }
 }

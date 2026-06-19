@@ -28,13 +28,9 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
-import java.util.List;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -51,27 +47,13 @@ import jdk.graal.compiler.api.replacements.Fold;
 import sun.security.util.Debug;
 
 /**
- * The class that holds various build-time and run-time structures necessary for security providers,
- * but only in case they are initialized at run time (see the <a href=
+ * The class that holds various build-time and run-time structures necessary for security providers
+ * (see the <a href=
  * "../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
  * JCA Security Services documentation</a> for details).
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
 public final class SecurityProvidersSupport {
-    /**
-     * A set of providers to be loaded using the service-loading technique at runtime, but not
-     * discoverable at build-time when processing services in the feature (see
-     * ServiceLoaderFeature#handleServiceClassIsReachable). This occurs when the user does not
-     * explicitly request a provider, but the provider is discovered via static analysis from a
-     * JCA-compliant security service used by the user's code (see
-     * SecurityServicesFeature#registerServiceReachabilityHandlers).
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)//
-    private final Set<String> markedAsNotLoaded = ConcurrentHashMap.newKeySet();
-
-    /** Set of fully qualified provider names, required for runtime resource access. */
-    private final EconomicSet<String> userRequestedSecurityProviders = EconomicSet.create();
-
     /**
      * A map of providers, identified by their names (see {@link Provider#getName()}), and the
      * results of their verification (see javax.crypto.JceSecurity#getVerificationResult). This
@@ -79,14 +61,14 @@ public final class SecurityProvidersSupport {
      * avoid keeping provider objects in the image heap.
      */
     private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
+    private final EconomicMap<String, Object> verifiedSecurityProviderClasses = ImageHeapMap.create("verifiedSecurityProviderClasses");
 
     private Properties savedInitialSecurityProperties;
 
     private Constructor<?> sunECConstructor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SecurityProvidersSupport(List<String> userRequestedSecurityProviders) {
-        this.userRequestedSecurityProviders.addAll(userRequestedSecurityProviders);
+    public SecurityProvidersSupport() {
     }
 
     @Fold
@@ -95,36 +77,22 @@ public final class SecurityProvidersSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addVerifiedSecurityProvider(String key, Object verificationResult) {
-        verifiedSecurityProviders.put(key, verificationResult);
+    public void addVerifiedSecurityProvider(String providerName, String providerClassName, Object verificationResult) {
+        verifiedSecurityProviders.put(providerName, verificationResult);
+        verifiedSecurityProviderClasses.put(providerClassName, verificationResult);
     }
 
-    public Object getSecurityProviderVerificationResult(String key) {
-        return verifiedSecurityProviders.get(key);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void markSecurityProviderAsNotLoaded(String provider) {
-        markedAsNotLoaded.add(provider);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isSecurityProviderNotLoaded(String provider) {
-        return markedAsNotLoaded.contains(provider);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isUserRequestedSecurityProvider(String provider) {
-        return userRequestedSecurityProviders.contains(provider);
+    public Object getSecurityProviderVerificationResult(Provider provider) {
+        Object result = verifiedSecurityProviderClasses.get(provider.getClass().getName());
+        return result != null ? result : verifiedSecurityProviders.get(provider.getName());
     }
 
     /**
      * Returns {@code true} if the provider, identified by either its name (e.g., SUN) or fully
-     * qualified name (e.g., sun.security.provider.Sun), is either user-requested or reachable via a
-     * security service.
+     * qualified name (e.g., sun.security.provider.Sun), was included in the native image.
      */
-    public boolean isSecurityProviderRequested(String providerName, String providerFQName) {
-        return verifiedSecurityProviders.containsKey(providerName) || userRequestedSecurityProviders.contains(providerFQName);
+    public boolean isSecurityProviderIncluded(String providerName, String providerFQName) {
+        return verifiedSecurityProviders.containsKey(providerName) || verifiedSecurityProviderClasses.containsKey(providerFQName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -176,7 +144,7 @@ public final class SecurityProvidersSupport {
     public boolean isMissingBuiltInProvider(String provName) {
         String providerName = getBuiltInProviderName(provName);
         String providerFQName = getBuiltInProviderClassName(provName);
-        return providerName != null && !isSecurityProviderRequested(providerName, providerFQName);
+        return providerName != null && !isSecurityProviderIncluded(providerName, providerFQName);
     }
 
     public static SecurityException missingBuiltInProvider(String provName) {
@@ -186,23 +154,27 @@ public final class SecurityProvidersSupport {
             throw VMError.shouldNotReachHere("Unsupported built-in provider: " + provName);
         }
         return new SecurityException(
-                        "The security provider '" + providerName + "' (" + providerFQName + ") was requested at run time, " +
-                                        "but it was not registered for inclusion in the native image. " +
-                                        "Add the option -H:AdditionalSecurityProviders=" + providerFQName + " to the native-image build and rebuild the image.");
+                        missingProviderMessage(providerName, providerFQName));
+    }
+
+    public static String missingProviderMessage(String providerName, String providerFQName) {
+        return "The security provider '" + providerName + "' (" + providerFQName + ") was requested at run time but was not included in the native image. " +
+                        "Run your application with the tracing agent so the provider is recorded automatically, register " + providerFQName +
+                        " for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
     }
 
     public Provider loadBuiltInProvider(String provName, Debug debug) {
         return switch (provName) {
             case "SUN", "sun.security.provider.Sun" ->
-                isSecurityProviderRequested("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
+                isSecurityProviderIncluded("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
             case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                isSecurityProviderRequested("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
+                isSecurityProviderIncluded("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
             case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                isSecurityProviderRequested("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
+                isSecurityProviderIncluded("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
             case "SunJSSE", "sun.security.ssl.SunJSSE" ->
-                isSecurityProviderRequested("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
+                isSecurityProviderIncluded("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
             case "SunEC", "sun.security.ec.SunEC" ->
-                isSecurityProviderRequested("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : null;
+                isSecurityProviderIncluded("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : null;
             case "Apple", "apple.security.AppleProvider" -> {
                 try {
                     Class<?> c = Class.forName("apple.security.AppleProvider");

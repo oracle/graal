@@ -29,7 +29,6 @@ import static com.oracle.svm.core.SubstrateOptions.EnableURLProtocols;
 import static com.oracle.svm.core.SubstrateOptions.Preserve;
 import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
 import static com.oracle.svm.core.metadata.MetadataTracer.Options.MetadataTracingSupport;
-import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
@@ -39,13 +38,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.security.Provider;
-import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -177,17 +173,6 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         AllowJRTFileSystem.update(hostedValues, true);
 
         EnableURLProtocols.update(hostedValues, "all");
-        AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
-    }
-
-    private static String getSecurityProvidersCSV() {
-        StringJoiner joiner = new StringJoiner(",");
-        for (Provider provider : Security.getProviders()) {
-            Class<? extends Provider> aClass = provider.getClass();
-            String typeName = aClass.getTypeName();
-            joiner.add(typeName);
-        }
-        return joiner.toString();
     }
 
     /**
