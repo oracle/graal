@@ -3876,21 +3876,26 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                     return m
             return None
 
-        def _updateCommandOption(self, cmd, option_name, option_short_name, new_value):
-            """Updates command option value, concatenates the new value with the existing one, if it is present.
+        def _updateCommandOption(self, cmd, option_name, option_short_name, new_value, append=False):
+            """Updates a command option value in place.
 
             :param list[str] cmd: Command to be updated.
             :param str option_name: Name of the option to be updated.
-            :param str option_short_name: Short name of the option to be updated.
-            :param str new_value: New value for the option, to be concatenated to the existing value, if it is present.
-            :return: Updated command.
-            :rtype: list[str]
+            :param str option_short_name: Short name of the option to be updated, if there is one.
+            :param str new_value: New value for the option, to be concatenated with the existing value if it is present.
+            :param bool append: If true, append the new value after the existing one instead of prepending it.
             """
-            option_pattern = f"^(?:{option_name}=|{option_short_name}=)(.+)$"
+            option_prefixes = [re.escape(option_name)]
+            if option_short_name:
+                option_prefixes.append(re.escape(option_short_name))
+            option_pattern = f"^(?:{'|'.join(prefix + '=' for prefix in option_prefixes)})(.+)$"
             existing_option_match = self._regexFindInCommand(cmd, option_pattern)
             if existing_option_match:
                 cmd.remove(existing_option_match.group(0))
-                new_value = f"{new_value} {existing_option_match.group(1)}"
+                if append:
+                    new_value = f"{existing_option_match.group(1)} {new_value}"
+                else:
+                    new_value = f"{new_value} {existing_option_match.group(1)}"
             cmd.append(f"{option_name}={new_value}")
 
         def _energyTrackerExtraOptions(self, suite: BaristaBenchmarkSuite):
