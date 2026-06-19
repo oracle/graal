@@ -18,7 +18,7 @@ By default the `native-image` builder uses static analysis to discover which of 
 The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
 Then a custom reflection configuration file or feature can be used to register the security services required by a specific application.
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
-In this case, you must manually mark used providers with `-H:AdditionalSecurityProviders`.
+In this case, register the provider classes for reflection, for example with reachability metadata collected by the Tracing Agent.
 
 ## Security Services Automatic Registration
 
@@ -73,7 +73,9 @@ To avoid capturing state from the machine that runs the `native-image` builder, 
 
 By default, only services specified in the JCA framework are automatically registered. To automatically register custom service types, you can use the `-H:AdditionalSecurityServiceTypes` option.
 Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same name as the service type.
-If relying on the third-party code that does not comply to the above requirements, a manual configuration will be required. In that case, providers for such services must explicitly be registered using the `-H:AdditionalSecurityProviders` option. Note that these options are only required in very specific cases and should not normally be needed.
+If you rely on third-party code that does not comply with these requirements, manual configuration is required.
+Register the provider class for reflection in _reachability-metadata.json_ or collect the metadata with the Tracing Agent.
+The deprecated `-H:AdditionalSecurityProviders` option still registers the listed provider classes for reflection as a compatibility path.
 
 ### Further Reading
 

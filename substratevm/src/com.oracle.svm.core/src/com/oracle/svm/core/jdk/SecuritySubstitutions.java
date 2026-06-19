@@ -274,17 +274,19 @@ final class Target_javax_crypto_JceSecurity {
         } else if (o != null) {
             return (Exception) o;
         }
+        o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
+        if (o == Boolean.TRUE) {
+            return null;
+        } else if (o != null) {
+            return (Exception) o;
+        }
         /*
          * If the verification result is not found in the verificationResults map, HotSpot will
          * attempt to verify the provider. This requires accessing the code base, which isn't
          * supported in Native Image, so we need to fail. We could either fail here or substitute
          * getCodeBase() and fail there, but handling it here is a cleaner approach.
          */
-        String providerFQN = p.getClass().getName();
-        throw new SecurityException(
-                        "Attempted to verify a provider that was not registered at build time: " + providerFQN + ". " +
-                                        "All security providers must be registered and verified during native image generation. " +
-                                        "Try adding the option: -H:AdditionalSecurityProviders=" + providerFQN + " and rebuild the image.");
+        throw new SecurityException(SecurityProvidersSupport.missingProviderMessage(p.getName(), p.getClass().getName()));
     }
 }
 
