@@ -1501,7 +1501,7 @@ def _run_scismoke_binary(binary_path):
 
     # Basic correctness check.
     if ''.join(actual_output) != expected_output:
-        raise Exception('Unexpected output: ' + str(actual_output) + ' != ' + str([expected_output]))
+        mx.abort('Unexpected output: ' + str(actual_output) + ' != ' + str([expected_output]))
 
 
 class _ScismokeHistogramTracker:
@@ -1551,22 +1551,22 @@ def _build_scismoke_image(native_image, build_args, reports_dir):
     native_image(build_args, out=_log_output, err=_log_output)
     histogram_file = _find_methodhistogram_file(reports_dir)
     if histogram_file is None:
-        raise Exception('PrintMethodHistogram report not found in ' + reports_dir)
+        mx.abort('PrintMethodHistogram report not found in ' + reports_dir)
     mx.log('Parsing method histogram from: ' + histogram_file)
     tracker = _parse_methodhistogram_file(histogram_file)
     if not tracker.verified_histogram:
-        raise Exception('PrintMethodHistogram output not found in ' + histogram_file)
+        mx.abort('PrintMethodHistogram output not found in ' + histogram_file)
     return tracker
 
 
 def _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name):
     if not tracker.has_multi:
-        raise Exception(variant_name + ': multiCallsiteHelper should always appear in histogram')
+        mx.abort(variant_name + ': multiCallsiteHelper should always appear in histogram')
     if is_sci_enabled:
         if tracker.has_single:
-            raise Exception(variant_name + ': singleCallsiteHelper should not appear in histogram with SCI enabled')
+            mx.abort(variant_name + ': singleCallsiteHelper should not appear in histogram with SCI enabled')
     elif not tracker.has_single:
-        raise Exception(variant_name + ': singleCallsiteHelper should appear in histogram with SCI disabled')
+        mx.abort(variant_name + ': singleCallsiteHelper should appear in histogram with SCI disabled')
 
 
 def _scismoketest(native_image, path, args):
