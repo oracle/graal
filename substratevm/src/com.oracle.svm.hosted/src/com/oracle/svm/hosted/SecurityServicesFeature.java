@@ -478,8 +478,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * WeakReference and so using WeakReference.get() is sufficient for us.
          */
         var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) originalValue);
-        cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
+        cleanedCache.keySet().removeIf(key -> shouldRemoveVerificationResult(key.get()));
         return cleanedCache;
+    }
+
+    private boolean shouldRemoveVerificationResult(Provider provider) {
+        /*
+         * Verification results for used providers are copied into SecurityProvidersSupport, keyed by
+         * provider name and class name. Keep them out of JceSecurity.verificationResults so the weak
+         * cache keys do not keep build-time provider objects reachable in the image heap.
+         */
+        return provider == null || usedProviders.contains(provider) || shouldRemoveProvider(provider);
     }
 
     private List<Provider> filterProviderList(Object originalValue) {
@@ -844,7 +853,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private void registerProvider(DuringAnalysisAccess access, Provider provider) {
+    private void registerProvider(Provider provider) {
         if (usedProviders.add(provider)) {
             registerForReflection(provider.getClass());
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
@@ -882,7 +891,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (provider == null) {
             provider = instantiateProvider(providerClass);
         }
-        registerProvider(access, provider);
+        registerProvider(provider);
         for (Service service : provider.getServices()) {
             if (isValid(service)) {
                 registerService(access, service);
@@ -943,7 +952,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
                     registerX509Extensions(a);
                 }
-                registerProvider(a, service.getProvider());
+                registerProvider(service.getProvider());
             }
         } else {
             trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
