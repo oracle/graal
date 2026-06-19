@@ -85,6 +85,7 @@ public final class SymbolsSupport {
         return LayeredImageSingletonSupport.singleton().lookup(SymbolsSupport.class, false, true);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void prepareSymbolsForImageHeap() {
         hostedLookup().prepareSymbolsForImageHeap0();
     }

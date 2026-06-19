@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -60,12 +59,10 @@ public class SymbolsFeature implements InternalFeature {
          */
         Field readWriteLockField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "readWriteLock");
         access.registerFieldValueTransformer(readWriteLockField, new NewInstanceFieldValueTransformer());
-        if (RuntimeClassLoading.isSupported()) {
-            Field strongMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "strongMap");
-            access.registerFieldValueTransformer(strongMapField, new NewInstanceFieldValueTransformer());
-            Field weakMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "weakMap");
-            access.registerFieldValueTransformer(weakMapField, new NewInstanceFieldValueTransformer());
-        }
+        Field strongMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "strongMap");
+        access.registerFieldValueTransformer(strongMapField, new NewInstanceFieldValueTransformer());
+        Field weakMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "weakMap");
+        access.registerFieldValueTransformer(weakMapField, new NewInstanceFieldValueTransformer());
     }
 
     @Override
