@@ -293,9 +293,6 @@ public final class Target_java_lang_ClassLoader {
     @Alias
     native Stream<Package> packages();
 
-    @Alias
-    native Package getDefinedPackage(String name);
-
     @Substitute
     private static Target_java_lang_AssertionStatusDirectives retrieveDirectives() {
         RuntimeAssertionsSupport.ClassLoaderAssertionStatusDirectives assertionSupport = RuntimeAssertionsSupport.singleton().createClassLoaderAssertionStatusDirectives();
