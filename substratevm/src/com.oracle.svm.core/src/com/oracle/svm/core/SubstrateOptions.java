@@ -893,8 +893,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "Perform single callsite method inlining in the AOT compiled native image")//
-    public static final HostedOptionKey<Boolean> AOTSingleCallsiteInline = new HostedOptionKey<>(true);
+    @Option(help = "Perform single callsite method inlining in the AOT compiled native image", stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> AOTSingleCallsiteInline = new HostedOptionKey<>(false);
 
     @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
