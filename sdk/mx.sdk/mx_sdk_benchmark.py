@@ -438,7 +438,7 @@ class NativeImageBenchmarkConfig:
         if vm.native_architecture:
             base_image_build_args += ['-march=native']
         if vm.crema:
-            base_image_build_args += ["-H:+RuntimeClassLoading", "-H:EnableURLProtocols=jar"]
+            base_image_build_args += ["-H:+RuntimeClassLoading"]
         if vm.preserve_all:
             base_image_build_args += ['-H:Preserve=all']
         if vm.preserve_classpath:

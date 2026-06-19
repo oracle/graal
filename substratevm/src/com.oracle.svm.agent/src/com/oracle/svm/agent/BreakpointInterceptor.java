@@ -1924,6 +1924,10 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getNestMembers),
                     optionalBrk("java/lang/Class", "getSigners", "()[Ljava/lang/Object;",
                                     BreakpointInterceptor::getSigners),
+                    brk("java/net/URL", "isValidProtocol", "(Ljava/lang/String;)Z", BreakpointInterceptor::isValidURLProtocol),
+                    brk("java/net/URI", "toURL", "()Ljava/net/URL;", BreakpointInterceptor::uriToURL),
+                    brk("java/net/URL$DefaultFactory", "createURLStreamHandler", "(Ljava/lang/String;)Ljava/net/URLStreamHandler;",
+                                    BreakpointInterceptor::createURLStreamHandler),
 
                     /* FFM API was introduced in Java 22 */
                     brk("jdk/internal/foreign/abi/AbstractLinker", "downcallHandle0",
@@ -1933,6 +1937,103 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/invoke/MethodHandle;Ljava/lang/foreign/FunctionDescriptor;Ljava/lang/foreign/Arena;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/foreign/MemorySegment;",
                                     BreakpointInterceptor::upcallStub)
     };
+
+    private static boolean isValidURLProtocol(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle protocol = getObjectArgument(thread, 1);
+        traceURLStreamHandler(jni, bp.clazz, callerClass, state, "getURLStreamHandler", fromJniString(jni, protocol), state.getFullStackTraceOrNull());
+        return true;
+    }
+
+    private static boolean createURLStreamHandler(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle protocol = getObjectArgument(thread, 1);
+        traceURLStreamHandler(jni, bp.clazz, callerClass, state, bp.specification.methodName, fromJniString(jni, protocol), state.getFullStackTraceOrNull());
+        return true;
+    }
+
+    private static boolean uriToURL(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle uri = getReceiver(thread);
+        JNIObjectHandle uriString = Support.callObjectMethod(jni, uri, agent.handles().javaLangObjectToString);
+        if (!clearException(jni) && uriString.notEqual(nullHandle())) {
+            String uriText = fromJniString(jni, uriString);
+            if (uriText != null && uriText.regionMatches(true, 0, "jrt:", 0, 4)) {
+                traceURLStreamHandler(jni, bp.clazz, state.getDirectCallerClass(), state, "getURLStreamHandler", "jrt", state.getFullStackTraceOrNull());
+            }
+        }
+        return true;
+    }
+
+    private static void traceURLStreamHandler(JNIEnvironment jni, JNIObjectHandle clazz, JNIObjectHandle callerClass, InterceptedState state, String function,
+                    String protocolName, JNIMethodId[] stackTrace) {
+        String protocolClass = urlStreamHandlerReflectionTarget(jni, state, protocolName);
+        if (protocolClass != null) {
+            traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, function, null, stackTrace, protocolClass);
+        }
+    }
+
+    private static String urlStreamHandlerReflectionTarget(JNIEnvironment jni, InterceptedState state, String protocolName) {
+        /*
+         * The JDK asks the default factory for jar: during ordinary class path resource handling.
+         * Native Image handles those resources without requiring the jar URL handler metadata.
+         */
+        if ("jar".equalsIgnoreCase(protocolName)) {
+            return isBuiltInClassPathJarResourceURL(jni, state) ? null : "sun.net.www.protocol.jar.Handler";
+        }
+        /*
+         * System module resource lookup similarly creates jrt: URLs as a JDK implementation detail.
+         * Opening such a URL can also make the JDK jrt connection create another jrt: URL.
+         */
+        if ("jrt".equalsIgnoreCase(protocolName)) {
+            return isSystemModuleResourceURL(jni, state) ? null : "sun.net.www.protocol.jrt.Handler";
+        }
+        return null;
+    }
+
+    private static boolean isBuiltInClassPathJarResourceURL(JNIEnvironment jni, InterceptedState state) {
+        boolean foundURLClassPath = false;
+        for (int depth = 1; depth < 32; depth++) {
+            JNIMethodId method = state.getCallerMethod(depth);
+            if (method.isNull()) {
+                return false;
+            }
+            String className = getClassNameOrNull(jni, getMethodDeclaringClass(method));
+            if (className != null) {
+                if (className.startsWith("jdk.internal.loader.URLClassPath")) {
+                    foundURLClassPath = true;
+                } else if (foundURLClassPath) {
+                    /* Classify the loader frame that owns the URLClassPath frame. */
+                    if (className.startsWith("java.net.URLClassLoader")) {
+                        return false;
+                    }
+                    if (className.startsWith("jdk.internal.loader.BuiltinClassLoader") ||
+                                    className.startsWith("jdk.internal.loader.ClassLoaders$")) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSystemModuleResourceURL(JNIEnvironment jni, InterceptedState state) {
+        for (int depth = 1; depth < 32; depth++) {
+            JNIMethodId method = state.getCallerMethod(depth);
+            if (method.isNull()) {
+                return false;
+            }
+            String className = getClassNameOrNull(jni, getMethodDeclaringClass(method));
+            if (className != null && (className.startsWith("jdk.internal.loader.BuiltinClassLoader") ||
+                            className.startsWith("jdk.internal.loader.BootLoader") ||
+                            className.startsWith("jdk.internal.loader.Loader") ||
+                            className.startsWith("jdk.internal.module.ModuleReferences") ||
+                            className.startsWith("jdk.internal.module.SystemModuleFinders") ||
+                            className.startsWith("sun.net.www.protocol.jrt.JavaRuntimeURLConnection"))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();

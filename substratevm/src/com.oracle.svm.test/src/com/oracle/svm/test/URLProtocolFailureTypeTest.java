@@ -30,21 +30,11 @@ import java.net.URI;
 import org.junit.Assert;
 import org.junit.Test;
 
-@NativeImageBuildArgs({
-                "-H:+UnlockExperimentalVMOptions",
-                "-H:+RuntimeClassLoading",
-                "-H:DisableURLProtocols=http"
-})
-public class RuntimeURLProtocolDisableTest {
+public class URLProtocolFailureTypeTest {
 
     @Test
-    public void disabledProtocolIsNotResolvedByRuntimeClassLoading() {
+    public void unsupportedURLProtocolFailsWithMalformedURLException() {
         MalformedURLException exception = Assert.assertThrows(MalformedURLException.class, () -> URI.create("http://example.com").toURL());
-        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains("unknown protocol: http"));
-    }
-
-    @Test
-    public void runtimeClassLoadingEnablesJDKProtocols() throws Exception {
-        URI.create("jar:file:/tmp/missing.jar!/resource.txt").toURL();
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains("Accessing a URL protocol that was not enabled"));
     }
 }

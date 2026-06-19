@@ -249,7 +249,7 @@ public class Main {
         ClassLoader runtimeModuleLoader = layer.findLoader(moduleName);
         assert module.getClassLoader() == runtimeModuleLoader : module + " not defined to the runtime layer loader";
         assert runtimeModuleLoader.getParent() == ClassLoader.getSystemClassLoader() : module + " loader does not use the system class loader as parent";
-        // This lookup returns a jar: URL for the runtime module-path resource, so the image build needs --enable-url-protocols=jar.
+        // This lookup returns a jar: URL for the runtime module-path resource.
         testMiscModuleResources(runtimeModuleLoader, Set.of(APP_MISC_MODULE_RESOURCE_CONTENTS, RUNTIME_MISC_MODULE_RESOURCE_CONTENTS));
 
         try {
