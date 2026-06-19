@@ -62,6 +62,13 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private volatile SoftReference<Map<String, List<URL>>> resourceCache;
 
+    /// Maps package names to the JDK metadata for the module that owns the package.
+    ///
+    /// `ModuleLayerFeature` transforms this static JDK field to a Native Image owned map and rebuilds
+    /// it while synthesizing the runtime boot layer. The final rebuild clears the prototype state seen
+    /// during analysis and inserts `LoadedModule` values created from the runtime built-in loader and
+    /// the selected `ModuleReference`s, so runtime boot package lookup uses the synthesized module
+    /// layer instead of the image builder's transient loader state.
     @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
     static Map<String, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule> packageToModule;
 
