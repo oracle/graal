@@ -1,18 +1,20 @@
 # Project Terminus Migration Guide
 
-This document captures the **Project Terminus Migration Guide**.
-It is intended for Native Image developers migrating build-time code away from host reflection and toward Terminus-safe guest-context APIs.
+This guide is for Native Image developers migrating build-time code away from host reflection and toward Terminus-safe guest-context APIs.
 
-## Core migration rule
+For the broader design, see [Project Terminus](project-terminus.md).
+For context and lifecycle terms, see [Project Terminus Terminology](terminus-terminology.md).
+
+## Core Migration Rule
 
 The primary API for working with the guest context is `GuestAccess`.
 
-When migrating code for Terminus, prefer JVMCI- and VMAccess-based APIs over Java core reflection whenever the code interacts with guest-loaded types, methods, fields, modules, or invocation paths.
+When migrating code for Terminus, prefer JVMCI- and `VMAccess`-based APIs over Java core reflection whenever the code interacts with guest-loaded types, methods, fields, modules, or invocation paths.
 
-## API replacements
+## API Replacements
 
 | Core reflection / hosted API                                                                 | Terminus-safe replacement                                                                                | Notes |
-| -------------------------------------------------------------------------------------------- |----------------------------------------------------------------------------------------------------------| --- |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --- |
 | `RuntimeReflection`                                                                          | `JVMCIRuntimeReflection`                                                                                 | Use Terminus-safe registration paths instead of host reflection state. |
 | `RuntimeJNIAccess`                                                                           | `JVMCIRuntimeJNIAccess`                                                                                  | Prefer guest-aware access paths. |
 | `RuntimeProxyCreation`                                                                       | `JVMCIRuntimeProxyCreation`                                                                              | Avoid assuming host reflection ownership. |
@@ -32,7 +34,7 @@ When migrating code for Terminus, prefer JVMCI- and VMAccess-based APIs over Jav
 | `ModuleLayer.boot().findModule(moduleName)`                                                  | `JVMCIReflectionUtil.bootModuleLayer().findModule(moduleName)`                                           | Common in `afterRegistration`; transitional and expected to become less important after migration. |
 | `clazz.getProtectionDomain().getCodeSource().getLocation()`                                  | `JVMCIReflectionUtil.getOrigin(type)`                                                                    | Use JVMCI type origin lookup. |
 | `BootLoader.packages()`                                                                      | `JVMCIReflectionUtil.bootLoaderPackages()`                                                               | JVMCI-aware boot loader package access. |
-| `Class.isAssignableFrom(Class)`                                                              | `ResolvedJavaType.isAssignableFrom(ResolvedJavaType)` or `ReflectionUtil.isAssignableFrom(Class, Class)` | Use `ResolvedJavaType` for runtime or guest types; `ReflectionUtil` is acceptable for known hosted literals when satisfying `VerifyReflectionUsage`. |
+| `Class.isAssignableFrom(Class)`                                                              | `ResolvedJavaType.isAssignableFrom(ResolvedJavaType)` or `ReflectionUtil.isAssignableFrom(Class, Class)` | Use `ResolvedJavaType` for run-time or guest types; `ReflectionUtil` is acceptable for known hosted literals when satisfying `VerifyReflectionUsage`. |
 | `ReflectionUtil.invokeMethod(...)`, `Method.invoke(...)`, and ordinary reflective invocation | `GuestAccess.get().invoke(...)`                                                                          | Preferred invocation path for guest methods. |
 
 ## Moving code from host/core to guest or shared modules
@@ -52,9 +54,9 @@ non-mechanical adaptations, followed by a second commit for mechanical import an
 adjustments caused by the move. The final tree should be validated as a whole; the split is meant to
 show reviewers which diff carries semantic risk and which diff is import fallout.
 
-## Practical guidance
+## Practical Guidance
 
-### Prefer guest-context APIs over host reflection
+### Prefer Guest-Context APIs Over Host Reflection
 
 Under Terminus, code frequently operates on guest-loaded types that do not have a reliable or meaningful host `Class<?>` counterpart.
 That means reflection-based code is often either incorrect or only accidentally correct while running in host mode.
@@ -64,15 +66,15 @@ Use:
 - `GuestAccess.get()` for guest-context operations
 - `JVMCIReflectionUtil` for reflection-like helpers
 - `ResolvedJavaType`, `ResolvedJavaMethod`, and `ResolvedJavaField` for type and member reasoning
-- VMAccess and constant-reflection APIs when translating guest objects into build-time metadata
+- `VMAccess` and constant-reflection APIs when translating guest objects into build-time metadata
 
-### Be careful with lookup semantics
+### Be Careful With Lookup Semantics
 
 Several JVMCI replacements are intentionally stricter than reflection lookups.
 For example, unique-declaration helpers can return `null` if a method name and parameter list do not resolve unambiguously.
 Migration work should handle that explicitly rather than assuming reflective lookup semantics.
 
-### Module migration is part of Terminus migration
+### Migrate Module Access
 
 The migration guide treats module and package APIs as part of the same transition.
 If code currently reasons in terms of `Module`, `ModuleLayer`, or `Package`, move it toward:
@@ -82,11 +84,11 @@ If code currently reasons in terms of `Module`, `ModuleLayer`, or `Package`, mov
 - `ResolvedJavaPackage`
 - `JVMCIReflectionUtil.bootModuleLayer()`
 
-### Invocation should stay guest-aware
+### Keep Invocation Guest-Aware
 
 If existing hosted code uses `Method.invoke(...)` or helper wrappers around core reflection, replace that with `GuestAccess.get().invoke(...)` so the invocation stays within the intended guest-context model.
 
-## Migration checklist
+## Migration Checklist
 
 - Identify whether the code is operating on guest-loaded types or known hosted types.
 - Replace core reflection lookups with `JVMCIReflectionUtil` or JVMCI metadata APIs.
