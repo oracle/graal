@@ -1738,7 +1738,20 @@ class PolybenchBenchmarkSuite(
             # so they are available for final-dispatch aggregation.
             post_processors.append(ContextStorePostProcessor())
 
+        post_processors += super().post_processors()
         return post_processors
+
+    def get_metric_name_filters(self) -> Tuple[List[str], List[str]]:
+        """Implicitly exclude 'warmup' and 'time-sample' metrics for peak benchmarks to avoid generating excessive datapoints."""
+        include_metrics, exclude_metrics = super().get_metric_name_filters()
+        benchmark_name = bm_exec_context().get("benchmark")
+        if not benchmark_name or re.fullmatch(r"peak/.*\.py", benchmark_name) is None:
+            return include_metrics, exclude_metrics
+        if "warmup" not in include_metrics and "warmup" not in exclude_metrics:
+            exclude_metrics.append("warmup")
+        if "time-sample" not in include_metrics and "time-sample" not in exclude_metrics:
+            exclude_metrics.append("time-sample")
+        return include_metrics, exclude_metrics
 
     @staticmethod
     def _get_metric_name(bench_output) -> Optional[str]:
