@@ -1,0 +1,13 @@
+{
+  "reflection": [
+    {
+      "type": "com.oracle.svm.test.services.SecurityServiceTest$ReflectionMetadataProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    }
+  ]
+}

@@ -35,9 +35,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
-import com.oracle.svm.core.jdk.RuntimeSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
+import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -59,7 +58,7 @@ final class Target_java_security_Security_SecPropLoader {
      */
     @Substitute
     private static void loadMaster() {
-        Target_java_security_Security.props = RuntimeSecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
+        Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
     }
 }
 
@@ -95,7 +94,7 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* The verification results map key is an identity wrapper object. */
-        Object o = LayeredSecurityProvidersSupport.getSecurityProviderVerificationResult(p.getName());
+        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
         if (o == Boolean.TRUE) {
             return null;
         } else if (o != null) {
@@ -107,11 +106,7 @@ final class Target_javax_crypto_JceSecurity {
          * supported in Native Image, so we need to fail. We could either fail here or substitute
          * getCodeBase() and fail there, but handling it here is a cleaner approach.
          */
-        String providerFQN = p.getClass().getName();
-        throw new SecurityException(
-                        "Attempted to verify a provider that was not registered at build time: " + providerFQN + ". " +
-                                        "All security providers must be registered and verified during native image generation. " +
-                                        "Try adding the option: -H:AdditionalSecurityProviders=" + providerFQN + " and rebuild the image.");
+        throw new SecurityException(SecurityProvidersSupport.missingProviderMessage(p.getName(), p.getClass().getName()));
     }
 }
 
@@ -159,8 +154,8 @@ final class Target_sun_security_jca_ProviderConfig {
                 return null;
             }
             // Create providers which are in java.base directly
-            if (LayeredSecurityProvidersSupport.isBuiltInProvider(provName)) {
-                provider = RuntimeSecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
+                provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
             } else {
                 if (isLoading) {
                     /*
@@ -208,12 +203,12 @@ final class Target_sun_security_jca_ProviderList {
         }
         for (Target_sun_security_jca_ProviderConfig config : configs) {
             String configuredProviderName = config.provName;
-            String providerName = LayeredSecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
-            String providerFQName = LayeredSecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
+            String providerName = SecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
+            String providerFQName = SecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
-                if (LayeredSecurityProvidersSupport.isMissingBuiltInProvider(configuredProviderName)) {
-                    throw LayeredSecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
+                if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
+                    throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
                 }
                 return config.getProvider();
             }
