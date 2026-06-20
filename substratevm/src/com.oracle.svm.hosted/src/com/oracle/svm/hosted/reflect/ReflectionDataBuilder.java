@@ -1699,14 +1699,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             .collect(Collectors.toUnmodifiableSet());
         }
     }
-
-    public boolean isTypeRegisteredForReflectiveAccess(Class<?> clazz) {
-        AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        TypeData typeData = types.get(analysisType);
-        return (typeData != null && typeData.isRegisteredAs(ACCESSED)) ||
-                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType));
-    }
-
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, ConfigurationMemberAccessibility accessibility, Field field) {
             reflectionDataBuilder.registerField(unconditional(), accessibility, false, GuestAccess.get().lookupField(field));
