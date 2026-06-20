@@ -180,6 +180,23 @@ public class SecurityServiceTest {
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
     }
 
+    @Test
+    public void testServiceLoaderProviderWithMetadataIsPreserved() {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
+
+        try {
+            Provider provider = ServiceLoader.load(Provider.class).stream()
+                            .filter(candidate -> candidate.type().getName().equals(REFLECTION_METADATA_PROVIDER_CLASS_NAME))
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError("Metadata-registered security provider should be visible through ServiceLoader."))
+                            .get();
+            Assert.assertEquals("Unexpected provider name", REFLECTION_METADATA_PROVIDER_NAME, provider.getName());
+        } catch (ServiceConfigurationError e) {
+            Assert.fail("Metadata-registered security provider should be loadable through ServiceLoader: " + e);
+        }
+    }
+
     @Delete
     @TargetClass(className = "sun.security.pkcs11.SunPKCS11")
     static final class Target_sun_security_pkcs11_SunPKCS11 {
