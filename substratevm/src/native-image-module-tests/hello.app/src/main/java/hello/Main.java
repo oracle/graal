@@ -219,7 +219,12 @@ public class Main {
     }
 
     private static void testDuplicateConditionalModuleResource(Module helloAppModule) {
-        if (!isNativeImageRuntime()) {
+        if (!isNativeImageRuntime() || Boolean.getBoolean("svm.test.expectRuntimeModulePathFallback")) {
+            /*
+             * On the JVM, and in the runtime-module-path fallback test, the resource is visible
+             * through the regular module reader. The conditional metadata behavior is only
+             * observable for resources embedded into the image.
+             */
             return;
         }
         assert ResourceConditionA.class.getName().endsWith("ResourceConditionA");
