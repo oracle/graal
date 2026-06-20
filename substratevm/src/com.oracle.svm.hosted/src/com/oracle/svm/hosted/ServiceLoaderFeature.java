@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.security.Provider;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -36,15 +37,18 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
@@ -216,12 +220,22 @@ public class ServiceLoaderFeature implements InternalFeature {
              * Do not let a service descriptor create the reflection registration that is supposed
              * to prove explicit inclusion.
              */
-            if (isSecurityProviderService && !serviceLoadedSecurityProviders.contains(provider)) {
+            if (isSecurityProviderService && !serviceLoadedSecurityProviders.contains(provider) &&
+                            !isSecurityProviderRegisteredForReflection(access, provider)) {
                 continue;
             }
             registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
         }
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.toClassName(), registeredProviders);
+    }
+
+    private static boolean isSecurityProviderRegisteredForReflection(DuringAnalysisAccess access, String provider) {
+        Class<?> providerClass = access.findClassByName(provider);
+        if (providerClass == null || !Provider.class.isAssignableFrom(providerClass)) {
+            return false;
+        }
+        ReflectionDataBuilder reflectionData = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        return reflectionData.isTypeRegisteredForReflectiveAccess(providerClass);
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
