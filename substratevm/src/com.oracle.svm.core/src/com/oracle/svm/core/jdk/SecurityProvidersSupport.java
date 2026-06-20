@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
@@ -35,6 +37,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -54,6 +59,8 @@ import sun.security.util.Debug;
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
 public final class SecurityProvidersSupport {
+    private static final Class<?>[] NO_PARAMETERS = new Class<?>[0];
+
     /**
      * A map of providers, identified by their names (see {@link Provider#getName()}), and the
      * results of their verification (see javax.crypto.JceSecurity#getVerificationResult). This
@@ -161,6 +168,14 @@ public final class SecurityProvidersSupport {
         return "The security provider '" + providerName + "' (" + providerFQName + ") was requested at run time but was not included in the native image. " +
                         "Run your application with the tracing agent so the provider is recorded automatically, register " + providerFQName +
                         " for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
+    }
+
+    public static Provider traceProviderLookup(Provider provider) {
+        if (provider != null && MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceMethodAccess(provider.getClass(), CONSTRUCTOR_NAME, SignatureUtil.toInternalSignature(NO_PARAMETERS),
+                            ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+        }
+        return provider;
     }
 
     public Provider loadBuiltInProvider(String provName, Debug debug) {
