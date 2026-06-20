@@ -165,17 +165,15 @@ public class SecurityServiceTest {
     }
 
     @Test
-    public void testServiceLoaderProviderWithoutMetadataIsOmitted() {
+    public void testServiceLoaderProviderWithoutMetadataUsesReflectionLookupFailure() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
 
-        try {
-            boolean foundProvider = ServiceLoader.load(Provider.class).stream()
-                            .anyMatch(provider -> provider.type().getName().equals(SERVICE_LOADED_PROVIDER_CLASS_NAME));
-            Assert.assertFalse("Service descriptors alone must not include security providers.", foundProvider);
-        } catch (ServiceConfigurationError e) {
-            Assert.fail("Service-only security provider should be omitted, not left as an unloadable service entry: " + e);
-        }
+        Assert.assertThrows(ClassNotFoundException.class, () -> Class.forName(SERVICE_LOADED_PROVIDER_CLASS_NAME));
+        ServiceConfigurationError serviceLoaderError = Assert.assertThrows(ServiceConfigurationError.class, () -> ServiceLoader.load(Provider.class).stream()
+                        .anyMatch(provider -> provider.type().getName().equals(SERVICE_LOADED_PROVIDER_CLASS_NAME)));
+        Assert.assertTrue("ServiceLoader should report the missing provider class.", serviceLoaderError.getMessage().contains(SERVICE_LOADED_PROVIDER_CLASS_NAME));
+        Assert.assertTrue("ServiceLoader should use the standard reflection lookup failure.", serviceLoaderError.getCause() instanceof ClassNotFoundException);
 
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
     }
