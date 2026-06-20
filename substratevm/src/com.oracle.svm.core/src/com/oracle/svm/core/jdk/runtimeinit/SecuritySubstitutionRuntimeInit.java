@@ -48,6 +48,15 @@ final class Target_java_security_Security {
     static Properties props;
 }
 
+@TargetClass(value = java.security.Security.class)
+final class Target_java_security_Security_MetadataTracing {
+
+    @Substitute
+    public static Provider getProvider(String name) {
+        return SecurityProvidersSupport.traceProviderLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
+    }
+}
+
 @TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 final class Target_java_security_Security_SecPropLoader {
 
@@ -199,7 +208,7 @@ final class Target_sun_security_jca_ProviderList {
     public Provider getProvider(String name) {
         int index = getIndex(name);
         if (index >= 0) {
-            return getProvider(index);
+            return SecurityProvidersSupport.traceProviderLookup(getProvider(index));
         }
         for (Target_sun_security_jca_ProviderConfig config : configs) {
             String configuredProviderName = config.provName;
@@ -210,7 +219,7 @@ final class Target_sun_security_jca_ProviderList {
                 if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
                     throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
                 }
-                return config.getProvider();
+                return SecurityProvidersSupport.traceProviderLookup(config.getProvider());
             }
         }
         return null;
