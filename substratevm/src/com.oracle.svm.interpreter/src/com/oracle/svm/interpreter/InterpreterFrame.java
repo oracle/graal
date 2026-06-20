@@ -52,6 +52,7 @@ public final class InterpreterFrame {
     private Object[] locks;
     private int lockCount;
     private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
+    private boolean hiddenFromStackWalking;
 
     private static final Object[] EMPTY = new Object[0];
 
@@ -61,6 +62,7 @@ public final class InterpreterFrame {
         this.arguments = arguments;
         this.lockCount = 0;
         this.locks = EMPTY;
+        this.hiddenFromStackWalking = false;
     }
 
     static InterpreterFrame create(int slotCount, Object... arguments) {
@@ -197,6 +199,18 @@ public final class InterpreterFrame {
 
     Object[] getLocks() {
         return locks;
+    }
+
+    public Object getLock(int index) {
+        return locks[index];
+    }
+
+    boolean isHiddenFromStackWalking() {
+        return hiddenFromStackWalking;
+    }
+
+    public void hideFromStackWalking() {
+        hiddenFromStackWalking = true;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

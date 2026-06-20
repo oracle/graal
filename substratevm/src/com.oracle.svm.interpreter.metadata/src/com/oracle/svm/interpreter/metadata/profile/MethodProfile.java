@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.interpreter.metadata.profile;
 
-import static jdk.graal.compiler.bytecode.Bytecodes.END;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.LookupSwitch;
+import com.oracle.svm.interpreter.metadata.TableSwitch;
 
-import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -65,12 +65,22 @@ public final class MethodProfile {
 
     /** Artificial byte code index for the method entry profile. */
     private static final int JVMCI_METHOD_ENTRY_BCI = -1;
+    /**
+     * Number of interpreted backedges to wait before checking the installed OSR code slot again.
+     *
+     * {@link #shouldPollOSRBackedgeCode(int)} polls immediately when its per-target next-poll counter
+     * is zero, then advances that counter by this interval. The interpreter therefore rechecks the
+     * installed-code table after every 1024 additional executions of the same backedge until compiled
+     * OSR code is observed or the cadence is reset after profile reset or code invalidation.
+     */
+    private static final int OSR_CODE_POLL_INTERVAL = 1024;
 
     /**
      * All profiles for the current method. Includes branch profiles, type profiles, profiles for
      * exceptions etc.
      */
     private final InterpreterProfile[] profiles;
+    private final long[] nextOSRCodePollBackedgeCounts;
 
     /**
      * Caches the index of the last returned profile for the next access. Initialized to 0, will be
@@ -89,19 +99,21 @@ public final class MethodProfile {
     public MethodProfile(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
         this.method = method;
         this.profiles = buildProfiles(method, ristrettoTypeSupplier);
+        this.nextOSRCodePollBackedgeCounts = new long[profiles.length];
     }
 
     private static InterpreterProfile[] buildProfiles(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
-        BytecodeStream stream = new BytecodeStream(method.getCode());
-        stream.setBCI(0);
+        byte[] code = method.getCode();
         List<InterpreterProfile> allProfiles = new ArrayList<>();
         // we always add a method entry counting profile
         allProfiles.add(new CountingProfile(JVMCI_METHOD_ENTRY_BCI));
 
-        while (stream.currentBC() != END) {
-            int bci = stream.currentBCI();
-            int opcode = stream.currentBC();
-
+        for (int targetBCI : collectBackedgeTargets(code)) {
+            allProfiles.add(new BackedgeProfile(targetBCI));
+        }
+        int bci = 0;
+        while (bci < BytecodeStream.endBCI(code)) {
+            int opcode = BytecodeStream.currentBC(code, bci);
             // we can have multiple profiles for a single BCI: type, exception etc
             if (Bytecodes.isProfiledIfBranch(opcode)) {
                 allProfiles.add(new BranchProfile(bci));
@@ -109,11 +121,132 @@ public final class MethodProfile {
             if (Bytecodes.isTypeProfiled(opcode)) {
                 allProfiles.add(new TypeProfile(bci, ristrettoTypeSupplier));
             }
-            // TODO GR-71799 - backedge / goto profiles
-            stream.next();
+            bci = BytecodeStream.nextBCI(code, bci);
         }
 
         return allProfiles.toArray(new InterpreterProfile[0]);
+    }
+
+    /**
+     * Returns the sorted unique bytecode indices reached by backward branches in {@code code}.
+     *
+     * These BCIs are the only loop-entry candidates for Ristretto OSR backedge profiling. The helper
+     * is shared with the Ristretto OSR lifecycle table so both structures agree on the set of
+     * backedge targets.
+     */
+    public static int[] collectBackedgeTargets(byte[] code) {
+        if (code == null || code.length == 0) {
+            return new int[0];
+        }
+        BackedgeTargetBuilder targets = new BackedgeTargetBuilder();
+        for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
+            int opcode = BytecodeStream.currentBC(code, bci);
+            switch (opcode) {
+                case Bytecodes.TABLESWITCH:
+                case Bytecodes.LOOKUPSWITCH:
+                    addSwitchBackedgeTargets(targets, code, bci, opcode);
+                    break;
+                default:
+                    if (isOSRBackedgeBranch(opcode)) {
+                        targets.add(bci, BytecodeStream.readBranchDest(code, bci));
+                    }
+                    break;
+            }
+        }
+        return targets.sortedUnique();
+    }
+
+    private static boolean isOSRBackedgeBranch(int opcode) {
+        return Bytecodes.isBranch(opcode) && opcode != Bytecodes.JSR && opcode != Bytecodes.JSR_W;
+    }
+
+    /**
+     * Adds the default target and all explicit case targets for a switch bytecode when they branch
+     * backward.
+     */
+    private static void addSwitchBackedgeTargets(BackedgeTargetBuilder targets, byte[] code, int bci, int opcode) {
+        targets.add(bci, switchDefaultTarget(code, bci, opcode));
+        for (int i = 0; i < switchNumberOfCases(code, bci, opcode); i++) {
+            targets.add(bci, switchTargetAt(code, bci, opcode, i));
+        }
+    }
+
+    /**
+     * Returns the default branch target for either switch bytecode shape.
+     */
+    private static int switchDefaultTarget(byte[] code, int bci, int opcode) {
+        return switch (opcode) {
+            case Bytecodes.TABLESWITCH -> TableSwitch.defaultTarget(code, bci);
+            case Bytecodes.LOOKUPSWITCH -> LookupSwitch.defaultTarget(code, bci);
+            default -> throw new IllegalArgumentException("Expected switch bytecode: " + opcode);
+        };
+    }
+
+    /**
+     * Returns the number of explicit case targets for either switch bytecode shape.
+     */
+    private static int switchNumberOfCases(byte[] code, int bci, int opcode) {
+        return switch (opcode) {
+            case Bytecodes.TABLESWITCH -> TableSwitch.numberOfCases(code, bci);
+            case Bytecodes.LOOKUPSWITCH -> LookupSwitch.numberOfCases(code, bci);
+            default -> throw new IllegalArgumentException("Expected switch bytecode: " + opcode);
+        };
+    }
+
+    /**
+     * Returns one explicit case target for either switch bytecode shape.
+     */
+    private static int switchTargetAt(byte[] code, int bci, int opcode, int index) {
+        return switch (opcode) {
+            case Bytecodes.TABLESWITCH -> TableSwitch.targetAt(code, bci, index);
+            case Bytecodes.LOOKUPSWITCH -> LookupSwitch.targetAt(code, bci, index);
+            default -> throw new IllegalArgumentException("Expected switch bytecode: " + opcode);
+        };
+    }
+
+    /**
+     * Small append-only collector that keeps bytecode scanning allocation-light and normalizes the
+     * final target list only once.
+     *
+     * A JDK set would also sort and deduplicate the target BCIs, but it would box every bytecode index
+     * while scanning method bytecodes. This primitive buffer matches the rest of the profiling code:
+     * append cheaply on the scan path, then sort and compact the small final target list once.
+     */
+    private static final class BackedgeTargetBuilder {
+        /*
+         * Most methods have only a small number of backward branches. Four slots keep the common scan
+         * allocation-free while still growing cheaply for methods with more OSR-capable targets.
+         */
+        private int[] targets = new int[4];
+        private int size;
+
+        void add(int bci, int targetBCI) {
+            if (targetBCI <= bci && targetBCI >= 0) {
+                ensureCapacity(size + 1);
+                targets[size] = targetBCI;
+                size++;
+            }
+        }
+
+        private void ensureCapacity(int requiredCapacity) {
+            if (requiredCapacity > targets.length) {
+                targets = Arrays.copyOf(targets, targets.length * 2);
+            }
+        }
+
+        int[] sortedUnique() {
+            if (size == 0) {
+                return new int[0];
+            }
+            Arrays.sort(targets, 0, size);
+            int uniqueSize = 1;
+            for (int i = 1; i < size; i++) {
+                if (targets[i] != targets[uniqueSize - 1]) {
+                    targets[uniqueSize++] = targets[i];
+                }
+            }
+            return Arrays.copyOf(targets, uniqueSize);
+        }
     }
 
     public ResolvedJavaMethod getMethod() {
@@ -143,6 +276,97 @@ public final class MethodProfile {
 
     public long getProfileEntryCount() {
         return getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class).counter;
+    }
+
+    /**
+     * Increments and returns the hotness counter for the OSR backedge that reaches {@code targetBCI}.
+     *
+     * The returned value is the count observed after this backedge execution. Ristretto uses it to
+     * decide when to submit one OSR compilation for the target BCI.
+     */
+    public long profileOSRBackedge(int targetBCI) {
+        return getOSRBackedgeProfile(targetBCI).incrementBackedgeCounter();
+    }
+
+    /**
+     * Returns whether the interpreter should check for newly installed OSR code at this backedge.
+     *
+     * Code polling is deliberately owned by {@link MethodProfile}, not by {@link BackedgeProfile}: the
+     * backedge profile records only execution count, while this method layers the Ristretto runtime
+     * policy that avoids checking the installed-code table on every interpreted backedge.
+     */
+    public boolean shouldPollOSRBackedgeCode(int targetBCI) {
+        int profileIndex = getOSRBackedgeProfileIndex(targetBCI);
+        long backedgeCount = ((BackedgeProfile) profiles[profileIndex]).getCounter();
+        if (backedgeCount < nextOSRCodePollBackedgeCounts[profileIndex]) {
+            return false;
+        }
+        nextOSRCodePollBackedgeCounts[profileIndex] = backedgeCount + OSR_CODE_POLL_INTERVAL;
+        return true;
+    }
+
+    /**
+     * Forces the next {@link #shouldPollOSRBackedgeCode(int)} call for {@code targetBCI} to poll.
+     *
+     * Ristretto calls this after invalidating installed OSR code so the interpreter can promptly notice
+     * a later replacement compilation.
+     */
+    public void resetOSRBackedgeCodePoll(int targetBCI) {
+        nextOSRCodePollBackedgeCounts[getOSRBackedgeProfileIndex(targetBCI)] = 0;
+    }
+
+    /**
+     * Resets the counter and code-poll cadence for the OSR backedge that reaches {@code targetBCI}.
+     */
+    public synchronized void resetOSRBackedgeProfile(int targetBCI) {
+        for (int i = 0; i < profiles.length; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getBci() == targetBCI && profile.getClass() == BackedgeProfile.class) {
+                profiles[i] = profile.reset();
+                nextOSRCodePollBackedgeCounts[i] = 0;
+                return;
+            }
+        }
+        throw new IllegalArgumentException("No OSR backedge profile for " + method + "@" + targetBCI);
+    }
+
+    /**
+     * Resets all OSR backedge counters and code-poll cadence state for this method.
+     */
+    public synchronized void resetOSRBackedgeProfiles() {
+        for (int i = 0; i < profiles.length; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getClass() == BackedgeProfile.class) {
+                profiles[i] = profile.reset();
+                nextOSRCodePollBackedgeCounts[i] = 0;
+            }
+        }
+    }
+
+    private BackedgeProfile getOSRBackedgeProfile(int targetBCI) {
+        return (BackedgeProfile) profiles[getOSRBackedgeProfileIndex(targetBCI)];
+    }
+
+    /**
+     * Returns the internal profile-array index for an OSR backedge target.
+     */
+    private synchronized int getOSRBackedgeProfileIndex(int targetBCI) {
+        int lastIndexLocal = lastIndex;
+        for (int i = lastIndexLocal; i < profiles.length; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getBci() == targetBCI && profile.getClass() == BackedgeProfile.class) {
+                lastIndex = i;
+                return i;
+            }
+        }
+        for (int i = 0; i < lastIndexLocal; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getBci() == targetBCI && profile.getClass() == BackedgeProfile.class) {
+                lastIndex = i;
+                return i;
+            }
+        }
+        throw new IllegalArgumentException("No OSR backedge profile for " + method + "@" + targetBCI);
     }
 
     public void profileBranch(int bci, boolean taken) {
@@ -196,6 +420,9 @@ public final class MethodProfile {
             if (profiles[i].getBci() == JVMCI_METHOD_ENTRY_BCI) {
                 profiles[i] = profiles[i].reset();
             }
+            if (profiles[i].getClass() == BackedgeProfile.class) {
+                nextOSRCodePollBackedgeCounts[i] = 0;
+            }
         }
         lastIndex = 0;
         isMature = false;
@@ -234,6 +461,10 @@ public final class MethodProfile {
     }
 
     public static class TestingBackdoor {
+        public static int osrCodePollInterval() {
+            return OSR_CODE_POLL_INTERVAL;
+        }
+
         public static List<InterpreterProfile> profilesAtBCI(MethodProfile methodProfile, int bci) {
             ArrayList<InterpreterProfile> profiles = new ArrayList<>();
             for (int i = 0; i < methodProfile.profiles.length; i++) {
@@ -290,6 +521,33 @@ public final class MethodProfile {
         @Override
         public InterpreterProfile reset() {
             return new CountingProfile(bci);
+        }
+    }
+
+    /**
+     * Counting profile for an OSR-capable loop backedge target.
+     *
+     * The interpreter updates this profile when execution reaches a backward-branch target. It is only
+     * a hotness counter; Ristretto-specific submission thresholds and installed-code polling cadence
+     * are kept in {@link MethodProfile} so the profile remains a plain counting profile.
+     */
+    public static class BackedgeProfile extends CountingProfile {
+        BackedgeProfile(int bci) {
+            super(bci);
+        }
+
+        public long incrementBackedgeCounter() {
+            return ++counter;
+        }
+
+        @Override
+        public String toString() {
+            return "{BackedgeProfile:bci=" + bci + ", counter=" + counter + "}";
+        }
+
+        @Override
+        public InterpreterProfile reset() {
+            return new BackedgeProfile(bci);
         }
     }
 

@@ -276,6 +276,7 @@ import java.util.Objects;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -303,6 +304,7 @@ import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
+import com.oracle.svm.interpreter.ristretto.RistrettoOSRSupport;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.shared.util.VMError;
 
@@ -443,6 +445,7 @@ public final class Interpreter {
 
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, int startBCI, int startTop) {
         Object synchronizedMethodLock = null;
+        boolean releaseInterpreterFrameLocks = true;
         try {
             int executeBCI = startBCI;
             if (startBCI == jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI) {
@@ -457,13 +460,22 @@ public final class Interpreter {
             }
             assert method.getInterpretedCode() != null : "no bytecode stream for " + method;
             return Root.executeBodyFromBCI(frame, method, executeBCI, startTop, false);
+        } catch (OSRReturn e) {
+            releaseInterpreterFrameLocks = false;
+            return e.result();
+        } catch (OSRException e) {
+            releaseInterpreterFrameLocks = false;
+            throw uncheckedThrow(e.exception());
         } finally {
-            InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+            if (releaseInterpreterFrameLocks) {
+                InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+            }
         }
     }
 
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean stayInInterpreter) {
         Object synchronizedMethodLock = null;
+        boolean releaseInterpreterFrameLocks = true;
         try {
             assert method.isStatic() || InterpreterFrameUtil.getThis(frame) != null;
             if (method.isSynchronized()) {
@@ -481,8 +493,16 @@ public final class Interpreter {
                 int startTop = startingStackOffset(method.getMaxLocals());
                 return Root.executeBodyFromBCI(frame, method, 0, startTop, stayInInterpreter);
             }
+        } catch (OSRReturn e) {
+            releaseInterpreterFrameLocks = false;
+            return e.result();
+        } catch (OSRException e) {
+            releaseInterpreterFrameLocks = false;
+            throw uncheckedThrow(e.exception());
         } finally {
-            InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+            if (releaseInterpreterFrameLocks) {
+                InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+            }
         }
     }
 
@@ -533,6 +553,24 @@ public final class Interpreter {
                         .string(method.getSignature().toMethodDescriptor()) //
                         .string(" with bci=").unsigned(curBCI) //
                         .string("/top=").unsigned(top).newline();
+    }
+
+    /**
+     * Completes a successful interpreter return by performing the trace and debugger notifications
+     * that are part of the interpreter's return-side effects.
+     *
+     * Ristretto OSR returns bypass this helper because the OSR continuation has already left the
+     * interpreter and returns as runtime-compiled code.
+     */
+    private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, int curBCI, int top, Object returnValue) {
+        traceInterpreterReturn(method, indent, curBCI, top);
+        Thread currentThread = Thread.currentThread();
+        if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.METHOD_EXIT)) {
+            if (method.getDeclaringClass().isMethodExitEvent()) {
+                int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
+                DebuggerEvents.singleton().getEventHandler().onEventAt(currentThread, method, curBCI, returnValue, flags);
+            }
+        }
     }
 
     private static void traceInterpreterInstruction(InterpreterFrame frame, int indent, int curBCI, int top, int curOpcode) {
@@ -1025,7 +1063,7 @@ public final class Interpreter {
                             profileBranch(methodProfile, curBCI, branchTaken1);
                             if (branchTaken1) {
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
-                                curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                                curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             }
                             break;
@@ -1040,7 +1078,7 @@ public final class Interpreter {
                             profileBranch(methodProfile, curBCI, branchTaken2);
                             if (branchTaken2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
-                                curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                                curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             }
                             break;
@@ -1051,7 +1089,7 @@ public final class Interpreter {
                             profileBranch(methodProfile, curBCI, branchTakenRef2);
                             if (branchTakenRef2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
-                                curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                                curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             }
                             break;
@@ -1062,17 +1100,17 @@ public final class Interpreter {
                             profileBranch(methodProfile, curBCI, branchTakenRef1);
                             if (branchTakenRef1) {
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
-                                curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                                curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             }
                             break;
 
                         case GOTO:
-                            curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                             continue loop;
 
                         case GOTO_W:
-                            curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest4(code, curBCI), top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest4(code, curBCI), top);
                             continue loop;
 
                         case JSR: {
@@ -1082,7 +1120,7 @@ public final class Interpreter {
                             // hardcoded here.
                             int stackEffect = 1; // Bytecodes.stackEffectOf(JSR)
                             top += stackEffect;
-                            curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                             continue loop;
                         }
                         case JSR_W: {
@@ -1092,12 +1130,12 @@ public final class Interpreter {
                             // effect is hardcoded here.
                             int stackEffect = 1; // Bytecodes.stackEffectOf(JSR_W)
                             top += stackEffect;
-                            curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest4(code, curBCI), top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, BytecodeStream.readBranchDest4(code, curBCI), top);
                             continue loop;
                         }
                         case RET: {
                             top += ConstantBytecodes.stackEffectOf(RET);
-                            curBCI = beforeJumpChecks(frame, curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex1(code, curBCI)), top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex1(code, curBCI)), top);
                             continue loop;
                         }
 
@@ -1114,7 +1152,7 @@ public final class Interpreter {
                                 targetBCI = TableSwitch.defaultTarget(code, curBCI);
                             }
                             top += ConstantBytecodes.stackEffectOf(TABLESWITCH);
-                            curBCI = beforeJumpChecks(frame, curBCI, targetBCI, top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, targetBCI, top);
                             continue loop;
                         }
                         case LOOKUPSWITCH: {
@@ -1132,7 +1170,7 @@ public final class Interpreter {
                                     // Key found.
                                     int targetBCI = curBCI + LookupSwitch.offsetAt(code, curBCI, mid);
                                     top += ConstantBytecodes.stackEffectOf(LOOKUPSWITCH);
-                                    curBCI = beforeJumpChecks(frame, curBCI, targetBCI, top);
+                                    curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, targetBCI, top);
                                     continue loop;
                                 }
                             }
@@ -1140,7 +1178,7 @@ public final class Interpreter {
                             // Key not found.
                             int targetBCI = LookupSwitch.defaultTarget(code, curBCI);
                             top += ConstantBytecodes.stackEffectOf(LOOKUPSWITCH);
-                            curBCI = beforeJumpChecks(frame, curBCI, targetBCI, top);
+                            curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, targetBCI, top);
                             continue loop;
                         }
 
@@ -1151,13 +1189,7 @@ public final class Interpreter {
                         case ARETURN: // fall through
                         case RETURN: {
                             Object returnValue = getReturnValueAsObject(frame, method, top);
-                            traceInterpreterReturn(method, indent, curBCI, top);
-                            if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.METHOD_EXIT)) {
-                                if (method.getDeclaringClass().isMethodExitEvent()) {
-                                    int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
-                                    DebuggerEvents.singleton().getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, returnValue, flags);
-                                }
-                            }
+                            returnFromInterpreter(method, indent, curBCI, top, returnValue);
                             return returnValue;
                         }
                         // @formatter:off
@@ -1273,7 +1305,7 @@ public final class Interpreter {
 
                                 case RET: {
                                     top += ConstantBytecodes.stackEffectOf(RET);
-                                    curBCI = beforeJumpChecks(frame, curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex2(code, curBCI)), top);
+                                    curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex2(code, curBCI)), top);
                                     continue loop;
                                 }
                                 default:
@@ -1292,6 +1324,12 @@ public final class Interpreter {
                         default:
                             throw VMError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                     }
+                } catch (OSRReturn | OSRException e) {
+                    /*
+                     * Internal OSR control markers must bypass both bytecode exception dispatch and the
+                     * generic host-exception guard below. The execute0 boundary unwraps them.
+                     */
+                    throw e;
                 } catch (SemanticJavaException | OutOfMemoryError | StackOverflowError e) {
                     // Semantic Java exception thrown by interpreted code.
                     Throwable exception = e instanceof SemanticJavaException ? e.getCause() : e;
@@ -1301,7 +1339,7 @@ public final class Interpreter {
                         top = startingStackOffset(method.getMaxLocals());
                         putObject(frame, top, exception);
                         top++;
-                        curBCI = beforeJumpChecks(frame, curBCI, handler.getHandlerBCI(), top);
+                        curBCI = beforeJumpChecks(methodProfile, method, frame, forceStayInInterpreter, curBCI, handler.getHandlerBCI(), top);
                         continue loop;
                     } else {
                         traceInterpreterException(method, indent, curBCI, top);
@@ -1455,13 +1493,129 @@ public final class Interpreter {
         }
     }
 
+    /**
+     * Performs the checks that must run before control leaves the current bytecode for another BCI.
+     *
+     * <pre>
+     * if targetBCI is a backward branch:
+     *     if the caller allows runtime compilation:
+     *         update the per-target OSR backedge state
+     *         submit or enter OSR-compiled code when its threshold has been reached
+     * return targetBCI
+     * </pre>
+     *
+     * The compatibility overload below is used by callers that only need the target BCI and must stay
+     * in the interpreter.
+     */
     @SuppressWarnings("unused")
-    public static int beforeJumpChecks(InterpreterFrame frame, int curBCI, int targetBCI, int top) {
+    private static int beforeJumpChecks(MethodProfile methodProfile, InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean forceStayInInterpreter, int curBCI, int targetBCI, int top) {
         if (targetBCI <= curBCI) {
             // GR-55055: Safepoint poll needed?
-            // TODO GR-71799 - add ristretto backedge profiles
+            if (SubstrateOptions.useRistretto() && !forceStayInInterpreter) {
+                OSRResult result = RistrettoOSRSupport.tryOSR(method, methodProfile, frame, targetBCI, top);
+                if (result != null) {
+                    if (result.exception() != null) {
+                        throw new OSRException(result.exception());
+                    }
+                    throw new OSRReturn(result.value());
+                }
+            }
         }
         return targetBCI;
+    }
+
+    /**
+     * Internal control-transfer marker used when OSR compiled code throws out of the compiled
+     * continuation.
+     *
+     * The throwing bytecode executed in compiled code, not at the interpreter backedge that initiated
+     * OSR. The exception must therefore bypass bytecode exception dispatch in the old interpreter
+     * frame; dispatching it against the old backedge BCI can match the wrong in-method handler.
+     */
+    private static final class OSRException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        private final Throwable exception;
+
+        private OSRException(Throwable exception) {
+            this.exception = exception;
+        }
+
+        private Throwable exception() {
+            return exception;
+        }
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    /**
+     * Internal control-transfer marker used after OSR compiled code has produced the method result.
+     *
+     * The compiled OSR entry returns to the Java interpreter frame that initiated OSR. At that point
+     * the interpreter must leave its bytecode dispatch loop immediately and return the compiled result
+     * to its caller. The
+     * existing dispatch helpers only return the next BCI, so this marker bubbles the result to the
+     * {@code execute0} boundary without being treated as a guest Java exception.
+     */
+    @SuppressWarnings("serial")
+    private static final class OSRReturn extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        private final Object result;
+
+        private OSRReturn(Object result) {
+            this.result = result;
+        }
+
+        private Object result() {
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    /**
+     * Internal carrier for a compiled OSR continuation's logical Java outcome.
+     *
+     * The implementation-specific OSR support owns the transfer state and compiled entry call, but
+     * the interpreter owns the control-flow markers that leave the old bytecode dispatch frame.
+     * Keeping this result type here keeps that ownership boundary explicit.
+     */
+    public static final class OSRResult {
+        private final Object value;
+        private final Throwable exception;
+
+        private OSRResult(Object value, Throwable exception) {
+            this.value = value;
+            this.exception = exception;
+        }
+
+        public static OSRResult forValue(Object value) {
+            return new OSRResult(value, null);
+        }
+
+        public static OSRResult forException(Throwable exception) {
+            return new OSRResult(null, exception);
+        }
+
+        public Object value() {
+            return value;
+        }
+
+        public Throwable exception() {
+            return exception;
+        }
+
+    }
+
+    public static int beforeJumpChecks(InterpreterFrame frame, int curBCI, int targetBCI, int top) {
+        return beforeJumpChecks(null, null, frame, true, curBCI, targetBCI, top);
     }
 
     public static ExceptionHandler resolveExceptionHandler(InterpreterResolvedJavaMethod method, int bci, Throwable ex) {

@@ -467,6 +467,9 @@ public class RistrettoDeoptimizationSupport {
 
         VMError.guarantee(interpreterMethod.getMaxLocals() == compiledFrame.getNumLocals());
         Object[] relockedMonitorObjects = relockInterpreterObjects(compiledFrame, deoptState);
+        if (!interpreterMethod.hasBytecodes()) {
+            throw VMError.shouldNotReachHere("Ristretto deoptimization requires an interpreter bytecode body for " + interpreterMethod);
+        }
         InterpreterFrame interpreterFrame = InterpreterFrameUtil.allocate(interpreterMethod.getMaxLocals(), interpreterMethod.getMaxStackSize());
 
         final int numLocals = compiledFrame.getNumLocals();

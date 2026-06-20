@@ -27,60 +27,80 @@ package com.oracle.svm.interpreter.ristretto.compile;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
-import com.oracle.svm.shared.util.VMError;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * Ristretto-specific speculation log that keeps the durable method-level failed-speculation state
- * from {@link SubstrateSpeculationLog} and, while one compilation is active, also records exactly
- * the speculation reasons consumed by that compilation. The active-compilation list lets the code
- * installer reject only code whose own assumptions failed between graph construction and
- * installation, without rejecting later compilations because some unrelated older speculation had
- * already failed.
+ * Ristretto-specific speculation log that keeps the durable method-level failed-speculation state.
+ * Each compilation receives a separate {@link CompilationSpeculationLog} that delegates durable
+ * failure state here while recording exactly the speculation reasons consumed by that compilation.
+ * The per-compilation list lets the code installer reject only code whose own assumptions failed
+ * between graph construction and installation, without rejecting later compilations because some
+ * unrelated older speculation had already failed.
  * <p>
- * The methods that read or mutate {@link #currentCompilationSpeculations} are synchronized because
- * a compiler thread can be recording the assumptions for one compile while deoptimization feedback
- * is concurrently appended to the superclass log. The superclass already synchronizes collection and
- * lookup of failed speculations; using the same monitor here keeps the "record assumptions, collect
- * feedback, check assumptions" sequence consistent. This lock is taken by Ristretto compiler
- * threads during compilation and install-time validation, not by the normal application execution
- * path.
+ * The durable superclass synchronizes collection and lookup of failed speculations; the
+ * per-compilation wrapper uses this log's monitor when it records or checks assumptions so the
+ * "record assumptions, collect feedback, check assumptions" sequence stays consistent. This lock is
+ * taken by Ristretto compiler threads during compilation and install-time validation, not by the
+ * normal application execution path.
  */
 public final class RistrettoSpeculationLog extends SubstrateSpeculationLog {
-    private ArrayList<SpeculationLog.SpeculationReason> currentCompilationSpeculations;
 
-    public synchronized void beginCompilationSpeculationRecording() {
-        VMError.guarantee(currentCompilationSpeculations == null, "must not nest Ristretto speculation recording");
-        currentCompilationSpeculations = new ArrayList<>();
+    public CompilationSpeculationLog createCompilationLog() {
+        return new CompilationSpeculationLog(this);
     }
 
-    public synchronized void endCompilationSpeculationRecording() {
-        currentCompilationSpeculations = null;
-    }
+    public static final class CompilationSpeculationLog implements SpeculationLog {
+        private final RistrettoSpeculationLog methodLog;
+        private final ArrayList<SpeculationLog.SpeculationReason> speculations = new ArrayList<>();
 
-    /**
-     * Collects pending deoptimization feedback and checks only the speculation reasons used by the
-     * currently recorded compilation.
-     */
-    public synchronized boolean hasFailedCurrentCompilationSpeculation() {
-        collectFailedSpeculations();
-        if (currentCompilationSpeculations == null) {
-            return false;
+        private CompilationSpeculationLog(RistrettoSpeculationLog methodLog) {
+            this.methodLog = methodLog;
         }
-        for (SpeculationLog.SpeculationReason reason : currentCompilationSpeculations) {
-            if (!maySpeculate(reason)) {
-                return true;
+
+        /**
+         * Collects pending deoptimization feedback and checks only the speculation reasons used by
+         * this compilation.
+         */
+        public boolean hasFailedSpeculation() {
+            synchronized (methodLog) {
+                methodLog.collectFailedSpeculations();
+                for (SpeculationLog.SpeculationReason reason : speculations) {
+                    if (!methodLog.maySpeculate(reason)) {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
-        return false;
-    }
 
-    @Override
-    public synchronized SpeculationLog.Speculation speculate(SpeculationLog.SpeculationReason reason) {
-        if (currentCompilationSpeculations != null) {
-            currentCompilationSpeculations.add(reason);
+        @Override
+        public void collectFailedSpeculations() {
+            methodLog.collectFailedSpeculations();
         }
-        return super.speculate(reason);
+
+        @Override
+        public boolean maySpeculate(SpeculationReason reason) {
+            return methodLog.maySpeculate(reason);
+        }
+
+        @Override
+        public Speculation speculate(SpeculationReason reason) {
+            synchronized (methodLog) {
+                speculations.add(reason);
+                return methodLog.speculate(reason);
+            }
+        }
+
+        @Override
+        public boolean hasSpeculations() {
+            return methodLog.hasSpeculations();
+        }
+
+        @Override
+        public Speculation lookupSpeculation(JavaConstant constant) {
+            return methodLog.lookupSpeculation(constant);
+        }
     }
 }

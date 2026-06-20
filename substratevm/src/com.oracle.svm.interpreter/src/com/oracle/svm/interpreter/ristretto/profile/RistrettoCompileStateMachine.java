@@ -42,6 +42,10 @@ import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
  * request has been submitted to the queue</li>
  * <li>{@link RistrettoConstants#COMPILE_STATE_COMPILED COMPILE_STATE_COMPILED} (2): Compilation has
  * completed successfully</li>
+ * <li>{@link RistrettoConstants#COMPILE_STATE_PERMANENT_BAILOUT COMPILE_STATE_PERMANENT_BAILOUT}
+ * (3): Compilation cannot succeed for this method</li>
+ * <li>{@link RistrettoConstants#COMPILE_STATE_MAX_ATTEMPTS_REACHED
+ * COMPILE_STATE_MAX_ATTEMPTS_REACHED} (4): Compilation hit the retry cap for this method</li>
  * <li>{@link RistrettoConstants#COMPILE_STATE_INITIALIZING COMPILE_STATE_INITIALIZING} (-1):
  * Profile initialization is in progress</li>
  * <li>{@link RistrettoConstants#COMPILE_STATE_INIT_VAL INIT_VAL}: Initial state before any
@@ -53,7 +57,10 @@ import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
  * 
  * <pre>
  * INIT_VAL ----> INITIALIZING --> INTERPRETED ----> SUBMITTED ---------> COMPILED
- *                                     ^                                   |
+ *                                     ^                |                  |
+ *                                     |                v                  |
+ *                                     |        PERMANENT_BAILOUT          |
+ *                                     |        MAX_ATTEMPTS_REACHED        |
  *                                     |___deoptimization / invalidation___|
  * </pre>
  */
@@ -68,6 +75,8 @@ public class RistrettoCompileStateMachine {
             case RistrettoConstants.COMPILE_STATE_INTERPRETED -> "INTERPRETED";
             case RistrettoConstants.COMPILE_STATE_SUBMITTED -> "SUBMITTED";
             case RistrettoConstants.COMPILE_STATE_COMPILED -> "COMPILED";
+            case RistrettoConstants.COMPILE_STATE_PERMANENT_BAILOUT -> "PERMANENT_BAILOUT";
+            case RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS_REACHED -> "MAX_ATTEMPTS_REACHED";
             case RistrettoConstants.COMPILE_STATE_INITIALIZING -> "INITIALIZING";
             case RistrettoConstants.COMPILE_STATE_INIT_VAL -> "INIT_VAL";
             default -> throw new IllegalArgumentException("Unknown state: " + state);

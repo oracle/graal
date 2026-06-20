@@ -666,12 +666,9 @@ public final class Deoptimizer {
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
      * runtime compiled method, since there is no {@link InstalledCode} for AOT-compiled methods.
      */
-    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation, boolean reprofile) {
-        invalidateMethodOfFrame(thread, sp, speculation, null, reprofile);
-    }
-
     public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation, DeoptimizationReason reason, boolean reprofile) {
         VMError.guarantee(thread == CurrentIsolate.getCurrentThread());
+        DeoptimizationReason nonNullReason = reason != null ? reason : DeoptimizationReason.None;
 
         CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
         if (checkLazyDeoptimized(ip)) {
@@ -704,9 +701,7 @@ public final class Deoptimizer {
         }
         registerSpeculationFailure(installedCode, speculation);
         VMOperation.guaranteeNotInProgress("invalidateMethodOfFrame: running user code that can block");
-        if (reason != null) {
-            installedCode.recordDeoptimization(reason);
-        }
+        installedCode.recordDeoptimization(nonNullReason);
         if (reprofile) {
             installedCode.reprofile();
         }

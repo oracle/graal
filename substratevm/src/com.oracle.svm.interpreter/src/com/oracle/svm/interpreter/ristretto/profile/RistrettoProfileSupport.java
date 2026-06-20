@@ -106,10 +106,14 @@ public class RistrettoProfileSupport {
 
         int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
         if (!RistrettoCompileStateMachine.shouldEnterProfiling(oldState)) {
-            // no need to keep profiling this code, we are done
+            /*
+             * Invocation-entry compilation is done, but an interpreted activation can still execute
+             * loop backedges, for example after deoptimization. Keep returning the existing profile
+             * so OSR can compile and enter from those backedges while root code remains installed.
+             */
             trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Should not enter profiling for method %s because of state %s%n", iMethod,
                             RistrettoCompileStateMachine.toString(oldState));
-            return null;
+            return rMethod.getProfile();
         }
 
         // this point is only reached for state=INIT_VAL|INITIALIZING|NEVER_COMPILED
@@ -169,18 +173,29 @@ public class RistrettoProfileSupport {
         if (methodProfile.profileMethodEntry() > RistrettoOptions.JITCompilerInvocationThreshold.getValue()) {
             trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, profile overflown, trying to submit compile%n",
                             RistrettoCompileStateMachine.toString(oldState), iMethod);
+            if (RistrettoOptions.JITDisableRootCompiles.getValue()) {
+                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because root compiles are disabled%n", iMethod);
+                return;
+            }
+            if (!RistrettoOptions.matchesJITCompileOnly(iMethod)) {
+                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because it does not match JITCompileOnly%n", iMethod);
+                return;
+            }
             /*
-             * A failed CAS only proves that this caller lost ownership of the INTERPRETED ->
-             * SUBMITTED transition. The follow-up load may observe SUBMITTED or a later COMPILED
-             * state if the winning thread kept advancing the method. An eventual invalidation can
-             * move the method back to INTERPRETED in a later compile epoch, but this caller must
-             * not spin waiting for that separate future cycle here.
+             * A failed claim only proves that this caller did not get ownership of the current
+             * INTERPRETED -> SUBMITTED transition. The follow-up load may observe SUBMITTED, a
+             * later COMPILED state, or a terminal state. An eventual invalidation can move the
+             * method back to INTERPRETED in a later compile epoch, but this caller must not spin
+             * waiting for that separate future cycle here.
              */
-            if (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INTERPRETED, RistrettoConstants.COMPILE_STATE_SUBMITTED)) {
+            if (!rMethod.claimInvocationEntryCompilation()) {
                 int observedState = COMPILATION_STATE_UPDATER.get(rMethod);
-                assert observedState == RistrettoConstants.COMPILE_STATE_SUBMITTED || observedState == RistrettoConstants.COMPILE_STATE_COMPILED : String.format(
-                                "Unexpected compile state after duplicate submission race for %s: %s", iMethod,
-                                RistrettoCompileStateMachine.toString(observedState));
+                assert observedState == RistrettoConstants.COMPILE_STATE_SUBMITTED || observedState == RistrettoConstants.COMPILE_STATE_COMPILED ||
+                                observedState == RistrettoConstants.COMPILE_STATE_INTERPRETED ||
+                                observedState == RistrettoConstants.COMPILE_STATE_PERMANENT_BAILOUT ||
+                                observedState == RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS_REACHED : String.format(
+                                                "Unexpected compile state after duplicate submission race for %s: %s", iMethod,
+                                                RistrettoCompileStateMachine.toString(observedState));
                 trace(RistrettoOptions.JITTraceCompilationQueuing,
                                 "[Ristretto Compile Queue]Another thread already advanced %s to %s, skipping duplicate submission%n",
                                 iMethod, RistrettoCompileStateMachine.toString(observedState));

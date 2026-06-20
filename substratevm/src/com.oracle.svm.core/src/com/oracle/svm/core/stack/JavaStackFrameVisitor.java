@@ -82,6 +82,9 @@ public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
             /* Translate the VM-level vframe to source-level vframes and visit all of them. */
             FrameSourceInfo sourceVFrame = getSourceLevelVFrames(vFrame, sp, null);
             if (vFrame != sourceVFrame) {
+                if (sourceVFrame == null) {
+                    return true;
+                }
                 if (sourceVFrame.getCaller() != null) {
                     VMError.guarantee(sourceVFrame instanceof InterpreterFrameSourceInfo interpreterFrameSourceInfo && interpreterFrameSourceInfo.hasDeoptimizationCallerInfo(),
                                     "Only Ristretto deoptimization caller metadata can expand one VM frame to multiple source frames");
