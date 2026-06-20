@@ -728,6 +728,26 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle name = getObjectArgument(thread, 0);
+        JNIObjectHandle provider = Support.callStaticObjectMethodL(jni, bp.clazz, bp.method, name);
+        boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
+        traceSecurityProvider(jni, provider, validResult, callerClass, state);
+        return true;
+    }
+
+    private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
+        if (!validResult) {
+            return;
+        }
+        JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
+        if (clearException(jni)) {
+            providerClass = nullHandle();
+        }
+        traceReflectBreakpoint(jni, providerClass, providerClass, callerClass, "invokeConstructor", providerClass.notEqual(nullHandle()), state.getFullStackTraceOrNull(), Arrays.asList());
+    }
+
     private static boolean newArrayInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIValue args = StackValue.get(2, JNIValue.class);
         args.addressOf(0).setObject(getObjectArgument(thread, 0));
@@ -1822,6 +1842,8 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "arrayType", "()Ljava/lang/Class;", BreakpointInterceptor::arrayType),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
+
+                    brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", BreakpointInterceptor::getStaticSecurityProviderByName),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
                                     BreakpointInterceptor::findSystemClass),
