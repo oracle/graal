@@ -75,7 +75,6 @@ By default, only services specified in the JCA framework are automatically regis
 Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same name as the service type.
 If you rely on third-party code that does not comply with these requirements, manual configuration is required.
 Register the provider class for reflection in _reachability-metadata.json_ or collect the metadata with the Tracing Agent.
-The deprecated `-H:AdditionalSecurityProviders` option still registers the listed provider classes for reflection as a compatibility path.
 
 ### Further Reading
 
