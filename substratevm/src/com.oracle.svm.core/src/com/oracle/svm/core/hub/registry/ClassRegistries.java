@@ -156,7 +156,7 @@ public final class ClassRegistries implements ParsingContext {
      * Throwable object if querying the class with this name should throw a specific error at
      * run-time, excluding ClassNotFoundException, or null otherwise.
      */
-    private final EconomicMap<String, ConditionalRuntimeValue<Throwable>> knownClassNames;
+    private final EconomicMap<String, Object> knownClassNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ClassRegistries() {
@@ -407,11 +407,11 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private Throwable getSavedException(String name) {
-        var cond = knownClassNames.get(name);
-        if (cond == null || cond.getDynamicAccessMetadata() == null || !cond.getDynamicAccessMetadata().satisfied()) {
+        Object cond = knownClassNames.get(name);
+        if (cond == null || !ConditionalRuntimeValue.isSatisfied(cond)) {
             return null;
         }
-        Throwable exception = cond.getValue();
+        Throwable exception = ConditionalRuntimeValue.getValue(cond);
         if (exception == null) {
             exception = new ClassNotFoundException(name);
         }
@@ -577,16 +577,13 @@ public final class ClassRegistries implements ParsingContext {
     public static void addKnownClassName(AccessCondition condition, String typeName, Throwable exception, boolean preserved) {
         var knownClassNamesMap = currentLayer().knownClassNames;
         synchronized (knownClassNamesMap) {
-            var cond = knownClassNamesMap.get(typeName);
+            Object cond = knownClassNamesMap.get(typeName);
             if (cond == null) {
-                cond = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), exception);
+                cond = ConditionalRuntimeValue.create(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), exception);
             } else {
-                cond.getDynamicAccessMetadata().addCondition(condition);
-                if (!preserved) {
-                    cond.getDynamicAccessMetadata().setNotPreserved();
-                }
-                if (cond.getValueUnconditionally() == null && exception != null) {
-                    cond = new ConditionalRuntimeValue<>(cond.getDynamicAccessMetadata(), exception);
+                cond = ConditionalRuntimeValue.withCondition(cond, condition, preserved);
+                if (ConditionalRuntimeValue.getValueUnconditionally(cond) == null && exception != null) {
+                    cond = ConditionalRuntimeValue.withValue(cond, exception);
                 }
             }
             knownClassNamesMap.put(typeName, cond);

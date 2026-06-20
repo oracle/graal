@@ -46,6 +46,8 @@ import jdk.dynalink.StandardOperation;
 
 public class Main {
     private static final String MISC_MODULE_RESOURCE_NAME = "META-INF/native-image-module-tests/misc-resource.txt";
+    private static final String CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME = "conditional-duplicate-resource.txt";
+    private static final String CONDITIONAL_DUPLICATE_MODULE_RESOURCE_CONTENTS = "Conditionally registered duplicate module resource";
     private static final String APP_MISC_MODULE_RESOURCE_CONTENTS = "Build-time registered misc resource in module moduletests.hello.app";
     private static final String RUNTIME_MISC_MODULE_RESOURCE_CONTENTS = "Runtime module-path misc resource in module moduletests.hello.runtime";
 
@@ -194,6 +196,7 @@ public class Main {
         assertClassResourceURLContents(Greeter.class, "/" + sameResourcePathName, helloLibModuleResourceContents);
 
         testMiscModuleResources(ClassLoader.getSystemClassLoader(), Set.of(APP_MISC_MODULE_RESOURCE_CONTENTS));
+        testDuplicateConditionalModuleResource(helloAppModule);
         testRuntimeOnlyModulePathResource(helloLibModule, runtimeModulePathResourcePathName);
     }
 
@@ -213,6 +216,34 @@ public class Main {
             throw new AssertionError("Unable to access miscellaneous module resource " + MISC_MODULE_RESOURCE_NAME + " from " + loader, e);
         }
         assert expectedContents.equals(actualContents) : "Unexpected contents for " + MISC_MODULE_RESOURCE_NAME + " from " + loader + ": " + actualContents;
+    }
+
+    private static void testDuplicateConditionalModuleResource(Module helloAppModule) {
+        if (!isNativeImageRuntime() || Boolean.getBoolean("svm.test.expectRuntimeModulePathFallback")) {
+            /*
+             * On the JVM, and in the runtime-module-path fallback test, the resource is visible
+             * through the regular module reader. The conditional metadata behavior is only
+             * observable for resources embedded into the image.
+             */
+            return;
+        }
+        assert ResourceConditionA.class.getName().endsWith("ResourceConditionA");
+
+        try (InputStream stream = helloAppModule.getResourceAsStream(CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME)) {
+            assert stream == null : CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME + " should not be accessible before either condition type is reached";
+        } catch (IOException e) {
+            throw new AssertionError("Unable to query resource " + CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME + " from " + helloAppModule, e);
+        }
+
+        ResourceConditionB.reached = true;
+        try (InputStream stream = helloAppModule.getResourceAsStream(CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME)) {
+            assert stream != null : CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME + " should be accessible after the second condition type is reached";
+            try (Scanner s = new Scanner(stream)) {
+                assert CONDITIONAL_DUPLICATE_MODULE_RESOURCE_CONTENTS.equals(s.nextLine()) : "Unexpected contents of " + CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME;
+            }
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access resource " + CONDITIONAL_DUPLICATE_MODULE_RESOURCE_NAME + " from " + helloAppModule, e);
+        }
     }
 
     private static void testRuntimeOnlyModulePathResource(Module helloLibModule, String resourcePathName) {

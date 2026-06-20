@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
+package hello;
 
-import java.lang.reflect.Modifier;
+final class ResourceConditionA {
+    static boolean reached;
 
-import com.oracle.svm.core.hub.DynamicHub;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-public final class CremaConstructorAccessor extends AbstractCremaConstructorAccessor {
-
-    private static boolean isAbstract(Class<?> declaringClass) {
-        return Modifier.isAbstract(DynamicHub.fromClass(declaringClass).getInterpreterType().getModifiers());
+    static {
+        reached = true;
     }
 
-    public CremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
-        super(targetMethod, declaringClass, parameterTypes, isAbstract(declaringClass));
-    }
-
-    @Override
-    protected Class<?> getInstantiatedClass() {
-        return getDeclaringClass();
+    private ResourceConditionA() {
     }
 }

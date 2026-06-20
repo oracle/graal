@@ -28,8 +28,8 @@ package com.oracle.svm.core.configure;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
@@ -55,43 +55,102 @@ import com.oracle.svm.shared.util.VMError;
  */
 public class RuntimeDynamicAccessMetadata {
 
-    private Object[] conditions;
-    private boolean satisfied;
-    private volatile boolean preserved;
+    private final Object[] conditions;
+    private volatile boolean satisfied;
+    private final boolean preserved;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final ConcurrentHashMap<MetadataKey, RuntimeDynamicAccessMetadata> INTERNED = new ConcurrentHashMap<>();
 
     public static RuntimeDynamicAccessMetadata emptySet(boolean preserved) {
-        return new RuntimeDynamicAccessMetadata(new Object[0], preserved);
+        return alwaysAvailable(preserved);
+    }
+
+    public static RuntimeDynamicAccessMetadata alwaysAvailable(boolean preserved) {
+        return preserved ? AlwaysAvailableRuntimeDynamicAccessMetadata.ALWAYS_AVAILABLE_PRESERVED : AlwaysAvailableRuntimeDynamicAccessMetadata.ALWAYS_AVAILABLE_NOT_PRESERVED;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static RuntimeDynamicAccessMetadata createHosted(AccessCondition condition, boolean preserved) {
-        var metadata = new RuntimeDynamicAccessMetadata(new Object[0], preserved);
-        metadata.addCondition(condition);
-        return metadata;
+        return addCondition(null, condition, preserved);
     }
 
+    /**
+     * Returns metadata with {@code cnd} merged in. Existing always-available metadata remains
+     * always available: adding a condition to something that is already unconditional must not
+     * narrow its availability. If any merged registration is non-preserved, the resulting metadata
+     * is non-preserved.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addCondition(AccessCondition cnd) {
+    public static RuntimeDynamicAccessMetadata addCondition(RuntimeDynamicAccessMetadata current, AccessCondition cnd, boolean preserved) {
         VMError.guarantee(cnd instanceof TypeReachabilityCondition, "Only TypeReachabilityCondition conditions can be used in RuntimeConditionSet.");
         TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
-        VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
-        if (satisfied) {
-            return;
-        } else if (reachabilityCondition.isAlwaysTrue()) {
-            conditions = null;
-            satisfied = true;
-            return;
+        boolean mergedPreserved = current == null ? preserved : current.preserved && preserved;
+        if (reachabilityCondition.isAlwaysTrue() || current != null && current.isAlwaysAvailable()) {
+            return alwaysAvailable(mergedPreserved);
         }
-
+        VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
         Object newRuntimeCondition = createRuntimeCondition(cnd);
-        Set<Object> existingConditions = conditions == null ? new HashSet<>() : new HashSet<>(Arrays.asList(conditions)); // noEconomicSet(temp)
-        existingConditions.add(newRuntimeCondition);
-        setConditions(existingConditions.toArray());
+        Object[] mergedConditions;
+        if (current == null || current.conditions == null || current.conditions.length == 0) {
+            mergedConditions = new Object[]{newRuntimeCondition};
+        } else {
+            Object[] oldConditions = current.conditions;
+            for (Object oldCondition : oldConditions) {
+                if (oldCondition.equals(newRuntimeCondition)) {
+                    return current.preserved == mergedPreserved ? current : intern(oldConditions, mergedPreserved);
+                }
+            }
+            mergedConditions = Arrays.copyOf(oldConditions, oldConditions.length + 1);
+            mergedConditions[oldConditions.length] = newRuntimeCondition;
+        }
+        return intern(mergedConditions, mergedPreserved);
+    }
+
+    public boolean isAlwaysAvailable() {
+        return conditions == null;
+    }
+
+    /**
+     * Returns metadata that is available whenever either input metadata is available. This is used
+     * when the same value is registered multiple times and the runtime should honor the union of
+     * all registrations. If any merged registration is non-preserved, the resulting metadata is
+     * non-preserved.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeDynamicAccessMetadata merge(RuntimeDynamicAccessMetadata current, RuntimeDynamicAccessMetadata additional) {
+        if (current == null) {
+            return additional;
+        } else if (additional == null) {
+            return current;
+        }
+        boolean mergedPreserved = current.preserved && additional.preserved;
+        if (current.isAlwaysAvailable() || additional.isAlwaysAvailable()) {
+            return alwaysAvailable(mergedPreserved);
+        }
+        Object[] mergedConditions = Arrays.copyOf(current.conditions, current.conditions.length + additional.conditions.length);
+        int mergedLength = current.conditions.length;
+        for (Object additionalCondition : additional.conditions) {
+            boolean seen = false;
+            for (Object currentCondition : current.conditions) {
+                if (currentCondition.equals(additionalCondition)) {
+                    seen = true;
+                    break;
+                }
+            }
+            if (!seen) {
+                mergedConditions[mergedLength++] = additionalCondition;
+            }
+        }
+        if (mergedLength < mergedConditions.length) {
+            mergedConditions = Arrays.copyOf(mergedConditions, mergedLength);
+        }
+        return intern(mergedConditions, mergedPreserved);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public EconomicSet<Class<?>> getTypesForEncoding() {
-        if (conditions == null) {
+        if (conditions == null || satisfied) {
             return EconomicSet.emptySet();
         } else {
             EconomicSet<Class<?>> types = EconomicSet.create();
@@ -107,29 +166,29 @@ public class RuntimeDynamicAccessMetadata {
     }
 
     public static RuntimeDynamicAccessMetadata createDecoded(Object[] conditions, boolean preserved) {
+        if (conditions == null || conditions.length == 0) {
+            return alwaysAvailable(preserved);
+        }
         return new RuntimeDynamicAccessMetadata(conditions, preserved);
     }
 
     /**
-     * Checks if any of the conditions has been satisfied. It caches the value in satisfied. This
-     * code can be concurrently executed, however there are no concurrency primitives used. The
-     * implementation relies on the fact that checking if a condition is satisfied is an idempotent
-     * operation.
+     * Checks if any of the conditions has been satisfied. Once a condition becomes satisfied, the
+     * result is cached. This code can be concurrently executed, however there are no concurrency
+     * primitives beyond the volatile cache. The implementation relies on the fact that checking if a
+     * condition is satisfied is an idempotent operation.
      *
      * @return <code>true</code> if any of the elements is satisfied.
      */
     public boolean satisfied() {
-        var result = false;
-        if (satisfied) {
-            result = true;
-        } else {
+        boolean result = satisfied;
+        if (!result) {
             final var localConditions = conditions;
             if (localConditions == null) {
-                result = true;
+                satisfied = result = true;
             } else {
                 for (Object condition : localConditions) {
                     if (isSatisfied(condition)) {
-                        conditions = null;
                         satisfied = result = true;
                         break;
                     }
@@ -157,11 +216,6 @@ public class RuntimeDynamicAccessMetadata {
         return preserved;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setNotPreserved() {
-        this.preserved = false;
-    }
-
     @Override
     public String toString() {
         String conditionsString = this.conditions == null ? "[]" : Arrays.toString(this.conditions);
@@ -169,17 +223,34 @@ public class RuntimeDynamicAccessMetadata {
     }
 
     private RuntimeDynamicAccessMetadata(Object[] conditions, boolean preserved) {
-        setConditions(conditions);
+        this.conditions = conditions == null || conditions.length == 0 ? null : canonicalConditions(conditions);
+        this.satisfied = this.conditions == null;
         this.preserved = preserved;
     }
 
-    private void setConditions(Object[] conditions) {
-        if (conditions.length == 0) {
-            this.conditions = null;
-        } else {
-            this.conditions = conditions;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static RuntimeDynamicAccessMetadata intern(Object[] conditions, boolean preserved) {
+        Object[] canonicalConditions = canonicalConditions(conditions);
+        MetadataKey key = new MetadataKey(canonicalConditions, preserved);
+        return INTERNED.computeIfAbsent(key, _ -> new RuntimeDynamicAccessMetadata(canonicalConditions, preserved));
+    }
+
+    private static Object[] canonicalConditions(Object[] conditions) {
+        Object[] result = Arrays.copyOf(conditions, conditions.length);
+        Arrays.sort(result, (a, b) -> ((Class<?>) a).getName().compareTo(((Class<?>) b).getName()));
+        return result;
+    }
+
+    private record MetadataKey(Object[] conditions, boolean preserved) {
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof MetadataKey other && preserved == other.preserved && Arrays.equals(conditions, other.conditions);
         }
-        satisfied = false;
+
+        @Override
+        public int hashCode() {
+            return 31 * Boolean.hashCode(preserved) + Arrays.hashCode(conditions);
+        }
     }
 
     private static Object createRuntimeCondition(AccessCondition cnd) {
@@ -213,10 +284,14 @@ public class RuntimeDynamicAccessMetadata {
         private UnmodifiableRuntimeDynamicAccessMetadata(Object[] conditions) {
             super(conditions, false);
         }
+    }
 
-        @Override
-        public synchronized void addCondition(AccessCondition cnd) {
-            throw new UnsupportedOperationException("Can't add conditions to an unmodifiable set of conditions.");
+    public static final class AlwaysAvailableRuntimeDynamicAccessMetadata extends RuntimeDynamicAccessMetadata {
+        private static final RuntimeDynamicAccessMetadata ALWAYS_AVAILABLE_NOT_PRESERVED = new AlwaysAvailableRuntimeDynamicAccessMetadata(false);
+        private static final RuntimeDynamicAccessMetadata ALWAYS_AVAILABLE_PRESERVED = new AlwaysAvailableRuntimeDynamicAccessMetadata(true);
+
+        private AlwaysAvailableRuntimeDynamicAccessMetadata(boolean preserved) {
+            super(null, preserved);
         }
     }
 }

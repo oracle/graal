@@ -275,9 +275,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName) {
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
-        var registered = registeredBundles.putIfAbsent(baseName, dynamicAccessMetadata);
-        (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
+        registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(registeredBundles.get(baseName), condition, false));
     }
 
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {

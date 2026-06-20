@@ -106,7 +106,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create("proxyCache");
+    private final EconomicMap<ProxyCacheKey, Object> proxyCache = ImageHeapMap.create("proxyCache");
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final EconomicMap<Class<?>, ClassLoader> proxyClassClassloaders = EconomicMap.create();
@@ -129,14 +129,13 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
          */
         Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
-        ConditionalRuntimeValue<Object> conditionalValue = proxyCache.get(key);
+        Object conditionalValue = proxyCache.get(key);
         if (conditionalValue == null) {
-            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), createProxyClass(intfs, preserved));
-            proxyCache.put(key, conditionalValue);
-        } else if (!preserved) {
-            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
+            conditionalValue = ConditionalRuntimeValue.create(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs, preserved));
+        } else {
+            conditionalValue = ConditionalRuntimeValue.withCondition(conditionalValue, condition, preserved);
         }
-        conditionalValue.getDynamicAccessMetadata().addCondition(condition);
+        proxyCache.put(key, conditionalValue);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -245,18 +244,19 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
 
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
-        ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
+        Object clazzOrError = proxyCache.get(key);
 
-        if (clazzOrError == null || !clazzOrError.getDynamicAccessMetadata().satisfied()) {
+        if (clazzOrError == null || !ConditionalRuntimeValue.isSatisfied(clazzOrError)) {
             if (nullIfMissing) {
                 return null;
             }
             throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
-        if (clazzOrError.getValue() instanceof Throwable) {
-            throw new GraalError((Throwable) clazzOrError.getValue());
+        Object value = ConditionalRuntimeValue.getValue(clazzOrError);
+        if (value instanceof Throwable) {
+            throw new GraalError((Throwable) value);
         }
-        Class<?> clazz = (Class<?>) clazzOrError.getValue();
+        Class<?> clazz = (Class<?>) value;
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.
@@ -282,10 +282,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     public boolean isProxyPreserved(Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
-        if (proxyCache.get(key) instanceof ConditionalRuntimeValue<Object> entry) {
-            return entry.getDynamicAccessMetadata().isPreserved();
-        }
-        return false;
+        return ConditionalRuntimeValue.isPreserved(proxyCache.get(key));
     }
 
     private static RuntimeException incompatibleClassLoaders(ClassLoader provided, Class<?>[] interfaces) {
