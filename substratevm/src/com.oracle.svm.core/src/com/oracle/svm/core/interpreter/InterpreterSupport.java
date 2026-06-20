@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -205,10 +205,16 @@ public abstract class InterpreterSupport {
 
     /**
      * Continues execution from an interpreter-target deoptimized frame.
+     *
+     * @param gpReturnValueObject optional materialized object for {@code gpReturnValue}. It is
+     *            non-null only when the deoptimization stub could safely decode the GP register as a
+     *            Java object before the compiled frame is torn down. A null value does not prove the
+     *            GP register is non-object; implementations must inspect {@code gpReturnValue} when
+     *            they still need object-return or exception state.
      */
     @Uninterruptible(reason = "Invoked from deoptimization stubs while transitioning to interpreter execution.")
     public abstract UnsignedWord continueInterpreterDeoptimization(DeoptimizedFrame frame, Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue,
-                    boolean hasException);
+                    boolean hasException, Object gpReturnValueObject);
 
     public PreparedSignature prepareSignature(ResolvedJavaMethod method) {
         return prepareSignature(method.getSignature(), method.hasReceiver(), method.getDeclaringClass());

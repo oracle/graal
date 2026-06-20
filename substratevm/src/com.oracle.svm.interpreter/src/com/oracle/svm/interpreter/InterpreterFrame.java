@@ -187,7 +187,7 @@ public final class InterpreterFrame {
         } else {
             lockCount = -1;
             // Unbalanced locks, linear scan.
-            for (int i = 0; i < locks.length; ++i) {
+            for (int i = locks.length - 1; i >= 0; --i) {
                 if (locks[i] == ref) {
                     locks[i] = null;
                     return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -348,7 +348,7 @@ public final class JavaStackWalker {
                     return true;
                 }
             }
-        } else if (JavaFrames.isInterpreterLeaveStub(frame)) {
+        } else if (JavaFrames.isAnyInterpreterLeaveStub(frame)) {
             long totalFrameSize = JavaFrames.getTotalFrameSize(frame).rawValue();
 
             /*
@@ -480,6 +480,14 @@ public final class JavaStackWalker {
 
             if (JavaFrames.isUnknownFrame(frame)) {
                 return visitUnknownFrame(sp, ip, visitor, data);
+            }
+
+            /*
+             * Interpreter leave stubs have no regular stack reference map. Their variable outgoing
+             * argument area is skipped by continueStackWalk before visiting the caller frame.
+             */
+            if (JavaFrames.isAnyInterpreterLeaveStub(frame)) {
+                continue;
             }
 
             DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);

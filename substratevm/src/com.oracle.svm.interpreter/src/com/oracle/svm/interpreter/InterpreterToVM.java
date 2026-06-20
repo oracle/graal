@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -284,30 +284,33 @@ public final class InterpreterToVM {
         }
     }
 
+    /**
+     * Releases all frame-local monitor state. For synchronized methods, the method epilogue releases
+     * whatever monitor remains in lock slot 0, matching HotSpot's treatment of bytecode-level
+     * monitorenter/monitorexit on the method monitor slot.
+     */
     @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
-    public static void releaseInterpreterFrameLocks(InterpreterFrame frame, Object synchronizedMethodLock) {
+    public static void releaseInterpreterFrameLocks(InterpreterFrame frame, boolean synchronizedMethod) {
         Object[] locks = frame.getLocks();
-        boolean skippedSynchronizedMethodLock = synchronizedMethodLock == null;
-        boolean unbalancedLocking = false;
+        boolean illegalMonitorState = false;
+        if (synchronizedMethod) {
+            if (locks.length == 0 || locks[0] == null) {
+                illegalMonitorState = true;
+            } else {
+                MonitorSupport.singleton().monitorExit(locks[0], MonitorInflationCause.VM_INTERNAL);
+                locks[0] = null;
+            }
+        }
         for (int i = locks.length - 1; i >= 0; --i) {
             Object ref = locks[i];
             if (ref != null) {
-                if (!skippedSynchronizedMethodLock && ref == synchronizedMethodLock) {
-                    // The synchronized method epilogue releases this lock explicitly below.
-                    locks[i] = null;
-                    skippedSynchronizedMethodLock = true;
-                } else {
-                    MonitorSupport.singleton().monitorExit(ref, MonitorInflationCause.VM_INTERNAL);
-                    // Clean up leaked bytecode monitors before reporting the structured-locking error.
-                    locks[i] = null;
-                    unbalancedLocking = true;
-                }
+                MonitorSupport.singleton().monitorExit(ref, MonitorInflationCause.VM_INTERNAL);
+                // Clean up leaked bytecode monitors before reporting the structured-locking error.
+                locks[i] = null;
+                illegalMonitorState = true;
             }
         }
-        if (synchronizedMethodLock != null) {
-            MonitorSupport.singleton().monitorExit(synchronizedMethodLock, MonitorInflationCause.VM_INTERNAL);
-        }
-        if (unbalancedLocking) {
+        if (illegalMonitorState) {
             throw new IllegalMonitorStateException();
         }
     }

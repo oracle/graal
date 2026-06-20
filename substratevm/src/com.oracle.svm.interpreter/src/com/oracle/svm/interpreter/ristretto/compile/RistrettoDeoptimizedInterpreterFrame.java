@@ -206,23 +206,23 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
 
     /**
      * Snapshots the physical top-frame machine return registers. Called only from
-     * {@link #continueInterpreterDeoptimization(Pointer, UnsignedWord, UnsignedWord, boolean)}
+     * {@link #continueInterpreterDeoptimization(Pointer, UnsignedWord, UnsignedWord, boolean, Object)}
      * while the compiled frame is still the active machine frame. Once the deopt stub restores the
      * caller-visible stack shape and tail-jumps into the typed Java entry point, those ABI return
      * registers are no longer a stable source for the pending invoke result.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void setPendingReturnValue(JavaKind returnKind, UnsignedWord gpResult, UnsignedWord fpResult) {
+    public void setPendingReturnValue(JavaKind returnKind, UnsignedWord gpResult, UnsignedWord fpResult, Object gpResultObject) {
         assert pendingReturnKind == JavaKind.Illegal;
         VMError.guarantee(returnKind != JavaKind.Illegal && returnKind != JavaKind.Void, "Pending return value requires a non-void return kind");
         pendingReturnKind = returnKind;
         if (returnKind == JavaKind.Object) {
             /*
-             * Object returns must be converted to a Java reference now. After the stub restores the
-             * caller frame, only the boxed object identity remains meaningful to the interpreter
-             * resume path.
+             * Lazy object-return deoptimization already materializes gpResultObject before the
+             * interruptible frame-construction window. Reuse that rooted object instead of
+             * reinterpreting gpResult after a GC may have moved the object.
              */
-            pendingObjectReturnValue = Deoptimizer.isNonNullObjectValue(gpResult) ? ((Pointer) gpResult).toObject() : null;
+            pendingObjectReturnValue = gpResultObject != null ? gpResultObject : (Deoptimizer.isNonNullObjectValue(gpResult) ? ((Pointer) gpResult).toObject() : null);
         } else {
             switch (returnKind) {
                 case Float, Double:
@@ -288,7 +288,7 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
      * compiled-frame return registers.
      */
     @Uninterruptible(reason = "Custom deopt-stub epilogue rewrites the active stack frame.")
-    public UnsignedWord continueInterpreterDeoptimization(Pointer originalStackPointer, UnsignedWord gpResult, UnsignedWord fpResult, boolean hasException) {
+    public UnsignedWord continueInterpreterDeoptimization(Pointer originalStackPointer, UnsignedWord gpResult, UnsignedWord fpResult, boolean hasException, Object gpResultObject) {
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
 
         /* Caller stack pointer after the compiled source frame has been removed from the stack. */
@@ -299,7 +299,7 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
 
         if (hasException) {
             assert hasPendingException;
-            setPendingExceptionObject(Deoptimizer.isNonNullObjectValue(gpResult) ? ((Pointer) gpResult).toObject() : null);
+            setPendingExceptionObject(gpResultObject != null ? gpResultObject : (Deoptimizer.isNonNullObjectValue(gpResult) ? ((Pointer) gpResult).toObject() : null));
         } else {
             assert !hasPendingException;
             /*
@@ -313,7 +313,7 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
              */
             RistrettoVirtualInterpreterFrame topFrame = (RistrettoVirtualInterpreterFrame) getTopFrame();
             if (topFrame.hasPendingCallResult()) {
-                setPendingReturnValue(topFrame.getCompiledReturnKind(), gpResult, fpResult);
+                setPendingReturnValue(topFrame.getCompiledReturnKind(), gpResult, fpResult, gpResultObject);
             }
         }
         if (pin != null) {

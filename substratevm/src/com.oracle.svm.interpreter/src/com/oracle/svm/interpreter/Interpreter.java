@@ -443,20 +443,34 @@ public final class Interpreter {
         return execute0(method, frame, startBCI, startTOP);
     }
 
+    /**
+     * Returns the monitor object for a synchronized method at normal interpreter entry.
+     *
+     * Static synchronized methods lock their declaring class mirror. Instance synchronized methods
+     * lock local 0 ({@code this}), which must be live on normal entry because the interpreter is
+     * about to acquire the monitor itself.
+     */
+    private static Object getSynchronizedMethodLock(InterpreterResolvedJavaMethod method, InterpreterFrame frame) {
+        return method.isStatic()
+                        ? method.getDeclaringClass().getJavaClass()
+                        : frame.getObjectStatic(0);
+    }
+
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, int startBCI, int startTop) {
-        Object synchronizedMethodLock = null;
+        boolean releaseSynchronizedMethodLock = false;
         boolean releaseInterpreterFrameLocks = true;
         try {
             int executeBCI = startBCI;
             if (startBCI == jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI) {
                 executeBCI = 0;
                 if (method.isSynchronized()) {
-                    synchronizedMethodLock = method.isStatic()
-                                    ? method.getDeclaringClass().getJavaClass()
-                                    : frame.getObjectStatic(0);
+                    Object synchronizedMethodLock = getSynchronizedMethodLock(method, frame);
                     assert synchronizedMethodLock != null;
                     InterpreterToVM.monitorEnter(frame, synchronizedMethodLock);
+                    releaseSynchronizedMethodLock = true;
                 }
+            } else if (method.isSynchronized()) {
+                releaseSynchronizedMethodLock = true;
             }
             assert method.getInterpretedCode() != null : "no bytecode stream for " + method;
             return Root.executeBodyFromBCI(frame, method, executeBCI, startTop, false);
@@ -468,22 +482,21 @@ public final class Interpreter {
             throw uncheckedThrow(e.exception());
         } finally {
             if (releaseInterpreterFrameLocks) {
-                InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+                InterpreterToVM.releaseInterpreterFrameLocks(frame, releaseSynchronizedMethodLock);
             }
         }
     }
 
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean stayInInterpreter) {
-        Object synchronizedMethodLock = null;
+        boolean releaseSynchronizedMethodLock = false;
         boolean releaseInterpreterFrameLocks = true;
         try {
             assert method.isStatic() || InterpreterFrameUtil.getThis(frame) != null;
             if (method.isSynchronized()) {
-                synchronizedMethodLock = method.isStatic()
-                                ? method.getDeclaringClass().getJavaClass()
-                                : InterpreterFrameUtil.getThis(frame);
+                Object synchronizedMethodLock = getSynchronizedMethodLock(method, frame);
                 assert synchronizedMethodLock != null;
                 InterpreterToVM.monitorEnter(frame, synchronizedMethodLock);
+                releaseSynchronizedMethodLock = true;
             }
             SignaturePolymorphicIntrinsic intrinsic = method.getSignaturePolymorphicIntrinsic();
             if (intrinsic != null) {
@@ -501,7 +514,7 @@ public final class Interpreter {
             throw uncheckedThrow(e.exception());
         } finally {
             if (releaseInterpreterFrameLocks) {
-                InterpreterToVM.releaseInterpreterFrameLocks(frame, synchronizedMethodLock);
+                InterpreterToVM.releaseInterpreterFrameLocks(frame, releaseSynchronizedMethodLock);
             }
         }
     }
