@@ -48,8 +48,8 @@ final class Target_java_security_Security {
     static Properties props;
 }
 
-@TargetClass(value = java.security.Security.class)
-final class Target_java_security_Security_MetadataTracing {
+@TargetClass(java.security.Security.class)
+final class Target_java_security_Security_ProviderLookup {
 
     @Substitute
     public static Provider getProvider(String name) {
