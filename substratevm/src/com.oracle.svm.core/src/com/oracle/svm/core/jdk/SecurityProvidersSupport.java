@@ -218,8 +218,8 @@ public final class SecurityProvidersSupport {
             case "SUN", "sun.security.provider.Sun",
                             "SunRsaSign", "sun.security.rsa.SunRsaSign",
                             "SunJCE", "com.sun.crypto.provider.SunJCE",
-                            "SunJSSE",
-                            "SunEC",
+                            "SunJSSE", "sun.security.ssl.SunJSSE",
+                            "SunEC", "sun.security.ec.SunEC",
                             "Apple", "apple.security.AppleProvider" ->
                 true;
             default -> false;

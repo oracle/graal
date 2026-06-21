@@ -87,11 +87,13 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -107,6 +109,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -886,6 +889,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
+        if (shouldSkipOmittedSunECProviderClass(providerClass)) {
+            return;
+        }
         if (!isLoadableProviderClass(access, providerClass)) {
             return;
         }
@@ -932,6 +938,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerService(DuringAnalysisAccess a, Service service) {
+        if (shouldSkipOmittedBuiltInProviderService(service)) {
+            trace("Skipped service %s because provider %s was not included by reachability metadata.", asString(service), service.getProvider().getClass().getName());
+            return;
+        }
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable _ = trace(service)) {
@@ -959,6 +969,25 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         } else {
             trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
         }
+    }
+
+    private static boolean shouldSkipOmittedBuiltInProviderService(Service service) {
+        if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            return false;
+        }
+        Provider provider = service.getProvider();
+        return shouldSkipOmittedSunECProviderClass(provider.getClass());
+    }
+
+    private static boolean shouldSkipOmittedSunECProviderClass(Class<?> providerClass) {
+        return MissingRegistrationUtils.throwMissingRegistrationErrors() &&
+                        providerClass.getName().equals("sun.security.ec.SunEC") &&
+                        !isTypeRegisteredForReflection(providerClass);
+    }
+
+    private static boolean isTypeRegisteredForReflection(Class<?> clazz) {
+        ReflectionDataBuilder reflectionData = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        return reflectionData.isTypeRegisteredForReflection(clazz);
     }
 
     private static void registerProviderClassForReflection(Class<?> providerClass) {
