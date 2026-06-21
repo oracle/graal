@@ -164,6 +164,10 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
     public static class Options {
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class " +
+                        "for reflection, or build with -H:Preserve=all).";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register the security provider class for reflection instead; the tracing agent does this automatically.";
+
         @Option(help = "Enable automatic registration of security services.")//
         public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
 
@@ -174,9 +178,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.build());
 
-        @Option(help = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class for reflection, or build with -H:Preserve=all).",
-                        deprecated = true,
-                        deprecationMessage = "Register the security provider class for reflection instead; the tracing agent does this automatically.")//
+        @Option(help = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP, deprecated = true, deprecationMessage = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }

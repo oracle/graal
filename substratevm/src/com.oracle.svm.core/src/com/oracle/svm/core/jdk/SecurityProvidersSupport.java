@@ -171,7 +171,10 @@ public final class SecurityProvidersSupport {
     }
 
     public static Provider traceProviderLookup(Provider provider) {
-        if (provider != null && MetadataTracer.enabled()) {
+        if (provider == null || singleton().isMissingBuiltInProvider(provider.getName()) || singleton().isMissingBuiltInProvider(provider.getClass().getName())) {
+            return null;
+        }
+        if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceMethodAccess(provider.getClass(), CONSTRUCTOR_NAME, SignatureUtil.toInternalSignature(NO_PARAMETERS),
                             ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
         }
