@@ -123,7 +123,7 @@ public interface InternalFeature extends Feature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAbstractImageCreationAccess extends FeatureAccess {
+    interface AfterAbstractImageCreationAccess extends FeatureAccess, JVMCIFeature.FeatureAccess {
     }
 
     /**
@@ -139,7 +139,7 @@ public interface InternalFeature extends Feature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface InternalFeatureAccess extends FeatureAccess {
+    interface InternalFeatureAccess extends FeatureAccess, JVMCIFeature.FeatureAccess {
         ResolvedJavaType findTypeByName(String className);
 
         MetaAccessProvider getMetaAccess();
