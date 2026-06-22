@@ -43,15 +43,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface InternalFeature extends Feature, JVMCIFeature {
-
-    default String getURL() {
-        return null;
-    }
-
-    default String getDescription() {
-        return null;
-    }
+public interface InternalFeature extends InternalFeatureBridge {
     /**
      * Called to register foreign calls.
      *
@@ -130,7 +122,7 @@ public interface InternalFeature extends Feature, JVMCIFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAbstractImageCreationAccess extends FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
+    interface AfterAbstractImageCreationAccess extends Feature.FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
     }
 
     /**
@@ -146,16 +138,11 @@ public interface InternalFeature extends Feature, JVMCIFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface InternalFeatureAccess extends FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
+    interface InternalFeatureAccess extends Feature.FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
+        @Override
         ResolvedJavaType findTypeByName(String className);
 
+        @Override
         MetaAccessProvider getMetaAccess();
-    }
-
-    default void cleanup() {
-        /*
-         * Usually, overriding this method can be avoided by putting a configuration object into the
-         * ImageSingletons.
-         */
     }
 }
