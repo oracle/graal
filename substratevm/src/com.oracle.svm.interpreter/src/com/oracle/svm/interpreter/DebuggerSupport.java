@@ -45,7 +45,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;

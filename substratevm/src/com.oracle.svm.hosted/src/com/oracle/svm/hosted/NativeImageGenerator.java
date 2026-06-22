@@ -116,10 +116,11 @@ import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.BuildPhaseProviderImpl;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.MethodRefHolder;
@@ -661,7 +662,7 @@ public class NativeImageGenerator {
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                                 bb.getUnsupportedFeatures()).build(debug);
 
-                BuildPhaseProvider.markHostedUniverseBuilt();
+                BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
                 runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
@@ -716,7 +717,7 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
-            BuildPhaseProvider.markReadyForCompilation();
+            BuildPhaseProviderImpl.markReadyForCompilation();
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
@@ -726,7 +727,7 @@ public class NativeImageGenerator {
                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
                 compileQueue.finish(debug);
-                BuildPhaseProvider.markCompileQueueFinished();
+                BuildPhaseProviderImpl.markCompileQueueFinished();
 
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
@@ -742,7 +743,7 @@ public class NativeImageGenerator {
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
                                 runtimeConfiguration, nativeLibraries);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
-                BuildPhaseProvider.markCompilationFinished();
+                BuildPhaseProviderImpl.markCompilationFinished();
             }
 
             /* Re-run shadow heap verification after compilation. */
@@ -763,7 +764,7 @@ public class NativeImageGenerator {
                         verifyAndSealShadowHeap(codeCache, debug, heap);
 
                         ImageHeapLayoutInfo heapLayout = buildNativeImageHeap(heap, codeCache);
-                        BuildPhaseProvider.markHeapLayoutFinished();
+                        BuildPhaseProviderImpl.markHeapLayoutFinished();
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, heapLayout, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
@@ -921,7 +922,7 @@ public class NativeImageGenerator {
                         HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
                     }
                     /* All pre-analysis set-up is done and the fixed-point analysis can start. */
-                    BuildPhaseProvider.markAnalysisStarted();
+                    BuildPhaseProviderImpl.markAnalysisStarted();
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
@@ -953,7 +954,7 @@ public class NativeImageGenerator {
                  */
                 nativeLibraries.processAnnotated();
 
-                BuildPhaseProvider.markAnalysisFinished();
+                BuildPhaseProviderImpl.markAnalysisFinished();
                 AfterAnalysisAccessImpl postConfig = new AfterAnalysisAccessImpl(featureHandler, loader, bb, debug);
                 featureHandler.forEachFeature(feature -> feature.afterAnalysis(postConfig));
 
@@ -1056,13 +1057,13 @@ public class NativeImageGenerator {
                     }
                 }
 
-                /* Init the BuildPhaseProvider before any features need it. */
-                BuildPhaseProvider.init();
+                /* Init the BuildPhaseProviderImpl before any features need it. */
+                BuildPhaseProviderImpl.init();
 
                 AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
 
                 featureHandler.registerFeatures(loader, originalMetaAccess, debug);
-                BuildPhaseProvider.markFeatureRegistrationFinished();
+                BuildPhaseProviderImpl.markFeatureRegistrationFinished();
 
                 loader.initCoreModules();
 
@@ -1197,7 +1198,7 @@ public class NativeImageGenerator {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
-                BuildPhaseProvider.markSetupFinished();
+                BuildPhaseProviderImpl.markSetupFinished();
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);

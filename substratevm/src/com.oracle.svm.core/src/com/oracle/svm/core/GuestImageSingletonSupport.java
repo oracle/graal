@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -33,6 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Helper class for registering image singletons in the guest.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class GuestImageSingletonSupport {
 
     /**

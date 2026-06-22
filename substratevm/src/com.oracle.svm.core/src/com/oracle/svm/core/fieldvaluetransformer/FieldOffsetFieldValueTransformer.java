@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;

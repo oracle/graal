@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import static com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.IOException;
