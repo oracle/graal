@@ -97,10 +97,10 @@ local devkits = graal_common.devkits;
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
   vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
-    capabilities+: ['darwin_bigsur'],
+    capabilities+: ['darwin_sonoma'],
     environment+: {
-      # for compatibility with macOS BigSur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
+      # for compatibility with macOS Sonoma
+      MACOSX_DEPLOYMENT_TARGET: '14.0',
     },
   },
 

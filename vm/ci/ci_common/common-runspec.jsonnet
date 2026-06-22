@@ -87,9 +87,9 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     local common_vm_darwin = common_vm + {
       environment+: {
         LANG: 'en_US.UTF-8',
-        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
+        MACOSX_DEPLOYMENT_TARGET: '14.0',  # for compatibility with macOS Sonoma
       },
-      capabilities+: ['darwin_bigsur', 'ram16gb'],
+      capabilities+: ['darwin_sonoma'],
     },
 
     local common_vm_windows = common_vm + graal_common.windows_server_2016_amd64,
