@@ -1338,7 +1338,15 @@ public class NativeImageGenerator {
         if (GuestAccess.get().isFullyIsolated()) {
             /* Install a second singleton registry in the guest context. */
             GuestImageSingletonSupport.install();
+            registerGuestImageLayerBuildingSupport(imageLayerSupport);
         }
+    }
+
+    private static void registerGuestImageLayerBuildingSupport(HostedImageLayerBuildingSupport imageLayerSupport) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
+        JavaConstant callback = access.createCallback(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, callback);
     }
 
     private static void setupGuestTargetDescription(SubstrateTarget target) {
