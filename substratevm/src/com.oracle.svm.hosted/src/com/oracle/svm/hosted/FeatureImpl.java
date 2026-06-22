@@ -78,7 +78,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.feature.JVMCIFeature;
+import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -196,21 +196,21 @@ public class FeatureImpl {
         }
     }
 
-    public static class IsInConfigurationAccessImpl extends RegistrationAccessBase implements Feature.IsInConfigurationAccess, JVMCIFeature.IsInConfigurationAccess {
+    public static class IsInConfigurationAccessImpl extends RegistrationAccessBase implements Feature.IsInConfigurationAccess, JVMCIFeatureAccess.IsInConfigurationAccess {
 
         IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, metaAccess, debugContext);
         }
     }
 
-    public static class OnRegistrationAccessImpl extends RegistrationAccessBase implements Feature.OnRegistrationAccess, JVMCIFeature.OnRegistrationAccess {
+    public static class OnRegistrationAccessImpl extends RegistrationAccessBase implements Feature.OnRegistrationAccess, JVMCIFeatureAccess.OnRegistrationAccess {
 
         OnRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, metaAccess, debugContext);
         }
     }
 
-    public static class AfterRegistrationAccessImpl extends RegistrationAccessBase implements Feature.AfterRegistrationAccess, JVMCIFeature.AfterRegistrationAccess {
+    public static class AfterRegistrationAccessImpl extends RegistrationAccessBase implements Feature.AfterRegistrationAccess, JVMCIFeatureAccess.AfterRegistrationAccess {
         private MainEntryPoint mainEntryPoint;
 
         public AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess,
@@ -426,7 +426,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess, JVMCIFeature.DuringSetupAccess {
+    public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess, JVMCIFeatureAccess.DuringSetupAccess {
 
         public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
@@ -544,12 +544,12 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess, JVMCIFeature.BeforeAnalysisAccess {
+    public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess, JVMCIFeatureAccess.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
         private final ReflectionDataBuilder reflectionData;
         private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
-        private final Map<Consumer<JVMCIFeature.DuringAnalysisAccess>, Consumer<DuringAnalysisAccess>> jvmciReachabilityAdapters = new ConcurrentHashMap<>();
+        private final Map<Consumer<JVMCIFeatureAccess.DuringAnalysisAccess>, Consumer<DuringAnalysisAccess>> jvmciReachabilityAdapters = new ConcurrentHashMap<>();
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
@@ -725,9 +725,9 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerJVMCIReachabilityHandler(Consumer<JVMCIFeature.DuringAnalysisAccess> callback, ModifiersProvider... elements) {
+        public void registerJVMCIReachabilityHandler(Consumer<JVMCIFeatureAccess.DuringAnalysisAccess> callback, ModifiersProvider... elements) {
             Consumer<DuringAnalysisAccess> adapter = jvmciReachabilityAdapters.computeIfAbsent(callback,
-                            c -> access -> c.accept((JVMCIFeature.DuringAnalysisAccess) access));
+                            c -> access -> c.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access));
             registerReachabilityHandler(adapter, (Object[]) elements);
         }
 
@@ -748,10 +748,10 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerMethodOverrideReachabilityHandler(BiConsumer<JVMCIFeature.DuringAnalysisAccess, ResolvedJavaMethod> callback, ResolvedJavaMethod baseMethod) {
+        public void registerMethodOverrideReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaMethod> callback, ResolvedJavaMethod baseMethod) {
             AnalysisMethod baseAnalysisMethod = asAnalysisMethod(baseMethod);
             // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, executable) -> callback.accept((JVMCIFeature.DuringAnalysisAccess) access,
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, executable) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
                             getMetaAccess().lookupJavaMethod(executable)));
             baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
@@ -776,10 +776,10 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerSubtypeReachabilityHandler(BiConsumer<JVMCIFeature.DuringAnalysisAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
+        public void registerSubtypeReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
             AnalysisType baseAnalysisType = asAnalysisType(baseType);
             // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, clazz) -> callback.accept((JVMCIFeature.DuringAnalysisAccess) access,
+            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, clazz) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
                             getMetaAccess().lookupJavaType(clazz)));
             baseAnalysisType.registerSubtypeReachabilityNotification(notification);
 
@@ -798,7 +798,7 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerClassInitializerReachabilityHandler(Consumer<JVMCIFeature.DuringAnalysisAccess> callback, ResolvedJavaType type) {
+        public void registerClassInitializerReachabilityHandler(Consumer<JVMCIFeatureAccess.DuringAnalysisAccess> callback, ResolvedJavaType type) {
             registerJVMCIReachabilityHandler(callback, type);
         }
 
@@ -870,7 +870,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess, JVMCIFeature.DuringAnalysisAccess {
+    public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess, JVMCIFeatureAccess.DuringAnalysisAccess {
 
         private boolean requireAnalysisIteration;
 
@@ -913,13 +913,13 @@ public class FeatureImpl {
 
     }
 
-    public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess, JVMCIFeature.AfterAnalysisAccess {
+    public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess, JVMCIFeatureAccess.AfterAnalysisAccess {
         public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
-    public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess, JVMCIFeature.OnAnalysisExitAccess {
+    public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess, JVMCIFeatureAccess.OnAnalysisExitAccess {
         public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
@@ -949,7 +949,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeUniverseBuildingAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess, JVMCIFeature.BeforeUniverseBuildingAccess {
+    public static class BeforeUniverseBuildingAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess, JVMCIFeatureAccess.BeforeUniverseBuildingAccess {
         protected final HostedMetaAccess hMetaAccess;
 
         BeforeUniverseBuildingAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, HostedMetaAccess hMetaAccess) {
@@ -963,7 +963,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class CompilationAccessImpl extends HostedFeatureAccessImpl implements Feature.CompilationAccess, JVMCIFeature.CompilationAccess {
+    public static class CompilationAccessImpl extends HostedFeatureAccessImpl implements Feature.CompilationAccess, JVMCIFeatureAccess.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
@@ -1057,7 +1057,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess, JVMCIFeature.BeforeCompilationAccess {
+    public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess, JVMCIFeatureAccess.BeforeCompilationAccess {
 
         public BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
                         NativeImageHeap heap, DebugContext debugContext, RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
@@ -1066,7 +1066,7 @@ public class FeatureImpl {
 
     }
 
-    public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess, JVMCIFeature.AfterCompilationAccess {
+    public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess, JVMCIFeatureAccess.AfterCompilationAccess {
         private final Map<HostedMethod, CompileTask> compilations;
         private final NativeImageCodeCache codeCache;
 
@@ -1095,14 +1095,14 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeHeapLayoutAccessImpl extends CompilationAccessImpl implements Feature.BeforeHeapLayoutAccess, JVMCIFeature.BeforeHeapLayoutAccess {
+    public static class BeforeHeapLayoutAccessImpl extends CompilationAccessImpl implements Feature.BeforeHeapLayoutAccess, JVMCIFeatureAccess.BeforeHeapLayoutAccess {
         public BeforeHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, NativeImageHeap heap,
                         DebugContext debugContext, RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeConfiguration, nativeLibraries);
         }
     }
 
-    public static class AfterHeapLayoutAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterHeapLayoutAccess, JVMCIFeature.AfterHeapLayoutAccess {
+    public static class AfterHeapLayoutAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterHeapLayoutAccess, JVMCIFeatureAccess.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
         protected final NativeImageHeap heap;
         protected final ImageHeapLayoutInfo heapLayout;
@@ -1129,7 +1129,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeImageWriteAccess, JVMCIFeature.BeforeImageWriteAccess {
+    public static class BeforeImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeImageWriteAccess, JVMCIFeatureAccess.BeforeImageWriteAccess {
         private List<Function<LinkerInvocation, LinkerInvocation>> linkerInvocationTransformers = null;
 
         protected final String imageName;
@@ -1225,7 +1225,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterImageWriteAccess, JVMCIFeature.AfterImageWriteAccess {
+    public static class AfterImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterImageWriteAccess, JVMCIFeatureAccess.AfterImageWriteAccess {
         private final HostedUniverse hUniverse;
         protected final LinkerInvocation linkerInvocation;
         protected final Path tempDirectory;
