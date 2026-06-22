@@ -58,25 +58,7 @@ public final class NativeEntryPointHelper {
      *         create the {@link NativeEntryPoint}.
      */
     public static NativeEntryPointInfo extractNativeEntryPointInfo(JavaConstant nativeEntryPointConstant) {
-        GuestAccess access = GuestAccess.get();
-        GuestElements elements = access.elements;
-        JavaConstant nepCacheConstant = JVMCIReflectionUtil.readStaticField(elements.jdk_internal_foreign_abi_NativeEntryPoint, "NEP_CACHE");
-        JavaConstant cacheConstant = JVMCIReflectionUtil.readInstanceField(nepCacheConstant, elements.jdk_internal_foreign_abi_SoftReferenceCache, "cache");
-        JavaConstant entrySetConstant = access.invoke(elements.java_util_Map_entrySet, cacheConstant);
-        JavaConstant entriesConstant = access.invoke(elements.java_util_Collection_toArray, entrySetConstant);
-        Object[] entries = access.asHostObject(Object[].class, entriesConstant);
-
-        // We have the value; search the key
-        JavaConstant cacheKeyConstant = null;
-        for (Object entry : entries) {
-            JavaConstant entryConstant = access.getSnippetReflection().forObject(entry);
-            JavaConstant nodeConstant = access.invoke(elements.java_util_Map_Entry_getValue, entryConstant);
-            JavaConstant refConstant = JVMCIReflectionUtil.readInstanceField(nodeConstant, elements.jdk_internal_foreign_abi_SoftReferenceCache_Node, "ref");
-            if (!refConstant.isNull() && access.invoke(elements.java_lang_ref_Reference_refersTo, refConstant, nativeEntryPointConstant).asBoolean()) {
-                cacheKeyConstant = access.invoke(elements.java_util_Map_Entry_getKey, entryConstant);
-                break;
-            }
-        }
+        JavaConstant cacheKeyConstant = findCacheKey(nativeEntryPointConstant);
 
         /*
          * In the common case, any instance of NativeEntryPoint is created via
@@ -92,6 +74,8 @@ public final class NativeEntryPointHelper {
          * Field 'CacheKey.abi' is ignored because the ABIDescriptor is JDK's equivalent of our
          * Substrate*RegisterConfig.
          */
+        GuestAccess access = GuestAccess.get();
+        GuestElements elements = access.elements;
         JavaConstant argMovesListConstant = JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "argMoves");
         JavaConstant returnMovesListConstant = JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "retMoves");
         JavaConstant emptyVmStorageArray = access.asArrayConstant(elements.jdk_internal_foreign_abi_VMStorage);
@@ -102,10 +86,35 @@ public final class NativeEntryPointHelper {
         MethodType methodType = access.asHostObject(MethodType.class,
                         access.invoke(elements.jdk_internal_foreign_abi_NativeEntryPoint_type, nativeEntryPointConstant));
         boolean needsReturnBuffer = JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "needsReturnBuffer").asBoolean();
-        int capturedStateMask = JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "capturedStateMask").asInt();
+        int capturedStateMask = readCapturedStateMask(cacheKeyConstant);
         boolean needsTransition = JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "needsTransition").asBoolean();
         boolean allowHeapAccess = Arrays.stream(argMoves).anyMatch(Objects::isNull);
 
         return NativeEntryPointInfo.make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
+    }
+
+    static JavaConstant findCacheKey(JavaConstant nativeEntryPointConstant) {
+        GuestAccess access = GuestAccess.get();
+        GuestElements elements = access.elements;
+        JavaConstant nepCacheConstant = JVMCIReflectionUtil.readStaticField(elements.jdk_internal_foreign_abi_NativeEntryPoint, "NEP_CACHE");
+        JavaConstant cacheConstant = JVMCIReflectionUtil.readInstanceField(nepCacheConstant, elements.jdk_internal_foreign_abi_SoftReferenceCache, "cache");
+        JavaConstant entrySetConstant = access.invoke(elements.java_util_Map_entrySet, cacheConstant);
+        JavaConstant entriesConstant = access.invoke(elements.java_util_Collection_toArray, entrySetConstant);
+        Object[] entries = access.asHostObject(Object[].class, entriesConstant);
+
+        // We have the value; search the key.
+        for (Object entry : entries) {
+            JavaConstant entryConstant = access.getSnippetReflection().forObject(entry);
+            JavaConstant nodeConstant = access.invoke(elements.java_util_Map_Entry_getValue, entryConstant);
+            JavaConstant refConstant = JVMCIReflectionUtil.readInstanceField(nodeConstant, elements.jdk_internal_foreign_abi_SoftReferenceCache_Node, "ref");
+            if (!refConstant.isNull() && access.invoke(elements.java_lang_ref_Reference_refersTo, refConstant, nativeEntryPointConstant).asBoolean()) {
+                return access.invoke(elements.java_util_Map_Entry_getKey, entryConstant);
+            }
+        }
+        return null;
+    }
+
+    static int readCapturedStateMask(JavaConstant cacheKeyConstant) {
+        return JVMCIReflectionUtil.readInstanceField(cacheKeyConstant, GuestAccess.get().elements.jdk_internal_foreign_abi_NativeEntryPoint_CacheKey, "capturedStateMask").asInt();
     }
 }
