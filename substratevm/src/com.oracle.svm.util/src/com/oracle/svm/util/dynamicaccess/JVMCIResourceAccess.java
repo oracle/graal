@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,27 +25,22 @@
 package com.oracle.svm.util.dynamicaccess;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.JNIAccess} using JVMCI types.
+ * Mirror of {@link ResourceAccess} using JVMCI types.
  */
-public interface JVMCIJNIAccess {
+public interface JVMCIResourceAccess {
     /**
-     * See {@code JNIAccess#register(AccessCondition, Class...)}.
+     * See {@link ResourceAccess#register(AccessCondition, Module, String)}.
      */
-    void register(AccessCondition condition, ResolvedJavaType... types);
+    void register(AccessCondition condition, ResolvedJavaModule module, String glob);
 
     /**
-     * See {@code JNIAccess#register(AccessCondition, Executable...)}.
+     * See {@link ResourceAccess#registerResourceBundle(AccessCondition, java.util.ResourceBundle...)}.
      */
-    void register(AccessCondition condition, ResolvedJavaMethod... methods);
-
-    /**
-     * See {@code JNIAccess#register(AccessCondition, Field...)}.
-     */
-    void register(AccessCondition condition, ResolvedJavaField... fields);
+    void registerResourceBundle(AccessCondition condition, JavaConstant... bundles);
 }

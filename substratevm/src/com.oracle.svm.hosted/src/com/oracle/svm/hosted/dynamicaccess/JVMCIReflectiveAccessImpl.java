@@ -39,6 +39,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This implementation is not yet Terminus-ready: it converts JVMCI metadata back to core
+ * reflection objects before delegating to {@link ReflectiveAccessImpl}. GR-76813 tracks replacing
+ * the generic fallback; GR-71804 tracks the serialization-specific fallback.
+ */
 public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
     private final ReflectiveAccessImpl rdaInstance;
     private static JVMCIReflectiveAccess instance;
@@ -78,6 +83,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
     @Override
     public void registerForSerialization(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
+            // GR-71804 tracks registering serialization metadata without converting to Class objects.
             rdaInstance.registerForSerialization(condition, OriginalClassProvider.getJavaClass(type));
         }
     }

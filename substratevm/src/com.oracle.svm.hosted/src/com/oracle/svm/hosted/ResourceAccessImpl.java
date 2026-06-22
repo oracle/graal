@@ -29,7 +29,13 @@ import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 import java.util.ResourceBundle;
 
-public final class ResourceAccessImpl implements ResourceAccess {
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
+
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.vm.ci.meta.JavaConstant;
+
+public final class ResourceAccessImpl implements ResourceAccess, JVMCIResourceAccess {
 
     private final InternalResourceAccess rdaInstance;
     private static ResourceAccessImpl instance;
@@ -57,5 +63,15 @@ public final class ResourceAccessImpl implements ResourceAccess {
             DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, bundle.getBaseBundleName());
             rdaInstance.registerResourceBundle(condition, bundle);
         }
+    }
+
+    @Override
+    public void register(AccessCondition condition, ResolvedJavaModule module, String pattern) {
+        throw VMError.unimplemented("JVMCI resource registration is not implemented yet.");
+    }
+
+    @Override
+    public void registerResourceBundle(AccessCondition condition, JavaConstant... bundles) {
+        throw VMError.unimplemented("JVMCI resource bundle registration is not implemented yet.");
     }
 }
