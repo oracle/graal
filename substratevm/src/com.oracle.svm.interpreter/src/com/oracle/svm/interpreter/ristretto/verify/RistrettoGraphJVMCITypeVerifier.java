@@ -30,14 +30,19 @@ import java.util.Deque;
 
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoStampUtils;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
 
 import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -50,6 +55,15 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * constructed.
  */
 public final class RistrettoGraphJVMCITypeVerifier extends BasePhase<CoreProviders> {
+    private final boolean verifyStamps;
+
+    public RistrettoGraphJVMCITypeVerifier() {
+        this(false);
+    }
+
+    public RistrettoGraphJVMCITypeVerifier(boolean verifyStamps) {
+        this.verifyStamps = verifyStamps;
+    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -59,9 +73,22 @@ public final class RistrettoGraphJVMCITypeVerifier extends BasePhase<CoreProvide
         }
     }
 
-    private static void verifyNode(Node node, MetaAccessProvider metaAccess) {
+    private void verifyNode(Node node, MetaAccessProvider metaAccess) {
+        if (verifyStamps && node instanceof ValueNode valueNode) {
+            verifyStamp(valueNode);
+        }
         NodeClass<?> nodeClass = node.getNodeClass();
         verifyFields(node, nodeClass.getData(), metaAccess);
+    }
+
+    private static void verifyStamp(ValueNode node) {
+        Stamp stamp = node.stamp(NodeView.DEFAULT);
+        if (stamp instanceof AbstractObjectStamp objectStamp) {
+            ResolvedJavaType type = objectStamp.type();
+            if (!RistrettoStampUtils.isValidRistrettoObjectStampType(type)) {
+                throw mismatchError(node, "stamp.type", type);
+            }
+        }
     }
 
     private static void verifyFields(Node node, Fields fields, MetaAccessProvider metaAccess) {
@@ -117,8 +144,21 @@ public final class RistrettoGraphJVMCITypeVerifier extends BasePhase<CoreProvide
 
     @SuppressWarnings("deprecation")
     private static RuntimeException mismatchError(Node owner, String fieldName, Object metadata) {
+        StringBuilder message = new StringBuilder("Node ");
+        message.append(owner).append(" (id=").append(owner.getId()).append(") field '").append(fieldName).append("' references non-Ristretto JVMCI metadata: ").append(metadata).append(" (")
+                        .append(metadata.getClass().getName()).append(")");
+        if (owner.graph() instanceof StructuredGraph structuredGraph && structuredGraph.method() != null) {
+            message.append(" in graph ").append(structuredGraph.method().format("%H.%n(%p)"));
+        }
+        message.append("; inputs=[");
+        String sep = "";
+        for (Node input : owner.inputs()) {
+            message.append(sep).append(input).append("(id=").append(input.getId()).append(")");
+            sep = ", ";
+        }
+        message.append("]");
         return GraalError.shouldNotReachHere(
-                        "Node " + owner + " (id=" + owner.getId() + ") field '" + fieldName + "' references non-Ristretto JVMCI metadata: " + metadata + " (" + metadata.getClass().getName() + ")");
+                        message.toString());
     }
 
     private record PendingValue(String fieldName, Object value) {

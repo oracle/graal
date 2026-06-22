@@ -226,13 +226,18 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
      * result, or the pending exception object if the deopt was taken on an exceptional edge. The
      * Ristretto frame must snapshot that state before the stub tears down the compiled frame and
      * tail-jumps into the typed interpreter entry point.
+     *
+     * <p>
+     * {@code gpReturnValueObject} is a best-effort decoded object value. It can be null even when the
+     * raw GP return value denotes an object, so the Ristretto frame keeps the raw register value as
+     * the fallback source of truth.
      */
     @Override
     @Uninterruptible(reason = "Invoked from deoptimization stubs while transitioning to interpreter execution.")
     public UnsignedWord continueInterpreterDeoptimization(DeoptimizedFrame frame, Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue,
-                    boolean hasException) {
+                    boolean hasException, Object gpReturnValueObject) {
         VMError.guarantee(frame instanceof RistrettoDeoptimizedInterpreterFrame, "Unexpected interpreter deoptimized frame implementation");
-        return ((RistrettoDeoptimizedInterpreterFrame) frame).continueInterpreterDeoptimization(originalStackPointer, gpReturnValue, fpReturnValue, hasException);
+        return ((RistrettoDeoptimizedInterpreterFrame) frame).continueInterpreterDeoptimization(originalStackPointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
     }
 
     @Override

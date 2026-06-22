@@ -54,6 +54,7 @@ import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.InterpreterToVM;
+import com.oracle.svm.interpreter.InterpreterUtil;
 import com.oracle.svm.interpreter.ResolvedInvokeDynamicConstant;
 import com.oracle.svm.interpreter.SuccessfulCallSiteLink;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
@@ -87,7 +88,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class RistrettoDeoptimizationSupport {
-
     /**
      * Call-site layout facts needed while resuming a deoptimized invoke boundary.
      *
@@ -260,8 +260,8 @@ public class RistrettoDeoptimizationSupport {
             if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
                 logger().string("[buf/deopt] create interp frame for method=").string(interpreterMethod.toString()).newline();
             }
-            InterpreterFrame interpreterFrame = createInterpreterFrameFromCompiledFrame(interpreterMethod, compiledFrame, deoptimizer);
-            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, interpreterMethod, interpreterFrame, frameBefore);
+            InterpreterFrame reconstructedFrame = createInterpreterFrameFromCompiledFrame(interpreterMethod, compiledFrame, deoptimizer);
+            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, interpreterMethod, reconstructedFrame, frameBefore);
             frameBefore = currentFrame;
 
             // iterate inlining (caller) chain in deoptimized physical frame and associated compiler
@@ -286,17 +286,17 @@ public class RistrettoDeoptimizationSupport {
     }
 
     /**
-     * Creates one reconstructed interpreter frame and links it to the previously built inner callee
-     * frame. Only the physical top frame records a pending compiled return kind because only that
-     * frame can still own unread GP/FP return registers when deoptimization starts.
+     * Creates one virtual interpreter frame and links it to the previously built inner callee frame.
+     * Only the physical top frame records a pending compiled return kind because only that frame can
+     * still own unread GP/FP return registers when deoptimization starts.
      */
     private static RistrettoVirtualInterpreterFrame createVirtualInterpreterFrame(FrameInfoQueryResult compiledFrame, InterpreterResolvedJavaMethod interpreterMethod,
-                    InterpreterFrame interpreterFrame, RistrettoVirtualInterpreterFrame calleeFrame) {
+                    InterpreterFrame reconstructedFrame, RistrettoVirtualInterpreterFrame calleeFrame) {
         int currentBci = compiledFrame.getBci();
         int targetBci = computeDeoptTargetBci(interpreterMethod, compiledFrame);
         JavaKind compiledReturnKind = calleeFrame == null ? resolvePendingTopFrameReturnKind(interpreterMethod, compiledFrame) : JavaKind.Illegal;
 
-        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, interpreterFrame, interpreterMethod, currentBci,
+        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, reconstructedFrame, interpreterMethod, currentBci,
                         targetBci, compiledFrame.getStackState(), compiledFrame.getNumStack(), compiledReturnKind, calleeFrame);
         if (calleeFrame != null) {
             calleeFrame.setCaller(currentFrame);
@@ -466,7 +466,7 @@ public class RistrettoDeoptimizationSupport {
         }
 
         VMError.guarantee(interpreterMethod.getMaxLocals() == compiledFrame.getNumLocals());
-        Object[] relockedMonitorObjects = relockInterpreterObjects(compiledFrame, deoptState);
+        Object[] heldMonitorObjects = collectHeldMonitorObjects(compiledFrame, deoptState);
         if (!interpreterMethod.hasBytecodes()) {
             throw VMError.shouldNotReachHere("Ristretto deoptimization requires an interpreter bytecode body for " + interpreterMethod);
         }
@@ -516,30 +516,87 @@ public class RistrettoDeoptimizationSupport {
                 default -> VMError.shouldNotReachHere("createInterpreterFrameFromCompiledFrame: kind not implemented yet: " + value.getJavaKind());
             }
         }
-        if (relockedMonitorObjects != null) {
-            for (int lockIdx = 0; lockIdx < relockedMonitorObjects.length; lockIdx++) {
-                Object lockObject = relockedMonitorObjects[lockIdx];
-                if (lockObject == null) {
-                    if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-                        int lockSlotIndex = numLocals + numStack + lockIdx;
-                        logger().string("[buf/deopt] slot=").signed(lockSlotIndex).string(" is illegal").newline();
-                    }
-                    continue;
-                }
-                InterpreterToVM.registerHeldMonitor(interpreterFrame, lockObject);
-            }
-        }
+        int targetBci = computeDeoptTargetBci(interpreterMethod, compiledFrame);
+        registerDeoptimizedHeldMonitors(interpreterMethod, compiledFrame, targetBci, heldMonitorObjects, interpreterFrame);
 
         return interpreterFrame;
     }
 
+    private static void registerDeoptimizedHeldMonitors(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame, int targetBci, Object[] heldMonitorObjects,
+                    InterpreterFrame interpreterFrame) {
+        validateSynchronizedMethodLock(interpreterMethod, compiledFrame, targetBci, heldMonitorObjects);
+        if (heldMonitorObjects == null) {
+            return;
+        }
+        int numLocals = compiledFrame.getNumLocals();
+        int numStack = compiledFrame.getNumStack();
+        for (int lockIdx = 0; lockIdx < heldMonitorObjects.length; lockIdx++) {
+            Object lockObject = heldMonitorObjects[lockIdx];
+            if (lockObject == null) {
+                if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                    int lockSlotIndex = numLocals + numStack + lockIdx;
+                    logger().string("[buf/deopt] slot=").signed(lockSlotIndex).string(" is illegal").newline();
+                }
+                continue;
+            }
+            InterpreterToVM.registerHeldMonitor(interpreterFrame, lockObject);
+        }
+    }
+
     /**
-     * Acquires all monitors whose synchronization state is not reflected in the deoptimized frame.
-     * During optimization, objects may be virtualized and later materialized again, and monitor
-     * state may also be elided for objects that were never virtualized. When deoptimization
-     * reconstructs execution, that missing monitor state must be reconstructed by relocking.
+     * Validates the method monitor that compiled code already owned for a deopt-resumed synchronized
+     * method.
+     *
+     * For normal interpreter entry, the monitor object is simply the class mirror for static
+     * methods or local 0 for instance methods. After deoptimization, an instance method can resume
+     * at a BCI where local 0 is dead, even though the synchronized-method monitor is still held and
+     * represented in the frame-state lock slots. Graal pushes the method monitor before parsing the
+     * bytecodes, so it is the outermost lock and therefore lock slot 0; nested bytecode monitors are
+     * appended after it. The encoded {@link FrameInfoQueryResult} does not retain the original
+     * {@code MonitorIdNode}, so this first lock slot is the Ristretto deoptimization ABI for the
+     * synchronized-method monitor. Static synchronized methods validate the object identity directly
+     * against the declaring class mirror. Instance methods intentionally do not validate against local
+     * 0: valid bytecode can overwrite the receiver local after the method monitor is acquired, and
+     * normal optimization can also make local 0 dead at the resume BCI. For instance methods, lock slot
+     * 0 is therefore the deoptimization ABI for the method monitor.
      */
-    private static Object[] relockInterpreterObjects(FrameInfoQueryResult sourceFrame, DeoptState deoptState) {
+    private static void validateSynchronizedMethodLock(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame, int targetBci, Object[] heldMonitorObjects) {
+        if (!interpreterMethod.isSynchronized()) {
+            return;
+        }
+        if (compiledFrame.getNumLocks() == 0) {
+            InterpreterUtil.guarantee(targetBci == jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI,
+                            "Missing synchronized method monitor in deoptimized frame-state locks for method %s at target BCI %s with lock count %s.",
+                            interpreterMethod, targetBci, compiledFrame.getNumLocks());
+            return;
+        }
+        InterpreterUtil.guarantee(heldMonitorObjects != null && heldMonitorObjects.length > 0 && heldMonitorObjects[0] != null,
+                        "Missing synchronized method monitor in deoptimized frame-state locks for method %s at target BCI %s with lock count %s.",
+                        interpreterMethod, targetBci, compiledFrame.getNumLocks());
+        int methodMonitorSlot = compiledFrame.getNumLocals() + compiledFrame.getNumStack();
+        InterpreterUtil.guarantee(methodMonitorSlot < compiledFrame.getValueInfos().length && compiledFrame.getValueInfos()[methodMonitorSlot].getKind() == JavaKind.Object,
+                        "Unexpected synchronized method monitor slot in deoptimized frame-state locks for method %s at target BCI %s with lock count %s.",
+                        interpreterMethod, targetBci, compiledFrame.getNumLocks());
+        if (interpreterMethod.isStatic()) {
+            Object staticMethodLock = interpreterMethod.getDeclaringClass().getJavaClass();
+            VMError.guarantee(heldMonitorObjects[0] == staticMethodLock,
+                            "Unexpected static synchronized method monitor in deoptimized frame-state locks.");
+            VMError.guarantee(Thread.holdsLock(heldMonitorObjects[0]),
+                            "Static synchronized method monitor is not owned by the current thread during deoptimization.");
+            return;
+        }
+
+        VMError.guarantee(Thread.holdsLock(heldMonitorObjects[0]),
+                        "Instance synchronized method monitor is not owned by the current thread during deoptimization.");
+    }
+
+    /**
+     * Collects the frame-state monitors that are held at the deopt point. During optimization,
+     * objects may be virtualized and later materialized again, and monitor state may also be elided
+     * for objects that were never virtualized. Only eliminated monitors need an explicit relock here;
+     * live monitors are still owned and are registered with the interpreter frame by the caller.
+     */
+    private static Object[] collectHeldMonitorObjects(FrameInfoQueryResult sourceFrame, DeoptState deoptState) {
         int numLocks = sourceFrame.getNumLocks();
         if (numLocks == 0) {
             return null;

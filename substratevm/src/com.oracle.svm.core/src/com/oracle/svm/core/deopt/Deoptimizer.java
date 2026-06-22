@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -950,7 +950,8 @@ public final class Deoptimizer {
 
         if (SubstrateOptions.useRistretto() && deoptFrame.getTargetTier() == DeoptimizedFrame.DeoptTargetTier.Interpreter) {
             VMError.guarantee(SubstrateOptions.useRistretto(), "Interpreter deopt target requires Ristretto");
-            return InterpreterSupport.singleton().continueInterpreterDeoptimization(deoptFrame, originalStackPointer, gpReturnValue, fpReturnValue, hasException);
+            UnsignedWord interpreterGpReturnValue = gpReturnValueObject == null ? gpReturnValue : Word.zero();
+            return InterpreterSupport.singleton().continueInterpreterDeoptimization(deoptFrame, originalStackPointer, interpreterGpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
         }
 
         VMError.guarantee(deoptFrame.getTargetTier() == DeoptTargetTier.BaselineCompiledCode && deoptFrame instanceof DeoptimizedBaselineCompiledFrame,
@@ -1046,7 +1047,7 @@ public final class Deoptimizer {
 
             if (SubstrateOptions.useRistretto() && frame.getTargetTier() == DeoptimizedFrame.DeoptTargetTier.Interpreter) {
                 VMError.guarantee(SubstrateOptions.useRistretto(), "Interpreter deopt target requires Ristretto");
-                return InterpreterSupport.singleton().continueInterpreterDeoptimization(frame, originalStackPointer, gpReturnValue, fpReturnValue, false);
+                return InterpreterSupport.singleton().continueInterpreterDeoptimization(frame, originalStackPointer, gpReturnValue, fpReturnValue, false, null);
             }
 
             VMError.guarantee(frame.getTargetTier() == DeoptTargetTier.BaselineCompiledCode && frame instanceof DeoptimizedBaselineCompiledFrame,
@@ -1143,21 +1144,24 @@ public final class Deoptimizer {
             return;
         }
 
-        FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
-
-        CFunctionPointer lazyStub = getLazyDeoptStub(frameInfo, pc, ignoreNonDeoptimizable);
+        CFunctionPointer lazyStub = getLazyDeoptStub(sourceChunk, pc, ignoreNonDeoptimizable);
         if (lazyStub.isNull()) {
             return;
         }
         installLazyDeoptStubReturnAddress(lazyStub, deoptState.sourceSp, deoptState.targetThread);
     }
 
-    private static CFunctionPointer getLazyDeoptStub(FrameInfoQueryResult frameInfo, CodePointer pc, boolean ignoreNonDeoptimizable) {
-        SharedRuntimeMethod interpreterDeoptTargetMethod = getInstalledCodeInterpreterDeoptTargetMethod(pc);
-        if (interpreterDeoptTargetMethod != null) {
-            return selectLazyDeoptStub(interpreterDeoptTargetMethod.getSignature().getReturnKind().isObject());
+    private static CFunctionPointer getLazyDeoptStub(CodeInfoQueryResult sourceChunk, CodePointer pc, boolean ignoreNonDeoptimizable) {
+        if (hasInstalledCodeInterpreterDeoptTarget(pc)) {
+            /*
+             * Runtime-compiled Ristretto code has no AOT deopt target method entry, but its
+             * CodeInfo still records whether this deopt entry leaves an object in the GP return
+             * register. The compiled method signature is too broad for non-call deopt entries.
+             */
+            return selectLazyDeoptStub(sourceChunk.getDeoptReturnValueIsObject());
         }
 
+        FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
         if (!hasAOTDeoptTargetMethod(frameInfo)) {
             if (ignoreNonDeoptimizable) {
                 return Word.nullPointer();
@@ -1169,16 +1173,16 @@ public final class Deoptimizer {
         return selectLazyDeoptStub(targetInfo.getDeoptReturnValueIsObject());
     }
 
-    private static SharedRuntimeMethod getInstalledCodeInterpreterDeoptTargetMethod(CodePointer pc) {
+    private static boolean hasInstalledCodeInterpreterDeoptTarget(CodePointer pc) {
         if (!SubstrateOptions.useRistretto()) {
-            return null;
+            return false;
         }
 
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(pc);
         if (installedCode != null && installedCode.getMethod() instanceof SharedRuntimeMethod sharedMethod && sharedMethod.getDeoptTargetTier() == DeoptTargetTier.Interpreter) {
-            return sharedMethod;
+            return true;
         }
-        return null;
+        return false;
     }
 
     private static CFunctionPointer selectLazyDeoptStub(boolean objectReturnValueIsObject) {
@@ -1188,7 +1192,7 @@ public final class Deoptimizer {
     }
 
     private DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        if (!hasAOTDeoptTargetMethod(sourceChunk.getFrameInfo()) && getInstalledCodeInterpreterDeoptTargetMethod(pc) == null) {
+        if (!hasAOTDeoptTargetMethod(sourceChunk.getFrameInfo()) && !hasInstalledCodeInterpreterDeoptTarget(pc)) {
             if (ignoreNonDeoptimizable) {
                 return null;
             } else {

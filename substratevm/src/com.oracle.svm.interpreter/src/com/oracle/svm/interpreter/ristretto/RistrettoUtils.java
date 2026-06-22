@@ -73,6 +73,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethodHandleAccessProv
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoStampProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
 import com.oracle.svm.interpreter.ristretto.verify.RistrettoGraphJVMCITypeVerifier;
 import com.oracle.svm.shared.util.VMError;
@@ -490,13 +491,10 @@ public class RistrettoUtils {
                         }
                         assert graph != null;
                         PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(entryBCI);
-                        suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph), options);
+                        suites = preparePrivateSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph), options);
                         if (TestingBackdoor.shouldRememberGraph()) {
-                            // override the suites with graph capturing phases
-                            suites = suites.copy();
                             TestingBackdoor.installLastGraphThieves(suites, graph);
                         }
-                        assert assertVerifyRistrettoJVMCI(suites);
                         graphBuilderSuite = ristrettoGraphBuilderSuite;
                         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After parsing ");
                         OptimisticOptimizations optimisticOpts = getOptimisticOptimizations(ristrettoMethod, graph.getProfileProvider(), debug.getOptions());
@@ -517,6 +515,7 @@ public class RistrettoUtils {
                         SubstrateReplacements substrateReplacements = (SubstrateReplacements) providers.getReplacements();
 
                         providers = providers.copyWith(new RistrettoReplacements(substrateReplacements));
+                        providers = copyWithRistrettoStampProvider(providers);
 
                         substrateReplacements.setProviders(providers);
 
@@ -556,35 +555,50 @@ public class RistrettoUtils {
     }
 
     private static boolean assertVerifyRistrettoJVMCI(Suites suites) {
-        insertVerifierBeforeLowering(suites.getHighTier(), HighTierLoweringPhase.class);
-        suites.getHighTier().appendPhase(new RistrettoGraphJVMCITypeVerifier());
-        insertVerifierBeforeLowering(suites.getMidTier(), MidTierLoweringPhase.class);
-        suites.getMidTier().appendPhase(new RistrettoGraphJVMCITypeVerifier());
-        insertVerifierBeforeLowering(suites.getLowTier(), LowTierLoweringPhase.class);
-        suites.getLowTier().appendPhase(new RistrettoGraphJVMCITypeVerifier());
+        insertVerifierBeforeLowering(suites.getHighTier(), HighTierLoweringPhase.class, true);
+        suites.getHighTier().appendPhase(new RistrettoGraphJVMCITypeVerifier(true));
+        insertVerifierBeforeLowering(suites.getMidTier(), MidTierLoweringPhase.class, false);
+        suites.getMidTier().appendPhase(new RistrettoGraphJVMCITypeVerifier(true));
+        insertVerifierBeforeLowering(suites.getLowTier(), LowTierLoweringPhase.class, false);
+        suites.getLowTier().appendPhase(new RistrettoGraphJVMCITypeVerifier(true));
         return true;
     }
 
-    private static <C extends CoreProviders> void insertVerifierBeforeLowering(PhaseSuite<C> suite, Class<? extends LoweringPhase> loweringPhase) {
+    private static Providers copyWithRistrettoStampProvider(Providers providers) {
+        return new Providers(providers.getMetaAccess(), providers.getCodeCache(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getForeignCalls(),
+                        providers.getLowerer(), providers.getReplacements(), new RistrettoStampProvider(providers.getStampProvider()), providers.getPlatformConfigurationProvider(),
+                        providers.getMetaAccessExtensionProvider(), providers.getSnippetReflection(), providers.getWordTypes(), providers.getLoopsDataProvider());
+    }
+
+    private static <C extends CoreProviders> void insertVerifierBeforeLowering(PhaseSuite<C> suite, Class<? extends LoweringPhase> loweringPhase, boolean verifyStamps) {
+        insertVerifierBeforePhase(suite, loweringPhase, verifyStamps);
+    }
+
+    private static <C extends CoreProviders> void insertVerifierBeforePhase(PhaseSuite<C> suite, Class<?> phaseClass, boolean verifyStamps) {
         List<? extends BasePhase<? super C>> phases = suite.getPhases();
         for (int i = 0; i < phases.size(); i++) {
             BasePhase<? super C> phase = phases.get(i);
-            if (loweringPhase.isInstance(phase)) {
-                suite.insertAtIndex(i, new RistrettoGraphJVMCITypeVerifier());
+            if (phaseClass.isInstance(phase)) {
+                suite.insertAtIndex(i, new RistrettoGraphJVMCITypeVerifier(verifyStamps));
                 return;
             }
         }
     }
 
-    private static Suites adaptSuitesForRistretto(Suites suites, OptionValues options) {
+    private static Suites preparePrivateSuitesForRistretto(Suites suites, OptionValues options) {
+        /*
+         * RuntimeCompilationSupport hands out shared suite instances. Every Ristretto-specific
+         * adapter, graph thief, and verifier phase must be installed only on this private copy so
+         * repeated Ristretto compilations cannot accumulate phases globally.
+         */
         Suites effectiveSuites = suites.copy();
         if (ImageSingletons.contains(RistrettoSuitesAdapter.class)) {
             ImageSingletons.lookup(RistrettoSuitesAdapter.class).adaptSuites(effectiveSuites, options);
         }
         if (!RistrettoOptions.useDeoptimization()) {
-            effectiveSuites = effectiveSuites.copy();
             effectiveSuites.getLowTier().appendPhase(new RistrettoNoDeoptPhase());
         }
+        assert assertVerifyRistrettoJVMCI(effectiveSuites);
         return effectiveSuites;
     }
 

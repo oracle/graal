@@ -33,6 +33,7 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -100,6 +101,8 @@ public class RistrettoReplacements extends DelegatingReplacements<SubstrateRepla
                     return rField;
                 }
                 throw GraalError.shouldNotReachHere("Cannot find iField for " + substrateField.getName());
+            } else if (o instanceof Stamp stamp) {
+                return RistrettoStampUtils.normalizeStamp(stamp);
             }
             return o;
         };

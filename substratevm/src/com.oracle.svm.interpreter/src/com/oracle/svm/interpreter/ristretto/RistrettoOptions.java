@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -70,6 +71,18 @@ public class RistrettoOptions {
 
     @Option(help = "Print stack traces of compiler exceptions.")//
     public static final RuntimeOptionKey<Boolean> JITPrintExceptions = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Periodically dump Ristretto compiler statistics to stdout.")//
+    public static final HostedOptionKey<Boolean> JITTraceCompilerStatistics = new HostedOptionKey<>(false);
+
+    @Option(help = "Period, in seconds, between Ristretto compiler statistics dumps.")//
+    public static final HostedOptionKey<Integer> JITTraceCompilerStatisticsPeriodSeconds = new HostedOptionKey<>(60, RistrettoOptions::validateCompilerStatisticsPeriod);
+
+    private static void validateCompilerStatisticsPeriod(HostedOptionKey<Integer> option) {
+        if (option.getValue() <= 0) {
+            throw UserError.invalidOptionValue(option, option.getValue(), "The value must be positive.");
+        }
+    }
 
     public static int getJITCompilerOSRBackedgeThreshold() {
         return JITCompilerOSRBackedgeThreshold.getValue();

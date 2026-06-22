@@ -109,6 +109,9 @@ public final class RistrettoField extends SubstrateField {
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.getOrCreate(iType);
         }
+        if (fieldType instanceof SubstrateType sType) {
+            return RistrettoUtils.toRType(sType);
+        }
         return fieldType;
     }
 
