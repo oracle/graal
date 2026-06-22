@@ -1223,6 +1223,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
                 ],
@@ -1284,7 +1285,8 @@ suite = {
                     "sun.security.jca",
                 ],
                 "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ]
             },
             "checkstyle": "com.oracle.svm.test",
@@ -1467,6 +1469,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
                 ],

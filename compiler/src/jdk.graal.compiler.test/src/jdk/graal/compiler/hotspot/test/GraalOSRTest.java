@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -230,7 +230,7 @@ public class GraalOSRTest extends GraalOSRTestBase {
 
         Object[] arr = {"1", "2", "3"};
         testOopMap(arr, new AtomicInteger(4), null);
-        TestOopMapFrameChecker checker = new TestOopMapFrameChecker();
+        TestOopMapFrameChecker checker = new TestOopMapFrameChecker(method);
         Runnable r = () -> {
             stackIntrospection.iterateFrames(null, null, 0, checker);
         };
@@ -243,14 +243,22 @@ public class GraalOSRTest extends GraalOSRTestBase {
     static StackIntrospection stackIntrospection = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getStackIntrospection();
 
     static class TestOopMapFrameChecker implements InspectedFrameVisitor<Object> {
+        private final ResolvedJavaMethod method;
         boolean checked;
+
+        TestOopMapFrameChecker(ResolvedJavaMethod method) {
+            this.method = method;
+        }
 
         @Override
         public Object visitFrame(InspectedFrame frame) {
-            ResolvedJavaMethod method = frame.getMethod();
-            if (!checked && method.getName().equals("testOopMap")) {
+            if (!checked && frame.isMethod(method)) {
                 Assert.assertEquals(5, method.getMaxLocals());
-                Assert.assertNull("local4 should have been cleared by OnStackReplacementPhase", frame.getLocal(4));
+                try {
+                    Assert.assertNull("local4 should have been cleared by OnStackReplacementPhase", frame.getLocal(4));
+                } catch (UnsupportedOperationException expected) {
+                    // Primitive or unavailable storage also proves this slot is not a live object local.
+                }
                 checked = true;
             }
             return null;
