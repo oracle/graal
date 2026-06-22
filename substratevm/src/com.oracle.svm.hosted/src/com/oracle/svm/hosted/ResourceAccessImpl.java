@@ -29,7 +29,8 @@ import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 import java.util.ResourceBundle;
 
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
 
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
@@ -67,11 +68,16 @@ public final class ResourceAccessImpl implements ResourceAccess, JVMCIResourceAc
 
     @Override
     public void register(AccessCondition condition, ResolvedJavaModule module, String pattern) {
-        throw VMError.unimplemented("JVMCI resource registration is not implemented yet.");
+        // TODO GR-71805: remove this fallback once resource registration accepts JVMCI modules.
+        Module reflectionModule = module == null ? null : ReflectionUtil.readField(module.getClass(), "module", module);
+        register(condition, reflectionModule, pattern);
     }
 
     @Override
     public void registerResourceBundle(AccessCondition condition, JavaConstant... bundles) {
-        throw VMError.unimplemented("JVMCI resource bundle registration is not implemented yet.");
+        for (JavaConstant bundle : bundles) {
+            // TODO GR-71805: register JVMCI resource bundles without materializing ResourceBundle.
+            registerResourceBundle(condition, GuestAccess.get().getSnippetReflection().asObject(ResourceBundle.class, bundle));
+        }
     }
 }
