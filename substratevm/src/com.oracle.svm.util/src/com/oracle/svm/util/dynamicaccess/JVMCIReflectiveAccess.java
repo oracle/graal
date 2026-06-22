@@ -57,7 +57,7 @@ public interface JVMCIReflectiveAccess {
     /**
      * See {@code ReflectiveAccess#registerProxy(AccessCondition, Class...)}.
      */
-    Class<?> registerProxy(AccessCondition condition, ResolvedJavaType... interfaces);
+    ResolvedJavaType registerProxy(AccessCondition condition, ResolvedJavaType... interfaces);
 
     /**
      * See {@code ReflectiveAccess#registerForUnsafeAllocation(AccessCondition, Class...)}.

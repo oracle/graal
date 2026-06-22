@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.hosted.ReflectiveAccessImpl;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -89,12 +90,13 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
     }
 
     @Override
-    public Class<?> registerProxy(AccessCondition condition, ResolvedJavaType... interfaces) {
+    public ResolvedJavaType registerProxy(AccessCondition condition, ResolvedJavaType... interfaces) {
         List<Class<?>> reflectionInterfaces = new ArrayList<>();
         for (ResolvedJavaType intf : interfaces) {
             reflectionInterfaces.add(OriginalClassProvider.getJavaClass(intf));
         }
-        return rdaInstance.registerProxy(condition, reflectionInterfaces.toArray(Class[]::new));
+        Class<?> proxy = rdaInstance.registerProxy(condition, reflectionInterfaces.toArray(Class[]::new));
+        return GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(proxy);
     }
 
     @Override
