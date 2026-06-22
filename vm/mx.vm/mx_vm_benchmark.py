@@ -141,6 +141,34 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def get_vm_registry(self):
         return mx_benchmark.java_vm_registry
 
+    def _add_vm_info_dimensions(self, bmSuiteArgs, vm, dims):
+        try:
+            prebuilt_args, _ = mx_benchmark.get_parser("prebuilt_vm_parser").parse_known_args(bmSuiteArgs)
+            if hasattr(vm, 'set_run_on_java_home'):
+                vm.set_run_on_java_home(prebuilt_args.prebuilt_vm)
+            vm_args = self.vmArgs(bmSuiteArgs)
+            vm.extract_vm_info(vm_args)
+            dimension_args = vm.post_process_command_line_args(vm_args) if hasattr(vm, 'post_process_command_line_args') else vm_args
+            vm_dims = vm.dimensions('.', dimension_args, 0, '') if hasattr(vm, 'dimensions') else {}
+        except SystemExit as e:
+            mx.warn(f"Could not extract VM info for file-size benchmark: {e}")
+            vm_dims = {}
+        except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as e:
+            mx.warn(f"Could not extract VM info for file-size benchmark: {e}")
+            vm_dims = {}
+
+        for key, value in vm_dims.items():
+            dims.setdefault(key, value)
+
+        if "platform.jdk-major-version" not in dims:
+            mx.warn("Could not determine JDK version for file-size benchmark; reporting fallback JDK dimensions")
+            for key, value in {
+                "platform.jdk-version-number": "",
+                "platform.jdk-major-version": 0,
+                "platform.jdk-version-string": "",
+            }.items():
+                dims.setdefault(key, value)
+
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         host_vm = None
@@ -156,6 +184,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             "guest-vm": name if host_vm else "none",
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
+        self._add_vm_info_dimensions(bmSuiteArgs, vm, dims)
 
         def get_size_message(image_name, image_location):
             return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(image_location), image_location)
