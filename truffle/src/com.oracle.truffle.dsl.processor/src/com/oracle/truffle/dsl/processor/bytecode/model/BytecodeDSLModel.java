@@ -65,6 +65,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel.Binding;
@@ -86,6 +87,9 @@ import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public class BytecodeDSLModel extends Template implements PrettyPrintable {
+
+    // Limit the number of stack values supported by rewrite rules.
+    private static final int MAX_STACK_VALUE_REWRITE_COUNT = 8;
 
     private final ProcessorContext context;
     public final TypeElement templateType;
@@ -696,7 +700,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         // load.constant _, store.local x, clear.local x -> clear.local x
         rules.add(rule(delete(p(loadConstantInstruction), pStoreLocal("x")), identity(p(clearLocalInstruction, "x"))));
 
-        for (int stackValueCount = 1; stackValueCount <= 8; stackValueCount++) {
+        for (int stackValueCount = 1; stackValueCount <= MAX_STACK_VALUE_REWRITE_COUNT; stackValueCount++) {
             // Elide cleanup instructions when returning from a block with stack values.
             // store.stackvalue k, pop * (k - 1), return -> return
             List<InstructionPatternModel> cleanup = new ArrayList<>(stackValueCount);
@@ -707,7 +711,126 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             rules.add(rule(delete(cleanup.toArray(InstructionPatternModel[]::new)), identity(p(returnInstruction))));
         }
 
+        rules.addAll(computeConsumeThenPopStackValueRewriteRules());
+
         return rules.toArray(InstructionRewriteRuleModel[]::new);
+    }
+
+    /**
+     * If instruction X consumes a contiguous top-of-stack range of stack values and then all stack
+     * values are subsequently cleared, skip the loads and pops and have X consume the operands directly.
+     */
+    private List<InstructionRewriteRuleModel> computeConsumeThenPopStackValueRewriteRules() {
+        List<InstructionRewriteRuleModel> rules = new ArrayList<>();
+        for (InstructionModel instruction : getInstructions()) {
+            if (instruction.isQuickening() || instruction.isInstrumentation()) {
+                continue;
+            } else if (instruction.signature.isVariadic()) {
+                // Variadic operands cannot be bound with stack values.
+                continue;
+            }
+            switch (instruction.kind) {
+                case STORE_LOCAL, CUSTOM -> {
+                    int operandCount = instruction.signature.dynamicOperandCount();
+                    if (operandCount == 0 || MAX_STACK_VALUE_REWRITE_COUNT < operandCount) {
+                        // Instruction must take between 1 and MAX_STACK_VALUE_REWRITE_COUNT operands.
+                        continue;
+                    }
+                }
+                default -> {
+                    // The remaining instructions that consume values involve control flow or are otherwise
+                    // poor candidates for this rewrite rule.
+                    continue;
+                }
+            }
+
+            RewriteSection xSection;
+            if (instruction.hasChildBciImmediates()) {
+                // If X has child BCIs, they need to be remapped to -1.
+                List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
+                ImmediatePattern[] lhsImmediates = new ImmediatePattern[encodedImmediates.size()];
+                ImmediatePattern[] rhsImmediates = new ImmediatePattern[encodedImmediates.size()];
+                for (int i = 0; i < lhsImmediates.length; i++) {
+                    if (instruction.isChildBciImmediate(encodedImmediates.get(i))) {
+                        lhsImmediates[i] = new Wildcard();
+                        rhsImmediates[i] = lit(-1);
+                    } else {
+                        lhsImmediates[i] = rhsImmediates[i] = new Binding("i" + i);
+                    }
+                }
+                xSection = replace(new InstructionPatternModel(instruction, lhsImmediates), new InstructionPatternModel(instruction, rhsImmediates));
+            } else {
+                xSection = identity(pBindAllImmediates(instruction, "i"));
+            }
+
+            int n = instruction.signature.dynamicOperandCount();
+            if (instruction.signature.isVoid()) {
+                // When X consumes the top n <= k stack values, the pattern is:
+                // load.stackvalue(n - 1) * n, X, pop * k -> X, pop * (k - n)
+                // Removing trailing pops on the LHS and RHS, this simplifies to one rule:
+                // load.stackvalue(n - 1) * n, X, pop * n -> X
+                rules.add(rule(delete(loadTopStackValues(n)), xSection, delete(pops(n))));
+            } else {
+                // When X consumes all n == k stack values, the pattern is:
+                // load.stackvalue(n - 1) * n, X, store.stackvalue(n), pop * (n - 1) -> X
+                rules.add(rule(delete(loadTopStackValues(n)), xSection, delete(storeStackValueAndPop(n))));
+
+                for (int k = n + 1; k <= MAX_STACK_VALUE_REWRITE_COUNT; k++) {
+                    // When X consumes n < k stack values, the pattern is:
+                    // load.stackvalue(n - 1) * n, X, store.stackvalue(k), pop * (k - 1)
+                    // -> X, store.stackvalue(k - n), pop * (k - n - 1)
+                    // Note: keep the trailing pops because removing them causes ambiguity with
+                    // the current DFA implementation.
+                    List<RewriteSection> sections = new ArrayList<>();
+                    sections.add(delete(loadTopStackValues(n)));
+                    sections.add(xSection);
+                    sections.add(replace(pStoreStackValue(k), pStoreStackValue(k - n)));
+                    sections.add(delete(pops(n)));
+                    if (k - n - 1 != 0) {
+                        sections.add(identity(pops(k - n - 1, "p")));
+                    }
+                    rules.add(rule(sections.toArray(RewriteSection[]::new)));
+                }
+            }
+        }
+        return rules;
+    }
+
+    /**
+     * Generates a pattern sequence that loads the top {@code n} stack values.
+     */
+    private InstructionPatternModel[] loadTopStackValues(int n) {
+        InstructionPatternModel[] result = new InstructionPatternModel[n];
+        for (int i = 0; i < result.length; i++) {
+            // Note: the same offset is used in each pattern because the stack grows from prior loads.
+            result[i] = pLoadStackValue(n - 1);
+        }
+        return result;
+    }
+
+    private InstructionPatternModel[] storeStackValueAndPop(int stackValueCount) {
+        InstructionPatternModel[] result = new InstructionPatternModel[stackValueCount];
+        result[0] = pStoreStackValue(stackValueCount);
+        for (int i = 1; i < result.length; i++) {
+            result[i] = p(popInstruction);
+        }
+        return result;
+    }
+
+    private InstructionPatternModel[] pops(int count) {
+        InstructionPatternModel[] result = new InstructionPatternModel[count];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = p(popInstruction);
+        }
+        return result;
+    }
+
+    private InstructionPatternModel[] pops(int count, String bindingPrefix) {
+        InstructionPatternModel[] result = new InstructionPatternModel[count];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = pBindAllImmediates(popInstruction, bindingPrefix + i + "_");
+        }
+        return result;
     }
 
     private static InstructionRewriteRuleModel rule(RewriteSection... sections) {
@@ -715,11 +838,15 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     private static RewriteSection delete(InstructionPatternModel... patterns) {
-        return new RewriteSection(RewriteSectionKind.DELETE, patterns);
+        return new RewriteSection(RewriteSectionKind.DELETE, patterns, null);
     }
 
     private static RewriteSection identity(InstructionPatternModel... patterns) {
-        return new RewriteSection(RewriteSectionKind.IDENTITY, patterns);
+        return new RewriteSection(RewriteSectionKind.IDENTITY, patterns, null);
+    }
+
+    private static RewriteSection replace(InstructionPatternModel pattern, InstructionPatternModel replacementPattern) {
+        return new RewriteSection(RewriteSectionKind.REPLACE, new InstructionPatternModel[]{pattern}, new InstructionPatternModel[]{replacementPattern});
     }
 
     private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {
@@ -731,6 +858,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             finalImmediates = parseImmediateBindings(immediates);
         }
         return new InstructionPatternModel(instruction, finalImmediates);
+    }
+
+    /**
+     * Create a pattern to match an instruction. Bind all of its immediates so this instruction can be written to the RHS.
+     */
+    private static InstructionPatternModel pBindAllImmediates(InstructionModel instruction, String bindingPrefix) {
+        ImmediatePattern[] immediates = new ImmediatePattern[instruction.getEncodedImmediates().size()];
+        for (int i = 0; i < immediates.length; i++) {
+            immediates[i] = new Binding(bindingPrefix + i);
+        }
+        return new InstructionPatternModel(instruction, immediates);
     }
 
     private static ImmediatePattern lit(long value) {
@@ -762,6 +900,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         ImmediatePattern[] immediates = createWildcards(storeLocalOperation.instruction().getEncodedImmediates().size());
         immediates[0] = new Binding(localBinding);
         return new InstructionPatternModel(storeLocalOperation.instruction(), immediates);
+    }
+
+    private InstructionPatternModel pStoreStackValue(long offset) {
+        return new InstructionPatternModel(storeStackValueInstruction, new ImmediatePattern[]{lit(offset)});
+    }
+
+    private InstructionPatternModel pLoadStackValue(long offset) {
+        if (offset == 0) {
+            return p(dupInstruction);
+        }
+        return new InstructionPatternModel(loadStackValueInstruction, new ImmediatePattern[]{lit(offset)});
     }
 
     public short getInstructionStartIndex() {

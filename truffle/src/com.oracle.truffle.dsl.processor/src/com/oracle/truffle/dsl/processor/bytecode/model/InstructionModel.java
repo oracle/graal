@@ -783,6 +783,14 @@ public final class InstructionModel implements PrettyPrintable {
         return OptionalInt.empty();
     }
 
+    public boolean isChildBciImmediate(InstructionImmediate immediate) {
+        return immediate.kind == ImmediateKind.RELATIVE_BYTECODE_INDEX && resolveDynamicOperandIndex(immediate).isPresent();
+    }
+
+    public boolean hasChildBciImmediates() {
+        return immediates.stream().anyMatch(this::isChildBciImmediate);
+    }
+
     public Optional<ConstantOperandModel> resolveConstantOperand(InstructionImmediate immediate) {
         return resolveOperand(immediate).filter(Operand::isConstant).map(Operand::constant);
     }
@@ -798,10 +806,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     public InstructionImmediate findChildBciImmediate(int dynamicOperandIndex) {
         for (InstructionImmediate immediate : immediates) {
-            if (immediate.kind != ImmediateKind.RELATIVE_BYTECODE_INDEX) {
-                continue;
-            }
-            if (resolveDynamicOperandIndex(immediate).orElse(-1) == dynamicOperandIndex) {
+            if (isChildBciImmediate(immediate) && resolveDynamicOperandIndex(immediate).orElseThrow() == dynamicOperandIndex) {
                 return immediate;
             }
         }

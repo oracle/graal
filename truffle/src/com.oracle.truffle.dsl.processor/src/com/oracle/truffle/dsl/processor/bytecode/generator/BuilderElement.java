@@ -105,6 +105,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ImmediateReference;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteKind;
@@ -6679,42 +6680,53 @@ final class BuilderElement extends AbstractElement {
 
             CodeTreeBuilder b = ex.createBuilder();
             b.lineComment("Before the rewritten range.");
-            b.startIf().string("bci <= startBci").end().startBlock();
+            b.startIf().string("bci < startBci").end().startBlock();
             b.startReturn().string("bci").end();
             b.end();
 
             int oldOffset = 0;
-            int deletedSoFar = 0;
+            int newOffset = 0;
             for (RewriteSection section : rewriteRule.getSections()) {
-                int sectionLength = getRewriteSectionLength(section);
-                int sectionEnd = oldOffset + sectionLength;
-                int rewrittenSectionStart = oldOffset - deletedSoFar;
-                String sectionText = formatRewriteSection(section);
+                int oldSectionLength = getRewriteSectionLength(section);
+                int newSectionLength = getRewriteSectionReplacementLength(section);
+                int oldSectionEnd = oldOffset + oldSectionLength;
+                String sectionText = formatRewriteSection(section.patterns());
                 switch (section.kind()) {
                     case IDENTITY -> {
                         b.lineComment("In `" + sectionText + "` (kept).");
-                        b.startIf().string("bci <= startBci + " + sectionEnd).end().startBlock();
-                        b.startReturn().string(formatBciOffset("bci", -deletedSoFar)).end();
+                        b.startIf().string("bci < startBci + " + oldSectionEnd).end().startBlock();
+                        b.startReturn().string(formatBciOffset("bci", newOffset - oldOffset)).end();
+                        b.end();
+                    }
+                    case REPLACE -> {
+                        String replacementText = formatRewriteSection(section.replacementPatterns());
+                        b.lineComment("At start of `" + sectionText + "` (replaced by `" + replacementText + "`).");
+                        b.startIf().string("bci == ", formatBciOffset("startBci", oldOffset)).end().startBlock();
+                        b.startReturn().string(formatBciOffset("startBci", newOffset)).end();
+                        b.end();
+                        b.lineComment("In `" + sectionText + "` (replaced by `" + replacementText + "`).");
+                        b.startIf().string("bci < startBci + " + oldSectionEnd).end().startBlock();
+                        b.startThrow().startNew(type(AssertionError.class)).doubleQuote("Cannot remap bci inside replaced rewrite section.").end().end();
                         b.end();
                     }
                     case DELETE -> {
                         b.lineComment("In `" + sectionText + "` (deleted).");
-                        b.startIf().string("bci <= startBci + " + sectionEnd).end().startBlock();
-                        b.startReturn().string(formatBciOffset("startBci", rewrittenSectionStart)).end();
+                        b.startIf().string("bci < startBci + " + oldSectionEnd).end().startBlock();
+                        b.startReturn().string(formatBciOffset("startBci", newOffset)).end();
                         b.end();
-                        deletedSoFar += sectionLength;
                     }
                 }
-                oldOffset = sectionEnd;
+                oldOffset += oldSectionLength;
+                newOffset += newSectionLength;
             }
 
             b.lineComment("After the rewritten range.");
-            b.startReturn().string(formatBciOffset("bci", -deletedSoFar)).end();
+            b.startReturn().string(formatBciOffset("bci", newOffset - oldOffset)).end();
             return ex;
         }
 
         private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState, int ruleIndex) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "applyRewriteRuleRule" + ruleIndex);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "applyRewriteRule" + ruleIndex);
             ex.addParameter(new CodeVariableElement(type(int.class), "oldInstructionBci"));
             CodeTreeBuilder doc = ex.createDocBuilder();
             doc.startJavadoc().string("Applies the following rewrite rule:").newLine();
@@ -6801,16 +6813,16 @@ final class BuilderElement extends AbstractElement {
                 b.startStatement().startCall(null, fixBuilderStateBeforeRewriteMethod).string("startBci").string(remapMethodReference).end(2);
                 int rewrittenLength = 0;
                 for (RewriteSection section : rewriteRule.getSections()) {
-                    int sectionLength = getRewriteSectionLength(section);
-                    switch (section.kind()) {
-                        case IDENTITY -> rewrittenLength += sectionLength;
-                        case DELETE -> {
-                            b.startStatement().startCall(null, recordStableBciDelta);
-                            b.string(formatBciOffset("startBci", rewrittenLength));
-                            b.string(Integer.toString(sectionLength));
-                            b.end(2);
-                        }
+                    int oldSectionLength = getRewriteSectionLength(section);
+                    int newSectionLength = getRewriteSectionReplacementLength(section);
+                    int delta = oldSectionLength - newSectionLength;
+                    if (delta != 0) {
+                        b.startStatement().startCall(null, recordStableBciDelta);
+                        b.string(formatBciOffset("startBci", rewrittenLength + newSectionLength));
+                        b.string(Integer.toString(delta));
+                        b.end(2);
                     }
+                    rewrittenLength += newSectionLength;
                 }
             } else {
                 throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getRewriteKind());
@@ -6850,14 +6862,15 @@ final class BuilderElement extends AbstractElement {
                 boolean isLastInstruction = i == rewriteRule.rhs.length - 1;
                 int emittedStackEffect = resolvedPattern.instruction().getStackEffect();
 
-                if (isLastInstruction) {
-                    if (rewriteRule.endsWithReturn() && rewriteRule.lhsStackEffect() != rewriteRule.rhsStackEffect()) {
-                        int valuesLeftOnStack = rewriteRule.rhsStackEffect() - rewriteRule.lhsStackEffect();
-                        emittedStackEffect += rewriteRule.lhsStackEffect() - rewriteRule.rhsStackEffect();
-                        b.lineComment("The rewrite leaves " + valuesLeftOnStack + " value(s) on the stack, which is OK since the sequence ends in a return.");
-                        b.lineComment("Use a stack effect of " + emittedStackEffect + " to restore the stack height expected by the builder.");
-                    }
-                    b.startReturn(); // return last instruction bci
+                if (isLastInstruction && rewriteRule.endsWithReturn() && rewriteRule.lhsStackEffect() != rewriteRule.rhsStackEffect()) {
+                    int valuesLeftOnStack = rewriteRule.rhsStackEffect() - rewriteRule.lhsStackEffect();
+                    emittedStackEffect -= valuesLeftOnStack;
+                    b.lineComment("The rewrite leaves " + valuesLeftOnStack + " value(s) on the stack, which is OK since the sequence ends in a return.");
+                    b.lineComment("Use a stack effect of " + emittedStackEffect + " to restore the stack height expected by the builder.");
+                }
+
+                if (isLastInstruction && rewriteRule.returnFinalInstructionBci()) {
+                    b.startReturn(); // return final instruction bci
                 } else {
                     b.startStatement();
                 }
@@ -6884,7 +6897,7 @@ final class BuilderElement extends AbstractElement {
 
                 b.end(); // return / statement
             }
-            if (rewriteRule.rhs.length == 0) {
+            if (!rewriteRule.returnFinalInstructionBci()) {
                 b.startReturn().string("-1").end();
             }
 
@@ -6892,20 +6905,32 @@ final class BuilderElement extends AbstractElement {
         }
 
         private static int getRewriteSectionLength(RewriteSection section) {
+            return getInstructionPatternLength(section.patterns());
+        }
+
+        private static int getRewriteSectionReplacementLength(RewriteSection section) {
+            return switch (section.kind()) {
+                case DELETE -> 0;
+                case IDENTITY -> getRewriteSectionLength(section);
+                case REPLACE -> getInstructionPatternLength(section.replacementPatterns());
+            };
+        }
+
+        private static int getInstructionPatternLength(InstructionPatternModel[] patterns) {
             int length = 0;
-            for (var pattern : section.patterns()) {
+            for (var pattern : patterns) {
                 length += pattern.instruction().getInstructionLength();
             }
             return length;
         }
 
-        private static String formatRewriteSection(RewriteSection section) {
+        private static String formatRewriteSection(InstructionPatternModel[] patterns) {
             StringBuilder result = new StringBuilder();
-            for (int i = 0; i < section.patterns().length; i++) {
+            for (int i = 0; i < patterns.length; i++) {
                 if (i != 0) {
                     result.append(' ');
                 }
-                result.append(section.patterns()[i]);
+                result.append(patterns[i]);
             }
             return result.toString();
         }

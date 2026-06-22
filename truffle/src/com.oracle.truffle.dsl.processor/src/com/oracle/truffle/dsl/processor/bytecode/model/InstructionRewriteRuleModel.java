@@ -63,18 +63,37 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     private final RewriteKind rewriteKind;
     private InstructionRewriterModel parent;
     private boolean endsWithReturn;
+    private boolean returnFinalInstructionBci;
 
     public enum RewriteSectionKind {
         DELETE,
-        IDENTITY
+        IDENTITY,
+        REPLACE
     }
 
-    public record RewriteSection(RewriteSectionKind kind, InstructionPatternModel[] patterns) {
+    public record RewriteSection(RewriteSectionKind kind, InstructionPatternModel[] patterns, InstructionPatternModel[] replacementPatterns) {
         public RewriteSection {
             Objects.requireNonNull(kind);
             Objects.requireNonNull(patterns);
             if (patterns.length == 0) {
                 throw new IllegalArgumentException("Rewrite sections must contain at least one instruction pattern.");
+            }
+            if (kind == RewriteSectionKind.REPLACE) {
+                if (replacementPatterns == null || replacementPatterns.length == 0) {
+                    throw new IllegalArgumentException("REPLACE sections must contain at least one replacement instruction pattern.");
+                }
+                /*
+                 * We currently only support a single instruction replacement for simplicity.
+                 * Multiple instructions will require checking for ambiguous bcis inside the
+                 * replaced range before applying a rewrite rule.
+                 */
+                if (patterns.length != 1 || replacementPatterns.length != 1) {
+                    throw new IllegalArgumentException("REPLACE sections currently support only one instruction replacing another.");
+                }
+            } else {
+                if (replacementPatterns != null) {
+                    throw new IllegalArgumentException("Unexpected replacement patterns for " + kind + " section.");
+                }
             }
         }
     }
@@ -183,7 +202,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
      */
     public InstructionRewriteRuleModel(InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern) {
         this.sections = rhsPattern.length == 0
-                        ? new RewriteSection[]{new RewriteSection(RewriteSectionKind.DELETE, lhsPattern.clone())}
+                        ? new RewriteSection[]{new RewriteSection(RewriteSectionKind.DELETE, lhsPattern.clone(), null)}
                         : new RewriteSection[0];
         // The test-only @GenerateInstructionRewriter codegen uses lhs/rhs directly.
         this.rewriteKind = null;
@@ -199,16 +218,8 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
          * subsequent occurrences become immediate constraints.
          */
         int offset = 0;
-        boolean lhsEndsWithReturn = false;
         for (int i = 0; i < lhsPattern.length; i++) {
             InstructionModel instruction = lhsPattern[i].instruction();
-            if (instruction.kind == InstructionModel.InstructionKind.RETURN) {
-                if (i != lhsPattern.length - 1) {
-                    throw new IllegalArgumentException("Return can only be the final instruction on the lhs of rewrite rule %s.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
-                }
-                lhsEndsWithReturn = true;
-            }
-
             List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
             ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
@@ -223,15 +234,8 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
          * either as literals or as bindings declared on the LHS.
          */
         offset = 0;
-        boolean rhsEndsWithReturn = false;
         for (int i = 0; i < rhsPattern.length; i++) {
             InstructionModel instruction = rhsPattern[i].instruction();
-            if (instruction.kind == InstructionModel.InstructionKind.RETURN) {
-                if (i != rhsPattern.length - 1) {
-                    throw new IllegalArgumentException("Return can only be the final instruction on the rhs of rewrite rule %s.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
-                }
-                rhsEndsWithReturn = true;
-            }
             List<InstructionImmediate> encodedImmediates = instruction.getEncodedImmediates();
             ResolvedImmediate[] immediates = new ResolvedImmediate[encodedImmediates.size()];
             for (int j = 0; j < immediates.length; j++) {
@@ -241,18 +245,39 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
             offset += instruction.getInstructionLength();
         }
 
-        if (lhsEndsWithReturn != rhsEndsWithReturn) {
+        /*
+         * Validate the well-formedness of the rewrite rule.
+         */
+        validateRewriteRuleSide(lhs, lhsPattern, rhsPattern, "lhs");
+        validateRewriteRuleSide(rhs, lhsPattern, rhsPattern, "rhs");
+
+        this.endsWithReturn = endsWithReturn(lhs);
+        if (this.endsWithReturn != endsWithReturn(rhs)) {
             throw new IllegalArgumentException("Rewrite rule %s cannot end with a return on only one side.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
         }
 
-        int lhsStackEffect = stackEffect(lhs);
-        int rhsStackEffect = stackEffect(rhs);
-        if (lhsStackEffect != rhsStackEffect && !lhsEndsWithReturn) {
-            throw new IllegalArgumentException(
-                            "The instructions on the lhs and rhs of rewrite rule %s have different stack effects (%d vs. %d).".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1),
-                                            lhsStackEffect, rhsStackEffect));
+        if (!this.endsWithReturn) {
+            // Net stack effect should be the same.
+            int lhsStackEffect = stackEffect(lhs);
+            int rhsStackEffect = stackEffect(rhs);
+            if (lhsStackEffect != rhsStackEffect) {
+                throw new IllegalArgumentException(
+                                "The instructions on the lhs and rhs of rewrite rule %s have different stack effects (%d vs. %d).".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1),
+                                                lhsStackEffect, rhsStackEffect));
+            }
+
+            // If the last instruction produces a value, doEmitInstruction needs to return the new childBci.
+            if (endsWithValue(lhs)) {
+                if (endsWithValue(rhs)) {
+                    // applyRewriteRule can return the bci of rhs[rhs.length-1] instead of -1 for childBci.
+                    this.returnFinalInstructionBci = true;
+                } else {
+                    // When rhs[rhs.length-1] doesn't produce a result, we need a stronger data flow analysis to figure out the resulting childBci.
+                    // Fail loudly here if we ever try to declare such a rule instead of silently failing to BE the result.
+                    throw new IllegalArgumentException("Rewrite rule %s cannot end with a value-producing instruction on only the lhs.".formatted(formatRewriteRule(lhsPattern, rhsPattern, -1)));
+                }
+            }
         }
-        this.endsWithReturn = lhsEndsWithReturn;
     }
 
     public RewriteKind getRewriteKind() {
@@ -292,12 +317,51 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         return endsWithReturn;
     }
 
+    public boolean returnFinalInstructionBci() {
+        return returnFinalInstructionBci;
+    }
+
     private static int stackEffect(ResolvedInstructionPatternModel[] instructions) {
         int result = 0;
         for (var pattern : instructions) {
             result += pattern.instruction().getStackEffect();
         }
         return result;
+    }
+
+    private static void validateRewriteRuleSide(ResolvedInstructionPatternModel[] pattern, InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern, String side) {
+        for (int i = 0; i < pattern.length; i++) {
+            InstructionModel instruction = pattern[i].instruction();
+            validateRewritableInstruction(lhsPattern, rhsPattern, instruction);
+            if (instruction.kind == InstructionModel.InstructionKind.RETURN) {
+                if (i != pattern.length - 1) {
+                    throw new IllegalArgumentException("Return can only be the final instruction on the %s of rewrite rule %s.".formatted(side, formatRewriteRule(lhsPattern, rhsPattern, -1)));
+                }
+            }
+        }
+    }
+
+    private static boolean endsWithReturn(ResolvedInstructionPatternModel[] pattern) {
+        return pattern.length > 0 && pattern[pattern.length - 1].instruction().kind == InstructionModel.InstructionKind.RETURN;
+    }
+
+    private static boolean endsWithValue(ResolvedInstructionPatternModel[] pattern) {
+        return pattern.length > 0 && !pattern[pattern.length - 1].instruction().signature.isVoid();
+    }
+
+    private static void validateRewritableInstruction(InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern, InstructionModel instruction) {
+        switch (instruction.kind) {
+            case BRANCH, BRANCH_FALSE, CUSTOM_SHORT_CIRCUIT:
+                /*
+                 * We remember the BCIs of the branch target immediates so they can be patched later.
+                 * Remapping does not (currently) fix up these BCIs, so we disallow these instructions.
+                 * We can extend the remapping logic later if we need branches in rewrite rules.
+                 */
+                throw new IllegalArgumentException("Rewrite rule %s cannot contain instruction %s because it has a patchable BCI immediate.".formatted(
+                                formatRewriteRule(lhsPattern, rhsPattern, -1), instruction.getName()));
+            default:
+                break;
+        }
     }
 
     private static void validateSections(RewriteSection[] sections) {
@@ -309,7 +373,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         // would re-emit the same instruction sequence and could immediately match again forever.
         boolean seenNonIdentity = false;
         for (RewriteSection section : sections) {
-            if (section.kind() == RewriteSectionKind.DELETE) {
+            if (section.kind() != RewriteSectionKind.IDENTITY) {
                 seenNonIdentity = true;
                 break;
             }
@@ -330,8 +394,9 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     private static InstructionPatternModel[] deriveRhsPatterns(RewriteSection[] sections) {
         List<InstructionPatternModel> rhs = new ArrayList<>();
         for (RewriteSection section : sections) {
-            if (section.kind() == RewriteSectionKind.IDENTITY) {
-                rhs.addAll(List.of(section.patterns()));
+            switch (section.kind()) {
+                case IDENTITY -> rhs.addAll(List.of(section.patterns()));
+                case REPLACE -> rhs.addAll(List.of(section.replacementPatterns()));
             }
         }
         return rhs.toArray(InstructionPatternModel[]::new);

@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.oracle.truffle.api.bytecode.test.AbstractInstructionTest.assertInstructions;
@@ -303,6 +304,233 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testStackValueOperandFull() {
+        BasicInterpreter node = parseNode("stackValueOperandFull", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginBlock();
+            StackValue value = emitBindStackValue(b, 42L);
+            b.beginAlwaysBoxOperation();
+            b.emitLoadStackValue(value);
+            b.endAlwaysBoxOperation();
+            b.endBlock();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.constant",
+                            "c.AlwaysBoxOperation",
+                            "store.local",
+                            "load.local",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.constant",
+                            "dup",
+                            "c.AlwaysBoxOperation",
+                            "store.stackvalue",
+                            "store.local",
+                            "load.local",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testStackValueOperandSuffix() {
+        BasicInterpreter node = parseNode("stackValueOperandSuffix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginBlock();
+            emitBindStackValue(b, 100L);
+            emitBindStackValue(b, 101L);
+            StackValue value = emitBindStackValue(b, 42L);
+            b.beginAlwaysBoxOperation();
+            b.emitLoadStackValue(value);
+            b.endAlwaysBoxOperation();
+            b.endBlock();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.constant",
+                            "load.constant",
+                            "c.AlwaysBoxOperation",
+                            "store.stackvalue",
+                            "pop",
+                            "store.local",
+                            "load.local",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.constant",
+                            "load.constant",
+                            "dup",
+                            "c.AlwaysBoxOperation",
+                            "store.stackvalue",
+                            "pop",
+                            "pop",
+                            "store.local",
+                            "load.local",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testStackValueOperandVoidFull() {
+        BasicInterpreter node = parseNode("stackValueOperandVoidFull", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            StackValue receiver = emitBindStackValueArgument(b, 0);
+            StackValue value = emitBindStackValue(b, 42L);
+            b.beginAppenderOperation();
+            b.emitLoadStackValue(receiver);
+            b.emitLoadStackValue(value);
+            b.endAppenderOperation();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.argument",
+                            "load.constant",
+                            "c.AppenderOperation",
+                            "load.argument",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.argument",
+                            "load.constant",
+                            "load.stackvalue",
+                            "load.stackvalue",
+                            "c.AppenderOperation",
+                            "pop",
+                            "pop",
+                            "load.argument",
+                            "return");
+        }
+        ArrayList<Object> list = new ArrayList<>();
+        assertEquals(list, node.getCallTarget().call(list));
+        assertEquals(List.of(42L), list);
+    }
+
+    @Test
+    public void testStackValueOperandVoidSuffix() {
+        BasicInterpreter node = parseNode("stackValueOperandVoidSuffix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            emitBindStackValue(b, 100L);
+            StackValue receiver = emitBindStackValueArgument(b, 0);
+            StackValue value = emitBindStackValue(b, 42L);
+            b.beginAppenderOperation();
+            b.emitLoadStackValue(receiver);
+            b.emitLoadStackValue(value);
+            b.endAppenderOperation();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.argument",
+                            "load.constant",
+                            "c.AppenderOperation",
+                            "pop",
+                            "load.argument",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.argument",
+                            "load.constant",
+                            "load.stackvalue",
+                            "load.stackvalue",
+                            "c.AppenderOperation",
+                            "pop",
+                            "pop",
+                            "pop",
+                            "load.argument",
+                            "return");
+        }
+        ArrayList<Object> list = new ArrayList<>();
+        assertEquals(list, node.getCallTarget().call(list));
+        assertEquals(List.of(42L), list);
+    }
+
+    @Test
+    public void testStackValueConsumerWithImmediate() {
+        // Test that the consuming instruction's immediates are copied when rewriting.
+        BasicInterpreter node = parseNode("stackValueConsumerWithImmediate", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginBlock();
+            StackValue value = emitBindStackValue(b, 2L);
+            b.beginAddConstantOperation(40L);
+            b.emitLoadStackValue(value);
+            b.endAddConstantOperation();
+            b.endBlock();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.constant",
+                            "c.AddConstantOperation",
+                            "store.local",
+                            "load.local",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.constant",
+                            "dup",
+                            "c.AddConstantOperation",
+                            "store.stackvalue",
+                            "store.local",
+                            "load.local",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
     public void testClearLocalDuplicate() {
         BasicInterpreter node = parseNode("clearLocalDuplicate", (BasicInterpreterBuilder b) -> {
             b.beginRoot();
@@ -339,6 +567,12 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
     private static <T extends BasicInterpreterBuilder> StackValue emitBindStackValue(T b, long value) {
         b.beginBindStackValue();
         b.emitLoadConstant(value);
+        return b.endBindStackValue();
+    }
+
+    private static <T extends BasicInterpreterBuilder> StackValue emitBindStackValueArgument(T b, int argumentIndex) {
+        b.beginBindStackValue();
+        b.emitLoadArgument(argumentIndex);
         return b.endBindStackValue();
     }
 
