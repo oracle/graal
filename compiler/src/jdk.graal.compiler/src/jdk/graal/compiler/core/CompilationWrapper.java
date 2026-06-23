@@ -306,6 +306,19 @@ public abstract class CompilationWrapper<T> {
                 return handleException(cause);
             }
 
+            return performDiagnosticRetry(initialDebug, initialOptions, cause, action);
+        }
+    }
+
+    /**
+     * Runs the diagnostic retry after a compilation failure and returns its result.
+     */
+    @SuppressWarnings("try")
+    private T performDiagnosticRetry(DebugContext initialDebug, OptionValues initialOptions, Throwable cause, ExceptionAction action) {
+        T retryResult = null;
+        boolean retryFailed = false;
+        boolean exitRequested = false;
+        try (DebugCloseable diagnosticScope = outputDirectory.openOutputScope()) {
             String dumpPath = null;
             try {
                 String dir = this.outputDirectory.getPath();
@@ -316,6 +329,16 @@ public abstract class CompilationWrapper<T> {
             } catch (Throwable t) {
                 TTY.println("Warning: could not create Graal diagnostics directory");
                 t.printStackTrace(TTY.out);
+            }
+
+            if (action == ExitVM) {
+                /*
+                 * Request VM exit with a failure status now. Actual shutdown is delayed until this
+                 * diagnostics scope is closed. Without this request, the application can terminate
+                 * normally while this thread writes diagnostics, and normal VM shutdown can finish
+                 * with a success status even though we want to signal that there was an error.
+                 */
+                exitRequested = requestExitVMOnCompilationFailure();
             }
 
             String message;
@@ -340,7 +363,6 @@ public abstract class CompilationWrapper<T> {
             if (dumpPath == null) {
                 return handleException(cause);
             }
-
             String retryLogFile = getPath(dumpPath, "retry.log");
             try (PrintStream ps = new PrintStream(PathUtilities.openOutputStream(retryLogFile))) {
                 ps.print(message);
@@ -355,10 +377,9 @@ public abstract class CompilationWrapper<T> {
                             DebugCloseable retryScope = retryDebug.openRetryCompilation()) {
                 dumpOnError(retryDebug, cause);
 
-                T res;
                 try {
                     CompilationAlarm.current().reset(retryOptions);
-                    res = performCompilation(retryDebug);
+                    retryResult = performCompilation(retryDebug);
                 } finally {
                     ps.println("<Metrics>");
                     retryDebug.printMetrics(initialDebug.getDescription(), ps, true);
@@ -366,14 +387,39 @@ public abstract class CompilationWrapper<T> {
                 }
                 ps.println("There was no exception during retry.");
                 finalizeRetryLog(retryLogFile, logBaos, ps);
-                return postRetry(action, res);
             } catch (Throwable e) {
                 ps.println("Exception during retry:");
                 e.printStackTrace(ps);
                 finalizeRetryLog(retryLogFile, logBaos, ps);
-                return postRetry(action, handleException(cause));
+                retryFailed = true;
             }
         }
+        if (retryFailed) {
+            /*
+             * Truffle's failure notification may call System.exit through the engine failure
+             * handler. Call it after closing the diagnostics output scope so shutdown can archive
+             * the directory.
+             */
+            retryResult = handleException(cause);
+        }
+        if (exitRequested) {
+            TTY.println("Exiting VM after retry compilation of " + this);
+            return retryResult;
+        }
+        return postRetry(action, retryResult);
+    }
+
+    /**
+     * Gives subclasses a chance to request VM exit for a compilation failure whose action is
+     * {@link ExceptionAction#ExitVM}. This method is called while a diagnostics output scope is
+     * open. A subclass that returns {@code true} must arrange for VM shutdown to wait until that
+     * scope is closed, and the caller must not call {@link #exitHostVM} for the same failure. A
+     * later call to {@link #exitHostVM} for the same failure could deadlock: the caller may block
+     * before it closes the diagnostics output scope while VM shutdown is waiting for that scope to
+     * close. Subclasses that do not provide this ordering return {@code false}.
+     */
+    protected boolean requestExitVMOnCompilationFailure() {
+        return false;
     }
 
     /**
