@@ -34,9 +34,9 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
-import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
-import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
-import com.oracle.svm.core.util.LayeredImageHeapMap;
+import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
+import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
+import com.oracle.svm.guest.staging.util.LayeredImageHeapMap;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -90,7 +90,7 @@ final class ImageHeapCollectionSupport {
 
     /**
      * Makes sure that the content of all modified
-     * {@link com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap}s and
+     * {@link com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap}s and
      * {@link com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList}s is properly propagated to
      * their runtime counterparts. As both the number of these collections and their individual
      * sizes are theoretically unbounded, this method uses <i>parallel streams</i> to divide the
