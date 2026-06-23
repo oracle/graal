@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.guest.staging.util;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,8 +35,8 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
 import com.oracle.svm.shared.util.VMError;
 
@@ -163,7 +163,7 @@ public final class ImageHeapMap {
         public static <K, V> HostedImageHeapMap<K, V> create(Equivalence strategy, String key, boolean isLayeredMap) {
             Map<K, V> hostedMap = (strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>();
             EconomicMap<Object, Object> currentLayerMap = EconomicMap.create(strategy);
-            if (ImageLayerBuildingSupport.buildingImageLayer() && isLayeredMap) {
+            if (GuestImageLayerBuildingSupport.buildingImageLayer() && isLayeredMap) {
                 LayeredImageHeapMap<Object, Object> runtimeMap = new LayeredImageHeapMap<>(strategy, key);
                 var previousMap = LayeredImageHeapMapStore.currentLayer().getImageHeapMapStore().put(key, currentLayerMap);
                 if (previousMap != null) {
@@ -171,7 +171,7 @@ public final class ImageHeapMap {
                 }
                 HostedImageHeapMap<K, V> hostedImageHeapMap = new HostedImageHeapMap<>(hostedMap, currentLayerMap, runtimeMap);
                 LayeredHostedImageHeapMapCollector singleton = LayeredHostedImageHeapMapCollector.singleton();
-                if (ImageLayerBuildingSupport.buildingExtensionLayer() && singleton.isMapKeyReachableInPreviousLayer(key)) {
+                if (GuestImageLayerBuildingSupport.buildingExtensionLayer() && singleton.isMapKeyReachableInPreviousLayer(key)) {
                     singleton.registerPreviousLayerHostedImageHeapMap(hostedImageHeapMap);
                 }
                 return hostedImageHeapMap;
