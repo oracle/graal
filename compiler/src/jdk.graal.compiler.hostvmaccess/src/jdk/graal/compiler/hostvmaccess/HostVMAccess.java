@@ -46,7 +46,6 @@ import java.security.ProtectionDomain;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
@@ -61,7 +60,6 @@ import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
-import jdk.internal.loader.BootLoader;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -426,11 +424,6 @@ final class HostVMAccess implements VMAccess {
             throw new RuntimeException("No original class for type " + type);
         }
         return originalClass;
-    }
-
-    @Override
-    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return BootLoader.packages().map(p -> new HostVMResolvedJavaPackageImpl(providers.getMetaAccess(), p));
     }
 
     @Override

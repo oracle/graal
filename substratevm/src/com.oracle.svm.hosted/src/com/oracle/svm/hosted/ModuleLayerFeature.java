@@ -101,6 +101,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostedModuleSupport;
 
 import jdk.internal.loader.BuiltinClassLoader;
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
@@ -211,6 +212,7 @@ public class ModuleLayerFeature implements InternalFeature {
 
         FieldValueTransformer moduleReferenceLocationTransformer = new ModuleLayerFeatureUtils.ResetModuleReferenceLocation(
                         access.imageClassLoader.classLoaderSupport.modulepathModuleFinder.findAll());
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.builtinClassLoaderPackageToModuleField, (receiver, originalValue) -> moduleLayerFeatureUtils.runtimePackageToModule);
         access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceLocationField, moduleReferenceLocationTransformer);
         access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceImplLocationField, moduleReferenceLocationTransformer);
         access.registerFieldValueTransformer(moduleLayerFeatureUtils.jarModuleReaderJfField, moduleReferenceLocationTransformer);
@@ -621,7 +623,7 @@ public class ModuleLayerFeature implements InternalFeature {
         ModuleLayer runtimeModuleLayer = null;
         try {
             runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(runtimeModuleLayerConfiguration);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(accessImpl, runtimeModuleLayer, clf);
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(accessImpl, runtimeModuleLayer, clf, isRuntimeBootLayer(parentLayers));
             for (Module syntheticModule : syntheticModules) {
                 Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, accessImpl);
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
@@ -634,6 +636,10 @@ public class ModuleLayerFeature implements InternalFeature {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime module layer: " + runtimeModuleLayer, ex);
         }
+    }
+
+    private static boolean isRuntimeBootLayer(List<ModuleLayer> parentLayers) {
+        return parentLayers.size() == 1 && parentLayers.getFirst() == ModuleLayer.empty();
     }
 
     private static ServicesCatalog synthesizeRuntimeModuleLayerServicesCatalog(Map<String, Module> nameToModule) {
@@ -824,6 +830,7 @@ public class ModuleLayerFeature implements InternalFeature {
         private final Method systemModuleFindersSystemModulesMethod;
         private final Method moduleBootstrapLimitFinderMethod;
         private final Method defaultRootsComputeMethod;
+        private final Method classLoadersBootLoaderMethod;
         private final Constructor<ModuleLayer> moduleLayerConstructor;
         private final Field moduleLayerNameToModuleField;
         private final Field moduleLayerParentsField;
@@ -835,15 +842,19 @@ public class ModuleLayerFeature implements InternalFeature {
         private final Field jarModuleReaderUriField;
         private final Field moduleReference1ValFileStringField;
         private final Field moduleReference1ValUriField;
+        private final Constructor<?> loadedModuleConstructor;
         private final Field loadedModuleClassCodeSourceURLField;
         private final Field loadedModuleClassURIField;
         private final Field builtinClassLoaderNameToModuleField;
+        private final Field builtinClassLoaderPackageToModuleField;
+        private final Map<String, Object> runtimePackageToModule;
         private final Set<String> nativeAccessEnabled;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
             imageClassLoader = cl;
             nativeAccessEnabled = NativeImageClassLoaderOptions.EnableNativeAccess.getValue().valuesAsSet();
+            runtimePackageToModule = new ConcurrentHashMap<>();
 
             Method classGetDeclaredFields0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
@@ -898,6 +909,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 moduleBootstrapLimitFinderMethod = ReflectionUtil.lookupMethod(ModuleBootstrap.class, "limitFinder", ModuleFinder.class, Set.class, Set.class);
 
                 defaultRootsComputeMethod = ReflectionUtil.lookupMethod(DefaultRoots.class, "compute", ModuleFinder.class, ModuleFinder.class);
+                classLoadersBootLoaderMethod = ReflectionUtil.lookupMethod(ClassLoaders.class, "bootLoader");
 
                 moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
                 moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
@@ -916,9 +928,11 @@ public class ModuleLayerFeature implements InternalFeature {
                 moduleReference1ValFileStringField = ReflectionUtil.lookupField(moduleReference1Class, "val$fileString");
                 moduleReference1ValUriField = ReflectionUtil.lookupField(moduleReference1Class, "val$uri");
                 Class<?> loadedModuleClass = ReflectionUtil.lookupClass("jdk.internal.loader.BuiltinClassLoader$LoadedModule");
+                loadedModuleConstructor = ReflectionUtil.lookupConstructor(loadedModuleClass, BuiltinClassLoader.class, ModuleReference.class);
                 loadedModuleClassCodeSourceURLField = ReflectionUtil.lookupField(loadedModuleClass, "codeSourceURL");
                 loadedModuleClassURIField = ReflectionUtil.lookupField(loadedModuleClass, "uri");
                 builtinClassLoaderNameToModuleField = ReflectionUtil.lookupField(BuiltinClassLoader.class, "nameToModule");
+                builtinClassLoaderPackageToModuleField = ReflectionUtil.lookupField(BuiltinClassLoader.class, "packageToModule");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
@@ -1076,13 +1090,14 @@ public class ModuleLayerFeature implements InternalFeature {
          * and removal of VM state updates (otherwise we would be re-defining modules to the host
          * VM).
          */
-        Map<String, Module> synthesizeNameToModule(AnalysisAccessBase access, ModuleLayer runtimeModuleLayer, Function<String, ClassLoader> clf)
+        Map<String, Module> synthesizeNameToModule(AnalysisAccessBase access, ModuleLayer runtimeModuleLayer, Function<String, ClassLoader> clf, boolean patchPackageToModule)
                         throws IllegalAccessException, InvocationTargetException {
             Configuration cf = runtimeModuleLayer.configuration();
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
             Map<String, Module> nameToModule = new HashMap<>(cap);
             Map<BuiltinClassLoader, Map<String, ModuleReference>> builtinLoaderNameToModule = new HashMap<>();
+            Map<BuiltinClassLoader, Map<String, ModuleReference>> builtinLoaderPackageToModule = patchPackageToModule ? new HashMap<>() : null;
 
             /*
              * Remove mapping of modules to classloaders. Create module instances without defining
@@ -1102,13 +1117,22 @@ public class ModuleLayerFeature implements InternalFeature {
                 }
                 patchModuleLayerField(access, m, runtimeModuleLayer);
                 nameToModule.put(name, m);
-                if (loader instanceof BuiltinClassLoader builtinLoader) {
+                BuiltinClassLoader builtinLoader = runtimeBuiltinLoaderForModuleLoader(loader);
+                if (builtinLoader != null) {
                     builtinLoaderNameToModule.computeIfAbsent(builtinLoader, ignored -> new HashMap<>()).put(name, mref);
+                    if (patchPackageToModule) {
+                        for (String packageName : descriptor.packages()) {
+                            builtinLoaderPackageToModule.computeIfAbsent(builtinLoader, ignored -> new HashMap<>()).put(packageName, mref);
+                        }
+                    }
                 }
             }
 
             for (Map.Entry<BuiltinClassLoader, Map<String, ModuleReference>> entry : builtinLoaderNameToModule.entrySet()) {
                 patchBuiltinClassLoaderNameToModuleField(access, entry.getKey(), entry.getValue());
+            }
+            if (patchPackageToModule) {
+                patchBuiltinClassLoaderPackageToModuleField(access, builtinLoaderPackageToModule);
             }
 
             /*
@@ -1236,6 +1260,23 @@ public class ModuleLayerFeature implements InternalFeature {
                 compactPackages.put(entry.getKey(), Set.copyOf(entry.getValue()));
             }
             return compactPackages;
+        }
+
+        /// Gets the runtime built-in class loader that owns module metadata for `loader`.
+        ///
+        /// The JDK represents boot modules with a `null` module class loader, but
+        /// `BuiltinClassLoader.packageToModule` stores `LoadedModule` entries against the boot
+        /// `BuiltinClassLoader` instance. This method performs that conversion while preserving
+        /// non-built-in class loaders as unsupported for the built-in loader maps.
+        private BuiltinClassLoader runtimeBuiltinLoaderForModuleLoader(ClassLoader loader) {
+            if (loader == null) {
+                try {
+                    return (BuiltinClassLoader) classLoadersBootLoaderMethod.invoke(null);
+                } catch (IllegalAccessException | InvocationTargetException ex) {
+                    throw VMError.shouldNotReachHere("Failed to retrieve the boot BuiltinClassLoader.", ex);
+                }
+            }
+            return loader instanceof BuiltinClassLoader builtinLoader ? builtinLoader : null;
         }
 
         private void rescan(AnalysisAccessBase access, Map<String, Set<Module>> packages, Module m, Field modulePackagesField) {
@@ -1432,6 +1473,30 @@ public class ModuleLayerFeature implements InternalFeature {
                     accessImpl.rescanField(loader, builtinClassLoaderNameToModuleField, scanReason);
                 }
             }
+        }
+
+        /// Rebuilds the runtime `BuiltinClassLoader.packageToModule` entries for packages selected
+        /// by analysis.
+        ///
+        /// Each package is mapped to a fresh JDK `LoadedModule` instance whose loader and module
+        /// reference match the synthesized runtime boot layer. The map is cleared before repopulating
+        /// it so the final boot layer synthesis replaces the broader before-analysis prototype. The
+        /// static field is transformed into `runtimePackageToModule` during image heap scanning, so
+        /// rescanning that map is enough to keep the image heap and the JDK lookup table consistent.
+        void patchBuiltinClassLoaderPackageToModuleField(AnalysisAccessBase accessImpl, Map<BuiltinClassLoader, Map<String, ModuleReference>> packageToModule) {
+            runtimePackageToModule.clear();
+            for (Map.Entry<BuiltinClassLoader, Map<String, ModuleReference>> loaderEntry : packageToModule.entrySet()) {
+                BuiltinClassLoader loader = loaderEntry.getKey();
+                for (Map.Entry<String, ModuleReference> packageEntry : loaderEntry.getValue().entrySet()) {
+                    try {
+                        Object loadedModule = loadedModuleConstructor.newInstance(loader, packageEntry.getValue());
+                        runtimePackageToModule.put(packageEntry.getKey(), loadedModule);
+                    } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+                        throw VMError.shouldNotReachHere("Failed to create a runtime BuiltinClassLoader.LoadedModule.", ex);
+                    }
+                }
+            }
+            accessImpl.rescanObject(runtimePackageToModule, scanReason);
         }
 
         ClassLoader getClassLoaderForBootLayerModule(String name) {

@@ -28,7 +28,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.List;
-import java.util.stream.Stream;
 
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.Constant;
@@ -282,12 +281,6 @@ public interface VMAccess {
      * primitive type or void.
      */
     ResolvedJavaPackage getPackage(ResolvedJavaType type);
-
-    /**
-     * Returns a stream of the packages defined to the boot loader. See
-     * {@code jdk.internal.loader.BootLoader#packages()}.
-     */
-    Stream<ResolvedJavaPackage> bootLoaderPackages();
 
     /**
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.

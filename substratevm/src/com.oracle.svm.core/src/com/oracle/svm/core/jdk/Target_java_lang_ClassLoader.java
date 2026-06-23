@@ -260,6 +260,18 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class)//
     volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
 
+    /// The packages defined in this class loader. A package is defined in this class
+    /// loader when a class in the package is loaded by this class loader.
+    ///
+    /// During image building, `ClassLoaderFeature` transforms this field to only contain packages
+    /// for reachable build-time classes. See `ClassLoaderFeature.PackageMapTransformer` for
+    /// more detail.
+    @Alias //
+    ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages;
+
+    @Alias
+    native Target_java_lang_NamedPackage getNamedPackage(String pn, Module m);
+
     /**
      * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
      */

@@ -45,7 +45,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -563,11 +562,6 @@ public final class GuestAccess implements VMAccess {
     @Override
     public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
         return delegate.getPackage(type);
-    }
-
-    @Override
-    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return delegate.bootLoaderPackages();
     }
 
     @Override
