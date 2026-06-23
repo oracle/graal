@@ -101,6 +101,7 @@
     [
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema + PR_bench_crema_awfy,
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint + PR_bench_crema_awfy,
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_no_profiling + PR_bench_crema_awfy,
     ]
   for jdk in cc.product_jdks
   ]),

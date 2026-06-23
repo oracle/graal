@@ -306,6 +306,7 @@ import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoOSRSupport;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -813,7 +814,17 @@ public final class Interpreter {
         @NeverInline("needed for stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
+            /*
+             * SubstrateOptions.useRistretto() is a hosted @Fold switch. When Ristretto is disabled,
+             * graph building sees the false branch below, initializes profiling to an inert
+             * constant, and folds away the profile-entry and profile-site paths.
+             */
+            final MethodProfile methodProfile;
+            if (SubstrateOptions.useRistretto()) {
+                methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
+            } else {
+                methodProfile = null;
+            }
 
             int curBCI = startBCI;
             int top = startTop;
@@ -1376,14 +1387,16 @@ public final class Interpreter {
         }
     }
 
+    @AlwaysInline("Profile-site guards must fold away when Ristretto is disabled in the hosted image.")
     private static void profileType(MethodProfile methodProfile, int bci, Object o) {
-        if (methodProfile != null) {
+        if (SubstrateOptions.useRistretto() && methodProfile != null) {
             methodProfile.profileReceiver(bci, o);
         }
     }
 
+    @AlwaysInline("Profile-site guards must fold away when Ristretto is disabled in the hosted image.")
     private static void profileBranch(MethodProfile methodProfile, int curBCI, boolean branchTaken1) {
-        if (methodProfile != null) {
+        if (SubstrateOptions.useRistretto() && methodProfile != null) {
             methodProfile.profileBranch(curBCI, branchTaken1);
         }
     }
