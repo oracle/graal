@@ -48,16 +48,16 @@ import jdk.vm.ci.meta.JavaKind;
  * Information on a field that can be looked up and accessed via JNI.
  */
 public final class JNIAccessibleField extends JNIAccessibleMember implements PreservableJNIElement {
-    /* 10000000...0 */
-    private static final UnsignedWord ID_STATIC_FLAG = Word.unsigned(-1L).unsignedShiftRight(1).add(1);
     /* 01000000...0 */
-    private static final UnsignedWord ID_PRESERVED_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
+    private static final UnsignedWord ID_STATIC_FLAG = Word.unsigned(-1L).unsignedShiftRight(2).add(1);
     /* 00100000...0 */
-    private static final UnsignedWord ID_NEGATIVE_FLAG = ID_PRESERVED_FLAG.unsignedShiftRight(1);
+    private static final UnsignedWord ID_PRESERVED_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
     /* 00010000...0 */
+    private static final UnsignedWord ID_NEGATIVE_FLAG = ID_PRESERVED_FLAG.unsignedShiftRight(1);
+    /* 00001000...0 */
     private static final UnsignedWord ID_LAYER_NUMBER_MASK = ID_NEGATIVE_FLAG.unsignedShiftRight(1);
-    private static final int ID_LAYER_NUMBER_SHIFT = 60;
-    /* 00001111...1 */
+    private static final int ID_LAYER_NUMBER_SHIFT = Long.numberOfTrailingZeros(ID_LAYER_NUMBER_MASK.rawValue());
+    /* 00000111...1 */
     private static final UnsignedWord ID_OFFSET_MASK = ID_LAYER_NUMBER_MASK.subtract(1);
 
     public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass) {
@@ -106,11 +106,12 @@ public final class JNIAccessibleField extends JNIAccessibleMember implements Pre
      *
      * From left (MSB) to right (LSB):
      * <ul>
+     * <li>1 unused bit, so regular field ids are never negative</li>
      * <li>1 bit for a flag indicating whether the field is static</li>
      * <li>1 bit for a flag indicating whether the field is preserved</li>
      * <li>1 bit for a flag indicating whether the field is a negative query</li>
      * <li>1 bit for an unsigned integer indicating the layer number</li>
-     * <li>Remaining 60 bits for (unsigned) offset in the object</li>
+     * <li>Remaining 59 bits for (unsigned) offset in the object</li>
      * </ul>
      */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//

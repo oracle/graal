@@ -51,6 +51,7 @@ import static com.oracle.svm.interpreter.Interpreter.unbasic;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.ITBL_SELECTION_FAILURE;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodType;
@@ -94,13 +95,17 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.hub.registry.TypeIDs;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -152,6 +157,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -1528,6 +1534,56 @@ public class CremaSupportImpl implements CremaSupport {
     public Object getStaticStorage(ResolvedJavaField resolved) {
         InterpreterResolvedJavaField interpreterField = (InterpreterResolvedJavaField) resolved;
         return interpreterField.getDeclaringClass().getStaticStorage(resolved.getType().getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
+    }
+
+    @Override
+    public CremaResolvedJavaField lookupCremaField(Class<?> clazz, String name, String signature, boolean isStatic) {
+        if (clazz.isPrimitive()) {
+            return null;
+        }
+        Object interpreterType = DynamicHub.fromClass(clazz).getInterpreterType();
+        if (!(interpreterType instanceof CremaResolvedObjectType type)) {
+            return null;
+        }
+        Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
+        Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
+        if (fieldName == null || fieldType == null) {
+            return null;
+        }
+        ResolvedJavaField resolvedField = type.lookupField(fieldName, fieldType);
+        if (resolvedField instanceof CremaResolvedJavaField cremaField && cremaField.isStatic() == isStatic) {
+            return cremaField;
+        }
+        return null;
+    }
+
+    @Override
+    public CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic) {
+        if (clazz.isPrimitive() || !CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+            return null;
+        }
+
+        ResolvedJavaField resolvedField = null;
+        if (isStatic) {
+            CremaResolvedObjectType type = (CremaResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+            resolvedField = type.findStaticFieldWithOffset(CremaJNIFieldIds.getStaticFieldOffset(fieldId), null);
+        } else {
+            Object interpreterType = DynamicHub.fromClass(clazz).getInterpreterType();
+            if (interpreterType instanceof CremaResolvedObjectType type) {
+                resolvedField = type.findInstanceFieldWithOffset(CremaJNIFieldIds.getInstanceFieldOffset(fieldId), null);
+            }
+        }
+        if (resolvedField instanceof CremaResolvedJavaField cremaField) {
+            return cremaField;
+        }
+        return null;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+        return type.getStaticStorage(primitive, DynamicImageLayerInfo.CREMA_LAYER_ID);
     }
 
     @Override

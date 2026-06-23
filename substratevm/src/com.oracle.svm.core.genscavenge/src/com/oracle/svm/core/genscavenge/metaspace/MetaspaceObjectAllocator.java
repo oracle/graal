@@ -35,11 +35,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
@@ -98,6 +100,24 @@ class MetaspaceObjectAllocator {
             intArrayCount.getAndIncrement();
         }
         return (int[]) allocateArrayLikeObject(hub, length, intArraySize);
+    }
+
+    public CremaJNIStaticFieldId allocateCremaJNIStaticFieldId() {
+        DynamicHub hub = DynamicHub.fromClass(CremaJNIStaticFieldId.class);
+        assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
+        return (CremaJNIStaticFieldId) allocatePureInstance(hub);
+    }
+
+    @Uninterruptible(reason = "Holds uninitialized memory.")
+    private Object allocatePureInstance(DynamicHub hub) {
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub, false);
+
+        Pointer ptr = memory.allocate(size);
+        Object result = FormatObjectNode.formatObject(ptr, DynamicHub.toClass(hub), true, AllocationSnippets.FillContent.WITH_ZEROES, true);
+        assert size == LayoutEncoding.getSizeFromObject(result);
+
+        enableRememberedSetTracking(result, size);
+        return result;
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")

@@ -26,7 +26,7 @@ package com.oracle.svm.core.jni;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.jni.access.JNIAccessibleField;
+import com.oracle.svm.core.jni.functions.JNIFunctions.Support;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
@@ -44,7 +44,7 @@ public class JNIObjectFieldAccess {
 
     public JNIObjectHandle getObjectField(JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         Object result = getObjectField0(o, offset);
         return JNIObjectHandles.createLocal(result);
     }

@@ -24,15 +24,20 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -52,6 +57,7 @@ import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -66,6 +72,8 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * A runtime-loaded, classfile-backed specialization of {@link InterpreterResolvedObjectType}.
  */
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, AttributedElement {
+    private static final Object JNI_FIELD_ID_CREATION_LOCK = new Object();
+
     // GR-70288: Only keep a subset of the parsed attributes.
     private final Attribute[] attributes;
 
@@ -74,6 +82,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
 
     // GR-70720: The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
     private InterpreterResolvedObjectType host;
+
+    private CremaJNIStaticFieldId jniStaticFieldIds;
 
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
@@ -87,9 +97,22 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object getStaticStorage(boolean primitives, int layerNum) {
         assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
         return primitives ? primitiveStatics : referenceStatics;
+    }
+
+    public JNIFieldId jniStaticFieldIdFor(int offset) {
+        CremaJNIStaticFieldId probe;
+        synchronized (JNI_FIELD_ID_CREATION_LOCK) {
+            probe = jniStaticFieldIds == null ? null : jniStaticFieldIds.findStaticFieldId(offset);
+            if (probe == null) {
+                probe = CremaJNIStaticFieldId.allocate(DynamicHub.fromClass(getJavaClass()), offset, jniStaticFieldIds);
+                jniStaticFieldIds = probe;
+            }
+        }
+        return CremaJNIFieldIds.forStaticField(probe);
     }
 
     public BootstrapMethodsAttribute getBootstrapMethodsAttribute() {

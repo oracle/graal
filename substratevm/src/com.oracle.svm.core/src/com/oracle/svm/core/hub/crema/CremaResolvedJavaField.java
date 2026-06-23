@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.crema;
 
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface CremaResolvedJavaField extends ResolvedJavaField {
@@ -56,4 +58,9 @@ public interface CremaResolvedJavaField extends ResolvedJavaField {
      * @return the generic signature
      */
     String getGenericSignature();
+
+    /**
+     * Returns the JNI field id for this runtime-loaded field.
+     */
+    JNIFieldId getOrCreateJNIFieldId();
 }

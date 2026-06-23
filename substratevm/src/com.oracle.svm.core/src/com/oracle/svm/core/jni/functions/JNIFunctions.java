@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jni.functions;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
@@ -35,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -73,9 +75,13 @@ import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -985,6 +991,9 @@ public final class JNIFunctions {
         if (obj != null) {
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
             fieldId = JNIReflectionDictionary.getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
+            if (fieldId.isNull()) {
+                fieldId = Support.getCremaFieldID(obj);
+            }
         }
         return fieldId;
     }
@@ -994,16 +1003,24 @@ public final class JNIFunctions {
      */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
-    static JNIObjectHandle ToReflectedField(JNIEnvironment env, JNIObjectHandle classHandle, JNIFieldId fieldId) {
+    static JNIObjectHandle ToReflectedField(JNIEnvironment env, JNIObjectHandle classHandle, JNIFieldId fieldId, boolean isStatic) {
         Field field = null;
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         if (clazz != null) {
-            String name = JNIReflectionDictionary.getFieldNameByID(clazz, fieldId);
-            if (name != null) {
-                try {
-                    field = clazz.getDeclaredField(name);
-                } catch (NoSuchFieldException ignored) {
-                    // proceed and return null
+            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+                CremaResolvedJavaField cremaField = CremaSupport.singleton().getCremaField(clazz, fieldId, isStatic);
+                if (cremaField != null) {
+                    DynamicHub hub = DynamicHub.fromClass(InterpreterSupport.singleton().toClass(cremaField.getDeclaringClass()));
+                    field = RuntimeReflectionMetadata.fromResolvedField(hub, cremaField);
+                }
+            } else {
+                String name = JNIReflectionDictionary.getFieldNameByID(clazz, fieldId);
+                if (name != null) {
+                    try {
+                        field = clazz.getDeclaredField(name);
+                    } catch (NoSuchFieldException ignored) {
+                        // proceed and return null
+                    }
                 }
             }
         }
@@ -1370,7 +1387,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean GetBooleanField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getBoolean(o, offset);
     }
 
@@ -1379,7 +1396,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static byte GetByteField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getByte(o, offset);
     }
 
@@ -1388,7 +1405,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static short GetShortField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getShort(o, offset);
     }
 
@@ -1397,7 +1414,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static char GetCharField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getChar(o, offset);
     }
 
@@ -1406,7 +1423,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static int GetIntField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getInt(o, offset);
     }
 
@@ -1415,7 +1432,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long GetLongField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getLong(o, offset);
     }
 
@@ -1424,7 +1441,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static float GetFloatField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getFloat(o, offset);
     }
 
@@ -1433,7 +1450,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static double GetDoubleField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         return U.getDouble(o, offset);
     }
 
@@ -1441,8 +1458,8 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle GetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        Object result = U.getReference(JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        Object result = U.getReference(Support.getStaticFieldBase(fieldId, false), offset);
         return JNIObjectHandles.createLocal(result);
     }
 
@@ -1450,71 +1467,71 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean GetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getBoolean(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getBoolean(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static byte GetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getByte(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getByte(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static short GetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getShort(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getShort(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static char GetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getChar(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getChar(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static int GetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getInt(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getInt(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long GetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getLong(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getLong(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static float GetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getFloat(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getFloat(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static double GetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getDouble(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        return U.getDouble(Support.getStaticFieldBase(fieldId, true), offset);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, JNIObjectHandle value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putReference(o, offset, JNIObjectHandles.getObject(value));
     }
 
@@ -1523,7 +1540,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetBooleanField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, boolean value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putBoolean(o, offset, value);
     }
 
@@ -1532,7 +1549,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetByteField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, byte value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putByte(o, offset, value);
     }
 
@@ -1541,7 +1558,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetShortField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, short value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putShort(o, offset, value);
     }
 
@@ -1550,7 +1567,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetCharField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, char value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putChar(o, offset, value);
     }
 
@@ -1559,7 +1576,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetIntField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, int value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putInt(o, offset, value);
     }
 
@@ -1568,7 +1585,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetLongField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, long value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putLong(o, offset, value);
     }
 
@@ -1577,7 +1594,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetFloatField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, float value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putFloat(o, offset, value);
     }
 
@@ -1586,79 +1603,79 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetDoubleField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, double value) {
         Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        long offset = Support.getInstanceFieldOffset(fieldId);
         U.putDouble(o, offset, value);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, JNIObjectHandle value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putReference(JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId), offset, JNIObjectHandles.getObject(value));
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putReference(Support.getStaticFieldBase(fieldId, false), offset, JNIObjectHandles.getObject(value));
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, boolean value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putBoolean(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putBoolean(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, byte value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putByte(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putByte(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, short value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putShort(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putShort(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, char value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putChar(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putChar(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, int value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putInt(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putInt(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, long value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putLong(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putLong(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, float value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putFloat(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putFloat(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
     @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putDouble(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+        long offset = Support.getStaticFieldOffset(fieldId);
+        U.putDouble(Support.getStaticFieldBase(fieldId, true), offset, value);
     }
 
     /*
@@ -1901,19 +1918,69 @@ public final class JNIFunctions {
 
         static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
-            DynamicHub.fromClass(clazz).ensureInitialized();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            hub.ensureInitialized();
 
             CharSequence name = Utf8.wrapUtf8CString(cname);
             if (name == null) {
                 throw new NoSuchFieldError("Field name is either null or invalid UTF-8 string");
             }
 
+            if (RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded()) {
+                CharSequence signature = Utf8.wrapUtf8CString(csig);
+                if (signature == null) {
+                    throw new NoSuchFieldError("Field signature is either null or invalid UTF-8 string");
+                }
+                CremaResolvedJavaField resolvedField = CremaSupport.singleton().lookupCremaField(clazz, name.toString(), signature.toString(), isStatic);
+                if (resolvedField != null) {
+                    JNIFieldId fieldID = resolvedField.getOrCreateJNIFieldId();
+                    assert CremaJNIFieldIds.isCremaFieldId(fieldID);
+                    return fieldID;
+                }
+                throw new NoSuchFieldError(clazz.getName() + '.' + name);
+            }
+
             JNIFieldId fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
-            // TODO: check field signature
+            assert !CremaJNIFieldIds.isCremaFieldId(fieldID);
+
+            // TODO: check field signature also in non-crema case
             return fieldID;
+        }
+
+        private static JNIFieldId getCremaFieldID(Field field) {
+            if (RuntimeClassLoading.isSupported()) {
+                if (CremaSupport.singleton().toJVMCI(field) instanceof CremaResolvedJavaField resolvedField) {
+                    return resolvedField.getOrCreateJNIFieldId();
+                }
+            }
+            return Word.nullPointer();
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static long getInstanceFieldOffset(JNIFieldId fieldId) {
+            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+                return CremaJNIFieldIds.getInstanceFieldOffset(fieldId);
+            }
+            return JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        static long getStaticFieldOffset(JNIFieldId fieldId) {
+            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+                return CremaJNIFieldIds.getStaticFieldOffset(fieldId);
+            }
+            return JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        static Object getStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
+            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+                return CremaSupport.singleton().getCremaStaticFieldBase(fieldId, primitive);
+            }
+            return primitive ? JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId) : JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId);
         }
 
         static CShortPointer getNulTerminatedStringCharsAndPin(JNIObjectHandle hstr, CCharPointer isCopy) {
