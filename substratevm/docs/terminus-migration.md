@@ -1,6 +1,6 @@
 # Project Terminus Migration Guide
 
-This guide is for Native Image developers migrating build-time code away from host reflection and toward Terminus-safe guest-context APIs.
+This guide is for Native Image developers migrating build-time code toward Terminus-safe guest-context APIs.
 
 For the broader design, see [Project Terminus](project-terminus.md).
 For context and lifecycle terms, see [Project Terminus Terminology](terminus-terminology.md).
@@ -11,7 +11,7 @@ The primary API for working with the guest context is `GuestAccess`.
 
 When migrating code for Terminus, prefer JVMCI- and `VMAccess`-based APIs over Java core reflection whenever the code interacts with guest-loaded types, methods, fields, modules, or invocation paths.
 
-## API Replacements
+## Reflection And Metadata Replacements
 
 | Core reflection / hosted API                                                                 | Terminus-safe replacement                                                                                | Notes |
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --- |
@@ -36,17 +36,29 @@ When migrating code for Terminus, prefer JVMCI- and `VMAccess`-based APIs over J
 | `Class.isAssignableFrom(Class)`                                                              | `ResolvedJavaType.isAssignableFrom(ResolvedJavaType)` or `ReflectionUtil.isAssignableFrom(Class, Class)` | Use `ResolvedJavaType` for runtime or guest types; `ReflectionUtil` is acceptable for known hosted literals when satisfying `VerifyReflectionUsage`. |
 | `ReflectionUtil.invokeMethod(...)`, `Method.invoke(...)`, and ordinary reflective invocation | `GuestAccess.get().invoke(...)`                                                                          | Preferred invocation path for guest methods. |
 
-## Moving code from host/core to guest or shared modules
+## Moving Code From Host/Core To Guest Or Shared Modules
 
 When moving runtime code from host/core modules into `com.oracle.svm.shared`,
 `com.oracle.svm.guest.staging`, or `com.oracle.svm.guest`, adapt APIs and comments that
 were only valid because the code previously lived with hosted or compiler dependencies.
 
+### Package And Dependency Shape
+
 | Host/core pattern | Guest/shared adaptation | Notes |
 | --- | --- | --- |
 | Moving `com.oracle.svm.core...` code to guest staging | Insert `guest.staging` after `com.oracle.svm`, e.g., `com.oracle.svm.core.memory` to `com.oracle.svm.guest.staging.core.memory` | Preserve the original package suffix so moves stay mechanical and match prior Terminus refactorings. |
-| `jdk.graal.compiler.api.replacements.Fold` | `com.oracle.svm.shared.meta.GuestFold` | Use for Fold-like constants in runtime/guest-side code without adding a `jdk.graal.compiler` dependency. Folding is performed in the guest context. |
 | Javadoc `{@link ...}` to a target that is no longer visible after the move | Use `{@code ...}` | Preserve the referenced name in Javadoc without adding guest/shared dependencies only to keep documentation links resolvable. |
+
+### Builder-To-Guest API Adaptations
+
+Moving code from the builder into guest staging is not only a package rename.
+Code must stop depending on builder-only helpers and compiler-only annotations unless those dependencies are valid in the new module.
+
+| Builder/core pattern | Guest/shared adaptation | Notes |
+| --- | --- | --- |
+| `jdk.graal.compiler.api.replacements.Fold` | `com.oracle.svm.shared.meta.GuestFold` | Use for Fold-like constants in runtime/guest-side code without adding a `jdk.graal.compiler` dependency. Folding is performed in the guest context. |
+| Builder singleton installed in the guest through `GuestAccess.createCallback(...)` | Shared provider interface plus builder and guest helper classes | Keep the builder-facing helper in its original module when hosted code still uses it. Register the callback under the shared provider key, such as `ImageLayerBuildingSupportProvider`, so guest code can look it up through `ImageSingletons`. |
+| Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 
 For reviewability, prefer splitting broad moves into one commit for the real code movement and
 non-mechanical adaptations, followed by a second commit for mechanical import and reference
