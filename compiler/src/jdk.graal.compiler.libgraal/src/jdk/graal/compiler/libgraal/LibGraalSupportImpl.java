@@ -248,6 +248,11 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
                 rt.notifyShutdown(env);
             }
         }
+
+        /*
+         * Execute JDK shutdown hooks. Note that this will also be called by DestroyJavaVM, but
+         * the hooks won't run again.
+         */
         VMRuntime.shutdown();
     }
 

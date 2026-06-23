@@ -188,6 +188,12 @@ public final class RuntimeSupport implements VMRuntimeSupport {
 
     @Override
     public void shutdown() {
+        /*
+         * This method is invoked even when initialize() is not (e.g., when option InitializeVM is
+         * disabled). It calls shutdown hooks, which are defined by the JDK, unlike the hooks in
+         * this class. For optional shutdown tasks or shutdown tasks that depend on initialization,
+         * a second method should be split off (GR-76779).
+         */
         Target_java_lang_Shutdown.shutdown();
     }
 

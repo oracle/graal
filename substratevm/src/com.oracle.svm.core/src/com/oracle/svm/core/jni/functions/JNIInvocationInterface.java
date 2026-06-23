@@ -72,6 +72,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -308,7 +309,12 @@ public final class JNIInvocationInterface {
         if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
             return JNIErrors.JNI_ERR();
         }
+        RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
         PlatformThreads.singleton().joinAllNonDaemonsInNative();
+        try {
+            VMRuntime.shutdown();
+        } catch (Throwable ignored) {
+        }
         return JNIErrors.JNI_OK();
     }
 
