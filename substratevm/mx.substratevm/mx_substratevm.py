@@ -1402,6 +1402,9 @@ def _helloworld(native_image, javac_command, path, build_only, args, variant=lis
             # If helloword got built into a shared library we use python to load the shared library
             # and call its `run_main`. We are capturing the stdout during the call into an unnamed
             # pipe so that we can use it in the actual vs. expected check below.
+            stdout = None
+            pout = None
+            pin = None
             try:
                 import ctypes
                 so_name = mx.add_lib_suffix('helloworld')
@@ -1419,9 +1422,17 @@ def _helloworld(native_image, javac_command, path, build_only, args, variant=lis
                 mx.log(f'Stdout from calling run_main in shared object {so_name}:')
                 mx.log(call_stdout)
             finally:
-                del os.environ[envkey]
-                os.close(pin)
-                os.close(pout)
+                # Clean up defensively: any of the steps above (e.g. loading the shared library)
+                # may fail before 'envkey' or the pipe fds were set up. Unconditional cleanup here
+                # would raise a secondary KeyError/NameError that masks the real failure.
+                if stdout is not None:
+                    os.dup2(stdout, 1)  # ensure original stdout is restored
+                    os.close(stdout)
+                os.environ.pop(envkey, None)
+                if pin is not None:
+                    os.close(pin)
+                if pout is not None:
+                    os.close(pout)
         else:
             env = os.environ.copy()
             env[envkey] = output
