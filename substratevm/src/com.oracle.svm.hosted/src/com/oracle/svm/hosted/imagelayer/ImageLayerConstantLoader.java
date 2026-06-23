@@ -33,6 +33,9 @@ import java.lang.reflect.Array;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -130,23 +133,43 @@ final class ImageLayerConstantLoader {
     void relinkStaticFinalFieldValues(boolean isLateLoading) {
         /*
          * Relinking can trigger hosted class initialization, which may execute arbitrary framework
-         * code. Do not use the common pool here: if class initialization waits for common-pool work
-         * while other relinking tasks are blocked on class-initialization state, the image build can
-         * deadlock.
+         * code. Do not use a ForkJoinPool here: if class initialization waits for fork-join work
+         * from a relinking worker thread, that worker can help the relinking pool and reenter
+         * relinking while still holding class-initialization state.
          */
-        for (int i = 0; i < snapshot.getConstants().size(); i++) {
-            var constantData = snapshot.getConstants().get(i);
-            var relinking = constantData.getObject().getRelinking();
-            if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
-                ImageHeapConstant constant = getOrCreateConstant(constantData.getId());
-                /*
-                 * If the field value cannot be read, the hosted object will not be relinked. If
-                 * there's already an ImageHeapConstant registered for the same hosted value, the
-                 * registration will fail. That could mean that we try to register too late.
-                 */
-                if (constant.getHostedObject() != null) {
-                    loader.universe.getHeapScanner().registerBaseLayerValue(constant, PERSISTED);
-                }
+        int constantCount = snapshot.getConstants().size();
+        int parallelism = Math.max(1, ForkJoinPool.commonPool().getParallelism());
+        int taskCount = Math.min(constantCount, parallelism);
+
+        try (ExecutorService relinkingExecutor = Executors.newFixedThreadPool(taskCount)) {
+            AnalysisFuture<?>[] tasks = new AnalysisFuture<?>[taskCount];
+            for (int start = 0; start < taskCount; start++) {
+                int first = start;
+                tasks[start] = new AnalysisFuture<>(() -> {
+                    for (int i = first; i < constantCount; i += taskCount) {
+                        relinkStaticFinalFieldValue(i, isLateLoading);
+                    }
+                });
+                relinkingExecutor.execute(tasks[start]);
+            }
+            for (AnalysisFuture<?> task : tasks) {
+                task.guardedGet();
+            }
+        }
+    }
+
+    private void relinkStaticFinalFieldValue(int constantIndex, boolean isLateLoading) {
+        var constantData = snapshot.getConstants().get(constantIndex);
+        var relinking = constantData.getObject().getRelinking();
+        if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
+            ImageHeapConstant constant = getOrCreateConstant(constantData.getId());
+            /*
+             * If the field value cannot be read, the hosted object will not be relinked. If
+             * there's already an ImageHeapConstant registered for the same hosted value, the
+             * registration will fail. That could mean that we try to register too late.
+             */
+            if (constant.getHostedObject() != null) {
+                loader.universe.getHeapScanner().registerBaseLayerValue(constant, PERSISTED);
             }
         }
     }
