@@ -219,6 +219,21 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
         return currentStackOffset + alignment;
     }
 
+    /**
+     * The Linux calling convention expects stack arguments to be aligned to at least 8 bytes, but
+     * any unused padding bits have unspecified values.
+     *
+     * For more details, see <a
+     * href=https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-cc.adoc>the
+     * RISC-V calling convention</a>.
+     */
+    private int linuxNativeStackParameterAssignment(ValueKindFactory<?> valueKindFactory, AllocatableValue[] locations, int index, JavaKind kind, int currentStackOffset, boolean isOutgoing) {
+        ValueKind<?> valueKind = valueKindFactory.getValueKind(isOutgoing ? kind.getStackKind() : kind);
+        int alignment = Math.max(kind.getByteCount(), target.wordSize);
+        locations[index] = StackSlot.get(valueKind, currentStackOffset, !isOutgoing);
+        return currentStackOffset + alignment;
+    }
+
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
@@ -300,10 +315,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                 } else {
                     if (type.nativeABI()) {
                         if (Platform.includedIn(Platform.LINUX.class)) {
-                            ValueKind<?> valueKind = valueKindFactory.getValueKind(type.outgoing ? kind.getStackKind() : kind);
-                            int alignment = Math.max(kind.getByteCount(), target.wordSize);
-                            locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
-                            currentStackOffset = currentStackOffset + alignment;
+                            currentStackOffset = linuxNativeStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
                         } else {
                             throw VMError.unsupportedPlatform(); // ExcludeFromJacocoGeneratedReport
                         }
