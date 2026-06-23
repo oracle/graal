@@ -52,9 +52,8 @@ final class Target_jdk_internal_loader_BootLoader {
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     public static Stream<Package> packages() {
-        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
-        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
-        return systemClassLoader.packages();
+        Target_java_lang_ClassLoader bootLoader = SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), Target_java_lang_ClassLoader.class);
+        return bootLoader.packages();
     }
 
     @Delete("only used by #packages()")
@@ -78,10 +77,14 @@ final class Target_jdk_internal_loader_BootLoader {
      * package source is recorded when runtime class loading reads a class from that package; this
      * method does not scan the boot class path for packages with no loaded classes.
      *
+     * This substitution is unconditional because JDK code can call it while defining packages for
+     * boot-loaded classes even when Native Image is not otherwise respecting application class
+     * loaders. The native JVM entry point is not implemented in generated images, so the Java
+     * fallback must always route through `BootClassRegistry`.
+     *
      * @param internalPackageName package name in internal form (e.g. "org/foo/impl")
      */
     @Substitute
-    @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/BootLoader.c#L44-L52")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3011-L3015")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/classfile/classLoader.cpp#L928-L935")
