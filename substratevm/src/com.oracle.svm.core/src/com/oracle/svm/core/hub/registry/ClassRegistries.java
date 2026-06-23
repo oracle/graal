@@ -528,6 +528,11 @@ public final class ClassRegistries implements ParsingContext {
 
     @Override
     public TimerCollection getTimers() {
+        /*
+         * This is called early by the parser. We ensure that the parser is only used at run-time
+         * since some aspects are not made for build time (e.g., see the `logger` below).
+         */
+        SubstrateUtil.guaranteeRuntimeOnly();
         return timers;
     }
 
@@ -558,6 +563,8 @@ public final class ClassRegistries implements ParsingContext {
 
     @Override
     public Logger getLogger() {
+        // The logger is not made to be used at build-time.
+        SubstrateUtil.guaranteeRuntimeOnly();
         return logger;
     }
 

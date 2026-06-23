@@ -27,8 +27,6 @@ package com.oracle.svm.interpreter.metadata;
 import static com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,21 +42,14 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.espresso.classfile.ClassfileParser;
-import com.oracle.svm.espresso.classfile.ClassfileStream;
-import com.oracle.svm.espresso.classfile.ParserException;
 import com.oracle.svm.espresso.classfile.ParserKlass;
-import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
 import com.oracle.svm.espresso.shared.meta.TypeAccess;
-import com.oracle.svm.espresso.shared.vtable.TableEntry;
 import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.Uninterruptible;
@@ -103,7 +94,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
      * <ul>
      * <li>The inherited superclass vtable. Entries in this part may be overridden by this class'
      * declared method if applicable.</li>
-     * <li>The {@link VTable#isVirtualEntry(TableEntry) virtual} declared methods of the current
+     * <li>The {@link VTable#isVirtualEntry virtual} declared methods of the current
      * class. Some of these declared methods may not be appended, if they override a method in the
      * super's table that has equivalent access control.</li>
      * <li>The implicit interface methods, which are methods declared in any superinterface (or their
@@ -266,7 +257,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
                     String sourceFileName) {
         Symbol<Type> type = CremaTypeAccess.jvmciNameToType(name);
         return new InterpreterResolvedObjectType(originalType, type, modifiers, componentType, superclass, interfaces, constantPool, javaClass, sourceFileName,
-                        permittedSubclassNames(originalType, javaClass));
+                        permittedSubclassNames(originalType));
     }
 
     @VisibleForSerialization
@@ -398,12 +389,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static Symbol<Name>[] permittedSubclassNames(ResolvedJavaType originalType, Class<?> javaClass) {
-        Symbol<Name>[] parsedNames = permittedSubclassNames(javaClass);
-        if (parsedNames != null) {
-            return parsedNames;
-        }
-
+    private static Symbol<Name>[] permittedSubclassNames(ResolvedJavaType originalType) {
         ResolvedJavaType sourceType = OriginalClassProvider.getOriginalType(originalType);
         List<? extends JavaType> permittedSubclasses = sourceType.getPermittedSubclasses();
         if (permittedSubclasses == null) {
@@ -413,38 +399,10 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         Symbol<Name>[] result = (Symbol<Name>[]) new Symbol<?>[permittedSubclasses.size()];
         for (int i = 0; i < result.length; i++) {
             // Store the class-file name so build-time and Crema-loaded sealed classes use the same symbolic representation.
-            String classFileName = permittedSubclasses.get(i).toClassName().replace('.', '/');
+            String classFileType = permittedSubclasses.get(i).getName();
+            assert classFileType.startsWith("L") && classFileType.endsWith(";") : classFileType;
+            String classFileName = classFileType.substring(1, classFileType.length() - 1);
             result[i] = SymbolsSupport.getNames().getOrCreate(ByteSequence.create(classFileName));
-        }
-        return result;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static Symbol<Name>[] permittedSubclassNames(Class<?> javaClass) {
-        String classFileName = javaClass.getName().replace('.', '/') + ".class";
-        try (InputStream stream = javaClass.getClassLoader() == null ? ClassLoader.getSystemResourceAsStream(classFileName) : javaClass.getClassLoader().getResourceAsStream(classFileName)) {
-            if (stream == null) {
-                return null;
-            }
-            // Read the class-file attribute directly so permitted subclasses stay symbolic.
-            ParserKlass parsed = ClassfileParser.parse(ClassRegistries.currentLayer(), new ClassfileStream(stream.readAllBytes(), null), false, javaClass.getClassLoader() == null, null,
-                            javaClass.isHidden(), true, false);
-            return permittedSubclassNames(parsed);
-        } catch (IOException | ValidationException | ParserException e) {
-            throw VMError.shouldNotReachHere("Cannot parse class file for " + javaClass.getName(), e);
-        }
-    }
-
-    private static Symbol<Name>[] permittedSubclassNames(ParserKlass parserKlass) {
-        PermittedSubclassesAttribute permittedSubclasses = parserKlass.getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
-        if (permittedSubclasses == null) {
-            return null;
-        }
-        char[] classes = permittedSubclasses.getClasses();
-        @SuppressWarnings("unchecked")
-        Symbol<Name>[] result = (Symbol<Name>[]) new Symbol<?>[classes.length];
-        for (int i = 0; i < classes.length; i++) {
-            result[i] = parserKlass.getConstantPool().className(classes[i]);
         }
         return result;
     }
