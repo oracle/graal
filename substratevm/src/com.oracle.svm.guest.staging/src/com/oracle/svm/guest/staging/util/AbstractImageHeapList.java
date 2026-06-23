@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.guest.staging.util;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.util.ImageHeapList.HostedImageHeapList;
+import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
 
 /**
  * Super type for {@link HostedImageHeapList} and {@link RuntimeImageHeapList} that allows declaring
@@ -37,10 +36,10 @@ import com.oracle.svm.core.util.ImageHeapList.HostedImageHeapList;
  * open-world analysis. When such a field is analysed in an open-world it gets injected all possible
  * subtypes of its declared type. Declaring the type as {@link AbstractImageHeapList} allows us to
  * only inject {@link RuntimeImageHeapList}.This enables a more precise analysis and avoids for
- * example triggering false-positive violations of @{@link RestrictHeapAccess}: if the field was
+ * example triggering false-positive violations of {@code @RestrictHeapAccess}: if the field was
  * declared as {@link List} then implementations of {@link List} for which simple access operations
  * can allocate, such as {@link ArrayList#get(int)}, could become reachable from code annotated
- * with @{@link RestrictHeapAccess}.
+ * with {@code @RestrictHeapAccess}.
  */
 public abstract sealed class AbstractImageHeapList<E> extends AbstractList<E> permits HostedImageHeapList, RuntimeImageHeapList {
 }
