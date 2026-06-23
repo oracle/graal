@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ from mx_benchmark import DataPoints
 from mx_sdk_benchmark import GraalVm
 
 _suite = mx.suite('vm')
-
 
 class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     def __init__(self):
@@ -285,6 +284,7 @@ def register_crema_java_vm():
 
     crema_configs = [
         ('default-' + edition, ['-svm']),
+        ('no-profiling-' + edition, ['-svm']),
         ('xint-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
     ]
     for config_name, java_args in crema_configs:

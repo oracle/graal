@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -849,6 +849,9 @@ public abstract class InterpreterStubSection {
      */
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE, callerMustBe = true)
     private static CFunctionPointer getInstalledCodeEntryPoint(InterpreterResolvedJavaMethod interpreterMethod) {
+        if (!SubstrateOptions.useRistretto()) {
+            return Word.nullPointer();
+        }
         RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null) {
             SubstrateInstalledCodeImpl ic = rMethod.installedCode;

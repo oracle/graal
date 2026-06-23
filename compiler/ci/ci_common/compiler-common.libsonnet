@@ -199,6 +199,19 @@
     }
   },
 
+  crema_no_profiling:: self.crema + {
+    local edition = config.graalvm_edition,
+    local mx_env_path = "crema-no-profiling-" + edition,
+    platform+:: "-no-profiling",
+    diagnostic_vm_args:: [],
+    environment+: {
+      // Build lib:jvm with Ristretto disabled. The interpreter profiling branches are guarded by
+      // SubstrateOptions.useRistretto(), so this removes profiling at image build time.
+      "JVM_CONFIG": "no-profiling-" + edition,
+      "MX_ENV_PATH": mx_env_path,
+    },
+  },
+
   economy_mode:: {
     platform+:: "-economy",
     environment+: {

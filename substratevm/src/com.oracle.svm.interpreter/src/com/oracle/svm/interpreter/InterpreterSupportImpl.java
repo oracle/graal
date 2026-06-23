@@ -40,6 +40,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
@@ -200,6 +201,13 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     public DeoptimizedFrame createInterpreterDeoptimizedFrame(SubstrateInstalledCode installedCode, Deoptimizer deoptimizer, CodePointer pc, FrameInfoQueryResult frameInfo,
                     CodeInfoQueryResult physicalFrame, boolean eager) {
+        /*
+         * useRistretto() is a hosted fold. Keep the Ristretto-only deopt path behind it so
+         * no-Ristretto images do not retain the deopt support types at runtime.
+         */
+        if (!SubstrateOptions.useRistretto()) {
+            throw VMError.shouldNotReachHere("Interpreter deoptimization requires Ristretto.");
+        }
         if (!(installedCode instanceof RistrettoInstalledCode rCode)) {
             throw VMError.shouldNotReachHere("Must have RistrettoInstalledCode.");
         }
@@ -236,6 +244,9 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Uninterruptible(reason = "Invoked from deoptimization stubs while transitioning to interpreter execution.")
     public UnsignedWord continueInterpreterDeoptimization(DeoptimizedFrame frame, Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue,
                     boolean hasException, Object gpReturnValueObject) {
+        if (!SubstrateOptions.useRistretto()) {
+            throw VMError.shouldNotReachHere("Interpreter deoptimization requires Ristretto.");
+        }
         VMError.guarantee(frame instanceof RistrettoDeoptimizedInterpreterFrame, "Unexpected interpreter deoptimized frame implementation");
         return ((RistrettoDeoptimizedInterpreterFrame) frame).continueInterpreterDeoptimization(originalStackPointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
     }
@@ -469,7 +480,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     @Override
     public FrameSourceInfo getSyntheticMethodFrameInfo(FrameInfoQueryResult frameInfo) {
-        if (frameInfo.getSourceClass() != null) {
+        if (!SubstrateOptions.useRistretto() || frameInfo.getSourceClass() != null) {
             return null;
         }
         if (!(frameInfo.getDeoptMethod() instanceof RistrettoMethod rMethod)) {

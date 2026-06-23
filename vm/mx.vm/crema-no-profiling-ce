@@ -1,0 +1,7 @@
+# Based on ce-next, but builds lib:jvm with Ristretto disabled so interpreter profiling folds out.
+DYNAMIC_IMPORTS=/sdk,/truffle,/compiler,/substratevm
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm,svmjava,svmjavad
+NATIVE_IMAGES=lib:jvm
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
+LIBJVM_IMAGE_AS_DEFAULT=true
+EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:+UnlockExperimentalVMOptions -H:-GraalJITCompileAtRuntime -H:-UnlockExperimentalVMOptions
