@@ -41,11 +41,16 @@ import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResource;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.wasm.WasmJSCounterparts;
+import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
+import com.oracle.svm.hosted.webimage.wasm.ast.Limit;
+import com.oracle.svm.hosted.webimage.wasm.ast.Memory;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmElementCreator;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmRelocationVisitor;
@@ -89,6 +94,14 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
     @Override
     protected void genWasmModule() {
         super.genWasmModule();
+
+        if (WebImageOptions.isStandaloneWasm()) {
+            // Add a 1-page (64KB) linear memory for batch printing buffer.
+            // WasmGC modules can have both GC types and linear memory.
+            WasmId.Memory memId = getProviders().idFactory().forMemory(0);
+            module.setMemory(new Memory(memId, Limit.fixed(1), "Batch printing buffer"));
+            module.addExport(new Export(Export.Type.MEM, memId, "memory", "Linear memory for host I/O"));
+        }
 
         for (Map.Entry<HostedMethod, String> entry : ((WebImageWasmGCCodeCache) codeCache).getExportedMethodMetadata().entrySet()) {
             HostedMethod m = entry.getKey();
@@ -159,8 +172,28 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
 
     @Override
     protected void emitBootstrapDefinitions() {
+        if (WebImageOptions.isStandaloneWasm()) {
+            // In standalone mode, skip all JS bootstrap emissions.
+            // The WASM module runs without a JS host, so no JS imports or
+            // conversion code is needed.
+            return;
+        }
         super.emitBootstrapDefinitions();
         emitJSBodyImports();
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    protected void emitJSCode() {
+        if (WebImageOptions.isStandaloneWasm()) {
+            // In standalone mode, no JS host file is produced.
+            // Still create the metrics scope so post-processing counters are initialized.
+            try (ImageMetricsCollector collector = new ImageMetricsCollector.PreClosure(codeBuffer)) {
+                // No JS code to emit.
+            }
+            return;
+        }
+        super.emitJSCode();
     }
 
     /**

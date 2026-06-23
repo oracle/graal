@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;
@@ -58,6 +60,42 @@ public class WebImageWasmGCProviders extends WebImageWasmProviders {
     public WebImageWasmGCProviders(RuntimeConfiguration runtimeConfig, CoreProviders underlyingProviders, PrintStream out, DebugContext debug) {
         super(runtimeConfig, underlyingProviders, out, debug);
         this.builder = new WasmGCBuilder(this);
+
+        if (WebImageOptions.isStandaloneWasm()) {
+            registerComponentImportRemappings();
+        }
+    }
+
+    /**
+     * Registers import name remappings for WebAssembly Component Model compatibility.
+     * <p>
+     * The component model requires fully-qualified module names
+     * (e.g. {@code graalvm:standalone/io@0.1.0}) and kebab-case function names
+     * (e.g. {@code print-char}).
+     */
+    private void registerComponentImportRemappings() {
+        WasmIdFactory factory = idFactory();
+
+        // Compat math imports
+        factory.addImportRemapping(WasmImports.F32Rem, WasmImports.Component.F32Rem);
+        factory.addImportRemapping(WasmImports.F64Rem, WasmImports.Component.F64Rem);
+        factory.addImportRemapping(WasmImports.F64Log, WasmImports.Component.F64Log);
+        factory.addImportRemapping(WasmImports.F64Log10, WasmImports.Component.F64Log10);
+        factory.addImportRemapping(WasmImports.F64Sin, WasmImports.Component.F64Sin);
+        factory.addImportRemapping(WasmImports.F64Cos, WasmImports.Component.F64Cos);
+        factory.addImportRemapping(WasmImports.F64Tan, WasmImports.Component.F64Tan);
+        factory.addImportRemapping(WasmImports.F64Tanh, WasmImports.Component.F64Tanh);
+        factory.addImportRemapping(WasmImports.F64Exp, WasmImports.Component.F64Exp);
+        factory.addImportRemapping(WasmImports.F64Pow, WasmImports.Component.F64Pow);
+        factory.addImportRemapping(WasmImports.F64Cbrt, WasmImports.Component.F64Cbrt);
+
+        // IO imports
+        factory.addImportRemapping(WasmImports.printChar, WasmImports.Component.printChar);
+        factory.addImportRemapping(WasmImports.printBuffer, WasmImports.Component.printBuffer);
+        factory.addImportRemapping(WasmImports.hostTimeMs, WasmImports.Component.hostTimeMs);
+
+        // WASI imports
+        factory.addImportRemapping(WasmImports.wasiProcExit, WasmImports.Component.procExit);
     }
 
     public static WebImageWasmGCProviders singleton() {

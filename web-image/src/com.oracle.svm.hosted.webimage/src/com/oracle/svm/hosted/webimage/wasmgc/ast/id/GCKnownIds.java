@@ -31,6 +31,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
@@ -181,6 +182,8 @@ public class GCKnownIds extends KnownIds {
     public final WasmGCJSBodyTemplates.ExtractJSValue extractJSValueTemplate;
     public final WasmGCJSBodyTemplates.IsJavaObject isJavaObjectTemplate;
 
+    public final WasmGCFunctionTemplates.StandalonePrintChars standalonePrintCharsTemplate;
+
     private final List<Export> functionExports = new ArrayList<>();
 
     public GCKnownIds(WasmIdFactory idFactory) {
@@ -253,10 +256,16 @@ public class GCKnownIds extends KnownIds {
         this.extractJSValueTemplate = new WasmGCJSBodyTemplates.ExtractJSValue(idFactory);
         this.isJavaObjectTemplate = new WasmGCJSBodyTemplates.IsJavaObject(idFactory);
 
+        this.standalonePrintCharsTemplate = new WasmGCFunctionTemplates.StandalonePrintChars(idFactory);
+
         this.functionExports.add(Export.forFunction(unsafeCreateTemplate.requestFunctionId(), "unsafe.create", "Create uninitialized instance of given class"));
-        this.functionExports.add(Export.forFunction(wrapExternTemplate.requestFunctionId(), "extern.wrap", "Wrap externref in WasmExtern"));
-        this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.unwrap", "Unwrap Java object to externref"));
-        this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.isjavaobject", "Check if reference is a Java Object"));
+        if (!WebImageOptions.isStandaloneWasm()) {
+            // In standalone mode, extern.wrap/unwrap use externref which is not component-model
+            // compatible. Skip these exports since they are only used for JS interop.
+            this.functionExports.add(Export.forFunction(wrapExternTemplate.requestFunctionId(), "extern.wrap", "Wrap externref in WasmExtern"));
+            this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.unwrap", "Unwrap Java object to externref"));
+            this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.isjavaobject", "Check if reference is a Java Object"));
+        }
         this.functionExports.add(Export.forFunction(arrayLengthTemplate.requestFunctionId(), "array.length", "Length of a Java array"));
         this.functionExports.add(Export.forFunction(arrayCreateTemplate.requestFunctionId(char.class), "array.char.create", "Create char array"));
         this.functionExports.add(Export.forFunction(arrayCreateTemplate.requestFunctionId(String.class), "array.string.create", "Create String array"));
@@ -305,7 +314,8 @@ public class GCKnownIds extends KnownIds {
                         fillHeapObjectTemplate,
                         fillHeapArrayTemplate,
                         objectCloneTemplate,
-                        arrayCloneTemplate);
+                        arrayCloneTemplate,
+                        standalonePrintCharsTemplate);
     }
 
     @Override

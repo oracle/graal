@@ -52,6 +52,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.TypeDefinition;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
 import com.oracle.svm.webimage.wasm.types.WasmPackedType;
@@ -172,9 +173,12 @@ public class WasmGCElementCreator extends WasmElementCreator {
             fields.addAll(getExtraHubFields());
         }
 
-        // The WasmExtern class gets an additional non-java field holding the externref
+        // The WasmExtern class gets an additional non-java field holding the externref.
+        // In standalone mode, externref is not available (no JS host), so use a dummy i32 field
+        // to preserve struct layout without introducing externref into the module.
         if (javaType.equals(wasmProviders.getMetaAccess().lookupJavaType(WasmExtern.class))) {
-            fields.add(new StructType.Field(knownIds.embedderField, FieldType.immutable(WasmRefType.EXTERNREF), "Internal field holding a reference to an embedder object"));
+            WasmStorageType fieldType = WebImageOptions.isStandaloneWasm() ? WasmPrimitiveType.i32 : WasmRefType.EXTERNREF;
+            fields.add(new StructType.Field(knownIds.embedderField, FieldType.immutable(fieldType), "Internal field holding a reference to an embedder object"));
         }
 
         boolean isFinal = false;

@@ -39,6 +39,8 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
@@ -113,6 +115,16 @@ public class WasmGCFunctionTemplates {
         @Override
         protected Function createFunction(Context ctxt) {
             WebImageWasmGCProviders providers = (WebImageWasmGCProviders) ctxt.getProviders();
+
+            if (WebImageOptions.isStandaloneWasm()) {
+                // In standalone mode, produce a stub that returns i32(0) instead of externref.
+                // This function is dead code but must still be valid.
+                Function f = ctxt.createFunction(TypeUse.forUnary(WasmPrimitiveType.i32, providers.util().getJavaLangObjectType()),
+                                "Stub: extern.unwrap not available in standalone mode");
+                f.getInstructions().add(Instruction.Const.forInt(0));
+                return f;
+            }
+
             ResolvedJavaType wasmExternType = providers.getMetaAccess().lookupJavaType(WasmExtern.class);
             WasmId.StructType wasmExternId = idFactory.newJavaStruct(wasmExternType);
             WasmRefType wasmExternRef = wasmExternId.asNonNull();
@@ -161,9 +173,19 @@ public class WasmGCFunctionTemplates {
         protected Function createFunction(Context ctxt) {
             WebImageWasmGCProviders providers = (WebImageWasmGCProviders) ctxt.getProviders();
             WasmGCUtil util = providers.util();
+            WasmRefType javaLangObjectType = util.getJavaLangObjectType();
+
+            if (WebImageOptions.isStandaloneWasm()) {
+                // In standalone mode, produce a stub that takes i32 and returns null.
+                // This function is dead code but must still be valid.
+                Function f = ctxt.createFunction(TypeUse.forUnary(javaLangObjectType, WasmPrimitiveType.i32),
+                                "Stub: extern.wrap not available in standalone mode");
+                f.getInstructions().add(new Instruction.RefNull(javaLangObjectType));
+                return f;
+            }
+
             ResolvedJavaType wasmExternType = providers.getMetaAccess().lookupJavaType(WasmExtern.class);
             WasmId.StructType wasmExternId = idFactory.newJavaStruct(wasmExternType);
-            WasmRefType javaLangObjectType = util.getJavaLangObjectType();
 
             JavaConstant hubConstant = providers.getConstantReflection().asJavaClass(providers.getMetaAccess().lookupJavaType(WasmExtern.class));
 
@@ -1133,6 +1155,133 @@ public class WasmGCFunctionTemplates {
             WasmId.Local clazzParam = f.getParam(0);
 
             f.getInstructions().add(providers.builder().createUninitialized(clazzParam.getter()));
+            return f;
+        }
+    }
+
+    /**
+     * Function that prints a GC-managed char array to a file descriptor using batch I/O
+     * via a linear memory transfer buffer.
+     * <p>
+     * This is used in standalone WASM mode where GC arrays cannot be passed as linear memory
+     * pointers to host functions. Characters are copied from the GC array into a 1-page (64KB)
+     * linear memory buffer, then flushed to the host via {@code io.print_buffer(fd, ptr, count)}.
+     * <p>
+     * For arrays larger than the buffer (32K chars), the copy+flush is repeated in chunks.
+     * This is 10-100x faster than per-character {@code print_char} for long strings.
+     * <p>
+     * Generates (simplified):
+     *
+     * <pre>{@code
+     * (func $standalone.printChars (param $fd i32) (param $array (ref null $charArrayStruct))
+     *   (local $i i32) (local $len i32) (local $chunk i32)
+     *   (local.set $len (array.len ...))
+     *   (block $done (loop $outer
+     *     (br_if $done (i32.ge_u $i $len))
+     *     ;; chunk = min(len - i, 32768)
+     *     ;; inner loop: copy chars to linear memory at offset j*2
+     *     (block $inner_done (loop $inner
+     *       (br_if $inner_done (i32.ge_u $j $chunk))
+     *       (i32.store16 offset=0 (i32.shl $j 1) (array.get_u ... (i32.add $i $j)))
+     *       (local.set $j (i32.add $j 1))
+     *       (br $inner)))
+     *     (call $io.print_buffer $fd (i32.const 0) $chunk)
+     *     (local.set $i (i32.add $i $chunk))
+     *     (br $outer))))
+     * }</pre>
+     */
+    public static class StandalonePrintChars extends WasmFunctionTemplate.Singleton {
+
+        /** Max chars per batch (1 page = 64KB, 2 bytes per char = 32K chars). */
+        private static final int BUFFER_CHARS = 32768;
+
+        public StandalonePrintChars(WasmIdFactory idFactory) {
+            super(idFactory, true);
+        }
+
+        @Override
+        protected String getFunctionName() {
+            return "standalone.printChars";
+        }
+
+        @Override
+        protected Function createFunction(Context ctxt) {
+            WebImageWasmGCProviders providers = (WebImageWasmGCProviders) ctxt.getProviders();
+            GCKnownIds knownIds = providers.knownIds();
+
+            WasmValType charArrayStructType = knownIds.getArrayStructType(JavaKind.Char).asNullable();
+
+            Function f = ctxt.createFunction(
+                            TypeUse.withoutResult(WasmPrimitiveType.i32, charArrayStructType),
+                            "Print char array to fd via linear memory batch buffer");
+            Instructions instructions = f.getInstructions();
+
+            WasmId.Local fdParam = f.getParam(0);
+            WasmId.Local arrayParam = f.getParam(1);
+            WasmId.Local srcIndex = idFactory.newTemporaryVariable(WasmPrimitiveType.i32);    // position in source array
+            WasmId.Local arrayLength = idFactory.newTemporaryVariable(WasmPrimitiveType.i32);
+            WasmId.Local chunkSize = idFactory.newTemporaryVariable(WasmPrimitiveType.i32);   // chars in current chunk
+            WasmId.Local bufIndex = idFactory.newTemporaryVariable(WasmPrimitiveType.i32);    // position within chunk
+
+            WasmId.Func printBufferImport = idFactory.forFunctionImport(WasmImports.printBuffer);
+
+            // len = array.length
+            instructions.add(arrayLength.setter(providers.builder().getArrayLength(arrayParam.getter())));
+
+            // Outer loop: process chunks
+            WasmId.Label doneLabel = idFactory.newInternalLabel("done");
+            WasmId.Label outerLabel = idFactory.newInternalLabel("outer");
+            Instruction.Block outerBlock = new Instruction.Block(doneLabel);
+            instructions.add(outerBlock);
+            Instruction.Loop outerLoop = new Instruction.Loop(outerLabel);
+            outerBlock.instructions.add(outerLoop);
+
+            // Break if srcIndex >= arrayLength
+            outerLoop.instructions.add(new Instruction.Break(doneLabel,
+                            Binary.Op.I32GeU.create(srcIndex.getter(), arrayLength.getter())));
+
+            // chunkSize = min(arrayLength - srcIndex, BUFFER_CHARS)
+            Instruction remaining = Binary.Op.I32Sub.create(arrayLength.getter(), srcIndex.getter());
+            Instruction.If chunkIf = new Instruction.If(null,
+                            Binary.Op.I32LtU.create(remaining, Instruction.Const.forInt(BUFFER_CHARS)));
+            chunkIf.thenInstructions.add(chunkSize.setter(Binary.Op.I32Sub.create(arrayLength.getter(), srcIndex.getter())));
+            chunkIf.elseInstructions.add(chunkSize.setter(Instruction.Const.forInt(BUFFER_CHARS)));
+            outerLoop.instructions.add(chunkIf);
+
+            // Reset buffer index
+            outerLoop.instructions.add(bufIndex.setter(Instruction.Const.forInt(0)));
+
+            // Inner loop: copy chars to linear memory
+            WasmId.Label innerDoneLabel = idFactory.newInternalLabel("innerDone");
+            WasmId.Label innerLabel = idFactory.newInternalLabel("inner");
+            Instruction.Block innerBlock = new Instruction.Block(innerDoneLabel);
+            outerLoop.instructions.add(innerBlock);
+            Instruction.Loop innerLoop = new Instruction.Loop(innerLabel);
+            innerBlock.instructions.add(innerLoop);
+
+            // Break inner if bufIndex >= chunkSize
+            innerLoop.instructions.add(new Instruction.Break(innerDoneLabel,
+                            Binary.Op.I32GeU.create(bufIndex.getter(), chunkSize.getter())));
+
+            // i32.store16 at byte offset (bufIndex * 2), value = array[srcIndex + bufIndex]
+            Instruction srcArrayIndex = Binary.Op.I32Add.create(srcIndex.getter(), bufIndex.getter());
+            Instruction charValue = providers.builder().getArrayElement(arrayParam.getter(), srcArrayIndex, JavaKind.Char);
+            Instruction byteOffset = Binary.Op.I32Shl.create(bufIndex.getter(), Instruction.Const.forInt(1));
+            // Store as i32 with memoryWidth=16 (i32.store16)
+            innerLoop.instructions.add(new Instruction.Store(WasmPrimitiveType.i32, 0, charValue, byteOffset, 16));
+
+            // bufIndex++
+            innerLoop.instructions.add(bufIndex.setter(Binary.Op.I32Add.create(bufIndex.getter(), Instruction.Const.forInt(1))));
+            innerLoop.instructions.add(new Instruction.Break(innerLabel));
+
+            // After inner loop: call print_buffer(fd, 0, chunkSize)
+            outerLoop.instructions.add(new Instruction.Call(printBufferImport,
+                            fdParam.getter(), Instruction.Const.forInt(0), chunkSize.getter()));
+
+            // srcIndex += chunkSize
+            outerLoop.instructions.add(srcIndex.setter(Binary.Op.I32Add.create(srcIndex.getter(), chunkSize.getter())));
+            outerLoop.instructions.add(new Instruction.Break(outerLabel));
+
             return f;
         }
     }

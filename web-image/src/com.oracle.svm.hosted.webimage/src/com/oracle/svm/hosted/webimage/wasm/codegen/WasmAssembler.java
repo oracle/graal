@@ -47,6 +47,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -125,7 +126,12 @@ public abstract class WasmAssembler {
         Path tempDirectory = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory();
 
         WasmAssembler assembler;
-        if (BinaryenCompat.usesBinaryen()) {
+        if (WebImageOptions.isStandaloneWasm() && !BinaryenCompat.usesBinaryen()) {
+            // Standalone WasmGC output defaults to wasm-tools for assembly since
+            // wasm-as (Binaryen) and wat2wasm (wabt) don't fully support WasmGC.
+            // Users can override with -H:+UseBinaryen if their version supports GC.
+            assembler = new WasmAssembler.WasmTools(tempDirectory);
+        } else if (BinaryenCompat.usesBinaryen()) {
             assembler = new WasmAssembler.Binaryen(tempDirectory);
         } else {
             assembler = new WasmAssembler.Wat2Wasm(tempDirectory);
@@ -514,6 +520,90 @@ public abstract class WasmAssembler {
         @Override
         protected String getVerificationFile() {
             return "verify-wasm-as.wast";
+        }
+    }
+
+    /**
+     * Uses {@code wasm-tools parse} from the wasm-tools project.
+     * <p>
+     * This assembler supports WasmGC and all modern WASM proposals, making it the
+     * preferred choice for standalone WasmGC output.
+     */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    public static class WasmTools extends WasmAssembler {
+
+        protected WasmTools(Path tempDirectory) {
+            super(tempDirectory);
+        }
+
+        @Override
+        protected String getProjectName() {
+            return "wasm-tools";
+        }
+
+        @Override
+        protected String getURL() {
+            return "https://github.com/bytecodealliance/wasm-tools";
+        }
+
+        @Override
+        protected String getMinimumVersion() {
+            return "1.200.0";
+        }
+
+        @Override
+        protected String getExecutable() {
+            return "wasm-tools";
+        }
+
+        @Override
+        protected HostedOptionKey<String> getPathOption() {
+            // Reuse the wat2wasm path option for custom paths
+            return Options.Wat2WasmPath;
+        }
+
+        @Override
+        protected String getDebugNamesFlag() {
+            return "";
+        }
+
+        @Override
+        protected List<String> getOutputFlags(Path wasmPath) {
+            return List.of("-o", wasmPath.toString());
+        }
+
+        @Override
+        protected List<String> getExtraFlags() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        protected String getVerificationFile() {
+            return "verify-wasm-tools.wat";
+        }
+
+        @Override
+        protected List<String> getVersionInfoOptions() {
+            return List.of("--version");
+        }
+
+        /**
+         * wasm-tools uses subcommands: {@code wasm-tools parse <input> -o <output>}.
+         */
+        @Override
+        public RunResult runAssembler(Path watPath, Path wasmPath) throws IOException, InterruptedException {
+            Path executable = assemblerInfo.assemblerPath;
+
+            List<String> args = new ArrayList<>();
+            args.add("parse");
+            if (wasmPath != null) {
+                args.add("-o");
+                args.add(wasmPath.toString());
+            }
+            if (watPath != null) {
+                args.add(watPath.toString());
+            }
+            return runCommand(executable, args);
         }
     }
 

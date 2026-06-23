@@ -348,6 +348,13 @@ public class WebImageOptions {
         }
     }
 
+    /**
+     * Returns true if standalone WASM output is enabled (no JS interop dependencies).
+     */
+    public static boolean isStandaloneWasm() {
+        return StandaloneWasm.getValue();
+    }
+
     public static boolean genJSComments() {
         return genJSComments(null);
     }
@@ -359,6 +366,9 @@ public class WebImageOptions {
     public static boolean genJSComments(CommentVerbosity verbosity) {
         return JSComments.getValue(HostedOptionValues.singleton().get()).isEnabled(verbosity == null ? CommentVerbosity.NORMAL : verbosity);
     }
+
+    @Option(help = "Produce standalone WASM without JS interop dependencies.")//
+    public static final HostedOptionKey<Boolean> StandaloneWasm = new HostedOptionKey<>(false);
 
     @Option(help = "Determine if the Web Image compilation should be silent and not dump info")//
     public static final OptionKey<Boolean> SILENT_COMPILE = new OptionKey<>(false);

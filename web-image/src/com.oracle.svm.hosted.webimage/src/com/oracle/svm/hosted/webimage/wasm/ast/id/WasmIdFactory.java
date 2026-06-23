@@ -86,6 +86,7 @@ public class WasmIdFactory {
     private final Set<TempLocal> temporaryVariables = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Table> tables = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ConcurrentMap<ImportDescriptor.Function, WasmId.FunctionImport> functionImports = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ImportDescriptor.Function, ImportDescriptor.Function> importRemappings = new ConcurrentHashMap<>();
     private final ConcurrentMap<Integer, WasmId.Memory> memories = new ConcurrentHashMap<>();
     private final Set<Tag> tags = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Global> globals = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -204,7 +205,20 @@ public class WasmIdFactory {
     }
 
     public WasmId.FunctionImport forFunctionImport(ImportDescriptor.Function wasmImport) {
-        return createForKey(wasmImport, functionImports, WasmId.FunctionImport::new);
+        ImportDescriptor.Function resolved = importRemappings.getOrDefault(wasmImport, wasmImport);
+        return createForKey(resolved, functionImports, WasmId.FunctionImport::new);
+    }
+
+    /**
+     * Registers an import remapping. When {@link #forFunctionImport(ImportDescriptor.Function)} is
+     * called with {@code from}, the import will instead be created with {@code to}.
+     * <p>
+     * This is used for standalone WASM output where import module names and function names
+     * need to follow the WebAssembly Component Model naming convention.
+     */
+    public void addImportRemapping(ImportDescriptor.Function from, ImportDescriptor.Function to) {
+        assert assertNotFrozen();
+        importRemappings.put(from, to);
     }
 
     public WasmId.Memory forMemory(int num) {

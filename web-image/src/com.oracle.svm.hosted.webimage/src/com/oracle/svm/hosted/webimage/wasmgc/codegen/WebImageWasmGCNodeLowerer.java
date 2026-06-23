@@ -46,6 +46,7 @@ import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyNode;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.hosted.webimage.wasm.WasmJSCounterparts;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
@@ -975,6 +976,13 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
 
     @Override
     protected Instruction lowerWasmImportForeignCall(WasmImportForeignCallDescriptor descriptor, Instructions args) {
+        if (WebImageOptions.isStandaloneWasm() && descriptor == WasmImports.PROXY_CHAR_ARRAY) {
+            // In standalone mode, proxyCharArray (JS interop) is not available.
+            // Return a null WasmExtern ref (the caller just needs an opaque handle).
+            WasmRefType wasmExternType = (WasmRefType) masm().getWasmProviders().util().typeForJavaClass(WasmExtern.class);
+            return new Instruction.RefNull(wasmExternType);
+        }
+
         Class<?>[] argTypes = descriptor.getArgumentTypes();
         for (int i = 0; i < argTypes.length; i++) {
             if (argTypes[i] == WasmExtern.class) {
@@ -1007,8 +1015,16 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         } else if (descriptor == WasmGCCloneSupport.CLONE_TEMPLATE) {
             return new Instruction.Call(masm().getKnownIds().genericCloneTemplate.requestFunctionId(), args);
         } else if (descriptor == WasmGCJSConversion.EXTRACT_JS_NATIVE) {
+            if (WebImageOptions.isStandaloneWasm()) {
+                // JSValue native field access requires externref — return null ref in standalone
+                WasmRefType wasmExternType = (WasmRefType) masm().getWasmProviders().util().typeForJavaClass(WasmExtern.class);
+                return new Instruction.RefNull(wasmExternType);
+            }
             return new Instruction.Call(masm().getKnownIds().extractJSValueTemplate.requestGetterFunctionId(), args);
         } else if (descriptor == WasmGCJSConversion.SET_JS_NATIVE) {
+            if (WebImageOptions.isStandaloneWasm()) {
+                return new Instruction.Nop();
+            }
             return new Instruction.Call(masm().getKnownIds().extractJSValueTemplate.requestSetterFunctionId(), args);
         } else {
             return super.lowerWasmForeignCall(descriptor, args);
@@ -1065,6 +1081,10 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
      * @see WasmJSCounterparts
      */
     private Instruction lowerJSCall(JSCallNode n) {
+        if (WebImageOptions.isStandaloneWasm()) {
+            return lowerJSCallStandalone(n);
+        }
+
         JSSystemFunction func = n.getFunctionDefinition();
 
         Instructions params = new Instructions();
@@ -1094,6 +1114,72 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
     }
 
     /**
+     * Lowers JSCallNode for standalone WASM mode (no JS interop).
+     * <p>
+     * Known JS functions are routed to standalone host imports or stubbed.
+     * Printing is done via a per-character {@code io.print_char} import since WasmGC arrays
+     * cannot be passed as linear memory pointers.
+     */
+    private Instruction lowerJSCallStandalone(JSCallNode n) {
+        JSSystemFunction func = n.getFunctionDefinition();
+        String funcName = func.getFunctionName();
+
+        return switch (funcName) {
+            // Printing: call print_char_array template which iterates GC array
+            case "stdoutWriter.printChars" -> {
+                assert n.getArguments().size() == 1 : "Expected 1 arg for printChars";
+                Instruction charArray = lowerExpression(n.getArguments().get(0));
+                yield new Instruction.Call(
+                                masm().getWasmProviders().knownIds().standalonePrintCharsTemplate.requestFunctionId(),
+                                Const.forInt(1), charArray);
+            }
+            case "stderrWriter.printChars" -> {
+                assert n.getArguments().size() == 1 : "Expected 1 arg for printChars";
+                Instruction charArray = lowerExpression(n.getArguments().get(0));
+                yield new Instruction.Call(
+                                masm().getWasmProviders().knownIds().standalonePrintCharsTemplate.requestFunctionId(),
+                                Const.forInt(2), charArray);
+            }
+
+            // Flush/close: no-op (print_char writes are unbuffered)
+            case "stdoutWriter.flush", "stderrWriter.flush",
+                 "stdoutWriter.close", "stderrWriter.close" ->
+                new Instruction.Nop();
+
+            // Time: route to host_time_ms import
+            case "performance.now", "Date.now" ->
+                new Instruction.Call(masm().idFactory.forFunctionImport(WasmImports.hostTimeMs));
+
+            // Exit: route to WASI proc_exit
+            case "runtime.setExitCode" -> {
+                Instructions params = new Instructions();
+                n.getArguments().forEach(param -> params.add(lowerExpression(param)));
+                yield new Instruction.Call(masm().idFactory.forFunctionImport(WasmImports.wasiProcExit), params);
+            }
+
+            // Stack traces: stub with null refs (handles -H:+DisableStackTraces pattern)
+            case "genBacktrace", "gen_call_stack", "formatStackTrace" ->
+                getStub(n);
+
+            // Console/debug: no-op
+            case "console.trace" -> new Instruction.Nop();
+
+            // Memory management: WasmGC manages its own heap, stub these
+            case "heap.malloc", "heap.calloc", "heap.realloc" -> Const.forLong(0);
+            case "heap.free" -> new Instruction.Nop();
+
+            // Array operations: stub (handled by WasmGC array copy templates)
+            case "arrayCopy", "arraysCopyOf", "arraysCopyOfWithHub" -> getStub(n);
+
+            // CWD: return stub
+            case "getCurrentWorkingDirectory" -> getStub(n);
+
+            // All other JS functions: stub
+            default -> getStub(n);
+        };
+    }
+
+    /**
      * Generates a call to an imported JS function that contains the code of the given
      * {@link JSBody} node.
      * <p>
@@ -1107,6 +1193,12 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
      *
      */
     private <T extends FixedNode & JSBody> Instruction lowerJSBody(T jsBody) {
+        if (WebImageOptions.isStandaloneWasm()) {
+            // In standalone mode, JSBody nodes cannot execute (no JS runtime).
+            // Return a stub value of the appropriate type.
+            return getStub(jsBody.asNode());
+        }
+
         WebImageWasmGCProviders wasmProviders = masm().getWasmProviders();
 
         Instructions params = new Instructions();

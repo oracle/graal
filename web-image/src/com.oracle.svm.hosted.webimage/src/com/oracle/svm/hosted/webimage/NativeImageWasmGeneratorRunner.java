@@ -50,6 +50,7 @@ import com.oracle.svm.hosted.webimage.logging.visualization.VisualizationSupport
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.util.BenchmarkLogger;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
@@ -57,6 +58,7 @@ import com.oracle.svm.shared.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.webimage.JSExceptionSupport;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
@@ -161,6 +163,18 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
                 // The naming convention does not affect the binary image (unless debug information
                 // is embedded) and the REDUCED mode makes the text file a lot easier to read
                 optionProvider.getHostedValues().put(WebImageOptions.NamingConvention, WebImageNamingConvention.NamingMode.REDUCED);
+            }
+        }
+
+        if (backend == CompilerBackend.WASMGC && Boolean.TRUE.equals(optionProvider.getHostedValues().get(WebImageOptions.StandaloneWasm))) {
+            // In standalone mode, stack traces require JS (genBacktrace, formatStackTrace).
+            // Force them off so the backtrace JSCallNodes are never emitted.
+            optionProvider.getHostedValues().put(JSExceptionSupport.Options.DisableStackTraces, true);
+
+            // Use smaller heap init functions to stay within Cranelift's function size limit.
+            // The default (100K objects) produces functions too large for wasmtime to compile.
+            if (!optionProvider.getHostedValues().containsKey(WebImageWasmOptions.ImageHeapObjectsPerFunction)) {
+                optionProvider.getHostedValues().put(WebImageWasmOptions.ImageHeapObjectsPerFunction, 1000);
             }
         }
 
