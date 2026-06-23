@@ -1463,6 +1463,11 @@ public final class FloatStamp extends PrimitiveStamp {
                     null, // UMax
                     null, // UMin
 
+                    null, // SAdd
+                    null, // SSub
+                    null, // SUAdd
+                    null, // SUSub
+
                     new ArithmeticOpTable.TernaryOp.FMA() {
                         @Override
                         public JavaConstant foldConstant(Constant a, Constant b, Constant c) {

@@ -149,6 +149,10 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVORPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDSB;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDSW;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDUSB;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDUSW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPADDW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPANDD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPANDQ;
@@ -203,6 +207,10 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSHUFB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBSB;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBSW;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBUSB;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBUSW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSUBW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXORD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXORQ;
@@ -283,6 +291,10 @@ import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
+import jdk.graal.compiler.nodes.calc.SaturatingAddNode;
+import jdk.graal.compiler.nodes.calc.SaturatingSubNode;
+import jdk.graal.compiler.nodes.calc.SaturatingUAddNode;
+import jdk.graal.compiler.nodes.calc.SaturatingUSubNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
@@ -2105,6 +2117,30 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                 case QWORD -> EVPSUBQ;
                 case SINGLE -> EVSUBPS;
                 case DOUBLE -> EVSUBPD;
+                default -> null;
+            };
+        } else if (op == SaturatingAddNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPADDSB;
+                case WORD -> EVPADDSW;
+                default -> null;
+            };
+        } else if (op == SaturatingSubNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPSUBSB;
+                case WORD -> EVPSUBSW;
+                default -> null;
+            };
+        } else if (op == SaturatingUAddNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPADDUSB;
+                case WORD -> EVPADDUSW;
+                default -> null;
+            };
+        } else if (op == SaturatingUSubNode.class) {
+            return switch (dstEKind) {
+                case BYTE -> EVPSUBUSB;
+                case WORD -> EVPSUBUSW;
                 default -> null;
             };
         } else if (op == MulNode.class) {

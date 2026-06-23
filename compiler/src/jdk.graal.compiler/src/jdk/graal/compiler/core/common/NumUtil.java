@@ -263,6 +263,67 @@ public class NumUtil {
         return b;
     }
 
+    /**
+     * Adds two signed integer values with {@code bits} bits and clamps the mathematical result to
+     * the signed value range.
+     */
+    public static long addSaturatingSigned(int bits, long a, long b) {
+        GraalError.guarantee(bits > 0 && bits <= Long.SIZE, "invalid bit count %s", bits);
+        if (bits == Long.SIZE) {
+            long sum = a + b;
+            if (((a ^ sum) & (b ^ sum)) < 0) {
+                return sum < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
+            }
+            return sum;
+        }
+        long sum = CodeUtil.signExtend(a, bits) + CodeUtil.signExtend(b, bits);
+        return Math.max(minValue(bits), Math.min(maxValue(bits), sum));
+    }
+
+    /**
+     * Subtracts two signed integer values with {@code bits} bits and clamps the mathematical result
+     * to the signed value range.
+     */
+    public static long subSaturatingSigned(int bits, long a, long b) {
+        GraalError.guarantee(bits > 0 && bits <= Long.SIZE, "invalid bit count %s", bits);
+        if (bits == Long.SIZE) {
+            long diff = a - b;
+            if (((a ^ b) & (a ^ diff)) < 0) {
+                return a < 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
+            }
+            return diff;
+        }
+        long diff = CodeUtil.signExtend(a, bits) - CodeUtil.signExtend(b, bits);
+        return Math.max(minValue(bits), Math.min(maxValue(bits), diff));
+    }
+
+    /**
+     * Adds two unsigned integer values with {@code bits} bits and clamps the mathematical result to
+     * the unsigned value range.
+     */
+    public static long addSaturatingUnsigned(int bits, long a, long b) {
+        GraalError.guarantee(bits > 0 && bits <= Long.SIZE, "invalid bit count %s", bits);
+        if (bits == Long.SIZE) {
+            long sum = a + b;
+            return Long.compareUnsigned(sum, a) < 0 ? -1L : sum;
+        }
+        long x = CodeUtil.zeroExtend(a, bits);
+        long y = CodeUtil.zeroExtend(b, bits);
+        long max = maxValueUnsigned(bits);
+        return Long.compareUnsigned(max - x, y) < 0 ? max : x + y;
+    }
+
+    /**
+     * Subtracts two unsigned integer values with {@code bits} bits and clamps the mathematical
+     * result to the unsigned value range.
+     */
+    public static long subSaturatingUnsigned(int bits, long a, long b) {
+        GraalError.guarantee(bits > 0 && bits <= Long.SIZE, "invalid bit count %s", bits);
+        long x = bits == Long.SIZE ? a : CodeUtil.zeroExtend(a, bits);
+        long y = bits == Long.SIZE ? b : CodeUtil.zeroExtend(b, bits);
+        return Long.compareUnsigned(x, y) < 0 ? 0 : x - y;
+    }
+
     public static boolean sameSign(long a, long b) {
         return a < 0 == b < 0;
     }

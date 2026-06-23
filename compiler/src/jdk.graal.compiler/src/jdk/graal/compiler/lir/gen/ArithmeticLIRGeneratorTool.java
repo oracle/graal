@@ -125,6 +125,38 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitBitScanReverse(Value operand);
 
+    /**
+     * Emits a signed addition that saturates to the operand type's signed value range.
+     */
+    @SuppressWarnings("unused")
+    default Value emitSaturatingAdd(Value a, Value b) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Emits a signed subtraction that saturates to the operand type's signed value range.
+     */
+    @SuppressWarnings("unused")
+    default Value emitSaturatingSub(Value a, Value b) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Emits an unsigned addition that saturates to the operand type's unsigned value range.
+     */
+    @SuppressWarnings("unused")
+    default Value emitSaturatingUnsignedAdd(Value a, Value b) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Emits an unsigned subtraction that saturates to the operand type's unsigned value range.
+     */
+    @SuppressWarnings("unused")
+    default Value emitSaturatingUnsignedSub(Value a, Value b) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
     @SuppressWarnings("unused")
