@@ -737,6 +737,9 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
     cp_entry_name = join(svmbuild_dir(), 'cpEntryDir')
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
+    micronaut_style_cp_entry_a = join(svmbuild_dir(), 'micronautStyleServicesA')
+    micronaut_style_cp_entry_b = join(svmbuild_dir(), 'micronautStyleServicesB')
+    micronaut_style_service_root = join('META-INF', 'native-image-resource-test')
 
     mx_util.ensure_dir_exists(resources_from_dir)
     mx_util.ensure_dir_exists(simple_dir)
@@ -753,9 +756,31 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
     # same late exports and would also need extra reflection metadata for the test plumbing.
     mx_unittest.add_global_ignore_glob('com.oracle.svm.configure.test.config.URLProtocolTraceProcessorTest')
 
+    def write_micronaut_style_service_entries(cp_entry, service_name, implementation_names):
+        service_dir = join(cp_entry, micronaut_style_service_root, service_name)
+        mx_util.ensure_dir_exists(service_dir)
+        for implementation_name in implementation_names:
+            with open(join(service_dir, implementation_name), 'w', encoding='utf-8') as out:
+                out.write(implementation_name + '\n')
+
+    write_micronaut_style_service_entries(micronaut_style_cp_entry_a, 'com.oracle.svm.test.ServiceA', [
+        'com.oracle.svm.test.impl.ServiceAImpl1',
+        'com.oracle.svm.test.impl.ServiceAImplShared',
+    ])
+    write_micronaut_style_service_entries(micronaut_style_cp_entry_a, 'com.oracle.svm.test.ServiceB', [
+        'com.oracle.svm.test.impl.ServiceBImpl',
+    ])
+    write_micronaut_style_service_entries(micronaut_style_cp_entry_b, 'com.oracle.svm.test.ServiceA', [
+        'com.oracle.svm.test.impl.ServiceAImpl2',
+        'com.oracle.svm.test.impl.ServiceAImplShared',
+    ])
+    write_micronaut_style_service_entries(micronaut_style_cp_entry_b, 'com.oracle.svm.test.ServiceC', [
+        'com.oracle.svm.test.impl.ServiceCImpl',
+    ])
+
     # Always add our extra classpath entry with resources
     additional_build_args += svm_experimental_options([
-        '-cp', cp_entry_name
+        '-cp', os.pathsep.join([cp_entry_name, micronaut_style_cp_entry_a, micronaut_style_cp_entry_b])
     ])
     # Only add SVM test-specific security provider/service overrides when running the SVM tests.
     # Truffle/native unittests (and others) don't have com.oracle.svm.test on the classpath.

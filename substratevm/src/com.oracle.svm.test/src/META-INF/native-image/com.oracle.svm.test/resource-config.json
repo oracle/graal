@@ -7,6 +7,12 @@
           "typeReachable": "java.lang.String"
         },
         "pattern": "resourcesFromDir"
+      },
+      {
+        "condition": {
+          "typeReachable": "java.lang.String"
+        },
+        "pattern": "META-INF/native-image-resource-test(/.*)?"
       }
     ]
   }
