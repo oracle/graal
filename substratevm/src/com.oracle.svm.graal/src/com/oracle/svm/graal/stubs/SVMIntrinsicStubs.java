@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.stubs;
 
 import jdk.graal.compiler.lir.GeneratedStubsHolder;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
@@ -112,6 +113,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 DilithiumDecomposePolyNode.class,
                 DilithiumMontMulByConstantNode.class,
                 DilithiumNttMultNode.class,
+                DoubleModStubNode.class,
                 ElectronicCodeBookAESNode.class,
                 EncodeArrayNode.class,
                 GaloisCounterModeAESNode.class,

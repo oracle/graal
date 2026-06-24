@@ -106,6 +106,5 @@ public enum AMD64Arithmetic {
                             (opcode.name().startsWith("D") && result.getPlatformKind() == AMD64Kind.DOUBLE && x.getPlatformKind() == AMD64Kind.DOUBLE &&
                                             y.getPlatformKind() == AMD64Kind.DOUBLE) : Assertions.errorMessage(x, y, result);
         }
-
     }
 }

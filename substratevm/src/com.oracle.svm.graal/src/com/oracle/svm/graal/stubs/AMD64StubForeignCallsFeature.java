@@ -66,6 +66,7 @@ import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
@@ -134,6 +135,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(DilithiumDecomposePolyNode.STUB, DilithiumDecomposePolyNode.minFeaturesAMD64(), DilithiumDecomposePolyNode.minFeaturesAMD64()),
                         new StubDescriptor(DilithiumMontMulByConstantNode.STUB, DilithiumMontMulByConstantNode.minFeaturesAMD64(), DilithiumMontMulByConstantNode.minFeaturesAMD64()),
                         new StubDescriptor(DilithiumNttMultNode.STUB, DilithiumNttMultNode.minFeaturesAMD64(), DilithiumNttMultNode.minFeaturesAMD64()),
+                        new StubDescriptor(DoubleModStubNode.STUB, DoubleModStubNode.minFeaturesAMD64(), DoubleModStubNode.maxFeaturesAMD64()),
                         new StubDescriptor(ElectronicCodeBookAESNode.STUBS, ElectronicCodeBookAESNode.minFeaturesAMD64(), ElectronicCodeBookAESNode.minFeaturesAMD64()),
                         new StubDescriptor(EncodeArrayNode.STUBS, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(GaloisCounterModeAESNode.STUB, GaloisCounterModeAESNode.minFeaturesAMD64(), GaloisCounterModeAESNode.maxFeaturesAMD64()),

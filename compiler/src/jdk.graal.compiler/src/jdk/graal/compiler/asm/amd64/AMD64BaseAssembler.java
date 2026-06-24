@@ -1078,6 +1078,11 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         public static final int B0 = 0x0;
         public static final int B1 = 0x1;
 
+        public static final int RNE = 0x0;
+        public static final int RD = 0x1;
+        public static final int RU = 0x2;
+        public static final int RZ = 0x3;
+
         private EVEXPrefixConfig() {
         }
     }
@@ -1229,9 +1234,13 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * The aaa field encodes the operand mask register.
      */
     private void emitEVEX(int l, int pp, int mm, int w, int rxb, int reg, int vvvvv, int z, int b, int aaa) {
+        emitEVEX(l, pp, mm, w, rxb, reg, vvvvv, z, b, aaa, false);
+    }
+
+    private void emitEVEX(int l, int pp, int mm, int w, int rxb, int reg, int vvvvv, int z, int b, int aaa, boolean allowEmbeddedRounding) {
         assert getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
 
-        assert l == L128 || l == L256 || l == L512 : "invalid value for EVEX.L'L";
+        assert l == L128 || l == L256 || l == L512 || (allowEmbeddedRounding && b == B1 && l >= EVEXPrefixConfig.RNE && l <= EVEXPrefixConfig.RZ) : "invalid value for EVEX.L'L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for EVEX.pp";
         assert mm == M_0F || mm == M_0F38 || mm == M_0F3A : "invalid value for EVEX.mm";
         assert w == W0 || w == W1 : "invalid value for EVEX.W";
@@ -1284,6 +1293,14 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     protected final void evexPrefix(Register dst, Register mask, Register nds, Register src, AVXKind.AVXSize size, int pp, int mm, int w, int z, int b) {
         assert !mask.isValid() || inRC(MASK, mask);
         emitEVEX(getLFlag(size), pp, mm, w, getRXBForEVEX(dst, src), (dst == null ? 0 : dst.encoding), nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
+    }
+
+    protected final void evexPrefixWithEmbeddedRounding(Register dst, Register mask, Register nds, Register src, AVXKind.AVXSize size, int pp, int mm, int w, int z, int b, int roundingMode) {
+        assert !mask.isValid() || inRC(MASK, mask);
+        assert size == AVXKind.AVXSize.XMM : "embedded rounding is only supported for scalar instructions";
+        assert b == B1 : "embedded rounding requires EVEX.b";
+        assert roundingMode >= EVEXPrefixConfig.RNE && roundingMode <= EVEXPrefixConfig.RZ : "invalid value for EVEX embedded rounding mode";
+        emitEVEX(roundingMode, pp, mm, w, getRXBForEVEX(dst, src), (dst == null ? 0 : dst.encoding), nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0, true);
     }
 
     /**

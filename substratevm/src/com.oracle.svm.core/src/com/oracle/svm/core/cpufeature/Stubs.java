@@ -66,6 +66,7 @@ import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -153,6 +154,9 @@ public final class Stubs {
             }
             if (isDilithiumNode(klass)) {
                 return DilithiumNode.minFeaturesAMD64();
+            }
+            if (DoubleModStubNode.class.equals(klass)) {
+                return DoubleModStubNode.maxFeaturesAMD64();
             }
             if (ElectronicCodeBookAESNode.class.equals(klass)) {
                 return ElectronicCodeBookAESNode.minFeaturesAMD64();

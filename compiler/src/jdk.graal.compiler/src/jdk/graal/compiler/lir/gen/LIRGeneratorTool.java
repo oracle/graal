@@ -761,6 +761,11 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitDoubleMod(Value x, Value y) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitDilithiumAlmostInverseNtt(Value coeffs, Value zetas) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
