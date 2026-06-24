@@ -94,8 +94,6 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -110,10 +108,12 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
@@ -390,14 +390,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             optMethodGetUnixInfo.ifPresent(m -> {
                 access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
                 /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+                PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_security_auth_module_UnixSystem");
             });
         }
 
         if (isMscapiModulePresent) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, type(access, "sun.security.mscapi.SunMSCAPI"));
             /* Resolve calls to sun_security_mscapi* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
+            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_mscapi");
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -540,8 +540,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
              * change.
              */
             a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
-                                            .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
+                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class).orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore",
+                                            "loadKeysOrCertificateChains", String.class)));
             a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                             method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
             a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,

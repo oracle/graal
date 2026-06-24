@@ -340,7 +340,7 @@ public final class NativeLibraries {
         try {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
-            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
+            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltinLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;

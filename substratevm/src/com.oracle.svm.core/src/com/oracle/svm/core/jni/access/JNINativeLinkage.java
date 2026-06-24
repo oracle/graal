@@ -107,7 +107,7 @@ public final class JNINativeLinkage {
     }
 
     public boolean isBuiltInFunction() {
-        return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
+        return PlatformNativeLibrarySupport.singleton().isBuiltinNative(getShortName());
     }
 
     public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
@@ -177,8 +177,8 @@ public final class JNINativeLinkage {
                 classObject = DynamicHub.toClass(declaringClass);
                 classLoader = declaringClass.getClassLoader();
             }
-            String shortName = getShortName();
-            entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortName, getName()));
+            String shortSymbol = getShortName();
+            entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortSymbol, getName()));
             if (entryPoint.isNull()) {
                 String longName = getLongName();
                 entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longName, getName()));
@@ -190,6 +190,18 @@ public final class JNINativeLinkage {
         return entryPoint;
     }
 
+    private Class<?> getDeclaringClassObject() {
+        if (ClassRegistries.respectClassLoader()) {
+            if (declaringClassObject != null) {
+                return declaringClassObject;
+            }
+            return JNIReflectionDictionary.getClassObjectByName(getDeclaringClassName());
+        }
+        return null;
+    }
+
+    /// Gets the native method's JNI-mangled qualified name without a suffix
+    /// derived from its [#getSignature].
     public String getShortName() {
         StringBuilder sb = new StringBuilder("Java_");
         mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
