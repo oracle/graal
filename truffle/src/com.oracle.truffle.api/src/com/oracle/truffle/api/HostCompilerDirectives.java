@@ -271,6 +271,15 @@ public final class HostCompilerDirectives {
         boolean threading() default true;
 
         /**
+         * Indicates whether this handler can be dispatched while a template variable is in a
+         * non-zero state. If {@code false}, non-zero template handler tables dispatch this handler's
+         * opcodes to a generated threading-exit stub so that state is normalized before the bytecode
+         * is re-dispatched from the interpreter switch. The default is {@code true}, meaning the
+         * handler is compatible with all template states.
+         */
+        boolean templateCompatible() default true;
+
+        /**
          * Indicates whether host safepoint should be inserted in the stub correspond to this
          * handler.
          */
@@ -332,6 +341,49 @@ public final class HostCompilerDirectives {
                  * primitive fields.
                  */
                 boolean nonNull() default true;
+
+                /**
+                 * Marks this field as scratch state when template mode is enabled. Scratch fields
+                 * are carried between threaded bytecode handler stubs, but they are not initialized
+                 * from the original Java object on entry, are not written back to the original Java
+                 * object on exit, and are not preserved through pending exception state. This is
+                 * intended for register-resident interpreter state that is valid only while threaded
+                 * execution remains inside the generated handler stubs. When template mode is not
+                 * enabled, this metadata is ignored and the field remains an ordinary expanded
+                 * argument.
+                 * <p>
+                 * This property is only supported for fields of {@link ExpansionKind#VIRTUAL}
+                 * arguments. It cannot be combined with {@link #templateVariable()}.
+                 *
+                 * @since 26.0
+                 */
+                boolean scratch() default false;
+
+                /**
+                 * Marks the expanded field as the template variable used to apply specialization on
+                 * the template variants and select the template variant of the next threaded
+                 * bytecode handler. A value of {@code 0} means that the field is not a template
+                 * variable. A value of {@code N >= 2} makes the field a template variable with
+                 * {@code N} variants. {@code 1} is invalid. If multiple template variables are
+                 * configured, the total template count is the product of their variant counts.
+                 * Template variables are encoded in expanded-field order using mixed-radix
+                 * indexing.
+                 * <p>
+                 * At a threaded dispatch, each template variable value must be a constant or a phi
+                 * whose inputs recursively resolve to constants. If multiple template variables are
+                 * non-constant phis at the same dispatch, those phis must be produced by the same
+                 * merge. Independent branch merges for different template variables are rejected.
+                 * <p>
+                 * When template mode is enabled, template variables are initialized from the
+                 * selected template variant and do not occupy a stub ABI argument slot. Their value
+                 * at the end of a threaded handler selects the variant of the next threaded handler.
+                 * When template mode is not enabled, this metadata is ignored and the field remains
+                 * an ordinary expanded argument.
+                 * <p>
+                 * The field must be an {@code int} field of a {@link ExpansionKind#VIRTUAL}
+                 * argument.
+                 */
+                int templateVariable() default 0;
             }
 
             /**
@@ -388,5 +440,26 @@ public final class HostCompilerDirectives {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
     public @interface BytecodeInterpreterFetchOpcode {
+    }
+
+    /**
+     * Annotates an optional callback method that materializes interpreter state before threaded
+     * bytecode-handler dispatch exits to the switch loop for re-dispatch.
+     * <p>
+     * The callback is invoked before control returns to the
+     * {@link BytecodeInterpreterSwitch}-annotated loop from generated threading-exit stubs and
+     * before exceptional exits unwind from generated handler stubs. It can be used to write
+     * virtualized interpreter state back to memory and reset template state so the interpreter loop
+     * can re-enter through template variant {@code 0}.
+     * <p>
+     * The annotated method must be declared in the same enclosing class as the bytecode handlers,
+     * have the same parameter list as the bytecode handlers, return {@code void}, and must not
+     * throw.
+     *
+     * @since 25.1
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD})
+    public @interface BytecodeInterpreterThreadingExit {
     }
 }

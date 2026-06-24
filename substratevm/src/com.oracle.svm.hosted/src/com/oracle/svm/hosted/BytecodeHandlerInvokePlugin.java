@@ -88,6 +88,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
     private final IntConsumer handlerArityConsumer;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> threadingExitCache = EconomicMap.create();
 
     public BytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
                     SubstrateBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled, IntConsumer handlerArityConsumer) {
@@ -102,6 +103,16 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         GraalError.guarantee(nextOpcode.getSignature().getReturnType(nextOpcode.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                         "Method annotated with BytecodeInterpreterFetchOpcode must not return void: %s", nextOpcode);
         return nextOpcode;
+    }
+
+    private ResolvedJavaMethod threadingExitMethod(ResolvedJavaMethod enclosingMethod, ResolvedJavaType holder) {
+        if (!threadingExitCache.containsKey(enclosingMethod)) {
+            ResolvedJavaMethod temp = BytecodeInterpreterAnnotations.getUniqueThreadingExitMethod(holder);
+            synchronized (threadingExitCache) {
+                threadingExitCache.putIfAbsent(enclosingMethod, temp);
+            }
+        }
+        return threadingExitCache.get(enclosingMethod);
     }
 
     @Override
@@ -122,13 +133,15 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
             return false;
         }
 
-        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target);
+        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target, true);
 
         boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
+        int templatesLength = handlerConfig.getTemplatesLength();
+        ResolvedJavaMethod threadingExit = threadingExitMethod(enclosingMethod, target.getDeclaringClass());
 
         if (handlerArityConsumer != null) {
-            handlerArityConsumer.accept(handlerConfig.getArgumentInfos().size());
+            handlerArityConsumer.accept(handlerConfig.getStubAbiArgumentInfos().size());
         }
         if (!originalMethod) {
             /*
@@ -152,27 +165,31 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
             }
             nextOpcode = nextOpcodeCache.get(enclosingMethod);
         }
-        SubstrateBytecodeHandlerStub stub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                        stubName, interpreterHolder, handlerConfig, threading, nextOpcode, safepoint, false, target);
-
         AnalysisUniverse universe = ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse();
-        AnalysisMethod handlerStubWrapper = universe.lookup(stub);
-        universe.getBigbang().addRootMethod(handlerStubWrapper, true, "Bytecode handler stub " + stubName);
-
-        BytecodeHandlerStubKey handlerKey = BytecodeHandlerStubKey.create(unwrap(target), interpreterHolder, handlerConfig);
         synchronized (registeredBytecodeHandlers) {
-            registeredBytecodeHandlers.put(handlerKey, handlerStubWrapper);
-
             if (threading) {
-                BytecodeHandlerStubKey defaultHandlerKey = BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig);
-                if (!registeredBytecodeHandlers.containsKey(defaultHandlerKey)) {
+                for (int templateIndex = 0; templateIndex < templatesLength; templateIndex++) {
+                    BytecodeHandlerStubKey defaultHandlerKey = BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig, templateIndex);
+                    if (registeredBytecodeHandlers.containsKey(defaultHandlerKey)) {
+                        continue;
+                    }
                     SubstrateBytecodeHandlerStub defaultHandlerStub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                                    "__stub_defaultHandler", interpreterHolder, handlerConfig, false, null, false, true, null);
+                                    stubNameForTemplate("__stub_defaultHandler", templateIndex, templatesLength), interpreterHolder, handlerConfig, false, null, threadingExit, false, true, null,
+                                    templateIndex);
                     AnalysisMethod defaultStubWrapper = universe.lookup(defaultHandlerStub);
                     universe.getBigbang().addRootMethod(defaultStubWrapper, true, "Default bytecode handler stub");
 
                     registeredBytecodeHandlers.put(defaultHandlerKey, defaultStubWrapper);
                 }
+            }
+
+            for (int templateIndex = 0; templateIndex < templatesLength; templateIndex++) {
+                SubstrateBytecodeHandlerStub stub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+                                stubNameForTemplate(stubName, templateIndex, templatesLength), interpreterHolder, handlerConfig, threading, nextOpcode, threadingExit, safepoint, false, target,
+                                templateIndex);
+                AnalysisMethod handlerStubWrapper = universe.lookup(stub);
+                universe.getBigbang().addRootMethod(handlerStubWrapper, true, "Bytecode handler stub " + stubName);
+                registeredBytecodeHandlers.put(BytecodeHandlerStubKey.create(unwrap(target), interpreterHolder, handlerConfig, templateIndex), handlerStubWrapper);
             }
         }
         /*
@@ -184,6 +201,10 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         registerHandlerInvoke(b, enclosingMethod, handlerConfig, oldArguments);
 
         return false;
+    }
+
+    private static String stubNameForTemplate(String stubName, int templateIndex, int templatesLength) {
+        return templatesLength == 1 ? stubName : stubName + templateIndex;
     }
 
     private boolean tryRegisterSwitchExtensionInvoke(GraphBuilderContext b, ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod target, ValueNode[] arguments) {
@@ -325,10 +346,22 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
             case "MATERIALIZED" -> currentAbiSlotIndex + 1 + countMaterializedFields(argumentConfig, argumentType);
             case "VIRTUAL" -> {
                 GraalError.guarantee(!receiver, "Receiver cannot be VIRTUAL");
-                yield currentAbiSlotIndex + argumentType.getInstanceFields(true).length;
+                yield currentAbiSlotIndex + countVirtualAbiFields(argumentConfig, argumentType);
             }
             default -> throw GraalError.shouldNotReachHere("Unknown expansion kind " + expansionKind(argumentConfig));
         };
+    }
+
+    private static int countVirtualAbiFields(AnnotationValue virtualConfig, ResolvedJavaType expandedType) {
+        int count = 0;
+        List<AnnotationValue> fields = virtualConfig.getList("fields", AnnotationValue.class);
+        for (ResolvedJavaField javaField : expandedType.getInstanceFields(true)) {
+            AnnotationValue fieldConfig = findFieldConfig(fields, javaField.getName());
+            if (fieldConfig == null || fieldConfig.getInt("templateVariable") == 0) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static int countMaterializedFields(AnnotationValue materializedConfig, ResolvedJavaType expandedType) {

@@ -37,6 +37,7 @@ import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterFetchOpcode;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandlerConfig;
+import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterThreadingExit;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,8 +48,9 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * Shared resolver for bytecode-interpreter annotations.
  * <p>
  * The compiler-side annotations are defined by {@link BytecodeInterpreterDirectives}. Frontends
- * that expose an equivalent annotation API, such as Truffle, can register their resolved annotation
- * types with {@link #registerAnnotationTypes(ResolvedJavaType, ResolvedJavaType, ResolvedJavaType)}
+ * that expose an equivalent annotation API, such as Truffle, can register their resolved
+ * annotation types with
+ * {@link #registerAnnotationTypes(ResolvedJavaType, ResolvedJavaType, ResolvedJavaType, ResolvedJavaType)}
  * so shared bytecode-handler support can recognize those annotations without depending on the
  * frontend API classes.
  */
@@ -73,7 +75,8 @@ public final class BytecodeInterpreterAnnotations {
     public static void registerCompilerDirectives(MetaAccessProvider metaAccess, Function<ResolvedJavaType, ResolvedJavaType> typeMap) {
         registerAnnotationTypes(typeMap.apply(metaAccess.lookupJavaType(BytecodeInterpreterHandler.class)),
                         typeMap.apply(metaAccess.lookupJavaType(BytecodeInterpreterHandlerConfig.class)),
-                        typeMap.apply(metaAccess.lookupJavaType(BytecodeInterpreterFetchOpcode.class)));
+                        typeMap.apply(metaAccess.lookupJavaType(BytecodeInterpreterFetchOpcode.class)),
+                        typeMap.apply(metaAccess.lookupJavaType(BytecodeInterpreterThreadingExit.class)));
     }
 
     /**
@@ -81,8 +84,9 @@ public final class BytecodeInterpreterAnnotations {
      * {@link BytecodeInterpreterDirectives}.
      */
     public static synchronized void registerAnnotationTypes(ResolvedJavaType bytecodeInterpreterHandler, ResolvedJavaType bytecodeInterpreterHandlerConfig,
-                    ResolvedJavaType bytecodeInterpreterFetchOpcode) {
-        ResolvedAnnotationSet annotationSet = new ResolvedAnnotationSet(bytecodeInterpreterHandler, bytecodeInterpreterHandlerConfig, bytecodeInterpreterFetchOpcode);
+                    ResolvedJavaType bytecodeInterpreterFetchOpcode, ResolvedJavaType bytecodeInterpreterThreadingExit) {
+        ResolvedAnnotationSet annotationSet = new ResolvedAnnotationSet(bytecodeInterpreterHandler, bytecodeInterpreterHandlerConfig, bytecodeInterpreterFetchOpcode,
+                        bytecodeInterpreterThreadingExit);
         if (!RESOLVED_ANNOTATION_SETS.contains(annotationSet)) {
             RESOLVED_ANNOTATION_SETS.add(annotationSet);
         }
@@ -122,16 +126,27 @@ public final class BytecodeInterpreterAnnotations {
         return findDeclaredAnnotation(annotated, ResolvedAnnotationSet::bytecodeInterpreterFetchOpcode);
     }
 
+    public static AnnotationValue getBytecodeInterpreterThreadingExit(Annotated annotated) {
+        return findDeclaredAnnotation(annotated, ResolvedAnnotationSet::bytecodeInterpreterThreadingExit);
+    }
+
     public static ResolvedJavaMethod getUniqueFetchOpcodeMethod(ResolvedJavaType holder) {
         List<ResolvedJavaMethod> matches = Arrays.stream(holder.getDeclaredMethods(false)).filter(m -> getBytecodeInterpreterFetchOpcode(m) != null).toList();
         GraalError.guarantee(matches.size() == 1, "Expected exactly one method annotated with BytecodeInterpreterFetchOpcode, found %d", matches.size());
         return matches.getFirst();
     }
 
+    public static ResolvedJavaMethod getUniqueThreadingExitMethod(ResolvedJavaType holder) {
+        List<ResolvedJavaMethod> matches = Arrays.stream(holder.getDeclaredMethods(false)).filter(m -> getBytecodeInterpreterThreadingExit(m) != null).toList();
+        GraalError.guarantee(matches.size() <= 1, "Expected at most one method annotated with BytecodeInterpreterThreadingExit, found %d", matches.size());
+        return matches.isEmpty() ? null : matches.getFirst();
+    }
+
     private record ResolvedAnnotationSet(
                     ResolvedJavaType bytecodeInterpreterHandler,
                     ResolvedJavaType bytecodeInterpreterHandlerConfig,
-                    ResolvedJavaType bytecodeInterpreterFetchOpcode) {
+                    ResolvedJavaType bytecodeInterpreterFetchOpcode,
+                    ResolvedJavaType bytecodeInterpreterThreadingExit) {
 
         private ResolvedAnnotationSet {
             bytecodeInterpreterHandler = Objects.requireNonNull(bytecodeInterpreterHandler, "bytecodeInterpreterHandler");

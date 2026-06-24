@@ -77,8 +77,8 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
     }
 
-    private ResolvedJavaMethod lookupStubWrapper(ResolvedJavaMethod targetMethod, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
-        BytecodeHandlerStubKey key = BytecodeHandlerStubKey.create(unwrap(targetMethod), interpreterHolder, handlerConfig);
+    private ResolvedJavaMethod lookupStubWrapper(ResolvedJavaMethod targetMethod, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig, int templateIndex) {
+        BytecodeHandlerStubKey key = BytecodeHandlerStubKey.create(unwrap(targetMethod), interpreterHolder, handlerConfig, templateIndex);
         ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(key);
         GraalError.guarantee(stubWrapper != null, "No stub registered for %s with config %s", targetMethod, handlerConfig);
         return stubWrapper;
@@ -86,7 +86,12 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
 
     @Override
     protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
-        return new BytecodeHandlerCallSite(unwrap(enclosingMethod), bci, unwrap(targetMethod));
+        return new BytecodeHandlerCallSite(unwrap(enclosingMethod), bci, unwrap(targetMethod), templateModeEnabled());
+    }
+
+    @Override
+    protected boolean templateModeEnabled() {
+        return true;
     }
 
     @Override
@@ -107,7 +112,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
         CallTargetNode oldCallTargetNode = invoke.callTarget();
         ResolvedJavaMethod targetMethod = oldCallTargetNode.targetMethod();
         ResolvedJavaType interpreterHolder = unwrap(callsite.getEnclosingMethod().getDeclaringClass());
-        ResolvedJavaMethod analysisStub = lookupStubWrapper(callsite.getTargetMethod(), interpreterHolder, callsite.getHandlerConfig());
+        ResolvedJavaMethod analysisStub = lookupStubWrapper(callsite.getTargetMethod(), interpreterHolder, callsite.getHandlerConfig(), 0);
         HostedMethod hostedStub = ((HostedMetaAccess) context.getMetaAccess()).getUniverse().optionalLookup(analysisStub);
 
         SubstrateMethodCallTargetNode newCallTargetNode = graph.add(new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, hostedStub, arguments,

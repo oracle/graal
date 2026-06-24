@@ -75,7 +75,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
         GraalError.guarantee(firstMethod != null, "No bytecode handler methods were registered");
 
         for (BytecodeHandlerStubKey key : registeredBytecodeHandlers.getKeys()) {
-            BytecodeHandlerStubKey tableKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), key.handlerConfig());
+            BytecodeHandlerStubKey tableKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), key.handlerConfig(), key.templateIndex());
             BytecodeHandlerConfig handlerConfig = key.handlerConfig();
             ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(key);
 
@@ -85,7 +85,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
                 GraalError.guarantee(maxOpcode >= 0 && maxOpcode < Integer.MAX_VALUE, "maximumOperationCode is %d", maxOpcode);
                 handlerTable = new MethodPointer[maxOpcode + 1];
 
-                BytecodeHandlerStubKey defaultKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig);
+                BytecodeHandlerStubKey defaultKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig, key.templateIndex());
                 ResolvedJavaMethod defaultHandler = registeredBytecodeHandlers.get(defaultKey);
                 GraalError.guarantee(defaultHandler != null, "default handler is null");
                 MethodPointer defaultHandlerPointer = new MethodPointer(defaultHandler);
@@ -102,7 +102,11 @@ public final class SubstrateBytecodeHandlerStubHelper {
             ResolvedJavaMethod handler = unwrap(key.method());
             AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
             GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
+            boolean templateCompatible = annotation.getBoolean("templateCompatible");
             for (Integer opcode : annotation.getList("value", Integer.class)) {
+                if (key.templateIndex() != 0 && !templateCompatible) {
+                    continue;
+                }
                 GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
                 handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
@@ -114,7 +118,11 @@ public final class SubstrateBytecodeHandlerStubHelper {
      * {@code BytecodeHandlerConfig}).
      */
     public MethodPointer[] getBytecodeHandlers(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
-        MethodPointer[] handlers = bytecodeHandlers.get(BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig));
+        return getBytecodeHandlers(interpreterHolder, handlerConfig, 0);
+    }
+
+    public MethodPointer[] getBytecodeHandlers(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig, int templateIndex) {
+        MethodPointer[] handlers = bytecodeHandlers.get(BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig, templateIndex));
         GraalError.guarantee(handlers != null, "Bytecode handlers not yet initialized!");
         return handlers;
     }
