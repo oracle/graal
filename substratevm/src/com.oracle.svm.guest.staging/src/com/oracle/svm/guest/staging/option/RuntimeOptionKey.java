@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -34,14 +34,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.collections.EnumBitmask;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
@@ -54,8 +53,8 @@ import jdk.graal.compiler.options.OptionKey;
  * reset after every image build in case that multiple images are built in the same process to
  * ensure that options don't carry over between image builds. Note that for layered images, we need
  * to initialize the cache at run-time (see {@link RuntimeOptionValues#copyBuildTimeValuesToCache}).
- *
- * @see com.oracle.svm.core.option
+ * <p>
+ * Related core option package: {@code com.oracle.svm.core.option}.
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     public static final Object OPTION_NOT_SET = new Object();
@@ -77,7 +76,7 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         this.flags = EnumBitmask.computeBitmask(flags);
     }
 
-    @Fold
+    @GuestFold
     public T getHostedValue() {
         return getValue();
     }
@@ -177,12 +176,13 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         IsolateCreationOnly,
         /**
          * If this flag is set, then the option is always included in the image. The option is also
-         * registered for being parsed by {@link IsolateArgumentParser} and its value can typically
+         * registered for being parsed by {@code com.oracle.svm.core.IsolateArgumentParser} and its value can typically
          * only be set during isolate creation. This implies {@link #Immutable} and
          * {@link #IsolateCreationOnly}.
          * <p>
-         * See {@link IsolateArgumentParser#verifyOptionValues()} for the validation that these
-         * options are not changed after isolate creation and potential exceptions to the rule.
+         * See {@code com.oracle.svm.core.IsolateArgumentParser.verifyOptionValues()} for the
+         * validation that these options are not changed after isolate creation and potential
+         * exceptions to the rule.
          */
         RegisterForIsolateArgumentParser,
     }

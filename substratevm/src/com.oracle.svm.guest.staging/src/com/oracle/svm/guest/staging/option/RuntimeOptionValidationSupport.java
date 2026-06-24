@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.meta.GuestFold;
-import com.oracle.svm.shared.option.SubstrateOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -71,13 +70,8 @@ public class RuntimeOptionValidationSupport {
         }
     }
 
-    public static class RuntimeOptionValidation<T, K extends SubstrateOptionKey<T>> {
+    public static class RuntimeOptionValidation<T, K extends RuntimeOptionKey<T>> {
         private final Consumer<K> validation;
-        /*
-         * Use the shared supertype temporarily so RuntimeOptionValidationSupport can move before
-         * RuntimeOptionKey. Switch this field and the validation consumer back to RuntimeOptionKey
-         * once RuntimeOptionKey moves to guest/staging.
-         */
         private final K optionKey;
 
         public RuntimeOptionValidation(Consumer<K> validation, K optionKey) {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -34,7 +34,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -47,8 +47,8 @@ import jdk.graal.compiler.options.OptionValues;
 
 /**
  * The singleton holder of runtime options.
- *
- * @see com.oracle.svm.core.option
+ * <p>
+ * Related core option package: {@code com.oracle.svm.core.option}.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = ApplicationLayerOnly.class)
 public class RuntimeOptionValues {
@@ -70,14 +70,14 @@ public class RuntimeOptionValues {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static RuntimeOptionValues singleton() {
-        if (!SubstrateUtil.HOSTED || ImageLayerBuildingSupport.lastImageBuild()) {
+        if (!SubstrateUtil.HOSTED || GuestImageLayerBuildingSupport.lastImageBuild()) {
             return ImageSingletons.lookup(RuntimeOptionValues.class);
         } else {
             return ImageSingletons.lookup(SharedLayerRuntimeOptionsValues.class);
         }
     }
 
-    UnmodifiableEconomicSet<String> getAllOptionNames() {
+    public UnmodifiableEconomicSet<String> getAllOptionNames() {
         return allOptionNames;
     }
 
@@ -161,7 +161,7 @@ public class RuntimeOptionValues {
     public void copyBuildTimeValuesToCache() {
         assert !SubstrateUtil.HOSTED;
 
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+        if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
             updateCache(getMap());
         }
     }
