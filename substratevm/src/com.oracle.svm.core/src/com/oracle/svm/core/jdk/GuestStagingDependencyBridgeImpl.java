@@ -22,8 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -53,5 +55,15 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public boolean isCurrentFirstIsolate() {
         return Isolates.isCurrentFirst();
+    }
+
+    @Override
+    public void runJavaShutdownHooks() {
+        Target_java_lang_Shutdown.shutdown();
+    }
+
+    @Override
+    public void runLogManagerShutdownHook() {
+        Util_java_lang_Shutdown.runLogManagerShutdownHook();
     }
 }

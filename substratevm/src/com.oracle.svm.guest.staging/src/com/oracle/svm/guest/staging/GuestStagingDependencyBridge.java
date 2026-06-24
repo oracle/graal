@@ -63,4 +63,22 @@ public interface GuestStagingDependencyBridge {
      * guest/staging gets its own guest-owned first-isolate query.
      */
     boolean isCurrentFirstIsolate();
+
+    /**
+     * Runs Java-level shutdown hooks through
+     * {@code com.oracle.svm.core.jdk.Target_java_lang_Shutdown.shutdown()}.
+     * <p>
+     * Remove this method when substitution processing supports guest-owned substitution classes
+     * (GR-71844).
+     */
+    void runJavaShutdownHooks();
+
+    /**
+     * Runs the delayed LogManager shutdown hook through
+     * {@code com.oracle.svm.core.jdk.Util_java_lang_Shutdown.runLogManagerShutdownHook()}.
+     * <p>
+     * Remove this method when the shutdown substitution and its helper can move to guest/staging
+     * (GR-71844).
+     */
+    void runLogManagerShutdownHook();
 }

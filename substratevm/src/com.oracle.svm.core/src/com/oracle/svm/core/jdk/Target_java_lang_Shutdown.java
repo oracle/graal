@@ -31,6 +31,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "java.lang.Shutdown")

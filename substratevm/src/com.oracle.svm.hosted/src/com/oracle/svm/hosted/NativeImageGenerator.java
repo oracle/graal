@@ -78,6 +78,7 @@ import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
+import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
@@ -174,6 +175,7 @@ import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.guest.staging.option.SharedLayerRuntimeOptionsValues;
@@ -596,10 +598,13 @@ public class NativeImageGenerator {
             ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
             ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
             if (ImageLayerBuildingSupport.firstImageBuild()) {
+                RuntimeSupport runtimeSupport = new RuntimeSupport();
                 /*
                  * GR-76880 tracks whether guest/staging should support automatic singleton registration.
                  * Use @AutomaticallyRegisteredImageSingleton here if that support becomes available.
                  */
+                ImageSingletons.add(VMRuntimeSupport.class, runtimeSupport);
+                ImageSingletons.add(RuntimeSupport.class, runtimeSupport);
                 ImageSingletons.add(RuntimeOptionValidationSupport.class, new RuntimeOptionValidationSupport());
             }
             if (ImageLayerBuildingSupport.lastImageBuild()) {
