@@ -57,6 +57,7 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Builder/core pattern | Guest/shared adaptation | Notes |
 | --- | --- | --- |
 | `jdk.graal.compiler.api.replacements.Fold` | `com.oracle.svm.shared.meta.GuestFold` | Use for Fold-like constants in runtime/guest-side code without adding a `jdk.graal.compiler` dependency. Folding is performed in the guest context. |
+| `@AutomaticallyRegisteredImageSingleton` on a class moved to guest staging | Manual guest singleton installation | Do not use the annotation for guest/staging classes for now; install the guest singleton manually. GR-76880 tracks evidence for whether automatic registration support is worth implementing, so this guidance might change later. |
 | Builder singleton installed in the guest through `GuestAccess.createCallback(...)` | Shared provider interface plus builder and guest helper classes | Keep the builder-facing helper in its original module when hosted code still uses it. Register the callback under the shared provider key, such as `ImageLayerBuildingSupportProvider`, so guest code can look it up through `ImageSingletons`. |
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 
