@@ -849,6 +849,7 @@ public class NativeImage {
                     defaultNativeImageArgs = List.copyOf(args);
                 } else {
                     LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
+                    defaultNativeImageArgs = List.of();
                 }
             } else {
                 defaultNativeImageArgs = List.of();
