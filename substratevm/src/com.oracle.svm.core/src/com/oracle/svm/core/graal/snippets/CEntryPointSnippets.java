@@ -84,7 +84,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerRuntimeSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;

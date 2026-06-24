@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.shared.option.HostedOptionKey;

@@ -84,7 +84,7 @@ import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;

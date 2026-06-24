@@ -31,7 +31,7 @@ import java.util.Set;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;

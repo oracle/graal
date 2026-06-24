@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;

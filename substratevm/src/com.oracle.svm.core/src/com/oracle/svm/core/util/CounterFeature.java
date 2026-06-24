@@ -31,7 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.Counter.Group;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 

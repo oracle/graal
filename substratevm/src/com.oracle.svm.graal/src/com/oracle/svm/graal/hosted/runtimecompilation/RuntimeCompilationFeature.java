@@ -78,7 +78,7 @@ import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;

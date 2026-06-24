@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.interpreter.InterpreterFeature;
 import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
 import com.oracle.svm.jdwp.bridge.JDWPNativeBridgeSupport;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 
 public class HeapDumpTeardownHook implements RuntimeSupport.Hook {
     @Override

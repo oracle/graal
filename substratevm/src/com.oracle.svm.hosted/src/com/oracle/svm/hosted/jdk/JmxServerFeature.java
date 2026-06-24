@@ -43,7 +43,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;

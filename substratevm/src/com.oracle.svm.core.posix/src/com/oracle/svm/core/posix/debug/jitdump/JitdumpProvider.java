@@ -54,7 +54,7 @@ import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;

@@ -58,7 +58,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;

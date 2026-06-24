@@ -36,7 +36,7 @@ import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugInfoWriter;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.debug.jitdump.JitdumpProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;

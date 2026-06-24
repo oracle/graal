@@ -26,9 +26,10 @@
 
 package com.oracle.svm.core.jdk.management;
 
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.util.VMError;
 
-public class ManagementAgentStartupHook implements com.oracle.svm.core.jdk.RuntimeSupport.Hook {
+public class ManagementAgentStartupHook implements RuntimeSupport.Hook {
 
     @Override
     public void execute(boolean isFirstIsolate) {

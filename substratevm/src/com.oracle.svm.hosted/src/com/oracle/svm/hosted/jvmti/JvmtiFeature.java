@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jvmti.JvmtiAgents;
 import com.oracle.svm.core.jvmti.JvmtiEnvs;
 import com.oracle.svm.core.jvmti.JvmtiFunctionTable;
