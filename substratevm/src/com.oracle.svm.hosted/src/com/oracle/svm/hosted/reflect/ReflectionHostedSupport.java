@@ -57,6 +57,12 @@ public interface ReflectionHostedSupport {
      */
     Set<?> getHidingReflectionMethods();
 
+    /**
+     * Returns record components that can be materialized during image building, or {@code null} if
+     * no record-component metadata should be encoded. Callers must use
+     * {@link #getRecordComponentLookupErrors()} for types whose record-component query should fail
+     * at run time with a preserved lookup error.
+     */
     RecordComponent[] getRecordComponents(Class<?> type);
 
     void registerHeapDynamicHub(Object hub, ScanReason reason);
@@ -79,11 +85,17 @@ public interface ReflectionHostedSupport {
 
     Map<Class<?>, Throwable> getClassLookupErrors();
 
-    Map<Class<?>, Throwable> getFieldLookupErrors();
+    Map<Class<?>, Throwable> getDeclaredFieldLookupErrors();
 
-    Map<Class<?>, Throwable> getMethodLookupErrors();
+    Map<Class<?>, Throwable> getPublicFieldLookupErrors();
 
-    Map<Class<?>, Throwable> getConstructorLookupErrors();
+    Map<Class<?>, Throwable> getDeclaredMethodLookupErrors();
+
+    Map<Class<?>, Throwable> getPublicMethodLookupErrors();
+
+    Map<Class<?>, Throwable> getDeclaredConstructorLookupErrors();
+
+    Map<Class<?>, Throwable> getPublicConstructorLookupErrors();
 
     Map<Class<?>, Throwable> getRecordComponentLookupErrors();
 
