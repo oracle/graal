@@ -573,7 +573,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             assertionSnippets.lower((AssertionNode) n, tool);
         } else if (n instanceof LogNode) {
             logSnippets.lower((LogNode) n, tool);
-        } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
+        } else if (n instanceof RemNode) {
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                lowerRemNode((RemNode) n, tool);
+            }
+        } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
             lowerClassGetHubNode((ClassGetHubNode) n, tool);

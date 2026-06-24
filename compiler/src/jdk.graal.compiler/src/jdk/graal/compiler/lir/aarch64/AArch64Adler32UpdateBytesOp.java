@@ -63,10 +63,10 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/5cc14e537ce7c6df41d44230ae5512703af1c0a0/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7538-L7748",
-          sha1 = "0fde8fdf7e0cfeff3c204649a8b79ab6730e5cf4")
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/5cc14e537ce7c6df41d44230ae5512703af1c0a0/src/hotspot/cpu/aarch64/stubRoutines_aarch64.cpp#L325-L327",
-          sha1 = "b36d82322737d04cebe0d8efc4f4765454f48aa9")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7538-L7748",
+          sha1 = "7fe584ac6769e88044269561227cc2e9e8da5440")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/aarch64/stubRoutines_aarch64.cpp#L325-L327",
+          sha1 = "af6f82acc98eef19e8026d41dd9b846ff9555d8d")
 // @formatter:on
 @Opcode("AARCH64_ADLER32_UPDATE_BYTES")
 public final class AArch64Adler32UpdateBytesOp extends AArch64LIRInstruction {

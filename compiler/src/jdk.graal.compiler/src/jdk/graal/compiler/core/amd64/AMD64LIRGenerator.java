@@ -134,6 +134,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Adler32UpdateBytesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CountPositivesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CRC32CUpdateBytesOp;
 import jdk.graal.compiler.lir.amd64.AMD64CRC32UpdateBytesOp;
+import jdk.graal.compiler.lir.amd64.AMD64DoubleModStubOp;
 import jdk.graal.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64DilithiumAlmostInverseNttOp;
 import jdk.graal.compiler.lir.amd64.AMD64DilithiumAlmostNttOp;
@@ -1621,6 +1622,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(new AMD64CRC32CUpdateBytesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rResult, rCrc, rBuf, rLen));
         Variable result = newVariable(crc.getValueKind());
         emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDoubleMod(Value x, Value y) {
+        LIRKind kind = LIRKind.combine(x, y);
+        RegisterValue xmm0Value = AMD64.xmm0.asValue(kind);
+        emitMove(xmm0Value, x);
+        RegisterValue xmm1Value = AMD64.xmm1.asValue(kind);
+        emitMove(xmm1Value, y);
+        append(new AMD64DoubleModStubOp(xmm0Value, xmm0Value, xmm1Value));
+        Variable result = newVariable(kind);
+        emitMove(result, xmm0Value);
         return result;
     }
 

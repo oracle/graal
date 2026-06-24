@@ -75,10 +75,18 @@ public class AMD64CPUFeatureRegionOp {
         public static final LIRInstructionClass<AMD64CPUFeatureRegionLeaveOp> TYPE = LIRInstructionClass.create(AMD64CPUFeatureRegionLeaveOp.class);
 
         @Temp private Value[] temps;
+        private final boolean mayEmitVZeroUpper;
 
-        public AMD64CPUFeatureRegionLeaveOp() {
+        /**
+         * Leaves a region that was entered with {@code features}. If the generated method target
+         * does not support AVX globally, exiting an AVX region may emit {@code vzeroupper}; in that
+         * case all XMM registers are declared as temporaries because the instruction overwrites
+         * their upper lanes. Otherwise the leave operation has no register side effects.
+         */
+        public AMD64CPUFeatureRegionLeaveOp(EnumSet<AMD64.CPUFeature> features, EnumSet<AMD64.CPUFeature> targetFeatures) {
             super(TYPE);
-            this.temps = xmmRegistersToValues(new Register[]{
+            this.mayEmitVZeroUpper = features.contains(AMD64.CPUFeature.AVX) && !targetFeatures.contains(AMD64.CPUFeature.AVX);
+            this.temps = mayEmitVZeroUpper ? xmmRegistersToValues(new Register[]{
                             AMD64.xmm0,
                             AMD64.xmm1,
                             AMD64.xmm2,
@@ -95,7 +103,7 @@ public class AMD64CPUFeatureRegionOp {
                             AMD64.xmm13,
                             AMD64.xmm14,
                             AMD64.xmm15
-            });
+            }) : Value.NO_VALUES;
         }
 
         private static Value[] xmmRegistersToValues(Register[] registers) {
@@ -108,7 +116,7 @@ public class AMD64CPUFeatureRegionOp {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (masm.isCurrentRegionFeature(AMD64.CPUFeature.AVX)) {
+            if (mayEmitVZeroUpper && masm.isCurrentRegionFeature(AMD64.CPUFeature.AVX)) {
                 masm.vzeroupper();
             }
             masm.removeFeatures();

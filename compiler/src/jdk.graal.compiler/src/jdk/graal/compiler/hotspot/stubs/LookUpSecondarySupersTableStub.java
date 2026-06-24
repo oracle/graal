@@ -63,7 +63,7 @@ public class LookUpSecondarySupersTableStub extends SnippetStub {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4463-L4569",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4475-L4581",
               sha1 = "573099757de85d90c3cf8cee8ff332e195fe68c7")
     // @formatter:on
     @Snippet

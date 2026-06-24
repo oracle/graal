@@ -92,8 +92,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/5cc14e537ce7c6df41d44230ae5512703af1c0a0/src/hotspot/cpu/x86/stubGenerator_x86_64_adler.cpp#L34-L357",
-          sha1 = "5bbf6ccf388e76f16d11e36c4fb8d89e904b0b99")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/x86/stubGenerator_x86_64_adler.cpp#L34-L357",
+          sha1 = "c2dcec35dc071851bf37eb9d463aa4b86d793396")
 // @formatter:on
 @Opcode("AMD64_ADLER32_UPDATE_BYTES")
 public final class AMD64Adler32UpdateBytesOp extends AMD64LIRInstruction {

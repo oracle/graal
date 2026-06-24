@@ -51,6 +51,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.IntrinsicStubsGen;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexForeignCalls;
@@ -90,6 +91,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS_AMD64);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringCodepointIndexToByteIndexForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DoubleModStubNode.STUB);
 
         super.initialize(providers, options);
     }

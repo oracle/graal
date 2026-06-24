@@ -45,6 +45,7 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -79,6 +80,7 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
@@ -89,6 +91,7 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.SignedDivNode;
@@ -323,6 +326,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
+            } else if (n instanceof RemNode && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                lowerRemNode((RemNode) n, tool);
             } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
                 lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
@@ -331,6 +336,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n); // ExcludeFromJacocoGeneratedReport
             }
         }
+    }
+
+    protected void lowerRemNode(RemNode rem, LoweringTool tool) {
+        if (isDouble(rem.getX()) && isDouble(rem.getY()) && DoubleModStubNode.isSupported(tool.getLowerer().getTarget().arch)) {
+            FixedWithNextNode insertAfter = tool.lastFixedNode();
+            StructuredGraph graph = insertAfter.graph();
+            DoubleModStubNode fmod = graph.add(new DoubleModStubNode(rem.getX(), rem.getY()));
+            rem.replaceAtUsagesAndDelete(fmod);
+            graph.addAfterFixed(insertAfter, fmod);
+        }
+    }
+
+    private static boolean isDouble(ValueNode value) {
+        return value.stamp(NodeView.DEFAULT) instanceof FloatStamp floatStamp && floatStamp.getBits() == Double.SIZE;
     }
 
     protected void lowerFloatingIntegerDivRem(FloatingIntegerDivRemNode<?> divRem, LoweringTool tool) {

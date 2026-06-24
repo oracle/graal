@@ -32,6 +32,7 @@ import static org.junit.Assert.assertNotNull;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.Value;
 import org.junit.Assert;
@@ -47,6 +48,10 @@ public class AMD64FPDivRemOpTest extends AMD64MatchRuleTest {
         return a % b;
     }
 
+    public static long doubleRemRawBitsSnippet(double a, double b) {
+        return Double.doubleToRawLongBits(a % b);
+    }
+
     @Test
     public void testFloatRemUsesStackTemp() {
         checkFPDivRemOp("floatRemSnippet", AMD64Kind.SINGLE);
@@ -54,10 +59,49 @@ public class AMD64FPDivRemOpTest extends AMD64MatchRuleTest {
 
     @Test
     public void testDoubleRemUsesStackTemp() {
-        checkFPDivRemOp("doubleRemSnippet", AMD64Kind.DOUBLE);
+        if (DoubleModStubNode.isSupported(getArchitecture())) {
+            checkFPDivRemOpCount("doubleRemSnippet", 0);
+        } else {
+            checkFPDivRemOp("doubleRemSnippet", AMD64Kind.DOUBLE);
+        }
+    }
+
+    @Test
+    public void testDoubleRemResult() {
+        test("doubleRemSnippet", 1.0d, 0.1d);
+        test("doubleRemSnippet", 5.3d, 2.0d);
+        test("doubleRemSnippet", 0.25d, 1.0d);
+        test("doubleRemSnippet", -0.25d, 1.0d);
+        test("doubleRemSnippet", 0x1.0p200d, 3.0d);
+        test("doubleRemSnippet", 0x1.0p300d, 0.25d);
+        test("doubleRemSnippet", 0x1.0p900d, 0x1.0p-500d);
+        test("doubleRemSnippet", -0x1.23456789abcdep900d, 0x1.0p-300d);
+        test("doubleRemSnippet", 0x1.fffffffffffffp1023d, 0x1.0p-1020d);
+        test("doubleRemSnippet", 0x1.0p1023d, 0x1.0p-1022d);
+        test("doubleRemSnippet", Double.POSITIVE_INFINITY, 3.0d);
+        test("doubleRemSnippet", 1.0d, 0.0d);
+        test("doubleRemSnippet", Double.NaN, 1.0d);
+        test("doubleRemSnippet", 1.0d, Double.NaN);
+        test("doubleRemSnippet", 1.0d, Double.POSITIVE_INFINITY);
+    }
+
+    @Test
+    public void testDoubleRemRawBitsResult() {
+        test("doubleRemRawBitsSnippet", 0.0d, 1.0d);
+        test("doubleRemRawBitsSnippet", -0.0d, 1.0d);
+        test("doubleRemRawBitsSnippet", -4.0d, 2.0d);
+        test("doubleRemRawBitsSnippet", -0.25d, 1.0d);
     }
 
     private void checkFPDivRemOp(String methodName, AMD64Kind expectedStackTempKind) {
+        Assert.assertEquals(1, checkFPDivRemOps(methodName, expectedStackTempKind));
+    }
+
+    private void checkFPDivRemOpCount(String methodName, int expectedCount) {
+        Assert.assertEquals(expectedCount, checkFPDivRemOps(methodName, null));
+    }
+
+    private int checkFPDivRemOps(String methodName, AMD64Kind expectedStackTempKind) {
         compile(getResolvedJavaMethod(methodName), null);
         LIR lir = getLIR();
         int matches = 0;
@@ -91,6 +135,6 @@ public class AMD64FPDivRemOpTest extends AMD64MatchRuleTest {
                 }
             }
         }
-        Assert.assertEquals(1, matches);
+        return matches;
     }
 }
