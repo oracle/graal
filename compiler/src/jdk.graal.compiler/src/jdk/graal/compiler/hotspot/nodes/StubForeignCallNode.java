@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.nodes;
 
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.PENDING_EXCEPTION_LOCATION;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -75,7 +75,7 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
     public LocationIdentity[] getKilledLocationIdentities() {
         LocationIdentity[] killedLocations = descriptor.getKilledLocations();
         killedLocations = Arrays.copyOf(killedLocations, killedLocations.length + 1);
-        killedLocations[killedLocations.length - 1] = HotSpotReplacementsUtil.PENDING_EXCEPTION_LOCATION;
+        killedLocations[killedLocations.length - 1] = PENDING_EXCEPTION_LOCATION;
         return killedLocations;
     }
 

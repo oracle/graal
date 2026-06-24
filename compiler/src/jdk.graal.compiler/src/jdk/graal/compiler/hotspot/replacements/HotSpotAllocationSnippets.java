@@ -31,24 +31,19 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_STATE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_THREAD_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotOptimizingFieldLocationIdentity.CLASS_ARRAY_KLASS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.CLASS_INIT_STATE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.CLASS_INIT_THREAD_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_END_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.MARK_WORD_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.TLAB_END_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotOptimizingFieldLocationIdentity.TLAB_TOP_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.instanceKlassStateBeingInitialized;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isInstanceKlassFullyInitialized;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.instanceKlassStateFullyInitialized;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeShift;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeMask;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeShift;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadKlassFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.readInstanceKlassInitState;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.readInstanceKlassInitThread;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocations;
@@ -241,7 +236,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(INJECTED_VMCONFIG), CLASS_ARRAY_KLASS_LOCATION);
+        KlassPointer klass = CLASS_ARRAY_KLASS_LOCATION.readKlassPointer(elementType);
         if (probability(DEOPT_PROBABILITY, klass.isNull())) {
             DeoptimizeNode.deopt(None, RuntimeConstraint);
         }
@@ -300,7 +295,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         KlassPointer hub = ClassGetHubNode.readClass(klass);
         if (probability(VERY_FAST_PATH_PROBABILITY, !hub.isNull())) {
             KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(DEOPT_PROBABILITY, !isInstanceKlassFullyInitialized(nonNullHub))) {
+            if (probability(DEOPT_PROBABILITY, CLASS_INIT_STATE_LOCATION.readByteVolatile(nonNullHub) != instanceKlassStateFullyInitialized(INJECTED_VMCONFIG))) {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
             }
         }
@@ -308,11 +303,10 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     private void threadBeingInitializedCheck(KlassPointer klass) {
-        int state = readInstanceKlassInitState(klass);
-        if (state != instanceKlassStateBeingInitialized(INJECTED_VMCONFIG)) {
+        if (CLASS_INIT_STATE_LOCATION.readByteVolatile(klass) != instanceKlassStateBeingInitialized(INJECTED_VMCONFIG)) {
             // The klass is no longer being initialized so force recompilation
             DeoptimizeNode.deopt(InvalidateRecompile, RuntimeConstraint);
-        } else if (getThread() != readInstanceKlassInitThread(klass)) {
+        } else if (getThread() != CLASS_INIT_THREAD_LOCATION.readWord(klass)) {
             // The klass is being initialized but this isn't the initializing thread so
             // so deopt and allow execution to resume in the interpreter where it should block.
             DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -472,17 +466,17 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Override
     public final Word readTlabEnd(Word thread) {
-        return HotSpotReplacementsUtil.readTlabEnd(thread);
+        return TLAB_END_LOCATION.readWord(thread);
     }
 
     @Override
     public final Word readTlabTop(Word thread) {
-        return HotSpotReplacementsUtil.readTlabTop(thread);
+        return TLAB_TOP_LOCATION.readWord(thread);
     }
 
     @Override
     public final void writeTlabTop(Word thread, Word newTop) {
-        HotSpotReplacementsUtil.writeTlabTop(thread, newTop);
+        TLAB_TOP_LOCATION.writeWord(thread, newTop);
     }
 
     @Override
@@ -572,8 +566,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                             MARK_WORD_LOCATION,
                             HUB_WRITE_LOCATION,
                             TLAB_TOP_LOCATION,
-                            TLAB_END_LOCATION,
-                            PROTOTYPE_MARK_WORD_LOCATION);
+                            TLAB_END_LOCATION);
             allocateArray = snippet(providers,
                             HotSpotAllocationSnippets.class,
                             "allocateArray",
@@ -601,7 +594,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                             HUB_WRITE_LOCATION,
                             TLAB_TOP_LOCATION,
                             TLAB_END_LOCATION,
-                            PROTOTYPE_MARK_WORD_LOCATION,
                             CLASS_INIT_STATE_LOCATION);
             validateNewInstanceClass = snippet(providers,
                             HotSpotAllocationSnippets.class,
@@ -610,7 +602,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                             HUB_WRITE_LOCATION,
                             TLAB_TOP_LOCATION,
                             TLAB_END_LOCATION,
-                            PROTOTYPE_MARK_WORD_LOCATION,
                             CLASS_INIT_STATE_LOCATION);
             newmultiarray = snippet(providers,
                             HotSpotAllocationSnippets.class,

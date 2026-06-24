@@ -26,6 +26,8 @@ package jdk.graal.compiler.hotspot.stubs;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.EXCEPTION_OOP_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.EXCEPTION_PC_LOCATION;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.decipher;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.fatal;
@@ -84,8 +86,8 @@ public class ExceptionHandlerStub extends SnippetStub {
         Word thread = HotSpotReplacementsUtil.registerAsWord(threadRegister);
         checkNoExceptionInThread(thread, assertionsEnabled(GraalHotSpotVMConfig.INJECTED_VMCONFIG));
         checkExceptionNotNull(assertionsEnabled(GraalHotSpotVMConfig.INJECTED_VMCONFIG), exception);
-        HotSpotReplacementsUtil.writeExceptionOop(thread, exception);
-        HotSpotReplacementsUtil.writeExceptionPc(thread, exceptionPc);
+        EXCEPTION_OOP_LOCATION.writeObject(thread, exception);
+        EXCEPTION_PC_LOCATION.writeWord(thread, exceptionPc);
         if (logging) {
             printf("handling exception %p (", Word.objectToTrackedPointer(exception).rawValue());
             decipher(Word.objectToTrackedPointer(exception).rawValue());
@@ -111,14 +113,14 @@ public class ExceptionHandlerStub extends SnippetStub {
 
     static void checkNoExceptionInThread(Word thread, boolean enabled) {
         if (enabled) {
-            Object currentException = HotSpotReplacementsUtil.readExceptionOop(thread);
+            Object currentException = EXCEPTION_OOP_LOCATION.readObject(thread);
             if (currentException != null) {
                 fatal("exception object in thread must be null, not %p", Word.objectToTrackedPointer(currentException).rawValue());
             }
             if (cAssertionsEnabled(GraalHotSpotVMConfig.INJECTED_VMCONFIG)) {
                 // This thread-local is only cleared in DEBUG builds of the VM
                 // (see OptoRuntime::generate_exception_blob)
-                Word currentExceptionPc = HotSpotReplacementsUtil.readExceptionPc(thread);
+                Word currentExceptionPc = EXCEPTION_PC_LOCATION.readWord(thread);
                 if (currentExceptionPc.notEqual(Word.zero())) {
                     fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
                 }
