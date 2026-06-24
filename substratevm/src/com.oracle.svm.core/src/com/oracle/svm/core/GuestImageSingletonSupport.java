@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Helper class for registering image singletons in the guest.
+ * Helper class for accessing image singletons in the guest.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class GuestImageSingletonSupport {
@@ -54,8 +54,34 @@ public class GuestImageSingletonSupport {
 
     public static void add(ResolvedJavaType key, JavaConstant value) {
         GuestAccess access = GuestAccess.get();
-        VMError.guarantee(access.owns(key));
-        JavaConstant keyConstant = access.getProviders().getConstantReflection().asJavaClass(key);
+        JavaConstant keyConstant = asGuestClass(key, access);
         access.invoke(access.elements.ImageSingletons_add, null, keyConstant, value);
+    }
+
+    public static JavaConstant lookup(Class<?> key) {
+        GuestAccess access = GuestAccess.get();
+        return lookup(access.getProviders().getMetaAccess().lookupJavaType(key));
+    }
+
+    public static JavaConstant lookup(ResolvedJavaType key) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant keyConstant = asGuestClass(key, access);
+        return access.invoke(access.elements.ImageSingletons_lookup, null, keyConstant);
+    }
+
+    public static boolean contains(Class<?> key) {
+        GuestAccess access = GuestAccess.get();
+        return contains(access.getProviders().getMetaAccess().lookupJavaType(key));
+    }
+
+    public static boolean contains(ResolvedJavaType key) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant keyConstant = asGuestClass(key, access);
+        return access.invoke(access.elements.ImageSingletons_contains, null, keyConstant).asBoolean();
+    }
+
+    private static JavaConstant asGuestClass(ResolvedJavaType key, GuestAccess access) {
+        VMError.guarantee(access.owns(key));
+        return access.getProviders().getConstantReflection().asJavaClass(key);
     }
 }
