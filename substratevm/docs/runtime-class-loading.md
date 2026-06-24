@@ -20,12 +20,44 @@ This will result in errors if run-time-loaded classes try to use such removed me
 A typical way to address this is to use `-H:Preserve=package=...` at build time to ensure all methods and fields of a package are included in the native image.
 
 ## Resource URLs
-The internal `resource:` URL format uses mode-dependent location semantics.
-Without class-loader-aware lookup (`-H:-ClassForNameRespectsClassLoader`), the URL host is the module name, matching the legacy resource lookup scheme.
-With class-loader-aware lookup (`-H:+ClassForNameRespectsClassLoader`), the URL host is the resource loader key (`boot`, `platform`, `app`, or `synthetic-N`), because the loader is the discriminator required to preserve Java class-loader resource lookup behavior.
-For named module resources in class-loader-aware mode, the URL user-info stores the module name, for example `resource://java.base@boot/module-info.class`.
-This is needed for module-reader lookups that cross the `ModuleReader.find(String)` interface as a `URI`: the URI string must preserve the module identity because URL stream handler state does not survive a `URL` to `URI` to `URL` round trip.
-When such a URL is converted to a `Path`, the Native Image resource file system exposes the loader key as the top-level path entry, similar to how `jrt:` paths expose the module name as the top-level path entry.
+The semantics of the internal `resource:` URL depends on `ClassForNameRespectsClassLoader`:
+* `-H:-ClassForNameRespectsClassLoader`: the host part of the URL is the module name, matching the legacy resource lookup scheme.
+  For example, `resource://java.base/0!/module-info.class`.
+* `-H:+ClassForNameRespectsClassLoader`: the user info part of the URL is the module name and the host part of the URL is the resource loader key (`boot`, `platform`, `app`, or `synthetic-N`).
+  For example, `resource://java.base@boot/0!/module-info.class`.
+  The loader is the discriminator required to preserve Java class-loader resource lookup behavior.
+  This is needed for module-reader lookups that cross the `ModuleReader.find(String)` interface as a `URI`: the URI string must preserve the module identity because URL stream handler state does not survive a `URL` to `URI` to `URL` round trip.
+
+The path part of a `resource:` URL has the form `/<root-id>!/<resource-path>`.
+The root id is a dense id for the source root that provided the resource within the selected resource loader.
+For class-path resources, the source root is a class-path entry such as a jar file or an exploded classes directory.
+For example, if the application loader sees this class path:
+
+```text
+project-foo.jar
+project-bar.jar
+```
+
+then Native Image assigns dense root ids for that loader:
+
+```text
+project-foo.jar -> 0
+project-bar.jar -> 1
+```
+
+The root id is preserved when a resource URL is converted to a `URI` and then to a `Path`, so resource file-system operations continue to observe the resource as it appears in that source root.
+
+This matters for directory resources that exist in more than one source root.
+For example, if two class-path entries contain different `META-INF/micronaut/` directories, resource lookup returns one URL per directory variant, such as:
+
+```text
+resource://app/0!/META-INF/micronaut/
+resource://app/1!/META-INF/micronaut/
+```
+
+If user code converts each URL to a `Path` and walks it with `Files.walk`, the Native Image resource file system lists the selected directory variant's content.
+It does not list the merged children from all roots for every URL.
+This matches HotSpot-style resource lookup behavior where each directory resource URL represents the contents from one class-path root.
 
 ## Current Limitations
 * Parallel class loading is explicitly disabled and not supported.
