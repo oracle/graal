@@ -98,11 +98,12 @@ import com.oracle.svm.core.util.TimeUtils;
  */
 public class NativeImageResourceFileSystem extends FileSystem {
 
+    static final int NO_RESOURCE_INDEX = -1;
+
     private static final String GLOB_SYNTAX = "glob";
     private static final String REGEX_SYNTAX = "regex";
 
     private static final int DEFAULT_BUFFER_SIZE = 8192;
-
     private static final Set<String> supportedFileAttributeViews = Collections.unmodifiableSet(
                     new HashSet<>(Arrays.asList("basic", "resource"))); // noEconomicSet(api)
 
@@ -110,27 +111,42 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private final Set<OutputStream> outputStreams = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
     private final Set<Path> tmpPaths = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
 
-    private final long defaultTimestamp = TimeUtils.currentTimeMillis();
-
     private final NativeImageResourceFileSystemProvider provider;
     private final Path resourcePath;
     private final NativeImageResourcePath root;
+    private final String defaultPathPrefix;
     private boolean isOpen = true;
-    private final ReadWriteLock rwlock = new ReentrantReadWriteLock();
+    private final ReadWriteLock rwlock;
 
     private static final byte[] ROOT_PATH = new byte[]{'/'};
     private final IndexNode lookupKey = new IndexNode(null, true, false);
-    private final LinkedHashMap<IndexNode, IndexNode> inodes = new LinkedHashMap<>(10);
+    private final LinkedHashMap<IndexNode, IndexNode> inodes;
 
     @SuppressWarnings("this-escape")
-    public NativeImageResourceFileSystem(NativeImageResourceFileSystemProvider provider, Path resourcePath, Map<String, ?> env) {
+    NativeImageResourceFileSystem(NativeImageResourceFileSystemProvider provider, Path resourcePath, Map<String, ?> env, int defaultRootId, String defaultModuleName, String defaultPathPrefix) {
         this.provider = provider;
         this.resourcePath = resourcePath;
-        this.root = new NativeImageResourcePath(this, new byte[]{'/'});
+        this.rwlock = new ReentrantReadWriteLock();
+        this.inodes = new LinkedHashMap<>(10);
+        this.root = getPathForRoot("/", defaultRootId, defaultModuleName);
+        this.defaultPathPrefix = defaultPathPrefix;
         if (!isTrue(env)) {
             throw new FileSystemNotFoundException(resourcePath.toString());
         }
         readAllEntries();
+    }
+
+    private NativeImageResourceFileSystem(NativeImageResourceFileSystem sharedFileSystem, int defaultRootId, String defaultModuleName, String defaultPathPrefix) {
+        this.provider = sharedFileSystem.provider;
+        this.resourcePath = sharedFileSystem.resourcePath;
+        this.rwlock = sharedFileSystem.rwlock;
+        this.inodes = sharedFileSystem.inodes;
+        this.root = getPathForRoot("/", defaultRootId, defaultModuleName);
+        this.defaultPathPrefix = defaultPathPrefix;
+    }
+
+    NativeImageResourceFileSystem newView(int rootId, String moduleName, String pathPrefix) {
+        return new NativeImageResourceFileSystem(this, rootId, moduleName, pathPrefix);
     }
 
     // Returns true if there is a name=true/"true" setting in env.
@@ -160,11 +176,11 @@ public class NativeImageResourceFileSystem extends FileSystem {
         rwlock.readLock().unlock();
     }
 
-    byte[] getBytes(String path) {
+    static byte[] getBytes(String path) {
         return path.getBytes(StandardCharsets.UTF_8);
     }
 
-    String getString(byte[] path) {
+    static String getString(byte[] path) {
         return new String(path, StandardCharsets.UTF_8);
     }
 
@@ -199,7 +215,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             }
         }
 
-        provider.removeFileSystem();
+        provider.removeFileSystem(this);
     }
 
     @Override
@@ -259,7 +275,49 @@ public class NativeImageResourceFileSystem extends FileSystem {
             }
             path = sb.toString();
         }
-        return new NativeImageResourcePath(this, getBytes(path));
+        return getPathForRoot(applyDefaultPathPrefix(path), root.getRootId(), root.getModuleName());
+    }
+
+    private String applyDefaultPathPrefix(String path) {
+        if (defaultPathPrefix.isEmpty() || path.isEmpty() || path.equals("/")) {
+            return path;
+        }
+        boolean absolute = path.charAt(0) == '/';
+        String pathWithoutRoot = absolute ? path.substring(1) : path;
+        if (pathWithoutRoot.equals(defaultPathPrefix) || pathWithoutRoot.startsWith(defaultPathPrefix + "/")) {
+            return path;
+        }
+        String prefixedPath = defaultPathPrefix + "/" + pathWithoutRoot;
+        return absolute ? "/" + prefixedPath : prefixedPath;
+    }
+
+    NativeImageResourcePath getPathForRoot(String path, int rootId, String moduleName) {
+        byte[] pathBytes = getBytes(path);
+        return new NativeImageResourcePath(this, pathBytes, false, rootId, moduleName);
+    }
+
+    /// Resolves the selected loader root to this concrete resource path's local data index.
+    /// Structural directory nodes and complete entries without data in the selected root use
+    /// [#NO_RESOURCE_INDEX].
+    static int resolveResourceIndex(byte[] path, int rootId, String moduleName) {
+        if (path.length == 1 && path[0] == '/') {
+            // The filesystem root is a structural container, not a resource lookup key.
+            return NO_RESOURCE_INDEX;
+        }
+        ResourceStorageEntryBase entry;
+        try {
+            entry = NativeImageResourceFileSystemUtil.getEntry(moduleName, getString(path), true);
+        } catch (IllegalArgumentException e) {
+            return NO_RESOURCE_INDEX;
+        }
+        if (entry instanceof ResourceStorageEntry resourceStorageEntry) {
+            return resourceStorageEntry.getDataIndexForRootId(rootId);
+        }
+        return NO_RESOURCE_INDEX;
+    }
+
+    private static boolean isResourceVariantMissing(byte[] path, int rootId, String moduleName) {
+        return resolveResourceIndex(path, rootId, moduleName) < 0;
     }
 
     @Override
@@ -295,24 +353,19 @@ public class NativeImageResourceFileSystem extends FileSystem {
         throw new UnsupportedOperationException();
     }
 
-    NativeImageResourceFileAttributes getFileAttributes(byte[] path) {
+    NativeImageResourceFileAttributes getFileAttributes(byte[] path, int resourceIndex, String moduleName) {
         Entry entry;
         beginRead();
         try {
             ensureOpen();
-            entry = getEntry(path);
+            entry = getEntry(path, resourceIndex, moduleName);
             if (entry == null) {
-                IndexNode inode = getInode(path);
-                if (inode == null) {
-                    return null;
-                }
-                entry = new Entry(inode.name, inode.isDir, inode.isComplete);
-                entry.lastModifiedTime = entry.lastAccessTime = entry.createTime = defaultTimestamp;
+                return null;
             }
         } finally {
             endRead();
         }
-        return new NativeImageResourceFileAttributes(this, entry);
+        return new NativeImageResourceFileAttributes(entry);
     }
 
     static void checkOptions(Set<? extends OpenOption> options) {
@@ -329,7 +382,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         }
     }
 
-    SeekableByteChannel newByteChannel(byte[] path, Set<? extends OpenOption> options) throws IOException {
+    SeekableByteChannel newByteChannel(byte[] path, int resourceIndex, String moduleName, Set<? extends OpenOption> options) throws IOException {
         checkOptions(options);
         if (options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.APPEND)) {
             beginRead();    // Only need a read lock, the "update()" will obtain the write lock when
@@ -360,7 +413,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             beginRead();
             try {
                 ensureOpen();
-                Entry e = getEntry(path);
+                Entry e = getEntry(path, resourceIndex, moduleName);
                 if (e == null || e.isDir()) {
                     throw new NoSuchFileException(getString(path));
                 }
@@ -373,29 +426,32 @@ public class NativeImageResourceFileSystem extends FileSystem {
         }
     }
 
-    boolean exists(byte[] path) {
+    boolean exists(byte[] path, int resourceIndex) {
         beginRead();
         try {
             ensureOpen();
-            return getInode(path) != null;
+            IndexNode inode = getInode(path);
+            if (inode == null) {
+                return false;
+            }
+            if (!inode.isComplete) {
+                /*
+                 * An incomplete inode is an intermediate directory node: it exists only as a parent
+                 * for deeper registered resources, not because this directory path was itself
+                 * registered as a resource. It can therefore exist as a container even if there is
+                 * no concrete resource data entry for the selected root.
+                 */
+                return true;
+            }
+            return resourceIndex >= 0;
         } finally {
             endRead();
         }
     }
 
-    static FileStore getFileStore(NativeImageResourcePath path) {
-        return new NativeImageResourceFileStore(path);
-    }
-
-    void checkAccess(byte[] path) throws NoSuchFileException {
-        beginRead();
-        try {
-            ensureOpen();
-            if (getInode(path) == null) {
-                throw new NoSuchFileException(toString());
-            }
-        } finally {
-            endRead();
+    void checkAccess(byte[] path, int resourceIndex) throws NoSuchFileException {
+        if (!exists(path, resourceIndex)) {
+            throw new NoSuchFileException(toString());
         }
     }
 
@@ -436,7 +492,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         beginWrite();
         try {
             ensureOpen();
-            if (dir.length == 0 || exists(dir)) {
+            if (dir.length == 0 || getInode(dir) != null) {
                 throw new FileAlreadyExistsException(getString(dir));
             }
             checkParents(dir);
@@ -473,12 +529,12 @@ public class NativeImageResourceFileSystem extends FileSystem {
         return tmpPath;
     }
 
-    private Path getTempPathForEntry(byte[] path) throws IOException {
+    private Path getTempPathForEntry(byte[] path, int resourceIndex) throws IOException {
         Path tmpPath = createTempFileInSameDirectoryAs();
         if (path != null) {
             Entry e = getEntry(path);
             if (e != null) {
-                try (InputStream is = newInputStream(path)) {
+                try (InputStream is = newInputStream(path, resourceIndex, null)) {
                     Files.copy(is, tmpPath, REPLACE_EXISTING);
                 }
             }
@@ -537,7 +593,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                     if (eSrc.bytes != null) {
                         target.bytes = Arrays.copyOf(eSrc.bytes, eSrc.bytes.length);
                     } else if (eSrc.file != null) {
-                        target.file = getTempPathForEntry(null);
+                        target.file = getTempPathForEntry(null, 0);
                         Files.copy(eSrc.file, target.file, REPLACE_EXISTING);
                     }
                 }
@@ -569,9 +625,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     IndexNode getInode(byte[] path) {
-        if (path == null) {
-            throw new NullPointerException("Path is null!");
-        }
+        Objects.requireNonNull(path, "Path is null!");
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
         if (indexNode == null && MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             // Try to access the resource to see if the metadata is present
@@ -581,6 +635,10 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     Entry getEntry(byte[] path) {
+        return getEntry(path, 0, null);
+    }
+
+    Entry getEntry(byte[] path, int resourceIndex, String moduleName) {
         IndexNode inode = getInode(path);
         if (inode instanceof Entry) {
             return (Entry) inode;
@@ -588,7 +646,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
         if (inode == null) {
             return null;
         }
-        return new Entry(inode.name, inode.isDir, inode.isComplete);
+        if (inode.isComplete && resourceIndex < 0) {
+            /*
+             * A complete inode represents a real registered resource entry. If the selected root
+             * does not contain a variant for that resource, report no entry for this rooted path.
+            */
+            return null;
+        }
+        return new Entry(inode, resourceIndex, moduleName);
     }
 
     static byte[] getParent(byte[] path) {
@@ -751,11 +816,11 @@ public class NativeImageResourceFileSystem extends FileSystem {
         return os;
     }
 
-    InputStream newInputStream(byte[] path) throws IOException {
+    InputStream newInputStream(byte[] path, int resourceIndex, String moduleName) throws IOException {
         beginRead();
         try {
             ensureOpen();
-            Entry entry = getEntry(path);
+            Entry entry = getEntry(path, resourceIndex, moduleName);
             if (entry == null) {
                 throw new NoSuchFileException(getString(path));
             }
@@ -824,13 +889,25 @@ public class NativeImageResourceFileSystem extends FileSystem {
         }
     }
 
-    FileChannel newFileChannel(byte[] path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+    FileChannel newFileChannel(byte[] path, int resourceIndex, String moduleName, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
         checkOptions(options);
         boolean forWrite = (options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.APPEND));
         beginRead();
         try {
             ensureOpen();
-            Entry e = getEntry(path);
+            int entryResourceIndex = resourceIndex;
+            String entryModuleName = moduleName;
+            if (forWrite) {
+                /*
+                 * Writes target the mutable overlay used for the rare case where application code
+                 * writes to an embedded resource location at image run time. That overlay is not
+                 * keyed by module or resource variant, so preserve the legacy default lookup for
+                 * write access.
+                 */
+                entryResourceIndex = 0;
+                entryModuleName = null;
+            }
+            Entry e = getEntry(path, entryResourceIndex, entryModuleName);
             if (forWrite) {
                 if (e == null) {
                     if (!options.contains(StandardOpenOption.CREATE) && !options.contains(StandardOpenOption.CREATE_NEW)) {
@@ -849,7 +926,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             }
 
             final boolean isFCH = (e != null && e.type == Entry.FILE_CH);
-            final Path tmpFile = isFCH ? e.file : getTempPathForEntry(path);
+            final Path tmpFile = isFCH ? e.file : getTempPathForEntry(path, resourceIndex);
             final FileChannel fch = tmpFile.getFileSystem().provider().newFileChannel(tmpFile, options, attrs);
             final Entry target = isFCH ? e : new Entry(path, tmpFile, Entry.FILE_CH, false);
             return new FileChannel() {
@@ -963,22 +1040,19 @@ public class NativeImageResourceFileSystem extends FileSystem {
         try {
             ensureOpen();
             byte[] path = dir.getResolvedPath();
-            IndexNode inode = getInode(path);
-            if (inode == null) {
+            Entry entry = getEntry(path, dir.getResourceIndex(), dir.getModuleName());
+            if (entry == null || !entry.isDir()) {
                 throw new NotDirectoryException(getString(path));
             }
+            if (isMultiVariantDirectoryEntry(entry)) {
+                return createMultiVariantDirectoryIterator(dir, entry, filter);
+            }
             List<Path> list = new ArrayList<>();
-            IndexNode child = inode.child;
+            IndexNode child = entry.child;
             while (child != null) {
-                byte[] childName = child.name;
-                NativeImageResourcePath childPath = new NativeImageResourcePath(this, childName, true);
-                Path childFileName = childPath.getFileName();
-                Path dirPath = null;
-                if (childFileName != null) {
-                    dirPath = dir.resolve(childFileName);
-                }
-                if (filter == null || (dirPath != null && filter.accept(dirPath))) {
-                    list.add(dirPath);
+                NativeImageResourcePath childPath = createChildPathForDirectoryListing(dir, entry, child);
+                if (filter == null || (childPath.getFileName() != null && filter.accept(childPath))) {
+                    list.add(childPath);
                 }
                 child = child.sibling;
             }
@@ -986,6 +1060,138 @@ public class NativeImageResourceFileSystem extends FileSystem {
         } finally {
             endWrite();
         }
+    }
+
+    private static boolean isMultiVariantDirectoryEntry(IndexNode entry) {
+        if (entry == null || !entry.isComplete || !entry.isDir()) {
+            return false;
+        }
+        ResourceStorageEntryBase resourceEntry = NativeImageResourceFileSystemUtil.getEntry(getString(entry.name), false);
+        return resourceEntry instanceof ResourceStorageEntry resourceStorageEntry && resourceStorageEntry.getData().length > 1;
+    }
+
+    private Iterator<Path> createMultiVariantDirectoryIterator(NativeImageResourcePath dir, Entry entry, DirectoryStream.Filter<? super Path> filter) throws IOException {
+        /*
+         * Multi-variant directory resources must be listed from the selected directory variant's
+         * data. The global index-tree child list is the merged view across all roots, but HotSpot
+         * directory resource iteration observes the children from the selected root only.
+         */
+        List<Path> list = new ArrayList<>();
+        String selectedVariantContent = new String(entry.getBytes(true), StandardCharsets.UTF_8);
+        for (String child : selectedVariantContent.split(NativeImageResourceFileSystemUtil.DIRECTORY_CONTENT_SEPARATOR)) {
+            if (child.isEmpty()) {
+                continue;
+            }
+            byte[] childPath = resolveChild(dir.getResolvedPath(), child);
+            int childRootId = dir.getRootId();
+            if (isResourceVariantMissing(childPath, childRootId, dir.getModuleName())) {
+                /*
+                 * The child was listed by this directory variant, but the same root does not have a
+                 * concrete data entry for the child resource. This can happen when the child is
+                 * only an intermediate directory in the selected root, while another root
+                 * registered the same child path as a complete resource entry. Anchor the returned
+                 * child path to the child's first concrete variant instead of leaving it with an
+                 * invalid selected root.
+                 */
+                ResourceStorageEntryWithModule resourceStorageEntry = getResourceStorageEntryWithData(dir.getModuleName(), childPath);
+                if (resourceStorageEntry != null) {
+                    childRootId = resourceStorageEntry.entry.getRootId(0);
+                }
+            }
+            NativeImageResourcePath dirPath = createPathForDirectoryListing(dir, childPath, childRootId);
+            if (filter == null || filter.accept(dirPath)) {
+                list.add(dirPath);
+            }
+        }
+        return list.iterator();
+    }
+
+    private NativeImageResourcePath createChildPathForDirectoryListing(NativeImageResourcePath dirPath, IndexNode dirNode, IndexNode dirChildNode) {
+        /*
+         * This is the non-multivariant directory listing path. Preserve the selected root from the
+         * directory being listed; children are resolved as seen from that same root unless the
+         * child has no concrete data in that root.
+         */
+        if (dirChildNode.isComplete && (!dirNode.isComplete || isResourceVariantMissing(dirChildNode.name, dirPath.getRootId(), dirPath.getModuleName()))) {
+            /*
+             * If the child has no data in the directory's selected root, the globally merged index
+             * tree still exposed a child from another root. Anchor the returned child path to the
+             * child's first concrete root variant instead of creating a path that cannot be
+             * reopened.
+             */
+            ResourceStorageEntryWithModule resourceStorageEntry = getResourceStorageEntryWithData(dirPath.getModuleName(), dirChildNode.name);
+            if (resourceStorageEntry != null) {
+                return createPathForDirectoryListing(dirPath, dirChildNode.name, resourceStorageEntry.entry.getRootId(0), resourceStorageEntry.moduleName);
+            }
+            /*
+             * Complete child nodes can also come from writable resource filesystem state instead of
+             * embedded resource data. Those entries do not have resource root variants, so keep the
+             * directory's selected root.
+             */
+        }
+        return createPathForDirectoryListing(dirPath, dirChildNode.name, dirPath.getRootId());
+    }
+
+    /// Preserves the usual `Files.walk` path shape: listing an absolute directory must yield
+    /// absolute child paths, while listing a relative directory yields relative child paths. Resource
+    /// storage keeps names without a leading `/`, so absolute directory listings need to add it back
+    /// before returning paths to callers.
+    private NativeImageResourcePath createPathForDirectoryListing(NativeImageResourcePath dirPath, byte[] childPath, int childRootId) {
+        return createPathForDirectoryListing(dirPath, childPath, childRootId, dirPath.getModuleName());
+    }
+
+    private NativeImageResourcePath createPathForDirectoryListing(NativeImageResourcePath dirPath, byte[] childPath, int childRootId, String childModuleName) {
+        byte[] path = childPath;
+        if (dirPath.isAbsolute() && (path.length == 0 || path[0] != '/')) {
+            path = new byte[childPath.length + 1];
+            path[0] = '/';
+            System.arraycopy(childPath, 0, path, 1, childPath.length);
+        }
+        return new NativeImageResourcePath(this, path, true, childRootId, childModuleName);
+    }
+
+    /// Returns a concrete storage entry for `path`, if one exists and has at least one data variant.
+    ///
+    /// Callers use this when the selected parent/root does not map to a concrete child entry. In
+    /// that case, the child path is anchored to the child's first concrete resource variant instead
+    /// of inheriting an invalid or synthetic parent data index.
+    private static ResourceStorageEntryWithModule getResourceStorageEntryWithData(String moduleName, byte[] path) {
+        String resourcePath = getString(path);
+        ResourceStorageEntryBase entry = NativeImageResourceFileSystemUtil.getEntry(moduleName, resourcePath, false);
+        if (entry instanceof ResourceStorageEntry resourceStorageEntry && resourceStorageEntry.getData().length > 0) {
+            return new ResourceStorageEntryWithModule(moduleName, resourceStorageEntry);
+        }
+        if (moduleName != null) {
+            return null;
+        }
+        for (var module : ModuleLayer.boot().configuration().modules()) {
+            String candidateModuleName = module.name();
+            ResourceStorageEntryBase moduleEntry = NativeImageResourceFileSystemUtil.getEntry(candidateModuleName, resourcePath, true);
+            if (moduleEntry instanceof ResourceStorageEntry resourceStorageEntry && resourceStorageEntry.getData().length > 0) {
+                return new ResourceStorageEntryWithModule(candidateModuleName, resourceStorageEntry);
+            }
+        }
+        return null;
+    }
+
+    private record ResourceStorageEntryWithModule(String moduleName, ResourceStorageEntry entry) {
+    }
+
+    /// Resolves a child name from serialized directory-resource content against an absolute
+    /// directory path. The file system stores paths as UTF-8 bytes, so this helper performs the join
+    /// directly in byte form and inserts one `/` separator only when the directory path does not
+    /// already end with one.
+    private static byte[] resolveChild(byte[] dir, String child) {
+        byte[] childBytes = getBytes(child);
+        boolean appendSeparator = dir.length > 0 && dir[dir.length - 1] != '/';
+        byte[] result = new byte[dir.length + (appendSeparator ? 1 : 0) + childBytes.length];
+        System.arraycopy(dir, 0, result, 0, dir.length);
+        int childOffset = dir.length;
+        if (appendSeparator) {
+            result[childOffset++] = '/';
+        }
+        System.arraycopy(childBytes, 0, result, childOffset, childBytes.length);
+        return result;
     }
 
     private static class IndexNode {
@@ -1114,9 +1320,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
         private boolean copyOnWrite;
         private byte[] bytes;
         public Path file;
+        private final int resourceIndex;
+        private final String moduleName;
 
+        /// Creates an entry whose content is backed by a temporary file, used by file-channel
+        /// updates.
         Entry(byte[] name, Path file, int type, boolean isComplete) {
-            this(name, type, false, isComplete);
+            this(name, false, isComplete, 0, null);
+            this.type = type;
             this.file = file;
         }
 
@@ -1126,7 +1337,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
 
         void initData() {
             if (isComplete) {
-                this.bytes = NativeImageResourceFileSystemUtil.getBytes(getString(name), true);
+                this.bytes = NativeImageResourceFileSystemUtil.getBytes(moduleName, getString(name), resourceIndex, true);
                 this.size = !isDir ? this.bytes.length : 0;
             }
         }
@@ -1136,14 +1347,23 @@ public class NativeImageResourceFileSystem extends FileSystem {
                 // Copy On Write technique.
                 if (!copyOnWrite) {
                     copyOnWrite = true;
-                    this.bytes = NativeImageResourceFileSystemUtil.getBytes(getString(name), false);
+                    this.bytes = NativeImageResourceFileSystemUtil.getBytes(moduleName, getString(name), resourceIndex, false);
                 }
             }
             return this.bytes;
         }
 
+        /// Creates a new writable entry that is not backed by a registered resource variant.
         Entry(byte[] name, boolean isDir, boolean isComplete) {
+            this(name, isDir, isComplete, 0, null);
+        }
+
+        /// Creates a resource-backed entry for one registered variant, identified by its local data
+        /// index and optional module name.
+        Entry(byte[] name, boolean isDir, boolean isComplete, int resourceIndex, String moduleName) {
             name(name);
+            this.resourceIndex = resourceIndex;
+            this.moduleName = moduleName;
             this.type = Entry.NEW;
             this.isDir = isDir;
             this.isComplete = isComplete;
@@ -1151,15 +1371,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
             initTimes();
         }
 
-        Entry(byte[] name, int type, boolean isDir, boolean isComplete) {
-            name(name);
-            this.type = type;
-            this.isDir = isDir;
-            this.isComplete = isComplete;
-            initData();
-            initTimes();
+        /// Wraps a structural directory node as an entry while preserving its children for
+        /// directory listings.
+        Entry(IndexNode inode, int resourceIndex, String moduleName) {
+            this(inode.name, inode.isDir, inode.isComplete, resourceIndex, moduleName);
+            this.child = inode.child;
         }
 
+        /// Creates an entry that reuses another entry's state for copy-on-write updates.
         Entry(Entry other, int type) {
             name(other.name);
             this.lastModifiedTime = other.lastModifiedTime;
@@ -1171,6 +1390,9 @@ public class NativeImageResourceFileSystem extends FileSystem {
             this.bytes = other.bytes;
             this.type = type;
             this.copyOnWrite = true;
+            this.resourceIndex = other.resourceIndex;
+            this.moduleName = other.moduleName;
+            this.child = other.child;
         }
 
         boolean isDirectory() {

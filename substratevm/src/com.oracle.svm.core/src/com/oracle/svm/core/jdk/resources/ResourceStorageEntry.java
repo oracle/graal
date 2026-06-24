@@ -40,6 +40,7 @@ public final class ResourceStorageEntry extends ResourceStorageEntryBase {
     private final boolean isDirectory;
     private final boolean fromJar;
     private byte[][] data;
+    private int[] rootIds;
 
     public ResourceStorageEntry(boolean isDirectory, boolean fromJar) {
         this.isDirectory = isDirectory;
@@ -62,26 +63,96 @@ public final class ResourceStorageEntry extends ResourceStorageEntryBase {
         return data;
     }
 
+    public int getRootId(int dataIndex) {
+        if (rootIds != null) {
+            /*
+             * rootIds stores only the non-trivial suffix; indexes before the suffix keep the implicit
+             * rootId == dataIndex mapping.
+             */
+            int offset = rootIdsOffset();
+            if (dataIndex >= offset) {
+                return rootIds[dataIndex - offset];
+            }
+        }
+        /* Compact entries and suffix-prefix entries both use the implicit identity mapping. */
+        return dataIndex;
+    }
+
+    /// Maps a dense loader-root ID back to the local data index for this resource entry. Root IDs are
+    /// dense per loader, while data indexes are dense only for one resource path. For example, if an
+    /// application loader has roots A, B, and C with root IDs 0, 1, and 2, but resource
+    /// `META-INF/services/A` exists only in roots A and C, then this entry stores:
+    ///
+    /// ```
+    /// data[0] = content from root A
+    ///
+    /// data[1] = content from root C
+    /// rootIds[0] = 2
+    /// ```
+    ///
+    /// The `rootIds` array stores only the suffix that diverges from the trivial `rootId == dataIndex`
+    /// mapping. Its offset is therefore `data.length - rootIds.length`; in the example, `rootIds[0]`
+    /// describes `data[1]`.
+    ///
+    /// A URL such as `resource://.../2!/META-INF/services/A` therefore has to resolve root ID `2` to
+    /// local data index `1`. When [#rootIds] is `null`, the compact representation is in use and root
+    /// IDs are identical to local data indexes.
+    public int getDataIndexForRootId(int rootId) {
+        if (rootIds == null) {
+            /* Compact representation: every stored data slot uses rootId == dataIndex. */
+            return rootId >= 0 && rootId < data.length ? rootId : -1;
+        }
+        int offset = rootIdsOffset();
+        if (rootId >= 0 && rootId < offset) {
+            /* The requested root id is still inside the implicit identity-mapped prefix. */
+            return rootId;
+        }
+        /* Search the explicit suffix where root ids no longer have to match local data indexes. */
+        for (int i = 0; i < rootIds.length; i++) {
+            if (rootIds[i] == rootId) {
+                return offset + i;
+            }
+        }
+        return -1;
+    }
+
+    private int rootIdsOffset() {
+        /* The suffix starts where the implicit rootId == dataIndex prefix ends. */
+        return data.length - rootIds.length;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public void addData(byte[] datum) {
+    public void addData(byte[] datum, int rootId) {
+        int dataIndex = data.length;
+        int effectiveRootId = rootId >= 0 ? rootId : dataIndex;
         byte[][] newData = Arrays.copyOf(data, data.length + 1);
-        newData[data.length] = datum;
+        newData[dataIndex] = datum;
         /* Always use a compact, immutable data structure in the image heap. */
         data = newData;
+        /*
+         * Keep the trivial rootId == dataIndex prefix implicit. Once a non-trivial mapping appears,
+         * rootIds stores that divergent suffix and must be extended for every later data slot.
+         */
+        if (rootIds != null || effectiveRootId != dataIndex) {
+            int[] newRootIds = rootIds != null ? Arrays.copyOf(rootIds, rootIds.length + 1) : new int[1];
+            newRootIds[newRootIds.length - 1] = effectiveRootId;
+            rootIds = newRootIds;
+        }
     }
 
     /**
-     * Helper method that allows replacing the data entries of an existing resource after analysis
-     * but before the universe was built. This is only safe because byte[] is always discovered by
-     * the analysis and the data is "registered as immutable" in an after compilation hook (see
-     * usages of {@link #getData()}.
+     * Helper method that allows replacing the data entry of an existing resource after analysis but
+     * before the universe was built. This is only safe because byte[] is always discovered by the
+     * analysis and the data is "registered as immutable" in an after compilation hook (see usages of
+     * {@link #getData()}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void replaceData(byte[]... replacementData) {
+    public void replaceData(byte[] replacementData) {
         VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Replacing data of a resource entry before analysis finished. Register standard resource instead.");
         VMError.guarantee(!BuildPhaseProvider.isCompilationFinished(), "Trying to replace data of a resource entry after compilation finished.");
-        this.data = replacementData;
+        VMError.guarantee(data.length == 1, "Replacing data of a resource entry is only supported for entries with a single data slot.");
+        this.data = new byte[][]{replacementData};
     }
 
     @Override

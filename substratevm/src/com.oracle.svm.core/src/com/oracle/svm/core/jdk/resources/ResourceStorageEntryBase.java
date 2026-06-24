@@ -44,7 +44,7 @@ public class ResourceStorageEntryBase {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addData(@SuppressWarnings("unused") byte[] data) {
+    public void addData(@SuppressWarnings("unused") byte[] data, @SuppressWarnings("unused") int rootId) {
         throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 
