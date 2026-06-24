@@ -161,6 +161,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType HostedManagement = lookupType(ImageSingletonsSupportImpl.HostedManagement.class);
     public final ResolvedJavaMethod HostedManagement_install = lookupMethod(HostedManagement, "install");
+
+    public final ResolvedJavaType RuntimeOptionKey = lookupType("com.oracle.svm.core.option.RuntimeOptionKey");
+    public final ResolvedJavaMethod RuntimeOptionKey_getValue = lookupMethod(RuntimeOptionKey, "getValue");
     // Checkstyle: resume field name check
 
     public final Set<ResolvedJavaMethod> abstractMemorySegmentGetSetMethods = computeAbstractMemorySegmentGetSetMethods();
