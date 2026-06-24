@@ -27,6 +27,7 @@ package com.oracle.svm.core.jni.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumConstant;
+import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 @CContext(JNIHeaderDirectives.class)
@@ -46,4 +47,7 @@ public enum JNIObjectRefType {
 
     @CEnumValue
     public native int getCValue();
+
+    @CEnumLookup
+    public static native JNIObjectRefType fromCValue(int value);
 }
