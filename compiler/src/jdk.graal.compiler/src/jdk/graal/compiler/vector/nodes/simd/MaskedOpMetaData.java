@@ -28,8 +28,10 @@ package jdk.graal.compiler.vector.nodes.simd;
 import java.util.Objects;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 
 /**
  * Describes a masked SIMD operation. The operation is identified by its class. If the operation is
@@ -39,9 +41,11 @@ public class MaskedOpMetaData {
     private final Class<? extends ValueNode> op;
     private final CanonicalCondition cond;
     private final boolean unordered;
+    private final boolean commutative;
 
     public MaskedOpMetaData(ValueNode node) {
         this.op = node.getClass();
+        this.commutative = node instanceof BinaryArithmeticNode<?> binary && binary.getArithmeticOp() instanceof BinaryOp<?> binaryOp && binaryOp.isCommutative();
         if (node instanceof SimdPrimitiveCompareNode compare) {
             this.cond = compare.getCondition();
             this.unordered = compare.unorderedIsTrue();
@@ -53,6 +57,10 @@ public class MaskedOpMetaData {
 
     public Class<? extends ValueNode> op() {
         return op;
+    }
+
+    public boolean commutative() {
+        return commutative;
     }
 
     public CanonicalCondition comparisonCondition() {

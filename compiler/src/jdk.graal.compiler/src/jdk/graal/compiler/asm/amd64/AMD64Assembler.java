@@ -2617,6 +2617,8 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final VexRVMOp VPCMPGTW        = new VexRVMOp("VPCMPGTW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x65, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPCMPGTD        = new VexRVMOp("VPCMPGTD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x66, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPCMPGTQ        = new VexRVMOp("VPCMPGTQ",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x37, VEXOpAssertion.AVX1_2);
+        public static final VexRVMOp VFMADD213PS     = new VexRVMOp("VFMADD213PS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0xA8, VEXOpAssertion.FMA,                          EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VFMADD213PD     = new VexRVMOp("VFMADD213PD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0xA8, VEXOpAssertion.FMA,                          EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRVMOp VFMADD231SS     = new VexRVMOp("VFMADD231SS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexRVMOp VFMADD231SD     = new VexRVMOp("VFMADD231SD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VFMADD231PS     = new VexRVMOp("VFMADD231PS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0xB8, VEXOpAssertion.FMA,                          EVEXTuple.FVM,       VEXPrefixConfig.W0);
@@ -2743,6 +2745,8 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final VexRVMOp EVPCMPGTW       = new VexRVMOp("EVPCMPGTW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x65, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL,     EVEXTuple.FVM,       VEXPrefixConfig.WIG, true);
         public static final VexRVMOp EVPCMPGTD       = new VexRVMOp("EVPCMPGTD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x66, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
         public static final VexRVMOp EVPCMPGTQ       = new VexRVMOp("EVPCMPGTQ",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x37, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVFMADD213PS    = new VexRVMOp("EVFMADD213PS", VFMADD213PS);
+        public static final VexRVMOp EVFMADD213PD    = new VexRVMOp("EVFMADD213PD", VFMADD213PD);
         public static final VexRVMOp EVFMADD231SS    = new VexRVMOp("EVFMADD231SS", VFMADD231SS);
         public static final VexRVMOp EVFMADD231SD    = new VexRVMOp("EVFMADD231SD", VFMADD231SD);
         public static final VexRVMOp EVFMADD231PS    = new VexRVMOp("EVFMADD231PS", VFMADD231PS);

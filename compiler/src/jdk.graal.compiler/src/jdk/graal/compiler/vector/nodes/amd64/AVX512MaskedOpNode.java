@@ -35,7 +35,9 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.calc.ShiftNode;
 import jdk.graal.compiler.nodes.calc.UnaryArithmeticNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
@@ -81,10 +83,15 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
     @Input protected ValueNode mask;
     @Input protected ValueNode src1;
     @OptionalInput protected ValueNode src2;
+    @OptionalInput protected ValueNode src3;
 
     private final MaskedOpMetaData meta;
 
     protected AVX512MaskedOpNode(SimdStamp stamp, ValueNode op, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2) {
+        this(stamp, op, background, mask, src1, src2, null);
+    }
+
+    protected AVX512MaskedOpNode(SimdStamp stamp, ValueNode op, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2, ValueNode src3) {
         super(TYPE, stamp);
         GraalError.guarantee(background == null || background.stamp(NodeView.DEFAULT).isCompatible(stamp), "must be compatible %s - %s", stamp, background);
         SimdStamp maskStamp = (SimdStamp) mask.stamp(NodeView.DEFAULT);
@@ -94,6 +101,7 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
         this.mask = mask;
         this.src1 = src1;
         this.src2 = src2;
+        this.src3 = src3;
         this.meta = new MaskedOpMetaData(op);
     }
 
@@ -111,6 +119,26 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
         SimdStamp src1Stamp = (SimdStamp) src1.stamp(NodeView.DEFAULT).unrestricted();
         GraalError.guarantee(src1Stamp.isCompatible(src2.stamp(NodeView.DEFAULT)), "must be compatible %s - %s", src1, src2);
         return new AVX512MaskedOpNode(src1Stamp, op, dst, mask, src1, src2);
+    }
+
+    /**
+     * Creates a masked FMA node for the Vector API form {@code x.lanewise(FMA, y, z, mask)}.
+     */
+    public static AVX512MaskedOpNode createFusedMultiplyAdd(FusedMultiplyAddNode op, ValueNode dst, ValueNode mask, ValueNode src1, ValueNode src2, ValueNode src3) {
+        GraalError.guarantee(dst == src1, "FMA background must be the first input %s - %s", dst, src1);
+        SimdStamp src1Stamp = (SimdStamp) src1.stamp(NodeView.DEFAULT).unrestricted();
+        GraalError.guarantee(src1Stamp.isCompatible(src2.stamp(NodeView.DEFAULT)), "must be compatible %s - %s", src1, src2);
+        GraalError.guarantee(src1Stamp.isCompatible(src3.stamp(NodeView.DEFAULT)), "must be compatible %s - %s", src1, src3);
+        return new AVX512MaskedOpNode(src1Stamp, op, dst, mask, src1, src2, src3);
+    }
+
+    /**
+     * Creates a masked shift node for vector shift counts.
+     */
+    public static AVX512MaskedOpNode createShift(ShiftNode<?> op, ValueNode dst, ValueNode mask, ValueNode src, ValueNode shiftCount) {
+        SimdStamp srcStamp = (SimdStamp) src.stamp(NodeView.DEFAULT).unrestricted();
+        GraalError.guarantee(srcStamp.isCompatible(shiftCount.stamp(NodeView.DEFAULT)), "must be compatible %s - %s", src, shiftCount);
+        return new AVX512MaskedOpNode(srcStamp, op, dst, mask, src, shiftCount);
     }
 
     public static AVX512MaskedOpNode createPermute(SimdPermuteWithVectorIndicesNode op, ValueNode dst, ValueNode mask, ValueNode src, ValueNode indices) {
@@ -132,7 +160,10 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
         AMD64AVX512ArithmeticLIRGenerator concreteGen = (AMD64AVX512ArithmeticLIRGenerator) gen;
         Value src2Operand = src2 == null ? null : builder.operand(src2);
         Value lirOp;
-        if (background == null) {
+        if (src3 != null) {
+            GraalError.guarantee(background != null, "masked FMA requires merge-masking");
+            lirOp = concreteGen.emitMaskedFmaOp(resultKind, builder.operand(mask), builder.operand(src1), src2Operand, builder.operand(src3));
+        } else if (background == null) {
             lirOp = concreteGen.emitMaskedZeroOp(resultKind, meta, builder.operand(mask), builder.operand(src1), src2Operand);
         } else {
             lirOp = concreteGen.emitMaskedMergeOp(resultKind, meta, builder.operand(background), builder.operand(mask), builder.operand(src1), src2Operand);
