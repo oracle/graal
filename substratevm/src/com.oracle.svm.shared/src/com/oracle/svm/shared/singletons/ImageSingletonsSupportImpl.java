@@ -49,8 +49,10 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
 import com.oracle.svm.shared.singletons.traits.AccessSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.DisallowLayeredSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.EmptyMetadata;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
@@ -217,6 +219,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             return this;
         }
 
+        private void validateTraitCombination(Class<?> singletonClass) {
+            getTrait(DisallowLayeredSingletonTrait.class).ifPresent(_ -> {
+                getTrait(LayeredCallbacksSingletonTrait.class).ifPresent(callbacksTrait -> {
+                    if (!callbacksTrait.equals(BuiltinTraits.NO_LAYERED_CALLBACKS)) {
+                        throw VMError.shouldNotReachHere("Singleton of %s with %s trait cannot use layered callbacks other than %s", singletonClass.toString(),
+                                        SingletonTraitKind.DISALLOW_LAYERED, NoLayeredCallbacks.class.getSimpleName());
+                    }
+                });
+            });
+        }
+
         /**
          * Creates a new {@link SingletonTraitMap} based on the {@link SingletonTraits} assigned to
          * a given singleton.
@@ -262,6 +275,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     }
                 }
             }
+            traitMap.validateTraitCombination(singletonClass);
             return traitMap;
         }
     }
