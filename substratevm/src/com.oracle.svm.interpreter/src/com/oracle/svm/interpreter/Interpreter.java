@@ -292,6 +292,7 @@ import com.oracle.svm.interpreter.debug.SteppingControl;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedInvokeGenericJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -1765,7 +1766,12 @@ public final class Interpreter {
 
         InterpreterResolvedJavaType symbolicHolder = null;
         InterpreterResolvedJavaMethod seedMethod;
+        InterpreterUnresolvedSignature seedSignature;
         CallKind callKind;
+        JavaKind returnKind;
+        int parameterSlots;
+        boolean hasReceiver;
+        boolean needsInterfaceReceiverCheck;
 
         if (opcode == INVOKEDYNAMIC) {
             int fullCPI = BytecodeStream.readCPI4(code, curBCI);
@@ -1819,59 +1825,37 @@ public final class Interpreter {
             InterpreterFrameUtil.putObject(callerFrame, top, appendix);
             invokeTop = top + 1;
             callKind = CallKind.DIRECT;
+            seedSignature = seedMethod.getSignature();
+            returnKind = seedSignature.getReturnKind();
+            hasReceiver = !seedMethod.isStatic();
+            parameterSlots = seedSignature.slotsForParameters(hasReceiver);
+            needsInterfaceReceiverCheck = false;
         } else {
-            char cpi = BytecodeStream.readCPI2(code, curBCI);
-            InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
-            symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
-            if (symbolicHolder == null) {
-                if (InterpreterTraceSupport.getValue()) {
-                    traceInterpreter().string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ").string(
-                                    method.toString()).newline();
-                }
-                // If unresolvable, provide symbolic resolution's holder as best-effort.
-                symbolicHolder = symbolicResolution.getDeclaringClass();
+            LinkedInvoke linkedInvoke = getOrLinkInvoke(method, code, curBCI, opcode);
+            symbolicHolder = linkedInvoke.symbolicHolder;
+            seedMethod = linkedInvoke.seedMethod;
+            callKind = linkedInvoke.callKind;
+            seedSignature = linkedInvoke.signature;
+            returnKind = linkedInvoke.returnKind;
+            hasReceiver = linkedInvoke.hasReceiver;
+            parameterSlots = linkedInvoke.parameterSlots;
+            needsInterfaceReceiverCheck = linkedInvoke.needsInterfaceReceiverCheck;
+            if (linkedInvoke.appendix != null) {
+                InterpreterFrameUtil.putObject(callerFrame, top, linkedInvoke.appendix);
+                invokeTop = top + 1;
             }
-            try {
-                ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
-                                CremaRuntimeAccess.getInstance(),
-                                method.getDeclaringClass(),
-                                symbolicResolution,
-                                CallSiteType.fromOpCode(opcode),
-                                symbolicHolder);
-
-                seedMethod = resolvedCall.getResolvedMethod();
-                callKind = resolvedCall.getCallKind();
-            } catch (Throwable e) {
-                throw SemanticJavaException.raise(e);
-            }
-            if (seedMethod instanceof InterpreterResolvedInvokeGenericJavaMethod invokeGenericJavaMethod) {
-                Object appendix = invokeGenericJavaMethod.getAppendix();
-                if (appendix != null) {
-                    InterpreterFrameUtil.putObject(callerFrame, top, appendix);
-                    invokeTop = top + 1;
-                }
-                seedMethod = invokeGenericJavaMethod.getInvoker();
-                callKind = CallKind.DIRECT;
-            }
-            if (InterpreterTraceSupport.getValue()) {
-                traceInterpreter().string("Linking for call site of ").string(Bytecodes.nameOf(opcode)).string(" with resolved cp entry ").string(symbolicResolution.toString()).string(":").newline();
-                traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
-            }
-
         }
-        boolean hasReceiver = !seedMethod.isStatic();
 
-        InterpreterUnresolvedSignature seedSignature = seedMethod.getSignature();
-        int resultAt = invokeTop - seedSignature.slotsForParameters(hasReceiver);
+        int resultAt = invokeTop - parameterSlots;
         // The stack effect is wrt. the original top-of-the-stack.
         int retStackEffect = resultAt - top;
 
         Object[] calleeArgs = InterpreterFrameUtil.popArguments(callerFrame, invokeTop, hasReceiver, seedSignature);
-        if (!seedMethod.isStatic()) {
+        if (hasReceiver) {
             final Object receiver = calleeArgs[0];
             profileType(methodProfile, curBCI, receiver);
             nullCheck(receiver);
-            if (opcode == INVOKEINTERFACE) {
+            if (needsInterfaceReceiverCheck) {
                 ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
                 if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
                     throw SemanticJavaException.raise(new IncompatibleClassChangeError(
@@ -1884,10 +1868,65 @@ public final class Interpreter {
 
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, callKind, forceStayInInterpreter, preferStayInInterpreter, false);
 
-        retStackEffect += InterpreterFrameUtil.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
+        retStackEffect += InterpreterFrameUtil.putKind(callerFrame, resultAt, retObj, returnKind);
 
         /* instructions have fixed stack effect encoded */
         return retStackEffect - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private static LinkedInvoke getOrLinkInvoke(InterpreterResolvedJavaMethod method, byte[] code, int curBCI, int opcode) {
+        char cpi = BytecodeStream.readCPI2(code, curBCI);
+        assert opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL || opcode == INVOKESTATIC || opcode == INVOKEINTERFACE : Bytecodes.nameOf(opcode);
+        InterpreterConstantPool constantPool = getConstantPool(method);
+        LinkedInvoke linkedInvoke = constantPool.peekLinkedInvoke(cpi, opcode);
+        if (linkedInvoke != null) {
+            return linkedInvoke;
+        }
+        return linkInvoke(method, opcode, cpi);
+    }
+
+    private static LinkedInvoke linkInvoke(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
+        InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
+        if (symbolicHolder == null) {
+            if (InterpreterTraceSupport.getValue()) {
+                traceInterpreter().string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ").string(
+                                method.toString()).newline();
+            }
+            // If unresolvable, provide symbolic resolution's holder as best-effort.
+            symbolicHolder = symbolicResolution.getDeclaringClass();
+        }
+
+        InterpreterResolvedJavaMethod seedMethod;
+        CallKind callKind;
+        try {
+            ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
+                            CremaRuntimeAccess.getInstance(),
+                            method.getDeclaringClass(),
+                            symbolicResolution,
+                            CallSiteType.fromOpCode(opcode),
+                            symbolicHolder);
+
+            seedMethod = resolvedCall.getResolvedMethod();
+            callKind = resolvedCall.getCallKind();
+        } catch (Throwable e) {
+            throw SemanticJavaException.raise(e);
+        }
+
+        Object appendix = null;
+        if (seedMethod instanceof InterpreterResolvedInvokeGenericJavaMethod invokeGenericJavaMethod) {
+            appendix = invokeGenericJavaMethod.getAppendix();
+            seedMethod = invokeGenericJavaMethod.getInvoker();
+            callKind = CallKind.DIRECT;
+        }
+        if (InterpreterTraceSupport.getValue()) {
+            traceInterpreter().string("Linking for call site of ").string(Bytecodes.nameOf(opcode)).string(" with resolved cp entry ").string(symbolicResolution.toString()).string(":").newline();
+            traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
+        }
+
+        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, opcode);
+        linkedInvoke = getConstantPool(method).cacheLinkedInvoke(cpi, opcode, linkedInvoke);
+        return linkedInvoke;
     }
 
     private static MethodType resolveMethodType(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {

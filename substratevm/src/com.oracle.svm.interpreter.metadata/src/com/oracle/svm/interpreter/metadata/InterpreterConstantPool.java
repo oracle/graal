@@ -51,6 +51,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -149,7 +150,11 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
-        return (JavaMethod) objAt(cpi);
+        Object entry = objAt(cpi);
+        if (entry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+            return linkedInvokeCacheEntry.resolvedMethod;
+        }
+        return (JavaMethod) entry;
     }
 
     @Override
@@ -222,7 +227,16 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     @VisibleForSerialization
     @Platforms(Platform.HOSTED_ONLY.class)
     public Object[] getCachedEntries() {
-        return cachedEntries;
+        Object[] result = cachedEntries;
+        for (int i = 0; i < cachedEntries.length; i++) {
+            if (cachedEntries[i] instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+                if (result == cachedEntries) {
+                    result = cachedEntries.clone();
+                }
+                result[i] = linkedInvokeCacheEntry.resolvedMethod;
+            }
+        }
+        return result;
     }
 
     public Object peekCachedEntry(int cpi) {
@@ -308,8 +322,146 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return entry;
     }
 
+    /**
+     * Looks for already-linked invoke metadata for {@code cpi}/{@code opcode}. Returns
+     * {@code null} when this CPI has not been linked yet, or when it was linked only for another
+     * invoke opcode.
+     */
+    public LinkedInvoke peekLinkedInvoke(int cpi, int opcode) {
+        assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+        Object entry = cachedEntries[cpi];
+        if (entry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+            return linkedInvokeCacheEntry.get(opcode);
+        }
+        return null;
+    }
+
+    public Object peekInvokeAppendix(int cpi, int opcode) {
+        assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+        Object entry = cachedEntries[cpi];
+        if (entry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+            LinkedInvoke linkedInvoke = linkedInvokeCacheEntry.get(opcode);
+            if (linkedInvoke != null) {
+                return linkedInvoke.appendix;
+            }
+            entry = linkedInvokeCacheEntry.resolvedMethod;
+        }
+        if (entry instanceof InterpreterResolvedInvokeGenericJavaMethod invokeGenericMethod) {
+            return invokeGenericMethod.getAppendix();
+        }
+        return null;
+    }
+
+    public LinkedInvoke cacheLinkedInvoke(int cpi, int opcode, LinkedInvoke linkedInvoke) {
+        assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+        LinkedInvokeCacheEntry linkedInvokeCacheEntry = getOrCreateLinkedInvokeCacheEntry(cpi);
+        return linkedInvokeCacheEntry.set(opcode, linkedInvoke);
+    }
+
+    private LinkedInvokeCacheEntry getOrCreateLinkedInvokeCacheEntry(int cpi) {
+        Object entry = resolvedAt(cpi, holder);
+        if (entry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+            return linkedInvokeCacheEntry;
+        }
+        /*
+         * Invoke linkage is an opportunistic cache. The CP wrapper is deliberately published
+         * without synchronization: a race can temporarily lose another thread's LinkedInvoke
+         * metadata, but invoke bytecodes are not quickened and therefore never depend on the cache
+         * entry being present. A later execution that misses the cache can relink the site and
+         * publish another entry. If invoke bytecodes were patched to require this metadata, wrapper
+         * publication would need synchronization/ordering so quickened bytecodes could not observe
+         * missing metadata.
+         */
+        InterpreterResolvedJavaMethod resolvedMethod = (InterpreterResolvedJavaMethod) entry;
+        LinkedInvokeCacheEntry linkedInvokeCacheEntry = new LinkedInvokeCacheEntry(resolvedMethod);
+        cachedEntries[cpi] = linkedInvokeCacheEntry;
+        return linkedInvokeCacheEntry;
+    }
+
     private static boolean isUnresolved(Object entry) {
         return entry == null || entry instanceof UnresolvedJavaType || entry instanceof UnresolvedJavaMethod || entry instanceof UnresolvedJavaField;
+    }
+
+    private static boolean isInvokeOpcode(int opcode) {
+        return switch (opcode) {
+            case Bytecodes.INVOKEVIRTUAL, Bytecodes.INVOKESPECIAL, Bytecodes.INVOKESTATIC, Bytecodes.INVOKEINTERFACE -> true;
+            default -> false;
+        };
+    }
+
+    public static final class LinkedInvoke {
+        public final InterpreterResolvedJavaType symbolicHolder;
+        public final InterpreterResolvedJavaMethod seedMethod;
+        public final CallKind callKind;
+        public final Object appendix;
+        /*
+         * Call-shape data derived from the linked seed method and invoke opcode. Cached here so the
+         * cached invoke path can use the published LinkedInvoke without re-querying stable method
+         * and signature metadata on every execution.
+         */
+        public final InterpreterUnresolvedSignature signature;
+        public final JavaKind returnKind;
+        public final int parameterSlots;
+        public final boolean hasReceiver;
+        public final boolean needsInterfaceReceiverCheck;
+
+        public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, int opcode) {
+            assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+            this.symbolicHolder = symbolicHolder;
+            this.seedMethod = seedMethod;
+            this.callKind = callKind;
+            this.appendix = appendix;
+            this.signature = seedMethod.getSignature();
+            this.returnKind = signature.getReturnKind();
+            this.hasReceiver = !seedMethod.isStatic();
+            this.parameterSlots = signature.slotsForParameters(hasReceiver);
+            this.needsInterfaceReceiverCheck = opcode == Bytecodes.INVOKEINTERFACE;
+        }
+    }
+
+    private static final class LinkedInvokeCacheEntry {
+        final InterpreterResolvedJavaMethod resolvedMethod;
+        /*
+         * A classfile can reuse the same CONSTANT_Methodref for different invoke bytecodes. For
+         * example, generated bytecode may use the same Base.m:()V CPI for both
+         * invokespecial Base.m:()V and invokevirtual Base.m:()V. The symbolic CP resolution is then
+         * the same, but Crema's linked call-site metadata is opcode-specific: the symbolic holder,
+         * resolved seed method, call kind, and appendix can differ by invoke kind. Keep one slot per
+         * invoke opcode so all metadata remains attached to the shared CPI wrapper.
+         */
+        private LinkedInvoke virtualInvoke;
+        private LinkedInvoke specialInvoke;
+        private LinkedInvoke staticInvoke;
+        private LinkedInvoke interfaceInvoke;
+
+        LinkedInvokeCacheEntry(InterpreterResolvedJavaMethod resolvedMethod) {
+            this.resolvedMethod = MetadataUtil.requireNonNull(resolvedMethod);
+        }
+
+        LinkedInvoke get(int opcode) {
+            return switch (opcode) {
+                case Bytecodes.INVOKEVIRTUAL -> virtualInvoke;
+                case Bytecodes.INVOKESPECIAL -> specialInvoke;
+                case Bytecodes.INVOKESTATIC -> staticInvoke;
+                case Bytecodes.INVOKEINTERFACE -> interfaceInvoke;
+                default -> throw new IllegalArgumentException("Not an invoke opcode: " + opcode);
+            };
+        }
+
+        LinkedInvoke set(int opcode, LinkedInvoke linkedInvoke) {
+            assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+            LinkedInvoke existing = get(opcode);
+            if (existing != null) {
+                return existing;
+            }
+            return switch (opcode) {
+                case Bytecodes.INVOKEVIRTUAL -> virtualInvoke = linkedInvoke;
+                case Bytecodes.INVOKESPECIAL -> specialInvoke = linkedInvoke;
+                case Bytecodes.INVOKESTATIC -> staticInvoke = linkedInvoke;
+                case Bytecodes.INVOKEINTERFACE -> interfaceInvoke = linkedInvoke;
+                default -> throw new IllegalArgumentException("Not an invoke opcode: " + opcode);
+            };
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -326,6 +478,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public InterpreterResolvedJavaMethod resolvedMethodAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
         Object resolvedEntry = resolvedAt(cpi, accessingKlass);
         assert resolvedEntry != null;
+        if (resolvedEntry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
+            return linkedInvokeCacheEntry.resolvedMethod;
+        }
         return (InterpreterResolvedJavaMethod) resolvedEntry;
     }
 
