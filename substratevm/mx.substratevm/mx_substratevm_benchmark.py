@@ -557,6 +557,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                         {"concrete": "/dev/urandom", "virt": "/dev/urandom"},
                         {"concrete": "/", "virt": "/", "mutable": True},
                         {"concrete": str(output_dir), "virt": str(output_dir), "mutable": True},
+                        {"using": {"handler": "pseudo_fs"}, "concrete": "/proc/mounts", "virt": "/proc/mounts"},
                     ],
                     "testing_default_mappings": True,
                     "working_dir": "/",
