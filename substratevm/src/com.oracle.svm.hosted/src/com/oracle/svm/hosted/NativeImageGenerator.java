@@ -172,13 +172,16 @@ import com.oracle.svm.core.option.SharedLayerRuntimeOptionsValues;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.option.SharedLayerRuntimeOptionsValues;
 import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.guest.staging.util.LayeredImageHeapMapStore;
 import com.oracle.svm.guest.staging.util.ObservableImageHeapMapProvider;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.JavaMainSupport;
-import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -592,6 +595,13 @@ public class NativeImageGenerator {
             ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
             ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
             ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
+            if (ImageLayerBuildingSupport.firstImageBuild()) {
+                /*
+                 * GR-76880 tracks whether guest/staging should support automatic singleton registration.
+                 * Use @AutomaticallyRegisteredImageSingleton here if that support becomes available.
+                 */
+                ImageSingletons.add(RuntimeOptionValidationSupport.class, new RuntimeOptionValidationSupport());
+            }
             if (ImageLayerBuildingSupport.lastImageBuild()) {
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
             } else {

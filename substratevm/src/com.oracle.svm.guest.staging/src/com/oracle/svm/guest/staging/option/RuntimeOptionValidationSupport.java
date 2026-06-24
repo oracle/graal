@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,19 +33,16 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 /**
  * Allows to register commands for validating runtime options at run time.
  */
-@AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class RuntimeOptionValidationSupport {
     @SuppressWarnings("unchecked")//
@@ -55,7 +52,7 @@ public class RuntimeOptionValidationSupport {
     public RuntimeOptionValidationSupport() {
     }
 
-    @Fold
+    @GuestFold
     public static RuntimeOptionValidationSupport singleton() {
         return ImageSingletons.lookup(RuntimeOptionValidationSupport.class);
     }
