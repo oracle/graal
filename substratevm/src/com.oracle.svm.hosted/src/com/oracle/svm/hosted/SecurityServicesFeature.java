@@ -840,16 +840,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      * Exception, in case of failure. Null is interpreted as Boolean.TRUE at
                      * runtime, signifying successful verification.
                      */
-                    String providerName = provider.getName();
+                    String providerFQName = provider.getClass().getName();
                     SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-                    support.addVerifiedSecurityProvider(providerName, result instanceof Exception ? result : Boolean.TRUE);
+                    support.addVerifiedSecurityProvider(provider.getClass(), result instanceof Exception ? result : Boolean.TRUE);
 
                     /*
                      * If this provider is not yet loaded via the service loading mechanism, we need
                      * to manually prepare reflection metadata now, so that service loading works at
                      * runtime (see sun.security.jca.ProviderConfig.doLoadProvider).
                      */
-                    String providerFQName = provider.getClass().getName();
                     if (support.isSecurityProviderNotLoaded(providerFQName)) {
                         Set<String> registeredProviders = new HashSet<>(); // noEconomicSet(unimplemented)
                         ServiceLoaderFeature.registerProviderForRuntimeReflectionAccess(access, providerFQName, registeredProviders);
