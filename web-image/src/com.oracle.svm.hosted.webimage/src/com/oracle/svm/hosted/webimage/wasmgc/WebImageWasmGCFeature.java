@@ -58,7 +58,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCBackend;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.phases.WebImageWasmGCSuitesCreatorProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
@@ -157,7 +157,7 @@ public class WebImageWasmGCFeature implements InternalFeature {
         WasmGCAllocationSupport.preRegisterAllocationTemplates(WebImageWasmGCProviders.singleton());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmGCSubstrateRegisterConfigFactory implements SubstrateRegisterConfigFactory {
         @Override
         public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
@@ -165,7 +165,7 @@ public class WebImageWasmGCFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmGCSubstrateBackendFactory extends SubstrateBackendFactory {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
@@ -173,7 +173,7 @@ public class WebImageWasmGCFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmGCSubstrateLoweringProviderFactory implements SubstrateLoweringProviderFactory {
         @Override
         public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,

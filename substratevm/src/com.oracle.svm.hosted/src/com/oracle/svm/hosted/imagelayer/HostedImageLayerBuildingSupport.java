@@ -78,7 +78,7 @@ import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.HostedManagement.SingletonRegistration;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.DisallowedSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.DisallowLayeredSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
@@ -280,8 +280,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                         }
                     }
                 });
-                traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
-                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
+                traitMap.getTrait(DisallowLayeredSingletonTrait.class).ifPresent(_ -> {
+                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOW_LAYERED);
                 });
             }
             GuestAccess guestAccess = GuestAccess.get();

@@ -40,7 +40,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -48,7 +48,7 @@ import com.oracle.svm.webimage.WebImageJavaMainSupport;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @Platforms(WebImageWasmLMPlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = DisallowLayered.class)
 public class WebImageWasmLMJavaMainSupport extends WebImageJavaMainSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)

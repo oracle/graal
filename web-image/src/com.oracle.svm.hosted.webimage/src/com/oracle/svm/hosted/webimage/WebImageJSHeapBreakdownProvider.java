@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -38,7 +38,7 @@ import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
 
     /**

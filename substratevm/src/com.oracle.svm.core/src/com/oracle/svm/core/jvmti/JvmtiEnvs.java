@@ -32,7 +32,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -41,7 +41,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * Stores information about all currently existing JVMTI environments and manages their lifecycle.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class JvmtiEnvs {
     private final VMMutex mutex = new VMMutex("jvmtiEnvManager");
 

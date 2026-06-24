@@ -37,7 +37,7 @@ import com.oracle.svm.core.windows.WindowsUtils;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -61,7 +61,7 @@ public final class WindowsTruffleNFIFeature implements InternalFeature {
     }
 }
 
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 final class WindowsTruffleNFISupport extends TruffleNFISupport {
     static void initialize() {
         ImageSingletons.add(TruffleNFISupport.class, new WindowsTruffleNFISupport());

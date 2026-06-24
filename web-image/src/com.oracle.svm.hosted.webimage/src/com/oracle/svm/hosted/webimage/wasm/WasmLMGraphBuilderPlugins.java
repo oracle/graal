@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryCopyNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryFillNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -91,7 +91,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * <p>
  * Creates specialized nodes for standard library methods that have an equivalent WASM instruction.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void registerPlugins(GraphBuilderConfiguration.Plugins plugins, OptionValues options) {

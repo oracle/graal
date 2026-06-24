@@ -34,7 +34,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 @AutomaticallyRegisteredImageSingleton(RuntimeMetadataDecoder.MetadataAccessor.class)
 @Platforms(WebImagePlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = DisallowLayered.class)
 public class WebImageMetadataAccessor implements RuntimeMetadataDecoder.MetadataAccessor {
 
     @UnknownObjectField(availability = AfterCompilation.class) private Object[] constants;

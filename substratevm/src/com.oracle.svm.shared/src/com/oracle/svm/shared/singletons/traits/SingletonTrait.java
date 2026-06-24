@@ -32,7 +32,7 @@ import com.oracle.svm.shared.util.VMError;
  * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
  * {@link SingletonTraitKind} for more details.
  */
-public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowedSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait, PartiallyLayerAwareSingletonTrait {
+public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowLayeredSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait, PartiallyLayerAwareSingletonTrait {
 
     public static final SingletonTrait<?>[] EMPTY_ARRAY = new SingletonTrait<?>[0];
 
@@ -56,8 +56,8 @@ public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, Dis
             traitKind = SingletonTraitKind.PARTIALLY_LAYER_AWARE;
         } else if (traitClass == AccessSingletonTrait.class) {
             traitKind = SingletonTraitKind.ACCESS;
-        } else if (traitClass == DisallowedSingletonTrait.class) {
-            traitKind = SingletonTraitKind.DISALLOWED;
+        } else if (traitClass == DisallowLayeredSingletonTrait.class) {
+            traitKind = SingletonTraitKind.DISALLOW_LAYERED;
         }
         VMError.guarantee(Objects.requireNonNull(traitKind).traitClass() == traitClass, "Trait kind doesn't match.");
         return traitKind;

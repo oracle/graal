@@ -63,7 +63,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
@@ -699,7 +699,7 @@ public class AArch64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpRet");
     }
 
-    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = Disallowed.class)
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
     public static class AArch64InterpreterAccessStubData implements InterpreterAccessStubData {
 
         @Override

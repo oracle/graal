@@ -36,7 +36,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -45,7 +45,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * Support for Thread start/death events.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class ThreadStartDeathSupport implements ThreadListener {
 
     /**

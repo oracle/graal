@@ -42,7 +42,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedPrimitiveType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.JavaType;
  * {@link MethodRefHolder}s at run time.
  */
 @InternalVMMethod
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class InterpreterKnownCompiledEntryPoints {
     private final MethodRefHolder methodNotCompiledFtnPtr;
 

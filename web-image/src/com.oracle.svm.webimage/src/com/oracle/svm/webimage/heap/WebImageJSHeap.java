@@ -44,7 +44,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -54,7 +54,7 @@ import com.oracle.svm.shared.util.VMError;
  * replacement for {@link HeapImpl} because {@link HeapImpl} is tightly coupled with {@link GCImpl}
  * and we do not need the GC. The method implementations are NOOP because we do not use them.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageJSHeap extends Heap {
 
     WebImageJSGC gc = new WebImageJSGC();

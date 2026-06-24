@@ -37,7 +37,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.truffle.polyglot.isolate.PolyglotIsolateBridgeSupport;
@@ -57,7 +57,7 @@ import com.oracle.truffle.polyglot.isolate.ProcessIsolateEntryPoint;
  * @see NativeBridgeSupport
  * @see PolyglotIsolateGuestFeatureEnabled
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class PolyglotIsolateGuestFeature implements Feature {
 
     @Override

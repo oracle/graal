@@ -59,7 +59,7 @@ import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.pltgot.aarch64.AArch64HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.amd64.AMD64HostedPLTGOTConfiguration;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -123,7 +123,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * depending on the workload for the default configuration.
  * </ul>
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class PLTGOTFeature implements InternalFeature {
 
     private RelocatableBuffer gotBuffer;

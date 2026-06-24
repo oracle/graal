@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmAssembler;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmLMBackend;
 import com.oracle.svm.hosted.webimage.wasm.phases.WebImageWasmLMSuitesCreatorProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
@@ -92,7 +92,7 @@ public class WebImageWasmLMFeature implements InternalFeature {
         lowerings.put(LoadExceptionObjectNode.class, new ExceptionSnippets.LoadExceptionObjectLowering());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmLMSubstrateRegisterConfigFactory implements SubstrateRegisterConfigFactory {
         @Override
         public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
@@ -100,7 +100,7 @@ public class WebImageWasmLMFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmLMSubstrateBackendFactory extends SubstrateBackendFactory {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
@@ -108,7 +108,7 @@ public class WebImageWasmLMFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmLMSubstrateLoweringProviderFactory implements SubstrateLoweringProviderFactory {
         @Override
         public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,

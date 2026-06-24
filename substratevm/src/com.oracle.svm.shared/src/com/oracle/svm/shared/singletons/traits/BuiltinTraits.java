@@ -120,12 +120,12 @@ public class BuiltinTraits {
         }
     }
 
-    public static final DisallowedSingletonTrait DISALLOWED_TRAIT = new DisallowedSingletonTrait();
+    public static final DisallowLayeredSingletonTrait DISALLOW_LAYERED_TRAIT = new DisallowLayeredSingletonTrait();
 
-    public static final class Disallowed extends SingletonTraitsSupplier {
+    public static final class DisallowLayered extends SingletonTraitsSupplier {
         @Override
         public SingletonTrait<EmptyMetadata> getTrait() {
-            return DISALLOWED_TRAIT;
+            return DISALLOW_LAYERED_TRAIT;
         }
     }
 }

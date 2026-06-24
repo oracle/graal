@@ -40,7 +40,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -53,7 +53,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * pending state. At run time it installs one holder per Java thread and exposes the VM thread-local
  * offset folded into generated unwind-path snippets.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class PendingExceptionStateSupport implements ThreadListener {
     public static final Object OBJECT_SLOT_SENTINEL = new ObjectSlotSentinel();
     public static final long PRIMITIVE_SLOT_SENTINEL = 0xBAAD_CAFE_BAAD_CAFEL;
