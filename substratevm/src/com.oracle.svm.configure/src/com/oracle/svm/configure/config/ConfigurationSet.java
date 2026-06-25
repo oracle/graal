@@ -158,7 +158,7 @@ public class ConfigurationSet {
     public static List<Path> writeConfigurationToAllPaths(Function<ConfigurationFile, Set<Path>> configFilePathResolver, Function<ConfigurationFile, JsonPrintable> configSupplier) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
         ConfigurationFile reachabilityMetadataFile = ConfigurationFile.REACHABILITY_METADATA;
-        for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
+        for (Path path : resolveConfigurationPaths(configFilePathResolver, reachabilityMetadataFile)) {
             writtenFiles.add(path);
             JsonWriter writer = new JsonPrettyWriter(path);
             boolean first = true;
@@ -167,7 +167,7 @@ public class ConfigurationSet {
                 if (configuration instanceof ConfigurationBase<?, ?> configurationBase && !configurationBase.supportsCombinedFile()) {
                     if (!configurationBase.isEmpty()) {
                         /* Fallback to legacy printing */
-                        for (Path specificPath : configFilePathResolver.apply(configFile)) {
+                        for (Path specificPath : resolveConfigurationPaths(configFilePathResolver, configFile)) {
                             writtenFiles.add(specificPath);
                             JsonWriter specificWriter = new JsonWriter(specificPath);
                             configurationBase.printLegacyJson(specificWriter);
@@ -197,6 +197,47 @@ public class ConfigurationSet {
             writer.close();
         }
         return writtenFiles;
+    }
+
+    private static Set<Path> resolveConfigurationPaths(Function<ConfigurationFile, Set<Path>> configFilePathResolver, ConfigurationFile configurationFile) throws IOException {
+        Set<Path> paths;
+        try {
+            paths = configFilePathResolver.apply(configurationFile);
+        } catch (RuntimeException e) {
+            throw new IOException("Could not resolve output path for " + describe(configurationFile) + ": " + e, e);
+        }
+        if (paths == null) {
+            throw new IOException("Path resolver returned null paths for " + describe(configurationFile));
+        }
+        for (Path path : paths) {
+            if (path == null) {
+                throw new IOException("Path resolver returned a null path for " + describe(configurationFile));
+            }
+        }
+        return paths;
+    }
+
+    private static String describe(ConfigurationFile configurationFile) {
+        if (configurationFile == null) {
+            return "<null configuration file>";
+        }
+        return configurationFile + " (name: " + getConfigurationName(configurationFile) + ", file: " + getConfigurationFileName(configurationFile) + ")";
+    }
+
+    private static String getConfigurationName(ConfigurationFile configurationFile) {
+        try {
+            return configurationFile.getName();
+        } catch (RuntimeException e) {
+            return "<error: " + e + ">";
+        }
+    }
+
+    private static String getConfigurationFileName(ConfigurationFile configurationFile) {
+        try {
+            return configurationFile.getFileName();
+        } catch (RuntimeException e) {
+            return "<error: " + e + ">";
+        }
     }
 
     public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
