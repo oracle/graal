@@ -704,7 +704,7 @@ java -Dpolyglot.engine.userResourceCache=/path/to/cache ...
 
 The cache directory can be safely cleared when no application is using it. GraalVM recreates the required entries on the next run. The framework never clears the cache automatically.
 
-### Manually preparing internal resources
+### Pre-populating Internal Resources
 
 Manually preparing internal resources is useful for deployments with:
 
@@ -720,14 +720,14 @@ Path resources = Path.of("/opt/myapp/graalvm-resources");
 Engine.copyResources(resources, "js", "python");
 ```
 
-If no language or tool ids are provided, resources for all available languages and tools are copied.
+If no language or tool IDs are provided, resources for all available languages and tools are copied.
 At run time, point the application at the generated directory:
 
 ```bash
 java -Dpolyglot.engine.resourcePath=/opt/myapp/graalvm-resources ...
 ```
 
-This redirects all internal resource lookups to that directory. Ensure that it contains resources for every language and tool used by the application. Regenerate the directory when you change GraalVM or language dependencies. The directory produced by `copyResources` can be prepared once and deployed read-only.
+This redirects all internal resource lookups to the specified directory instead of using the default resource cache. Ensure that it contains resources for every language and tool used by the application. Regenerate the directory when you change GraalVM or language dependencies. The directory produced by `copyResources` can be prepared once and deployed read-only.
 
 ## Build Native Executables from Polyglot Applications
 
@@ -779,7 +779,7 @@ mvn -Pnative package
 Building a native executable from a polyglot application, for example, a Java-host application embedding Python, automatically captures the internal resources required by the included languages and tools.
 By default, the resources are included in the native executable itself.
 The inclusion of resources in the native executable can be disabled by `-H:-IncludeLanguageResources`.
-Another option is a separate `resources` directory containing all the required files.
+Another option is a separate _resources_ directory containing all the required files.
 To switch to this option, use `-H:+CopyLanguageResources`. This is the default behavior when `-H:+IncludeLanguageResources` is not supported, i.e., with Graal Languages earlier than 24.2.x (see the [versions roadmap](https://www.graalvm.org/release-calendar/)).
 When `-H:+CopyLanguageResources` is used, the language runtime will look for the resources directory relative to the native executable or the shared library.
 At run time, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
