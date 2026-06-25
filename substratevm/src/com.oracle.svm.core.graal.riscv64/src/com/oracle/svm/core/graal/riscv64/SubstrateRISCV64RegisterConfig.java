@@ -355,7 +355,17 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
         }
 
         JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, returnType, metaAccess, target);
-        AllocatableValue returnLocation = returnKind == JavaKind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(valueKindFactory.getValueKind(returnKind.getStackKind()));
+        AllocatableValue returnLocation = Value.ILLEGAL;
+        if (returnKind != JavaKind.Void) {
+            ValueKind<?> returnValueKind = valueKindFactory.getValueKind(returnKind.getStackKind());
+            if (type.customABI() && type.returnSaving.length == 1 && type.returnSaving[0].assignsToRegister()) {
+                Register register = type.returnSaving[0].register();
+                VMError.guarantee(target.arch.canStoreValue(register.getRegisterCategory(), returnValueKind.getPlatformKind()), "Cannot assign return value to register.");
+                returnLocation = register.asValue(returnValueKind);
+            } else {
+                returnLocation = getReturnRegister(returnKind).asValue(returnValueKind);
+            }
+        }
         return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
     }
 
