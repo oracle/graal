@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2840,6 +2840,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
         FixedWithNextNode calleeBeforeUnwindNode = null;
         ValueNode calleeUnwindValue = null;
+        int invokeBci = bci();
 
         try (InliningScope s = parsingIntrinsic() ? null : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args) : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
@@ -2884,8 +2885,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
          * FrameStates are not replaced.
          */
         if (calleeBeforeUnwindNode != null) {
-            calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
+            calleeBeforeUnwindNode.setNext(handleInlinedCalleeException(calleeUnwindValue, invokeBci));
         }
+    }
+
+    /**
+     * Handles an exception edge produced while parsing an inlined callee.
+     *
+     * @param calleeUnwindValue the value thrown by the inlined callee
+     * @param invokeBci the bytecode index of the call site in the caller
+     * @return the begin node for the caller-side exception dispatch
+     */
+    protected AbstractBeginNode handleInlinedCalleeException(ValueNode calleeUnwindValue, int invokeBci) {
+        return handleException(calleeUnwindValue, invokeBci, false);
     }
 
     private ValueNode processCalleeReturn(ResolvedJavaMethod targetMethod, InliningScope inliningScope, List<ReturnToCallerData> calleeReturnDataList) {
