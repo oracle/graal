@@ -2543,7 +2543,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return;
         }
         for (String permittedLanguage : permittedLanguages) {
-            idToLanguage.get(permittedLanguage).validateSandbox(sandboxPolicy);
+            PolyglotLanguage language = idToLanguage.get(permittedLanguage);
+            if (language != null) {
+                language.validateSandbox(sandboxPolicy);
+            }
+            // otherwise, the language cannot be used anyway
         }
     }
 
