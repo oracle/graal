@@ -234,6 +234,7 @@ final class BuilderElement extends AbstractElement {
         this.add(createAfterChild());
         this.add(createValidateSourceSection());
         this.add(createSafeCastShort());
+        this.add(createSafeCastUnsignedShort());
         this.add(createEncodeRelativeBytecodeIndex());
         this.add(createCheckOverflowShort());
         this.add(createCheckOverflowInt());
@@ -939,7 +940,7 @@ final class BuilderElement extends AbstractElement {
             case LOCAL:
                 String serializationLocalCls = serializationLocal.getSimpleName().toString();
                 serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastShort(String.format("((%s) %s).contextDepth", serializationLocalCls, argumentName)));
-                serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastShort(String.format("((%s) %s).localIndex", serializationLocalCls, argumentName)));
+                serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastUnsignedShort(String.format("((%s) %s).localIndex", serializationLocalCls, argumentName)));
                 break;
             case LOCAL_ARRAY:
                 serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastShort(argumentName + ".length"));
@@ -961,7 +962,7 @@ final class BuilderElement extends AbstractElement {
                 after.end();
 
                 after.startAssert().string(depth, " == ", BytecodeRootNodeElement.safeCastShort("localImpl.contextDepth")).end();
-                serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastShort("localImpl.localIndex"));
+                serializationElements.writeShort(after, BytecodeRootNodeElement.safeCastUnsignedShort("localImpl.localIndex"));
 
                 after.end(); // for
                 after.end(); // if
@@ -1026,7 +1027,7 @@ final class BuilderElement extends AbstractElement {
         String argumentName = argument.name();
         switch (argument.kind()) {
             case LOCAL:
-                b.declaration(argType, argumentName, "context.getContext(buffer.readShort()).locals.get(buffer.readShort())");
+                b.declaration(argType, argumentName, "context.getContext(buffer.readShort()).locals.get(buffer.readUnsignedShort())");
                 break;
             case LABEL:
                 b.declaration(argType, argumentName, "context.getContext(buffer.readShort()).labels.get(buffer.readShort())");
@@ -1045,7 +1046,7 @@ final class BuilderElement extends AbstractElement {
                 b.startIf().string(argumentName, ".length != 0").end().startBlock();
                 b.declaration(deserializationElement.asType(), "setterContext", "context.getContext(buffer.readShort())");
                 b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
-                b.statement(argumentName, "[i] = setterContext.locals.get(buffer.readShort())");
+                b.statement(argumentName, "[i] = setterContext.locals.get(buffer.readUnsignedShort())");
                 b.end(); // if
                 b.end();
                 break;
@@ -1165,19 +1166,19 @@ final class BuilderElement extends AbstractElement {
             b.declaration(operationStack.asType(), "scope", "state.getCurrentScope()");
             b.declaration(type(short.class), "localIndex", "state.allocateBytecodeLocal() /* unique global index */");
             b.declaration(type(short.class), "frameIndex",
-                            BytecodeRootNodeElement.safeCastShort("USER_LOCALS_START_INDEX + scope.getFrameOffset() + scope.getNumLocals()") + " /* location in frame */");
+                            BytecodeRootNodeElement.safeCastUnsignedShort("USER_LOCALS_START_INDEX + scope.getFrameOffset() + scope.getNumLocals()") + " /* location in frame */");
             b.startDeclaration(type(int.class), "tableIndex").startCall("state.doEmitLocal");
             b.string("state.bci");
             b.string("-1 /* will be patched at end of block */");
-            b.string("localIndex");
-            b.string("frameIndex");
+            b.string("Short.toUnsignedInt(localIndex)");
+            b.string("Short.toUnsignedInt(frameIndex)");
             b.string("name");
             b.string("info");
             b.end().end();
             b.statement("scope.registerLocal(tableIndex)");
         } else {
             b.declaration(type(short.class), "localIndex", "state.allocateBytecodeLocal() /* unique global index */");
-            b.declaration(type(short.class), "frameIndex", BytecodeRootNodeElement.safeCastShort("USER_LOCALS_START_INDEX + localIndex") + " /* location in frame */");
+            b.declaration(type(short.class), "frameIndex", BytecodeRootNodeElement.safeCastUnsignedShort("USER_LOCALS_START_INDEX + Short.toUnsignedInt(localIndex)") + " /* location in frame */");
             b.statement("state.doEmitLocal(name, info)");
         }
 
@@ -2577,7 +2578,7 @@ final class BuilderElement extends AbstractElement {
         }
         if (operation.kind == OperationKind.BLOCK) {
             buildEmitInstruction(b, null, model.clearLocalInstruction,
-                            BytecodeRootNodeElement.safeCastShort("state.locals[" + localTableIndices + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
+                            BytecodeRootNodeElement.safeCastUnsignedShort("state.locals[" + localTableIndices + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
         }
         b.end(); // for
         b.end(); // block
@@ -4247,6 +4248,17 @@ final class BuilderElement extends AbstractElement {
         return ex;
     }
 
+    private CodeExecutableElement createSafeCastUnsignedShort() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(short.class), "safeCastUnsignedShort");
+        ex.addParameter(new CodeVariableElement(type(int.class), "num"));
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("0 <= num && num <= 0xffff").end().startBlock();
+        b.startReturn().string("(short) num").end();
+        b.end();
+        emitThrowEncodingException(b, "\"Value \" + num + \" cannot be encoded as an unsigned short.\"");
+        return ex;
+    }
+
     private CodeExecutableElement createEncodeRelativeBytecodeIndex() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(byte.class), "encodeRelativeBytecodeIndex");
         ex.addParameter(new CodeVariableElement(type(int.class), "childBci"));
@@ -4970,7 +4982,7 @@ final class BuilderElement extends AbstractElement {
                 }
                 if (operationKind == OperationKind.BRANCH) {
                     buildEmitInstruction(b, null, model.clearLocalInstruction,
-                                    BytecodeRootNodeElement.safeCastShort(
+                                    BytecodeRootNodeElement.safeCastUnsignedShort(
                                                     "state.locals[" + blockLocalTableIndices + "[j] + LOCALS_OFFSET_FRAME_INDEX]"));
                 }
                 b.statement("needsRewind = true");
@@ -5686,9 +5698,8 @@ final class BuilderElement extends AbstractElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "allocateBytecodeLocal");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startReturn().startCall("checkOverflowShort");
-            b.string("(short) this.numLocals++");
-            b.doubleQuote("Number of locals");
+            b.startReturn().startCall("safeCastUnsignedShort");
+            b.string("this.numLocals++");
             b.end(2);
 
             return ex;
@@ -6228,7 +6239,7 @@ final class BuilderElement extends AbstractElement {
                 String localName = entry.getKey();
                 ImmediateReference immediateReference = entry.getValue();
                 ResolvedImmediate immediateToLoad = rewriteRule.resolveImmediateReference(immediateReference);
-                CodeVariableElement immediateLocal = new CodeVariableElement(immediateToLoad.immediate().kind().toType(context), localName);
+                CodeVariableElement immediateLocal = new CodeVariableElement(immediateToLoad.immediate().kind().toDeclaredType(context), localName);
 
                 b.startDeclaration(immediateLocal.getType(), immediateLocal.getName());
                 b.tree(BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", immediateToLoad.immediate(), getImmediateOffsetInPattern(rewriteRule, immediateReference)));
@@ -6334,7 +6345,12 @@ final class BuilderElement extends AbstractElement {
                 b.tree(parent.createInstructionConstant(resolvedPattern.instruction()));
                 b.string(resolvedPattern.instruction().getStackEffect());
                 for (var resolvedImmediate : resolvedPattern.immediates()) {
-                    b.variable(immediateLocals.get(resolvedImmediate.name()));
+                    CodeVariableElement immediateLocal = immediateLocals.get(resolvedImmediate.name());
+                    if (resolvedImmediate.immediate().kind().isUnsigned()) {
+                        b.string(BytecodeRootNodeElement.safeCastUnsignedShort(immediateLocal.getName().toString()));
+                    } else {
+                        b.variable(immediateLocal);
+                    }
                 }
                 b.end(2);
 
@@ -8265,14 +8281,14 @@ final class BuilderElement extends AbstractElement {
         private CodeExecutableElement createGetLocalOffset() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeLocal, "getLocalOffset");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("frameIndex - USER_LOCALS_START_INDEX").end();
+            b.startReturn().string("Short.toUnsignedInt(frameIndex) - USER_LOCALS_START_INDEX").end();
             return ex;
         }
 
         private CodeExecutableElement createGetLocalIndex() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeLocal, "getLocalIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("localIndex").end();
+            b.startReturn().string("Short.toUnsignedInt(localIndex)").end();
             return ex;
         }
 

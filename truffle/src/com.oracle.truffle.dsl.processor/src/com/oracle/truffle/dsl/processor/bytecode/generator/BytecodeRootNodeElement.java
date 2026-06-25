@@ -2320,6 +2320,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return String.format("safeCastShort(%s)", value);
     }
 
+    static String safeCastUnsignedShort(String value) {
+        return String.format("safeCastUnsignedShort(%s)", value);
+    }
+
     // Helpers to generate common strings
     static CodeTree readInstruction(String bc, String bci) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -2397,6 +2401,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case INT -> "getIntUnaligned";
             case LONG -> "getLongUnaligned";
         };
+        if (immediate.kind().isUnsigned()) {
+            b.startParantheses();
+        }
         b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
@@ -2410,6 +2417,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.startComment().string(" imm ", immediate.name(), " ").end();
         b.end();
         b.end();
+        if (immediate.kind().isUnsigned()) {
+            b.string(" & 0xffff");
+            b.end();
+        }
         return b.build();
     }
 
@@ -2498,6 +2509,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     static String readShortSafe(String array, String index) {
         return String.format("SAFE_BYTES.getShort(%s, %s)", array, index);
+    }
+
+    static String readUnsignedShortSafe(String array, String index) {
+        return String.format("(SAFE_BYTES.getShort(%s, %s) & 0xffff)", array, index);
     }
 
     static String readByteSafe(String array, String index) {

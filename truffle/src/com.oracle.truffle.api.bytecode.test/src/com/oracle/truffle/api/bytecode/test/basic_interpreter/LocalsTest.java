@@ -146,6 +146,40 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testUnsignedShortLocalIndices() {
+        int localIndex = Short.MAX_VALUE + 1;
+        int localCount = localIndex + 1;
+        BasicInterpreter root = parseNode("unsignedShortLocalIndices", b -> {
+            b.beginRoot();
+
+            BytecodeLocal local = null;
+            for (int i = 0; i < localCount; i++) {
+                local = b.createLocal();
+            }
+            if (!run.testSerialize()) {
+                assertEquals(localIndex, local.getLocalIndex());
+                assertEquals(localIndex, local.getLocalOffset());
+            }
+
+            b.beginStoreLocal(local);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        BytecodeNode bytecode = root.getBytecodeNode();
+        assertEquals(localCount, bytecode.getLocalCount(0));
+        assertEquals(localIndex, bytecode.getLocals().get(localIndex).getLocalIndex());
+        assertEquals(localIndex, bytecode.getLocals().get(localIndex).getLocalOffset());
+        assertEquals(42L, root.getCallTarget().call());
+    }
+
+    @Test
     public void testFinally() {
         // @formatter:off
         // l0 = 1;

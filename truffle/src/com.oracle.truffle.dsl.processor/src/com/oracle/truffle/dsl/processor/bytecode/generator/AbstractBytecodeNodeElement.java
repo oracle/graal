@@ -785,7 +785,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             for (InstructionImmediate immediate : group.immediates()) {
                 String localName = immediate.name();
                 CodeTree declareImmediate = CodeTreeBuilder.createBuilder() //
-                                .startDeclaration(immediate.kind().toType(parent.context), localName) //
+                                .startDeclaration(immediate.kind().toDeclaredType(parent.context), localName) //
                                 .tree(BytecodeRootNodeElement.readImmediate("bc", "bci", immediate)) //
                                 .end() //
                                 .build();
