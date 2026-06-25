@@ -782,7 +782,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static String decodeSp(String state) {
-        return String.format("(short) (%s >>> 32)", state);
+        return String.format("((int) ((%s >>> 32) & 0xFFFFL))", state);
     }
 
     CodeTreeBuilder emitCastBytecodeIndexToInt(CodeTreeBuilder b) {
