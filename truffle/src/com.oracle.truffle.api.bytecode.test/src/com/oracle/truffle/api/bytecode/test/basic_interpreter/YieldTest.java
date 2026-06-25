@@ -43,7 +43,6 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -60,6 +59,55 @@ public class YieldTest extends AbstractBasicInterpreterTest {
 
     public YieldTest(TestRun run) {
         super(run);
+    }
+
+    @Test
+    public void testYieldResumeWithUnsignedShortStackBase() {
+        RootCallTarget root = parse("yieldResumeWithUnsignedShortStackBase", b -> {
+            b.beginRoot();
+
+            for (int i = 0; i <= Short.MAX_VALUE; i++) {
+                b.createLocal();
+            }
+
+            b.beginReturn();
+            b.beginYield();
+            b.emitLoadConstant(41L);
+            b.endYield();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult result = (ContinuationResult) root.call();
+        assertEquals(41L, result.getResult());
+        assertEquals(42L, result.continueWith(42L));
+    }
+
+    @Test
+    public void testYieldContinuationConstantIndexUnsignedShort() {
+        RootCallTarget root = parse("yieldContinuationConstantIndexUnsignedShort", b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+
+            for (int i = 0; i <= Short.MAX_VALUE; i++) {
+                b.beginStoreLocal(local);
+                b.emitLoadConstant((long) i);
+                b.endStoreLocal();
+            }
+
+            b.beginReturn();
+            b.beginYield();
+            b.emitLoadConstant(-1L);
+            b.endYield();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult result = (ContinuationResult) root.call();
+        assertEquals(-1L, result.getResult());
+        assertEquals(42L, result.continueWith(42L));
     }
 
     @Test
