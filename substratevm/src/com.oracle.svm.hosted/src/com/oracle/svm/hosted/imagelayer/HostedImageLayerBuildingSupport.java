@@ -281,7 +281,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     }
                 });
                 traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
-                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
+                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build: key=%s value=%s", SingletonTraitKind.DISALLOWED, key, value);
                 });
             }
             GuestAccess guestAccess = GuestAccess.get();
