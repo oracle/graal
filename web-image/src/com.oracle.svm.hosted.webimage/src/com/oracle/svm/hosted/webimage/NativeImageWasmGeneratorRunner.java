@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.ExitStatus;
@@ -57,7 +56,6 @@ import com.oracle.svm.shared.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -191,13 +189,17 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         return new MainEntryPoint(mainEntryMethod, null);
     }
 
+    /**
+     * Returns the backend-specific Web Image entry point that wraps application Java main invocation.
+     */
     @Override
-    protected Method getMainEntryMethod(ImageClassLoader classLoader) throws NoSuchMethodException {
-        return switch (WebImageOptions.getBackend(classLoader)) {
+    protected ResolvedJavaMethod getMainEntryMethod(ImageClassLoader classLoader) throws NoSuchMethodException {
+        Method mainEntryMethod = switch (WebImageOptions.getBackend(classLoader)) {
             case JS -> WebImageJavaMainSupport.class.getDeclaredMethod("run", String[].class);
             case WASM -> WebImageWasmLMJavaMainSupport.class.getDeclaredMethod("run", int.class, CIntPointer.class, CShortPointer.class);
             case WASMGC -> WebImageWasmGCJavaMainSupport.class.getDeclaredMethod("run", String[].class);
         };
+        return GuestAccess.get().lookupMethod(mainEntryMethod);
     }
 
     protected static ResolvedJavaMethod getLibraryEntyPointMethod(ImageClassLoader classLoader) {
@@ -206,15 +208,6 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             case JS -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageJavaMainSupport.class, "initializeLibrary", String[].class);
             case WASM -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageWasmLMJavaMainSupport.class, "initializeLibrary", int.class, CIntPointer.class, CShortPointer.class);
             case WASMGC -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageWasmGCJavaMainSupport.class, "initializeLibrary", String[].class);
-        };
-    }
-
-    @Override
-    protected JavaMainWrapper.JavaMainSupport createJavaMainSupport(Method javaMainMethod, ImageClassLoader classLoader) throws IllegalAccessException {
-        return switch (WebImageOptions.getBackend(classLoader)) {
-            case JS -> new WebImageJSJavaMainSupport(javaMainMethod);
-            case WASM -> new WebImageWasmLMJavaMainSupport(javaMainMethod);
-            case WASMGC -> new WebImageWasmGCJavaMainSupport(javaMainMethod);
         };
     }
 

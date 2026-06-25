@@ -30,22 +30,33 @@ import static com.oracle.svm.core.windows.headers.StringAPISet.MultiByteToWideCh
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
+import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton
+/**
+ * Windows-specific implementation of the guest-staging {@link ArgsSupport} singleton.
+ * <p>
+ * The image generator instantiates this class in the guest context and registers it under the
+ * {@link ArgsSupport} key when the target platform is Windows. The class remains in the Windows
+ * core module because the conversion logic depends on Windows native header bindings and core
+ * runtime helpers that are not part of guest staging. GR-76886 tracks moving this implementation
+ * into guest staging with guest-owned platform bindings and explicit platform selection.
+ */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-class WindowsJavaMainWrapperArgsSupport extends JavaMainWrapper.ArgsSupport {
+class WindowsJavaMainWrapperArgsSupport extends ArgsSupport {
+    /**
+     * Converts the native Windows ANSI argument bytes to the Java string value used by main
+     * arguments.
+     */
     @Override
     protected String toJavaArg(CCharPointer rawArg) {
         /*

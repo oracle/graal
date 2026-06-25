@@ -651,12 +651,15 @@ def svm_gate_body(args, tasks):
 # THIS IS THE EXPECTED FAILURE STACK TRACE FOR TERMINUS HELLO WORLD MVP (GR-72797).
 # Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
 TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
-    at jdk.graal.compiler.espresso.vmaccess/com.oracle.truffle.espresso.vmaccess.EspressoExternalSnippetReflectionProvider.originalMethod(EspressoExternalSnippetReflectionProvider.java:104)
-    at org.graalvm.nativeimage.base/com.oracle.svm.util.OriginalMethodProvider.getJavaMethod(OriginalMethodProvider.java:68)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:579)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:768)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:183)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:131)
+    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.util.VMError.shouldNotReachHere(VMError.java:121)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.ImageClassLoader.lambda$initBuilderModules$0(ImageClassLoader.java:468)
+    at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.ImageClassLoader.initBuilderModules(ImageClassLoader.java:468)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:576)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:604)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:787)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:186)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:134)
 """
 
 

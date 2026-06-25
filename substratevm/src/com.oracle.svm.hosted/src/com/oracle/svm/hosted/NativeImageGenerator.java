@@ -33,6 +33,7 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -121,7 +122,6 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.GuestImageSingletonSupport;
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -176,6 +176,8 @@ import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.core.util.LayeredImageHeapMapStore;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -333,6 +335,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.internal.loader.ClassLoaders;
@@ -353,6 +356,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.riscv64.RISCV64;
 
 public class NativeImageGenerator {
+    private static final String WINDOWS_ARGS_SUPPORT_CLASS_NAME = "com.oracle.svm.core.windows.WindowsJavaMainWrapperArgsSupport";
 
     protected final FeatureHandler featureHandler;
     protected final ImageClassLoader loader;
@@ -548,7 +552,7 @@ public class NativeImageGenerator {
      * Executes the image build. Only one image can be built with this generator.
      */
     public void run(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
-                    JavaMainSupport javaMainSupport, String imageName,
+                    ResolvedJavaMethod javaMainMethod, String imageName,
                     NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     EconomicSet<String> allOptionNames, TimerCollection timerCollection) {
@@ -594,7 +598,7 @@ public class NativeImageGenerator {
             }
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
 
-            doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
+            doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
         } finally {
             reporter.ensureCreationStageEndCompleted();
         }
@@ -627,14 +631,21 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, String imageName, NativeImageKind k, SubstitutionProcessor harnessSubstitutions) {
+    /**
+     * Executes the image build after top-level image builder setup has completed.
+     *
+     * @param javaMainMethod application Java main method to install before analysis, or {@code null}
+     *            when the selected entry point already is a C entry point
+     */
+    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod, String imageName, NativeImageKind k,
+                    SubstitutionProcessor harnessSubstitutions) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton().get();
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
+            setupNativeImage(options, entryPoints, javaMainMethod, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -1004,7 +1015,11 @@ public class NativeImageGenerator {
         }
     }
 
-    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
+    /**
+     * Installs image-builder state, including Java-main support when {@code javaMainMethod} is not
+     * {@code null}, before analysis starts.
+     */
+    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod,
                     String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent _ = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
@@ -1017,8 +1032,9 @@ public class NativeImageGenerator {
                 ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
                                 DiagnosticsMode.getValue() ? DiagnosticsDir.getValue().lastValue().get() : Path.of("reports")));
                 FutureDefaultsOptions.parseAndVerifyOptions();
-                if (javaMainSupport != null) {
-                    ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
+                installArgsSupport();
+                if (javaMainMethod != null) {
+                    installJavaMainSupport(javaMainMethod);
                 }
 
                 Providers originalProviders = GuestAccess.get().getProviders();
@@ -1219,6 +1235,83 @@ public class NativeImageGenerator {
         }
     }
 
+    /**
+     * Installs the guest-staging argument support singleton after the image singleton registries
+     * have been installed.
+     * <p>
+     * {@link ArgsSupport} is used by runtime code in guest staging, so fully isolated builds need
+     * the singleton instance in the guest registry. The implementation object is therefore created
+     * in the guest context and registered through {@link GuestImageSingletonSupport}. The singleton
+     * keeps the {@code InitialLayerOnly} layer contract by following the same loaded-key check as
+     * automatic singleton registration: if layer loading already handled the key, setup does not
+     * create or register a replacement object. GR-76716 tracks direct guest-staging support for
+     * automatic singleton registration, which would let this become an ordinary guest-staging
+     * registration. GR-76886 tracks moving the Windows-specific implementation into guest staging
+     * once the required platform bindings and platform-specific registration selection are
+     * guest-staging owned.
+     */
+    private static void installArgsSupport() {
+        if (ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class).handledDuringLoading(ArgsSupport.class)) {
+            return;
+        }
+
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType argsSupportType = access.lookupType(ArgsSupport.class);
+        ResolvedJavaType implementationType = getArgsSupportImplementationType(access);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(implementationType);
+        JavaConstant argsSupport;
+        try {
+            argsSupport = access.invoke(ctor, null);
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating Java argument support in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(argsSupportType, argsSupport);
+    }
+
+    /**
+     * Returns the guest type that should implement the {@link ArgsSupport} singleton for the target
+     * platform.
+     */
+    private static ResolvedJavaType getArgsSupportImplementationType(GuestAccess access) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            return access.lookupType(WINDOWS_ARGS_SUPPORT_CLASS_NAME);
+        }
+        return access.lookupType(ArgsSupport.class);
+    }
+
+    /**
+     * Installs Java-main state after the image singleton registries have been installed.
+     * <p>
+     * {@link NativeImageGeneratorRunner} resolves the application Java main method. This method runs
+     * in the generator setup phase that has active builder and guest singleton registries. The
+     * {@link JavaMainSupport} object is constructed in the guest context because it owns method
+     * handles for guest methods, then registered through {@link GuestImageSingletonSupport} so the
+     * builder-side code path performs all guest singleton registration consistently.
+     *
+     * @param javaMainMethod the application Java main method resolved by
+     *            {@link NativeImageGeneratorRunner}
+     */
+    protected void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant executable = access.asExecutableConstant(javaMainMethod);
+        if (executable == null) {
+            throw UserError.abort("Cannot install Java main support because no reflective executable is available for %s.", javaMainMethod.format("%H.%n(%p)"));
+        }
+
+        ResolvedJavaType javaMainSupportType = access.lookupType(JavaMainSupport.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), javaMainSupportType, Method.class);
+        JavaConstant javaMainSupport;
+        try {
+            javaMainSupport = access.invoke(ctor, null, executable);
+        } catch (InvocationException ex) {
+            if (ex.getCause() instanceof IllegalArgumentException iae) {
+                throw UserError.abort(iae, "%s", iae.getMessage());
+            }
+            throw VMError.shouldNotReachHere("Error creating Java main support in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(javaMainSupportType, javaMainSupport);
+    }
+
     private static JavaConstant fromEnum(Enum<?> kind) {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType enumType = access.getProviders().getMetaAccess().lookupJavaType(kind.getDeclaringClass());
@@ -1228,6 +1321,9 @@ public class NativeImageGenerator {
         return access.invoke(valueOf, null, enumName);
     }
 
+    /**
+     * Installs the image singleton registries used during image generation.
+     */
     private void installSingletonRegistries(HostedImageLayerBuildingSupport imageLayerSupport) {
         /* The callbacks need be installed early, before any singleton is registered. */
         var registrationCallback = imageLayerSupport.createSingletonRegistrationCallback();

@@ -88,7 +88,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -96,6 +96,7 @@ import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -1157,7 +1158,7 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            String[] args = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class).mainArgs;
+            String[] args = ImageSingletons.lookup(JavaMainSupport.class).mainArgs;
             if (args != null) {
                 log.string("Command line: ");
                 for (String arg : args) {
@@ -1327,7 +1328,7 @@ public class SubstrateDiagnostics {
             thunks.add(new VMLockSupport.DumpVMMutexes());
             thunks.add(new DumpBuildTimeInfo());
             thunks.add(new DumpRuntimeInfo());
-            if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
+            if (ImageSingletons.contains(JavaMainSupport.class)) {
                 thunks.add(new DumpCommandLine());
             }
             if (CounterSupport.isEnabled()) {

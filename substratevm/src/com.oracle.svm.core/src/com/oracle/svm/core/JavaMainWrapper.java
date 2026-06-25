@@ -24,23 +24,12 @@
  */
 package com.oracle.svm.core;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -58,7 +47,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
@@ -67,7 +55,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -84,124 +72,24 @@ import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.shared.util.ModuleSupport;
-import com.oracle.svm.shared.util.ModuleSupport.Access;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
+/**
+ * Native-image Java launcher entry point and runtime control flow.
+ * <p>
+ * This class owns isolate creation, C argument handling, thread setup, shutdown, and entry point
+ * annotations. Java-main method state is represented by {@link JavaMainSupport}.
+ */
 @InternalVMMethod
 public class JavaMainWrapper {
-    /*
+    /**
      * Parameters used to create the main isolate, including C runtime argument count and argument
-     * vector
+     * vector.
      */
     public static final CGlobalData<CEntryPointCreateIsolateParameters> MAIN_ISOLATE_PARAMETERS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CEntryPointCreateIsolateParameters.class));
 
     private static UnsignedWord argvLength = Word.zero();
-
-    /**
-     * In a layered build the {@link JavaMainSupport} is installed in the last layer. However, code
-     * that uses it may be compiled as part of the base layer, e.g., such as
-     * {@link CEntryPointSnippets}.
-     */
-    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
-    public static class JavaMainSupport {
-        private final MethodHandle javaMainHandle;
-        private final MethodHandle javaMainClassCtorHandle;
-        final String javaMainClassName;
-
-        public String[] mainArgs;
-
-        private final boolean mainWithoutArgs;
-        private final boolean mainNonstatic;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public JavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-            int mods = javaMainMethod.getModifiers();
-            this.mainNonstatic = !Modifier.isStatic(mods);
-            this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
-
-            makeUnreflectable(javaMainMethod);
-
-            MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
-            MethodHandle ctorHandle = null;
-            Class<?> javaMainClass = javaMainMethod.getDeclaringClass();
-            if (mainNonstatic) {
-                // Instance main
-                try {
-                    Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainClass);
-                    ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
-                } catch (ReflectionUtil.ReflectionUtilError ex) {
-                    throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainClass));
-                }
-            }
-            this.javaMainHandle = mainHandle;
-            this.javaMainClassCtorHandle = ctorHandle;
-            this.javaMainClassName = javaMainClass.getName();
-        }
-
-        /**
-         * Ensures {@code method} can be converted via {@link Lookup#unreflect} to a
-         * {@link MethodHandle}.
-         * <p>
-         * This method can probably be deleted or substantially reduced once GR-72850 is resolved.
-         */
-        @Platforms(Platform.HOSTED_ONLY.class)
-        @SuppressWarnings("deprecation")
-        private static void makeUnreflectable(Method method) {
-            if (!method.isAccessible()) {
-                Class<?> declaringClass = method.getDeclaringClass();
-                Module module = declaringClass.getModule();
-                if (module.isNamed()) {
-                    Module myModule = JavaMainWrapper.class.getModule();
-                    String declaringPackage = declaringClass.getPackageName();
-                    if (!module.isExported(declaringPackage, myModule)) {
-                        // Package containing main method must be exported for
-                        // Method.setAccessible to succeed.
-                        ModuleSupport.accessModule(Access.EXPORT, myModule, module, declaringPackage);
-                    }
-                }
-                method.setAccessible(true);
-            }
-        }
-
-        public String getJavaCommand() {
-            if (mainArgs != null) {
-                StringBuilder commandLine = new StringBuilder(javaMainClassName);
-
-                for (String arg : mainArgs) {
-                    commandLine.append(' ');
-                    commandLine.append(arg);
-                }
-                return commandLine.toString();
-            }
-            return null;
-        }
-
-        public List<String> getInputArguments() {
-            CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
-            if (args.getArgv().isNonNull() && args.getArgc() > 0) {
-                String[] unmodifiedArgs = ArgsSupport.convertCToJavaArgs(args.getArgc(), args.getArgv());
-                List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
-
-                if (mainArgs != null) {
-                    inputArgs.removeAll(Arrays.asList(mainArgs));
-                }
-                return Collections.unmodifiableList(inputArgs);
-            }
-            return Collections.emptyList();
-        }
-    }
 
     /**
      * For layered images this method is delayed until the application layer. This is necessary so
@@ -579,49 +467,4 @@ public class JavaMainWrapper {
         }
     }
 
-    /**
-     * Support for platform-specific conversion of the command line to Java main arguments. This
-     * singleton is also used to store the initial Java args that have been passed to create the
-     * current VM.
-     */
-    @AutomaticallyRegisteredImageSingleton(ArgsSupport.class)
-    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-    public static class ArgsSupport {
-        public static ArgsSupport singleton() {
-            return ImageSingletons.lookup(ArgsSupport.class);
-        }
-
-        private String[] initialArgs;
-
-        public void setInitialArgs(String[] initialArgs) {
-            VMError.guarantee(this.initialArgs == null, "The initial Java args this VM was started with, can only be set once.");
-            this.initialArgs = initialArgs;
-        }
-
-        public String[] getInitialArgs() {
-            return initialArgs;
-        }
-
-        /**
-         * Convert C-style to Java-style command line arguments. The first C-style argument, which
-         * is always the executable file name, is ignored.
-         *
-         * @param argc the number of arguments in the {@code argv} array.
-         * @param argv a C {@code char**}.
-         *
-         * @return the command line argument strings in a Java string array.
-         */
-        public static String[] convertCToJavaArgs(int argc, CCharPointerPointer argv) {
-            String[] args = new String[argc - 1];
-            for (int i = 1; i < argc; ++i) {
-                args[i - 1] = singleton().toJavaArg(argv.read(i));
-            }
-            return args;
-        }
-
-        /** Converts a single argv element to a Java string. */
-        protected String toJavaArg(CCharPointer rawArg) {
-            return CTypeConversion.toJavaString(rawArg);
-        }
-    }
 }

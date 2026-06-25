@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ResolvedModule;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -62,7 +61,6 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -71,6 +69,7 @@ import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.guest.staging.JavaMainWrapperStub;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -85,7 +84,6 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
-import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -534,7 +532,7 @@ public class NativeImageGeneratorRunner {
             try {
                 Map<ResolvedJavaMethod, CEntryPointData> entryPoints = new HashMap<>();
                 MainEntryPoint mainEntryPoint = null;
-                JavaMainSupport javaMainSupport = null;
+                ResolvedJavaMethod applicationMainMethod = null;
 
                 NativeImageKind imageKind = null;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
@@ -591,18 +589,28 @@ public class NativeImageGeneratorRunner {
                         throw UserError.abort(ex, "Error in guest");
                     }
 
+                    ResolvedJavaMethod cEntryPointMethod;
                     String cEntryFunctionSig = "(I" + MetaUtil.toInternalName(CCharPointerPointer.class.getName()) + ";)";
-                    if (!mainEntryMethod.getSignature().toMethodDescriptor().startsWith(cEntryFunctionSig)) {
-                        javaMainSupport = createJavaMainSupport((Method) OriginalMethodProvider.getJavaMethod(mainEntryMethod), classLoader);
-                        mainEntryMethod = access.lookupMethod(getMainEntryMethod(classLoader));
+                    if (mainEntryMethod.getSignature().toMethodDescriptor().startsWith(cEntryFunctionSig)) {
+                        /*
+                         * The resolved method already is the native image entry point.
+                         */
+                        cEntryPointMethod = mainEntryMethod;
+                    } else {
+                        /*
+                         * The resolved method is the application Java main invoked by the wrapper
+                         * entry point.
+                         */
+                        applicationMainMethod = mainEntryMethod;
+                        cEntryPointMethod = getMainEntryMethod(classLoader);
                     }
 
-                    verifyMainEntryPoint(mainEntryMethod, classLoader.classLoaderSupport.annotationExtractor);
-                    mainEntryPoint = createMainEntryPoint(imageKind, mainEntryMethod);
+                    verifyMainEntryPoint(cEntryPointMethod, classLoader.classLoaderSupport.annotationExtractor);
+                    mainEntryPoint = createMainEntryPoint(imageKind, cEntryPointMethod);
                 }
 
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPoint, reporter);
-                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
+                generator.run(entryPoints, applicationMainMethod, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 buildOutcome = BuildOutcome.SUCCESSFUL;
             } finally {
                 if (!buildOutcome.successful()) {
@@ -683,12 +691,20 @@ public class NativeImageGeneratorRunner {
         return new MainEntryPoint(mainEntryMethod, () -> CEntryPointData.create(mainEntryMethod, imageKind.mainEntryPointName));
     }
 
-    protected Method getMainEntryMethod(@SuppressWarnings("unused") ImageClassLoader classLoader) throws NoSuchMethodException {
-        return JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
-    }
-
-    protected JavaMainSupport createJavaMainSupport(Method javaMainMethod, @SuppressWarnings("unused") ImageClassLoader classLoader) throws IllegalAccessException {
-        return new JavaMainSupport(javaMainMethod);
+    /**
+     * Returns the native-image C entry point that wraps application Java main invocation.
+     * <p>
+     * Fully isolated Terminus builds resolve this entry point from the guest context and use the
+     * intentionally inert {@link JavaMainWrapperStub}. Normal builds use
+     * {@link JavaMainWrapper#run(int, CCharPointerPointer)}. GR-72850 tracks a single Java main
+     * wrapper path for both cases.
+     */
+    protected ResolvedJavaMethod getMainEntryMethod(@SuppressWarnings("unused") ImageClassLoader classLoader) throws NoSuchMethodException {
+        GuestAccess access = GuestAccess.get();
+        if (access.isFullyIsolated()) {
+            return access.lookupMethod(access.lookupType(JavaMainWrapperStub.class), "run", int.class, CCharPointerPointer.class);
+        }
+        return access.lookupMethod(JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class));
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {

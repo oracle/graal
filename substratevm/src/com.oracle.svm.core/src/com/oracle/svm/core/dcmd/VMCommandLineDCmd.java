@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L70-L81")
