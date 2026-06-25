@@ -249,7 +249,7 @@ public final class JNIReflectionDictionary {
         JNIAccessibleClass result = null;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
-            if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
+            if (clazz == null && !ClassNameSupport.isValidJNIName(name)) {
                 result = NEGATIVE_CLASS_LOOKUP;
             } else if (clazz != null) {
                 result = clazz;
@@ -258,16 +258,16 @@ public final class JNIReflectionDictionary {
                 }
             }
         }
-        if (MetadataTracer.enabled() && (result != null || ClassNameSupport.isValidJNIName(name.toString()))) {
+        if (MetadataTracer.enabled() && (result != null || ClassNameSupport.isValidJNIName(name))) {
             // trace if class exists (positive query) or name is valid (negative query)
             MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
         }
-        return checkClass(result, name.toString());
+        return checkClass(result, name);
     }
 
-    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
+    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
         if (throwMissingRegistrationErrors() && clazz == null) {
-            MissingJNIRegistrationUtils.reportClassAccess(name);
+            MissingJNIRegistrationUtils.reportClassAccess(name.toString());
         } else if (clazz != null && clazz.isNegative()) {
             return null;
         }
