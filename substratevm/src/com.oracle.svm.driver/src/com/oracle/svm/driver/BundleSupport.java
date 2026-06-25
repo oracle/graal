@@ -33,7 +33,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +46,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
@@ -767,22 +765,27 @@ final class BundleSupport {
 
         String bundleLauncherClassResource = "/" + BundleLauncher.class.getName().replace(".", "/") + ".class";
         String bundleLauncherPackageResource = "/" + BundleLauncher.class.getPackageName().replace(".", "/");
-        try (FileSystem fs = FileSystems.newFileSystem(BundleSupport.class.getResource(bundleLauncherClassResource).toURI(), new HashMap<>());
-                        Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherPackageResource))) {
-            walk.filter(Predicate.not(Files::isDirectory))
-                            .map(Path::toString)
-                            .forEach(sourcePath -> {
-                                Path target = rootDir.resolve(Paths.get("/").relativize(Paths.get(sourcePath)));
-                                try (InputStream source = BundleSupport.class.getResourceAsStream(sourcePath)) {
-                                    Path bundleFileParent = target.getParent();
-                                    if (bundleFileParent != null) {
-                                        Files.createDirectories(bundleFileParent);
-                                    }
-                                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                                } catch (Exception e) {
-                                    throw NativeImage.showError("Failed to write bundle-file " + target, e);
-                                }
-                            });
+        try {
+            var bundleLauncherClassURI = BundleSupport.class.getResource(bundleLauncherClassResource).toURI();
+            try (FileSystem fs = FileSystems.newFileSystem(bundleLauncherClassURI, new HashMap<>())) {
+                Path bundleLauncherPackage = fs.provider().getPath(bundleLauncherClassURI).getParent();
+                Path resourceRoot = bundleLauncherPackage.getRoot();
+                try (Stream<Path> walk = Files.walk(bundleLauncherPackage)) {
+                    walk.filter(Files::isRegularFile)
+                                    .forEach(sourcePath -> {
+                                        Path target = resolveDefaultPath(rootDir, resourceRoot.relativize(sourcePath));
+                                        try (InputStream source = Files.newInputStream(sourcePath)) {
+                                            Path bundleFileParent = target.getParent();
+                                            if (bundleFileParent != null) {
+                                                Files.createDirectories(bundleFileParent);
+                                            }
+                                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                                        } catch (Exception e) {
+                                            throw NativeImage.showError("Failed to write bundle-file " + target, e);
+                                        }
+                                    });
+                }
+            }
         } catch (Exception e) {
             throw NativeImage.showError("Failed to read bundle launcher resources '" + bundleLauncherPackageResource + "'", e);
         }
@@ -905,6 +908,16 @@ final class BundleSupport {
         nativeImage.archiveSupport().compressDirToJar(rootDir, bundleFilePath, manifest);
 
         return bundleFilePath;
+    }
+
+    private static Path resolveDefaultPath(Path root, Path relativePath) {
+        assert !relativePath.isAbsolute() : relativePath;
+        /*
+         * The relative path can come from a non-default provider such as zipfs or the native-image
+         * resource file system. Convert through the string form before resolving against the bundle
+         * root so we do not combine Path objects from different file-system providers.
+         */
+        return root.resolve(relativePath.toString());
     }
 
     private static void printBuildArg(String entry, JsonWriter w) throws IOException {

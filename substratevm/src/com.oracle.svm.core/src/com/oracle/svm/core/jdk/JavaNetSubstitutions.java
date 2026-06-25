@@ -55,6 +55,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.InternalFeature.InternalFeatureAccess;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemUtil;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -372,6 +373,59 @@ public final class JavaNetSubstitutions {
             @Override
             protected URLConnection openConnection(URL url) {
                 return new ResourceURLConnection(url);
+            }
+
+            @Override
+            protected void parseURL(URL url, String spec, int start, int limit) {
+                if (shouldPreserveRoot(url, spec, start, limit)) {
+                    /*
+                     * Preserve the selected resource root when URL context resolution is asked to
+                     * resolve an absolute path inside the same resource container.
+                     */
+                    String adjustedSpec = NativeImageResourceFileSystemUtil.rootedResourcePathPrefix(url.getPath()) + spec.substring(start, limit);
+                    super.parseURL(url, adjustedSpec, 0, adjustedSpec.length());
+                    return;
+                }
+                super.parseURL(url, spec, start, limit);
+            }
+
+            /// Returns true when URL context parsing should keep the current `/<root-id>!` prefix.
+            ///
+            /// Example:
+            ///
+            /// ```
+            /// URL base = new URL("resource://app/2!/META-INF/micronaut/");
+            /// URL child = new URL(base, "/META-INF/micronaut/foo");
+            /// ```
+            ///
+            /// The example is a class-path resource without a module; for a named-module resource
+            /// the authority would have the form `<module>@<loader>`.
+            ///
+            /// The default `URLStreamHandler` treats the child spec as an absolute URL path and would
+            /// replace the whole path with `/META-INF/micronaut/foo`. For resource URLs that drops
+            /// the root discriminator `2!`, so the resulting URL no longer addresses the same
+            /// resource root and is not a valid rooted resource path. For this case we instead parse
+            /// the child as `/2!/META-INF/micronaut/foo`, preserving the selected resource root while
+            /// still letting `URLStreamHandler` perform the normal URL parsing.
+            private boolean shouldPreserveRoot(URL url, String spec, int start, int limit) {
+                if (start >= limit) {
+                    /* There is no path reference whose resource root could be preserved. */
+                    return false;
+                }
+                if (spec.charAt(start) != '/') {
+                    /* Relative references are already resolved by URLStreamHandler against the current path. */
+                    return false;
+                }
+                if (start + 1 < limit && spec.charAt(start + 1) == '/') {
+                    /*
+                     * In URL syntax, //other-loader/... keeps only the current protocol and replaces
+                     * the authority. For class-path resources without a module, new URL(base,
+                     * "//other-loader/3!/x") should become resource://other-loader/3!/x, so it must
+                     * not inherit base's resource root.
+                     */
+                    return false;
+                }
+                return NativeImageResourceFileSystemUtil.rootedResourcePathPrefix(url.getPath()) != null;
             }
         };
     }

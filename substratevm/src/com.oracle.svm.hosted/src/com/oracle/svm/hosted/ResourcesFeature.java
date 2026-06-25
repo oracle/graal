@@ -80,7 +80,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;
@@ -100,6 +99,7 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.util.ResourcesUtils;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
@@ -185,6 +185,11 @@ public class ResourcesFeature implements InternalFeature {
     }
 
     private record CompiledConditionalPattern(AccessCondition condition, ResourcePattern compiledPattern, Object origin) {
+    }
+
+    private static final class ProcessClasspathResourcesContext {
+        final EconomicSet<String> alreadyProcessedResourceSources = EconomicSet.create();
+        boolean foundDirectory;
     }
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -366,7 +371,7 @@ public class ResourcesFeature implements InternalFeature {
                     Resources.currentLayer().registerDirectoryResource(dynamicAccessMetadata, owner, module, resourcePath, content, false);
                 } else {
                     InputStream is = module.getResourceAsStream(resourcePath);
-                    registerResource(dynamicAccessMetadata, owner, module, resourcePath, false, is);
+                    registerResource(dynamicAccessMetadata, owner, module, resourcePath, false, is, null);
                 }
 
                 var resolvedModule = module.getLayer().configuration().findModule(module.getName());
@@ -382,46 +387,53 @@ public class ResourcesFeature implements InternalFeature {
 
         /**
          * Collects classpath resources while preserving distinct ownership for resources that can
-         * be proven to come from modules. The image loader's own resources are processed first via
-         * {@link NativeImageClassLoader#findResources(String)} before the flattened
-         * parent-inclusive view from {@link NativeImageClassLoader#getResources(String)} is
-         * consulted.
+         * be proven to come from modules.
          */
         private void processResourceFromClasspath(RuntimeDynamicAccessMetadata dynamicAccessMetadata, String resourcePath, Object origin) {
             NativeImageClassLoader nativeImageClassLoader = (NativeImageClassLoader) imageClassLoader.getClassLoader();
             Enumeration<URL> urls;
-            try {
-                urls = nativeImageClassLoader.findResources(resourcePath);
-            } catch (IOException e) {
-                throw VMError.shouldNotReachHere("findResources for resourcePath " + resourcePath + " failed", e);
-            }
 
-            /*
-             * getResources could return same entry that was found by different(parent) classLoaders
-             */
-            EconomicSet<String> alreadyProcessedResources = EconomicSet.create();
-            while (urls.hasMoreElements()) {
-                if (!processClasspathResource(dynamicAccessMetadata, resourcePath, origin, urls.nextElement(), alreadyProcessedResources)) {
-                    return;
-                }
-            }
+            ProcessClasspathResourcesContext context = new ProcessClasspathResourcesContext();
 
             try {
                 /*
-                 * There is an edge case where same resource name can be present in multiple jars
-                 * (different resources), so we are collecting all resources with given name in all
-                 * jars on classpath.
+                 * getResources returns all Java-visible resources for this name, including distinct
+                 * variants from different classpath roots.
                  */
                 urls = nativeImageClassLoader.getResources(resourcePath);
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
             }
 
+            if (!processClasspathResources(dynamicAccessMetadata, urls, resourcePath, origin, context)) {
+                return;
+            }
+
+            if (context.foundDirectory && !resourcePath.isEmpty() && resourcePath.charAt(resourcePath.length() - 1) != RESOURCES_INTERNAL_PATH_SEPARATOR) {
+                /*
+                 * If the resource was found as a directory under the slashless name, also check the
+                 * trailing-slash spelling. Some classpath roots expose directory resources only
+                 * under that form. Register any additional variants under the originally requested
+                 * resource path.
+                 */
+                String directoryResourcePath = resourcePath + RESOURCES_INTERNAL_PATH_SEPARATOR;
+                try {
+                    urls = nativeImageClassLoader.getResources(directoryResourcePath);
+                } catch (IOException e) {
+                    throw VMError.shouldNotReachHere("getResources for resourcePath " + directoryResourcePath + " failed", e);
+                }
+                processClasspathResources(dynamicAccessMetadata, urls, resourcePath, origin, context);
+            }
+        }
+
+        private boolean processClasspathResources(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Enumeration<URL> urls, String resourcePath, Object origin,
+                        ProcessClasspathResourcesContext context) {
             while (urls.hasMoreElements()) {
-                if (!processClasspathResource(dynamicAccessMetadata, resourcePath, origin, urls.nextElement(), alreadyProcessedResources)) {
-                    return;
+                if (!processClasspathResource(dynamicAccessMetadata, resourcePath, origin, urls.nextElement(), context)) {
+                    return false;
                 }
             }
+            return true;
         }
 
         /**
@@ -431,26 +443,26 @@ public class ResourcesFeature implements InternalFeature {
          * @return {@code true} to continue processing additional URLs, {@code false} if processing
          *         should stop because an I/O exception was registered for this resource name
          */
-        private boolean processClasspathResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, String resourcePath, Object origin, URL url, EconomicSet<String> alreadyProcessedResources) {
-            if (!alreadyProcessedResources.add(url.toString())) {
-                return true;
-            }
-
+        private boolean processClasspathResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, String resourcePath, Object origin, URL url, ProcessClasspathResourcesContext context) {
             ClasspathResourceResolution resolution = resolveClasspathResourceOwner(url);
             ClassLoader owner = resolution.owner();
             Module module = resolution.module();
             try {
                 boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
                 boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar);
+                context.foundDirectory |= isDirectory;
+                String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
+                if (!context.alreadyProcessedResourceSources.add(source)) {
+                    return true;
+                }
                 if (isDirectory) {
                     String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
-                    Resources.currentLayer().registerDirectoryResource(dynamicAccessMetadata, owner, module, resourcePath, content, fromJar);
+                    Resources.currentLayer().registerDirectoryResource(dynamicAccessMetadata, owner, module, resourcePath, content, fromJar, source);
                 } else {
                     InputStream is = url.openStream();
-                    registerResource(dynamicAccessMetadata, owner, module, resourcePath, fromJar, is);
+                    registerResource(dynamicAccessMetadata, owner, module, resourcePath, fromJar, is, source);
                 }
 
-                String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
                 EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(owner, module, resourcePath, source, origin);
                 return true;
             } catch (IOException e) {
@@ -461,13 +473,14 @@ public class ResourcesFeature implements InternalFeature {
             }
         }
 
-        private void registerResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, ClassLoader owner, Module module, String resourcePath, boolean fromJar, InputStream is) {
+        private void registerResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, ClassLoader owner, Module module, String resourcePath, boolean fromJar, InputStream is, String source) {
+            Resources resources = Resources.currentLayer();
             if (is == null) {
-                Resources.currentLayer().registerNegativeQuery(owner, module, resourcePath);
+                resources.registerNegativeQuery(owner, module, resourcePath);
                 return;
             }
 
-            Resources.currentLayer().registerResource(dynamicAccessMetadata, owner, module, resourcePath, is, fromJar);
+            resources.registerResource(dynamicAccessMetadata, owner, module, resourcePath, is, fromJar, source);
 
             try {
                 is.close();

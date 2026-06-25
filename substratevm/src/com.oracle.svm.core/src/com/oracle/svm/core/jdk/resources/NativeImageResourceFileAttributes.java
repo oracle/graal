@@ -31,16 +31,14 @@ import java.util.Formatter;
 
 public class NativeImageResourceFileAttributes implements BasicFileAttributes {
 
-    private final NativeImageResourceFileSystem fileSystem;
     private final NativeImageResourceFileSystem.Entry entry;
 
-    public NativeImageResourceFileAttributes(NativeImageResourceFileSystem fileSystem, NativeImageResourceFileSystem.Entry entry) {
-        this.fileSystem = fileSystem;
+    public NativeImageResourceFileAttributes(NativeImageResourceFileSystem.Entry entry) {
         this.entry = entry;
     }
 
     public String getName() {
-        return fileSystem.getString(entry.name);
+        return NativeImageResourceFileSystem.getString(entry.name);
     }
 
     @Override

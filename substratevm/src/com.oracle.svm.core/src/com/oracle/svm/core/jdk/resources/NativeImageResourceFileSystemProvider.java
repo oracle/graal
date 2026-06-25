@@ -48,6 +48,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -62,9 +63,16 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
     public static final String RESOURCE_PROTOCOL = "resource";
     private final String resourcePath = "/resources";
     private final String resourceUri = "file:" + resourcePath;
-    private NativeImageResourceFileSystem fileSystem;
+    private final Map<FileSystemContext, NativeImageResourceFileSystem> fileSystems = new HashMap<>();
+    private NativeImageResourceFileSystem sharedFileSystem;
     private final Lock writeLock;
     private final Lock readLock;
+
+    private record FileSystemContext(int rootId, String moduleName, String pathPrefix) {
+    }
+
+    private record ResourcePath(NativeImageResourceFileSystemUtil.RootedResourcePath rootedPath, String path, FileSystemContext fileSystemContext) {
+    }
 
     private Path uriToPath(URI uri) {
         String scheme = uri.getScheme();
@@ -109,14 +117,16 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     @Override
     public FileSystem newFileSystem(URI uri, Map<String, ?> env) {
+        FileSystemContext context = parseFileSystemContext(uri);
         try {
             writeLock.lock();
             Path path = uriToPath(uri);
             checkIfResourcePath(path);
-            if (fileSystem != null) {
+            if (fileSystems.containsKey(context)) {
                 throw new FileSystemAlreadyExistsException();
             }
-            fileSystem = new NativeImageResourceFileSystem(this, path, env);
+            NativeImageResourceFileSystem fileSystem = createFileSystem(path, env, context);
+            fileSystems.put(context, fileSystem);
             return fileSystem;
         } finally {
             writeLock.unlock();
@@ -125,13 +135,15 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     @Override
     public FileSystem newFileSystem(Path path, Map<String, ?> env) {
+        FileSystemContext context = new FileSystemContext(0, null, "");
         try {
             writeLock.lock();
             checkIfResourcePath(path);
-            if (fileSystem != null) {
+            if (fileSystems.containsKey(context)) {
                 throw new FileSystemAlreadyExistsException();
             }
-            fileSystem = new NativeImageResourceFileSystem(this, path, env);
+            NativeImageResourceFileSystem fileSystem = createFileSystem(path, env, context);
+            fileSystems.put(context, fileSystem);
             return fileSystem;
         } finally {
             writeLock.unlock();
@@ -139,32 +151,88 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
     }
 
     @Override
-    public FileSystem getFileSystem(URI uri) {
+    public NativeImageResourceFileSystem getFileSystem(URI uri) {
+        NativeImageResourceFileSystem existingFileSystem = getFileSystemIfPresent(parseFileSystemContext(uri));
+        if (existingFileSystem == null) {
+            throw new FileSystemNotFoundException("The Native Image Resource File System is not present. " +
+                            "Please create a new file system using the `newFileSystem` operation before attempting any file system operations on resource URIs.");
+        }
+        return existingFileSystem;
+    }
+
+    private NativeImageResourceFileSystem getFileSystemIfPresent(FileSystemContext context) {
         try {
             readLock.lock();
-            Objects.requireNonNull(uri);
-            if (fileSystem == null) {
-                throw new FileSystemNotFoundException("The Native Image Resource File System is not present. " +
-                                "Please create a new file system using the `newFileSystem` operation before attempting any file system operations on resource URIs.");
-            }
-            return fileSystem;
+            return fileSystems.get(Objects.requireNonNull(context));
         } finally {
             readLock.unlock();
         }
     }
 
-    @Override
-    public Path getPath(URI uri) {
+    private NativeImageResourceFileSystem getOrCreateFileSystem(URI uri, FileSystemContext context) {
+        NativeImageResourceFileSystem existingFileSystem = getFileSystemIfPresent(context);
+        if (existingFileSystem != null) {
+            return existingFileSystem;
+        }
+
+        try {
+            writeLock.lock();
+            NativeImageResourceFileSystem fileSystem = fileSystems.get(context);
+            if (fileSystem == null) {
+                Path fileSystemPath = uriToPath(uri);
+                checkIfResourcePath(fileSystemPath);
+                fileSystem = createFileSystem(fileSystemPath, Map.of(), context);
+                fileSystems.put(context, fileSystem);
+            }
+            return fileSystem;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    private NativeImageResourceFileSystem createFileSystem(Path fileSystemPath, Map<String, ?> env, FileSystemContext context) {
+        // Caller must hold writeLock because this reads and updates sharedFileSystem.
+        if (sharedFileSystem == null) {
+            sharedFileSystem = new NativeImageResourceFileSystem(this, fileSystemPath, env, context.rootId(), context.moduleName(), context.pathPrefix());
+            return sharedFileSystem;
+        }
+        return sharedFileSystem.newView(context.rootId(), context.moduleName(), context.pathPrefix());
+    }
+
+    private static FileSystemContext parseFileSystemContext(URI uri) {
+        if ("/".equals(uri.getPath())) {
+            return new FileSystemContext(0, null, "");
+        }
+        return parseResourcePath(uri).fileSystemContext();
+    }
+
+    private static ResourcePath parseResourcePath(URI uri) {
+        Objects.requireNonNull(uri);
+        NativeImageResourceFileSystemUtil.RootedResourcePath rootedPath = NativeImageResourceFileSystemUtil.parseRootedResourcePath(uri.getPath(), "URI", uri);
+        String path;
+        String moduleName;
+        String pathPrefix;
         if (ClassRegistries.respectClassLoader()) {
-            String path = uri.getPath();
             String host = uri.getHost();
-            if (host == null || host.isEmpty() || path == null || path.isEmpty() || path.equals("/")) {
+            if (host == null || host.isEmpty() || rootedPath.resourceName().isEmpty()) {
                 throw new IllegalArgumentException("Loader-aware " + RESOURCE_PROTOCOL + " URIs require a loader key host and resource path.");
             }
-            path = "/" + host + path;
-            return getFileSystem(uri).getPath(path);
+            path = "/" + host + "/" + rootedPath.resourceName();
+            moduleName = uri.getUserInfo();
+            pathPrefix = host;
+        } else {
+            path = "/" + rootedPath.resourceName();
+            moduleName = uri.getHost();
+            pathPrefix = "";
         }
-        return getFileSystem(uri).getPath(uri.getSchemeSpecificPart());
+        return new ResourcePath(rootedPath, path, new FileSystemContext(rootedPath.rootId(), moduleName, pathPrefix));
+    }
+
+    @Override
+    public Path getPath(URI uri) {
+        ResourcePath resourcePathData = parseResourcePath(uri);
+        return getOrCreateFileSystem(uri, resourcePathData.fileSystemContext()).getPathForRoot(resourcePathData.path(), resourcePathData.rootedPath().rootId(), resourcePathData.fileSystemContext()
+                        .moduleName());
     }
 
     @Override
@@ -261,10 +329,14 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
         toResourcePath(path).setAttribute(attribute, value);
     }
 
-    void removeFileSystem() {
+    void removeFileSystem(NativeImageResourceFileSystem fileSystem) {
         try {
             writeLock.lock();
-            fileSystem = null;
+            fileSystems.values().remove(fileSystem);
+            if (sharedFileSystem == fileSystem) {
+                // If other root views remain open, promote the first one to shared backing state.
+                sharedFileSystem = fileSystems.values().stream().findFirst().orElse(null);
+            }
         } finally {
             writeLock.unlock();
         }

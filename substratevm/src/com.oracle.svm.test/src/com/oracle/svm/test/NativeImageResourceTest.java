@@ -46,16 +46,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
@@ -176,6 +185,16 @@ public class NativeImageResourceTest {
         }
 
         Assert.assertEquals(List.of(DUPLICATE_RESOURCE_CONTENT_1, DUPLICATE_RESOURCE_CONTENT_2), contents);
+    }
+
+    @Test
+    public void micronautStyleDirectoryResourceWalk() throws IOException {
+        MicronautStyleDirectoryResourceWalk.run();
+    }
+
+    @Test
+    public void directoryResourceFileSystemGetPathPreservesSelectedRoot() throws IOException {
+        MicronautStyleDirectoryResourceWalk.runFileSystemGetPath();
     }
 
     /**
@@ -330,6 +349,48 @@ public class NativeImageResourceTest {
     }
 
     @Test
+    public void nonLoaderAwareModuleResourcePathToUriRoundTripKeepsModuleName() throws URISyntaxException {
+        Assume.assumeFalse("test requires class-loader-aware lookup to be disabled", ClassRegistries.respectClassLoader());
+        // This test uses a URI of the form resource://java.base/0!/java/lang/uniName.dat.
+        URI uri = moduleResourceURI();
+
+        Assert.assertNull(uri.getUserInfo());
+        Assert.assertNotNull(uri.getHost());
+        Assert.assertEquals(uri.getHost(), uri.getRawAuthority());
+        assertResourcePathToUriRoundTrip(uri);
+    }
+
+    @Test
+    public void loaderAwareModuleResourcePathToUriRoundTripKeepsModuleAndLoader() throws URISyntaxException {
+        Assume.assumeTrue("test requires class-loader-aware lookup to be enabled", ClassRegistries.respectClassLoader());
+        // This test uses a URI of the form resource://java.base@boot/0!/java/lang/uniName.dat.
+        URI uri = moduleResourceURI();
+
+        Assert.assertNotNull(uri.getUserInfo());
+        Assert.assertNotNull(uri.getHost());
+        Assert.assertEquals(uri.getUserInfo() + "@" + uri.getHost(), uri.getRawAuthority());
+        assertResourcePathToUriRoundTrip(uri);
+    }
+
+    private static URI moduleResourceURI() throws URISyntaxException {
+        URL url = Class.class.getResource("uniName.dat");
+        Assert.assertNotNull("URL for resource java.base/java/lang/uniName.dat must not be null", url);
+        URI uri = url.toURI();
+        Assume.assumeTrue("test requires native-image resource URLs", "resource".equals(uri.getScheme()));
+        return uri;
+    }
+
+    private static void assertResourcePathToUriRoundTrip(URI uri) {
+        URI roundTrip = Path.of(uri).toUri();
+        Assert.assertEquals(uri.getScheme(), roundTrip.getScheme());
+        Assert.assertEquals(uri.getRawAuthority(), roundTrip.getRawAuthority());
+        Assert.assertEquals(uri.getUserInfo(), roundTrip.getUserInfo());
+        Assert.assertEquals(uri.getHost(), roundTrip.getHost());
+        Assert.assertEquals(uri.getRawPath(), roundTrip.getRawPath());
+        Assert.assertEquals(uri.getPath(), roundTrip.getPath());
+    }
+
+    @Test
     @SuppressWarnings("deprecation")
     public void testURLExternalFormEquivalence() {
         Enumeration<URL> urlEnumeration = null;
@@ -439,5 +500,147 @@ public class NativeImageResourceTest {
         } catch (IOException e) {
             Assert.fail("IOException in url.openConnection(): " + e.getMessage());
         }
+    }
+}
+
+final class MicronautStyleDirectoryResourceWalk {
+    private static final String ROOT = "META-INF/native-image-resource-test";
+    private static final String SERVICE_A = "com.oracle.svm.test.ServiceA";
+    private static final String SERVICE_B = "com.oracle.svm.test.ServiceB";
+    private static final String SERVICE_C = "com.oracle.svm.test.ServiceC";
+    private static final String SERVICE_A_IMPL_1 = "com.oracle.svm.test.impl.ServiceAImpl1";
+    private static final String SERVICE_A_IMPL_2 = "com.oracle.svm.test.impl.ServiceAImpl2";
+    private static final String SERVICE_A_IMPL_SHARED = "com.oracle.svm.test.impl.ServiceAImplShared";
+    private static final String SERVICE_B_IMPL = "com.oracle.svm.test.impl.ServiceBImpl";
+    private static final String SERVICE_C_IMPL = "com.oracle.svm.test.impl.ServiceCImpl";
+
+    static void run() throws IOException {
+        String path = ROOT + "/";
+        List<URI> resourceUris = resourceUris(ClassLoader.getSystemClassLoader(), path);
+        Assert.assertEquals(resourceUris.toString(), 2, resourceUris.size());
+
+        Map<String, Set<String>> services = findServices(resourceUris, path);
+
+        Assert.assertEquals(Set.of(SERVICE_A, SERVICE_B, SERVICE_C), services.keySet());
+        Assert.assertEquals(Set.of(SERVICE_A_IMPL_1, SERVICE_A_IMPL_2, SERVICE_A_IMPL_SHARED), services.get(SERVICE_A));
+        Assert.assertEquals(Set.of(SERVICE_B_IMPL), services.get(SERVICE_B));
+        Assert.assertEquals(Set.of(SERVICE_C_IMPL), services.get(SERVICE_C));
+    }
+
+    static void runFileSystemGetPath() throws IOException {
+        String path = ROOT + "/";
+        List<URI> resourceUris = resourceUris(ClassLoader.getSystemClassLoader(), path);
+        Assert.assertEquals(resourceUris.toString(), 2, resourceUris.size());
+
+        URI selectedUri = null;
+        for (URI uri : resourceUris) {
+            if (findServices(List.of(uri), path).containsKey(SERVICE_C)) {
+                selectedUri = uri;
+                break;
+            }
+        }
+        Assert.assertNotNull(resourceUris.toString(), selectedUri);
+
+        if (!"resource".equals(selectedUri.getScheme())) {
+            return;
+        }
+
+        Path root = Path.of(selectedUri).getFileSystem().getPath(path);
+        Map<String, Set<String>> services = findServices(root);
+
+        Assert.assertEquals(Set.of(SERVICE_A, SERVICE_C), services.keySet());
+        Assert.assertEquals(Set.of(SERVICE_A_IMPL_2, SERVICE_A_IMPL_SHARED), services.get(SERVICE_A));
+        Assert.assertEquals(Set.of(SERVICE_C_IMPL), services.get(SERVICE_C));
+    }
+
+    private static Map<String, Set<String>> findServices(List<URI> resourceUris, String path) throws IOException {
+        Map<String, Set<String>> services = new LinkedHashMap<>();
+        for (URI uri : resourceUris) {
+            Path root = resolvePath(uri, path);
+            findServices(root, services);
+        }
+        return services;
+    }
+
+    private static Map<String, Set<String>> findServices(Path root) throws IOException {
+        Map<String, Set<String>> services = new LinkedHashMap<>();
+        findServices(root, services);
+        return services;
+    }
+
+    private static void findServices(Path root, Map<String, Set<String>> services) throws IOException {
+        Files.walkFileTree(root, Collections.emptySet(), 2, new SimpleFileVisitor<>() {
+            private Set<String> definitions;
+
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (dir.equals(root)) {
+                    definitions = null;
+                    return FileVisitResult.CONTINUE;
+                }
+                definitions = services.computeIfAbsent(dir.getFileName().toString(), _ -> new LinkedHashSet<>());
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path currentPath, BasicFileAttributes attrs) throws IOException {
+                if (Files.isHidden(currentPath)) {
+                    return FileVisitResult.CONTINUE;
+                }
+                Path fileName = currentPath.getFileName();
+                if (fileName.startsWith(".")) {
+                    return FileVisitResult.CONTINUE;
+                }
+                if (definitions != null) {
+                    definitions.add(fileName.toString());
+                }
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+        });
+    }
+
+    private static List<URI> resourceUris(ClassLoader classLoader, String path) throws IOException {
+        Enumeration<URL> resources = classLoader.getResources(path);
+        Set<URI> uniqueURIs = new LinkedHashSet<>();
+        while (resources.hasMoreElements()) {
+            URL url = resources.nextElement();
+            try {
+                uniqueURIs.add(url.toURI());
+            } catch (URISyntaxException e) {
+                throw new IOException(e);
+            }
+        }
+
+        List<URI> uris = new ArrayList<>(uniqueURIs.size());
+        for (URI uri : uniqueURIs) {
+            String scheme = uri.getScheme();
+            URI normalizedURI = "file".equals(scheme) ? normalizeFilePath(path, uri) : uri;
+            if (!("resource".equals(scheme) && uri.toString().contains("#"))) {
+                uris.add(normalizedURI);
+            }
+        }
+        return uris;
+    }
+
+    private static URI normalizeFilePath(String path, URI uri) {
+        Path resourcePath = Path.of(uri);
+        if (resourcePath.endsWith(path)) {
+            Path subpath = Path.of(path);
+            for (int i = 0; i < subpath.getNameCount(); i++) {
+                resourcePath = resourcePath.getParent();
+            }
+            return resourcePath.toUri();
+        }
+        return uri;
+    }
+
+    private static Path resolvePath(URI uri, String path) {
+        if ("file".equals(uri.getScheme())) {
+            return Path.of(uri).resolve(path);
+        }
+        return Path.of(uri);
+    }
+
+    private MicronautStyleDirectoryResourceWalk() {
     }
 }

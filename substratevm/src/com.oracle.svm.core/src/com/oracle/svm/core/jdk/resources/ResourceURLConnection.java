@@ -73,7 +73,8 @@ public final class ResourceURLConnection extends URLConnection {
         if (urlPath.isEmpty()) {
             throw new IllegalArgumentException("Empty URL path not allowed in " + RESOURCE_PROTOCOL + " URL");
         }
-        String resourceName = urlPath.substring(1);
+        NativeImageResourceFileSystemUtil.RootedResourcePath resourcePath = NativeImageResourceFileSystemUtil.parseRootedResourcePath(urlPath, "URL", urlPath);
+        String resourceName = resourcePath.resourceName();
 
         Object entry;
         if (ClassRegistries.respectClassLoader()) {
@@ -91,21 +92,12 @@ public final class ResourceURLConnection extends URLConnection {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             byte[][] bytes = resourceStorageEntry.getData();
             isDirectory = resourceStorageEntry.isDirectory();
-            String urlRef = url.getRef();
-            int index = 0;
-            if (urlRef != null) {
-                try {
-                    index = Integer.parseInt(urlRef);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("URL anchor '#" + urlRef + "' not allowed in " + RESOURCE_PROTOCOL + " URL");
-                }
-            }
-            if (index < bytes.length) {
+            int index = resourceStorageEntry.getDataIndexForRootId(resourcePath.rootId());
+            if (index >= 0) {
+                assert index < bytes.length;
                 this.data = bytes[index];
             } else {
-                // This will happen only in case that we are creating one URL with the second URL as
-                // a context.
-                this.data = bytes[0];
+                this.data = null;
             }
         } else {
             this.data = null;
