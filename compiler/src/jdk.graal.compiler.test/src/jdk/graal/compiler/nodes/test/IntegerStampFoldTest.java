@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,15 @@ package jdk.graal.compiler.nodes.test;
 import java.util.HashSet;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.NegateNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.test.GraalTest;
 import org.junit.Test;
 
@@ -70,6 +78,46 @@ public class IntegerStampFoldTest extends GraalTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testNarrowShiftStampSoundness() {
+        testShiftContains(IntegerStamp.OPS.getShr(), 8, -86, 109, -1, -86);
+        testShiftContains(IntegerStamp.OPS.getShr(), 16, -1, 7, 31, -1);
+        testShiftContains(IntegerStamp.OPS.getShr(), 8, -57, -57, Integer.MAX_VALUE, -57);
+
+        testShiftContains(IntegerStamp.OPS.getUShr(), 8, -1, -1, 4, -1);
+        testShiftContains(IntegerStamp.OPS.getUShr(), 16, -32326, -18233, 1, -18233);
+        testShiftContains(IntegerStamp.OPS.getUShr(), 16, -25591, 64, 5, -25591);
+    }
+
+    @Test
+    public void testNarrowUnsignedRightShiftCanonicalization() {
+        ValueNode constantFold = UnsignedRightShiftNode.create(parameter(8, -128, -1), ConstantNode.forInt(7), NodeView.DEFAULT);
+        assertTrue(constantFold.isJavaConstant(), "expected narrow unsigned shift to canonicalize to a constant: %s", constantFold);
+        assertTrue(constantFold.asJavaConstant().asLong() == -1, "expected -1, got %s", constantFold.asJavaConstant());
+
+        ValueNode notNegation = UnsignedRightShiftNode.create(parameter(8, -1, 0), ConstantNode.forInt(7), NodeView.DEFAULT);
+        assertTrue(!(notNegation instanceof NegateNode), "narrow unsigned shift is not equivalent to negation: %s", notNegation);
+        assertTrue(notNegation instanceof UnsignedRightShiftNode, "expected canonicalization to keep the narrow unsigned shift: %s", notNegation);
+
+        ValueNode innerShift = UnsignedRightShiftNode.create(parameter(8, -1, 0), ConstantNode.forInt(20), NodeView.DEFAULT);
+        ValueNode combinedShift = UnsignedRightShiftNode.create(innerShift, ConstantNode.forInt(20), NodeView.DEFAULT);
+        assertTrue(!combinedShift.isJavaConstant(), "narrow repeated unsigned shifts must not fold to a wide-shift zero constant: %s", combinedShift);
+    }
+
+    private static ParameterNode parameter(int bits, long lowerBound, long upperBound) {
+        return new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(bits, lowerBound, upperBound)));
+    }
+
+    private static void testShiftContains(ShiftOp<?> op, int bits, long lowerBound, long upperBound, long shiftAmount, long value) {
+        IntegerStamp stamp = IntegerStamp.create(bits, lowerBound, upperBound);
+        assertTrue(stamp.contains(value), "%s should contain concrete value %s", stamp, value);
+
+        IntegerStamp shift = IntegerStamp.create(32, shiftAmount, shiftAmount);
+        IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, shift);
+        JavaConstant foldedConstant = (JavaConstant) op.foldConstant(JavaConstant.forPrimitiveInt(bits, value), JavaConstant.forInt((int) shiftAmount));
+        assertTrue(foldedStamp.contains(foldedConstant.asLong()), "%s %s %s = %s, should be contained in %s", value, op, shiftAmount, foldedConstant, foldedStamp);
     }
 
     private static void testStamp(IntegerStamp stamp) {
