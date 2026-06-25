@@ -907,7 +907,7 @@ class ABIs {
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64CallArranger.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
     static final class LinuxAArch64 extends ARM64 {
 
         @Override
