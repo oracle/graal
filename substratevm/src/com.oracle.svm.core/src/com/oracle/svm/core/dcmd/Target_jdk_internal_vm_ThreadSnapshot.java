@@ -93,7 +93,7 @@ final class ThreadSnapshotUtil {
      * information is incomplete and owned monitors are not supported. It is also slow because it
      * often needs a VM operation.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/hotspot/share/services/threadService.cpp#L1437-L1554")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.4+6/src/hotspot/share/services/threadService.cpp#L1451-L1569")
     public static Target_jdk_internal_vm_ThreadSnapshot create(Thread thread) {
         if (thread == Thread.currentThread()) {
             /* No VM operation needed. */
