@@ -75,6 +75,7 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -96,6 +97,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.internal.misc.Unsafe;
 
@@ -106,6 +108,13 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
+    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
+    /// 64 KiB, and address space randomization enabled may result in transient isolate
+    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
+    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
+    /// stack size for explicit Java thread stack sizes for now.
+    private static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
+
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
@@ -329,9 +338,9 @@ public abstract class PlatformThreads {
              * stack for VM-managed entry, stack overflow guards, and ordinary Java execution.
              */
             if (isolateStartedThread) {
-                long defaultStackSize = getDefaultStackSize();
-                if (defaultStackSize > requestedStackSize) {
-                    return defaultStackSize;
+                long minimumStackSize = getJavaThreadMinimumStackSize();
+                if (minimumStackSize > requestedStackSize) {
+                    return minimumStackSize;
                 }
             }
             return requestedStackSize;
@@ -365,6 +374,22 @@ public abstract class PlatformThreads {
          * Java code, so explicit stack sizes continue to describe usable Java stack space.
          */
         return stackSize + StackOverflowCheck.singleton().yellowAndRedZoneSize();
+    }
+
+    /// Returns the minimum stack size for Java threads created with an explicit `Thread`
+    /// constructor stack size.
+    ///
+    /// HotSpot keeps `_java_thread_min_stack_allowed` separate from the default Java thread stack
+    /// size. It starts with an os/cpu value for the stack needed to create a Java thread and enter
+    /// user code, then adds HotSpot guard and shadow zones and aligns the result to the page size.
+    ///
+    /// SVM uses a single usable minimum instead of HotSpot's os/cpu table because the stack frames
+    /// and thread start path are specific to SVM. The SVM yellow and red zones are then added so
+    /// the result can be compared with [#addStackOverflowGuardZones].
+    public static long getJavaThreadMinimumStackSize() {
+        long minimumStackSizeWithGuards = addStackOverflowGuardZones(USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
+        long pageSize = VirtualMemoryProvider.get().getGranularity().rawValue();
+        return NumUtil.roundUp(minimumStackSizeWithGuards, pageSize);
     }
 
     /**
