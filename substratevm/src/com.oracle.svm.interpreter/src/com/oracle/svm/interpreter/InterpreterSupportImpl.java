@@ -30,7 +30,6 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -61,6 +60,7 @@ import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoDeoptimizationSupport;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoDeoptimizedInterpreterFrame;
@@ -453,7 +453,8 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return null;
         }
         InterpreterFrameSourceInfo stackTraceCallerInfo = interpreterFrame.getStackTraceCallerInfo();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, interpreterFrame, stackTraceCallerInfo);
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, flags, interpreterFrame, stackTraceCallerInfo);
     }
 
     private static FrameSourceInfo createIntrinsicMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod intrinsicMethod, InterpreterFrame interpreterFrame) {
@@ -468,14 +469,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             sb.append(") at ").append(frameInfo.getSourceReference());
             VMError.shouldNotReachHere(sb.toString());
         }
-        return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod, interpreterFrame);
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(intrinsicMethod.getModifiers(), intrinsicMethod.isHidden(), intrinsicMethod.isLambdaFormCompiled());
+        return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod, interpreterFrame, flags);
     }
 
     private static FrameSourceInfo createNativeMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod nativeMethod) {
         if (nativeMethod == null) {
             VMError.shouldNotReachHere("Failed to retrieve interpreter JNI downcall method at " + frameInfo.getSourceReference());
         }
-        return InterpreterFrameSourceInfo.forNativeMethod(nativeMethod, null);
+        return InterpreterFrameSourceInfo.forNativeMethod(nativeMethod, null, frameInfo.getSourceMethodFlags());
     }
 
     @Override
@@ -492,7 +494,8 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
          * the method object but does not carry the normal source-class/source-method fields.
          */
         InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci());
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci(), flags);
     }
 
     @Override

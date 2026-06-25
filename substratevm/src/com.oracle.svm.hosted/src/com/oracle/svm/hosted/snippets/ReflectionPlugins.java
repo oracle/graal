@@ -403,7 +403,7 @@ public final class ReflectionPlugins {
      * the constructor parameter.
      */
     private boolean processMethodHandlesLookup(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-        if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
+        if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMetaAccessExtensionProvider(), b.getMethod())) {
             /*
              * If our immediate caller (which is the only method available at the time the
              * invocation plugin is running) is not the method returned by

@@ -27,10 +27,14 @@ package com.oracle.svm.interpreter.metadata;
 import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
 import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_UNKNOWN;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_DONT_INLINE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_HIDDEN;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_SCOPED;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORPHIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
@@ -105,6 +109,12 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     @Platforms(Platform.HOSTED_ONLY.class) //
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> CALLER_SENSITIVE_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.reflect.CallerSensitive");
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    @SuppressWarnings("unchecked") //
+    private static final Class<? extends Annotation> LAMBDA_FORM_COMPILED_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$Compiled");
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    @SuppressWarnings("unchecked") //
+    private static final Class<? extends Annotation> SCOPED_MEMORY_SCOPED_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.misc.ScopedMemoryAccess$Scoped");
     /**
      * This flag denotes a method that was originally native but was substituted by a non-native
      * method.
@@ -443,11 +453,44 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         if (AnnotationUtil.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
             newModifiers |= ACC_CALLER_SENSITIVE;
         }
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, LAMBDA_FORM_COMPILED_CLASS)) {
+            newModifiers |= ACC_LAMBDA_FORM_COMPILED;
+        }
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.Hidden.class)) {
+            newModifiers |= ACC_HIDDEN;
+        }
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.ForceInline.class)) {
+            newModifiers |= ACC_FORCE_INLINE;
+        }
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.DontInline.class)) {
+            newModifiers |= ACC_DONT_INLINE;
+        }
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, SCOPED_MEMORY_SCOPED_CLASS)) {
+            newModifiers |= ACC_SCOPED;
+        }
         return newModifiers;
     }
 
     public final boolean isCallerSensitive() {
         return (flags & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    @Override
+    public final boolean isScoped() {
+        return (flags & ACC_SCOPED) != 0;
+    }
+
+    /**
+     * Returns true if this method is hidden from user-visible stack walking, either directly or
+     * because it is declared by a hidden class.
+     */
+    public final boolean isHidden() {
+        // ClassfileParser sets ACC_HIDDEN on methods of runtime-loaded hidden classes.
+        return (flags & ACC_HIDDEN) != 0;
+    }
+
+    public final boolean isLambdaFormCompiled() {
+        return (flags & ACC_LAMBDA_FORM_COMPILED) != 0;
     }
 
     @Override
@@ -1002,12 +1045,12 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final boolean hasNeverInlineDirective() {
-        throw VMError.intentionallyUnimplemented();
+        return (flags & ACC_DONT_INLINE) != 0;
     }
 
     @Override
     public final boolean shouldBeInlined() {
-        throw VMError.intentionallyUnimplemented();
+        return (flags & ACC_FORCE_INLINE) != 0;
     }
 
     @Override

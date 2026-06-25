@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.graal;
 
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -53,6 +54,11 @@ public final class EspressoMetaAccessExtensionProvider implements MetaAccessExte
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw GraalError.unimplementedOverride();
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return ((AbstractEspressoResolvedJavaMethod) method).isLambdaFormCompiled();
     }
 
     @Override

@@ -50,6 +50,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
@@ -134,7 +135,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(originalField.getName());
         Symbol<Type> typeSymbol = CremaTypeAccess.jvmciNameToType(originalField.getType().getName());
         boolean isStable = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Stable.class);
-        boolean isHidden = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Hidden.class);
+        boolean isHidden = originalField.isInternal();
         int flags = createFlags(originalField.getModifiers(), isStable, isHidden);
         InterpreterResolvedJavaField field = new InterpreterResolvedJavaField(
                         nameSymbol, typeSymbol, flags,
@@ -382,6 +383,11 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     @Override
     public final boolean isSynthetic() {
         return (flags & Constants.ACC_SYNTHETIC) != 0;
+    }
+
+    public final boolean isTrustedFinal() {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return isFinal() && (isStatic() || Record.class.isAssignableFrom(getDeclaringClass().getJavaClass()) || getDeclaringClass().isHidden());
     }
 
     // endregion Unimplemented methods

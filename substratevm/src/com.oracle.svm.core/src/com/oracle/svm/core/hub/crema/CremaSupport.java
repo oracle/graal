@@ -65,6 +65,24 @@ public interface CremaSupport {
 
     <T extends ResolvedJavaField & ResolvedMember> T toJVMCI(Field field);
 
+    /**
+     * Returns any JDK-internal flag that should be added to the modifiers and reference kind to
+     * form the {@code flags} of a {@code java.lang.invoke.MemmberName} denoting the {@code field}
+     * given as argument.
+     *
+     * @see com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants
+     */
+    int getExtraFieldMemberNameFlags(ResolvedJavaField field);
+
+    /**
+     * Returns any JDK-internal flag that should be added to the modifiers and reference kind to
+     * form the {@code flags} of a {@code java.lang.invoke.MemmberName} denoting the {@code method}
+     * given as argument.
+     *
+     * @see com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants
+     */
+    int getExtraMethodMemberNameFlags(ResolvedJavaMethod method);
+
     Object invokeBasic(Target_java_lang_invoke_MemberName memberName, Object methodHandle, Object[] args);
 
     Object linkToVirtual(Object[] args);

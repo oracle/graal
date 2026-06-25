@@ -550,21 +550,21 @@ public final class CodeInfoDecoder {
         int classBytes = shortClass ? Short.BYTES : Integer.BYTES;
         int nameBytes = shortName ? Short.BYTES : Integer.BYTES;
         int signatureBytes = shortSignature ? Short.BYTES : Integer.BYTES;
-        int modifierBytes = Short.BYTES;
+        int flagsBytes = Short.BYTES;
 
         int classOffset = 0;
         int nameOffset = classOffset + classBytes;
         int signatureOffset = nameOffset + nameBytes;
-        int modifierOffset = signatureOffset + signatureBytes;
+        int flagsOffset = signatureOffset + signatureBytes;
 
         int entryBytes = classBytes + nameBytes;
         if (CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers()) {
-            entryBytes += signatureBytes + modifierBytes;
+            entryBytes += signatureBytes + flagsBytes;
         }
 
         int methodIndex = methodId - CodeInfoAccess.getMethodTableFirstId(info);
         NonmovableArray<Byte> methodEncodings = CodeInfoAccess.getMethodTable(info);
-        VMError.guarantee(methodIndex >= 0 && methodIndex < NonmovableArrays.lengthOf(methodEncodings) / entryBytes);
+        VMError.guarantee(methodIndex >= 0 && methodIndex < CodeInfoAccess.getMethodCount(info));
 
         Pointer p = NonmovableArrays.addressOf(methodEncodings, methodIndex * entryBytes);
         int classIndex = readIndex(p, shortClass, classOffset);
@@ -572,14 +572,34 @@ public final class CodeInfoDecoder {
         int methodNameIndex = readIndex(p, shortName, nameOffset);
         String sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), methodNameIndex);
 
-        String sourceMethodSignature = CodeInfoEncoder.Encoders.INVALID_METHOD_SIGNATURE;
-        int sourceSignatureModifiers = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS;
+        String sourceMethodSignature;
+        int sourceSignatureFlags;
         if (CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers()) {
             int sourceSignatureIndex = readIndex(p, shortSignature, signatureOffset);
             sourceMethodSignature = NonmovableArrays.getObject(CodeInfoAccess.getOtherStrings(info), sourceSignatureIndex);
-            sourceSignatureModifiers = readIndex(p, true, modifierOffset);
+            sourceSignatureFlags = readIndex(p, true, flagsOffset);
+        } else {
+            sourceMethodSignature = CodeInfoEncoder.Encoders.INVALID_METHOD_SIGNATURE;
+            int methodFlagsOffset = CodeInfoAccess.getMethodCount(info) * entryBytes;
+            sourceSignatureFlags = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS | getMethodFlags(methodEncodings, methodFlagsOffset, methodIndex);
         }
-        result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureModifiers);
+        result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureFlags);
+    }
+
+    /**
+     * Retrieves the extra method flags that are stored in a compact bit array when full flags and
+     * modifiers are not stored in the main method table.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int getMethodFlags(NonmovableArray<Byte> methodEncodings, int methodFlagsOffset, int methodIndex) {
+        assert !CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers();
+        int slotsPerByte = Byte.SIZE / FrameSourceInfo.MethodFlags.EXTRA_FLAGS_BITS;
+        assert UninterruptibleUtils.CodeUtil.isPowerOf2(slotsPerByte);
+        int shiftAmount = UninterruptibleUtils.CodeUtil.log2(slotsPerByte);
+        Pointer methodFlags = NonmovableArrays.addressOf(methodEncodings, methodFlagsOffset);
+        int byteOffset = methodIndex >>> shiftAmount;
+        int bitOffset = (methodIndex & (slotsPerByte - 1)) * FrameSourceInfo.MethodFlags.EXTRA_FLAGS_BITS;
+        return ((methodFlags.readByte(byteOffset) >>> bitOffset) << FrameSourceInfo.MethodFlags.EXTRA_FLAGS_POS) & FrameSourceInfo.MethodFlags.EXTRA_FLAGS_MASK;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

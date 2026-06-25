@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -966,6 +966,17 @@ public class UninterruptibleUtils {
             } else {
                 return value;
             }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isPowerOf2(int val) {
+            return val > 0 && (val & val - 1) == 0;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int log2(int val) {
+            assert val > 0;
+            return (java.lang.Integer.SIZE - 1) - Integer.numberOfLeadingZeros(val);
         }
     }
 }

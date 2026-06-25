@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedIns
 import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType.PARAMETER_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType.TYPE_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.BRIDGE;
+import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SCOPED_METHOD;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SYNTHETIC;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.VARARGS;
@@ -291,6 +292,10 @@ public abstract class AbstractEspressoResolvedJavaMethod extends AbstractAnnotat
 
     @Override
     public abstract Parameter[] getParameters();
+
+    public final boolean isLambdaFormCompiled() {
+        return (getFlags() & LAMBDA_FORM_COMPILED) != 0;
+    }
 
     @Override
     public final boolean equals(Object o) {

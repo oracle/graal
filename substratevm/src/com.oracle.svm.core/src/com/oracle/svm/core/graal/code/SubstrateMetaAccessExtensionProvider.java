@@ -84,6 +84,11 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
     }
 
     @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return ((SharedMethod) method).isLambdaFormCompiled();
+    }
+
+    @Override
     public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
     }

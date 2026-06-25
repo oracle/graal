@@ -563,6 +563,11 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
     }
 
     @Override
+    public boolean isInternalVMMethods() {
+        return hub.isVMInternal();
+    }
+
+    @Override
     public int hashCode() {
         return hub.hashCode();
     }

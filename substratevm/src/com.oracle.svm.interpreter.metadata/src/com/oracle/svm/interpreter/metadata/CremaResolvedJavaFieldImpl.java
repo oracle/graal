@@ -98,11 +98,6 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
     }
 
     @Override
-    public boolean isTrustedFinal() {
-        return isFinal() && (isStatic() || Record.class.isAssignableFrom(getDeclaringClass().getJavaClass()) || getDeclaringClass().isHidden());
-    }
-
-    @Override
     public byte[] getRawAnnotations() {
         Attribute attribute = getAttribute(ParserSymbols.ParserNames.RuntimeVisibleAnnotations);
         if (attribute == null) {

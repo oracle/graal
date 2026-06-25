@@ -62,7 +62,7 @@ public class StackTraceTests {
         @NeverInline("Starting a stack walk in the caller frame.")
         public static void c(Type type) {
             if (type == Type.GET_CALLER_CLASS) {
-                Class<?> callerClass = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true, false);
+                Class<?> callerClass = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
                 assertSame(B.class, callerClass);
             }
             if (type == Type.GET_STACKTRACE) {

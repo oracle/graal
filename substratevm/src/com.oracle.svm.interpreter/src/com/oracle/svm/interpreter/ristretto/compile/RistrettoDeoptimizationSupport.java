@@ -40,6 +40,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -329,7 +330,8 @@ public class RistrettoDeoptimizationSupport {
     static InterpreterFrameSourceInfo createStackTraceCallerInfo(RistrettoVirtualInterpreterFrame current, InterpreterFrameSourceInfo callerInfo) {
         InterpreterResolvedJavaMethod interpretedMethod = current.getMethod();
         int bci = current.getCurrentBci();
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, current.getFrame(),
+        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, bci, flags, current.getFrame(),
                         callerInfo);
     }
 

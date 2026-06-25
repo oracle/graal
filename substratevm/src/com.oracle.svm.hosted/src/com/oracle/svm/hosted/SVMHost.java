@@ -103,7 +103,6 @@ import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.stringformat.StringFormatPhase;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -627,7 +626,6 @@ public class SVMHost extends HostVM {
         boolean isRecord = javaClass.isRecord();
         boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestAccess.elements().InternalVMMethod);
-        boolean isLambdaFormHidden = AnnotationUtil.isAnnotationPresent(type, LambdaFormHiddenMethod.class);
         boolean isLinked = type.isLinked();
 
         nestHost = PredefinedClassesSupport.maybeAdjustLambdaNestHost(className, javaClass, classLoader, nestHost);
@@ -639,8 +637,7 @@ public class SVMHost extends HostVM {
         boolean isProxyClass = Proxy.isProxyClass(javaClass);
 
         short flags = DynamicHub.makeFlags(javaClass.isPrimitive(), javaClass.isInterface(), isHidden, isRecord,
-                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal,
-                        isLambdaFormHidden, isLinked, isProxyClass);
+                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLinked, isProxyClass);
 
         return new DynamicHub(javaClass, className, computeHubType(type), ReferenceType.computeReferenceType(javaClass),
                         superHub, componentHub, sourceFileName, modifiers, flags, hubClassLoader, nestHost,

@@ -68,6 +68,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -148,10 +149,11 @@ public class CodeInfoEncoder {
     public static final class Encoders {
         static final Class<?> INVALID_CLASS = null;
         static final String INVALID_METHOD_NAME = "";
-        static final int INVALID_METHOD_MODIFIERS = -1;
+        // This can never be valid since it's not valid to be both PUBLIC and PRIVATE
+        static final int INVALID_METHOD_MODIFIERS = Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
         static final String INVALID_METHOD_SIGNATURE = null;
 
-        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
+        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int flags) {
         }
 
         public final FrequencyEncoder<JavaConstant> objectConstants;
@@ -196,10 +198,10 @@ public class CodeInfoEncoder {
             }
         }
 
-        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
+        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int flags) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must reference image methods by id");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, flags);
             if (methods.addObject(member)) {
                 classes.addObject(clazz);
                 memberNames.addObject(name);
@@ -209,10 +211,10 @@ public class CodeInfoEncoder {
             }
         }
 
-        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers, boolean optional) {
+        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int flags, boolean optional) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must obtain method ids from image code info");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, flags);
             return optional ? methods.findIndex(member) : methods.getIndex(member);
         }
 
@@ -232,17 +234,19 @@ public class CodeInfoEncoder {
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
             Encodings encodings = encodeAll();
 
+            /* Runtime code info references image methods by id and does not encode methods. */
+            int methodTableEntryCount = methods == null ? 0 : methods.getLength();
             int methodTableFirstId;
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 var idTracker = MethodTableFirstIDTracker.singleton();
                 methodTableFirstId = idTracker.startingID;
-                idTracker.nextStartingId = methodTableFirstId + methods.getLength();
+                idTracker.nextStartingId = methodTableFirstId + methodTableEntryCount;
             } else {
                 methodTableFirstId = 0;
             }
             NonmovableArray<Byte> methodTable = encodeMethodTable();
 
-            install(target, encodings, methodTable, methodTableFirstId, adjuster);
+            install(target, encodings, methodTable, methodTableFirstId, adjuster, methodTableEntryCount);
         }
 
         private static <T> T[] encodeArray(FrequencyEncoder<T> encoder, IntFunction<T[]> allocator) {
@@ -275,15 +279,42 @@ public class CodeInfoEncoder {
             assert encodedMethods[0] == null : "id 0 must mean invalid";
             encodeMethod(writer, INVALID_CLASS, INVALID_METHOD_NAME, INVALID_METHOD_SIGNATURE, INVALID_METHOD_MODIFIERS, shortClassIndexes, shortNameIndexes, shortSignatureIndexes);
             for (int id = 1; id < encodedMethods.length; id++) {
-                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, encodedMethods[id].signature, encodedMethods[id].modifiers, shortClassIndexes, shortNameIndexes,
+                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, encodedMethods[id].signature, encodedMethods[id].flags, shortClassIndexes, shortNameIndexes,
                                 shortSignatureIndexes);
+            }
+            if (!shouldEncodeMethodSignatureAndModifiers()) {
+                encodeMethodFlags(writer);
             }
             NonmovableArray<Byte> bytes = NonmovableArrays.createByteArray(NumUtil.safeToInt(writer.getBytesWritten()), NmtCategory.Code);
             writer.toByteBuffer(NonmovableArrays.asByteBuffer(bytes));
             return bytes;
         }
 
-        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, String signature, int modifiers, boolean shortClassIndexes, boolean shortNameIndexes,
+        private void encodeMethodFlags(UnsafeArrayTypeWriter writer) {
+            /*
+             * When full modifiers + flags are not encoded in method entries, store a compact bit
+             * array of extra flags. FrameSourceInfo.checkConstants ensures that each byte holds a
+             * whole number of flag slots.
+             */
+            int currentByte = 0;
+            int bitIndex = FrameSourceInfo.MethodFlags.EXTRA_FLAGS_BITS; // skip method id 0
+            for (int id = 1; id < encodedMethods.length; id++) {
+                int flags = encodedMethods[id].flags;
+                currentByte |= ((flags & FrameSourceInfo.MethodFlags.EXTRA_FLAGS_MASK) >> FrameSourceInfo.MethodFlags.EXTRA_FLAGS_POS) << bitIndex;
+                bitIndex += FrameSourceInfo.MethodFlags.EXTRA_FLAGS_BITS;
+                assert bitIndex <= Byte.SIZE;
+                if (bitIndex == Byte.SIZE) {
+                    writer.putU1(currentByte);
+                    bitIndex = 0;
+                    currentByte = 0;
+                }
+            }
+            if (bitIndex > 0) {
+                writer.putU1(currentByte);
+            }
+        }
+
+        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, String signature, int flags, boolean shortClassIndexes, boolean shortNameIndexes,
                         boolean shortSignatureIndexes) {
             int classIndex = classes.getIndex(clazz);
             if (shortClassIndexes) {
@@ -304,12 +335,13 @@ public class CodeInfoEncoder {
                 } else {
                     writer.putU4(signatureNamesIndex);
                 }
-                writer.putS2(modifiers);
+                assert TypeConversion.isU2(flags) || flags == INVALID_METHOD_MODIFIERS;
+                writer.putU2(flags & 0xffff);
             }
         }
 
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-        private static void install(CodeInfo target, Encodings encodings, NonmovableArray<Byte> methodTable, int methodTableFirstId, ReferenceAdjuster adjuster) {
+        private static void install(CodeInfo target, Encodings encodings, NonmovableArray<Byte> methodTable, int methodTableFirstId, ReferenceAdjuster adjuster, int methodTableEntryCount) {
 
             NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(encodings.objectConstantsArray, NmtCategory.Code);
             NonmovableObjectArray<Class<?>> classes = (encodings.classesArray != null) ? adjuster.copyOfObjectArray(encodings.classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
@@ -317,7 +349,7 @@ public class CodeInfoEncoder {
             NonmovableObjectArray<String> otherStrings = (encodings.otherStringsArray != null) ? adjuster.copyOfObjectArray(encodings.otherStringsArray, NmtCategory.Code)
                             : NonmovableArrays.nullArray();
 
-            CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTable, methodTableFirstId);
+            CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTable, methodTableFirstId, methodTableEntryCount);
         }
     }
 

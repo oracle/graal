@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.nodes.FrameState;
@@ -41,12 +44,14 @@ public abstract class FrameSourceInfo {
     protected String sourceMethodName;
     protected int sourceLineNumber;
     protected long encodedBci;
+    protected int sourceMethodFlags;
 
-    protected FrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci) {
+    protected FrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, int sourceMethodFlags) {
         this.sourceClass = sourceClass;
         this.sourceMethodName = sourceMethodName;
         this.sourceLineNumber = sourceLineNumber;
         this.encodedBci = FrameInfoEncoder.encodeBci(bci, FrameState.StackState.BeforePop);
+        this.sourceMethodFlags = sourceMethodFlags;
     }
 
     @SuppressWarnings("this-escape")
@@ -60,6 +65,7 @@ public abstract class FrameSourceInfo {
         sourceMethodName = CodeInfoEncoder.Encoders.INVALID_METHOD_NAME;
         sourceLineNumber = LINENUMBER_UNKNOWN;
         encodedBci = -1;
+        sourceMethodFlags = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS;
     }
 
     public abstract FrameSourceInfo getCaller();
@@ -108,6 +114,17 @@ public abstract class FrameSourceInfo {
     }
 
     /**
+     * Returns flags that can be decoded with the methods of {@link MethodFlags}.
+     * <p>
+     * Those include internal properties of methods and method modifiers depending on configuration.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int getSourceMethodFlags() {
+        fillSourceFieldsIfMissing();
+        return sourceMethodFlags;
+    }
+
+    /**
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
@@ -137,5 +154,87 @@ public abstract class FrameSourceInfo {
         String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
 
         return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
+    }
+
+    /**
+     * Constants used to encode internal method flags. Those are packed into unused bits of the 16
+     * bits of method modifiers.
+     * <p>
+     * Note that the flags are currently kept grouped in the most significant bits to simplify the
+     * mode in which those extra internal flags are stored as bitmaps (see {@code encodeMethodFlags}
+     * in {@link CodeInfoEncoder.Encoders}).
+     * <p>
+     * As of JDK 25 the {@linkplain Constants#JVM_RECOGNIZED_METHOD_MODIFIERS used bits for method
+     * modifiers} are 0x1dff.
+     *
+     * @see FrameSourceInfo#getSourceMethodFlags()
+     */
+    public static final class MethodFlags {
+        private static final int HIDDEN_METHOD_FLAG = 0x8000;
+        private static final int LAMBDA_FORM_COMPILED_METHOD_FLAG = 0x4000;
+
+        static final int EXTRA_FLAGS_BITS = 2;
+        static final int EXTRA_FLAGS_POS = 16 - EXTRA_FLAGS_BITS;
+        static final int EXTRA_FLAGS_MASK = ((1 << EXTRA_FLAGS_BITS) - 1) << EXTRA_FLAGS_POS;
+        static {
+            /*
+             * check constants in a method to be able to supress warnings about "always true"
+             * expressions.
+             */
+            checkConstants();
+        }
+
+        private MethodFlags() {
+        }
+
+        @SuppressWarnings("all")
+        private static void checkConstants() {
+            assert (HIDDEN_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "HIDDEN_METHOD_FLAG collides with specified method modifier";
+            assert (LAMBDA_FORM_COMPILED_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "LAMBDA_FORM_COMPILED_METHOD_FLAG collides with specified method modifier";
+            assert (CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS &
+                            Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS : "INVALID_METHOD_MODIFIERS should only used specified method modifiers to avoid collitions with internal method flags";
+            assert (EXTRA_FLAGS_MASK & HIDDEN_METHOD_FLAG) == HIDDEN_METHOD_FLAG : "HIDDEN_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
+            assert (EXTRA_FLAGS_MASK & LAMBDA_FORM_COMPILED_METHOD_FLAG) == LAMBDA_FORM_COMPILED_METHOD_FLAG : "LAMBDA_FORM_COMPILED_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
+            /*
+             * This property is used by extra flag encoding/decoding in the case where full
+             * modifiers are not serialized. See `CodeInfoDecoder.getMethodFlags` &
+             * `CodeInfoEncoder.Encoders.encodeMethodTable`.
+             */
+            assert Byte.SIZE % EXTRA_FLAGS_BITS == 0 : "The number of extra flag bit doesn't align at byte boundaries.";
+        }
+
+        public static int computeSourceMethodFlags(int modifiers, boolean isHidden, boolean isLambdaFormCompiled) {
+            int flags = modifiers;
+            if (isHidden) {
+                flags |= HIDDEN_METHOD_FLAG;
+            }
+            if (isLambdaFormCompiled) {
+                flags |= LAMBDA_FORM_COMPILED_METHOD_FLAG;
+            }
+            return flags;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isHidden(int flags) {
+            return (flags & HIDDEN_METHOD_FLAG) != 0;
+        }
+
+        public static boolean isLambdaFormCompiled(int flags) {
+            return (flags & LAMBDA_FORM_COMPILED_METHOD_FLAG) != 0;
+        }
+
+        /**
+         * Returns the JVM method modifiers. Those are only valid if
+         * {@link #hasValidMethodModifiers} returns true.
+         */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int getMethodModifiers(int flags) {
+            return flags & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean hasValidMethodModifiers(int flags) {
+            return getMethodModifiers(flags) != CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS;
+        }
     }
 }

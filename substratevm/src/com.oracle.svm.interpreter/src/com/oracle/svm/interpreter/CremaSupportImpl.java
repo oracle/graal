@@ -26,10 +26,12 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_CALLER_SENSITIVE;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_HIDDEN_MEMBER;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_TRUSTED_FINAL;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
@@ -320,10 +322,8 @@ public class CremaSupportImpl implements CremaSupport {
         boolean isSealed = isSealed(parsed);
         boolean declaresDefaultMethods = isInterface && declaresDefaultMethods(parsed);
         boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
-        boolean isLambdaFormHidden = false;
         boolean isProxyClass = false;
-        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
-                        isProxyClass);
+        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, hasDefaultMethods, declaresDefaultMethods, isSealed, false, false, isProxyClass);
 
         Object interfacesEncoding = getInterfaceEncodings(superInterfaces);
 
@@ -639,7 +639,7 @@ public class CremaSupportImpl implements CremaSupport {
         DynamicHub superHub = DynamicHub.fromClass(Object.class);
         int javaModifiers = (componentHub.getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
         int jvmModifiers = (componentHub.getInterpreterType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
-        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, false, true, false);
+        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, true, false);
         ClassLoader loader = componentHub.getClassLoader();
         Module module = componentHub.getModule();
         int typeID = TypeIDs.singleton().nextTypeId();
@@ -1697,26 +1697,35 @@ public class CremaSupportImpl implements CremaSupport {
         return (T) CremaFieldAccess.toJVMCI(field);
     }
 
+    @Override
+    public int getExtraFieldMemberNameFlags(ResolvedJavaField field) {
+        return getExtraFieldMemberNameFlags((InterpreterResolvedJavaField) field);
+    }
+
+    @Override
+    public int getExtraMethodMemberNameFlags(ResolvedJavaMethod method) {
+        return getExtraMethodMemberNameFlags((InterpreterResolvedJavaMethod) method);
+    }
+
     private static void plantResolvedMethod(Target_java_lang_invoke_MemberName mn,
                     ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
-        int methodFlags = getMethodFlags(resolvedCall);
+        int methodFlags = getMethodMemberNameFlags(resolvedCall);
         InterpreterResolvedJavaMethod target = resolvedCall.getResolvedMethod();
         mn.resolved = target;
         mn.flags = methodFlags;
         mn.clazz = target.getDeclaringClass().getJavaClass();
     }
 
-    private static int getMethodFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
+    private static int getMethodMemberNameFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
         InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
         int flags = resolvedMethod.getModifiers();
-        if (resolvedMethod.isCallerSensitive()) {
-            flags |= MN_CALLER_SENSITIVE;
-        }
         if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
+            flags |= getExtraMethodMemberNameFlags(resolvedMethod);
             flags |= MN_IS_CONSTRUCTOR;
             flags |= (REF_newInvokeSpecial << MN_REFERENCE_KIND_SHIFT);
             return flags;
         }
+        flags |= getExtraMethodMemberNameFlags(resolvedMethod);
         flags |= MN_IS_METHOD;
         switch (resolvedCall.getCallKind()) {
             case STATIC:
@@ -1737,18 +1746,35 @@ public class CremaSupportImpl implements CremaSupport {
 
     private static void plantResolvedField(Target_java_lang_invoke_MemberName mn, InterpreterResolvedJavaField field, int refKind) {
         mn.resolved = field;
-        mn.flags = getFieldFlags(refKind, field);
+        mn.flags = getFieldMemberNameFlags(refKind, field);
         mn.clazz = field.getDeclaringClass().getJavaClass();
     }
 
-    private static int getFieldFlags(int refKind, InterpreterResolvedJavaField field) {
-        int res = field.getModifiers();
-        boolean isSetter = (refKind <= REF_putStatic) && !(refKind <= REF_getStatic);
-        res |= MN_IS_FIELD | ((field.isStatic() ? REF_getStatic : REF_getField) << MN_REFERENCE_KIND_SHIFT);
-        if (isSetter) {
-            res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
+    private static int getFieldMemberNameFlags(int refKind, InterpreterResolvedJavaField field) {
+        int flags = field.getModifiers();
+        assert refKind == REF_getField || refKind == REF_getStatic || refKind == REF_putField || refKind == REF_putStatic;
+        flags |= MN_IS_FIELD | (refKind << MN_REFERENCE_KIND_SHIFT);
+        flags |= getExtraFieldMemberNameFlags(field);
+        return flags;
+    }
+
+    private static int getExtraFieldMemberNameFlags(InterpreterResolvedJavaField field) {
+        int flags = 0;
+        if (field.isTrustedFinal()) {
+            flags |= MN_TRUSTED_FINAL;
         }
-        return res;
+        return flags;
+    }
+
+    private static int getExtraMethodMemberNameFlags(InterpreterResolvedJavaMethod method) {
+        int flags = 0;
+        if (method.isCallerSensitive()) {
+            flags |= MN_CALLER_SENSITIVE;
+        }
+        if (method.isHidden()) {
+            flags |= MN_HIDDEN_MEMBER;
+        }
+        return flags;
     }
 
     private static Symbol<Signature> lookupSignature(ByteSequence desc, SignaturePolymorphicIntrinsic iid) {
