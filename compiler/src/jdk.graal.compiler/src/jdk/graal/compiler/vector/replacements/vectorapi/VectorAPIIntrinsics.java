@@ -26,12 +26,9 @@ package jdk.graal.compiler.vector.replacements.vectorapi;
 
 import java.util.function.BiFunction;
 
-import org.graalvm.word.LocationIdentity;
-
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -262,13 +259,9 @@ public class VectorAPIIntrinsics {
                 ObjectStamp speciesStamp = VectorAPIUtils.nonNullStampForClassValue(b, vmClass);
                 VectorAPIType loadType = VectorAPIType.ofConstant(vmClass, b);
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
-                LocationIdentity location = VectorAPIUtils.containerLocationIdentity(container);
-                if (!fromSegment.isDefaultConstant()) {
-                    GraalError.guarantee(location.isAny(), "we don't know anything about the location of a possible memory segment access");
-                }
                 StampPair returnStamp = makeReturnStamp(b, speciesStamp);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vmClass, eClass, length, base, offset, fromSegment, container, index, s, defaultImpl);
-                b.addPush(JavaKind.Object, VectorAPILoadNode.create(params, loadType, address, location, b));
+                b.addPush(JavaKind.Object, VectorAPILoadNode.create(params, loadType, address, b));
                 return true;
             }
         });
@@ -281,13 +274,9 @@ public class VectorAPIIntrinsics {
                 ObjectStamp speciesStamp = VectorAPIUtils.nonNullStampForClassValue(b, vClass);
                 VectorAPIType loadType = VectorAPIType.ofConstant(vClass, b);
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
-                LocationIdentity location = VectorAPIUtils.containerLocationIdentity(container);
-                if (!fromSegment.isDefaultConstant()) {
-                    GraalError.guarantee(location.isAny(), "we don't know anything about the location of a possible memory segment access");
-                }
                 StampPair returnStamp = makeReturnStamp(b, speciesStamp);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vClass, mClass, eClass, length, base, offset, fromSegment, m, offsetInRange, container, index, s, defaultImpl);
-                b.addPush(JavaKind.Object, VectorAPILoadMaskedNode.create(params, loadType, address, location, b));
+                b.addPush(JavaKind.Object, VectorAPILoadMaskedNode.create(params, loadType, address, b));
                 return true;
             }
         });
@@ -300,12 +289,8 @@ public class VectorAPIIntrinsics {
                 SimdStamp inputStamp = VectorAPIUtils.stampForVectorClass(vClass, eClass, length, b);
                 VectorAPIType storeType = VectorAPIType.ofConstant(vClass, b);
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
-                LocationIdentity location = VectorAPIUtils.containerLocationIdentity(container);
-                if (!fromSegment.isDefaultConstant()) {
-                    GraalError.guarantee(location.isAny(), "we don't know anything about the location of a possible memory segment access");
-                }
                 MacroParams params = MacroParams.of(b, targetMethod, vClass, eClass, length, base, offset, fromSegment, b.nullCheckedValue(v), container, index, defaultImpl);
-                b.add(new VectorAPIStoreNode(params, inputStamp, storeType, address, location));
+                b.add(VectorAPIStoreNode.create(params, inputStamp, storeType, address));
                 return true;
             }
         });
@@ -317,13 +302,9 @@ public class VectorAPIIntrinsics {
                             ValueNode offset, ValueNode fromSegment, ValueNode v, ValueNode m, ValueNode container, ValueNode index, ValueNode defaultImpl) {
                 VectorAPIType storeType = VectorAPIType.ofConstant(vClass, b);
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
-                LocationIdentity location = VectorAPIUtils.containerLocationIdentity(container);
-                if (!fromSegment.isDefaultConstant()) {
-                    GraalError.guarantee(location.isAny(), "we don't know anything about the location of a possible memory segment access");
-                }
                 MacroParams params = MacroParams.of(b, targetMethod, vClass, mClass, eClass, length, base, offset, fromSegment, b.nullCheckedValue(v), b.nullCheckedValue(m), container, index,
                                 defaultImpl);
-                b.add(VectorAPIStoreMaskedNode.create(params, storeType, address, location));
+                b.add(VectorAPIStoreMaskedNode.create(params, storeType, address));
                 return true;
             }
         });
