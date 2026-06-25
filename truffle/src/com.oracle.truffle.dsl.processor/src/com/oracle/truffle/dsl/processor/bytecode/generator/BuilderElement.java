@@ -3157,7 +3157,7 @@ final class BuilderElement extends AbstractElement {
             case LOAD_ARGUMENT -> new String[]{BytecodeRootNodeElement.safeCastShort(operation.getOperationBeginArgumentName(0))};
             case LOAD_CONSTANT -> new String[]{"state.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
             case YIELD -> {
-                b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
+                b.declaration(type(int.class), "constantPoolIndex", "state.allocateContinuationConstant()");
                 yield new String[]{"constantPoolIndex"};
             }
             case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, constantOperandValues);
@@ -3611,7 +3611,7 @@ final class BuilderElement extends AbstractElement {
                         yield value;
                     } else if (operation.kind == OperationKind.CUSTOM_YIELD) {
                         // The continuation root is the last constant, after constant operands.
-                        b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
+                        b.declaration(type(int.class), "constantPoolIndex", "state.allocateContinuationConstant()");
                         yield "constantPoolIndex";
                     } else {
                         throw new AssertionError("Instruction immediate is missing an associated constant operand: " + immediate);
@@ -5645,7 +5645,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         private CodeExecutableElement createAllocateConstantSlot() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(short.class),
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class),
                             "allocateConstantSlot");
             CodeTreeBuilder doc = ex.createDocBuilder();
             doc.startJavadoc();
@@ -5654,7 +5654,7 @@ final class BuilderElement extends AbstractElement {
             doc.end();
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return safeCastShort(constants.addNull())");
+            b.statement("return constants.addNull()");
             return ex;
         }
 
@@ -5711,7 +5711,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         private CodeExecutableElement createAllocateContinuationConstant() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "allocateContinuationConstant");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "allocateContinuationConstant");
             CodeTreeBuilder b = ex.createBuilder();
 
             /**
