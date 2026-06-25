@@ -21,6 +21,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-43070) Add a new API flag `-Werror` to treat warnings as errors.
 * (GR-69280) Allow use of the `graal.` prefix for options without issuing a warning.
 * (GR-2092) Add jitdump support for recording run-time compilation metadata for perf (see PerfProfiling.md). Can be enabled with `-g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump`.
+* (GR-2092) Jitdump writing can now be disabled with `-XX:-RuntimeJitdump`, or disabled by default in an image with `-R:-RuntimeJitdump` and re-enabled for a run with `-XX:+RuntimeJitdump`.
 * (GR-69116) Rename `native-image-configure` tool to `native-image-utils`.
 * (GR-69572) Deprecates the `native-image-inspect` tool. To extract embedded SBOMs, use `native-image-utils extract-sbom --image-path=<path_to_binary>`.
 * (GR-76386) Move `native-image-utils extract-sbom` to GraalVM Community Edition.

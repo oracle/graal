@@ -38,5 +38,9 @@ import jdk.graal.compiler.debug.DebugContext;
  * produced. In this case the run-time debug info is written as a side effect (e.g. to a file).
  */
 public interface SubstrateDebugInfoWriter {
+    default boolean isEnabled() {
+        return true;
+    }
+
     InstalledCodeObserver.InstalledCodeObserverHandle writeDebugInfo(DebugContext debug, SubstrateDebugInfoProvider debugInfoProvider);
 }
