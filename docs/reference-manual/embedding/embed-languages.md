@@ -711,7 +711,7 @@ Manually preparing internal resources is useful for deployments with:
 * a read-only file system where the application cannot write resources during startup
 * strict startup-time requirements where avoiding first-use unpacking helps reduce initial startup time
 
-For native executables, build with `-H:-IncludeLanguageResources -H:+CopyLanguageResources` to keep resources out of the executable and create a separate `resources` directory next to the native executable or shared library. At run time, resources are automatically picked up from that `resources` directory, unless you override the location with `polyglot.engine.resourcePath`.
+For native executables, build with `-H:-IncludeLanguageResources -H:+CopyLanguageResources` to keep resources out of the executable and create a separate _resources_ directory next to the native executable or shared library. At run time, resources are automatically picked up from that _resources_ directory, unless you override the location with `polyglot.engine.resourcePath`.
 
 For other Java runtimes, run a small Java application with the required languages and tools on its class or module path during the build or installation step, and use [`Engine.copyResources(Path, String...)`](<https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)>) to copy resources into the directory:
 
