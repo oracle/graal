@@ -44,7 +44,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-class WindowsPhysicalMemorySupportImpl extends PlatformPhysicalMemorySupport {
+public class WindowsPhysicalMemorySupportImpl extends PlatformPhysicalMemorySupport {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord size() {
