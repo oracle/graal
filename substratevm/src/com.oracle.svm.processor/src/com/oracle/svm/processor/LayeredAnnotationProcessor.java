@@ -181,7 +181,7 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
             case VOID -> "V";
             case TYPEVAR -> "Ljava_lang_Object";
             case ARRAY -> ARRAY_IDENTIFIER + getDescriptorForClass(((ArrayType) c).getComponentType());
-            case DECLARED -> "L" + getQualifiedName(c).replace('.', OBJECT_PATH_SEPARATOR).replace('$', OBJECT_PATH_SEPARATOR);
+            case DECLARED -> getQualifiedName(c).replace('.', OBJECT_PATH_SEPARATOR).replace('$', OBJECT_PATH_SEPARATOR);
             default -> throw new RuntimeException("Unexpected null type: " + c);
         };
     }

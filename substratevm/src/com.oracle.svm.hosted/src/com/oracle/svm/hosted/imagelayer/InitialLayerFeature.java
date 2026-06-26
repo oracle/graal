@@ -31,19 +31,22 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.shared.util.ReflectionUtil;
 
-import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -87,6 +90,8 @@ public class InitialLayerFeature implements InternalFeature {
         if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             metaAccess.lookupJavaType(ReflectionUtil.lookupClass("com.oracle.svm.core.posix.headers.Pthread$pthread_t")).registerAsReachable("Core type");
         }
+
+        pinDeclaredMethodsToInitialLayer(metaAccess.lookupJavaType(CEntryPointSetup.class));
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
@@ -104,6 +109,15 @@ public class InitialLayerFeature implements InternalFeature {
 
         JavaConstant proxyClass = access.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
         return constantReflection.asJavaType(proxyClass);
+    }
+
+    private static void pinDeclaredMethodsToInitialLayer(AnalysisType type) {
+        for (AnalysisMethod method : type.getDeclaredMethods(false)) {
+            method.setPinnedToInitialLayer();
+        }
+        for (AnalysisType nestedType : type.getDeclaredTypes()) {
+            pinDeclaredMethodsToInitialLayer(nestedType);
+        }
     }
 
     @Override

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.JavaRunMainRoutinePointerHolder.RUN_MAIN_ROUTINE;
+
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -90,13 +92,21 @@ public class JavaMainWrapper {
      */
     public static final CGlobalData<CEntryPointCreateIsolateParameters> MAIN_ISOLATE_PARAMETERS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CEntryPointCreateIsolateParameters.class));
 
+    private static final int EXIT_SUCCESS = 0;
+    private static final int EXIT_FAILURE = 1;
+    private static final int RUN_APPLICATION_MAIN = 2;
+
     private static UnsignedWord argvLength = Word.zero();
 
     /**
-     * For layered images this method is delayed until the application layer. This is necessary so
-     * that the method handle can be inlined before analysis.
+     * For layered images, when the image has a main entry point, this method needs to be compiled
+     * in the application layer. This is necessary so that the method handle can be inlined before
+     * analysis. For this reason, the callers of this method cannot be pinned to the initial layer.
+     * So instead only the {@link JavaMainWrapper#initRunCore0} part is pinned to the initial layer.
+     * This is fine because it only contains code that does not depend on knowledge that we only
+     * have in the application layer. Also, this method cannot be delayed to the application layer
+     * because not all applications have a main entry point.
      */
-    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static void invokeMain(String[] args) throws Throwable {
         String[] mainArgs = args;
         if (ImageSingletons.contains(PreMainSupport.class)) {
@@ -134,27 +144,9 @@ public class JavaMainWrapper {
      */
     private static int runCore0() {
         try {
-            if (SubstrateGuestOptions.InitializeVM.getValue()) {
-                /*
-                 * When options are not parsed yet, it is also too early to run the startup hooks
-                 * because they often depend on option values. The user is expected to manually run
-                 * the startup hooks after setting all option values.
-                 */
-                VMRuntime.initialize();
-            }
-
-            if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
-                printVmInfo();
-                return 0;
-            }
-
-            if (SubstrateOptions.DumpHeapAndExit.getValue()) {
-                return VMInspectionOptions.dumpImageHeap() ? 0 : 1;
-            }
-
-            if (SubstrateOptions.JNI.getValue()) {
-                // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
-                JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
+            int status = initRunCore0();
+            if (status != RUN_APPLICATION_MAIN) {
+                return status;
             }
 
             /*
@@ -167,15 +159,47 @@ public class JavaMainWrapper {
 
             return 0;
         } catch (Throwable ex) {
-            JavaThreads.dispatchUncaughtException(Thread.currentThread(), ex);
-
-            /*
-             * The application terminated with exception. Note that the exit code is set to 1 even
-             * if an uncaught exception handler is registered. This behavior is the same on the Java
-             * HotSpot VM.
-             */
-            return 1;
+            return dispatchUncaughtException(ex);
         }
+    }
+
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static int initRunCore0() {
+        if (SubstrateGuestOptions.InitializeVM.getValue()) {
+            /*
+             * When options are not parsed yet, it is also too early to run the startup hooks
+             * because they often depend on option values. The user is expected to manually run the
+             * startup hooks after setting all option values.
+             */
+            VMRuntime.initialize();
+        }
+
+        if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
+            printVmInfo();
+            return EXIT_SUCCESS;
+        }
+
+        if (SubstrateOptions.DumpHeapAndExit.getValue()) {
+            return VMInspectionOptions.dumpImageHeap() ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+
+        if (SubstrateOptions.JNI.getValue()) {
+            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
+            JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
+        }
+        return RUN_APPLICATION_MAIN;
+    }
+
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static int dispatchUncaughtException(Throwable ex) {
+        JavaThreads.dispatchUncaughtException(Thread.currentThread(), ex);
+
+        /*
+         * The application terminated with exception. Note that the exit code is set to 1 even if an
+         * uncaught exception handler is registered. This behavior is the same on the Java HotSpot
+         * VM.
+         */
+        return 1;
     }
 
     /** Keep this shutdown logic in sync with the shutdown logic in {@code DestroyJavaVM}. */
@@ -219,7 +243,6 @@ public class JavaMainWrapper {
     @Uninterruptible(reason = "Thread state not set up yet.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static int run(int argc, CCharPointerPointer argv) {
         if (SubstrateOptions.RunMainInNewThread.getValue()) {
             return doRunInNewThread(argc, argv);
@@ -230,7 +253,6 @@ public class JavaMainWrapper {
 
     /** SVM start-up logic should be pinned to the initial layer. */
     @Uninterruptible(reason = "Thread state not setup yet.")
-    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static int doRun(int argc, CCharPointerPointer argv) {
         try {
             Isolate isolate = createMainIsolate(argc, argv);
@@ -252,7 +274,6 @@ public class JavaMainWrapper {
     /// Runs the application main routine on a new platform thread while the launcher thread remains
     /// responsible for isolate creation, joining the main thread, and shutdown.
     @Uninterruptible(reason = "Thread state not setup yet.")
-    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
         try {
             Isolate isolate = createMainIsolate(argc, argv);
@@ -278,7 +299,14 @@ public class JavaMainWrapper {
      */
     @Uninterruptible(reason = "Thread state detached.")
     private static int startAndJoinMainRunner(Isolate isolate, long javaStackSize, WordPointer threadExitStatus) {
-        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.getFunctionPointer(), isolate, javaStackSize, true);
+        CFunctionPointer runMainRoutine = RUN_MAIN_ROUTINE.getFunctionPointer();
+        return startAndJoinMainRunner0(isolate, javaStackSize, threadExitStatus, runMainRoutine);
+    }
+
+    @Uninterruptible(reason = "Thread state detached.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static int startAndJoinMainRunner0(Isolate isolate, long javaStackSize, WordPointer threadExitStatus, CFunctionPointer runMainRoutine) {
+        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(runMainRoutine, isolate, javaStackSize, true);
         if (osThreadHandle.isNull()) {
             CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
             return 1;
@@ -297,6 +325,7 @@ public class JavaMainWrapper {
     }
 
     @Uninterruptible(reason = "Thread state not setup yet.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static Isolate createMainIsolate(int argc, CCharPointerPointer argv) {
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         cpuFeatureAccess.verifyHostSupportsArchitectureEarlyOrExit();
@@ -308,14 +337,13 @@ public class JavaMainWrapper {
     }
 
     @Uninterruptible(reason = "Thread state detached.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static void runShutdownOnInitialThread(Isolate isolate) {
         // Re-attach the initial C thread as another Java thread for isolate shutdown.
         EnterAttachThreadForShutdown.enter(isolate);
         runShutdown();
         CEntryPointSetup.LeaveDetachThreadEpilogue.leave();
     }
-
-    private static final CEntryPointLiteral<CFunctionPointer> RUN_MAIN_ROUTINE = CEntryPointLiteral.create(JavaMainWrapper.class, "runMainRoutine", PointerBase.class);
 
     private static final class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
@@ -347,13 +375,19 @@ public class JavaMainWrapper {
             return Word.signed(1);
         }
         try {
-            PlatformThreads.singleton().reassignMainThreadObject();
+            reassignMainThreadObject();
             int exitStatus = runCore();
             CEntryPointSetup.LeaveDetachThreadEpilogue.leave();
             return Word.signed(exitStatus);
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static void reassignMainThreadObject() {
+        PlatformThreads.singleton().reassignMainThreadObject();
     }
 
     private static boolean isArgumentBlockSupported() {
@@ -434,6 +468,7 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static void printVmInfo() {
         VM vm = ImageSingletons.lookup(VM.class);
         System.out.println(vm.formattedVmVersion);
@@ -474,4 +509,17 @@ public class JavaMainWrapper {
         }
     }
 
+}
+
+/**
+ * This class contains the {@link CEntryPointLiteral} pointing to
+ * {@link JavaMainWrapper#runMainRoutine(PointerBase)}. This static field cannot be in
+ * {@link JavaMainWrapper}, because if the class containing this field is reachable, this field is
+ * initialized at build time, and it makes the whole routine reachable, even though it is not
+ * necessarily used. This causes issues particularly in layered images, because
+ * {@link JavaMainWrapper#invokeMain(String[])} becomes reachable in the base layer, which can cause
+ * big performance issues due to MethodHandle intrinsification.
+ */
+class JavaRunMainRoutinePointerHolder {
+    static final CEntryPointLiteral<CFunctionPointer> RUN_MAIN_ROUTINE = CEntryPointLiteral.create(JavaMainWrapper.class, "runMainRoutine", PointerBase.class);
 }
