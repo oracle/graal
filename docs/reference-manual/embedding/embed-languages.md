@@ -716,7 +716,7 @@ This creates a separate _resources_ directory next to the native executable or s
 At run time, resources are automatically picked up from that _resources_ directory, unless you override the location with `polyglot.engine.resourcePath`.
 
 For other Java runtimes, run a small Java application with the required languages and tools on its class or module path during the build or installation step.
-Use [`Engine.copyResources(Path, String...)`](<https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)>) to copy resources into the directory:
+Use [`Engine.copyResources(Path, String...)`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources%28java.nio.file.Path,java.lang.String...%29) to copy resources into the directory:
 
 ```java
 Path resources = Path.of("/opt/myapp/graalvm-resources");
