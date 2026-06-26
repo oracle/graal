@@ -46,7 +46,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -210,7 +210,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMAMD64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMAMD64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {
@@ -337,7 +337,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMAArch64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMAArch64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {
@@ -499,7 +499,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMRISCV64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMRISCV64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {

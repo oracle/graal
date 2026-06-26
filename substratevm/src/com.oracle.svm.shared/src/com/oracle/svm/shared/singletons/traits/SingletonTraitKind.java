@@ -67,7 +67,7 @@ public enum SingletonTraitKind {
     /**
      * Used as a marker to indicate the singleton is not allowed to be used with layered images.
      */
-    DISALLOWED(DisallowedSingletonTrait.class);
+    DISALLOW_LAYERED(DisallowLayeredSingletonTrait.class);
 
     private final Class<? extends SingletonTrait<?>> traitClass;
 
@@ -86,7 +86,7 @@ public enum SingletonTraitKind {
     public boolean isInConfiguration(boolean layeredBuild) {
         return switch (this) {
             case ACCESS -> true;
-            case LAYERED_CALLBACKS, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE, DISALLOWED -> layeredBuild;
+            case LAYERED_CALLBACKS, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE, DISALLOW_LAYERED -> layeredBuild;
         };
     }
 }

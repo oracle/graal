@@ -41,7 +41,7 @@ import org.graalvm.webimage.api.JSValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -56,7 +56,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * to Browser. At run-time, opening the connection fails if attempted on the UI thread as opposed to
  * a worker. This is detected by the presence of a {@code window} object.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class WebImageHttpHandlerSubstitutions {
     static final class Enabled implements BooleanSupplier {
         @Override

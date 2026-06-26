@@ -48,7 +48,7 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.StringUtil;
@@ -56,7 +56,7 @@ import com.oracle.svm.shared.util.StringUtil;
 import jdk.graal.compiler.api.replacements.Fold;
 
 /** Loads/Unloads JVMTI agents that are located in shared object files. */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class JvmtiAgents {
     private static final String AGENT_ON_LOAD = "Agent_OnLoad";
     private static final String AGENT_ON_UNLOAD = "Agent_OnUnload";

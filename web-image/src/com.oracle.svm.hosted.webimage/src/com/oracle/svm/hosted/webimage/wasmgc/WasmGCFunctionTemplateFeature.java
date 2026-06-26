@@ -54,7 +54,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmVariableAllocation;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -195,7 +195,7 @@ public class WasmGCFunctionTemplateFeature implements InternalFeature {
 
 @AutomaticallyRegisteredImageSingleton
 @Platforms(WebImageWasmGCPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 class FunctionTemplateHolder {
     /**
      * Reference to the placeholder method used for compiling the {@link WasmFunctionTemplate

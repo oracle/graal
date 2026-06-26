@@ -27,9 +27,9 @@ package com.oracle.svm.shared.singletons.traits;
 /**
  * A singleton declaring this trait is not allowed to be used with layered images.
  */
-public final class DisallowedSingletonTrait extends SingletonTrait<EmptyMetadata> {
+public final class DisallowLayeredSingletonTrait extends SingletonTrait<EmptyMetadata> {
 
-    public DisallowedSingletonTrait() {
-        super(SingletonTraitKind.DISALLOWED, EmptyMetadata.EMPTY);
+    public DisallowLayeredSingletonTrait() {
+        super(SingletonTraitKind.DISALLOW_LAYERED, EmptyMetadata.EMPTY);
     }
 }

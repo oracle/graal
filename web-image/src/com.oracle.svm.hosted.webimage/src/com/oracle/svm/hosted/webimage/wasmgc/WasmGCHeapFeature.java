@@ -39,7 +39,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCHeapLayouter;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.heap.WebImageJSHeap;
@@ -70,7 +70,7 @@ public class WasmGCHeapFeature implements InternalFeature {
         ImageSingletons.add(ImageHeapLayouter.class, new WasmGCHeapLayouter());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageWasmGCBarrierSetProvider implements BarrierSetProvider {
         @Override
         public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
