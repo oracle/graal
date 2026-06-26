@@ -24,15 +24,20 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.reflect.Array;
+
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -108,11 +113,31 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
     }
 
     @Override
+    public Object newArray(Class<?> componentType, int length) {
+        if (SubstrateOptions.useEpsilonGC()) {
+            return Array.newInstance(componentType, length);
+        }
+        return YoungGeneration.getPinnedAllocation().newArray(componentType, length);
+    }
+
+    @Override
+    public Pointer addressOfPinnedArrayElement(Object array, int index) {
+        if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
+            throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
+        }
+        DynamicHub hub = ObjectHeader.readDynamicHubFromObject(array);
+        assert hub.isArray();
+        UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
+        return addressOfPinnedObject(array).add(offsetOfArrayElement);
+    }
+
+    @Override
     public Pointer addressOfPinnedObject(Object object) {
         if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
             throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
         }
-        assert SubstrateOptions.useEpsilonGC() || AlignedHeapChunk.getEnclosingChunk(object).getAllPinned() : "must use only on objects from pinned allocation";
+        assert SubstrateOptions.useEpsilonGC() || ObjectHeaderImpl.isUnalignedObject(object) ||
+                        AlignedHeapChunk.getEnclosingChunk(object).getAllPinned() : "must use only on objects from pinned allocation";
         return Word.objectToUntrackedPointer(object);
     }
 }

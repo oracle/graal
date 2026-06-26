@@ -51,4 +51,8 @@ public interface PinnedObjectSupport {
     <T> T allocateInstance(Class<T> clazz) throws InstantiationException;
 
     Pointer addressOfPinnedObject(Object object);
+
+    Object newArray(Class<?> componentType, int length);
+
+    Pointer addressOfPinnedArrayElement(Object array, int index);
 }

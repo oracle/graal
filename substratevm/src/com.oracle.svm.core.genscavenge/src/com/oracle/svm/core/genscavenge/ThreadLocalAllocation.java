@@ -260,20 +260,24 @@ public final class ThreadLocalAllocation {
 
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
-        /*
-         * Check if the array is too big. This is an optimistic check because the heap probably has
-         * other objects in it, and the next collection could throw an OutOfMemoryError if this
-         * object is allocated and survives.
-         */
-        GCImpl.getPolicy().ensureSizeParametersInitialized();
-        if (GCImpl.getPolicy().isOutOfMemory(size) && !GCImpl.shouldIgnoreOutOfMemory()) {
-            OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
-            throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
-        }
+        checkArrayLikeObjectSizeBeforeAllocation(size);
 
         Object result = slowPathNewArrayLikeObjectWithoutAllocating(hub, length, size, podReferenceMap);
         sampleSlowPathAllocation(result, size, length);
         return result;
+    }
+
+    /**
+     * Check if the array is too big. This is an optimistic check because the heap probably has
+     * other objects in it, and the next collection could throw an OutOfMemoryError if this object
+     * is allocated and survives.
+     */
+    static void checkArrayLikeObjectSizeBeforeAllocation(UnsignedWord sizeInBytes) {
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
+        if (GCImpl.getPolicy().isOutOfMemory(sizeInBytes) && !GCImpl.shouldIgnoreOutOfMemory()) {
+            OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+            throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
+        }
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
