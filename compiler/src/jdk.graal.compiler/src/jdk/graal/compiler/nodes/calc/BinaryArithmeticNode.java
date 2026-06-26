@@ -183,6 +183,14 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return umax(v1, v2, view);
         } else if (IntegerStamp.OPS.getUMin().equals(op)) {
             return umin(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSAdd().equals(op)) {
+            return SaturatingAddNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSSub().equals(op)) {
+            return SaturatingSubNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSUAdd().equals(op)) {
+            return SaturatingUAddNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSUSub().equals(op)) {
+            return SaturatingUSubNode.create(v1, v2, view);
         } else if (Arrays.asList(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryIntegerOp is not implemented yet", op));
         } else {
@@ -602,6 +610,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof UnsignedMaxNode) {
             // Re-association from "umax(x, umax(y, C))" to "umax(umax(x, y), C)"
             return UnsignedMaxNode.create(matchValue, UnsignedMaxNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof SaturatingUAddNode) {
+            return SaturatingUAddNode.create(matchValue, SaturatingUAddNode.create(otherValue1, otherValue2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node); // ExcludeFromJacocoGeneratedReport
         }
@@ -719,6 +729,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return UnsignedMaxNode.create(a, UnsignedMaxNode.create(m1, m2, view), view);
         } else if (node instanceof UnsignedMinNode) {
             return UnsignedMinNode.create(a, UnsignedMinNode.create(m1, m2, view), view);
+        } else if (node instanceof SaturatingUAddNode) {
+            return SaturatingUAddNode.create(a, SaturatingUAddNode.create(m1, m2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node); // ExcludeFromJacocoGeneratedReport
         }

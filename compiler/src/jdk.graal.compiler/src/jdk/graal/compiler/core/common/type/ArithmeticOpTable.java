@@ -43,6 +43,10 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.MulHigh;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Rem;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.SAdd;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.SSub;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.SUAdd;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.SUSub;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Sub;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMax;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMin;
@@ -102,6 +106,14 @@ public final class ArithmeticOpTable {
     private final BinaryOp<UMax> umax;
     private final BinaryOp<UMin> umin;
 
+    /*
+     * The S prefix means saturating. SU combines saturating with unsigned.
+     */
+    private final BinaryOp<SAdd> sadd;
+    private final BinaryOp<SSub> ssub;
+    private final BinaryOp<SUAdd> suadd;
+    private final BinaryOp<SUSub> susub;
+
     private final TernaryOp<FMA> fma;
 
     private final ReinterpretOp reinterpret;
@@ -121,7 +133,7 @@ public final class ArithmeticOpTable {
     }
 
     public BinaryOp<?>[] getBinaryOps() {
-        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor, max, min, umax, umin};
+        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor, max, min, umax, umin, sadd, ssub, suadd, susub};
     }
 
     public UnaryOp<?>[] getUnaryOps() {
@@ -137,7 +149,7 @@ public final class ArithmeticOpTable {
     }
 
     public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null);
 
     public interface ArithmeticOpWrapper {
 
@@ -195,6 +207,10 @@ public final class ArithmeticOpTable {
         BinaryOp<Min> min = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMin());
         BinaryOp<UMax> umax = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMax());
         BinaryOp<UMin> umin = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMin());
+        BinaryOp<SAdd> sadd = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getSAdd());
+        BinaryOp<SSub> ssub = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getSSub());
+        BinaryOp<SUAdd> suadd = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getSUAdd());
+        BinaryOp<SUSub> susub = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getSUSub());
 
         TernaryOp<FMA> fma = wrapIfNonNull(wrapper::wrapTernaryOp, inner.getFMA());
 
@@ -204,14 +220,15 @@ public final class ArithmeticOpTable {
         BinaryOp<Expand> expand = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getExpand());
 
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
-        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma,
-                        reinterpret, compress, expand, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, sadd, ssub,
+                        suadd, susub, fma, reinterpret, compress, expand, floatConvert);
     }
 
     public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
                     IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, BinaryOp<UMax> umax,
-                    BinaryOp<UMin> umin, TernaryOp<FMA> fma, ReinterpretOp reinterpret, BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
+                    BinaryOp<UMin> umin, BinaryOp<SAdd> sadd, BinaryOp<SSub> ssub, BinaryOp<SUAdd> suadd, BinaryOp<SUSub> susub, TernaryOp<FMA> fma, ReinterpretOp reinterpret,
+                    BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -236,6 +253,10 @@ public final class ArithmeticOpTable {
         this.min = min;
         this.umax = umax;
         this.umin = umin;
+        this.sadd = sadd;
+        this.ssub = ssub;
+        this.suadd = suadd;
+        this.susub = susub;
         this.fma = fma;
         this.reinterpret = reinterpret;
         this.compress = compress;
@@ -245,8 +266,8 @@ public final class ArithmeticOpTable {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand,
-                        Arrays.hashCode(floatConvert));
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, sadd, ssub, suadd, susub, fma,
+                        reinterpret, compress, expand, Arrays.hashCode(floatConvert));
     }
 
     @Override
@@ -423,6 +444,34 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes a saturating signed addition operation.
+     */
+    public BinaryOp<SAdd> getSAdd() {
+        return sadd;
+    }
+
+    /**
+     * Describes a saturating signed subtraction operation.
+     */
+    public BinaryOp<SSub> getSSub() {
+        return ssub;
+    }
+
+    /**
+     * Describes a saturating unsigned addition operation.
+     */
+    public BinaryOp<SUAdd> getSUAdd() {
+        return suadd;
+    }
+
+    /**
+     * Describes a saturating unsigned subtraction operation.
+     */
+    public BinaryOp<SUSub> getSUSub() {
+        return susub;
+    }
+
+    /**
      * Describes the fma operation (a * b + c).
      */
     public TernaryOp<FMA> getFMA() {
@@ -487,6 +536,10 @@ public final class ArithmeticOpTable {
                Objects.equals(min, that.min) &&
                Objects.equals(umax, that.umax) &&
                Objects.equals(umin, that.umin) &&
+               Objects.equals(sadd, that.sadd) &&
+               Objects.equals(ssub, that.ssub) &&
+               Objects.equals(suadd, that.suadd) &&
+               Objects.equals(susub, that.susub) &&
                Objects.equals(fma, that.fma) &&
                Objects.equals(reinterpret, that.reinterpret) &&
                Objects.equals(compress, that.compress) &&
@@ -518,7 +571,7 @@ public final class ArithmeticOpTable {
     public String toString() {
         return getClass().getSimpleName() + "[" +
                         toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt,
-                                        zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand) +
+                                        zeroExtend, signExtend, narrow, max, min, umax, umin, sadd, ssub, suadd, susub, fma, reinterpret, compress, expand) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -718,6 +771,46 @@ public final class ArithmeticOpTable {
 
             protected UMin(boolean associative, boolean commutative) {
                 super("UMIN", associative, commutative);
+            }
+        }
+
+        /**
+         * Describes saturating signed addition.
+         */
+        public abstract static class SAdd extends BinaryOp<SAdd> {
+
+            protected SAdd(boolean associative, boolean commutative) {
+                super("SADD", associative, commutative);
+            }
+        }
+
+        /**
+         * Describes saturating signed subtraction.
+         */
+        public abstract static class SSub extends BinaryOp<SSub> {
+
+            protected SSub(boolean associative, boolean commutative) {
+                super("SSUB", associative, commutative);
+            }
+        }
+
+        /**
+         * Describes saturating unsigned addition.
+         */
+        public abstract static class SUAdd extends BinaryOp<SUAdd> {
+
+            protected SUAdd(boolean associative, boolean commutative) {
+                super("SUADD", associative, commutative);
+            }
+        }
+
+        /**
+         * Describes saturating unsigned subtraction.
+         */
+        public abstract static class SUSub extends BinaryOp<SUSub> {
+
+            protected SUSub(boolean associative, boolean commutative) {
+                super("SUSUB", associative, commutative);
             }
         }
 

@@ -196,6 +196,50 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return ((AMD64) target.arch).getFeatures().contains(feature);
     }
 
+    @Override
+    public Value emitSaturatingAdd(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPADDSB;
+            case WORD -> VexRVMOp.VPADDSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingSub(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPSUBSB;
+            case WORD -> VexRVMOp.VPSUBSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingUnsignedAdd(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPADDUSB;
+            case WORD -> VexRVMOp.VPADDUSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingUnsignedSub(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPSUBUSB;
+            case WORD -> VexRVMOp.VPSUBUSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
     protected Variable emitShift(VexShiftOp op, Value a, Value b) {
         if (isConstantValue(b) && asConstant(b) instanceof PrimitiveConstant) {
             int bInt = ((PrimitiveConstant) asConstant(b)).asInt();

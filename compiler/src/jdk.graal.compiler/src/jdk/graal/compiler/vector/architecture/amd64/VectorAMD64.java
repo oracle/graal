@@ -1002,6 +1002,30 @@ public final class VectorAMD64 extends VectorArchitecture {
                             entry(IntegerStamp.OPS.getUMin(),
                                             REGULAR_INTEGER_MINMAX),
 
+                            entry(IntegerStamp.OPS.getSAdd(),
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(DWORD_BITS, null),
+                                            op(QWORD_BITS, null)),
+
+                            entry(IntegerStamp.OPS.getSSub(),
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(DWORD_BITS, null),
+                                            op(QWORD_BITS, null)),
+
+                            entry(IntegerStamp.OPS.getSUAdd(),
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(DWORD_BITS, null),
+                                            op(QWORD_BITS, null)),
+
+                            entry(IntegerStamp.OPS.getSUSub(),
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512BW_VL),
+                                            op(DWORD_BITS, null),
+                                            op(QWORD_BITS, null)),
+
                             entry(IntegerStamp.OPS.getCompress(),
                                             op(BYTE_BITS, null),
                                             op(WORD_BITS, null),
