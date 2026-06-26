@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -244,23 +245,31 @@ public final class BytecodeOSRMetadata {
         if (isDisabled()) {
             return null;
         }
+        FrameWithoutBoxing frame = (FrameWithoutBoxing) parentFrame;
         LazyState state = getLazyState();
-        assert state.frameDescriptor == null || state.frameDescriptor == parentFrame.getFrameDescriptor();
+        assert state.frameDescriptor == null || state.frameDescriptor == frame.getFrameDescriptor();
         OptimizedCallTarget callTarget = state.compilationMap.get(target);
         if (callTarget == null) {
             callTarget = ((Node) osrNode).atomic(() -> {
                 OptimizedCallTarget lockedTarget = state.compilationMap.get(target);
                 if (lockedTarget == null) {
-                    lockedTarget = createOSRTarget(target, interpreterState, parentFrame.getFrameDescriptor());
+                    lockedTarget = createOSRTarget(target, interpreterState, frame.getFrameDescriptor(), seenMaterializedFrame(frame.getFrameDescriptor()));
                     state.push(target, lockedTarget);
                     if (stage == FRESH_STAGE) {
                         // First attempt at compilation gets a free pass
-                        requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
+                        requestOSRCompilation(target, lockedTarget, frame);
                         stage = HOT_STAGE;
                     }
-                    // Set the OSR target's loop count to the count of the non OSR call target
-                    OptimizedCallTarget nonOSRCallTarget = (OptimizedCallTarget) ((Node) osrNode).getRootNode().getCallTarget();
-                    lockedTarget.onLoopCount(nonOSRCallTarget.getCallAndLoopCount());
+                }
+                return lockedTarget;
+            });
+        } else if (seenMaterializedFrame(frame.getFrameDescriptor()) && !usesParentFrameTarget(callTarget)) {
+            // Update to a call target that uses the parent frame.
+            callTarget = ((Node) osrNode).atomic(() -> {
+                OptimizedCallTarget lockedTarget = state.compilationMap.get(target);
+                if (!usesParentFrameTarget(lockedTarget)) {
+                    lockedTarget = createOSRTarget(target, interpreterState, frame.getFrameDescriptor(), true);
+                    state.push(target, lockedTarget);
                 }
                 return lockedTarget;
             });
@@ -281,7 +290,7 @@ public final class BytecodeOSRMetadata {
             if (callTarget.isCompilationFailed()) {
                 markOSRDisabled();
             } else if (backEdgeCount >= secondaryOsrThreshold) {
-                requestOSRCompilation(target, callTarget, (FrameWithoutBoxing) parentFrame);
+                requestOSRCompilation(target, callTarget, frame);
                 // Can happen for very quick compilation or if background compilation is disabled.
                 valid = callTarget.isValid();
             }
@@ -363,9 +372,28 @@ public final class BytecodeOSRMetadata {
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
-    private OptimizedCallTarget createOSRTarget(long target, Object interpreterState, FrameDescriptor frameDescriptor) {
+    private OptimizedCallTarget createOSRTarget(long target, Object interpreterState, FrameDescriptor frameDescriptor, boolean useParentFrame) {
         TruffleLanguage<?> language = OptimizedRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
-        return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, new OsrEntryDescription()).getCallTarget();
+        BytecodeOSRRootNode rootNode;
+        if (useParentFrame) {
+            rootNode = new BytecodeOSRRootNode.ParentFrameOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, new OsrEntryDescription());
+        } else {
+            rootNode = new BytecodeOSRRootNode.VirtualFrameOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, new OsrEntryDescription());
+        }
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+        // Seed the OSR target with the current loop/call count of the non-OSR target.
+        OptimizedCallTarget nonOSRCallTarget = (OptimizedCallTarget) ((Node) osrNode).getRootNode().getCallTarget();
+        callTarget.onLoopCount(nonOSRCallTarget.getCallAndLoopCount());
+        return callTarget;
+    }
+
+    private static boolean seenMaterializedFrame(FrameDescriptor frameDescriptor) {
+        return ((OptimizedTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
+    }
+
+    private static boolean usesParentFrameTarget(OptimizedCallTarget callTarget) {
+        assert callTarget.getRootNode() instanceof BytecodeOSRRootNode;
+        return ((BytecodeOSRRootNode) callTarget.getRootNode()).usesParentFrame();
     }
 
     private void requestOSRCompilation(long target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {

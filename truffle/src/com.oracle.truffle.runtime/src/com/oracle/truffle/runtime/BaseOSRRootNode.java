@@ -81,10 +81,37 @@ public abstract class BaseOSRRootNode extends RootNode {
 
     @Override
     protected final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        return OptimizedRuntimeAccessor.NODES.prepareForCompilation(getOriginalRootNode(), rootCompilation, compilationTier, lastTier);
+    }
+
+    @Override
+    protected boolean isCaptureFramesForTrace(boolean compiledFrame) {
+        return OptimizedRuntimeAccessor.NODES.isCaptureFramesForTrace(getOriginalRootNode(), compiledFrame);
+    }
+
+    @Override
+    protected boolean countsTowardsStackTraceLimit() {
+        // OSR frames are combined with their non-OSR frames in stack traces.
+        return false;
+    }
+
+    private RootNode getOriginalRootNode() {
         Node node = (Node) loopNode; // safe to cast, always a Node
         RootNode root = node.getRootNode();
         assert root != null : "Loop and OSR nodes must be adopted";
-        return OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
+        return root;
+    }
+
+    /**
+     * Returns the effective execution frame for this OSR root.
+     * <p>
+     * The frame passed to {@link #execute(VirtualFrame)} may differ from the frame used by
+     * {@link #executeOSR(VirtualFrame)} to execute guest code. The returned frame is used for
+     * operations that should reflect the effective execution frame, such as attaching lazy
+     * exception stack trace information.
+     */
+    protected VirtualFrame getFrame(VirtualFrame frame) {
+        return frame;
     }
 
     /**
