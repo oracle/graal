@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -522,6 +522,24 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return graph.addOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
     }
 
+    /**
+     * Computes the index used to form the final array address for an indexed load or store.
+     * <p>
+     * The bounds check is still represented by {@code boundsCheck}. When
+     * {@code SpectrePHTIndexMasking} is enabled, the index calculation goes through
+     * {@link #proxyIndex(AccessIndexedNode, ValueNode, ValueNode, LoweringTool)} so mis-speculated
+     * out-of-bounds indices are redirected to an in-bounds element before the address is
+     * materialized.
+     */
+    protected ValueNode createArrayAddressIndex(AccessIndexedNode indexed, ValueNode array, GuardingNode boundsCheck, LoweringTool tool) {
+        StructuredGraph graph = indexed.graph();
+        ValueNode addressIndex = indexed.index();
+        if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
+            addressIndex = graph.addOrUniqueWithInputs(proxyIndex(indexed, addressIndex, array, tool));
+        }
+        return createPositiveIndex(graph, addressIndex, boundsCheck);
+    }
+
     public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
         return createArrayAddress(graph, array, elementKind, createPositiveIndex(graph, index, boundsCheck));
     }
@@ -567,12 +585,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         Stamp loadStamp = loadStamp(loadIndexed.stamp(NodeView.DEFAULT), elementKind);
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
-        ValueNode index = loadIndexed.index();
-        if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
-            index = graph.addOrUniqueWithInputs(proxyIndex(loadIndexed, index, array, tool));
-        }
-        ValueNode positiveIndex = createPositiveIndex(graph, index, boundsCheck);
-        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, elementKind, positiveIndex);
+        ValueNode addressIndex = createArrayAddressIndex(loadIndexed, array, boundsCheck, tool);
+        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, elementKind, addressIndex);
 
         LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(elementKind);
         ReadNode memoryRead = graph.add(new ReadNode(address, arrayLocation, loadStamp, barrierSet.readBarrierType(arrayLocation, address, loadStamp), MemoryOrderMode.PLAIN));
@@ -628,8 +642,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             }
         }
         BarrierType barrierType = barrierSet.arrayWriteBarrierType(storageKind);
-        ValueNode positiveIndex = createPositiveIndex(graph, storeIndexed.index(), boundsCheck);
-        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, storageKind, positiveIndex);
+        ValueNode addressIndex = createArrayAddressIndex(storeIndexed, array, boundsCheck, tool);
+        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, storageKind, addressIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(storageKind), implicitStoreConvert(graph, storageKind, value),
                         barrierType, MemoryOrderMode.PLAIN));
         memoryWrite.setGuard(boundsCheck);
