@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
 import com.oracle.svm.core.locks.VMMutex;
@@ -156,7 +156,7 @@ public final class JfrThreadRepository implements JfrRepository {
             JfrThreadEpochData epochData = getEpochData(false);
             if (!epochData.threadTable.putIfAbsent(visitedThread)) {
                 if (vthread != null) {
-                    vthread.jfrEpochId = JfrTraceIdEpoch.getInstance().currentEpochId();
+                    vthread.jfrEpochId = JfrEpoch.getInstance().currentEpochId();
                 }
                 return;
             }
@@ -184,7 +184,7 @@ public final class JfrThreadRepository implements JfrRepository {
             }
 
             if (vthread != null) {
-                vthread.jfrEpochId = JfrTraceIdEpoch.getInstance().currentEpochId();
+                vthread.jfrEpochId = JfrEpoch.getInstance().currentEpochId();
             }
 
             epochData.unflushedThreadCount++;
@@ -207,7 +207,7 @@ public final class JfrThreadRepository implements JfrRepository {
 
         /* Threads only need to be registered once per epoch. */
         Target_java_lang_VirtualThread vthread = JavaThreads.toVirtualTarget(thread);
-        long epochId = JfrTraceIdEpoch.getInstance().currentEpochId();
+        long epochId = JfrEpoch.getInstance().currentEpochId();
         return vthread.jfrEpochId == epochId;
     }
 
@@ -320,7 +320,7 @@ public final class JfrThreadRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrThreadEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        boolean epoch = previousEpoch ? JfrEpoch.getInstance().previousEpoch() : JfrEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 

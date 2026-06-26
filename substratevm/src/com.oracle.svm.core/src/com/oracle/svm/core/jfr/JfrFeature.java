@@ -35,7 +35,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
 import com.oracle.svm.core.sampler.SamplerStackTraceSerializer;
@@ -81,7 +81,7 @@ import jdk.jfr.internal.jfc.JFC;
  * <li>When the active chunk exceeds a certain threshold, then it is necessary to start a new chunk
  * (and maybe a new file), see {@link JfrChunkWriter}. Before doing that, some metadata and all
  * thread-local/global data that is currently in flight must be flushed to the old file. This
- * operation needs a safepoint and also changes the JFR epoch, see {@link JfrTraceIdEpoch}.</li>
+ * operation needs a safepoint and also changes the JFR epoch, see {@link JfrEpoch}.</li>
  * </ul>
  *
  * A lot of the JFR infrastructure is {@link Uninterruptible} and uses native memory instead of the
@@ -161,7 +161,7 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations, true));
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
-        ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
+        ImageSingletons.add(JfrEpoch.class, new JfrEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
         ImageSingletons.add(JfrExecutionSamplerSupported.class, new JfrExecutionSamplerSupported());
         ImageSingletons.add(SamplerStackTraceSerializer.class, new SamplerJfrStackTraceSerializer());
