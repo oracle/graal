@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final RegexSource source;
     private RegexFlags flags;
     private AbstractRegexObject flavorSpecificFlags;
-    private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
+    private final Counter.ThresholdCounter nodeCount;
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final RegexProperties properties = new RegexProperties();
     private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
@@ -118,6 +118,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         this.language = language;
         this.source = source;
         this.flags = flags;
+        this.nodeCount = new Counter.ThresholdCounter(source.getOptions().getMaxParserTreeSize(), "parse tree explosion");
         this.sourceSections = source.getOptions().isDumpAutomataWithSourceSections() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 

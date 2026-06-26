@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
  * This implementation of {@link CounterTracker} is used for quantifiers with very large bounds. It
@@ -215,7 +216,7 @@ public class CounterTrackerList extends CounterTracker {
         int[] bufDst = intArrays[bufferPointerDst];
         if (CompilerDirectives.injectBranchProbability(UNLIKELY_PROBABILITY, size > bufDst.length)) {
             // round buffer size to nearest power of 2
-            bufDst = new int[1 << (32 - Integer.numberOfLeadingZeros(size - 1))];
+            bufDst = new int[MathUtil.ceilPowerOf2(size)];
             intArrays[bufferPointerDst] = bufDst;
         }
         System.arraycopy(getBuffer(src, fixedData, intArrays), start, bufDst, 0, size);

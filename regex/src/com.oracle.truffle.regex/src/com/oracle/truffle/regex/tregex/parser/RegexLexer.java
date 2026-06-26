@@ -50,15 +50,18 @@ import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
@@ -89,6 +92,7 @@ public abstract class RegexLexer {
     private int charClassEmitInvalidRangeAtoms = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
+    private int classSetNesting = 0;
     protected final CompilationBuffer compilationBuffer;
 
     public RegexLexer(RegexSource source, CompilationBuffer compilationBuffer) {
@@ -1245,69 +1249,78 @@ public abstract class RegexLexer {
     }
 
     protected ClassSetContents parseClassSetExpression() throws RegexSyntaxException {
-        final boolean invert = consumingLookahead("^");
-        ClassSetContentsAccumulator curClassSet = new ClassSetContentsAccumulator();
-        ClassSetOperator operator = null;
-        boolean firstOperandIsRange = false;
-        int startPos = position;
-        while (!atEnd()) {
-            if (curChar() == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != startPos)) {
-                advance();
-                if (invert && curClassSet.mayContainStrings()) {
-                    throw handleComplementOfStringSet();
-                }
-                if (invert) {
-                    assert !curClassSet.mayContainStrings() && curClassSet.isCodePointSetOnly();
-                    return ClassSetContents.createCharacterClass(complementClassSet(curClassSet.getCodePointSet()));
-                } else {
-                    EconomicSet<String> stringsCopy = EconomicSet.create(curClassSet.getStrings().size());
-                    stringsCopy.addAll(curClassSet.getStrings());
-                    return ClassSetContents.createClass(curClassSet.getCodePointSet(), stringsCopy, curClassSet.mayContainStrings());
-                }
+        classSetNesting++;
+        try {
+            if (classSetNesting > TRegexOptions.TRegexParserTreeMaxNestingLevel) {
+                throw new UnsupportedRegexException("Class set expression maximum nesting level exceeded");
             }
+            final boolean invert = consumingLookahead("^");
+            ClassSetContentsAccumulator curClassSet = new ClassSetContentsAccumulator();
+            ClassSetOperator operator = null;
+            boolean firstOperandIsRange = false;
+            int startPos = position;
+            while (!atEnd()) {
+                RegexRootNode.checkThreadInterrupted();
+                if (curChar() == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != startPos)) {
+                    advance();
+                    if (invert && curClassSet.mayContainStrings()) {
+                        throw handleComplementOfStringSet();
+                    }
+                    if (invert) {
+                        assert !curClassSet.mayContainStrings() && curClassSet.isCodePointSetOnly();
+                        return ClassSetContents.createCharacterClass(complementClassSet(curClassSet.getCodePointSet()));
+                    } else {
+                        EconomicSet<String> stringsCopy = EconomicSet.create(curClassSet.getStrings().size());
+                        stringsCopy.addAll(curClassSet.getStrings());
+                        return ClassSetContents.createClass(curClassSet.getCodePointSet(), stringsCopy, curClassSet.mayContainStrings());
+                    }
+                }
 
-            boolean atStart = position == startPos;
-            ClassSetOperator newOperator = parseClassSetOperator();
-            if (atStart) {
-                if (newOperator != ClassSetOperator.Union) {
+                boolean atStart = position == startPos;
+                ClassSetOperator newOperator = parseClassSetOperator();
+                if (atStart) {
+                    if (newOperator != ClassSetOperator.Union) {
+                        throw handleMissingClassSetOperand(newOperator);
+                    }
+                } else {
+                    if (operator == null) {
+                        // first operator
+                        operator = newOperator;
+                        if (firstOperandIsRange && operator != ClassSetOperator.Union) {
+                            throw handleRangeAsClassSetOperand(operator);
+                        }
+                    } else if (operator != newOperator) {
+                        throw handleMixedClassSetOperators(operator, newOperator);
+                    }
+                }
+
+                if (atEnd()) {
+                    break;
+                }
+                if (curChar() == ']') {
                     throw handleMissingClassSetOperand(newOperator);
                 }
-            } else {
+
+                ClassSetContents operand = parseClassSetOperandOrRange();
+                if (operand.isRange() && operator != null && operator != ClassSetOperator.Union) {
+                    throw handleRangeAsClassSetOperand(operator);
+                }
                 if (operator == null) {
-                    // first operator
-                    operator = newOperator;
-                    if (firstOperandIsRange && operator != ClassSetOperator.Union) {
-                        throw handleRangeAsClassSetOperand(operator);
+                    // first operand
+                    curClassSet.addAll(operand);
+                    firstOperandIsRange = operand.isRange();
+                } else {
+                    switch (operator) {
+                        case Union -> curClassSet.addAll(operand);
+                        case Intersection -> curClassSet.retainAll(operand);
+                        case Difference -> curClassSet.removeAll(operand, encoding);
                     }
-                } else if (operator != newOperator) {
-                    throw handleMixedClassSetOperators(operator, newOperator);
                 }
             }
-
-            if (atEnd()) {
-                break;
-            }
-            if (curChar() == ']') {
-                throw handleMissingClassSetOperand(newOperator);
-            }
-
-            ClassSetContents operand = parseClassSetOperandOrRange();
-            if (operand.isRange() && operator != null && operator != ClassSetOperator.Union) {
-                throw handleRangeAsClassSetOperand(operator);
-            }
-            if (operator == null) {
-                // first operand
-                curClassSet.addAll(operand);
-                firstOperandIsRange = operand.isRange();
-            } else {
-                switch (operator) {
-                    case Union -> curClassSet.addAll(operand);
-                    case Intersection -> curClassSet.retainAll(operand);
-                    case Difference -> curClassSet.removeAll(operand, encoding);
-                }
-            }
+            throw handleUnmatchedLeftBracket();
+        } finally {
+            classSetNesting--;
         }
-        throw handleUnmatchedLeftBracket();
     }
 
     private ClassSetOperator parseClassSetOperator() {

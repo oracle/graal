@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
@@ -290,6 +291,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * backreferences are not allowed.
      */
     private int lookbehindDepth;
+    private int parseDepth;
+    private int charClassNesting;
     /**
      * For syntax checking purposes, we need to maintain some metadata about the current enclosing
      * capture groups.
@@ -379,6 +382,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         this.globalFlags = new RubyFlags(inFlags);
         this.flagsStack = new LinkedList<>();
         this.lookbehindDepth = 0;
+        this.parseDepth = 0;
+        this.charClassNesting = 0;
         this.groupStack = new ArrayDeque<>();
         this.namedCaptureGroups = null;
         this.groupIndex = 0;
@@ -747,29 +752,37 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * vertical bars.
      */
     private void disjunction(boolean toplevel) {
-        boolean beginningAnchor = beginningAnchor();
-        if (beginningAnchor && !toplevel) {
-            bailOut("\\G anchor is only supported in top-level alternatives");
-        }
-
-        while (true) {
-            alternative();
-
-            if (match("|")) {
-                nextSequence();
-                canHaveQuantifier = false;
-
-                if (beginningAnchor() != beginningAnchor) {
-                    bailOut("\\G anchor is only supported when used at the start of all top-level alternatives");
-                }
-            } else {
-                break;
+        parseDepth++;
+        try {
+            if (parseDepth > TRegexOptions.TRegexParserTreeMaxNestingLevel) {
+                bailOut("pattern maximum nesting level exceeded");
             }
-        }
+            boolean beginningAnchor = beginningAnchor();
+            if (beginningAnchor && !toplevel) {
+                bailOut("\\G anchor is only supported in top-level alternatives");
+            }
 
-        if (beginningAnchor) {
-            assert toplevel;
-            startsWithBeginningAnchor = true;
+            while (true) {
+                alternative();
+
+                if (match("|")) {
+                    nextSequence();
+                    canHaveQuantifier = false;
+
+                    if (beginningAnchor() != beginningAnchor) {
+                        bailOut("\\G anchor is only supported when used at the start of all top-level alternatives");
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if (beginningAnchor) {
+                assert toplevel;
+                startsWithBeginningAnchor = true;
+            }
+        } finally {
+            parseDepth--;
         }
     }
 
@@ -1463,7 +1476,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a line-break matcher. We do not support this because it entails support for atomic
      * expressions, i.e. cuts in the backtracking.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean lineBreak() {
@@ -1493,7 +1506,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses an extended grapheme cluster. We do not support this because it entails support for
      * atomic expressions, i.e. cuts in the backtracking.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean extendedGraphemeCluster() {
@@ -1510,7 +1523,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a keep command. This instructs the regex engine to trim the current match to the
      * current position. ECMAScript regular expressions don't have support for anything of this
      * sort.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean keepCommand() {
@@ -1526,7 +1539,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a subexpression call. We do not support this as ECMAScript has no similar notion and
      * operates with finite memory (no stack).
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean subexpressionCall() {
@@ -1549,7 +1562,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a string escape, which is an escape sequence that matches a series of characters. In
      * Ruby, this can be seen when using the \\u{... ... ...} syntax to escape a sequence of
      * characters using their Unicode codepoint values.
-     * 
+     *
      * @return true if parsed correctly
      */
     private boolean stringEscape() {
@@ -1589,7 +1602,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * <li>syntax character escapes like \., \* or \\</li>
      * <li>any superfluous uses of backslash, e.g. \: or \"</li>
      * </ul>
-     * 
+     *
      * @return the escaped codepoint
      */
     private int fetchEscapedChar() {
@@ -1765,6 +1778,18 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private void collectCharClass() {
+        charClassNesting++;
+        try {
+            if (charClassNesting > TRegexOptions.TRegexParserTreeMaxNestingLevel) {
+                bailOut("pattern maximum nesting level exceeded");
+            }
+            collectCharClassBody();
+        } finally {
+            charClassNesting--;
+        }
+    }
+
+    private void collectCharClassBody() {
         boolean negated = false;
         int beginPos = position - 1;
         if (match("^")) {
