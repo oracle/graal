@@ -40,7 +40,6 @@ import org.junit.After;
 import com.oracle.svm.test.jfr.events.EndStreamEvent;
 import com.oracle.svm.test.jfr.events.StartStreamEvent;
 
-import jdk.jfr.Configuration;
 import jdk.jfr.consumer.RecordingStream;
 
 public abstract class JfrStreamingTest extends AbstractJfrTest {
@@ -56,13 +55,17 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
     }
 
     protected RecordingStream startStream(String[] events) throws Throwable {
-        Configuration config = getDefaultConfiguration();
-        return startStream(new RecordingStream(config), events, _ -> {
+        return startStream(events, true);
+    }
+
+    protected RecordingStream startStream(String[] events, boolean includeDefaultEvents) throws Throwable {
+        return startStream(events, includeDefaultEvents, _ -> {
         });
     }
 
-    protected RecordingStream startMinimalStream(String[] events, Consumer<RecordingStream> configurer) throws Throwable {
-        return startStream(new RecordingStream(), events, configurer);
+    protected RecordingStream startStream(String[] events, boolean includeDefaultEvents, Consumer<RecordingStream> configurer) throws Throwable {
+        RecordingStream stream = includeDefaultEvents ? new RecordingStream(getDefaultConfiguration()) : new RecordingStream();
+        return startStream(stream, events, configurer);
     }
 
     private RecordingStream startStream(RecordingStream stream, String[] events, Consumer<RecordingStream> configurer) throws Throwable {
@@ -85,24 +88,16 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
     }
 
     protected void stopStream(RecordingStream stream, EventValidator validator) throws Throwable {
-        stopStream(stream, validator, true);
-    }
-
-    protected void stopStream(RecordingStream stream, EventValidator validator, boolean validateTestedEventsOnly) throws Throwable {
         Path jfrFile = createTempJfrFile();
         stream.dump(jfrFile);
-        stopStream(stream, validator, validateTestedEventsOnly, jfrFile);
+        stopStream(stream, validator, jfrFile);
     }
 
     protected void stopStream(RecordingStream stream, EventValidator validator, Path jfrFile) throws Throwable {
-        stopStream(stream, validator, true, jfrFile);
-    }
-
-    protected void stopStream(RecordingStream stream, EventValidator validator, boolean validateTestedEventsOnly, Path jfrFile) throws Throwable {
         closeStream(stream);
 
         JfrStreamState state = streamStates.get(stream);
-        checkRecording(validator, jfrFile, state, validateTestedEventsOnly);
+        checkRecording(validator, jfrFile, state, true);
     }
 
     private void startStream(RecordingStream stream) throws InterruptedException {

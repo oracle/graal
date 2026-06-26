@@ -30,11 +30,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractQueuedLongSynchronizer;
 import java.util.concurrent.locks.LockSupport;
 
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
@@ -123,6 +125,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         ConditionNode nextWaiter; // link to next waiting node
         long notifierJfrTid;
         String notifierJfrVThreadName;
+        long notifierJfrVThreadEpochId;
 
         // see AbstractQueuedLongSynchronizer.ConditionNode.isReleasable()
         public boolean isReleasable() {
@@ -140,6 +143,22 @@ public abstract class JavaMonitorQueuedSynchronizer {
                 LockSupport.park(this);
             }
             return true;
+        }
+
+        public void setJfrNotifier() {
+            if (!HasJfrSupport.get()) {
+                return;
+            }
+
+            Thread currentThread = Thread.currentThread();
+            notifierJfrTid = JavaThreads.getThreadId(currentThread);
+            if (JavaThreads.isVirtual(currentThread)) {
+                notifierJfrVThreadName = currentThread.getName();
+                notifierJfrVThreadEpochId = JfrThreadRepository.getVThreadEpochId(currentThread);
+            } else {
+                notifierJfrVThreadName = null;
+                notifierJfrVThreadEpochId = JfrEpoch.NO_EPOCH_ID;
+            }
         }
     }
 
@@ -521,8 +540,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
                     /* JFR-related code is SVM-specific. */
-                    first.notifierJfrTid = SubstrateJVM.getCurrentThreadId();
-                    first.notifierJfrVThreadName = SubstrateJVM.getOptionalCurrentThreadName();
+                    first.setJfrNotifier();
                     enqueue(first);
                     if (!all) {
                         break;
@@ -631,7 +649,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
             /* JFR-related code is SVM-specific. */
             long startTicks = JfrTicks.elapsedTicks();
             if (Thread.interrupted()) {
-                JavaMonitorWaitEvent.emit(startTicks, obj, 0, null, 0L, false);
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, null, JfrEpoch.NO_EPOCH_ID, 0L, false);
                 throw new InterruptedException();
             }
             ConditionNode node = newConditionNode();
@@ -654,7 +672,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
             }
             node.clearStatus();
             // waiting is done, emit wait event
-            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, node.notifierJfrVThreadName, 0L, false);
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, node.notifierJfrVThreadName, node.notifierJfrVThreadEpochId, 0L, false);
             reacquire(node, savedAcquisitions);
             if (interrupted) {
                 if (cancelled) {
@@ -672,7 +690,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
             long startTicks = JfrTicks.elapsedTicks();
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {
-                JavaMonitorWaitEvent.emit(startTicks, obj, 0, null, 0L, false);
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, null, JfrEpoch.NO_EPOCH_ID, 0L, false);
                 throw new InterruptedException();
             }
             ConditionNode node = newConditionNode();
@@ -695,7 +713,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
             }
             node.clearStatus();
             // waiting is done, emit wait event
-            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, node.notifierJfrVThreadName, time, cancelled);
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, node.notifierJfrVThreadName, node.notifierJfrVThreadEpochId, time, cancelled);
             reacquire(node, savedAcquisitions);
             if (cancelled) {
                 unlinkCancelledWaiters(node);

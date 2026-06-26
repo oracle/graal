@@ -40,11 +40,17 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
+/**
+ * Checks that JFR events can resolve virtual-thread references that are captured before chunk
+ * rotation but written afterwards. This covers monitor owners, monitor notifiers, thread parents,
+ * and VM operation callers.
+ */
 public class TestVirtualThreadsDelayedThreadReferences extends JfrRecordingTest {
     private static final String CONTENDER_NAME = "TestVirtualThreadsDelayedThreadReferences-contender";
     private static final String WAITER_NAME = "TestVirtualThreadsDelayedThreadReferences-waiter";
@@ -78,7 +84,7 @@ public class TestVirtualThreadsDelayedThreadReferences extends JfrRecordingTest 
 
         Thread contender = new Thread(() -> {
             synchronized (helper) {
-                // no-op
+                GraalDirectives.blackhole(0);
             }
         }, CONTENDER_NAME);
         contender.start();

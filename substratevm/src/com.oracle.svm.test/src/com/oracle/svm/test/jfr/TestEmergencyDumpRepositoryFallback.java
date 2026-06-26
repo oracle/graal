@@ -38,9 +38,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.test.jfr.events.StringEvent;
@@ -56,14 +54,7 @@ public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
 
     @Test
     public void testRepositoryEmergencyChunkIsMergedIntoEmergencyDump() throws Throwable {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
-            return;
-        }
         AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
-        if (support == null) {
-            return;
-        }
-
         String tempDirectoryPrefix = ClassUtil.getUnqualifiedName(getClass()) + "-" + NON_ASCII_PATH_PART;
         Path repositoryDir = Files.createTempDirectory(tempDirectoryPrefix + "-repository-");
         Path dumpDir = Files.createTempDirectory(tempDirectoryPrefix + "-dump-");

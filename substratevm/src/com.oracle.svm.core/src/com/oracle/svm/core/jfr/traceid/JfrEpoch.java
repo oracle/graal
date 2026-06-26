@@ -46,6 +46,8 @@ import jdk.graal.compiler.api.replacements.Fold;
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class JfrEpoch {
+    public static final long NO_EPOCH_ID = 0L;
+
     private static final long EPOCH_0_BIT = 0b01;
     private static final long EPOCH_1_BIT = 0b10;
 

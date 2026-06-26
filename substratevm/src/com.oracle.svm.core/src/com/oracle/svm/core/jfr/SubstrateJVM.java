@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
 import java.util.List;
 
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -231,14 +228,18 @@ public class SubstrateJVM {
         return get().eventThrottler;
     }
 
+    @Fold
+    public static boolean shouldRegisterVThreadsEagerly() {
+        /*
+         * In a signal handler, we can only execute async-signal-safe code. Registering vthreads
+         * in the thread repository is therefore impossible, and we need to do that eagerly.
+         */
+        return HasJfrSupport.get() && JfrOptions.SignalHandlerBasedExecutionSampler.getValue();
+    }
+
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     protected boolean isRecording() {
         return recording;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isRecordingActive() {
-        return HasJfrSupport.get() && get().isRecording();
     }
 
     /**
@@ -337,22 +338,6 @@ public class SubstrateJVM {
             return JavaThreads.getCurrentThreadId();
         }
         return 0;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static String getOptionalCurrentThreadName() {
-        if (isRecordingActive() && CurrentIsolate.getCurrentThread().isNonNull()) {
-            Thread thread = JavaThreads.getCurrentThreadOrNull();
-            if (thread != null && JavaThreads.isVirtual(thread)) {
-                return thread.getName();
-            }
-        }
-        return null;
-    }
-
-    @Fold
-    public static boolean shouldRegisterVirtualThreadsOnMount() {
-        return HasJfrSupport.get() && ImageSingletons.contains(SubstrateSigprofHandler.class);
     }
 
     /**
@@ -558,9 +543,9 @@ public class SubstrateJVM {
         JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, Word.unsigned(uncommittedSize), requestedSize);
         if (newBuffer.isNull()) {
             /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
-            JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
+            JfrEventWriterAccess.updateBuffer(writer, oldBuffer, 0, false);
         } else {
-            JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
+            JfrEventWriterAccess.updateBuffer(writer, newBuffer, uncommittedSize, true);
         }
 
         /*

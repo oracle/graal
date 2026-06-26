@@ -30,6 +30,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 @TargetClass(className = "jdk.jfr.internal.event.EventWriter")
 public final class Target_jdk_jfr_internal_event_EventWriter {
     @Alias //
+    boolean pinVirtualThread;
+    @Alias //
     boolean excluded;
 
     @Alias //

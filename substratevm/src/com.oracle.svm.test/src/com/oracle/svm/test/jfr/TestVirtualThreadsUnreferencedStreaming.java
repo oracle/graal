@@ -45,6 +45,11 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingStream;
 
+/**
+ * Checks that streaming does not keep thread constant-pool entries for virtual threads that are not
+ * referenced by emitted events. This guards against retaining virtual-thread metadata only because a
+ * virtual thread existed during the recording.
+ */
 public class TestVirtualThreadsUnreferencedStreaming extends JfrStreamingTest {
     private static final int THREADS = 16;
     private static final String MARKER = "marker";
@@ -55,15 +60,7 @@ public class TestVirtualThreadsUnreferencedStreaming extends JfrStreamingTest {
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{"com.jfr.String"};
-        RecordingStream stream = startMinimalStream(events, s -> {
-            /*
-             * This test verifies that streamed events do not retain virtual threads that are not
-             * referenced by the streamed payload. Disable unrelated default thread lifecycle events
-             * so incidental ThreadStart/ThreadEnd metadata does not affect the assertion.
-             */
-            s.disable("jdk.ThreadStart");
-            s.disable("jdk.ThreadEnd");
-        });
+        RecordingStream stream = startStream(events, false);
 
         StringEvent stringEvent = new StringEvent();
         stringEvent.message = MARKER;
@@ -72,7 +69,7 @@ public class TestVirtualThreadsUnreferencedStreaming extends JfrStreamingTest {
         AtomicInteger completedThreads = new AtomicInteger();
         List<Thread> threads = VirtualStressor.executeAsync(THREADS, () -> {
             try {
-                long threadId = (Long) Thread.class.getMethod("threadId").invoke(Thread.currentThread());
+                long threadId = Thread.currentThread().threadId();
                 unreferencedVirtualThreadIds.add(threadId);
                 completedThreads.incrementAndGet();
             } catch (Exception e) {

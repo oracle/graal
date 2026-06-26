@@ -60,26 +60,6 @@ public abstract class NativeVMOperation extends VMOperation {
         return data.getQueuingThread();
     }
 
-    @Override
-    protected long getQueuingThreadId(NativeVMOperationData data) {
-        return data.getQueuingThreadId();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    protected String getQueuingVThreadName(NativeVMOperationData data) {
-        if (VMOperation.isInProgressAtSafepoint() && data.getQueuingThread().isNonNull()) {
-            Thread queuingThread = PlatformThreads.fromVMThread(data.getQueuingThread());
-            if (queuingThread != null) {
-                Thread mountedVThread = PlatformThreads.getMountedVirtualThread(queuingThread);
-                if (mountedVThread != null && JavaThreads.getThreadId(mountedVThread) == data.getQueuingThreadId()) {
-                    return mountedVThread.getName();
-                }
-            }
-        }
-        return null;
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected boolean isFinished(NativeVMOperationData data) {
@@ -91,13 +71,11 @@ public abstract class NativeVMOperation extends VMOperation {
     protected void markAsQueued(NativeVMOperationData data) {
         data.setFinished(false);
         data.setQueuingThread(CurrentIsolate.getCurrentThread());
-        data.setQueuingThreadId(JavaThreads.getCurrentThreadIdOrZero());
     }
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
         data.setQueuingThread(Word.nullPointer());
-        data.setQueuingThreadId(0);
         data.setFinished(true);
     }
 }

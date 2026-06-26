@@ -113,7 +113,7 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
-            ExecuteVMOperationEvent.emit(this, getQueuingThreadId(data), getQueuingVThreadName(data), startTicks);
+            ExecuteVMOperationEvent.emit(this, requestingThread, startTicks);
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread, false);
         }
     }
@@ -198,10 +198,6 @@ public abstract class VMOperation {
     protected abstract void markAsFinished(NativeVMOperationData data);
 
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);
-
-    protected abstract long getQueuingThreadId(NativeVMOperationData data);
-
-    protected abstract String getQueuingVThreadName(NativeVMOperationData data);
 
     protected abstract boolean isFinished(NativeVMOperationData data);
 

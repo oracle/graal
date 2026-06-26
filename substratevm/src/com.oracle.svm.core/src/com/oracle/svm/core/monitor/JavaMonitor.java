@@ -35,9 +35,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
@@ -62,8 +63,9 @@ import jdk.internal.misc.Unsafe;
 @BasedOnJDKClass(ReentrantLock.class)
 @BasedOnJDKClass(value = ReentrantLock.class, innerClass = "Sync")
 public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
-    protected long latestJfrTid = 0;
+    protected long latestJfrTid;
     protected String latestJfrVThreadName;
+    protected long latestJfrVThreadEpochId;
 
     public JavaMonitor() {
     }
@@ -72,18 +74,34 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
             acquire(1);
-            JavaMonitorEnterEvent.emit(obj, latestJfrTid, latestJfrVThreadName, startTicks);
+            JavaMonitorEnterEvent.emit(obj, latestJfrTid, latestJfrVThreadName, latestJfrVThreadEpochId, startTicks);
         }
 
-        if (HasJfrSupport.get()) {
-            updateLatestJfrOwner(SubstrateJVM.getCurrentThreadId());
-        }
+        setJfrOwner();
     }
 
-    protected void updateLatestJfrOwner(long threadId) {
-        latestJfrTid = threadId;
-        Thread currentThread = JavaThreads.getCurrentThreadOrNull();
-        latestJfrVThreadName = currentThread != null && JavaThreads.isVirtual(currentThread) ? currentThread.getName() : null;
+    protected void setJfrOwner() {
+        if (!HasJfrSupport.get()) {
+            return;
+        }
+
+        setJfrOwner(Thread.currentThread());
+    }
+
+    /** Captures the JFR metadata of the monitor owner for a later contention event. */
+    protected void setJfrOwner(Thread thread) {
+        if (!HasJfrSupport.get()) {
+            return;
+        }
+
+        latestJfrTid = JavaThreads.getThreadId(thread);
+        if (JavaThreads.isVirtual(thread)) {
+            latestJfrVThreadName = thread.getName();
+            latestJfrVThreadEpochId = JfrThreadRepository.getVThreadEpochId(thread);
+        } else {
+            latestJfrVThreadName = null;
+            latestJfrVThreadEpochId = JfrEpoch.NO_EPOCH_ID;
+        }
     }
 
     public void monitorExit() {

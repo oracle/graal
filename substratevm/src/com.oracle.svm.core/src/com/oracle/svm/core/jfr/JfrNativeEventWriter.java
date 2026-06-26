@@ -243,46 +243,36 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
-        putCurrentThread(data);
-    }
-
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putCurrentThread(JfrNativeEventWriterData data) {
-        Thread thread = JavaThreads.getCurrentThreadOrNull();
-        if (thread != null && JavaThreads.isVirtual(thread)) {
-            SubstrateJVM.getThreadRepo().registerThread(thread);
-        }
-        putRegisteredThreadId(data, SubstrateJVM.getCurrentThreadId());
+        putThread(data, JavaThreads.getCurrentThreadOrNull());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putThread(JfrNativeEventWriterData data, Thread thread) {
-        if (thread == null) {
-            putRegisteredThreadId(data, 0L);
-        } else {
-            if (JavaThreads.isVirtual(thread)) {
-                SubstrateJVM.getThreadRepo().registerThread(thread);
-            }
-            putRegisteredThreadId(data, SubstrateJVM.getThreadId(thread));
-        }
+        long threadId = Target_jdk_jfr_internal_JVM.getThreadId(thread);
+        putRegisteredThreadId(data, threadId);
     }
 
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putThread(JfrNativeEventWriterData data, long threadId, String vthreadName, long vthreadEpochId) {
+        if (vthreadName != null) {
+            /*
+             * The capture site records the vthread's observed epoch. If that epoch is not current,
+             * register from the delayed id/name data now that the event is being emitted.
+             */
+            SubstrateJVM.getThreadRepo().registerVThread(threadId, vthreadName, vthreadEpochId);
+        }
+        putRegisteredThreadId(data, threadId);
+    }
+
+    /**
+     * Writes a thread id that was already registered earlier for the current epoch.
+     * <p>
+     * If possible, use {@link #putThread} instead as it ensures that the thread is
+     * registered for the current epoch before writing the id.
+     */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putRegisteredThreadId(JfrNativeEventWriterData data, long threadId) {
         putLong(data, threadId);
-    }
-
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putRegisteredThreadId(JfrNativeEventWriterData data, long threadId, String virtualThreadName) {
-        if (virtualThreadName != null) {
-            /*
-             * Delayed event paths may retain only a virtual thread id across chunk rotations. In
-             * that case, re-register the virtual thread metadata in the current epoch before
-             * writing the reference.
-             */
-            SubstrateJVM.getThreadRepo().registerVirtualThread(threadId, virtualThreadName);
-        }
-        putRegisteredThreadId(data, threadId);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)

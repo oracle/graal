@@ -174,23 +174,24 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "This method executes during signal handling.", callerMustBe = true)
-    protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
+    protected static boolean tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
         /*
          * To prevent races, it is crucial that the thread count is incremented before we do any
          * other checks.
          */
         threadsInSignalHandler().incrementAndGet();
         try {
-            if (isExecutionSamplingAllowedInCurrentThread()) {
-                /* Prevent recursive sampler invocations during the stack walk. */
-                JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
-                try {
-                    JfrStackWalker.walkCurrentThread(ip, sp, isAsync);
-                } finally {
-                    JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
-                }
-            } else {
+            if (!isExecutionSamplingAllowedInCurrentThread()) {
                 JfrThreadLocal.increaseMissedSamples();
+                return false;
+            }
+
+            /* Prevent recursive sampler invocations during the stack walk. */
+            JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
+            try {
+                return JfrStackWalker.walkCurrentThread(ip, sp, isAsync);
+            } finally {
+                JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
             }
         } finally {
             threadsInSignalHandler().decrementAndGet();

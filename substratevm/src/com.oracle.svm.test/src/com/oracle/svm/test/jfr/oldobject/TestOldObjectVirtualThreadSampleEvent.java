@@ -32,10 +32,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.word.impl.Word;
-import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.TimeUtils;
 
@@ -45,17 +43,15 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
+/**
+ * Checks that old-object samples taken from a virtual thread include a resolvable event thread. This
+ * verifies the event metadata path used by the old-object profiler.
+ */
 public class TestOldObjectVirtualThreadSampleEvent extends JfrOldObjectTest {
     private static final String VIRTUAL_THREAD_NAME = "TestOldObjectVirtualThreadSampleEvent";
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
-            /* Prevent that the code below is reachable on platforms that don't support JFR. */
-            Assert.fail("JFR is not supported on this platform.");
-            return;
-        }
-
         int arrayLength = Integer.MIN_VALUE;
         TinyObject obj = new TinyObject(44);
         AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -70,16 +66,16 @@ public class TestOldObjectVirtualThreadSampleEvent extends JfrOldObjectTest {
         }
 
         recording.dump(createTempJfrFile());
-        stopRecording(recording, events -> validateVirtualThreadEvents(events, TinyObject.class, arrayLength));
+        stopRecording(recording, TestOldObjectVirtualThreadSampleEvent::validateVirtualThreadEvents);
     }
 
-    private static void validateVirtualThreadEvents(List<RecordedEvent> events, Class<?> expectedSampledType, @SuppressWarnings("unused") int expectedArrayLength) {
+    private static void validateVirtualThreadEvents(List<RecordedEvent> events) {
         if (events.isEmpty()) {
             throw new AssertionError("Expected at least one OldObjectSample event.");
         }
 
         int matchingEvents = 0;
-        String expectedTypeName = expectedSampledType.getName();
+        String expectedTypeName = TinyObject.class.getName();
         for (RecordedEvent event : events) {
             RecordedObject object = event.getValue("object");
             assertNotNull(object);
@@ -98,14 +94,7 @@ public class TestOldObjectVirtualThreadSampleEvent extends JfrOldObjectTest {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void sampleInVirtualThread(TinyObject obj, int arrayLength, AtomicReference<Throwable> failure) {
-        if (!HasJfrSupport.get()) {
-            /* Prevent that the code below is reachable on platforms that don't support JFR. */
-            Assert.fail("JFR is not supported on this platform.");
-            return;
-        }
-
         boolean success;
         long endTime = System.currentTimeMillis() + TimeUtils.secondsToMillis(5);
         do {

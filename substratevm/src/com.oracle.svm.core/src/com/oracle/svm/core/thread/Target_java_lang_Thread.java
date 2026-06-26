@@ -74,11 +74,7 @@ public final class Target_java_lang_Thread {
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    public long jfrParentThreadId;
-
-    @Inject //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    public String jfrParentVThreadName;
+    public Thread jfrParentThread;
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
@@ -277,20 +273,8 @@ public final class Target_java_lang_Thread {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private void start0() {
-        Thread currentThread = Thread.currentThread();
-        jfrParentThreadId = JavaThreads.getThreadId(currentThread);
-        jfrParentVThreadName = JavaThreads.isVirtual(currentThread) ? currentThread.getName() : null;
-        boolean started;
-        try {
-            started = PlatformThreads.singleton().startThread(this);
-        } catch (Throwable t) {
-            jfrParentThreadId = 0L;
-            jfrParentVThreadName = null;
-            throw t;
-        }
+        boolean started = PlatformThreads.singleton().startThread(this);
         if (!started) {
-            jfrParentThreadId = 0L;
-            jfrParentVThreadName = null;
             throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
         }
     }

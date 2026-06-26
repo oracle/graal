@@ -73,6 +73,7 @@ public class TestJavaLevelVirtualThreadChunkRotation extends JfrRecordingTest {
 
             while (!proceed) {
                 // Busy-wait so the virtual thread stays mounted on the carrier.
+                Thread.onSpinWait();
             }
 
             emitStringEvent(AFTER_PREFIX + threadId);

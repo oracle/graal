@@ -256,9 +256,14 @@ public final class Target_java_lang_VirtualThread {
             }
         }
 
-        if (SubstrateJVM.shouldRegisterVirtualThreadsOnMount()) {
-            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
+        if (SubstrateJVM.shouldRegisterVThreadsEagerly()) {
+            /*
+             * Do the registration before the current thread is set below. This ensures that the
+             * async sampler only sees vthreads that are already registered.
+             */
+            SubstrateJVM.getThreadRepo().registerVThread(asThread(this));
         }
+
         carrier.setCurrentThread(asThread(this));
     }
 

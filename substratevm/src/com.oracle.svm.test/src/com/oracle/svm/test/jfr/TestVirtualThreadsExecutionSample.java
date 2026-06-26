@@ -28,11 +28,11 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,6 +48,10 @@ import jdk.jfr.consumer.RecordedFrame;
 import jdk.jfr.consumer.RecordedStackTrace;
 import jdk.jfr.consumer.RecordedThread;
 
+/**
+ * Checks that execution samples taken from virtual threads keep resolvable thread metadata. The
+ * tests cover samples before and after chunk rotation, including short-lived virtual threads.
+ */
 public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
     private static final Duration SAMPLE_PERIOD = Duration.ofMillis(10);
     private static final Duration WAIT_FOR_SAMPLES_TIMEOUT = Duration.ofSeconds(30);
@@ -63,7 +67,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
         Thread thread = startBusyVirtualThread(stop);
         Recording recording = startExecutionSampleRecording();
 
-        waitForExecutionSample(recording, false, sampledVirtualThreadId, LONG_LIVED_SAMPLE_METHOD);
+        waitForExecutionSample(recording, false, sampledVirtualThreadId);
 
         stop.set(true);
         thread.join();
@@ -78,7 +82,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
 
         rotationTime = Instant.now();
         recording.dump(createTempJfrFile());
-        waitForExecutionSample(recording, true, sampledVirtualThreadId, LONG_LIVED_SAMPLE_METHOD);
+        waitForExecutionSample(recording, true, sampledVirtualThreadId);
 
         stop.set(true);
         thread.join();
@@ -97,7 +101,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
             shortLivedVirtualThreadId.set(Thread.currentThread().threadId());
             spinUntil(stop);
         });
-        waitForExecutionSample(recording, true, shortLivedVirtualThreadId, LONG_LIVED_SAMPLE_METHOD);
+        waitForExecutionSample(recording, true, shortLivedVirtualThreadId);
         stop.set(true);
         thread.join();
 
@@ -105,8 +109,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
     }
 
     private Recording startExecutionSampleRecording() throws Throwable {
-        Map<String, String> settings = new HashMap<>();
-        settings.put("flush-interval", "0");
+        Map<String, String> settings = Map.of("flush-interval", "0");
 
         String[] events = new String[]{JfrEvent.ExecutionSample.getName()};
         Recording recording = prepareRecording(events, getDefaultConfiguration(), settings, createTempJfrFile());
@@ -127,41 +130,41 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
     }
 
     private void validateExecutionSamples(List<RecordedEvent> events) {
-        validateExecutionSamples(events, false, sampledVirtualThreadId.get(), LONG_LIVED_SAMPLE_METHOD);
+        validateExecutionSamples(events, false, sampledVirtualThreadId.get());
     }
 
     private void validateExecutionSamplesAfterRotation(List<RecordedEvent> events) {
         assertNotNull("Chunk rotation marker must be recorded.", rotationTime);
-        validateExecutionSamples(events, true, sampledVirtualThreadId.get(), LONG_LIVED_SAMPLE_METHOD);
+        validateExecutionSamples(events, true, sampledVirtualThreadId.get());
     }
 
     private void validateShortLivedExecutionSamplesAfterRotation(List<RecordedEvent> events) {
         assertNotNull("Chunk rotation marker must be recorded.", rotationTime);
-        validateExecutionSamples(events, true, shortLivedVirtualThreadId.get(), LONG_LIVED_SAMPLE_METHOD);
+        validateExecutionSamples(events, true, shortLivedVirtualThreadId.get());
     }
 
-    private void waitForExecutionSample(Recording recording, boolean afterRotationOnly, AtomicLong expectedThreadId, String expectedMethodName) throws Throwable {
+    private void waitForExecutionSample(Recording recording, boolean afterRotationOnly, AtomicLong expectedThreadId) throws Throwable {
         long deadline = System.nanoTime() + WAIT_FOR_SAMPLES_TIMEOUT.toNanos();
         while (System.nanoTime() < deadline) {
             if (expectedThreadId.get() > 0) {
                 Path dump = createTempJfrFile();
                 recording.dump(dump);
                 List<RecordedEvent> events = getEvents(dump, new String[]{JfrEvent.ExecutionSample.getName()}, true);
-                if (hasResolvedExecutionSample(events, afterRotationOnly, expectedThreadId.get(), expectedMethodName)) {
+                if (hasResolvedExecutionSample(events, afterRotationOnly, expectedThreadId.get())) {
                     return;
                 }
             }
             Thread.sleep(SAMPLE_PERIOD.toMillis());
         }
-        assertTrue("Timed out waiting for a resolved ExecutionSample event for the virtual thread.", false);
+        fail("Timed out waiting for a resolved ExecutionSample event for the virtual thread.");
     }
 
-    private boolean hasResolvedExecutionSample(List<RecordedEvent> events, boolean afterRotationOnly, long expectedThreadId, String expectedMethodName) {
+    private boolean hasResolvedExecutionSample(List<RecordedEvent> events, boolean afterRotationOnly, long expectedThreadId) {
         for (RecordedEvent event : events) {
             if (afterRotationOnly && !event.getEndTime().isAfter(rotationTime)) {
                 continue;
             }
-            if (!containsFrame(event, expectedMethodName)) {
+            if (!stackContainsWellKnownMethod(event)) {
                 continue;
             }
             RecordedThread sampledThread = event.getThread("sampledThread");
@@ -172,7 +175,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
         return false;
     }
 
-    private void validateExecutionSamples(List<RecordedEvent> events, boolean afterRotationOnly, long expectedThreadId, String expectedMethodName) {
+    private void validateExecutionSamples(List<RecordedEvent> events, boolean afterRotationOnly, long expectedThreadId) {
         assertTrue(expectedThreadId > 0);
 
         int matchingEvents = 0;
@@ -185,7 +188,7 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
                 continue;
             }
 
-            if (!containsFrame(event, expectedMethodName)) {
+            if (!stackContainsWellKnownMethod(event)) {
                 continue;
             }
 
@@ -212,13 +215,13 @@ public class TestVirtualThreadsExecutionSample extends JfrRecordingTest {
                         correctlyResolvedEvents == matchingEvents);
     }
 
-    private static boolean containsFrame(RecordedEvent event, String expectedMethodName) {
+    private static boolean stackContainsWellKnownMethod(RecordedEvent event) {
         RecordedStackTrace stackTrace = event.getStackTrace();
         assertNotNull("ExecutionSample is missing a stack trace.", stackTrace);
 
         for (RecordedFrame frame : stackTrace.getFrames()) {
             if (frame.getMethod().getType().getName().equals(TestVirtualThreadsExecutionSample.class.getName()) &&
-                            frame.getMethod().getName().equals(expectedMethodName)) {
+                            frame.getMethod().getName().equals(LONG_LIVED_SAMPLE_METHOD)) {
                 return true;
             }
         }

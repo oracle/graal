@@ -29,6 +29,7 @@ import static com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_Util.jfrNotSup
 
 import java.util.List;
 
+import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.shared.Uninterruptible;
@@ -192,11 +193,21 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getThreadId}. */
     @Substitute
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getThreadId(Thread t) {
         if (!HasJfrSupport.get()) {
             throw jfrNotSupportedException();
         }
-        return SubstrateJVM.getThreadId(t);
+
+        if (t == null) {
+            return 0L;
+        }
+
+        long threadId = JavaThreads.getThreadId(t);
+        if (JavaThreads.isVirtual(t)) {
+            SubstrateJVM.getThreadRepo().registerVThread(t);
+        }
+        return threadId;
     }
 
     /** See {@link JVM#getTicksFrequency}. */
