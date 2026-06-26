@@ -36,8 +36,8 @@ $version[-muslib(for native image only)][-$platform][-$buildnumber]
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom).
 The most-specific tag is unique and always points to the same container image, while the less-specific tags point to newer container image variants over time.
 ```
-25.0.0-ol9
-25.0.0
+25.1.3-ol9
+25.1.3
 25-ol9
 25
 ```

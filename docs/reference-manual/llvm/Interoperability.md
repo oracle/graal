@@ -92,7 +92,7 @@ cpart.freeNativePoint(pointArray);
 Finally, run this JavaScript file on a [GraalJS JVM standalone](https://github.com/oracle/graaljs/releases):
 ```shell
 js-polyglot-get llvm
-js --polyglot jspart.js
+js jspart.js
 Point<5.000000,7.000000>
 Point<3.000000,6.000000>
 Point<17.000000,42.000000>

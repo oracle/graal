@@ -33,12 +33,12 @@ Espresso passes the Java Compatibility Kit (JCK or TCK for Java SE).
 Espresso is available as a standalone distribution that provides a Java 21 environment.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition.
 
-1. Download the Espresso 25.0.0 standalone for your operating system:
+1. Download the Espresso 25.1.3 standalone for your operating system:
 
-   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.0.0-linux-amd64.tar.gz)
-   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.0.0-linux-aarch64.tar.gz)
-   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.0.0-macos-aarch64.tar.gz)
-   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.0.0-windows-amd64.zip)
+   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.1.3-linux-amd64.tar.gz)
+   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.1.3-linux-aarch64.tar.gz)
+   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.1.3-macos-aarch64.tar.gz)
+   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java25-25.1.3-windows-amd64.zip)
 
 2. Unzip the archive:
 

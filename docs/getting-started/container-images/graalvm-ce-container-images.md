@@ -38,8 +38,8 @@ The following tags are listed from the most-specific tag (at the top) to the lea
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 For example:
 ```bash
-25.0.0-ol9
-25.0.0
+25.1.3-ol9
+25.1.3
 25-ol9
 25
 ```
