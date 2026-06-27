@@ -740,6 +740,8 @@ To request a bundle from a specific module:
 }
 ```
 
+Use `"module": "ALL-UNNAMED"` to restrict bundle lookup to the class path instead of allowing the same bundle name to resolve from named modules.
+
 Resource bundles are included for all locales that are [included into the image](#locales).
 
 ### Locales

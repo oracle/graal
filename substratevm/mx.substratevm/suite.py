@@ -1324,6 +1324,31 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.hosted.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:NATIVEIMAGE",
+                "com.oracle.svm.hosted",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "24+",
+            "testProject": True,
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
@@ -2796,6 +2821,21 @@ suite = {
             "com.oracle.svm.test.debug",
             "com.oracle.svm.test.debug.missing.classes",
             "SVM_TEST_RESOURCE_WITH_SPACE",
+          ],
+          "distDependencies": [
+            "mx:JUNIT_TOOL",
+            "sdk:NATIVEIMAGE",
+            "SVM",
+            "SVM_CONFIGURE",
+          ],
+          "testDistribution" : True,
+        },
+
+        "SVM_HOSTED_TESTS" : {
+          "subDir": "src",
+          "relpath" : True,
+          "dependencies" : [
+            "com.oracle.svm.hosted.test",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",

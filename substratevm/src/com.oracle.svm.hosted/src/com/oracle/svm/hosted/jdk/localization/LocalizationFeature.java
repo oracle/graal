@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -108,6 +109,7 @@ import sun.util.resources.ParallelListResourceBundle;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class LocalizationFeature implements InternalFeature {
+    static final String ALL_UNNAMED_MODULE = "ALL-UNNAMED";
 
     /**
      * Locales required by default in Java.
@@ -474,8 +476,38 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareClassResourceBundle(AccessCondition condition, String moduleName, String basename, String className) {
+        String resolvedModuleName = validateBundleModuleName(moduleName, basename, this.imageClassLoader::findModule);
+        if (moduleName == null || moduleName.isEmpty()) {
+            prepareClassResourceBundle(basename, className);
+            return;
+        }
+        Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
+        UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
+        validateBundleClassModule(resolvedModuleName, basename, className, bundleClass);
+        trace("Adding class based resource bundle: " + resolvedModuleName + ":" + className + " " + bundleClass);
+        support.registerBundleLookup(condition, resolvedModuleName, basename);
+        support.registerRequiredReflectionAndResourcesForBundle(
+                        resolvedModuleName,
+                        basename,
+                        Set.of(),
+                        false,
+                        this.imageClassLoader::findModule);
+        support.prepareClassResourceBundle(basename, bundleClass);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(AccessCondition condition, String baseName) {
         prepareBundle(condition, baseName, allLocales);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareBundle(AccessCondition condition, String moduleName, String baseName) {
+        prepareBundle(condition, moduleName, baseName, allLocales);
     }
 
     private static final String[] RESOURCE_EXTENSION_PREFIXES = new String[]{
@@ -487,7 +519,7 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
-        prepareBundleInternal(condition, baseName, wantedLocales);
+        prepareBundleInternal(condition, null, baseName, wantedLocales);
 
         String alternativeBundleName = null;
         for (String resourceExtensionPrefix : RESOURCE_EXTENSION_PREFIXES) {
@@ -497,26 +529,44 @@ public class LocalizationFeature implements InternalFeature {
             }
         }
         if (alternativeBundleName != null) {
-            prepareBundleInternal(condition, alternativeBundleName, wantedLocales);
+            prepareBundleInternal(condition, null, alternativeBundleName, wantedLocales);
         }
     }
 
-    private void prepareBundleInternal(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareBundle(AccessCondition condition, String moduleName, String baseName, Iterable<Locale> wantedLocales) {
+        prepareBundleInternal(condition, moduleName, baseName, wantedLocales);
+
+        String alternativeBundleName = null;
+        for (String resourceExtensionPrefix : RESOURCE_EXTENSION_PREFIXES) {
+            if (baseName.startsWith(resourceExtensionPrefix) && !baseName.startsWith(resourceExtensionPrefix + ".ext")) {
+                alternativeBundleName = baseName.replace(resourceExtensionPrefix, resourceExtensionPrefix + ".ext");
+                break;
+            }
+        }
+        if (alternativeBundleName != null) {
+            prepareBundleInternal(condition, moduleName, alternativeBundleName, wantedLocales);
+        }
+    }
+
+    private void prepareBundleInternal(AccessCondition condition, String moduleName, String baseName, Iterable<Locale> wantedLocales) {
+        String resolvedModuleName = validateBundleModuleName(moduleName, baseName, this.imageClassLoader::findModule);
         boolean somethingFound = false;
+        String bundleSpec = qualifyBundleName(resolvedModuleName, baseName);
         for (Locale locale : wantedLocales) {
-            support.registerBundleLookup(condition, baseName);
+            support.registerBundleLookup(condition, resolvedModuleName, baseName);
             List<ResourceBundle> resourceBundle;
             try {
-                resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);
+                resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(bundleSpec, locale);
             } catch (MissingResourceException mre) {
                 for (Locale candidateLocale : support.control.getCandidateLocales(baseName, locale)) {
-                    prepareNegativeBundle(condition, baseName, candidateLocale, false);
+                    prepareNegativeBundle(condition, resolvedModuleName, baseName, candidateLocale, false);
                 }
                 continue;
             }
             somethingFound |= !resourceBundle.isEmpty();
             for (ResourceBundle bundle : resourceBundle) {
-                prepareBundle(condition, baseName, bundle, locale, false);
+                prepareBundle(condition, resolvedModuleName, baseName, bundle, locale, false);
             }
         }
 
@@ -527,6 +577,7 @@ public class LocalizationFeature implements InternalFeature {
              */
             Class<?> clazz = findClassByName.apply(baseName);
             if (clazz != null && ResourceBundle.class.isAssignableFrom(clazz)) {
+                validateBundleClassModule(resolvedModuleName, baseName, baseName, clazz);
                 trace("Found non-compliant class-based bundle " + clazz);
                 try {
                     support.prepareNonCompliant(clazz);
@@ -545,13 +596,13 @@ public class LocalizationFeature implements InternalFeature {
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
             trace(errorMessage);
-            prepareNegativeBundle(condition, baseName, Locale.ROOT, false);
+            prepareNegativeBundle(condition, resolvedModuleName, baseName, Locale.ROOT, false);
             for (Locale locale : wantedLocales) {
-                prepareNegativeBundle(condition, baseName, Locale.of(locale.getLanguage()), false);
+                prepareNegativeBundle(condition, resolvedModuleName, baseName, Locale.of(locale.getLanguage()), false);
             }
             for (Locale locale : wantedLocales) {
                 if (!locale.getCountry().isEmpty()) {
-                    prepareNegativeBundle(condition, baseName, locale, false);
+                    prepareNegativeBundle(condition, resolvedModuleName, baseName, locale, false);
                 }
             }
         }
@@ -559,18 +610,24 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void prepareNegativeBundle(AccessCondition condition, String baseName, Locale locale, boolean jdkBundle) {
-        support.registerBundleLookup(condition, baseName);
-        support.registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale, jdkBundle);
+        prepareNegativeBundle(condition, null, baseName, locale, jdkBundle);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void prepareNegativeBundle(AccessCondition condition, String moduleName, String baseName, Locale locale, boolean jdkBundle) {
+        support.registerBundleLookup(condition, moduleName, baseName);
+        support.registerRequiredReflectionAndResourcesForBundleAndLocale(moduleName, baseName, locale, jdkBundle, this.imageClassLoader::findModule);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void prepareJDKBundle(ResourceBundle bundle, Locale locale) {
         String baseName = bundle.getBaseBundleName();
-        prepareBundle(AccessCondition.unconditional(), baseName, bundle, locale, true);
+        prepareBundle(AccessCondition.unconditional(), null, baseName, bundle, locale, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void prepareBundle(AccessCondition condition, String bundleName, ResourceBundle bundle, Locale locale, boolean jdkBundle) {
+    private void prepareBundle(AccessCondition condition, String moduleName, String baseName, ResourceBundle bundle, Locale locale, boolean jdkBundle) {
+        String bundleName = qualifyBundleName(moduleName, baseName);
         trace("Adding bundle " + bundleName + ", locale " + locale + " with condition " + condition);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
@@ -578,14 +635,59 @@ public class LocalizationFeature implements InternalFeature {
          */
         for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
-            support.prepareBundle(bundleName, cur, this.imageClassLoader::findModule, cur.getLocale(), jdkBundle);
+            support.prepareBundle(moduleName, baseName, cur, this.imageClassLoader::findModule, cur.getLocale(), jdkBundle);
         }
 
         /*
          * Finally, register the requested bundle with requested locale (Requested might be more
          * specific than the actual bundle locale
          */
-        support.prepareBundle(bundleName, bundle, this.imageClassLoader::findModule, locale, jdkBundle);
+        support.prepareBundle(moduleName, baseName, bundle, this.imageClassLoader::findModule, locale, jdkBundle);
+    }
+
+    private static String qualifyBundleName(String moduleName, String baseName) {
+        return moduleName != null && !moduleName.isEmpty() ? moduleName + ":" + baseName : baseName;
+    }
+
+    static String validateBundleModuleName(String moduleName, String baseName, Function<String, Optional<Module>> findModule) {
+        if (moduleName == null || moduleName.isEmpty()) {
+            return null;
+        }
+        if (ALL_UNNAMED_MODULE.equals(moduleName)) {
+            return moduleName;
+        }
+        if (findModule.apply(moduleName).isEmpty()) {
+            throw UserError.abort(
+                            "Resource bundle '%s' was configured with module '%s', but that module is not present on the image classpath or module path.",
+                            baseName,
+                            moduleName);
+        }
+        return moduleName;
+    }
+
+    static void validateBundleClassModule(String moduleName, String bundleName, String className, Class<?> bundleClass) {
+        if (moduleName == null || moduleName.isEmpty()) {
+            return;
+        }
+        Module actualModule = bundleClass.getModule();
+        if (ALL_UNNAMED_MODULE.equals(moduleName)) {
+            throwIfModuleMismatch(!actualModule.isNamed(), bundleName, className, moduleName, actualModule);
+            return;
+        }
+        throwIfModuleMismatch(actualModule.isNamed() && moduleName.equals(actualModule.getName()), bundleName, className, moduleName, actualModule);
+    }
+
+    private static void throwIfModuleMismatch(boolean valid, String bundleName, String className, String expectedModuleName, Module actualModule) {
+        if (valid) {
+            return;
+        }
+        String actualModuleName = actualModule.isNamed() ? actualModule.getName() : ALL_UNNAMED_MODULE;
+        throw UserError.abort(
+                        "Resource bundle '%s' was configured with module '%s', but class '%s' belongs to module '%s'.",
+                        bundleName,
+                        expectedModuleName,
+                        className,
+                        actualModuleName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

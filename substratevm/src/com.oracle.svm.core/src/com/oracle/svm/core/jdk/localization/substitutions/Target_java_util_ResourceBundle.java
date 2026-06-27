@@ -63,7 +63,7 @@ final class Target_java_util_ResourceBundle {
 
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
-            if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+            if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, callerModule, baseName, locale, control)) {
                 MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName);
             }
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
@@ -82,7 +82,7 @@ final class Target_java_util_ResourceBundle {
                         ? loader.getUnnamedModule()
                         : BootLoader.getUnnamedModule();
 
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, unnamedModule, baseName, locale, control)) {
             MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
@@ -101,11 +101,7 @@ final class Target_java_util_ResourceBundle {
                     Control control) {
         Objects.requireNonNull(module);
         Module callerModule = getCallerModule(caller);
-        /*
-         * TODO GR-67556 - Implement proper module-aware LocalizationSupport bundle registration to
-         * ensure we show MissingResourceRegistrationError in all relevant situations.
-         */
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, module, baseName, locale, control)) {
             MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
@@ -133,8 +129,8 @@ final class ResourceBundleMissingRegistrationSupport {
     private ResourceBundleMissingRegistrationSupport() {
     }
 
-    static boolean shouldReport(Class<?> caller, String baseName, Locale locale, Control control) {
-        return !isRuntimeLoaded(caller) && !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control);
+    static boolean shouldReport(Class<?> caller, Module module, String baseName, Locale locale, Control control) {
+        return !isRuntimeLoaded(caller) && !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(module, baseName, locale, control);
     }
 
     private static boolean isRuntimeLoaded(Class<?> clazz) {
