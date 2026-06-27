@@ -387,6 +387,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.end();
     }
 
+    private void declareRelativeBytecodeIndex(CodeTreeBuilder b, String indexName, String offsetName, InstructionImmediate immediate) {
+        b.declaration(type(byte.class), offsetName, BytecodeRootNodeElement.readImmediate("bc", "bci", immediate));
+        b.declaration(type(int.class), indexName, BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) bci", offsetName));
+    }
+
     private void emitBranchFalseCondition(CodeTreeBuilder b) {
         // custom return and stack effect
         if (getTier().isUncached()) {
@@ -992,8 +997,8 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         if (mode.isFastPath()) {
             b.startDeclaration(instruction.signature.returnType(), resultLocalName).string(value.localName()).end();
         } else {
-            InstructionImmediate operand0 = instruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0);
-            InstructionImmediate operand1 = instruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(1);
+            InstructionImmediate operand0 = instruction.getImmediates(ImmediateKind.RELATIVE_BYTECODE_INDEX).get(0);
+            InstructionImmediate operand1 = instruction.getImmediates(ImmediateKind.RELATIVE_BYTECODE_INDEX).get(1);
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
@@ -1002,11 +1007,15 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.declaration(type(int.class), "otherOperandIndex");
 
             b.startIf().string(condition.localName()).end().startBlock();
-            b.startAssign("operandIndex").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", operand0)).end();
-            b.startAssign("otherOperandIndex").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", operand1)).end();
+            b.declaration(type(byte.class), "operandOffset", BytecodeRootNodeElement.readImmediate("bc", "bci", operand0));
+            b.declaration(type(byte.class), "otherOperandOffset", BytecodeRootNodeElement.readImmediate("bc", "bci", operand1));
+            b.startAssign("operandIndex").tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) bci", "operandOffset")).end();
+            b.startAssign("otherOperandIndex").tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) bci", "otherOperandOffset")).end();
             b.end().startElseBlock();
-            b.startAssign("operandIndex").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", operand1)).end();
-            b.startAssign("otherOperandIndex").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", operand0)).end();
+            b.declaration(type(byte.class), "operandOffset", BytecodeRootNodeElement.readImmediate("bc", "bci", operand1));
+            b.declaration(type(byte.class), "otherOperandOffset", BytecodeRootNodeElement.readImmediate("bc", "bci", operand0));
+            b.startAssign("operandIndex").tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) bci", "operandOffset")).end();
+            b.startAssign("otherOperandIndex").tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) bci", "otherOperandOffset")).end();
             b.end();
 
             b.startIf().string("operandIndex != -1 && otherOperandIndex != -1").end().startBlock();
@@ -1550,9 +1559,13 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 }
             }
 
+            declareRelativeBytecodeIndex(b, "operandIndex", "operandOffset", instruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX));
+
             b.declaration(type(short.class), "newInstruction");
+
+            b.startIf().string("operandIndex != -1").end().startBlock();
+
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)));
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
 
             boolean elseIf = false;
@@ -1566,7 +1579,6 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 InstructionModel specialization = entry.getValue();
                 b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(specialization)).end();
                 b.end(); // else block
-                b.end(); // if block
             }
 
             b.startElseBlock(elseIf);
@@ -1575,6 +1587,13 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
 
             parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+
+            b.end(); // end if operandIndex != -1
+
+            b.startElseBlock();
+            b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
+            b.end();
+
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
             InstructionImmediate imm = instruction.getImmediate(ImmediateKind.TAG_NODE);
@@ -1689,9 +1708,8 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+            declareRelativeBytecodeIndex(b, "operandIndex", "operandOffset", instruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX));
 
-            // Pop may not have a valid child bci.
             b.startIf().string("operandIndex != -1").end().startBlock();
 
             b.declaration(type(short.class), "newOperand");
@@ -2147,7 +2165,12 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             }
             return null;
         } else { // slow-path
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+            declareRelativeBytecodeIndex(b, "operandIndex", "operandOffset", instruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX));
+
+            b.declaration(type(short.class), "newInstruction");
+
+            b.startIf().string("operandIndex != -1").end().startBlock();
+
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
 
             b.startDeclaration(type(byte.class), "oldTag");
@@ -2161,7 +2184,6 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end(); // call
             b.end(); // declaration
 
-            b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
             b.declaration(type(byte.class), "newTag");
 
@@ -2248,6 +2270,14 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end(); // if newTag != oldTag
 
             parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+
+            b.end(); // end if operandIndex != -1
+
+            // case operandIndex == -1
+            b.startElseBlock();
+            b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
+            b.end();
+
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
             return null;
@@ -2271,9 +2301,10 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             }
 
             b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findChildBciImmediate(0)));
+            declareRelativeBytecodeIndex(b, "operandIndex", "operandOffset", instruction.findChildBciImmediate(0));
+            b.startIf().string("operandIndex != -1").end().startBlock();
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
+            b.declaration(type(short.class), "newOperand");
 
             b.startIf().string("(newOperand = ").startCall(BytecodeRootNodeElement.createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1").end().startBlock();
             b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(unboxedInstruction)).end();
@@ -2285,6 +2316,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end(); // else block
 
             parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+            b.end();
+
+            b.startElseBlock().startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(boxedInstruction)).end();
+            b.end();
+
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
             b.statement("return ", operandValue);

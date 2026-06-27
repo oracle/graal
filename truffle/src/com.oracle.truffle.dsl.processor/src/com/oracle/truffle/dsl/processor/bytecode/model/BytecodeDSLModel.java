@@ -380,7 +380,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
-        } else if (length % 2 != 0) {
+        } else if (length % InstructionModel.INSTRUCTION_ALIGNMENT != 0) {
             throw new AssertionError("instructions must be short-aligned");
         }
         return invalidateInstructions[(length - OPCODE_WIDTH) / 2];
@@ -566,10 +566,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
+        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this, types);
+
         for (InstructionModel instr : getInstructions()) {
             if (instr.nodeData == null) {
                 continue;
             }
+
             /*
              * InstructionModel.canUseNodeSingleton() depends on NodeData.isForceSpecialize() which
              * is initialized in the parser when quickening is applied. By generating the node
@@ -586,8 +589,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this, types);
-
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
         for (var entry : instructions.entrySet()) {
             String name = entry.getKey();
@@ -602,6 +603,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         for (InstructionModel m : newInstructions.values()) {
+            m.orderImmediates();
             m.validateAlignment();
             /*
              * Make sure the instruction format for quickening is valid.
@@ -624,6 +626,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (enableInstructionRewriting) {
             this.instructionRewriterModel = createRewriterModel();
         }
+
+        BytecodeDSLBuiltins.addInvalidateBuiltinsOnFinalize(this);
     }
 
     private InstructionRewriterModel createRewriterModel() {

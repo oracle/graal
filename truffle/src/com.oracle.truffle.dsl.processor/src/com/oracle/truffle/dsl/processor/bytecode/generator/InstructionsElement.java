@@ -322,7 +322,7 @@ final class InstructionsElement extends AbstractElement {
     private static String getArgumentDescriptorKind(ImmediateKind kind) {
         return switch (kind) {
             case BRANCH_PROFILE -> "BRANCH_PROFILE";
-            case BYTECODE_INDEX -> "BYTECODE_INDEX";
+            case BYTECODE_INDEX, RELATIVE_BYTECODE_INDEX -> "BYTECODE_INDEX";
             case CONSTANT, CONSTANT_LONG, CONSTANT_DOUBLE, CONSTANT_INT, CONSTANT_FLOAT, CONSTANT_SHORT, CONSTANT_CHAR, CONSTANT_BYTE, CONSTANT_BOOL -> "CONSTANT";
             case FRAME_INDEX -> "LOCAL_OFFSET";
             case LOCAL_INDEX -> "LOCAL_INDEX";
@@ -370,6 +370,8 @@ final class InstructionsElement extends AbstractElement {
                 return "NodeProfileArgument";
             case TAG_NODE:
                 return "TagNodeArgument";
+            case RELATIVE_BYTECODE_INDEX:
+                return "RelativeBytecodeIndexArgument";
         }
         throw new AssertionError("invalid kind");
     }
@@ -399,6 +401,11 @@ final class InstructionsElement extends AbstractElement {
             case BYTECODE_INDEX:
             case FRAME_INDEX:
                 args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
+                break;
+            case RELATIVE_BYTECODE_INDEX:
+                args.add(new CodeVariableElement(Set.of(FINAL), parent.abstractBytecodeNode.asType(), "bytecode"));
+                args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
+                args.add(new CodeVariableElement(Set.of(FINAL), parent.getBytecodeIndexType(), "bytecodeIndex"));
                 break;
             case NODE_PROFILE:
                 args.add(new CodeVariableElement(Set.of(FINAL), parent.abstractBytecodeNode.asType(), "bytecode"));
@@ -534,6 +541,9 @@ final class InstructionsElement extends AbstractElement {
                 case BYTECODE_INDEX:
                     this.add(createAsBytecodeIndex());
                     break;
+                case RELATIVE_BYTECODE_INDEX:
+                    this.add(createAsBytecodeIndexRelative());
+                    break;
                 case SHORT:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
@@ -581,6 +591,18 @@ final class InstructionsElement extends AbstractElement {
             b.startReturn();
 
             b.string(BytecodeRootNodeElement.readIntSafe("bc", "bci"));
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createAsBytecodeIndexRelative() {
+            CodeExecutableElement ex = GeneratorUtils.override(InstructionsElement.this.types.Instruction_Argument, "asBytecodeIndex");
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(InstructionsElement.this.type(byte[].class), "bc", "this.bytecodes");
+            b.declaration(InstructionsElement.this.type(byte.class), "raw", BytecodeRootNodeElement.readByteSafe("bc", "bci"));
+            b.startReturn();
+            b.tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex(parent.castBytecodeIndexToInt("this.bytecodeIndex"), "raw"));
             b.end();
             return ex;
         }
