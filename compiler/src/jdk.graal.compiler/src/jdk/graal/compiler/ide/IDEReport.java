@@ -44,10 +44,12 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -113,15 +115,6 @@ public final class IDEReport {
 
     }
 
-    /*
-     * Compiler and analysis hooks cannot depend on the Native Image singleton registry. This
-     * build-scoped bridge therefore supports one active image build per process; beginBuild rejects
-     * overlap and BuildScope.close clears the state. GR-61707 tracks replacing the bridge if Native
-     * Image adds parallel builds within one process.
-     */
-    private static volatile IDEReport instance;
-    private static boolean buildActive;
-
     private final ClassFilter filter;
 
     private final ConcurrentLinkedQueue<Map<String, Object>> reportsCollector = new ConcurrentLinkedQueue<>();
@@ -132,47 +125,9 @@ public final class IDEReport {
         this.filter = filter;
     }
 
-    /**
-     * Activates IDE reporting for the duration of one image build. The returned scope must be
-     * closed even when the build fails so that reporting state cannot leak into a later build in
-     * the same process.
-     */
-    public static synchronized BuildScope beginBuild(boolean enabled, String filterDescr) {
-        if (buildActive) {
-            throw new IllegalStateException("An IDE report build is already active");
-        }
-        IDEReport newInstance = enabled ? new IDEReport(ClassFilter.parseFilterDescr(filterDescr)) : null;
-        buildActive = true;
-        instance = newInstance;
-        return new BuildScope(instance);
-    }
-
-    public static final class BuildScope implements AutoCloseable {
-        private final IDEReport report;
-        private boolean closed;
-
-        private BuildScope(IDEReport report) {
-            this.report = report;
-        }
-
-        public IDEReport report() {
-            return report;
-        }
-
-        @Override
-        public void close() {
-            synchronized (IDEReport.class) {
-                if (closed) {
-                    return;
-                }
-                if (!buildActive || instance != report) {
-                    throw new IllegalStateException("IDE report build scope is not active");
-                }
-                instance = null;
-                buildActive = false;
-                closed = true;
-            }
-        }
+    /** Creates an IDE report owned by one image build. */
+    public static IDEReport create(String filterDescr) {
+        return new IDEReport(ClassFilter.parseFilterDescr(filterDescr));
     }
 
     public static int getLineNumber(NodeSourcePosition nodeSourcePosition) {
@@ -213,7 +168,7 @@ public final class IDEReport {
     }
 
     public static void runIfEnabled(Consumer<IDEReport> action) {
-        IDEReport activeInstance = instance;
+        IDEReport activeInstance = activeReport();
         if (activeInstance != null) {
             action.accept(activeInstance);
         }
@@ -224,7 +179,15 @@ public final class IDEReport {
      * {@link IDEReport#runIfEnabled(Consumer)} cannot be used instead.
      */
     public static boolean isEnabled() {
-        return instance != null;
+        return activeReport() != null;
+    }
+
+    private static IDEReport activeReport() {
+        return NativeImageSupport.inBuildtimeCode() ? AccessHolder.ACCESS.getReport() : null;
+    }
+
+    private static final class AccessHolder {
+        private static final IDEReportAccess ACCESS = GraalServices.loadSingle(IDEReportAccess.class, true);
     }
 
     /**

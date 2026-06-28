@@ -27,6 +27,18 @@ The distinction between "prototype complete" and "merge-ready" is important.
 The phase documents prove that the intended experiment works. They do not
 remove the remaining product and integration requirements listed below.
 
+Review follow-up:
+
+- The collector-ownership half of the architectural finding was addressed
+  after this review snapshot. `NativeImageGenerator` now registers each
+  build's `IDEReport` in the hosted `ImageSingletons` registry, and compiler
+  code reaches it through a stateless SPI implemented by Native Image.
+- The process-global mutable report fields and manual `beginBuild` lifecycle
+  were removed. Focused tests cover independent report instances and hosted
+  singleton installation and cleanup.
+- Standard `TraceInlining` integration remains open, so the architectural
+  finding and reviewer blocker are only partially resolved.
+
 ## Findings
 
 Findings are ordered by severity. P2 denotes a meaningful correctness,
@@ -35,12 +47,11 @@ coverage, or future-risk concern.
 
 ### P2: The Compiler Integration Still Has An Open Architectural Blocker
 
-The current collector is exposed to compiler and analysis code through a
-process-global static bridge in `IDEReport`. `beginBuild` rejects overlapping
-builds, publishes a volatile instance, and clears it when the build scope
-closes. This is internally coherent for the documented assumption of one
-active image build per process, but it is not the desired long-term Native
-Image integration and it remains an explicit reviewer blocker.
+Collector state is now build-scoped through the hosted `ImageSingletons`
+registry. A stateless compiler SPI preserves the compiler-to-Native-Image
+dependency boundary while letting compiler hooks find the active report. The
+hosted registry teardown owns cleanup, so report state cannot leak through an
+`IDEReport` static field into a later build.
 
 Positive inlining is also reported through dedicated calls in
 `StructuredGraph.notifyInliningDecision` and `PEGraphDecoder`, parallel to the
@@ -48,24 +59,23 @@ standard inlining log and `TraceInlining` machinery. The code documents why
 the prototype does this, but the review requirement is to integrate with the
 standard path instead of maintaining a second observability path.
 
-Relevant code:
+Relevant code after the ownership follow-up:
 
-- `compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/ide/IDEReport.java:116`
+- `compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/ide/IDEReportAccess.java`
+- `substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/ide/HostedIDEReportAccess.java`
+- `substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java`
 - `compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/nodes/InliningIDEReporting.java:37`
 - `compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/nodes/StructuredGraph.java:716`
 - `compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/replacements/PEGraphDecoder.java:1454`
 
-Required direction:
+Remaining required direction:
 
-1. Replace the static report instance with an accepted build-scoped singleton
-   or event-consumer mechanism that compiler code can access without creating
-   a forbidden dependency.
-2. Route positive inlining observations through the standard inlining event or
+1. Route positive inlining observations through the standard inlining event or
    log infrastructure.
-3. Retain coverage for parsing-time and later inlining paths, duplicate
+2. Retain coverage for parsing-time and later inlining paths, duplicate
    suppression, disabled-build behavior, failed builds, and two sequential
    builds in one process.
-4. Resolve the reviewer blocker only after the reviewer agrees that the new
+3. Resolve the reviewer blocker only after the reviewer agrees that the new
    ownership and event path satisfy the original request.
 
 This is classified P2 rather than P1 because the present implementation
@@ -388,9 +398,13 @@ Strengths:
 
 - 47 Python tests cover model, canonicalization, envelopes, readers, automatic
   discovery, comparison, expectations, CLI helpers, and baseline helpers.
-- 3 compiler tests cover filter and build-scope behavior.
-- 11 storage tests cover options, payloads, envelopes, split bytes, ELF object
-  construction, and unsupported formats.
+- 3 compiler tests covered filter and build-scope behavior at the reviewed tip;
+  the ownership follow-up replaces the manual-scope checks with independent
+  report-instance coverage.
+- 11 storage tests covered options, payloads, envelopes, split bytes, ELF
+  object construction, and unsupported formats at the reviewed tip. The
+  ownership follow-up adds a twelfth test for hosted singleton installation
+  and cleanup.
 - The gate-scale fixture has positive and reporting-disabled smokes.
 - Five-run semantic baselines exist for Hello World, Spring PetClinic, and
   DaCapo H2.
@@ -402,7 +416,9 @@ Shortcomings:
 
 - No CI builds have been run for the reviewed tip.
 - The large application baselines are saved evidence, not regular gates.
-- The Java storage test needs an explicit module opening when run standalone.
+- The Java storage test declares its required standalone-test exports for
+  `jdk.graal.compiler.debug`, `jdk.graal.compiler.ide`, and
+  `jdk.graal.compiler.util.json` with `AddExports`.
 - Manifest registration and failure lifecycle are not covered by a checked-in
   integration test.
 
@@ -491,13 +507,12 @@ rechecked live.
 
 Input:
 
-- the current static bridge
+- the build-scoped hosted image singleton and stateless compiler SPI
 - the two custom positive-inlining hooks
 - the open review requirement
 
 Output:
 
-- accepted build-scoped ownership
 - standard inlining event consumption
 - no duplicate or missing positive-inlining facts
 
@@ -649,9 +664,10 @@ the complete end-to-end concept, preserves the original report behavior across
 the rebase, provides useful storage-neutral tooling, and has unusually strong
 prototype validation.
 
-It should not be described as finished for merge. The next implementation work
-should start with the collector singleton and inlining integration because that
-is the explicit review blocker and can affect the shape of later performance
-and lifecycle tests. Output failure policy, bounded extraction, semantic class
+It should not be described as finished for merge. The collector now uses a
+build-scoped hosted image singleton, but the next implementation work should
+complete standard inlining integration because that is the remaining half of
+the explicit review blocker and can affect the shape of later performance and
+lifecycle tests. Output failure policy, bounded extraction, semantic class
 subjects, and missing integration coverage should follow before gates and final
 approval.

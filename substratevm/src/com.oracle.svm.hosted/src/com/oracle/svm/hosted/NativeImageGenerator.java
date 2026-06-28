@@ -611,14 +611,13 @@ public class NativeImageGenerator {
 
             var options = hostedOptionValues.get();
             ideReportConfiguration = IDEReportOptions.resolve(options);
-            try (var ideReportBuild = IDEReport.beginBuild(ideReportConfiguration.enabled(), IDEReport.Options.IDEReportFiltered.getValue(options))) {
-                ideReport = ideReportBuild.report();
-                if (ideReport != null) {
-                    ideReportStorageData = new IDEReportStorageData(ideReportConfiguration, ideReport);
-                    ImageSingletons.add(IDEReportStorageData.class, ideReportStorageData);
-                }
-                doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
+            if (ideReportConfiguration.enabled()) {
+                ideReport = IDEReport.create(IDEReport.Options.IDEReportFiltered.getValue(options));
+                ImageSingletons.add(IDEReport.class, ideReport);
+                ideReportStorageData = new IDEReportStorageData(ideReportConfiguration, ideReport);
+                ImageSingletons.add(IDEReportStorageData.class, ideReportStorageData);
             }
+            doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
         } catch (RuntimeException | Error failure) {
             buildFailure = failure;
             throw failure;

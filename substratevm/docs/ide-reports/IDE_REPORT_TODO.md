@@ -110,6 +110,9 @@ changing the report surface:
 - [x] Post-Phase-16 PR deep review completed: the prototype remains validated,
   but collector ownership, inlining integration, and the production-readiness
   gaps in `IDE_REPORT_PR_REVIEW.md` must be addressed before merge.
+- [x] Collector ownership review follow-up completed: report state now lives in
+  the hosted `ImageSingletons` registry, compiler access uses a stateless SPI,
+  and focused lifecycle coverage verifies registry cleanup.
 
 ## Branch Context
 
@@ -122,9 +125,10 @@ changing the report surface:
 
 ## Next Action
 
-The prototype phases are complete, but the PR is not merge-ready. Start with
-the collector ownership and standard inlining-integration blocker described in
-`IDE_REPORT_PR_REVIEW.md`. Then address output-failure semantics, bounded
+The prototype phases are complete, but the PR is not merge-ready. Collector
+ownership now follows the hosted image-singleton lifecycle. Complete the
+remaining standard inlining-integration blocker described in
+`IDE_REPORT_PR_REVIEW.md`, then address output-failure semantics, bounded
 payload decoding, semantic class subjects, and missing integration tests before
 starting final CI gates. No CI gates are started automatically.
 

@@ -25,8 +25,8 @@
 package jdk.graal.compiler.ide.test;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.ide.ClassFilter;
 import jdk.graal.compiler.ide.IDEReport;
+import jdk.graal.compiler.ide.IDEReportCategory;
 
 public class IDEReportTest {
 
@@ -53,30 +54,26 @@ public class IDEReportTest {
     }
 
     @Test
-    public void reportStateIsScopedToOneBuild() {
-        assertFalse(IDEReport.isEnabled());
-        try (var enabledBuild = IDEReport.beginBuild(true, "example")) {
-            assertTrue(IDEReport.isEnabled());
-            assertNotNull(enabledBuild.report());
-            assertThrows(IllegalStateException.class, () -> IDEReport.beginBuild(true, "example"));
-        }
-        assertFalse(IDEReport.isEnabled());
+    public void reportInstancesHaveIndependentState() {
+        IDEReport filteredReport = IDEReport.create("example");
+        IDEReport unfilteredReport = IDEReport.create("");
 
-        try (var disabledBuild = IDEReport.beginBuild(false, "")) {
-            assertFalse(IDEReport.isEnabled());
-            assertNull(disabledBuild.report());
-        }
-        assertFalse(IDEReport.isEnabled());
+        filteredReport.saveClassReport(IDEReportCategory.CLASS_INITIALIZATION, "example/Application.java", "example.Application", "included");
+        filteredReport.saveClassReport(IDEReportCategory.CLASS_INITIALIZATION, "other/Application.java", "other.Application", "filtered out");
+
+        assertEquals(1, filteredReport.snapshot().reports().size());
+        assertTrue(unfilteredReport.snapshot().reports().isEmpty());
+
+        unfilteredReport.saveClassReport(IDEReportCategory.CLASS_INITIALIZATION, "other/Application.java", "other.Application", "included");
+
+        assertEquals(1, filteredReport.snapshot().reports().size());
+        assertEquals(1, unfilteredReport.snapshot().reports().size());
     }
 
     @Test
-    public void invalidFilterDoesNotLeaveBuildActive() {
-        assertThrows(IllegalArgumentException.class, () -> IDEReport.beginBuild(true, "example,,other"));
-        assertFalse(IDEReport.isEnabled());
+    public void invalidFilterDoesNotAffectFutureReports() {
+        assertThrows(IllegalArgumentException.class, () -> IDEReport.create("example,,other"));
 
-        try (var build = IDEReport.beginBuild(true, "example")) {
-            assertNotNull(build.report());
-        }
-        assertFalse(IDEReport.isEnabled());
+        assertNotNull(IDEReport.create("example"));
     }
 }

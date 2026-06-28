@@ -27,6 +27,7 @@ package com.oracle.svm.test.ide;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -44,15 +45,18 @@ import java.util.Map;
 import java.util.Set;
 
 import org.junit.Test;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.hosted.ide.IDEReportCanonicalPayload;
 import com.oracle.svm.hosted.ide.IDEReportEmbeddedStorage;
 import com.oracle.svm.hosted.ide.IDEReportEnvelope;
+import com.oracle.svm.hosted.ide.HostedIDEReportAccess;
 import com.oracle.svm.hosted.ide.IDEReportOptions;
 import com.oracle.svm.hosted.ide.IDEReportPayloadScope;
 import com.oracle.svm.hosted.ide.IDEReportSplitStorage;
 import com.oracle.svm.hosted.ide.IDEReportStorageMode;
 import com.oracle.svm.test.AddExports;
+import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.HostedManagement;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.objectfile.ObjectFile;
@@ -60,8 +64,28 @@ import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.elf.ELFObjectFile.ELFSectionFlag;
 
-@AddExports("jdk.graal.compiler/jdk.graal.compiler.util.json")
+import jdk.graal.compiler.ide.IDEReport;
+
+@AddExports({"jdk.graal.compiler/jdk.graal.compiler.debug", "jdk.graal.compiler/jdk.graal.compiler.ide", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class IDEReportStorageTest {
+
+    @Test
+    public void reportFollowsHostedImageSingletonLifecycle() {
+        var access = new HostedIDEReportAccess();
+        assertNull(access.getReport());
+
+        HostedManagement.install();
+        try {
+            assertNull(access.getReport());
+            IDEReport report = IDEReport.create("example");
+            ImageSingletons.add(IDEReport.class, report);
+            assertSame(report, access.getReport());
+        } finally {
+            HostedManagement.clear();
+        }
+
+        assertNull(access.getReport());
+    }
 
     @Test
     public void legacyBooleanSelectsLegacyExport() {

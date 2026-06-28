@@ -145,9 +145,9 @@ Phases 5 through 15 resolved the original execution gaps:
 - `AnalysisIDEReporting.reportDevirtualizedInvoke` should be reviewed against
   possible `Invoke` implementations because reporting must not fail if a plain
   invoke reaches that path.
-- The current `IDEReport` singleton is assumed to be one native-image build per
-  process. Make that assumption explicit or reset state if build process reuse
-  matters.
+- `IDEReport` state is owned by the hosted `ImageSingletons` registry. Keep the
+  stateless compiler access SPI and the hosted-registry lifecycle covered when
+  changing report collection.
 - `ClassFilter.parseFilterDescr` treats an empty string as a prefix matching
   everything. Confirm whether this should remain intentional behavior.
 
