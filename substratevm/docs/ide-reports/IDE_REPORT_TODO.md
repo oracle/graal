@@ -27,6 +27,8 @@ Use it together with:
   extraction, symbols, and strip behavior.
 - `IDE_REPORT_PHASE16_RESULTS.md` for final review, validation, public hygiene,
   commit structure, and deferred production work.
+- `IDE_REPORT_PR_REVIEW.md` for the post-Phase-16 deep review, merge blockers,
+  code-quality assessment, and prioritized follow-up plan.
 
 ## Current Rule
 
@@ -105,6 +107,9 @@ changing the report surface:
   confirmed gaps were fixed, final gate-scale and extended validation passed,
   public repository surfaces were sanitized, and the branch was prepared as a
   six-commit reviewer-oriented stack.
+- [x] Post-Phase-16 PR deep review completed: the prototype remains validated,
+  but collector ownership, inlining integration, and the production-readiness
+  gaps in `IDE_REPORT_PR_REVIEW.md` must be addressed before merge.
 
 ## Branch Context
 
@@ -117,8 +122,11 @@ changing the report surface:
 
 ## Next Action
 
-Proceed with human review. Production follow-ups remain listed in
-`IDE_REPORT_PHASE16_RESULTS.md`; no CI gates are started automatically.
+The prototype phases are complete, but the PR is not merge-ready. Start with
+the collector ownership and standard inlining-integration blocker described in
+`IDE_REPORT_PR_REVIEW.md`. Then address output-failure semantics, bounded
+payload decoding, semantic class subjects, and missing integration tests before
+starting final CI gates. No CI gates are started automatically.
 
 ## Phase Checklist
 

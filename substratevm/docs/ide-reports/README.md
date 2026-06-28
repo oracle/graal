@@ -7,13 +7,17 @@ The files here are the repository copies intended to travel with the branch
 across development sessions and machines. When continuing the work, start with:
 
 1. `IDE_REPORT_TODO.md`
-2. `IDE_REPORT_EXECUTION_PLAN.md`
-3. `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`
-4. `IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md`
+2. `IDE_REPORT_PR_REVIEW.md`
+3. `IDE_REPORT_EXECUTION_PLAN.md`
+4. `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`
+5. `IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md`
 
 ## Files
 
 - `IDE_REPORT_TODO.md`: cross-session TODO and active phase tracker.
+- `IDE_REPORT_PR_REVIEW.md`: dated deep review of implementation quality,
+  merge blockers, residual risks, validation evidence, and recommended next
+  work.
 - `IDE_REPORT_EXECUTION_PLAN.md`: detailed plan with inputs, outputs, and
   validation for each step.
 - `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`: validation design for rebasing the
