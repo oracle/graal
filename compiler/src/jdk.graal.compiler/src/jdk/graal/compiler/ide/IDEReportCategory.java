@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.classinitialization;
+package jdk.graal.compiler.ide;
 
-/**
- * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
- * on it.
- */
-public enum InitKind {
-    /** Class is initialized during image building, so it is already initialized at runtime. */
-    BUILD_TIME,
-    /** Class should be initialized at runtime and not during image building. */
-    RUN_TIME;
+/** Stable semantic categories used for IDE report payload-scope selection. */
+public enum IDEReportCategory {
+    REFLECTION("reflection", true),
+    INLINING("inlining", true),
+    UNREACHABLE("unreachable", true),
+    DEVIRTUALIZATION("devirtualization", true),
+    RETURN_VALUE("return-value", true),
+    PARAMETER_VALUE("parameter-value", false),
+    CONSTANT_FIELD("constant-field", false),
+    CLASS_INITIALIZATION("class-initialization", false),
+    INLINED_ONLY_METHOD("inlined-only-method", false);
 
-    InitKind max(InitKind other) {
-        return this.ordinal() > other.ordinal() ? this : other;
+    private final String serializedName;
+    private final boolean includedInMinimalPayload;
+
+    IDEReportCategory(String serializedName, boolean includedInMinimalPayload) {
+        this.serializedName = serializedName;
+        this.includedInMinimalPayload = includedInMinimalPayload;
+    }
+
+    public String serializedName() {
+        return serializedName;
+    }
+
+    public boolean includedInMinimalPayload() {
+        return includedInMinimalPayload;
     }
 }
