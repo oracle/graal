@@ -571,7 +571,7 @@ public class CountedLoopInfo {
     public String toString() {
         return (isInverted() ? "Inverted " : "") + "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() +
                         (isLimitIncluded ? getLimitCheckedIV().direction() == InductionVariable.Direction.Up ? "+1" : "-1" : "") +
-                        " bodyIV=" + getLimitCheckedIV();
+                        " bodyIV=" + getBodyIV();
     }
 
     /**
