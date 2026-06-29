@@ -29,6 +29,8 @@ Use it together with:
   commit structure, and deferred production work.
 - `IDE_REPORT_PR_REVIEW.md` for the post-Phase-16 deep review, merge blockers,
   code-quality assessment, and prioritized follow-up plan.
+- `IDE_REPORT_JBANG_READER.md` for the standalone Java reference reader,
+  supported contract, commands, and validation.
 
 ## Current Rule
 
@@ -113,6 +115,9 @@ changing the report surface:
 - [x] Collector ownership review follow-up completed: report state now lives in
   the hosted `ImageSingletons` registry, compiler access uses a stateless SPI,
   and focused lifecycle coverage verifies registry cleanup.
+- [x] A standalone Java/JBang reference reader now parses canonical JSON and
+  split envelopes through a bounded `ByteBuffer` API, with fixed
+  cross-language vectors and focused command-line tests.
 
 ## Branch Context
 

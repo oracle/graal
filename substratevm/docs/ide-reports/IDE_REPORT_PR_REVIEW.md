@@ -109,12 +109,16 @@ Required direction:
 
 ### P2: Envelope Readers Have No Decoded-Payload Limit
 
-Both envelope readers trust the declared uncompressed size up to implementation
-limits and decompress the entire payload into memory. A small gzip input can
-therefore allocate a very large byte array when an IDE or developer tool opens
-an untrusted executable or side file. The design already records this as
-deferred work, but it must be resolved before treating extraction as a
-production-facing feature.
+The production Java and Python envelope readers trust the declared
+uncompressed size up to implementation limits and decompress the entire
+payload into memory. A small gzip input can therefore allocate a very large
+byte array when an IDE or developer tool opens an untrusted executable or side
+file. The design already records this as deferred work, but it must be resolved
+before treating extraction as a production-facing feature.
+
+The later standalone JBang reference reader is bounded at 64 MiB by default
+and streams gzip output through the limit. This demonstrates the required
+reader behavior, but it does not change the production readers listed below.
 
 Relevant code:
 

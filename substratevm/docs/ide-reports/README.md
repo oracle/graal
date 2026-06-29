@@ -8,9 +8,10 @@ across development sessions and machines. When continuing the work, start with:
 
 1. `IDE_REPORT_TODO.md`
 2. `IDE_REPORT_PR_REVIEW.md`
-3. `IDE_REPORT_EXECUTION_PLAN.md`
-4. `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`
-5. `IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md`
+3. `IDE_REPORT_JBANG_READER.md`
+4. `IDE_REPORT_EXECUTION_PLAN.md`
+5. `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`
+6. `IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md`
 
 ## Files
 
@@ -18,6 +19,8 @@ across development sessions and machines. When continuing the work, start with:
 - `IDE_REPORT_PR_REVIEW.md`: dated deep review of implementation quality,
   merge blockers, residual risks, validation evidence, and recommended next
   work.
+- `IDE_REPORT_JBANG_READER.md`: standalone Java/JBang reference reader,
+  supported format contract, API boundary, commands, and validation.
 - `IDE_REPORT_EXECUTION_PLAN.md`: detailed plan with inputs, outputs, and
   validation for each step.
 - `IDE_REPORT_REBASE_VALIDATION_DESIGN.md`: validation design for rebasing the
