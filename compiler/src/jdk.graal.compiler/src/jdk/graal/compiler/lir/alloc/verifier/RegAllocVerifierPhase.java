@@ -95,7 +95,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         public static final OptionKey<Boolean> CheckNeverSpillConstants = new OptionKey<>(false);
 
         /**
-         * Verify that {@link StandardOp.LoadConstantOp#canRematerializeToStack()} is being respected
+         * Verify that {@link jdk.graal.compiler.lir.StandardOp.LoadConstantOp#canRematerializeToStack()} is being respected
          * by the register allocator.
          */
         @Option(help = "Check the location of constant materialization", type = OptionType.Debug)
@@ -395,13 +395,13 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
              * performs the cast, handled in BlockVerifierState.updateWithLocationMove.
              */
             if (!RAValue.kindsEqual(inputVar, orig)) {
-                inputVar = RAValue.cast(orig, inputVar);
+                inputVar = RAValue.cast(inputVar, orig);
             }
 
             values.orig[i] = inputVar;
 
             if (!outputSpeculative) {
-                // Do not remove from input map if this operation could be removed.
+                // Do not remove from the input map if this operation could be removed.
                 // This value can be re-used.
                 inputMap.remove(orig);
             }

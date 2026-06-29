@@ -31,10 +31,9 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 
 /**
- * Priority worklist for {@link RegAllocVerifier}.
- * It keeps a bitset for blocks that are already in the list.
- * Blocks are prioritized by their ID, which is set according to
- * reverse post-order traversal of the control flow graph.
+ * Priority worklist for {@link RegAllocVerifier}. It keeps a bitset for blocks that are already in
+ * the list. Blocks are prioritized by their ID, which is set according to reverse post-order
+ * traversal of the control flow graph.
  */
 class PriorityWorkList {
     private final PriorityQueue<BasicBlock<?>> queue;

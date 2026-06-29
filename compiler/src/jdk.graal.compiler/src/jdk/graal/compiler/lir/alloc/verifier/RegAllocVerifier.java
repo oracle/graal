@@ -229,7 +229,7 @@ public class RegAllocVerifier {
                 try {
                     state.check(instr);
                     state.update(instr);
-                }  catch (SpilledConstantException e) {
+                } catch (SpilledConstantException e) {
                     spilledConstantExceptions.put(e.valueAllocationState.getRAValue(), e);
                 } catch (RAVException e) {
                     exceptions.add(e);
