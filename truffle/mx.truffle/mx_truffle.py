@@ -1901,7 +1901,7 @@ def register_polyglot_isolate_distributions(
     :param str maven_group_id: The maven language group id.
     :param str | list | language_license: Language licence(s).
     :param list isolate_build_options: additional options passed to a native image to build the isolate library.
-    :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+    :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-aarch64', 'windows-amd64']
     :param list additional_image_path_artifacts: additional artifacts to include in the polyglot isolate library image path
     :param list additional_language_ids: language ids of additional languages added into polyglot isolate library
     """
@@ -1953,7 +1953,6 @@ def register_polyglot_isolate_distributions(
         platforms = [
             "linux-amd64",
             "linux-aarch64",
-            "darwin-amd64",
             "darwin-aarch64",
             "windows-amd64",
         ]
