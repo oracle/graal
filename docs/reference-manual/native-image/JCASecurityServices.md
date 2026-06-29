@@ -30,6 +30,8 @@ When a specific algorithm is requested, the framework searches the registered pr
 The `native-image` builder uses static analysis to discover which of these services are used.
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
+Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
+The builder includes such a provider and all of its services only when the provider class is registered for reflection, either by type access, its declared nullary constructor, or its static `provider()` method.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
@@ -40,7 +42,8 @@ The report will detail all registered service classes, the API methods that trig
 
 Currently, security providers are initialized at build time.
 To move their initialization to run time, use the option `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk`.
-Provider verification will still occur at build time.
+Providers listed in the build-time `java.security` configuration are still verified at build time.
+Providers included only through reflection metadata are treated as explicitly configured, since run-time codebase verification is not available in Native Image.
 Run-time initialization of security providers helps reduce image heap size.
 
 ## Provider Registration
