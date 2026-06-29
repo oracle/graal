@@ -158,7 +158,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
         int computedFences = 0;
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(snip), options);
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
-            if (beginNode.hasSpeculationFence() && isBoundsCheckGuard(beginNode)) {
+            if (beginNode.next() instanceof SpeculationFenceNode && isBoundsCheckGuard(beginNode)) {
                 computedFences++;
             }
         }
