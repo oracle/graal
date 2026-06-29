@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
 
 @EspressoSubstitutions
-public final class Target_com_oracle_truffle_espresso_vmaccess_guest_GuestCallbackHandler {
+public final class Target_com_oracle_truffle_espresso_vmaccess_guest_GuestHostProxyHandler {
     @Substitution
     @GenerateInline(false) // not available for Substitutions
     abstract static class IdentityHashCode extends SubstitutionNode {
@@ -242,7 +242,7 @@ public final class Target_com_oracle_truffle_espresso_vmaccess_guest_GuestCallba
                 throw e;
             } catch (AbstractTruffleException ex) {
                 hostExceptionProfile.enter(node);
-                StaticObject exceptionWrapper = meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException.allocateInstance(meta.getContext());
+                StaticObject exceptionWrapper = meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException.allocateInstance(meta.getContext());
                 StaticObject foreignWrapper = StaticObject.createForeign(language, meta.java_lang_Object, ex, exceptionInterop);
                 String message = null;
                 try {
@@ -253,7 +253,7 @@ public final class Target_com_oracle_truffle_espresso_vmaccess_guest_GuestCallba
                 } catch (UnsupportedMessageException e) {
                     // keep message null
                 }
-                meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_init.invokeDirectSpecial(exceptionWrapper, foreignWrapper, meta.toGuestString(message));
+                meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_init.invokeDirectSpecial(exceptionWrapper, foreignWrapper, meta.toGuestString(message));
                 throw meta.throwException(exceptionWrapper);
             }
         }

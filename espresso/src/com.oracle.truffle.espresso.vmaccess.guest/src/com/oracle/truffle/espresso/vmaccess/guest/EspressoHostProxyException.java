@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,18 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hostvmaccess;
+package com.oracle.truffle.espresso.vmaccess.guest;
 
-import jdk.graal.compiler.vmaccess.guest.CallbackException;
+import jdk.graal.compiler.vmaccess.guest.HostProxyException;
 
+/**
+ * Wraps an exception thrown by the host when it was called (see
+ * {@code jdk.graal.compiler.vmaccess.VMAccess#createHostProxy}) from the Espresso guest.
+ */
 @SuppressWarnings("serial")
-final class HostCallbackException extends CallbackException {
-    HostCallbackException(Throwable cause) {
-        super(cause.getMessage(), cause);
+final class EspressoHostProxyException extends HostProxyException {
+    private final Object hostException;
+
+    EspressoHostProxyException(Object hostException, String message) {
+        super(message);
+        this.hostException = hostException;
     }
 
     @Override
     public String getHostExceptionType() {
-        return getCause().getClass().getName();
+        return GuestHostProxyHandler.getClassName(hostException);
+    }
+
+    Object getHostException() {
+        return hostException;
     }
 }

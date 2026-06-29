@@ -500,8 +500,8 @@ public class EspressoSymbols {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = SYMBOLS.putType(//
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
 
-        public static final Symbol<Type> com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException = SYMBOLS.putType(//
-                        "Lcom/oracle/truffle/espresso/vmaccess/guest/EspressoCallbackException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException = SYMBOLS.putType(//
+                        "Lcom/oracle/truffle/espresso/vmaccess/guest/EspressoHostProxyException;");
 
         // Continuations
         public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl = SYMBOLS.putType(

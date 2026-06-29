@@ -52,13 +52,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Invocation handler for dynamic proxies that implement a "guest" interface and forward calls to a
  * "host" object, adapting argument/return types and translating exceptions as specified by
- * {@link VMAccess#createCallback}.
+ * {@link VMAccess#createHostProxy}.
  */
-final class HostCallbackHandler implements InvocationHandler {
+final class HostProxyHandler implements InvocationHandler {
     private final Object target;
     private final Map<Method, MethodHandle> methodMap;
 
-    <T> HostCallbackHandler(T hostTarget, Map<Method, MethodHandle> methodMap) {
+    <T> HostProxyHandler(T hostTarget, Map<Method, MethodHandle> methodMap) {
         this.target = hostTarget;
         this.methodMap = methodMap;
     }
@@ -72,10 +72,10 @@ final class HostCallbackHandler implements InvocationHandler {
                     if (other == null || !Proxy.isProxyClass(other.getClass())) {
                         return false;
                     }
-                    if (!(Proxy.getInvocationHandler(other) instanceof HostCallbackHandler otherCallbackHandler)) {
+                    if (!(Proxy.getInvocationHandler(other) instanceof HostProxyHandler otherHostProxyHandler)) {
                         return false;
                     }
-                    return target == otherCallbackHandler.target;
+                    return target == otherHostProxyHandler.target;
                 case "hashCode":
                     return System.identityHashCode(target);
                 case "toString":
@@ -104,14 +104,14 @@ final class HostCallbackHandler implements InvocationHandler {
      *            conversions
      * @return an immutable map for dispatching {@link Method} invocations to {@link MethodHandle}s
      */
-    static Map<Method, MethodHandle> computeMethodMap(Class<?> hostClass, Class<?> guestClass, CallbackHandlerMethodHandles methodHandles) {
+    static Map<Method, MethodHandle> computeMethodMap(Class<?> hostClass, Class<?> guestClass, HostProxyHandlerMethodHandles methodHandles) {
         Map<Method, MethodHandle> map = new LinkedHashMap<>();
         Set<Class<?>> seen = new LinkedHashSet<>();
         addMethods(hostClass, guestClass, methodHandles, map, seen);
         return Collections.unmodifiableMap(map);
     }
 
-    private static void addMethods(Class<?> hostClass, Class<?> guestClass, CallbackHandlerMethodHandles methodHandles, Map<Method, MethodHandle> map, Set<Class<?>> seen) {
+    private static void addMethods(Class<?> hostClass, Class<?> guestClass, HostProxyHandlerMethodHandles methodHandles, Map<Method, MethodHandle> map, Set<Class<?>> seen) {
         assert guestClass.isInterface();
         if (!seen.add(guestClass)) {
             return;
@@ -165,7 +165,7 @@ final class HostCallbackHandler implements InvocationHandler {
         if (t instanceof InvocationException e) {
             throw sneakyThrow(snippetReflectionProvider.asObject(Throwable.class, e.getExceptionObject()));
         }
-        throw new HostCallbackException(t);
+        throw new HostProxyExceptionImpl(t);
     }
 
     @SuppressWarnings("unchecked")
@@ -240,7 +240,7 @@ final class HostCallbackHandler implements InvocationHandler {
         return false;
     }
 
-    record CallbackHandlerMethodHandles(
+    record HostProxyHandlerMethodHandles(
                     MethodHandle forObject, // bound SnippetReflectionProvider.forObject
                     // providers.getSnippetReflectionProvider().asObject(Object.class, x)
                     MethodHandle asObject,
@@ -273,7 +273,7 @@ final class HostCallbackHandler implements InvocationHandler {
     }
 
     // Host -> Guest
-    private static MethodHandle getReturnFilter(Class<?> guestType, Class<?> hostType, CallbackHandlerMethodHandles methodHandles) {
+    private static MethodHandle getReturnFilter(Class<?> guestType, Class<?> hostType, HostProxyHandlerMethodHandles methodHandles) {
         if (hostType == JavaConstant.class) {
             if (guestType.isPrimitive()) {
                 if (guestType == boolean.class) {
@@ -324,7 +324,7 @@ final class HostCallbackHandler implements InvocationHandler {
     }
 
     // Guest -> Host
-    private static MethodHandle getArgumentFilter(Class<?> guestType, Class<?> hostType, CallbackHandlerMethodHandles methodHandles) {
+    private static MethodHandle getArgumentFilter(Class<?> guestType, Class<?> hostType, HostProxyHandlerMethodHandles methodHandles) {
         if (hostType == JavaConstant.class) {
             if (guestType.isPrimitive()) {
                 if (guestType == boolean.class) {
