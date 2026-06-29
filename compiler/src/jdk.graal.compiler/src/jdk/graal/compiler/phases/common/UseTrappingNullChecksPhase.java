@@ -119,11 +119,11 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
          * that conditional branch is removed, so there is no longer a branch misprediction that can
          * speculatively enter the continuation. We may therefore remove the fence.
          *
-         * Restrict this special case to a block-entry fence immediately followed by the access being
-         * converted. Then removing the fence cannot leave any intervening fixed node unfenced, and
-         * the converted access itself traps on the null value before later dependent memory
-         * operations can execute. Only do this for block-entry fences; immovable speculation fences
-         * model explicitly placed fences and must remain in place.
+         * Restrict this special case to a block-entry fence immediately followed by the access
+         * being converted. Then removing the fence cannot leave any intervening fixed node
+         * unfenced, and the converted access itself traps on the null value before later dependent
+         * memory operations can execute. Only do this for block-entry fences; immovable speculation
+         * fences model explicitly placed fences and must remain in place.
          */
         if (nextNonTrapping instanceof SpeculationFenceNode speculationFence && speculationFence.isBlockEntryFence() && speculationFence.next() instanceof FixedAccessNode) {
             blockEntryFence = speculationFence;

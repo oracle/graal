@@ -87,8 +87,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * </pre>
  *
  * {@link InsertGuardFencesPhase} inserts a fence after the original guarded branch begin. Later,
- * {@link ExpandLogicPhase} rewrites the single short-circuit condition into nested
- * {@link IfNode IfNodes}; every new branch that reaches the protected access must keep a fence.
+ * {@link ExpandLogicPhase} rewrites the single short-circuit condition into nested {@link IfNode
+ * IfNodes}; every new branch that reaches the protected access must keep a fence.
  *
  * The tests also cover other CFG rewrites from the same root cause: redundant begin deletion,
  * loop-begin and loop-exit removal, and if/phi splitting. In each case, a block-entry fence must
@@ -393,10 +393,9 @@ public class SpectreGuardTargetsBypassTest extends GraalCompilerTest {
 
     /**
      * The unsafe access is on a loop side exit. The control-flow anchor keeps loop optimizations
-     * from moving the access away before {@link InsertGuardFencesPhase}. The opaque condition
-     * folds after guard lowering, so later phases can call
-     * {@link LoopExitNode#removeExit(boolean)}, replacing the {@link LoopExitNode} that carried the
-     * fence with a plain {@link BeginNode}.
+     * from moving the access away before {@link InsertGuardFencesPhase}. The opaque condition folds
+     * after guard lowering, so later phases can call {@link LoopExitNode#removeExit(boolean)},
+     * replacing the {@link LoopExitNode} that carried the fence with a plain {@link BeginNode}.
      */
     public static long opaqueLoopSideExitSnippet(int iterations, long value) {
         final Object m = memory;

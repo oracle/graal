@@ -42,9 +42,9 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 /**
  * A fixed node that represents a speculation fence in the graph.
  * <p>
- * This node distinguishes block-entry fences from immovable fences. Block-entry fences protect entry
- * into a guarded block, and canonicalization normalizes them to the start of that block. Immovable
- * fences model explicitly placed fences and must remain at their insertion point.
+ * This node distinguishes block-entry fences from immovable fences. Block-entry fences protect
+ * entry into a guarded block, and canonicalization normalizes them to the start of that block.
+ * Immovable fences model explicitly placed fences and must remain at their insertion point.
  *
  * <pre>
  * Block-entry fence:
@@ -73,9 +73,9 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
  * point, so canonicalization does not normalize it to the block entry.
  * <p>
  * Older code stored block-entry fences as metadata on {@link AbstractBeginNode begin nodes}. That
- * made the fence vulnerable to graph rewrites that delete begin nodes, reduce trivial merges, remove
- * loop exits, or expand short-circuit logic into new control flow. Representing the fence as a
- * fixed control-flow node keeps the mitigation on the protected path across those rewrites.
+ * made the fence vulnerable to graph rewrites that delete begin nodes, reduce trivial merges,
+ * remove loop exits, or expand short-circuit logic into new control flow. Representing the fence as
+ * a fixed control-flow node keeps the mitigation on the protected path across those rewrites.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_4)
 public class SpeculationFenceNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, NodeWithIdentity {
