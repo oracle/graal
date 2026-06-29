@@ -106,6 +106,18 @@ public final class GraalServices {
         }
     }
 
+    /// Freezes the build-time {@link ServiceLoader} results before they are embedded in the
+    /// libgraal image heap. Libgraal does not perform runtime service discovery, so retaining
+    /// mutable {@link ArrayList} instances only preserves unused capacity and mutability in the
+    /// image heap. Converting to immutable lists records just the provider objects selected during
+    /// image building and avoids making runtime service-loader iteration state relevant to libgraal.
+    @LibGraalSupport.HostedOnly
+    private static void freezeLibGraalServices() {
+        for (Map.Entry<Class<?>, List<?>> e : libgraalServices.entrySet()) {
+            e.setValue(List.copyOf(e.getValue()));
+        }
+    }
+
     /**
      * Determines if {@code c} is annotated by {@link LibGraalService}.
      */
@@ -131,6 +143,7 @@ public final class GraalServices {
                             .map(GraalServices::loadClassOrNull)//
                             .filter(GraalServices::isLibGraalService)//
                             .forEach(service -> addProviders(arch, service));
+            freezeLibGraalServices();
         } else {
             libgraalServices = null;
         }
