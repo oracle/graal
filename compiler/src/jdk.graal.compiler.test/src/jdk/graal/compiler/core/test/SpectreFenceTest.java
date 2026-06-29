@@ -125,15 +125,8 @@ public class SpectreFenceTest extends GraalCompilerTest {
     }
 
     private void assertNumberOfFences(String snip, int fences) {
-        int computedFences = 0;
         StructuredGraph g = getFinalGraph(getResolvedJavaMethod(snip), getFenceOptions());
-        for (AbstractBeginNode beginNode : g.getNodes(AbstractBeginNode.TYPE)) {
-            if (beginNode.hasSpeculationFence()) {
-                computedFences++;
-            }
-            GraalDirectives.controlFlowAnchor();
-        }
-        Assert.assertEquals("Expected fences", fences, computedFences);
+        Assert.assertEquals("Expected fences", fences, g.getNodes().filter(SpeculationFenceNode.class).count());
     }
 
     /**
@@ -165,7 +158,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
         int computedFences = 0;
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(snip), options);
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
-            if (beginNode.hasSpeculationFence() && isBoundsCheckGuard(beginNode)) {
+            if (beginNode.next() instanceof SpeculationFenceNode && isBoundsCheckGuard(beginNode)) {
                 computedFences++;
             }
         }

@@ -43,6 +43,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.NullCheckNode;
+import jdk.graal.compiler.nodes.extended.SpeculationFenceNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.options.Option;
@@ -111,6 +112,23 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
                     IfNode ifNode, AbstractDeoptimizeNode deopt, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, LowTierContext context) {
         IsNullNode isNullNode = (IsNullNode) condition;
         FixedNode nextNonTrapping = nonTrappingContinuation.next();
+        SpeculationFenceNode blockEntryFence = null;
+        /*
+         * There may be a block-entry speculation fence that protects entry into the non-trapping
+         * successor of this explicit null check. If the following access becomes the null check,
+         * that conditional branch is removed, so there is no longer a branch misprediction that can
+         * speculatively enter the continuation. We may therefore remove the fence.
+         *
+         * Restrict this special case to a block-entry fence immediately followed by the access
+         * being converted. Then removing the fence cannot leave any intervening fixed node
+         * unfenced, and the converted access itself traps on the null value before later dependent
+         * memory operations can execute. Only do this for block-entry fences; immovable speculation
+         * fences model explicitly placed fences and must remain in place.
+         */
+        if (nextNonTrapping instanceof SpeculationFenceNode speculationFence && speculationFence.isBlockEntryFence() && speculationFence.next() instanceof FixedAccessNode) {
+            blockEntryFence = speculationFence;
+            nextNonTrapping = speculationFence.next();
+        }
         ValueNode value = isNullNode.getValue();
         if (OptImplicitNullChecks.getValue(graph.getOptions())) {
             if (nextNonTrapping instanceof FixedAccessNode) {
@@ -133,6 +151,9 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
                         fixedAccessNode.setStateBefore(deopt.stateBefore());
                         fixedAccessNode.setUsedAsNullCheck(true);
                         fixedAccessNode.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
+                        if (blockEntryFence != null) {
+                            graph.removeFixed(blockEntryFence);
+                        }
                         graph.removeSplit(ifNode, nonTrappingContinuation);
                         graph.getOptimizationLog().report(UseTrappingNullChecksPhase.class, "ImplicitNullCheck", isNullNode);
                         return fixedAccessNode;
