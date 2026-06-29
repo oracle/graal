@@ -28,6 +28,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -545,6 +547,45 @@ public class RistrettoUtils {
             @Override
             protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream) {
                 return RuntimeCompilationSupport.get().openDebugContext(options, compilationId, method, logStream);
+            }
+
+            /**
+             * Integrates Ristretto runtime compilation with {@link CompilationWrapper}'s
+             * {@code CompilationFailureAction=ExitVM} handling.
+             *
+             * The wrapper calls this hook after it has diagnosed a fatal compilation failure but
+             * before {@link CompilationWrapper#run(DebugContext)} has finished closing its debug
+             * scopes and retry output streams. Calling {@link System#exit(int)} directly here would
+             * stop the current thread immediately and can prevent that wrapper cleanup from
+             * completing. Instead, start a non-daemon helper thread that requests process
+             * termination while the compiling thread returns to the wrapper and lets it finish
+             * unwinding normally.
+             *
+             * Returning {@code true} means the exit request was successfully handed to the helper
+             * thread. Returning {@code false} lets the wrapper fall back to its normal exception
+             * path if the helper cannot be started.
+             */
+            @Override
+            protected boolean requestExitVMOnCompilationFailure() {
+                CountDownLatch exitStarted = new CountDownLatch(1);
+                AtomicBoolean exitRequested = new AtomicBoolean();
+                Thread exitThread = new Thread(() -> {
+                    exitRequested.set(true);
+                    exitStarted.countDown();
+                    System.exit(-1);
+                }, "RistrettoExitVMOnCompilationFailure");
+                exitThread.setDaemon(false);
+                try {
+                    exitThread.start();
+                } catch (Throwable t) {
+                    return false;
+                }
+                try {
+                    exitStarted.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return exitRequested.get();
             }
 
             @Override
