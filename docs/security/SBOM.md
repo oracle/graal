@@ -47,14 +47,14 @@ It outputs the contents in the JSON format:
       "components": [
         {
           "type": "library",
-          "bom-ref": "Oracle:org.graalvm.sdk:nativeimage:25.0.0",
+          "bom-ref": "Oracle:org.graalvm.sdk:nativeimage:25.1.3",
           "supplier": {
             "name": "Oracle"
           },
           "group": "org.graalvm.sdk",
           "name": "nativeimage",
-          "version": "25.0.0",
-          "purl": "pkg:maven/org.graalvm.sdk/nativeimage@25.0.0"
+          "version": "25.1.3",
+          "purl": "pkg:maven/org.graalvm.sdk/nativeimage@25.1.3"
         }
       ]
     },
