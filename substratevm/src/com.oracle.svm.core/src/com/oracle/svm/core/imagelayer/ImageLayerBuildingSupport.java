@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.util.ModuleSupport;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -61,7 +62,8 @@ import jdk.graal.compiler.util.ObjectCopier;
  *
  * Note this is intentionally not a LayeredImageSingleton itself to prevent circular dependencies.
  */
-public abstract class ImageLayerBuildingSupport {
+public abstract class ImageLayerBuildingSupport implements ImageLayerBuildingSupportProvider {
+
     public final boolean buildingImageLayer;
     public final boolean buildingInitialLayer;
     public final boolean buildingApplicationLayer;
@@ -84,62 +86,81 @@ public abstract class ImageLayerBuildingSupport {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "sun.reflect.annotation");
     }
 
-    private static ImageLayerBuildingSupport singleton() {
-        return ImageSingletons.lookup(ImageLayerBuildingSupport.class);
+    private static ImageLayerBuildingSupportProvider singleton() {
+        return ImageSingletons.lookup(ImageLayerBuildingSupportProvider.class);
     }
 
     private static boolean installed() {
-        return ImageSingletons.contains(ImageLayerBuildingSupport.class);
+        return ImageSingletons.contains(ImageLayerBuildingSupportProvider.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean firstImageBuild() {
-        if (installed()) {
-            ImageLayerBuildingSupport support = singleton();
-            return !support.buildingImageLayer || support.buildingInitialLayer;
-        }
-        return true;
+        return !installed() || singleton().isFirstImageBuild();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean lastImageBuild() {
-        if (installed()) {
-            ImageLayerBuildingSupport support = singleton();
-            return !support.buildingImageLayer || support.buildingApplicationLayer;
-        }
-        return true;
+        return !installed() || singleton().isLastImageBuild();
     }
 
     @Fold
     public static boolean buildingImageLayer() {
-        return installed() && singleton().buildingImageLayer;
+        return installed() && singleton().isBuildingImageLayer();
     }
 
     @Fold
     public static boolean buildingInitialLayer() {
-        return installed() && singleton().buildingInitialLayer;
+        return installed() && singleton().isBuildingInitialLayer();
     }
 
     @Fold
     public static boolean buildingApplicationLayer() {
-        return installed() && singleton().buildingApplicationLayer;
+        return installed() && singleton().isBuildingApplicationLayer();
     }
 
     @Fold
     public static boolean buildingExtensionLayer() {
-        if (installed()) {
-            ImageLayerBuildingSupport support = singleton();
-            return support.buildingImageLayer && !support.buildingInitialLayer;
-        }
-        return false;
+        return installed() && singleton().isBuildingExtensionLayer();
     }
 
     @Fold
     public static boolean buildingSharedLayer() {
-        if (installed()) {
-            ImageLayerBuildingSupport support = singleton();
-            return support.buildingImageLayer && !support.buildingApplicationLayer;
-        }
-        return false;
+        return installed() && singleton().isBuildingSharedLayer();
+    }
+
+    @Override
+    public boolean isFirstImageBuild() {
+        return !buildingImageLayer || buildingInitialLayer;
+    }
+
+    @Override
+    public boolean isLastImageBuild() {
+        return !buildingImageLayer || buildingApplicationLayer;
+    }
+
+    @Override
+    public boolean isBuildingImageLayer() {
+        return buildingImageLayer;
+    }
+
+    @Override
+    public boolean isBuildingInitialLayer() {
+        return buildingInitialLayer;
+    }
+
+    @Override
+    public boolean isBuildingApplicationLayer() {
+        return buildingApplicationLayer;
+    }
+
+    @Override
+    public boolean isBuildingExtensionLayer() {
+        return buildingImageLayer && !buildingInitialLayer;
+    }
+
+    @Override
+    public boolean isBuildingSharedLayer() {
+        return buildingImageLayer && !buildingApplicationLayer;
     }
 }

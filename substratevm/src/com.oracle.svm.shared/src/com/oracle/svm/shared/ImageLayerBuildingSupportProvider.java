@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.shared;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
+/**
+ * Provides image layer build state to code that can execute in the guest context.
+ */
+public interface ImageLayerBuildingSupportProvider {
 
-import com.oracle.svm.guest.staging.util.ImageHeapMap;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.truffle.api.nodes.NodeClass;
+    boolean isFirstImageBuild();
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
-class NodeClassSupport {
-    final EconomicMap<Class<?>, NodeClass> nodeClasses = ImageHeapMap.create("nodeClasses");
+    boolean isLastImageBuild();
 
-    static NodeClassSupport singleton() {
-        return ImageSingletons.lookup(NodeClassSupport.class);
-    }
+    boolean isBuildingImageLayer();
+
+    boolean isBuildingInitialLayer();
+
+    boolean isBuildingApplicationLayer();
+
+    boolean isBuildingExtensionLayer();
+
+    boolean isBuildingSharedLayer();
 }

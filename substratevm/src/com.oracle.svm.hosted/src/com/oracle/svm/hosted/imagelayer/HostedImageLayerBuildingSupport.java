@@ -68,6 +68,7 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.hosted.snapshot.capnproto.CapnProtoSharedLayerSnapshotFormat;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotFormat;
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
@@ -155,7 +156,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
-        return (HostedImageLayerBuildingSupport) ImageSingletons.lookup(ImageLayerBuildingSupport.class);
+        return (HostedImageLayerBuildingSupport) ImageSingletons.lookup(ImageLayerBuildingSupportProvider.class);
     }
 
     public SVMImageLayerSingletonLoader getSingletonLoader() {

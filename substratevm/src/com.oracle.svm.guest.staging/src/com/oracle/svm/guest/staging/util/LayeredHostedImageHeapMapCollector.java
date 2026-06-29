@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.guest.staging.util;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -33,8 +33,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -66,7 +66,7 @@ public class LayeredHostedImageHeapMapCollector {
     /**
      * Maps reachable in the previous layers.
      */
-    private final List<HostedImageHeapMap<?, ?>> previousLayerReachableMaps = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ArrayList<>() : null;
+    private final List<HostedImageHeapMap<?, ?>> previousLayerReachableMaps = GuestImageLayerBuildingSupport.buildingExtensionLayer() ? new ArrayList<>() : null;
 
     public LayeredHostedImageHeapMapCollector() {
         this(null);

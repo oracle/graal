@@ -172,9 +172,9 @@ import com.oracle.svm.core.option.SharedLayerRuntimeOptionsValues;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
-import com.oracle.svm.core.util.LayeredImageHeapMapStore;
-import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
+import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
+import com.oracle.svm.guest.staging.util.LayeredImageHeapMapStore;
+import com.oracle.svm.guest.staging.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.JavaMainSupport;
@@ -269,6 +269,7 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -490,7 +491,7 @@ public class NativeImageGenerator {
          * also intentionally do not mark this singleton as a LayerImageSingleton to prevent
          * circular dependency complications.
          */
-        ImageSingletons.add(ImageLayerBuildingSupport.class, support);
+        ImageSingletons.add(ImageLayerBuildingSupportProvider.class, support);
 
         EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
         if (support.getSingletonLoader() != null) {
@@ -1337,7 +1338,15 @@ public class NativeImageGenerator {
         if (GuestAccess.get().isFullyIsolated()) {
             /* Install a second singleton registry in the guest context. */
             GuestImageSingletonSupport.install();
+            registerGuestImageLayerBuildingSupport(imageLayerSupport);
         }
+    }
+
+    private static void registerGuestImageLayerBuildingSupport(HostedImageLayerBuildingSupport imageLayerSupport) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
+        JavaConstant callback = access.createCallback(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, callback);
     }
 
     private static void setupGuestTargetDescription(SubstrateTarget target) {

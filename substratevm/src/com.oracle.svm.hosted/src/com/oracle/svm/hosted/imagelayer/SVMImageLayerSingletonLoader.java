@@ -37,13 +37,13 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.singleton.ImageSingletonKeyData;
 import com.oracle.svm.hosted.snapshot.singleton.ImageSingletonObjectData;
 import com.oracle.svm.hosted.snapshot.singleton.KeyStoreEntryData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.SingletonInfo;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -171,7 +171,7 @@ public class SVMImageLayerSingletonLoader {
     }
 
     public boolean hasRegistrationCallback(Class<?> key) {
-        if (key == ImageLayerBuildingSupport.class) {
+        if (key == ImageLayerBuildingSupportProvider.class) {
             /*
              * This singleton is added very early, before prior layer singletons and metadata has
              * been loaded. Note this singleton does not have a registration callback associated
