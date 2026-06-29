@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Tests the type-stamp checks used when method-handle intrinsification rewrites a signature-polymorphic call
- * to its resolved target.
+ * Tests the type-stamp checks used when method-handle intrinsification rewrites a
+ * signature-polymorphic call to its resolved target.
  */
 public class MethodHandleNodeTest {
 
@@ -57,9 +57,10 @@ public class MethodHandleNodeTest {
     private final Map<ResolvedJavaType, Class<?>> classes = new LinkedHashMap<>();
 
     /**
-     * Exercises the case that differs from the previous predicate: an argument stamped as {@code String}
-     * and a target parameter type of {@code Integer}. These are unrelated concrete types, so the argument
-     * is not already known to satisfy the target type and a guard must be emitted.
+     * Exercises the case that differs from the previous predicate: an argument stamped as
+     * {@code String} and a target parameter type of {@code Integer}. These are unrelated concrete
+     * types, so the argument is not already known to satisfy the target type and a guard must be
+     * emitted.
      */
     @Test
     public void maybeCastArgumentGuardsUnrelatedReferenceStamp() {
@@ -74,9 +75,9 @@ public class MethodHandleNodeTest {
     }
 
     /**
-     * Checks a concrete subtype case that remains guard-free. An argument stamped as {@code Integer}
-     * already satisfies a {@code Number} target parameter, so adding a guard would only duplicate type
-     * information already present in the stamp.
+     * Checks a concrete subtype case that remains guard-free. An argument stamped as
+     * {@code Integer} already satisfies a {@code Number} target parameter, so adding a guard would
+     * only duplicate type information already present in the stamp.
      */
     @Test
     public void maybeCastArgumentSkipsKnownSubtypeStamp() {
