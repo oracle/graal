@@ -46,7 +46,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,6 +58,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.BatchExecutor;
 import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile;
@@ -76,6 +76,7 @@ import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -204,18 +205,26 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         LLVMTextSectionInfo textSectionInfo = objectFileReader.parseCode(getLinkedPath());
 
-        executor.forEach(getOrderedCompilations(), pair -> _ -> {
+        List<Pair<HostedMethod, CompilationResult>> orderedCompilations = getOrderedCompilations();
+        executor.forEach(orderedCompilations, pair -> _ -> {
             HostedMethod method = pair.getLeft();
-            int offset = textSectionInfo.getOffset(method.getUniqueShortName());
-            int nextFunctionStartOffset = textSectionInfo.getNextOffset(offset);
+            method.setCodeAddressOffset(textSectionInfo.getOffset(method.getUniqueShortName()));
+        });
+        orderedCompilations.sort(Comparator.comparingInt(o -> o.getLeft().getCodeAddressOffset()));
+
+        executor.forEach(orderedCompilations.size(), i -> _ -> {
+            var pair = orderedCompilations.get(i);
+            HostedMethod method = pair.getLeft();
+            CompilationResult compilation = pair.getRight();
+            int offset = method.getCodeAddressOffset();
+            HostedMethod nextMethod = i + 1 == orderedCompilations.size() ? null : orderedCompilations.get(i + 1).getLeft();
+            int nextFunctionStartOffset = nextMethod == null ? NumUtil.safeToInt(textSectionInfo.getCodeSize()) : nextMethod.getCodeAddressOffset();
+            VMError.guarantee(offset < nextFunctionStartOffset, "Methods %s and %s have the same offset: %d", method, nextMethod == null ? "end of section" : nextMethod, offset);
             int functionSize = nextFunctionStartOffset - offset;
 
-            CompilationResult compilation = pair.getRight();
             compilation.setTargetCode(null, functionSize);
-            method.setCodeAddressOffset(offset);
         });
 
-        getOrderedCompilations().sort(Comparator.comparingInt(o -> o.getLeft().getCodeAddressOffset()));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
@@ -431,14 +440,20 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
             dump("\nOffsets\n=======\n");
-            getOrderedCompilations().forEach((pair) -> {
+            List<Pair<HostedMethod, CompilationResult>> orderedCompilations = getOrderedCompilations();
+            for (int i = 0; i < orderedCompilations.size(); ++i) {
+                var pair = orderedCompilations.get(i);
                 int startOffset = pair.getLeft().getCodeAddressOffset();
                 CompilationResult compilationResult = pair.getRight();
-                assert startOffset + compilationResult.getTargetCodeSize() == textSectionInfo.getNextOffset(startOffset) : compilationResult.getName();
+                assert i == 0 || checkPreviousFunctionEnd(orderedCompilations.get(i - 1), startOffset) : orderedCompilations.get(i - 1).getRight().getName();
 
                 String methodName = textSectionInfo.getSymbol(startOffset);
                 dump("[" + startOffset + "] " + methodName + " (" + compilationResult.getTargetCodeSize() + ")\n");
-            });
+            }
+        }
+
+        private static boolean checkPreviousFunctionEnd(Pair<HostedMethod, CompilationResult> previousPair, int startOffset) {
+            return previousPair.getLeft().getCodeAddressOffset() + previousPair.getRight().getTargetCodeSize() == startOffset;
         }
 
         @Override
