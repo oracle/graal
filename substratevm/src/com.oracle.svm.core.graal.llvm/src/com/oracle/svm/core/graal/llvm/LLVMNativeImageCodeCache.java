@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmAddTextSectionSymbols;
+import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCleanupRISCVAttributes;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCleanupStackMaps;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCompile;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmLink;
@@ -231,6 +232,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
         long codeAreaSize = textSectionInfo.getCodeSize();
         assert codeAreaSize <= Integer.MAX_VALUE;
+        llvmCleanupRISCVAttributes(debug, getLinkedFilename(), basePath);
         llvmAddTextSectionSymbols(debug, getLinkedFilename(), NativeImage.getTextSectionStartSymbol(), NativeImage.getTextSectionEndSymbol(), codeAreaSize, basePath);
         setCodeAreaSize((int) textSectionInfo.getCodeSize());
     }
