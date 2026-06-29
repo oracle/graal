@@ -249,6 +249,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     /** All providers deemed to be used by this feature. */
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> candidateProviderClasses = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> includedProviderClasses = ConcurrentHashMap.newKeySet();
 
     private Field verificationResultsField;
     private Field providerListField;
@@ -392,7 +394,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         initializeServiceRegistrationData();
-        access.registerSubtypeReachabilityHandler((analysisAccess, providerClass) -> includeProviderClass(analysisAccess, providerClass), Provider.class);
+        access.registerSubtypeReachabilityHandler((_, providerClass) -> candidateProviderClasses.add(providerClass), Provider.class);
         registerManuallyConfiguredProvidersForReflection(access);
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
@@ -863,35 +865,39 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             registerForReflection(provider.getClass());
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
-            try {
-                Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
-                /*
-                 * Trigger initialization of JceSecurity.verificationResults used by
-                 * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
-                 * signed and can be used by JCE. It does that via jar verification which we cannot
-                 * support. See also Target_javax_crypto_JceSecurity.
-                 */
-                Object result = getVerificationResult.invoke(null, provider);
-                /*
-                 * Note that after verification, we move the result to a separate structure since we
-                 * don't want to keep provider objects that were only instantiated for verification in
-                 * the image heap.
-                 *
-                 * The verification result can be either null, in case of success, or an Exception,
-                 * in case of failure. Null is interpreted as Boolean.TRUE at runtime, signifying
-                 * successful verification.
-                 */
-                SecurityProvidersSupport.singleton().addVerifiedSecurityProvider(provider.getName(), provider.getClass().getName(), result instanceof Exception ? result : Boolean.TRUE);
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
+            SecurityProvidersSupport.singleton().addVerifiedSecurityProvider(provider.getName(), provider.getClass().getName(), getProviderVerificationResult(provider));
+        }
+    }
+
+    private Object getProviderVerificationResult(Provider provider) {
+        if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
+            return Boolean.TRUE;
+        }
+        try {
+            Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
+            /*
+             * Trigger initialization of JceSecurity.verificationResults used by
+             * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
+             * signed and can be used by JCE. It does that via jar verification which we cannot
+             * support. See also Target_javax_crypto_JceSecurity.
+             */
+            Object result = getVerificationResult.invoke(null, provider);
+            /*
+             * Note that after verification, we move the result to a separate structure since we
+             * don't want to keep provider objects that were only instantiated for verification in
+             * the image heap.
+             *
+             * The verification result can be either null, in case of success, or an Exception, in
+             * case of failure. Null is interpreted as Boolean.TRUE at runtime, signifying successful
+             * verification.
+             */
+            return result instanceof Exception ? result : Boolean.TRUE;
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 
     private void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
-        if (shouldSkipOmittedSunECProviderClass(providerClass)) {
-            return;
-        }
         if (!isLoadableProviderClass(access, providerClass)) {
             return;
         }
@@ -982,12 +988,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static boolean shouldSkipOmittedSunECProviderClass(Class<?> providerClass) {
         return MissingRegistrationUtils.throwMissingRegistrationErrors() &&
                         providerClass.getName().equals("sun.security.ec.SunEC") &&
-                        !isTypeRegisteredForReflection(providerClass);
+                        !isProviderRegisteredForReflection(providerClass);
     }
 
-    private static boolean isTypeRegisteredForReflection(Class<?> clazz) {
+    private static boolean isProviderRegisteredForReflection(Class<?> providerClass) {
         ReflectionDataBuilder reflectionData = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        return reflectionData.isTypeRegisteredForReflection(clazz);
+        if (reflectionData.isTypeRegisteredForReflection(providerClass)) {
+            return true;
+        }
+        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+        if (constructor != null && reflectionData.isMethodRegisteredForReflection(constructor)) {
+            return true;
+        }
+        Method providerMethod = findProviderMethod(providerClass);
+        return providerMethod != null && reflectionData.isMethodRegisteredForReflection(providerMethod);
     }
 
     private static void registerProviderClassForReflection(Class<?> providerClass) {
@@ -1077,6 +1091,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        boolean includedProvider = false;
+        for (Class<?> providerClass : candidateProviderClasses) {
+            if (!includedProviderClasses.contains(providerClass) && isProviderRegisteredForReflection(providerClass)) {
+                includedProviderClasses.add(providerClass);
+                includeProviderClass(access, providerClass);
+                includedProvider = true;
+            }
+        }
+        if (includedProvider) {
+            access.requireAnalysisIteration();
+        }
         access.rescanRoot(oidTableField, scanReason);
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             maybeScanVerificationResultsField(access);
