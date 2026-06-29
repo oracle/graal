@@ -71,6 +71,10 @@ public class SecurityServiceTest {
     private static final String REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM = "reflection-metadata-mac";
     private static final String SERVICE_LOADED_PROVIDER_CLASS_NAME = "com.oracle.svm.test.services.SecurityServiceTest$ServiceLoadedProvider";
     private static final String SERVICE_LOADED_PROVIDER_ALGORITHM = "service-loaded-provider-algo";
+    private static final String TYPE_METADATA_PROVIDER_NAME = "type-metadata-provider";
+    private static final String TYPE_METADATA_PROVIDER_ALGORITHM = "type-metadata-algo";
+    private static final String REACHABLE_PROVIDER_WITHOUT_METADATA_NAME = "reachable-provider-without-metadata";
+    private static final String REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM = "reachable-without-metadata-algo";
 
     public static class TestFeature implements Feature {
         @Override
@@ -161,6 +165,32 @@ public class SecurityServiceTest {
             Assert.assertNotNull("No JCE service instance was created", Mac.getInstance(REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM, provider));
         } finally {
             Security.removeProvider(REFLECTION_METADATA_PROVIDER_NAME);
+        }
+    }
+
+    @Test
+    public void testTypeMetadataProviderRegistration() throws Exception {
+        Provider provider = new TypeMetadataProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("Provider should be registered.", position > 0);
+            JCACompliantNoOpService service = JCACompliantNoOpService.getInstance(TYPE_METADATA_PROVIDER_ALGORITHM);
+            Assert.assertNotNull("No service instance was created", service);
+            Assert.assertEquals("Unexpected service implementation class", TypeMetadataNoOpServiceImpl.class.getName(), service.getClass().getName());
+        } finally {
+            Security.removeProvider(TYPE_METADATA_PROVIDER_NAME);
+        }
+    }
+
+    @Test
+    public void testReachableProviderWithoutMetadataDoesNotRegisterServices() {
+        Provider provider = new ReachableProviderWithoutMetadata();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("Provider should be registered.", position > 0);
+            Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM));
+        } finally {
+            Security.removeProvider(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME);
         }
     }
 
@@ -325,6 +355,12 @@ public class SecurityServiceTest {
     public static final class ReflectionMetadataNoOpServiceImpl extends JCACompliantNoOpService {
     }
 
+    public static final class TypeMetadataNoOpServiceImpl extends JCACompliantNoOpService {
+    }
+
+    public static final class ReachableNoOpServiceImpl extends JCACompliantNoOpService {
+    }
+
     public static final class ReflectionMetadataProvider extends Provider {
         static final long serialVersionUID = 1234L;
 
@@ -334,6 +370,28 @@ public class SecurityServiceTest {
             putService(new Service(this, "JCACompliantNoOpService", REFLECTION_METADATA_PROVIDER_ALGORITHM,
                             ReflectionMetadataNoOpServiceImpl.class.getName(), null, null));
             putService(new Service(this, "Mac", REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM, ReflectionMetadataMacSpi.class.getName(), null, null));
+        }
+    }
+
+    public static final class TypeMetadataProvider extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public TypeMetadataProvider() {
+            super(TYPE_METADATA_PROVIDER_NAME, 1.0, "Provider registered through type-level reflection metadata");
+            putService(new Service(this, "JCACompliantNoOpService", TYPE_METADATA_PROVIDER_ALGORITHM,
+                            TypeMetadataNoOpServiceImpl.class.getName(), null, null));
+        }
+    }
+
+    public static final class ReachableProviderWithoutMetadata extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public ReachableProviderWithoutMetadata() {
+            super(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME, 1.0, "Reachable provider without reflection metadata");
+            putService(new Service(this, "JCACompliantNoOpService", REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM,
+                            ReachableNoOpServiceImpl.class.getName(), null, null));
         }
     }
 
