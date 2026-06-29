@@ -8,6 +8,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "com.oracle.svm.test.services.SecurityServiceTest$TypeMetadataProvider"
     }
   ]
 }
