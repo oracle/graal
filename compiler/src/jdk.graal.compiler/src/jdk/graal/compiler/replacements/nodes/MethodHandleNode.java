@@ -302,7 +302,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * @param index of the argument to be cast
      * @param type the type the argument should be cast to
      */
-    private static void maybeCastArgument(GraphAdder adder, ValueNode[] arguments, int index, JavaType type) {
+    public static void maybeCastArgument(GraphAdder adder, ValueNode[] arguments, int index, JavaType type) {
         ValueNode argument = arguments[index];
         if (type instanceof ResolvedJavaType && !((ResolvedJavaType) type).isJavaLangObject()) {
             Assumptions assumptions = adder.getAssumptions();
