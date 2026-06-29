@@ -91,9 +91,13 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
 
                 if (sweepStart.notEqual(p)) {
                     UnsignedWord sweepSize = p.subtract(sweepStart);
-                    FillerObjectUtil.writeFillerObjectAt(sweepStart, sweepSize, false);
+                    boolean uncommit = AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned();
+                    Pointer uncommittableStart = FillerObjectUtil.writeFillerObjectAt(sweepStart, sweepSize, false, !uncommit);
                     if (rememberedSet) {
                         RememberedSet.get().enableRememberedSetForObject(chunk, sweepStart.toObjectNonNull(), sweepSize);
+                    }
+                    if (uncommit) {
+                        AlignedChunkPartialUncommitter.maybeUncommitOrFillDeadObjectGap(chunk, uncommittableStart, p);
                     }
                 }
                 sweepStart = next;
@@ -125,8 +129,11 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
             chunkReleaser.add(chunk);
         } else {
             assert promoted;
+            if (AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned()) {
+                AlignedChunkPartialUncommitter.maybeUncommitUnusedTail(chunk);
+            }
             if (HeapParameters.getZapConsumedHeapChunks()) {
-                HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+                HeapChunkProvider.zapConsumedUnusedObjectMemory(chunk);
             }
         }
     }

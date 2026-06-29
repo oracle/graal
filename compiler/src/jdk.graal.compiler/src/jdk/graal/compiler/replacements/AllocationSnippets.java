@@ -46,6 +46,10 @@ import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
 public abstract class AllocationSnippets implements Snippets {
+    /** Whether {@link FillContent#WITH_GARBAGE_IF_ASSERTIONS_ENABLED} fills object bodies. */
+    public static final boolean GARBAGE_FILLING_ENABLED = ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
+    public static final int GARBAGE_FILL_PATTERN = 0xfefefefe;
+
     protected Object allocateInstanceImpl(Word hub,
                     UnsignedWord size,
                     boolean useTLAB,
@@ -258,7 +262,9 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean manualUnroll,
                     boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
-        fillMemory(0xfefefefefefefefeL, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, false, supportsOptimizedFilling, snippetCounters);
+        long value = GARBAGE_FILL_PATTERN & 0xffffffffL;
+        value = (value << 32) | value;
+        fillMemory(value, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, false, supportsOptimizedFilling, snippetCounters);
     }
 
     /**
@@ -310,7 +316,7 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
         if (fillContents == FillContent.WITH_ZEROES) {
             zeroMemory(memory, startOffset, endOffset, isEndOffsetConstant, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
-        } else if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
+        } else if (GARBAGE_FILLING_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, startOffset, endOffset, isEndOffsetConstant, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
     }

@@ -91,6 +91,12 @@ class HeapChunkLogging {
             AlignedHeapChunk.AlignedHeader aChunk = (AlignedHeapChunk.AlignedHeader) chunk;
             if (aChunk.getAllPinned()) {
                 log.character('*');
+
+                if (AlignedHeapChunk.hasUncommittedPages(aChunk)) {
+                    UnsignedWord committedPercent = AlignedHeapChunk.getCommittedSize(aChunk)
+                                    .multiply(100).unsignedDivide(HeapChunk.getSize(aChunk));
+                    log.string(" (").unsigned(committedPercent, 2, RIGHT_ALIGN).string("%C)");
+                }
             } else if (aChunk.getObjectPinCount() != 0) {
                 log.signed(aChunk.getObjectPinCount());
             }

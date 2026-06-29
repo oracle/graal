@@ -404,7 +404,7 @@ final class CompactingOldGeneration extends OldGeneration {
                     RememberedSet.get().clearRememberedSet(chunk);
 
                     if (HeapParameters.getZapConsumedHeapChunks()) {
-                        HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+                        HeapChunkProvider.zapConsumedUnusedObjectMemory(chunk);
                     }
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 

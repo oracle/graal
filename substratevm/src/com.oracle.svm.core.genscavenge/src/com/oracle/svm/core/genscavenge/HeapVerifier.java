@@ -34,10 +34,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.DerivedReferenceSupport;
@@ -54,6 +54,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -211,6 +212,18 @@ public class HeapVerifier {
                 Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").zhex(aChunk).string(" but the chunk does not reference the correct space: ")
                                 .zhex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
                 success = false;
+            }
+
+            if (SerialGCOptions.useCompactingOldGen()) {
+                if (!CompactingAlignedChunkAccess.verifyChunkHeaderNotMarkedUncommitted(aChunk)) {
+                    Log.log().string("Chunk header for aligned chunk ").zhex(aChunk).string(" is marked as being in uncommitted memory.").newline();
+                    success = false;
+                }
+
+                if (!CompactingAlignedChunkAccess.verifyMinimumUncommitSize(aChunk, AlignedChunkPartialUncommitter.MINIMUM_UNCOMMIT_SIZE)) {
+                    Log.log().string("Aligned chunk ").zhex(aChunk).string(" has an uncommitted range smaller than the minimum uncommit size.").newline();
+                    success = false;
+                }
             }
 
             OBJECT_VERIFIER.initialize(aChunk, Word.nullPointer());

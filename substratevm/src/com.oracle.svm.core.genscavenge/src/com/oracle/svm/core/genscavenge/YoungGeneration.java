@@ -299,7 +299,7 @@ public final class YoungGeneration extends Generation {
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
-        if (!alignedChunkFitsInSurvivors()) {
+        if (!alignedChunkFitsInSurvivors(AlignedHeapChunk.getCommittedSize(chunk))) {
             return false;
         }
 
@@ -319,8 +319,8 @@ public final class YoungGeneration extends Generation {
     }
 
     @Uninterruptible(reason = CORE_GC_CODE)
-    private boolean alignedChunkFitsInSurvivors() {
-        UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(HeapParameters.getAlignedHeapChunkSize());
+    private boolean alignedChunkFitsInSurvivors(UnsignedWord size) {
+        UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(size);
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
@@ -334,7 +334,7 @@ public final class YoungGeneration extends Generation {
     @Uninterruptible(reason = CORE_GC_CODE)
     AlignedHeapChunk.AlignedHeader requestAlignedSurvivorChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        if (!alignedChunkFitsInSurvivors()) {
+        if (!alignedChunkFitsInSurvivors(HeapParameters.getAlignedHeapChunkSize())) {
             return Word.nullPointer();
         }
         return HeapImpl.getChunkProvider().produceAlignedChunk();

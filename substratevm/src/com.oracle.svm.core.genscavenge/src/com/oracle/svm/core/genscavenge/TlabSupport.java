@@ -363,7 +363,7 @@ public class TlabSupport {
         UnsignedWord size = hardEnd.subtract(top);
 
         if (top.belowThan(hardEnd)) {
-            FillerObjectUtil.writeFillerObjectAt(top, size, false);
+            FillerObjectUtil.writeFillerObjectAt(top, size, false, true);
         }
     }
 

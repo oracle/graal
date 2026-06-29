@@ -34,10 +34,13 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -56,11 +59,11 @@ import jdk.graal.compiler.api.replacements.Fold;
  * An AlignedHeapChunk is laid out as follows:
  *
  * <pre>
- * +===============+-------+--------+-----------------+-----------------+
- * | AlignedHeader | Card  | First  | Initial Object  | Object ...      |
- * | Fields        | Table | Object | Move Info (only |                 |
- * |               |       | Table  | Compacting GC)  |                 |
- * +===============+-------+--------+-----------------+-----------------+
+ * +===============+-------+--------+------------------+-----------------+
+ * | AlignedHeader | Card  | First  | CompactingOldGen | Object ...      |
+ * | Fields        | Table | Object | Extra Header     |                 |
+ * |               |       | Table  |                  |                 |
+ * +===============+-------+--------+------------------+-----------------+
  * </pre>
  *
  * The size of both the CardTable and the FirstObjectTable depends on the used {@link RememberedSet}
@@ -114,6 +117,10 @@ public final class AlignedHeapChunk {
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
         chunk.setObjectPinCount(0);
         chunk.setAllPinned(false);
+
+        if (SerialGCOptions.useCompactingOldGen()) {
+            CompactingAlignedChunkAccess.initialize(chunk);
+        }
     }
 
     public static void reset(AlignedHeader chunk) {
@@ -125,6 +132,20 @@ public final class AlignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectsStart(AlignedHeader that) {
         return HeapChunk.asPointer(that).add(getObjectsStartOffset());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasUncommittedPages(AlignedHeader chunk) {
+        return SerialGCOptions.useCompactingOldGen() && CompactingAlignedChunkAccess.hasUncommittedPages(chunk);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord getCommittedSize(AlignedHeader chunk) {
+        UnsignedWord size = HeapChunk.getSize(chunk);
+        if (SerialGCOptions.useCompactingOldGen()) {
+            size = size.subtract(CompactingAlignedChunkAccess.getUncommittedBytes(chunk));
+        }
+        return size;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -188,6 +209,32 @@ public final class AlignedHeapChunk {
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     static void walkObjectsFromInline(AlignedHeader that, Pointer start, GreyToBlackObjectVisitor visitor) {
         HeapChunk.walkObjectsFromInline(that, start, visitor);
+    }
+
+    /** Cleans the unallocated tail and filler-object payloads of an aligned heap chunk. */
+    @Uninterruptible(reason = "Uses raw pointers to access heap chunks.")
+    static void clean(AlignedHeader that, boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        boolean hasUncommittedPages = hasUncommittedPages(that);
+        Pointer top = HeapChunk.getTopPointer(that);
+        if (cleanFillerObjectMemory) {
+            Pointer p = getObjectsStart(that);
+            while (p.belowThan(top)) {
+                Object obj = p.toObjectNonNull();
+                UnsignedWord size = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
+                if (FillerObjectUtil.isFillerObject(obj)) {
+                    FillerObjectUtil.cleanFillerObjectMemory(obj, hasUncommittedPages);
+                }
+                p = p.add(size);
+            }
+        }
+        if (cleanUnusedMemory) {
+            Pointer limit = HeapChunk.getEndPointer(that);
+            if (hasUncommittedPages) {
+                CompactingAlignedChunkAccess.fillCommittedMemory(that, top, limit, 0);
+            } else {
+                UnmanagedMemoryUtil.fill(top, limit.subtract(top), (byte) 0);
+            }
+        }
     }
 
     @Fold

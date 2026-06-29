@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.genscavenge.AlignedChunkPartialUncommitter;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.FillerObjectUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -46,16 +47,22 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
+    public boolean visit(AlignedHeapChunk.AlignedHeader chunk, Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
         assert objSeq.equal(newAddress);
         if (nextObjSeq.isNonNull()) {
             Pointer gapStart = objSeq.add(size);
             assert gapStart.belowThan(nextObjSeq);
-            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart), true);
+            UnsignedWord gapSize = nextObjSeq.subtract(gapStart);
+            Pointer uncommittableStart = FillerObjectUtil.writeFillerObjectAt(gapStart, gapSize, true, !chunk.getAllPinned());
+            if (AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned()) {
+                AlignedChunkPartialUncommitter.maybeUncommitOrFillDeadObjectGap(chunk, uncommittableStart, nextObjSeq);
+            }
             // Note that we have already added first object table entries for fillers during fixup.
         } else {
-            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeq);
             assert objSeq.add(size).equal(HeapChunk.getTopPointer(chunk));
+            if (AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned() && !AlignedHeapChunk.isEmpty(chunk)) {
+                AlignedChunkPartialUncommitter.maybeUncommitUnusedTail(chunk);
+            }
         }
         return true;
     }

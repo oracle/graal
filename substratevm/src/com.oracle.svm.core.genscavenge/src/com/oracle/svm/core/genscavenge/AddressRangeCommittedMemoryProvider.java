@@ -700,9 +700,10 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Override
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, UnsignedWord nbytesCommitted) {
+        assert nbytesCommitted.belowOrEqual(nbytes);
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().trackUncommit(nbytes, NmtCategory.JavaHeap);
+            NativeMemoryTracking.singleton().trackUncommit(nbytesCommitted, NmtCategory.JavaHeap);
         }
         freeInHeapAddressSpace((Pointer) start, nbytes);
     }

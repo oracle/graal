@@ -88,13 +88,16 @@ public final class Space {
     void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
         AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
-            HeapChunk.clean(aChunk, AlignedHeapChunk.getObjectsStart(aChunk), cleanUnusedMemory, cleanFillerObjectMemory);
+            AlignedHeapChunk.clean(aChunk, cleanUnusedMemory, cleanFillerObjectMemory);
             aChunk = HeapChunk.getNext(aChunk);
         }
-        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            HeapChunk.clean(uChunk, UnalignedHeapChunk.getObjectStart(uChunk), cleanUnusedMemory, cleanFillerObjectMemory);
-            uChunk = HeapChunk.getNext(uChunk);
+        if (cleanUnusedMemory) {
+            // Unaligned chunks never contain filler objects.
+            UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
+            while (uChunk.isNonNull()) {
+                UnalignedHeapChunk.clean(uChunk);
+                uChunk = HeapChunk.getNext(uChunk);
+            }
         }
     }
 
@@ -253,7 +256,7 @@ public final class Space {
             setFirstAlignedHeapChunk(aChunk);
         }
 
-        accounting.noteAlignedHeapChunk();
+        accounting.noteAlignedHeapChunk(aChunk);
     }
 
     @Uninterruptible(reason = "GC must see a consistent state.")
@@ -276,7 +279,12 @@ public final class Space {
         HeapChunk.setPrevious(aChunk, Word.nullPointer());
         HeapChunk.setSpace(aChunk, null);
 
-        accounting.unnoteAlignedHeapChunk();
+        accounting.unnoteAlignedHeapChunk(aChunk);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void unnoteAlignedHeapChunkUncommittedBytes(UnsignedWord size) {
+        accounting.unnoteAlignedHeapChunkUncommittedBytes(size);
     }
 
     @Uninterruptible(reason = "GC must see a consistent state.")

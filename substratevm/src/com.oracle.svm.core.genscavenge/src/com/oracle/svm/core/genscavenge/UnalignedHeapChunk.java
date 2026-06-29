@@ -33,14 +33,15 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /**
  * An UnalignedHeapChunk holds exactly one Object.
@@ -174,5 +175,13 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjectsInline(UnalignedHeader that, UninterruptibleObjectVisitor visitor) {
         HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
+    }
+
+    /** Cleans the unallocated tail of an unaligned heap chunk. */
+    @Uninterruptible(reason = "Uses raw pointers to access heap chunks.")
+    static void clean(UnalignedHeader that) {
+        Pointer top = HeapChunk.getTopPointer(that);
+        Pointer limit = HeapChunk.getEndPointer(that);
+        UnmanagedMemoryUtil.fill(top, limit.subtract(top), (byte) 0);
     }
 }

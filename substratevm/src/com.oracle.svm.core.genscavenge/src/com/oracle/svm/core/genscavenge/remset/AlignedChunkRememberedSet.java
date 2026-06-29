@@ -44,16 +44,16 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
 import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -72,8 +72,7 @@ public final class AlignedChunkRememberedSet {
     static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
         if (SerialGCOptions.useCompactingOldGen()) {
-            // Compaction needs room for a ObjectMoveInfo structure before the first object.
-            headerSize = headerSize.add(ObjectMoveInfo.getSize());
+            headerSize = headerSize.add(CompactingAlignedChunkAccess.getSizeOfExtraHeaderBeforeObjectStart());
         }
         UnsignedWord alignment = Word.unsigned(ObjectLayout.singleton().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);

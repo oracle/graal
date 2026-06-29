@@ -33,13 +33,16 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.shared.config.ObjectLayout;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.AbstractCommittedMemoryProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -97,8 +100,32 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, @SuppressWarnings("unused") UnsignedWord alignment) {
-        free(start, nbytes, NmtCategory.JavaHeap);
+    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+        freeAlignedChunk(start, nbytes, alignment, nbytes);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, @SuppressWarnings("unused") UnsignedWord alignment, UnsignedWord nbytesCommitted) {
+        free(start, nbytes, nbytesCommitted, NmtCategory.JavaHeap);
+    }
+
+    /**
+     * Uncommits a range of memory belonging to an aligned chunk while the memory remains reserved
+     * and will not be used for other purposes.
+     *
+     * @param nbytesCommitted the number of bytes in the range that are committed at the time of
+     *            the call, which may be equal to or smaller than {@code nbytes}. Used for native
+     *            memory tracking.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void uncommitAlignedChunkSubrange(PointerBase start, UnsignedWord nbytes, UnsignedWord nbytesCommitted) {
+        assert nbytesCommitted.belowOrEqual(nbytes);
+        if (VirtualMemoryProvider.get().uncommit(start, nbytes) != 0) {
+            throw VMError.shouldNotReachHere("Failed to uncommit an aligned heap chunk subrange.");
+        }
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackUncommit(nbytesCommitted, NmtCategory.JavaHeap);
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

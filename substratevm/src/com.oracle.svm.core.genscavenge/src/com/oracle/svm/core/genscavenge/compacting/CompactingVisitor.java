@@ -36,17 +36,16 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 
 /** Moves sequences of live objects to their planned location during compaction. */
 public final class CompactingVisitor implements ObjectMoveInfo.Visitor {
-    private AlignedHeapChunk.AlignedHeader chunk;
 
+    @SuppressWarnings("static-method")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void init(AlignedHeapChunk.AlignedHeader c) {
-        this.chunk = c;
-        HeapChunk.setTopPointer(c, AlignedHeapChunk.getObjectsStart(c));
+    public void init(AlignedHeapChunk.AlignedHeader chunk) {
+        HeapChunk.setTopPointer(chunk, AlignedHeapChunk.getObjectsStart(chunk));
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean visit(Pointer objSeq, UnsignedWord size, Pointer destAddress, Pointer nextObjSeq) {
+    public boolean visit(AlignedHeapChunk.AlignedHeader chunk, Pointer objSeq, UnsignedWord size, Pointer destAddress, Pointer nextObjSeq) {
         if (size.equal(0)) { // gap right at the chunk's start
             assert objSeq.equal(AlignedHeapChunk.getObjectsStart(chunk));
             return true;
