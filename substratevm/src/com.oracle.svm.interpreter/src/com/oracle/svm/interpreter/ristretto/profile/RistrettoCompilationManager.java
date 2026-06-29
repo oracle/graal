@@ -136,10 +136,6 @@ public final class RistrettoCompilationManager {
                                 RistrettoDiagnostics.SuccessfulCompiles.incrementAndGet();
                             }
                         } catch (Throwable e) {
-                            /*
-                             * TODO GR-72048 - CompilationExceptionAreFatal support missing at the
-                             * moment
-                             */
                             RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilation, "[Ristretto Compiler]Compiler saw exception %s %s", Thread.currentThread(), e.getMessage());
                             if (RistrettoOptions.JITPrintExceptions.getValue()) {
                                 Log.log().exception(e);
