@@ -260,7 +260,11 @@ class DirectoryFd extends Fd {
         if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
             return Errno.Notcapable;
         }
-        return FdUtils.writeFilestat(node, memory, resultAddress, virtualFile, FdUtils.FOLLOW_LINKS);
+        final TruffleFile hostFile = preopenedRoot.virtualFileToHostFile(virtualFile);
+        if (hostFile == null) {
+            return Errno.Noent;
+        }
+        return FdUtils.writeFilestat(node, memory, resultAddress, hostFile, FdUtils.FOLLOW_LINKS);
     }
 
     @Override
