@@ -207,6 +207,21 @@ public final class ClassRegistries implements ParsingContext {
         return null;
     }
 
+    /// Reports whether `name` is already present as an AOT-loaded class for `loader`.
+    public static boolean hasAOTLoadedClass(String name, ClassLoader loader) {
+        ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (type == null) {
+            return false;
+        }
+        for (var singleton : layeredSingletons()) {
+            if (singleton.getRegistry(loader).findAOTLoadedClass(type) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static ParsingContext getParsingContext() {
         assert RuntimeClassLoading.isSupported();
         return runtimeLastLayer();

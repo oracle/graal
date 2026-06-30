@@ -44,6 +44,8 @@ public final class RuntimeBootModuleLayerOptions {
 
     public static final String ADD_MODULES_PROPERTY_PREFIX = "jdk.module.addmods.";
 
+    public static final String PATCH_MODULE_PROPERTY_PREFIX = "jdk.module.patch.";
+
     /// Used by `ModuleBootstrap#addExtraReads`.
     public static final String ADD_READS_PROPERTY_PREFIX = "jdk.module.addreads.";
 

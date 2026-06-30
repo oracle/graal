@@ -25,14 +25,20 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import jdk.internal.loader.Resource;
+import jdk.internal.module.ModuleBootstrap;
 
-@TargetClass(className = "jdk.internal.module.ModuleBootstrap")
+@TargetClass(value = ModuleBootstrap.class)
 @SuppressWarnings("unused")
 final class Target_jdk_internal_module_ModuleBootstrap {
     // Checkstyle: stop
@@ -41,8 +47,17 @@ final class Target_jdk_internal_module_ModuleBootstrap {
     static Set<String> USER_NATIVE_ACCESS_MODULES;
     // Checkstyle: resume
 
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
+    static Target_jdk_internal_module_ModulePatcher patcher;
+
     @Alias
     static native void addExtraReads(ModuleLayer bootLayer);
+
+    @Alias
+    static native Target_jdk_internal_module_ModulePatcher initModulePatcher();
+
+    @Alias
+    static native Set<String> addModules();
 
     @Alias
     static native void addExtraExportsAndOpens(ModuleLayer bootLayer);
@@ -55,6 +70,33 @@ final class Target_jdk_internal_module_ModuleBootstrap {
 
     @Alias
     static native ModuleFinder finderFor(String prop);
+}
+
+@TargetClass(value = jdk.internal.module.ModulePatcher.class)
+@SuppressWarnings("unused")
+final class Target_jdk_internal_module_ModulePatcher {
+
+    /// Aliases the JDK patch path map used for runtime patched-module resource lookup.
+    @Alias Map<String, List<Path>> map;
+
+    @Alias
+    native ModuleReference patchIfNeeded(ModuleReference moduleReference);
+}
+
+@TargetClass(className = "jdk.internal.module.ModulePatcher", innerClass = "PatchedModuleReader")
+@SuppressWarnings("unused")
+final class Target_jdk_internal_module_ModulePatcher_PatchedModuleReader {
+
+    @Alias
+    public native Resource findResource(String name) throws java.io.IOException;
+}
+
+@TargetClass(value = jdk.internal.module.SystemModuleFinders.class)
+@SuppressWarnings("unused")
+final class Target_jdk_internal_module_SystemModuleFinders {
+    /// Holds the finder returned by `ModuleFinder.ofSystem()`.
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
+    static ModuleFinder cachedSystemModuleFinder;
 }
 
 final class ModuleBootstrapSubstitutionsSupport {

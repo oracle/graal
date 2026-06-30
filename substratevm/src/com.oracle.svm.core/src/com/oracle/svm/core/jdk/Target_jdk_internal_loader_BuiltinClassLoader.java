@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -56,11 +58,15 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Alias Target_jdk_internal_loader_URLClassPath ucp;
 
+    @Alias Map<String, ModuleReference> nameToModule;
+
+    /// This alias avoids embedding the build-time moduleToReader contents into the image heap.
+    /// Instead, each runtime image gets a fresh ConcurrentHashMap.
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewConcurrentHashMap.class) //
     private Map<ModuleReference, ModuleReader> moduleToReader;
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private volatile SoftReference<Map<String, List<URL>>> resourceCache;
+    volatile SoftReference<Map<String, List<URL>>> resourceCache;
 
     /// Maps package names to the JDK metadata for the module that owns the package.
     ///
@@ -77,6 +83,9 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Alias
     public native void loadModule(ModuleReference mref);
+
+    @Alias
+    native ModuleReader moduleReaderFor(ModuleReference mref);
 
     @Alias
     native boolean hasClassPath();
@@ -110,7 +119,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     protected Class<?> defineClass(String cn, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule loadedModule) {
         /*
          * Avoid dragging in logging & formatting code through
-         * ModuleReader->JarFile->Manifest->Attributes
+         * JarModuleReader->JarFile->Manifest->Attributes
          */
         throw RuntimeClassLoading.throwNoBytecodeClasses(cn);
     }
@@ -204,6 +213,69 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 }
 
+final class BuiltinClassLoaderSubstitutionsSupport {
+    private BuiltinClassLoaderSubstitutionsSupport() {
+    }
+
+    /// Replaces the image-time module reference with its runtime patched counterpart.
+    ///
+    /// The JDK normally installs patched references while bootstrapping the module system. Native
+    /// Image synthesizes the loader maps before runtime module options are available, so the maps
+    /// and their `LoadedModule` values need to be updated once the runtime patcher is initialized.
+    static void patchModuleReference(Target_jdk_internal_loader_BuiltinClassLoader loader, ModuleReference originalReference, ModuleReference patchedReference) {
+        String moduleName = patchedReference.descriptor().name();
+        ModuleReference previousReference = loader.nameToModule.replace(moduleName, patchedReference);
+        if (previousReference != originalReference) {
+            throw VMError.shouldNotReachHere("Unexpected built-in loader module reference for " + moduleName);
+        }
+
+        Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule loadedModule;
+        Set<String> originalPackages = originalReference.descriptor().packages();
+        Set<String> patchedPackages = patchedReference.descriptor().packages();
+
+        if (originalPackages.isEmpty()) {
+            loadedModule = new Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule(loader, patchedReference);
+        } else {
+            // Updates the single LoadedModule shared by the module's existing packages.
+            String firstOriginalPackage = originalPackages.iterator().next();
+            loadedModule = Target_jdk_internal_loader_BuiltinClassLoader.packageToModule.get(firstOriginalPackage);
+            if (loadedModule.loader() != loader) {
+                throw VMError.shouldNotReachHere("Unexpected loader for loaded module " + moduleName + ": " + loader);
+            }
+            loadedModule.mref = patchedReference;
+        }
+
+        // Adds mappings for packages introduced by the patched module descriptor.
+        if (!originalPackages.equals(patchedPackages)) {
+            for (String packageName : patchedPackages) {
+                if (originalPackages.contains(packageName)) {
+                    continue;
+                }
+                Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule existing = Target_jdk_internal_loader_BuiltinClassLoader.packageToModule.putIfAbsent(packageName, loadedModule);
+                if (existing != null) {
+                    if (existing.loader() != loader || !moduleName.equals(existing.name())) {
+                        throw VMError.shouldNotReachHere("Package " + packageName + " is already mapped to module " + existing.name());
+                    }
+                    existing.mref = patchedReference;
+                }
+            }
+        }
+
+        loader.resourceCache = null;
+    }
+
+    /// Finds the boot-layer module that owns `packageName` for `loader` in the built-in loader map.
+    static Module findLoadedModule(ClassLoader loader, String packageName) {
+        Target_jdk_internal_loader_BuiltinClassLoader expectedLoader = loader == null ? Target_jdk_internal_loader_ClassLoaders.bootLoader()
+                        : SubstrateUtil.cast(loader, Target_jdk_internal_loader_BuiltinClassLoader.class);
+        Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule loadedModule = Target_jdk_internal_loader_BuiltinClassLoader.packageToModule.get(packageName);
+        if (loadedModule == null || loadedModule.loader() != expectedLoader) {
+            return null;
+        }
+        return ModuleLayer.boot().findModule(loadedModule.name()).orElse(null);
+    }
+}
+
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, innerClass = "LoadedModule")
 final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
 
@@ -213,6 +285,12 @@ final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
 
     @Alias
     native String name();
+
+    /// Runtime `--patch-module` options replace the image-time module reference after startup.
+    @Alias @RecomputeFieldValue(isFinal = false, kind = Kind.None) ModuleReference mref;
+
+    @Alias
+    native ModuleReference mref();
 
     @Alias
     native Target_jdk_internal_loader_BuiltinClassLoader loader();

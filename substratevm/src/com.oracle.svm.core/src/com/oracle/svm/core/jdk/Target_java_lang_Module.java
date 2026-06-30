@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.module.ModuleDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
@@ -45,6 +46,9 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
 public final class Target_java_lang_Module {
+
+    /// The descriptor of an image resident module might need updating due to `--patch-module`.
+    @Alias @RecomputeFieldValue(isFinal = false, kind = RecomputeFieldValue.Kind.None) ModuleDescriptor descriptor;
 
     /**
      * {@link Alias} to make {@code Module.layer} non-final. The actual run-time value is set via

@@ -258,6 +258,12 @@ public final class ModuleNative {
 
     public static Module findModule(ClassLoader loader, String pkgName) {
         SubstrateUtil.guaranteeRuntimeOnly();
+        if (loader == null || loader instanceof jdk.internal.loader.BuiltinClassLoader) {
+            Module module = BuiltinClassLoaderSubstitutionsSupport.findLoadedModule(loader, pkgName);
+            if (module != null) {
+                return module;
+            }
+        }
         return SubstrateUtil.cast(getModuleContainingPackage(loader, pkgName), Module.class);
     }
 

@@ -368,6 +368,8 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.JavaMainWrapper$JavaMainSupport", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.core.jdk.AtomicFieldUpdaterAccessCheck", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.jdk.LayeredModuleSingleton", TERMINUS_OBSOLETED),
+                    method("com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport", "checkPatchModules", SVM_RUN_TIME_ONLY),
+                    method("com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport", "patchBuiltinLoaderModuleReferences", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.jdk.StackWalkerUtil", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.jdk.Target_java_net_URL$DefaultFactory", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.jfr.JfrTypeRepository", SVM_RUN_TIME_ONLY),
