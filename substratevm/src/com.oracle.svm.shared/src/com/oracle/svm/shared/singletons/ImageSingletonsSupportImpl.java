@@ -65,14 +65,26 @@ import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitsSupplier;
+import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
+    private static final String IGNORED_MICRONAUT_STATIC_SERVICE_DEFINITIONS = "io.micronaut.core.io.service.ServiceScanner$StaticServiceDefinitions";
 
     @Override
     public <T> void add(Class<T> key, T value) {
+        if (IGNORED_MICRONAUT_STATIC_SERVICE_DEFINITIONS.equals(key.getName())) {
+            /*
+             * Micronaut's StaticServiceDefinitions singleton bypasses runtime resource walking and returns the full
+             * build-time service set for each discovered resource root. That does not match HotSpot when resources are
+             * split across multiple jars and can duplicate bean definitions.
+             */
+            LogUtils.warning("Ignoring ImageSingletons.add(%s, ...) for compatibility with Micronaut service discovery. See GR-76887. " +
+                            "Micronaut should register StaticServiceDefinitions only with Native Image versions that lack root-preserving resource URLs.", key.getName());
+            return;
+        }
         HostedManagement.getAndAssertExists().doAdd(key, value);
     }
 
