@@ -42,8 +42,8 @@ import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -57,7 +57,7 @@ import sun.security.util.Debug;
  * "../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
  * JCA Security Services documentation</a> for details).
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class SecurityProvidersSupport {
     private static final Class<?>[] NO_PARAMETERS = new Class<?>[0];
 
