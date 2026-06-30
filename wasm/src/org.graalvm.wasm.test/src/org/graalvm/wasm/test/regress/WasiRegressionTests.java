@@ -66,7 +66,7 @@ import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.junit.Assume;
 import org.junit.Test;
 
-public class GR75058Test {
+public class WasiRegressionTests {
     // Verifies that path_open rejects intermediate symlink traversal outside the preopen root.
     @Test
     public void testPathOpenCannotEscapePreopenedDirectoryThroughSymlink() throws IOException, InterruptedException {
@@ -258,6 +258,40 @@ public class GR75058Test {
                 Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
                 assertEquals(Errno.Success.ordinal(), exports.getMember("openRoot").execute().asInt());
                 assertEquals(Filetype.Directory.ordinal(), exports.getMember("statRootViaDotDot").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    // Verifies that fd_filestat_get on a directory fd stats the mapped host directory, not the
+    // guest-visible preopen name.
+    @Test
+    public void testFdFilestatGetStatsPreopenedHostDirectory() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "fd_filestat_get"
+                                (func $fd_filestat_get (param i32 i32) (result i32)))
+                              (memory 1)
+                              (export "memory" (memory 0))
+                              (func (export "statPreopenedDirectoryFd") (result i32) (local $ret i32)
+                                (local.set $ret
+                                  (call $fd_filestat_get
+                                    (i32.const 3)   ;; fd
+                                    (i32.const 32)  ;; result address
+                                  ))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (i32.load8_u (i32.const 48))))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Filetype.Directory.ordinal(), exports.getMember("statPreopenedDirectoryFd").execute().asInt());
             }
         } finally {
             deleteTree(tempRoot);
