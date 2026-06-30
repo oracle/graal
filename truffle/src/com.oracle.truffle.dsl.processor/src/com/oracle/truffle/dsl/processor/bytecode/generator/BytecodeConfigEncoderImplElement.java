@@ -247,19 +247,19 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
     public CodeTree encode(String sourceEnabled, String sourceContentEnabled, String instrumentations, String tags, String hasYields) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startParantheses().string(sourceEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceMask())).string("L : 0L").end();
+        b.startParentheses().string(sourceEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceMask())).string("L : 0L").end();
         if (parent.model.sourceContentSupplier != null) {
             b.string(" | ");
-            b.startParantheses().string(sourceContentEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceContentMask())).string("L : 0L").end();
+            b.startParentheses().string(sourceContentEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceContentMask())).string("L : 0L").end();
         }
         b.string(" | ");
-        b.startParantheses();
-        b.startParantheses().string(instrumentations).string(" & 0x").string(Long.toHexString(encoding.instrumentationMask())).string("L").end();
+        b.startParentheses();
+        b.startParentheses().string(instrumentations).string(" & 0x").string(Long.toHexString(encoding.instrumentationMask())).string("L").end();
         b.string(" << ").string(String.valueOf(encoding.instrumentationShift()));
         b.end();
         b.string(" | ");
-        b.startParantheses();
-        b.startParantheses().string(tags).string(" & 0x").string(Long.toHexString(encoding.tagMask())).string("L").end();
+        b.startParentheses();
+        b.startParentheses().string(tags).string(" & 0x").string(Long.toHexString(encoding.tagMask())).string("L").end();
         b.string(" << ").string(String.valueOf(encoding.tagShift()));
         b.end();
         if (parent.model.hasYieldOperation()) {
@@ -267,7 +267,7 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
                 throw new AssertionError("Tried to generate code to encode the has-yields bit, but no expression was provided.");
             }
             b.string(" | ");
-            b.startParantheses().string(hasYields).string(" ? 0x").string(Long.toHexString(encoding.hasYieldsMask())).string("L : 0L").end();
+            b.startParentheses().string(hasYields).string(" ? 0x").string(Long.toHexString(encoding.hasYieldsMask())).string("L : 0L").end();
         }
         return b.build();
     }

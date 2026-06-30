@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -289,14 +289,14 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startCall(CodeTree receiver, String callSite) {
         if (receiver == null) {
-            return startGroup().string(callSite).startParanthesesCommaGroup().endAfter();
+            return startGroup().string(callSite).startParenthesesCommaGroup().endAfter();
         } else {
-            return startGroup().tree(receiver).string(".").string(callSite).startParanthesesCommaGroup().endAfter();
+            return startGroup().tree(receiver).string(".").string(callSite).startParenthesesCommaGroup().endAfter();
         }
     }
 
     public CodeTreeBuilder startStaticCall(TypeMirror type, String methodName) {
-        return startGroup().push(CodeTreeKind.STATIC_METHOD_REFERENCE, type, methodName).startParanthesesCommaGroup().endAfter();
+        return startGroup().push(CodeTreeKind.STATIC_METHOD_REFERENCE, type, methodName).startParenthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startStaticCall(ExecutableElement method) {
@@ -347,7 +347,7 @@ public class CodeTreeBuilder {
         return this;
     }
 
-    private CodeTreeBuilder startParanthesesCommaGroup() {
+    private CodeTreeBuilder startParenthesesCommaGroup() {
         startGroup();
         string("(").startCommaGroup();
         registerCallBack(new EndCallback() {
@@ -383,7 +383,7 @@ public class CodeTreeBuilder {
         return this;
     }
 
-    public CodeTreeBuilder startParantheses() {
+    public CodeTreeBuilder startParentheses() {
         startGroup();
         string("(").startGroup();
         registerCallBack(new EndCallback() {
@@ -460,7 +460,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startWhile() {
-        return startGroup().string("while ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
+        return startGroup().string("while ").startParenthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
     public CodeTreeBuilder startDoBlock() {
@@ -469,15 +469,15 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startDoWhile() {
         clearLast(CodeTreeKind.NEW_LINE);
-        return startStatement().string(" while ").startParanthesesCommaGroup().endAfter().startGroup().endAfter();
+        return startStatement().string(" while ").startParenthesesCommaGroup().endAfter().startGroup().endAfter();
     }
 
     public CodeTreeBuilder startIf() {
-        return startGroup().string("if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
+        return startGroup().string("if ").startParenthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
     public CodeTreeBuilder startFor() {
-        return startGroup().string("for ").startParantheses().endAndWhitespaceAfter().startGroup().endAfter();
+        return startGroup().string("for ").startParentheses().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
     public boolean startIf(boolean elseIf) {
@@ -491,7 +491,7 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startElseIf() {
         clearLast(CodeTreeKind.NEW_LINE);
-        return startGroup().string(" else if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
+        return startGroup().string(" else if ").startParenthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
     public CodeTreeBuilder startElseBlock(boolean elseIf) {
@@ -546,7 +546,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startSwitch() {
-        return startGroup().string("switch ").startParantheses().endAndWhitespaceAfter();
+        return startGroup().string("switch ").startParentheses().endAndWhitespaceAfter();
     }
 
     public CodeTreeBuilder startReturn() {
@@ -614,15 +614,15 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startNew(TypeMirror uninitializedNodeClass) {
-        return startGroup().string("new ").type(uninitializedNodeClass).startParanthesesCommaGroup().endAfter();
+        return startGroup().string("new ").type(uninitializedNodeClass).startParenthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startNew(String typeName) {
-        return startGroup().string("new ").string(typeName).startParanthesesCommaGroup().endAfter();
+        return startGroup().string("new ").string(typeName).startParenthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startNew(CodeTree typeTree) {
-        return startGroup().string("new ").tree(typeTree).startParanthesesCommaGroup().endAfter();
+        return startGroup().string("new ").tree(typeTree).startParenthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startIndention() {
@@ -681,7 +681,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startSynchronized(CodeTree object) {
-        return string("synchronized").startParantheses().tree(object).end().startBlock();
+        return string("synchronized").startParentheses().tree(object).end().startBlock();
     }
 
     private void registerCallBack(EndCallback callback) {
@@ -841,7 +841,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startSuperCall() {
-        return string("super").startParanthesesCommaGroup();
+        return string("super").startParenthesesCommaGroup();
     }
 
     public CodeTreeBuilder returnFalse() {

@@ -2367,7 +2367,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case CONSTANT_LONG, CONSTANT_INT, CONSTANT_SHORT -> value;
             case CONSTANT_DOUBLE -> CodeTreeBuilder.createBuilder().startCall("Double.longBitsToDouble").tree(value).end().build();
             case CONSTANT_FLOAT -> CodeTreeBuilder.createBuilder().startCall("Float.intBitsToFloat").tree(value).end().build();
-            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParantheses().tree(value).string(" + " + (1 << 15)).end(2).build();
+            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParentheses().tree(value).string(" + " + (1 << 15)).end(2).build();
             case CONSTANT_BYTE -> CodeTreeBuilder.createBuilder().startGroup().cast(type(byte.class)).tree(value).end().build();
             case CONSTANT_BOOL -> CodeTreeBuilder.createBuilder().startGroup().tree(value).string(" != 0").end().build();
             default -> {
@@ -2402,7 +2402,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case LONG -> "getLongUnaligned";
         };
         if (immediate.kind().isUnsigned()) {
-            b.startParantheses();
+            b.startParentheses();
         }
         b.startCall("BYTES", accessor);
         b.string(bc);
@@ -2759,7 +2759,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     CodeTree hasContinuationFrame(String frameName) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-            b.startParantheses();
+            b.startParentheses();
         }
         b.startCall(frameName, "isObject").string(BytecodeRootNodeElement.CONTINUATION_FRAME_INDEX).end();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
@@ -2855,7 +2855,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                     b.startNew("LocalVariableImpl");
                     b.tree(localBytecodeNode);
                     b.startGroup();
-                    b.startParantheses().tree(localIndex).end();
+                    b.startParentheses().tree(localIndex).end();
                     b.string(" * LOCALS_LENGTH");
                     b.end();
                     b.end();

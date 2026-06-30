@@ -3551,7 +3551,7 @@ public class FlatNodeGenFactory {
                     builder.declaration(sType, localName, CodeTreeBuilder.createBuilder().defaultValue(sType).build());
 
                     CodeTreeBuilder accessBuilder = builder.create();
-                    accessBuilder.startParantheses();
+                    accessBuilder.startParentheses();
 
                     CodeTree containsOnly = multiState.createContainsOnly(frameState, originalSourceTypes.indexOf(sType), 1,
                                     StateQuery.create(ImplicitCastState.class, typeGuard),
@@ -6901,7 +6901,7 @@ public class FlatNodeGenFactory {
                 targetType = variable.getResolvedType();
             }
             if (!isAssignable(sourceType, targetType)) {
-                resolved = CodeTreeBuilder.createBuilder().startParantheses().cast(targetType, resolved).end().build();
+                resolved = CodeTreeBuilder.createBuilder().startParentheses().cast(targetType, resolved).end().build();
             }
             resolvedBindings.put(variable, resolved);
         }
@@ -7422,7 +7422,7 @@ public class FlatNodeGenFactory {
                 CodeTree defaultValue = null;
                 prepareBuilder.declaration(context.getType(int.class), implicitStateName, defaultValue);
                 CodeTree specializeCall = TypeSystemCodeGenerator.implicitSpecializeFlat(typeSystem, targetType, valueReference);
-                checkBuilder.startParantheses();
+                checkBuilder.startParentheses();
                 checkBuilder.string(implicitStateName, " = ").tree(specializeCall);
                 checkBuilder.end();
                 checkBuilder.string(" != 0");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -469,7 +469,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             boolean needsCast = !variable.equals(expression);
             if (needsCast && !ElementUtils.isAssignable(receiverSourceType, receiverTargetType)) {
-                builder.startParantheses();
+                builder.startParentheses();
                 builder.cast(receiverTargetType);
             }
             builder.string(receiverName);
@@ -812,7 +812,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 }
                 ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
                 CodeTree cachedReceiverAccess = createReceiverCast(libraryExports, messages, modelReceiverType, cachedExportReceiverType, CodeTreeBuilder.singleString("receiver"), true);
-                cachedReceiverAccess = CodeTreeBuilder.createBuilder().startParantheses().tree(cachedReceiverAccess).end().build();
+                cachedReceiverAccess = CodeTreeBuilder.createBuilder().startParentheses().tree(cachedReceiverAccess).end().build();
                 cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod));
             } else {
                 CodeTypeElement dummyNodeClass = sharedNodes.get(cachedSpecializedNode);

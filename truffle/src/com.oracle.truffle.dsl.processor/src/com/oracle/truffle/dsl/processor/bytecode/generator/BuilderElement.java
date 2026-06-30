@@ -950,7 +950,7 @@ final class BuilderElement extends AbstractElement {
                 after.startDeclaration(type(short.class), depth);
                 after.startCall("safeCastShort");
                 after.startGroup();
-                after.startParantheses().cast(serializationLocal.asType()).string(argumentName, "[0]").end();
+                after.startParentheses().cast(serializationLocal.asType()).string(argumentName, "[0]").end();
                 after.string(".contextDepth");
                 after.end(3);
 
@@ -3360,7 +3360,7 @@ final class BuilderElement extends AbstractElement {
             b.end();
             b.startIf();
             b.instanceOf(constantArgument, types.Node).string(" && ");
-            b.string("!").startParantheses().instanceOf(constantArgument, types.RootNode).end();
+            b.string("!").startParentheses().instanceOf(constantArgument, types.RootNode).end();
             b.end().startBlock();
             b.startThrow().startCall("state.failArgument").doubleQuote("Nodes cannot be used as constants.").end().end();
             b.end();
@@ -3654,7 +3654,7 @@ final class BuilderElement extends AbstractElement {
                 if (ElementUtils.typeEquals(constantOperand.type(), types.MaterializedLocalAccessor)) {
                     // Materialized accessors also need the root index.
                     b.startGroup();
-                    b.startParantheses().cast(bytecodeLocalImpl.asType()).string(argument.name()).end();
+                    b.startParentheses().cast(bytecodeLocalImpl.asType()).string(argument.name()).end();
                     b.string(".rootIndex");
                     b.end();
                 }
@@ -7031,7 +7031,7 @@ final class BuilderElement extends AbstractElement {
             b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
 
             b.startDeclaration(type(int.class), "length");
-            b.startParantheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
+            b.startParentheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
             b.end();
 
             b.startDeclaration(arrayOf(type(int.class)), "sourceInfo");
