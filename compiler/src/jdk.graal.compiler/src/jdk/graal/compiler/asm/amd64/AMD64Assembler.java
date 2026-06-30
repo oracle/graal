@@ -2734,8 +2734,8 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final VexRVMOp EVPADDQ         = new VexRVMOp("EVPADDQ",      VPADDQ);
         public static final VexRVMOp EVPMADD52HUQ    = new VexRVMOp("EVPMADD52HUQ", VPMADD52HUQ);
         public static final VexRVMOp EVPMADD52LUQ    = new VexRVMOp("EVPMADD52LUQ", VPMADD52LUQ);
-        public static final VexRVMOp EVPMADDUBSW     = new VexRVMOp("EVPMADDUBSW",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x04, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
-        public static final VexRVMOp EVPMADDWD       = new VexRVMOp("EVPMADDWD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xF5, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
+        public static final VexRVMOp EVPMADDUBSW     = new VexRVMOp("EVPMADDUBSW",  VPMADDUBSW);
+        public static final VexRVMOp EVPMADDWD       = new VexRVMOp("EVPMADDWD",    VPMADDWD);
         public static final VexRVMOp EVPMAXSB        = new VexRVMOp("EVPMAXSB",     VPMAXSB);
         public static final VexRVMOp EVPMAXSW        = new VexRVMOp("EVPMAXSW",     VPMAXSW);
         public static final VexRVMOp EVPMAXSD        = new VexRVMOp("EVPMAXSD",     VPMAXSD);

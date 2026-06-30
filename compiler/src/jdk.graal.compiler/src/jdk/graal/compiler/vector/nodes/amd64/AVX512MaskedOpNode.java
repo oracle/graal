@@ -62,6 +62,9 @@ import jdk.vm.ci.meta.Value;
  * Binary arithmetic operations such as {@code vpaddd dst{mask}, src1, src2}
  * </ul>
  * <ul>
+ * Pairwise multiply-add operations such as {@code vpmaddwd dst{mask}, src1, src2}
+ * </ul>
+ * <ul>
  * Permute operations such as {@code vpermb dst{mask}, src2, src1}
  * </ul>
  * <ul>
@@ -88,10 +91,18 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
     private final MaskedOpMetaData meta;
 
     protected AVX512MaskedOpNode(SimdStamp stamp, ValueNode op, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2) {
-        this(stamp, op, background, mask, src1, src2, null);
+        this(stamp, new MaskedOpMetaData(op), background, mask, src1, src2, null);
     }
 
     protected AVX512MaskedOpNode(SimdStamp stamp, ValueNode op, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2, ValueNode src3) {
+        this(stamp, new MaskedOpMetaData(op), background, mask, src1, src2, src3);
+    }
+
+    protected AVX512MaskedOpNode(SimdStamp stamp, MaskedOpMetaData meta, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2) {
+        this(stamp, meta, background, mask, src1, src2, null);
+    }
+
+    protected AVX512MaskedOpNode(SimdStamp stamp, MaskedOpMetaData meta, ValueNode background, ValueNode mask, ValueNode src1, ValueNode src2, ValueNode src3) {
         super(TYPE, stamp);
         GraalError.guarantee(background == null || background.stamp(NodeView.DEFAULT).isCompatible(stamp), "must be compatible %s - %s", stamp, background);
         SimdStamp maskStamp = (SimdStamp) mask.stamp(NodeView.DEFAULT);
@@ -102,7 +113,7 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
         this.src1 = src1;
         this.src2 = src2;
         this.src3 = src3;
-        this.meta = new MaskedOpMetaData(op);
+        this.meta = meta;
     }
 
     public static AVX512MaskedOpNode createUnaryArithmetic(UnaryArithmeticNode<?> op, ValueNode dst, ValueNode mask, ValueNode src) {
@@ -139,6 +150,12 @@ public class AVX512MaskedOpNode extends FloatingNode implements VectorLIRLowerab
         SimdStamp srcStamp = (SimdStamp) src.stamp(NodeView.DEFAULT).unrestricted();
         GraalError.guarantee(srcStamp.isCompatible(shiftCount.stamp(NodeView.DEFAULT)), "must be compatible %s - %s", src, shiftCount);
         return new AVX512MaskedOpNode(srcStamp, op, dst, mask, src, shiftCount);
+    }
+
+    public static AVX512MaskedOpNode createPairwiseMultiplyAdd(AMD64SimdPairwiseMultiplyAddNode op, ValueNode dst, ValueNode mask) {
+        SimdStamp stamp = (SimdStamp) op.stamp(NodeView.DEFAULT).unrestricted();
+        MaskedOpMetaData meta = new MaskedOpMetaData(op);
+        return new AVX512MaskedOpNode(stamp, meta, dst, mask, op.getX(), op.getY());
     }
 
     public static AVX512MaskedOpNode createPermute(SimdPermuteWithVectorIndicesNode op, ValueNode dst, ValueNode mask, ValueNode src, ValueNode indices) {
