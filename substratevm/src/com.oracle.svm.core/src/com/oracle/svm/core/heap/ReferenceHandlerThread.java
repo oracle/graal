@@ -73,13 +73,19 @@ public final class ReferenceHandlerThread implements Runnable {
         }
     }
 
-    public static void initiateShutdown() {
+    public static void initiateStop() {
         if (!isSupported()) {
             return;
         }
 
         singleton().stopped = true;
         Heap.getHeap().wakeUpReferencePendingListWaiters();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isStopping() {
+        assert isSupported();
+        return singleton().stopped;
     }
 
     @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")

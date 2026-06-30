@@ -611,6 +611,10 @@ public final class HeapImpl extends Heap {
         assert ReferenceHandlerThread.isReferenceHandlerThread();
         long initialOffers = refListOfferCounter;
         long initialWakeUps = refListWaiterWakeUpCounter;
+        if (ReferenceHandlerThread.isStopping()) {
+            // Must re-check because initialWakeUps can already include the corresponding wakeup.
+            return;
+        }
         if (hasReferencePendingList()) {
             return;
         }

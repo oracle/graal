@@ -852,7 +852,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * handler thread are still running.
          */
         if (ReferenceHandler.useDedicatedThread()) {
-            ReferenceHandlerThread.initiateShutdown();
+            ReferenceHandlerThread.initiateStop();
         }
 
         VMThreads.singleton().threadExit();
