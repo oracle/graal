@@ -64,6 +64,7 @@ import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNod
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -120,6 +121,7 @@ public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
                         new StubDescriptor(DilithiumDecomposePolyNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(DilithiumMontMulByConstantNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(DilithiumNttMultNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(DoubleKeccakNode.STUB, DoubleKeccakNode.minFeaturesAARCH64(), DoubleKeccakNode.minFeaturesAARCH64()),
                         new StubDescriptor(EncodeArrayNode.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(GaloisCounterModeAESNode.STUB, GaloisCounterModeAESNode.minFeaturesAARCH64(), GaloisCounterModeAESNode.minFeaturesAARCH64()),
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAARCH64(), GHASHProcessBlocksNode.minFeaturesAARCH64()),

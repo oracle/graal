@@ -176,9 +176,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
-    public static final HotSpotForeignCallDescriptor DOUBLE_KECCAK = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_double_keccak", int.class,
-                    WordBase.class, WordBase.class);
-
     public static final HotSpotForeignCallDescriptor ARRAY_SORT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_array_sort", void.class,
                     WordBase.class, int.class, int.class, int.class);
     public static final HotSpotForeignCallDescriptor ARRAY_PARTITION = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_array_partition", void.class,

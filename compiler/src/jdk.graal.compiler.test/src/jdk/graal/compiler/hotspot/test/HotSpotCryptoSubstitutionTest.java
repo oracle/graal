@@ -66,6 +66,7 @@ import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
@@ -601,7 +602,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testMLDSASigVer() {
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDoubleKeccak != 0L);
+        Assume.assumeTrue("ML_DSA not supported", DoubleKeccakNode.isSupported(getArchitecture()));
         Assume.assumeTrue("ML_DSA not supported", DilithiumNode.isSupported(getArchitecture()));
         assertMLDSAGraalNodeInstallations();
         // ML-DSA-44
@@ -629,6 +630,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     private void assertMLDSAGraalNodeInstallations() {
         try {
+            assertNodeInstalledWithoutForeignCall("sun.security.provider.SHA3Parallel", "doubleKeccak", DoubleKeccakNode.class, long[].class, long[].class);
             assertNodeInstalledWithoutForeignCall("implDilithiumAlmostNtt", DilithiumAlmostNttNode.class, int[].class, int[].class);
             assertNodeInstalledWithoutForeignCall("implDilithiumAlmostInverseNtt", DilithiumAlmostInverseNttNode.class, int[].class, int[].class);
             assertNodeInstalledWithoutForeignCall("implDilithiumNttMult", DilithiumNttMultNode.class, int[].class, int[].class, int[].class);
@@ -641,7 +643,11 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     }
 
     private void assertNodeInstalledWithoutForeignCall(String methodName, Class<? extends Node> expectedNodeClass, Class<?>... parameterTypes) throws ClassNotFoundException {
-        ResolvedJavaMethod method = getResolvedJavaMethod("sun.security.provider.ML_DSA", methodName, parameterTypes);
+        assertNodeInstalledWithoutForeignCall("sun.security.provider.ML_DSA", methodName, expectedNodeClass, parameterTypes);
+    }
+
+    private void assertNodeInstalledWithoutForeignCall(String className, String methodName, Class<? extends Node> expectedNodeClass, Class<?>... parameterTypes) throws ClassNotFoundException {
+        ResolvedJavaMethod method = getResolvedJavaMethod(className, methodName, parameterTypes);
         var compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(getInitialOptions()), StructuredGraph.AllowAssumptions.YES, null);
         assertTrue("missing intrinsic graph for " + methodName, graph != null);
@@ -654,7 +660,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                 }
                 nodeKinds.append(node.getClass().getSimpleName());
             }
-            throw new AssertionError("expected Dilithium node " + expectedNodeClass.getSimpleName() + " for " + methodName + "; nodes=" + nodeKinds);
+            throw new AssertionError("expected intrinsic node " + expectedNodeClass.getSimpleName() + " for " + methodName + "; nodes=" + nodeKinds);
         }
         for (ForeignCallNode node : graph.getNodes().filter(ForeignCallNode.class)) {
             throw new AssertionError("unexpected ForeignCallNode path for " + methodName + ": " + node.getDescriptor());

@@ -66,6 +66,7 @@ import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
@@ -157,6 +158,9 @@ public final class Stubs {
             if (isDilithiumNode(klass)) {
                 return DilithiumNode.minFeaturesAMD64();
             }
+            if (DoubleKeccakNode.class.equals(klass)) {
+                return DoubleKeccakNode.minFeaturesAMD64();
+            }
             if (DoubleModStubNode.class.equals(klass)) {
                 return DoubleModStubNode.maxFeaturesAMD64();
             }
@@ -214,23 +218,29 @@ public final class Stubs {
             if (AESNode.class.equals(klass)) {
                 return AESNode.minFeaturesAARCH64();
             }
-            if (CounterModeAESNode.class.equals(klass)) {
-                return CounterModeAESNode.minFeaturesAARCH64();
-            }
-            if (CipherBlockChainingAESNode.class.equals(klass)) {
-                return CipherBlockChainingAESNode.minFeaturesAARCH64();
-            }
-            if (GHASHProcessBlocksNode.class.equals(klass)) {
-                return GHASHProcessBlocksNode.minFeaturesAARCH64();
-            }
-            if (GaloisCounterModeAESNode.class.equals(klass)) {
-                return GaloisCounterModeAESNode.minFeaturesAARCH64();
-            }
             if (BigIntegerLeftShiftWorkerNode.class.equals(klass)) {
                 return EMPTY_CPU_FEATURES_AARCH64;
             }
             if (BigIntegerRightShiftWorkerNode.class.equals(klass)) {
                 return EMPTY_CPU_FEATURES_AARCH64;
+            }
+            if (CipherBlockChainingAESNode.class.equals(klass)) {
+                return CipherBlockChainingAESNode.minFeaturesAARCH64();
+            }
+            if (CounterModeAESNode.class.equals(klass)) {
+                return CounterModeAESNode.minFeaturesAARCH64();
+            }
+            if (CRC32CUpdateBytesNode.class.equals(klass)) {
+                return CRC32CUpdateBytesNode.minFeaturesAARCH64();
+            }
+            if (DoubleKeccakNode.class.equals(klass)) {
+                return DoubleKeccakNode.minFeaturesAARCH64();
+            }
+            if (GaloisCounterModeAESNode.class.equals(klass)) {
+                return GaloisCounterModeAESNode.minFeaturesAARCH64();
+            }
+            if (GHASHProcessBlocksNode.class.equals(klass)) {
+                return GHASHProcessBlocksNode.minFeaturesAARCH64();
             }
             if (SHA1Node.class.equals(klass)) {
                 return SHA1Node.minFeaturesAARCH64();
@@ -243,9 +253,6 @@ public final class Stubs {
             }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAARCH64();
-            }
-            if (CRC32CUpdateBytesNode.class.equals(klass)) {
-                return CRC32CUpdateBytesNode.minFeaturesAARCH64();
             }
             return EMPTY_CPU_FEATURES_AARCH64;
         }

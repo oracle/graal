@@ -31,7 +31,6 @@ import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
@@ -152,6 +151,7 @@ import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
@@ -621,9 +621,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.sha3ImplCompressMultiBlock != 0L) {
             registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
         }
-        if (c.stubDoubleKeccak != 0L) {
-            registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
-        }
         if (c.stubArrayPartition != 0L) {
             registerForeignCall(ARRAY_PARTITION, c.stubArrayPartition, NativeCall);
         }
@@ -681,6 +678,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ChaCha20Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CipherBlockChainingAESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CounterModeAESNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, DoubleKeccakNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ElectronicCodeBookAESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GaloisCounterModeAESNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GHASHProcessBlocksNode.STUB);

@@ -234,7 +234,9 @@ public class AArch64InstructionEncodingTest extends GraalTest {
 
     @Test
     public void testSt4Single() {
-        AArch64Address addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.ST4, ASIMDSize.FullReg, ElementSize.Word, AArch64.r4, 16);
+        AArch64Address addr = AArch64Address.createStructureNoOffsetAddress(AArch64.r4);
+        assertWrapper(new St4SingleEncodingTestCase(0x80a0200d, ElementSize.Word, AArch64.v0, AArch64.v1, AArch64.v2, AArch64.v3, 0, addr));
+        addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.ST4, ASIMDSize.FullReg, ElementSize.Word, AArch64.r4, 16);
         assertWrapper(new St4SingleEncodingTestCase(0x80a0bf0d, ElementSize.Word, AArch64.v0, AArch64.v1, AArch64.v2, AArch64.v3, 0, addr));
         addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.ST4, ASIMDSize.FullReg, ElementSize.Word, AArch64.r5, 16);
         assertWrapper(new St4SingleEncodingTestCase(0xbcb0bf4d, ElementSize.Word, AArch64.v28, AArch64.v29, AArch64.v30, AArch64.v31, 3, addr));

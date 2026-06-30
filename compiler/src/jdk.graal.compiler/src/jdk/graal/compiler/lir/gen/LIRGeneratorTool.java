@@ -848,6 +848,11 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitDoubleKeccak(Value state0, Value state1) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default void emitSha512ImplCompress(Value buf, Value state) {
         throw GraalError.unimplemented("No specialized implementation available");
     }

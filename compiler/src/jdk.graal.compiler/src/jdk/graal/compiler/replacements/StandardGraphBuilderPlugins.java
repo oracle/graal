@@ -224,6 +224,7 @@ import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNod
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
@@ -3273,6 +3274,24 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return SHA3Node.isSupported(arch);
+            }
+        });
+
+        Registration rSha3Parallel = new Registration(plugins, "sun.security.provider.SHA3Parallel");
+        rSha3Parallel.register(new ConditionalInvocationPlugin("doubleKeccak", long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode lanes0, ValueNode lanes1) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode lanes0Start = helper.arrayStart(b.nullCheckedValue(lanes0), JavaKind.Long);
+                    ValueNode lanes1Start = helper.arrayStart(b.nullCheckedValue(lanes1), JavaKind.Long);
+                    b.addPush(JavaKind.Int, new DoubleKeccakNode(lanes0Start, lanes1Start));
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return DoubleKeccakNode.isSupported(arch);
             }
         });
     }
