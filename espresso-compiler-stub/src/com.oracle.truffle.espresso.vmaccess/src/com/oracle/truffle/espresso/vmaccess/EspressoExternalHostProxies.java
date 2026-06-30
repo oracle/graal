@@ -56,8 +56,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-final class EspressoExternalCallbacks {
-    private final Map<CallbackMethodMapKey, Value> callbackMethodMap = new ConcurrentHashMap<>();
+final class EspressoExternalHostProxies {
+    private final Map<HostProxyMethodMapKey, Value> hostProxyMethodMap = new ConcurrentHashMap<>();
     private final EspressoExternalVMAccess access;
 
     // Class <-> ResolvedJavaType
@@ -111,7 +111,7 @@ final class EspressoExternalCallbacks {
 
     private final MethodHandle rethrowGuestExceptionMethodHandle;
 
-    EspressoExternalCallbacks(EspressoExternalVMAccess access) {
+    EspressoExternalHostProxies(EspressoExternalVMAccess access) {
         this.access = access;
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -265,7 +265,7 @@ final class EspressoExternalCallbacks {
             objectConstantAsValueMethodHandle = mh;
 
             // (InvocationException) -> Object
-            mh = lookup.findStatic(EspressoExternalCallbacks.class, "rethrowGuestException", MethodType.methodType(Object.class, InvocationException.class));
+            mh = lookup.findStatic(EspressoExternalHostProxies.class, "rethrowGuestException", MethodType.methodType(Object.class, InvocationException.class));
             rethrowGuestExceptionMethodHandle = mh;
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -286,24 +286,24 @@ final class EspressoExternalCallbacks {
         throw JVMCIError.shouldNotReachHere(e);
     }
 
-    Value createCallback(Object hostTarget, EspressoExternalResolvedInstanceType espressoGuestType) {
-        Value createProxyMirror = access.com_oracle_truffle_espresso_vmaccess_guest_GuestCallbackHandler_createProxy.getMirror();
+    Value createHostProxy(Object hostTarget, EspressoExternalResolvedInstanceType espressoGuestType) {
+        Value createProxyMirror = access.com_oracle_truffle_espresso_vmaccess_guest_GuestHostProxyHandler_createProxy.getMirror();
         Value guestClass = espressoGuestType.getMetaObject().getMember("class");
         return createProxyMirror.execute(hostTarget, getGuestMethodMap(hostTarget.getClass(), espressoGuestType), guestClass);
     }
 
     private Value getGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType) {
-        CallbackMethodMapKey key = new CallbackMethodMapKey(hostClass, guestType);
-        Value methodMap = callbackMethodMap.get(key);
+        HostProxyMethodMapKey key = new HostProxyMethodMapKey(hostClass, guestType);
+        Value methodMap = hostProxyMethodMap.get(key);
         if (methodMap != null) {
             return methodMap;
         }
         methodMap = computeGuestMethodMap(hostClass, guestType);
-        Value previous = callbackMethodMap.putIfAbsent(key, methodMap);
+        Value previous = hostProxyMethodMap.putIfAbsent(key, methodMap);
         return previous == null ? methodMap : previous;
     }
 
-    private record CallbackMethodMapKey(Class<?> hostClass, EspressoExternalResolvedInstanceType guestClass) {
+    private record HostProxyMethodMapKey(Class<?> hostClass, EspressoExternalResolvedInstanceType guestClass) {
     }
 
     private Value computeGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType) {
@@ -349,7 +349,7 @@ final class EspressoExternalCallbacks {
                 throw new UnsupportedOperationException("putMember() not supported.");
             }
         };
-        Value computeMethodMapMirror = access.com_oracle_truffle_espresso_vmaccess_guest_GuestCallbackHandler_computeMethodMap.getMirror();
+        Value computeMethodMapMirror = access.com_oracle_truffle_espresso_vmaccess_guest_GuestHostProxyHandler_computeMethodMap.getMirror();
         Value guestClass = guestType.getMetaObject().getMember("class");
         return computeMethodMapMirror.execute(guestClass, invocables);
     }
@@ -398,7 +398,7 @@ final class EspressoExternalCallbacks {
             mh = mh.asSpreader(Object[].class, mh.type().parameterCount());
             // (Object) -> Object
             mh = mh.asType(MethodType.methodType(Object.class, Object.class));
-            map.put(getMethodSymbol(method), new CallbackExecutable(mh));
+            map.put(getMethodSymbol(method), new HostProxyExecutable(mh));
         }
         for (ResolvedJavaType superInterface : guestType.getInterfaces()) {
             addMethods(hostClass, (EspressoExternalResolvedInstanceType) superInterface, map, seen);
@@ -406,7 +406,7 @@ final class EspressoExternalCallbacks {
     }
 
     /// See also
-    /// `com.oracle.truffle.espresso.vmaccess.guest.GuestCallbackHandler#getMethodSymbol(java.lang.reflect.Method)`
+    /// `com.oracle.truffle.espresso.vmaccess.guest.GuestHostProxyHandler#getMethodSymbol(java.lang.reflect.Method)`
     private static String getMethodSymbol(ResolvedJavaMethod method) {
         StringBuilder sb = new StringBuilder();
         sb.append(method.getDeclaringClass().getName()).append("#").append(method.getName()).append('(');
@@ -417,10 +417,10 @@ final class EspressoExternalCallbacks {
         return sb.toString();
     }
 
-    private static final class CallbackExecutable implements ProxyExecutable {
+    private static final class HostProxyExecutable implements ProxyExecutable {
         private final MethodHandle handle;
 
-        private CallbackExecutable(MethodHandle handle) {
+        private HostProxyExecutable(MethodHandle handle) {
             this.handle = handle;
         }
 
@@ -451,7 +451,7 @@ final class EspressoExternalCallbacks {
             }
         } catch (InaccessibleObjectException e) {
             Class<?> declaringClass = accessibleMember.getDeclaringClass();
-            ModuleSupport.addOpens(EspressoExternalCallbacks.class.getModule(), declaringClass.getModule(), declaringClass.getPackageName());
+            ModuleSupport.addOpens(EspressoExternalHostProxies.class.getModule(), declaringClass.getModule(), declaringClass.getPackageName());
             accessibleMember.setAccessible(true);
         }
     }

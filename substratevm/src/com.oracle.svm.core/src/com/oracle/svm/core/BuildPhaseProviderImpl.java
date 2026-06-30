@@ -62,8 +62,8 @@ public final class BuildPhaseProviderImpl implements BuildPhaseProvider {
     private static void registerGuestBuildPhaseProvider(BuildPhaseProviderImpl provider) {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType key = access.lookupType(BuildPhaseProvider.class);
-        JavaConstant callback = access.createCallback(provider, key);
-        GuestImageSingletonSupport.add(key, callback);
+        JavaConstant hostProxy = access.createHostProxy(provider, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
     }
 
     static BuildPhaseProviderImpl singleton() {

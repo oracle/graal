@@ -585,12 +585,12 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
-    public JavaConstant createCallback(Object hostTarget, ResolvedJavaType guestType) {
-        return delegate.createCallback(hostTarget, guestType);
+    public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType) {
+        return delegate.createHostProxy(hostTarget, guestType);
     }
 
     @Override
-    public Throwable unwrapCallbackException(JavaConstant guestWrapper) {
-        return delegate.unwrapCallbackException(guestWrapper);
+    public Throwable unwrapHostProxyException(JavaConstant guestWrapper) {
+        return delegate.unwrapHostProxyException(guestWrapper);
     }
 }

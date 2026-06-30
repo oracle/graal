@@ -145,6 +145,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);
+    public final ResolvedJavaMethod ImageSingletons_lookup = lookupMethod(ImageSingletons, "lookup", Class.class);
+    public final ResolvedJavaMethod ImageSingletons_contains = lookupMethod(ImageSingletons, "contains", Class.class);
 
     public final ResolvedJavaType HostedManagement = lookupType(ImageSingletonsSupportImpl.HostedManagement.class);
     public final ResolvedJavaMethod HostedManagement_install = lookupMethod(HostedManagement, "install");

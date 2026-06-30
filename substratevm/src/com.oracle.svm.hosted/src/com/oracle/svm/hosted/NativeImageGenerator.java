@@ -1345,8 +1345,8 @@ public class NativeImageGenerator {
     private static void registerGuestImageLayerBuildingSupport(HostedImageLayerBuildingSupport imageLayerSupport) {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
-        JavaConstant callback = access.createCallback(imageLayerSupport, key);
-        GuestImageSingletonSupport.add(key, callback);
+        JavaConstant hostProxy = access.createHostProxy(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
     }
 
     private static void setupGuestTargetDescription(SubstrateTarget target) {

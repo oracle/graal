@@ -1298,10 +1298,10 @@ public final class Meta extends ContextAccessImpl
             this.jvmci = null;
         }
         if (getLanguage().isExternalJVMCIEnabled()) {
-            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException = knownPlatformKlass(Types.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException);
-            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_init = com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException //
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException = knownPlatformKlass(Types.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException);
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_init = com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException //
                             .requireDeclaredMethod(Names._init_, Signatures._void_Object_String);
-            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException = com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException //
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_getHostException = com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException //
                             .requireDeclaredMethod(Names.getHostException, Signatures.Object);
         }
 
@@ -1997,9 +1997,9 @@ public final class Meta extends ContextAccessImpl
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
 
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException;
-    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_init;
-    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException;
+    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_init;
+    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_getHostException;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

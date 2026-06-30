@@ -2584,8 +2584,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                     result = receiver.invokeDirectVirtual(convertedArguments);
                 }
             } catch (EspressoException e) {
-                if (InterpreterToVM.instanceOf(e.getGuestException(), meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException)) {
-                    StaticObject hostExceptionWrapper = (StaticObject) meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException //
+                if (InterpreterToVM.instanceOf(e.getGuestException(), meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException)) {
+                    StaticObject hostExceptionWrapper = (StaticObject) meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException_getHostException //
                                     .invokeDirectVirtual(e.getGuestException());
                     throw (AbstractTruffleException) hostExceptionWrapper.rawForeignObject(language);
                 }

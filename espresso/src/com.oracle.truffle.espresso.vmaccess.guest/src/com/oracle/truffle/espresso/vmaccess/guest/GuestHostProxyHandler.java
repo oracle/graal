@@ -34,20 +34,20 @@ import java.util.Set;
 /**
  * Invocation handler for dynamic proxies that implement a "guest" interface and forward calls to a
  * "host" object, adapting argument/return types and translating exceptions as specified by
- * {@code VMAccess.createCallback()}.
+ * {@code VMAccess.createHostProxy()}.
  */
-final class GuestCallbackHandler implements InvocationHandler {
+final class GuestHostProxyHandler implements InvocationHandler {
     private final Object target;
     private final Map<Method, Object> methodMap;
 
-    private GuestCallbackHandler(Object target, Map<Method, Object> methodMap) {
+    private GuestHostProxyHandler(Object target, Map<Method, Object> methodMap) {
         this.target = target;
         this.methodMap = methodMap;
     }
 
     // Called directly by the host in EspressoExternalVMAccess
     static Object createProxy(Object target, Map<Method, Object> methodMap, Class<?> guestClass) {
-        return Proxy.newProxyInstance(guestClass.getClassLoader(), new Class<?>[]{guestClass}, new GuestCallbackHandler(target, methodMap));
+        return Proxy.newProxyInstance(guestClass.getClassLoader(), new Class<?>[]{guestClass}, new GuestHostProxyHandler(target, methodMap));
     }
 
     @Override
@@ -59,10 +59,10 @@ final class GuestCallbackHandler implements InvocationHandler {
                     if (other == null || !Proxy.isProxyClass(other.getClass())) {
                         return false;
                     }
-                    if (!(Proxy.getInvocationHandler(other) instanceof GuestCallbackHandler otherCallbackHandler)) {
+                    if (!(Proxy.getInvocationHandler(other) instanceof GuestHostProxyHandler otherHostProxyHandler)) {
                         return false;
                     }
-                    return identical(target, otherCallbackHandler.target);
+                    return identical(target, otherHostProxyHandler.target);
                 case "hashCode":
                     return identityHashCode(target);
                 case "toString":

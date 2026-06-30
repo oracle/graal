@@ -42,15 +42,15 @@ package jdk.graal.compiler.vmaccess.guest;
 
 /**
  * Indicates that a host method threw an exception when it was called through a {@code VMAccess}
- * callback (see {@code jdk.graal.compiler.vmaccess.VMAccess#createCallback}).
+ * host proxy (see {@code jdk.graal.compiler.vmaccess.VMAccess#createHostProxy}).
  */
 @SuppressWarnings("serial")
-public abstract class CallbackException extends RuntimeException {
-    protected CallbackException(String message) {
+public abstract class HostProxyException extends RuntimeException {
+    protected HostProxyException(String message) {
         super(message);
     }
 
-    protected CallbackException(String message, Throwable cause) {
+    protected HostProxyException(String message, Throwable cause) {
         super(message, cause);
     }
 
