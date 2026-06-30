@@ -144,6 +144,11 @@ public class SubstrateDiagnostics {
         return fatalErrorState().diagnosticThread.get() == CurrentIsolate.getCurrentThread();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean canUnsafelyWalkOtherThreadStacks() {
+        return Options.UnsafeDumpOtherThreadStacksOnFatalError.getValue() && isFatalErrorHandlingThread();
+    }
+
     public static int maxInvocations() {
         int result = 0;
         DiagnosticThunkRegistry thunks = DiagnosticThunkRegistry.singleton();
@@ -1108,10 +1113,11 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (VMOperation.isInProgressAtSafepoint()) {
+            if (VMOperation.isInProgressAtSafepoint() || (canUnsafelyWalkOtherThreadStacks() && invocationCount == 1)) {
                 /*
                  * Iterate all threads without checking if current thread holds the ThreadsLock.
-                 * Most likely, we are at a safepoint anyway, but there is no guarantee.
+                 * This is safe at a safepoint. Otherwise, it is permitted only for fatal
+                 * diagnostics when DumpOtherThreadStacksOnFatalError is enabled.
                  */
                 int printed = 0;
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
@@ -1399,6 +1405,9 @@ public class SubstrateDiagnostics {
     }
 
     public static class Options {
+        @Option(help = "Unsafely try to print stack traces of other threads after a fatal error. Stack traces can be entirely incorrect.", type = OptionType.Debug) //
+        public static final RuntimeOptionKey<Boolean> UnsafeDumpOtherThreadStacksOnFatalError = new RuntimeOptionKey<>(false);
+
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
         public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
 

@@ -109,7 +109,7 @@ public class JavaFrameAnchors {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static JavaFrameAnchor getFrameAnchor(IsolateThread thread) {
-        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint() || SubstrateDiagnostics.canUnsafelyWalkOtherThreadStacks();
         return lastAnchorTL.get(thread);
     }
 
