@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.common.spi;
 import jdk.graal.compiler.core.common.LIRKind;
 
 import jdk.vm.ci.code.ValueKindFactory;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Details about a set of supported {@link ForeignCallDescriptor foreign calls}.
@@ -49,4 +50,14 @@ public interface ForeignCallsProvider extends ValueKindFactory<LIRKind> {
      * Gets the descriptor for a foreign call.
      */
     ForeignCallDescriptor getDescriptor(ForeignCallSignature signature);
+
+    /**
+     * Creates and registers a descriptor for a native Vector API library call with a known entry
+     * address and library function name. Providers may return {@code null} when no target calling
+     * convention is available for the vector type.
+     */
+    @SuppressWarnings("unused")
+    default ForeignCallDescriptor lookupVectorAPILibraryCall(String name, long address, int vectorLength, JavaKind elementKind, int argumentCount) {
+        return null;
+    }
 }

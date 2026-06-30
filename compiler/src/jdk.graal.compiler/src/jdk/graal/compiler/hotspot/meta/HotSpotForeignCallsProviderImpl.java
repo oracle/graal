@@ -90,6 +90,12 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     protected final EconomicMap<ForeignCallSignature, HotSpotForeignCallLinkage> foreignCalls = EconomicMap.create();
     protected final EconomicMap<ForeignCallSignature, HotSpotForeignCallDescriptor> signatureMap = EconomicMap.create();
+    /**
+     * Mapping from names to linkages for foreign calls which cannot be registered during
+     * provider initialization. This map may be updated during compilation, so every access must be
+     * protected by its monitor.
+     */
+    private final EconomicMap<String, HotSpotForeignCallLinkage> lazyForeignCalls = EconomicMap.create();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
     protected final WordTypes wordTypes;
@@ -202,6 +208,44 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         ));
     }
 
+    @Override
+    public ForeignCallDescriptor lookupVectorAPILibraryCall(String name, long address, int vectorLength, JavaKind elementKind, int argumentCount) {
+        GraalError.guarantee(name != null, "foreign call name must be non-null");
+        GraalError.guarantee(address != 0L, "foreign call target address must be non-zero");
+        synchronized (lazyForeignCalls) {
+            HotSpotForeignCallLinkage existing = lazyForeignCalls.get(name);
+            if (existing != null) {
+                GraalError.guarantee(existing.getAddress() == address, "lazy foreign call name collision for %s: 0x%x != 0x%x", name, existing.getAddress(), address);
+                GraalError.guarantee(existing.getDescriptor().getArgumentTypes().length == argumentCount, "lazy foreign call name collision for %s: %d arguments != %d arguments",
+                                name, existing.getDescriptor().getArgumentTypes().length, argumentCount);
+                return existing.getDescriptor();
+            }
+            CallingConvention outgoingCc = getVectorMathLibraryCallingConvention(vectorLength, elementKind, argumentCount);
+            if (outgoingCc == null) {
+                return null;
+            }
+            HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS,
+                            name, Object.class, true,
+                            switch (argumentCount) {
+                                case 1 -> new Class<?>[]{Object.class};
+                                case 2 -> new Class<?>[]{Object.class, Object.class};
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(argumentCount);
+                            });
+            HotSpotForeignCallLinkage linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, DESTROYS_ALL_CALLER_SAVE_REGISTERS, outgoingCc, null);
+            lazyForeignCalls.put(name, linkage);
+            return descriptor;
+        }
+    }
+
+    /**
+     * Returns the target calling convention for a native Vector API math library call. Returning
+     * {@code null} means that the current target cannot use the supplied vector type.
+     */
+    @SuppressWarnings("unused")
+    protected CallingConvention getVectorMathLibraryCallingConvention(int vectorLength, JavaKind elementKind, int argumentCount) {
+        return null;
+    }
+
     /**
      * Creates a {@linkplain ForeignCallStub stub} for the foreign call described by
      * {@code descriptor} if {@code address != 0}.
@@ -297,6 +341,15 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     @Override
     public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        if (descriptor.isLazilyResolved()) {
+            synchronized (lazyForeignCalls) {
+                HotSpotForeignCallLinkage callTarget = lazyForeignCalls.get(descriptor.getName());
+                if (callTarget == null) {
+                    throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + descriptor.getSignature()); // ExcludeFromJacocoGeneratedReport
+                }
+                return callTarget;
+            }
+        }
         return lookupForeignCall(descriptor.getSignature());
     }
 
