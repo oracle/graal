@@ -413,37 +413,7 @@ public final class JNIFunctions {
 
             CFunctionPointer fnPtr = entry.fnPtr();
 
-            /*
-             * Runtime-loaded Crema classes are not represented in the JNI reflection dictionary, so
-             * RegisterNatives must also update their interpreter-side JNI linkages directly.
-             */
-            if (RuntimeClassLoading.isSupported()) {
-                DynamicHub hub = DynamicHub.fromClass(clazz);
-                if (hub.isRuntimeLoaded()) {
-                    assert JNIReflectionDictionary.getLinkage(hub, name, signature) == null : "Runtime loaded classes should have no global linkage";
-                    ResolvedJavaType interpreterType = hub.getInterpreterType();
-                    assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
-                    CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
-                    CremaResolvedJavaMethod cremaMethod = type.lookupDeclaredMethod(name.toString(), signature.toString());
-                    if (cremaMethod == null || !cremaMethod.isNative()) {
-                        throw new NoSuchMethodError("Method signature at index " + i + " does not match with a native method.");
-                    }
-                    cremaMethod.getJNINativeLinkage().setEntryPoint(fnPtr);
-                }
-            }
-
-            JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(DynamicHub.fromClass(clazz), name, signature);
-            if (linkage != null) {
-                linkage.setEntryPoint(fnPtr);
-            } else {
-                /*
-                 * It happens that libraries register arbitrary Java native methods from their
-                 * native code. If during analysis, we didn't reach some of those JNI methods (see
-                 * com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup and
-                 * com.oracle.svm.jni.access.JNIAccessFeature.duringAnalysis) we shouldn't fail:
-                 * those native methods can never be invoked.
-                 */
-            }
+            Support.registerNative(DynamicHub.fromClass(clazz), name, signature, i, fnPtr, false);
 
             p = p.add(SizeOf.get(JNINativeMethod.class));
         }
@@ -1800,6 +1770,7 @@ public final class JNIFunctions {
             }
         }
 
+        /// Records an exception from a void JNI entry point as the pending JNI exception.
         public static class JNIExceptionHandlerVoid implements CEntryPoint.ExceptionHandler {
             @Uninterruptible(reason = "exception handler")
             static void handle(Throwable t) {
@@ -1807,7 +1778,8 @@ public final class JNIFunctions {
             }
         }
 
-        static class JNIExceptionHandlerReturnNullHandle implements CEntryPoint.ExceptionHandler {
+        /// Records an exception from an object-returning JNI entry point and returns a null handle.
+        public static class JNIExceptionHandlerReturnNullHandle implements CEntryPoint.ExceptionHandler {
             @Uninterruptible(reason = "exception handler")
             static JNIObjectHandle handle(Throwable t) {
                 Support.handleException(t);
@@ -1823,7 +1795,8 @@ public final class JNIFunctions {
             }
         }
 
-        static class JNIExceptionHandlerReturnFalse implements CEntryPoint.ExceptionHandler {
+        /// Records an exception from a boolean JNI entry point and returns `false`.
+        public static class JNIExceptionHandlerReturnFalse implements CEntryPoint.ExceptionHandler {
             @Uninterruptible(reason = "exception handler")
             static boolean handle(Throwable t) {
                 Support.handleException(t);
@@ -1839,7 +1812,8 @@ public final class JNIFunctions {
             }
         }
 
-        static class JNIExceptionHandlerReturnZero implements CEntryPoint.ExceptionHandler {
+        /// Records an exception from an integer JNI entry point and returns zero.
+        public static class JNIExceptionHandlerReturnZero implements CEntryPoint.ExceptionHandler {
             @Uninterruptible(reason = "exception handler")
             static int handle(Throwable t) {
                 Support.handleException(t);
@@ -2235,6 +2209,57 @@ public final class JNIFunctions {
                 JavaMemoryUtil.copyOnHeap(null, Word.unsigned(buffer.rawValue()), obj, Word.unsigned(offset), bytes);
             }
         }
+
+        /// Registers `fnPtr` as the native implementation of the method identified by `clazz`,
+        /// `name`, and `signature`.
+        ///
+        /// Updates runtime-loaded Crema classes through their interpreter-side JNI linkage and
+        /// image classes through the JNI reflection dictionary.
+        ///
+        /// @throws NoSuchMethodError when a runtime-loaded class does not declare the requested
+        /// native method, or when an AOT class does not declare it and `methodMustExist` is true.
+        public static void registerNative(DynamicHub clazz, CharSequence name, CharSequence signature, int i, CFunctionPointer fnPtr, boolean methodMustExist) {
+            /*
+             * Runtime-loaded Crema classes are not represented in the JNI reflection dictionary, so
+             * RegisterNatives must also update their interpreter-side JNI linkages directly.
+             */
+            if (RuntimeClassLoading.isSupported()) {
+                if (clazz.isRuntimeLoaded()) {
+                    assert JNIReflectionDictionary.getLinkage(clazz, name, signature) == null : "Runtime loaded classes should have no global linkage";
+                    ResolvedJavaType interpreterType = clazz.getInterpreterType();
+                    assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
+                    CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
+                    CremaResolvedJavaMethod cremaMethod = type.lookupDeclaredMethod(name.toString(), signature.toString());
+                    if (cremaMethod == null || !cremaMethod.isNative()) {
+                        throw nativeMethodNotFound(clazz, name, signature, i);
+                    }
+                    JNINativeLinkage linkage = cremaMethod.getJNINativeLinkage();
+                    linkage.setEntryPoint(fnPtr);
+                    return;
+                }
+            }
+
+            JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(clazz, name, signature);
+            if (linkage != null) {
+                linkage.setEntryPoint(fnPtr);
+            } else if (methodMustExist) {
+                throw nativeMethodNotFound(clazz, name, signature, i);
+            } else {
+                /*
+                 * It happens that libraries register arbitrary Java native methods from their
+                 * native code. If during analysis, we didn't reach some of those JNI methods (see
+                 * com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup and
+                 * com.oracle.svm.jni.access.JNIAccessFeature.duringAnalysis) we shouldn't fail:
+                 * those native methods can never be invoked.
+                 */
+            }
+        }
+
+        private static NoSuchMethodError nativeMethodNotFound(DynamicHub clazz, CharSequence name, CharSequence signature, int i) {
+            String m = clazz.getName() + '.' + name + signature;
+            return new NoSuchMethodError("Native method " + m + " at index " + i + " not found");
+        }
+
     }
 
     static final CGlobalData<CCharPointer> UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE = CGlobalDataFactory.createCString(

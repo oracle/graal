@@ -55,12 +55,4 @@ public abstract class AbstractJNINativeCallWrapperMethod extends CustomSubstitut
     final boolean isBuiltInFunction() {
         return linkage.isBuiltInFunction();
     }
-
-    final String getShortName() {
-        return linkage.getShortName();
-    }
-
-    final String getLongName() {
-        return linkage.getLongName();
-    }
 }
