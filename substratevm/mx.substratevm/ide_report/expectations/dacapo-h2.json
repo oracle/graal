@@ -1,0 +1,65 @@
+{
+  "groupCounts": [
+    {
+      "count": 3252,
+      "kind": "CLASS"
+    },
+    {
+      "count": 731,
+      "kind": "FIELD"
+    },
+    {
+      "kind": "LINE",
+      "max": 62065,
+      "min": 61941
+    },
+    {
+      "count": 6315,
+      "kind": "METHOD"
+    },
+    {
+      "count": 650,
+      "kind": "UNREACHABLE"
+    }
+  ],
+  "records": [
+    {
+      "class": "Harness",
+      "kind": "CLASS",
+      "message": "Initialization mode of Harness is SIMULATED",
+      "sourceFile": "Harness.java"
+    },
+    {
+      "class": "com.oracle.objectfile.debugentry.TypeEntry",
+      "field": "size",
+      "kind": "FIELD",
+      "message": "Field size has constant value 0",
+      "sourceFile": "com/oracle/objectfile/debugentry/TypeEntry.java"
+    },
+    {
+      "class": "com.oracle.objectfile.debugentry.TypeEntry",
+      "kind": "CLASS",
+      "message": "Initialization mode of TypeEntry is BUILD_TIME",
+      "sourceFile": "com/oracle/objectfile/debugentry/TypeEntry.java"
+    },
+    {
+      "class": "com.oracle.objectfile.debugentry.TypeEntry",
+      "kind": "METHOD",
+      "messageRegex": "Method getSize is not part of the produced image since all its invocations are inlined",
+      "method": "getSize",
+      "signature": "()I",
+      "sourceFile": "com/oracle/objectfile/debugentry/TypeEntry.java"
+    },
+    {
+      "class": "com.oracle.svm.shared.option.CommonOptionParser",
+      "kind": "CLASS",
+      "message": "Initialization mode of CommonOptionParser is BUILD_TIME",
+      "sourceFile": "com/oracle/svm/shared/option/CommonOptionParser.java"
+    }
+  ],
+  "reportCount": {
+    "max": 73013,
+    "min": 72889
+  },
+  "usedMethods": 15434
+}

@@ -2611,6 +2611,50 @@ def helloworld(args, config=None):
     run_helloworld_command(args, config, "helloworld")
 
 
+def _ide_report_fixture(native_image, output_path, build_only, ide_report, ide_report_filter, args):
+    mx_util.ensure_dir_exists(output_path)
+    binary_path = join(output_path, 'ide-report-fixture')
+    image_args = [
+        '--native-image-info',
+        '-cp', classpath('com.oracle.svm.test'),
+        '-H:Class=com.oracle.svm.test.ide.IDEReportFixture',
+        '-H:+ReportExceptionStackTraces',
+        '-o', binary_path,
+    ]
+    if ide_report or ide_report_filter:
+        image_args += svm_experimental_options(['-H:+IDEReport'])
+    if ide_report_filter:
+        image_args += svm_experimental_options(['-H:IDEReportFiltered=' + ide_report_filter])
+
+    native_image(image_args + args, cwd=output_path)
+    if not build_only:
+        mx.run([binary_path])
+
+
+@mx.command(suite_name=suite.name, command_name='ide-report-fixture', usage_msg='[options]')
+def ide_report_fixture(args, config=None):
+    """
+    builds the focused Native Image IDE report fixture.
+    """
+    parser = ArgumentParser(prog='mx ide-report-fixture')
+    all_args = ['--output-path', '--build-only', '--ide-report', '--ide-report-filter']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(suite), 'ide-report-fixture')])
+    parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[2], action='store_true', help='Enable IDE report generation')
+    parser.add_argument(all_args[3], metavar='<filter>', help='Enable IDE report generation for the specified class filter', default='')
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = os.path.abspath(unmask(parsed.output_path)[0])
+    ide_report_filter = unmask([parsed.ide_report_filter])[0]
+    image_args = unmask(parsed.image_args)
+    native_image_context_run(
+        lambda native_image, a:
+        _ide_report_fixture(native_image, output_path, parsed.build_only, parsed.ide_report, ide_report_filter, a), image_args,
+        config=config,
+    )
+
+
 @mx.command(suite_name=suite.name, command_name='hellomodule')
 def hellomodule(args):
     """
@@ -3364,6 +3408,14 @@ def native_image_utils_on_jvm(args, **kwargs):
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable] + _debug_args() + args, **kwargs)
+
+@mx.command(suite.name, 'ide-report')
+def ide_report(args):
+    mx_substratevm_dir = dirname(__file__)
+    if mx_substratevm_dir not in sys.path:
+        sys.path.insert(0, mx_substratevm_dir)
+    from ide_report import cli
+    cli.main(args)
 
 def _debug_args():
     debug_args = get_jdk().debug_args

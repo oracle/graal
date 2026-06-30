@@ -75,7 +75,7 @@ public class BuildArtifactsExporter {
             String key = artifactType.getJsonKey();
             List<String> value = paths.stream().map(p -> {
                 Path absoluteArtifactPath = p.toAbsolutePath().normalize();
-                if (absoluteArtifactPath.startsWith(absoluteArtifactPath)) {
+                if (absoluteArtifactPath.startsWith(absoluteBuildPath)) {
                     return absoluteBuildPath.relativize(absoluteArtifactPath).toString();
                 } else {
                     return absoluteArtifactPath.toString();
