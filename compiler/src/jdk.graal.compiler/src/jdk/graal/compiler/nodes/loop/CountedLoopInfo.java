@@ -514,14 +514,14 @@ public class CountedLoopInfo {
             if (helper.compare(endValue, initValue) < 0) {
                 return 0;
             }
-            range = endValue - getLimitCheckedIV().constantInit();
+            range = endValue - initValue;
             absStride = getLimitCheckedIV().constantStride();
         } else {
             assert getLimitCheckedIV().direction() == Direction.Down : Assertions.errorMessage(getLimitCheckedIV());
             if (helper.compare(initValue, endValue) < 0) {
                 return 0;
             }
-            range = getLimitCheckedIV().constantInit() - endValue;
+            range = initValue - endValue;
             absStride = -getLimitCheckedIV().constantStride();
         }
         if (isLimitIncluded) {
@@ -571,7 +571,7 @@ public class CountedLoopInfo {
     public String toString() {
         return (isInverted() ? "Inverted " : "") + "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() +
                         (isLimitIncluded ? getLimitCheckedIV().direction() == InductionVariable.Direction.Up ? "+1" : "-1" : "") +
-                        " bodyIV=" + getLimitCheckedIV();
+                        " bodyIV=" + getBodyIV();
     }
 
     /**
