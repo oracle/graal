@@ -25,7 +25,9 @@
 package com.oracle.svm.core.option;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -114,8 +116,13 @@ public final class RuntimeOptionParser {
     private static final String ILLEGAL_NATIVE_ACCESS_OPTION_PREFIX = "--illegal-native-access=";
     private static final String SUN_MISC_UNSAFE_MEMORY_ACCESS_OPTION_PREFIX = "--sun-misc-unsafe-memory-access=";
     private static final String X_BOOTCLASSPATH_APPEND_OPTION_PREFIX = X_OPTION_PREFIX + "bootclasspath/a:";
+    private static final String XLOG_OPTION_PREFIX = "-Xlog:";
+    private static final String JAVA_AGENT_OPTION_PREFIX = "-javaagent:";
+    private static final String AGENT_LIB_OPTION_PREFIX = "-agentlib:";
+    private static final String AGENT_PATH_OPTION_PREFIX = "-agentpath:";
     private static final String LOG_FILE_OPTION = "LogFile";
     private static final String LOG_FILE_OPTION_PREFIX = NORMAL_OPTION_PREFIX + LOG_FILE_OPTION + "=";
+    private static final String HOTSPOT_OPTION_COMPATIBILITY_ENV = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
     private static final String RESERVED_INTERNAL_MODULE_PROPERTY_WARNING = "Ignoring system property options whose names match '-Djdk.module.*', which is reserved for internal use.";
 
     private static final Set<String> SYSTEM_ASSERTION_OPTIONS = Set.of(
@@ -123,6 +130,30 @@ public final class RuntimeOptionParser {
                     "-dsa",
                     "-enablesystemassertions",
                     "-disablesystemassertions");
+    private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
+                    "UnlockExperimentalVMOptions",
+                    "UnlockDiagnosticVMOptions",
+                    "AbortVMOnCompilationFailure",
+                    "IgnoreUnrecognizedVMOptions",
+                    "TieredCompilation",
+                    "UseCompressedOops",
+                    "VerifyDependencies",
+                    "DisplayVMOutput",
+                    "LogVMOutput",
+                    "PrintFlagsFinal");
+    private static final Set<String> RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
+                    "ReservedCodeCacheSize",
+                    "TieredStopAtLevel",
+                    "MaxRAMPercentage",
+                    "DisableIntrinsic",
+                    "CompileThresholdScaling");
+    private static final Set<String> IGNORED_COMPATIBILITY_OPTIONS = Set.of(
+                    "-ea",
+                    "-esa",
+                    "-Xcomp",
+                    "-Xbatch",
+                    "-Xint",
+                    "-Xverify:all");
     private static final Set<String> EXACT_RECOGNIZED_X_OPTIONS = Set.of(
                     "-Xnoclassgc",
                     "-Xbatch",
@@ -182,6 +213,7 @@ public final class RuntimeOptionParser {
 
         ParseContext context = new ParseContext();
         String[] args = parseJavaVMOptions(initialArgs, context);
+        args = consumeCompatibilityOptions(args);
         args = singleton().parse(args, ignoreUnrecognized);
         if (!context.legacyJavaOptionMode) {
             rejectRecognizedUnimplementedJavaOptions(args);
@@ -421,6 +453,75 @@ public final class RuntimeOptionParser {
             return true;
         }
         return false;
+    }
+
+    /// Consumes compatibility options commonly passed by jtreg and the JDK test harness.
+    private static String[] consumeCompatibilityOptions(String[] inArgs) {
+        if (!Boolean.parseBoolean(System.getenv(HOTSPOT_OPTION_COMPATIBILITY_ENV))) {
+            return inArgs;
+        }
+        List<String> remainingArgs = new ArrayList<>();
+        for (String arg : inArgs) {
+            if (!parseCompatibilityOption(arg)) {
+                remainingArgs.add(arg);
+            }
+        }
+        return remainingArgs.toArray(new String[0]);
+    }
+
+    /// Parses HotSpot compatibility options commonly passed by jtreg and the JDK test harness.
+    private static boolean parseCompatibilityOption(String arg) {
+        if (parseCompatibilityBooleanOption(arg) || parseCompatibilityValueOption(arg)) {
+            return true;
+        }
+        if (IGNORED_COMPATIBILITY_OPTIONS.contains(arg) ||
+                        arg.startsWith(XLOG_OPTION_PREFIX) ||
+                        arg.startsWith(JAVA_AGENT_OPTION_PREFIX) ||
+                        arg.startsWith(AGENT_LIB_OPTION_PREFIX) ||
+                        arg.startsWith(AGENT_PATH_OPTION_PREFIX)) {
+            warnIgnoredCompatibilityOption(arg);
+            return true;
+        }
+        return false;
+    }
+
+    /// Parses a HotSpot `-XX:+name` or `-XX:-name` compatibility option.
+    private static boolean parseCompatibilityBooleanOption(String arg) {
+        if (!arg.startsWith(NORMAL_OPTION_PREFIX) || arg.length() <= NORMAL_OPTION_PREFIX.length()) {
+            return false;
+        }
+        char sign = arg.charAt(NORMAL_OPTION_PREFIX.length());
+        if (sign != '+' && sign != '-') {
+            return false;
+        }
+        String name = arg.substring(NORMAL_OPTION_PREFIX.length() + 1);
+        if (!RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS.contains(name)) {
+            return false;
+        }
+        warnIgnoredCompatibilityOption(arg);
+        return true;
+    }
+
+    /// Parses a HotSpot `-XX:name=value` compatibility option.
+    private static boolean parseCompatibilityValueOption(String arg) {
+        if (!arg.startsWith(NORMAL_OPTION_PREFIX)) {
+            return false;
+        }
+        int equalsIndex = arg.indexOf('=', NORMAL_OPTION_PREFIX.length());
+        if (equalsIndex == -1) {
+            return false;
+        }
+        String name = arg.substring(NORMAL_OPTION_PREFIX.length(), equalsIndex);
+        if (!RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS.contains(name)) {
+            return false;
+        }
+        warnIgnoredCompatibilityOption(arg);
+        return true;
+    }
+
+    /// Emits a HotSpot compatibility warning for options accepted without runtime effect.
+    private static void warnIgnoredCompatibilityOption(String arg) {
+        Log.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
     }
 
     /// Parses `--enable-preview` and enables the runtime preview-feature flag consulted by
