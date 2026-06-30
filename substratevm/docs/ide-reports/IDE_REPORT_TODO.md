@@ -118,6 +118,9 @@ changing the report surface:
 - [x] A standalone Java/JBang reference reader now parses canonical JSON and
   split envelopes through a bounded `ByteBuffer` API, with fixed
   cross-language vectors and focused command-line tests.
+- [x] Java, Python, and JBang envelope readers now enforce a 512 MiB decoded
+  payload default, permit an explicit trusted override up to 2,000,000,000
+  bytes, and reject oversized declarations before bounded decompression.
 
 ## Branch Context
 
@@ -134,8 +137,9 @@ The prototype phases are complete, but the PR is not merge-ready. Collector
 ownership now follows the hosted image-singleton lifecycle. Complete the
 remaining standard inlining-integration blocker described in
 `IDE_REPORT_PR_REVIEW.md`, then address output-failure semantics, bounded
-payload decoding, semantic class subjects, and missing integration tests before
-starting final CI gates. No CI gates are started automatically.
+multi-gigabyte streaming if it becomes a requirement, semantic class subjects,
+and missing integration tests before starting final CI gates. No CI gates are
+started automatically.
 
 ## Phase Checklist
 

@@ -7,10 +7,11 @@ Date: 2026-06-28
 The implementation is complete as the validated prototype defined by Phases 0
 through 16. It is not ready to merge into `master` yet.
 
-The review found no P0 data-corruption issue and no regression in the validated
-prototype workflows. It did find one explicit architectural merge blocker,
-three production robustness gaps, incomplete integration coverage, and several
-lower-priority maintainability and reviewability concerns.
+The original review found no P0 data-corruption issue and no regression in the
+validated prototype workflows. It found one explicit architectural merge
+blocker, three production robustness gaps, incomplete integration coverage,
+and several lower-priority maintainability and reviewability concerns. The
+follow-up notes below record issues resolved after that snapshot.
 
 Review scope:
 
@@ -38,6 +39,10 @@ Review follow-up:
   singleton installation and cleanup.
 - Standard `TraceInlining` integration remains open, so the architectural
   finding and reviewer blocker are only partially resolved.
+- The decoded-payload robustness finding was addressed on 2026-06-30. Java,
+  Python, and JBang readers now enforce bounded decoding, and both command-line
+  readers process the 440.84 MiB unfiltered Spring PetClinic payload under the
+  default limit.
 
 ## Findings
 
@@ -107,33 +112,30 @@ Required direction:
 - Add tests for unwritable destinations, serialization failure, a failed image
   build, and successful image generation with failed report output.
 
-### P2: Envelope Readers Have No Decoded-Payload Limit
+### Resolved P2: Envelope Readers Have Bounded Decoded Payloads
 
-The production Java and Python envelope readers trust the declared
-uncompressed size up to implementation limits and decompress the entire
-payload into memory. A small gzip input can therefore allocate a very large
-byte array when an IDE or developer tool opens an untrusted executable or side
-file. The design already records this as deferred work, but it must be resolved
-before treating extraction as a production-facing feature.
+The original review found that the production Java and Python readers trusted
+the declared uncompressed size and decompressed the entire payload without a
+resource limit. The production Java decoder, Python decoder and source adapter,
+and standalone JBang reader now share a 512 MiB default and an explicit trusted
+override ceiling of 2,000,000,000 bytes.
 
-The later standalone JBang reference reader is bounded at 64 MiB by default
-and streams gzip output through the limit. This demonstrates the required
-reader behavior, but it does not change the production readers listed below.
+All three reject oversized declarations before decompression and bound gzip
+expansion to the declared size. The Python split adapter and JBang file reader
+also bound the encoded file read. Focused Java and Python tests cover oversized
+headers and high-ratio compressed payloads. The 462,254,687-byte unfiltered
+Spring PetClinic payload passes under the default.
 
 Relevant code:
 
-- `substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/ide/IDEReportEnvelope.java:117`
-- `substratevm/mx.substratevm/ide_report/envelope.py:80`
-- `substratevm/docs/ide-reports/IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md:830`
+- `substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/ide/IDEReportEnvelope.java:96`
+- `substratevm/mx.substratevm/ide_report/envelope.py:84`
+- `substratevm/docs/ide-reports/IDE_REPORT_EMBEDDED_STORAGE_DESIGN.md:834`
 
-Required direction:
-
-- Define maximum stored-envelope and decoded-payload sizes.
-- Reject oversized headers before allocation.
-- Decompress through a bounded stream and fail as soon as the limit is
-  exceeded.
-- Add Java and Python tests with oversized headers and high-ratio compressed
-  payloads.
+Residual limitation: the Python and JBang consumers materialize the decoded
+JSON and an object model. Reliable support for exact 2 GiB or larger payloads
+therefore requires streaming decompression, hashing, and parsing rather than
+another array-size increase.
 
 ### P2: Line-Oriented Records Lose Their Class Subject
 
@@ -342,7 +344,8 @@ Strengths:
 Shortcomings:
 
 - Compatibility is best effort and readers accept only version 1.
-- Decoded size is not bounded.
+- Decoded size is bounded, but readers still materialize the complete payload
+  and report model.
 - Full payloads are large for realistic unfiltered applications.
 - Minimal-scope category membership is duplicated.
 
@@ -527,25 +530,22 @@ Validation:
 - sequential and failed-build lifecycle tests
 - reviewer confirmation that the blocker is resolved
 
-### 2. Define Output Failure And Extraction Safety Contracts
+### 2. Define Output Failure And Continue Extraction Hardening
 
 Input:
 
 - current warning-only export/split behavior
-- current unbounded readers
+- current bounded readers with an in-memory JSON model
 
 Output:
 
 - consistent storage failure policy
-- bounded Java and Python decoding
-- documented limits and diagnostics
+- a streaming reader if multi-gigabyte payloads become a requirement
 
 Validation:
 
 - unwritable output tests
-- oversized-header tests
-- compression-bomb tests
-- unchanged valid full/minimal vectors
+- existing oversized-header and compression-ratio tests remain green
 
 ### 3. Complete Semantic Subjects And Tool Queries
 
@@ -653,7 +653,7 @@ Validation:
 - [ ] Static collector bridge replaced with accepted ownership.
 - [ ] Positive inlining routed through the accepted standard path.
 - [ ] Output-failure semantics decided and tested.
-- [ ] Decoded-payload limits implemented and tested.
+- [x] Decoded-payload limits implemented and tested.
 - [ ] Class subjects preserved for line/range records.
 - [ ] Build artifact and repeated-build integration tests added.
 - [ ] Performance and security/checklist tasks completed.
@@ -672,6 +672,7 @@ It should not be described as finished for merge. The collector now uses a
 build-scoped hosted image singleton, but the next implementation work should
 complete standard inlining integration because that is the remaining half of
 the explicit review blocker and can affect the shape of later performance and
-lifecycle tests. Output failure policy, bounded extraction, semantic class
-subjects, and missing integration coverage should follow before gates and final
-approval.
+lifecycle tests. Output failure policy, semantic class subjects, and missing
+integration coverage should follow before gates and final approval. Streaming
+extraction is needed only if multi-gigabyte payloads become a concrete
+requirement.

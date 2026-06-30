@@ -480,6 +480,10 @@ mx ide-report compare json:/path/report.json image:/path/to/app
 mx ide-report canonicalize json:/path/report.json --output /path/canonical.json
 ```
 
+Commands that decode `split:`, `image:`, or `auto:` envelopes accept
+`--max-payload-bytes` for trusted inputs above the 512 MiB default, up to
+2,000,000,000 bytes.
+
 This is the right place for development, rebase validation, semantic comparison, and report debugging.
 
 ### `native-image-utils`
@@ -827,13 +831,37 @@ Before considering embedded storage stable, validate at least:
 
 Section naming, symbol naming, and envelope layout should avoid choices that obviously block cross-platform support.
 
+## Reader Resource Limits
+
+Version 1 readers enforce a 512 MiB default limit on the decoded payload. This
+default accommodates the 462,254,687-byte unfiltered Spring PetClinic full
+payload measured on 2026-06-30 while still rejecting unexpectedly large
+payloads before decoded-payload allocation. Trusted callers and command-line
+users can raise the limit explicitly with `--max-payload-bytes`, up to
+2,000,000,000 bytes.
+
+Java and Python readers must:
+
+- reject a declared decoded size above the configured limit before
+  decompression
+- reject a stored payload above the configured limit
+- bound gzip expansion to the declared decoded size
+- verify the decoded size and SHA-256 after decompression
+- bound split-file reads to the configured payload limit plus the maximum
+  envelope header overhead
+
+This is a resource policy rather than an envelope-format limit. The current
+end-to-end Python and JBang consumers materialize both the decoded JSON and an
+object model. Java arrays are also `int`-indexed. Consequently, the
+2,000,000,000-byte override is intended only for trusted inputs on
+appropriately sized machines; supporting exact 2 GiB or larger payloads
+reliably requires streaming decompression, hashing, and JSON parsing.
+
 ## Deferred Questions
 
 - What user-facing compatibility promise is appropriate if `native-image-utils extract-ide-report` is eventually added?
 - How much extraction implementation should be shared between `mx ide-report` and a future `native-image-utils` command?
 - Should compiled-method, `used_methods`, or inlined-only method facts get a separate compact storage path later if `full` scope measurements show they are too expensive?
-- What maximum envelope and decoded-payload sizes should production extractors
-  enforce for untrusted artifacts?
 - Can the build-scoped compiler bridge and direct positive-inlining hooks be
   replaced by a standard compiler event consumer if parallel in-process builds
   or a production compiler-observability API is required? This remains tracked

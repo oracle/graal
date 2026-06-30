@@ -28,6 +28,7 @@
 import gzip
 import hashlib
 import hmac
+import io
 import struct
 import zlib
 from dataclasses import dataclass
@@ -41,8 +42,11 @@ COMPRESSION_NONE = 0
 COMPRESSION_GZIP = 1
 CHECKSUM_SHA256 = 1
 COMPRESSION_THRESHOLD = 4096
+DEFAULT_MAX_DECODED_PAYLOAD_BYTES = 512 * 1024 * 1024
+MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES = 2_000_000_000
 _FIXED_HEADER = struct.Struct(">HH")
 _PAYLOAD_HEADER = struct.Struct(">HHBQQB")
+MAX_ENVELOPE_OVERHEAD = len(MAGIC) + _FIXED_HEADER.size + 0xFFFF + _PAYLOAD_HEADER.size + hashlib.sha256().digest_size
 
 
 @dataclass(frozen=True)
@@ -77,7 +81,8 @@ def encode(payload, producer_version):
     )
 
 
-def decode(envelope):
+def decode(envelope, max_decoded_payload_bytes=DEFAULT_MAX_DECODED_PAYLOAD_BYTES):
+    validate_decoded_payload_limit(max_decoded_payload_bytes)
     cursor = 0
     if not envelope.startswith(MAGIC):
         raise ValueError("Invalid IDE report envelope magic")
@@ -99,6 +104,10 @@ def decode(envelope):
         raise ValueError("Unsupported IDE report payload kind or version: {}/{}".format(payload_kind, payload_version))
     if compression not in (COMPRESSION_NONE, COMPRESSION_GZIP):
         raise ValueError("Unsupported IDE report compression: {}".format(compression))
+    if uncompressed_size > max_decoded_payload_bytes:
+        raise ValueError("IDE report payload exceeds the {} byte limit".format(max_decoded_payload_bytes))
+    if stored_size > max_decoded_payload_bytes:
+        raise ValueError("Stored IDE report payload exceeds the {} byte limit".format(max_decoded_payload_bytes))
     if checksum_kind != CHECKSUM_SHA256:
         raise ValueError("Unsupported IDE report checksum: {}".format(checksum_kind))
     checksum_end = cursor + hashlib.sha256().digest_size
@@ -110,8 +119,8 @@ def decode(envelope):
         raise ValueError("IDE report envelope payload size does not match the header")
     stored = envelope[cursor:]
     try:
-        payload = gzip.decompress(stored) if compression == COMPRESSION_GZIP else stored
-    except (EOFError, OSError) as exception:
+        payload = _gunzip(stored, uncompressed_size) if compression == COMPRESSION_GZIP else stored
+    except (EOFError, OSError, zlib.error) as exception:
         raise ValueError("Invalid compressed IDE report payload") from exception
     if len(payload) != uncompressed_size:
         raise ValueError("IDE report envelope uncompressed size does not match the header")
@@ -125,6 +134,26 @@ def _gzip(payload):
     compressed = compressor.compress(payload) + compressor.flush()
     trailer = struct.pack("<II", zlib.crc32(payload), len(payload) & 0xFFFFFFFF)
     return b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff" + compressed + trailer
+
+
+def _gunzip(stored, expected_size):
+    with gzip.GzipFile(fileobj=io.BytesIO(stored), mode="rb") as compressed:
+        payload = compressed.read(expected_size + 1)
+    if len(payload) > expected_size:
+        raise ValueError("Compressed IDE report payload exceeds its declared size")
+    return payload
+
+
+def validate_decoded_payload_limit(max_decoded_payload_bytes):
+    if (
+        not isinstance(max_decoded_payload_bytes, int)
+        or isinstance(max_decoded_payload_bytes, bool)
+        or max_decoded_payload_bytes <= 0
+        or max_decoded_payload_bytes > MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES
+    ):
+        raise ValueError(
+            "IDE report payload limit must be between 1 and {} bytes".format(MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES)
+        )
 
 
 def _unpack(formatter, data, offset):

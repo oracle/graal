@@ -143,6 +143,44 @@ Executable sizes also vary by about 16 KiB between some non-embedded rows.
 Because this is a one-run characterization, only the same-layout full embed
 and `embed,split` rows provide a stable direct signal: both add 112 bytes.
 
+### Unfiltered Full-Payload Follow-up
+
+On 2026-06-30, Spring PetClinic was rebuilt with the current custom GraalVM and
+`IDEReportStorage=split`, `IDEReportPayloadScope=full`, and no
+`IDEReportFiltered` restriction. This characterization is separate from the
+package-filtered matrix above.
+
+| Metric | Value |
+| --- | ---: |
+| Split file | 13,217,316 bytes (12.61 MiB) |
+| Stored gzip payload | 13,217,215 bytes |
+| Decoded payload | 462,254,687 bytes (440.84 MiB) |
+| Report records | 1,103,323 |
+| Used methods | 187,301 |
+| Stored/decoded ratio | 2.859% |
+
+Report categories sum exactly to the record total:
+
+| Category | Records |
+| --- | ---: |
+| class-initialization | 31,921 |
+| constant-field | 10,627 |
+| devirtualization | 68,588 |
+| inlined-only-method | 57,046 |
+| inlining | 838,065 |
+| parameter-value | 34,260 |
+| reflection | 923 |
+| return-value | 54,797 |
+| unreachable | 7,096 |
+
+This measurement drives the 512 MiB default decoded-payload limit. It also
+shows why compressed file size alone is not a safe allocation bound: this
+valid report expands by about 35 times before JSON parsing.
+
+Both `mx ide-report summarize` and the standalone JBang reader decoded and
+summarized this exact report under the 512 MiB default, with matching kind and
+category counts.
+
 ## DaCapo H2
 
 The first DaCapo attempt used an `org.h2` filter and correctly produced an

@@ -27,7 +27,7 @@ import json
 import os
 import re
 import tempfile
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 
 import mx
 
@@ -40,7 +40,29 @@ from .baseline import (
 )
 from .canonicalize import write_canonical, write_sha256
 from .compare import check_expectations, compare_bundles, load_expectations
+from .envelope import DEFAULT_MAX_DECODED_PAYLOAD_BYTES, MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES
 from .sources import IDEReportSourceError, load_report_source
+
+
+def _payload_limit(value):
+    try:
+        limit = int(value)
+    except ValueError as error:
+        raise ArgumentTypeError("Payload limit must be an integer.") from error
+    if limit <= 0 or limit > MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES:
+        raise ArgumentTypeError(
+            "Payload limit must be between 1 and {} bytes.".format(MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES)
+        )
+    return limit
+
+
+def _add_payload_limit_argument(parser):
+    parser.add_argument(
+        "--max-payload-bytes",
+        type=_payload_limit,
+        default=DEFAULT_MAX_DECODED_PAYLOAD_BYTES,
+        help="Maximum decoded envelope payload size (default: 512 MiB; trusted inputs only above that).",
+    )
 
 
 def main(args):
@@ -67,6 +89,7 @@ def _create_parser():
         "source", help="IDE report source, for example json:/path/to/native_image_ide_report.json."
     )
     summarize_parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    _add_payload_limit_argument(summarize_parser)
     summarize_parser.set_defaults(command_func=_summarize)
 
     query_parser = subparsers.add_parser("query", help="Query report records.", description="Query report records.")
@@ -84,6 +107,7 @@ def _create_parser():
         "--message-regex", help="Keep only reports whose message matches this regular expression."
     )
     query_parser.add_argument("--format", choices=["table", "json", "jsonl"], default="table", help="Output format.")
+    _add_payload_limit_argument(query_parser)
     query_parser.set_defaults(command_func=_query)
 
     compare_parser = subparsers.add_parser(
@@ -95,6 +119,7 @@ def _create_parser():
     compare_parser.add_argument(
         "--no-fail", action="store_true", help="Return successfully even when differences are found."
     )
+    _add_payload_limit_argument(compare_parser)
     compare_parser.set_defaults(command_func=_compare)
 
     assert_parser = subparsers.add_parser(
@@ -105,6 +130,7 @@ def _create_parser():
     assert_parser.add_argument("source", help="IDE report source to check.")
     assert_parser.add_argument("--expect", required=True, help="Expectation JSON file.")
     assert_parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    _add_payload_limit_argument(assert_parser)
     assert_parser.set_defaults(command_func=_assert_expectations)
 
     collect_baseline_parser = subparsers.add_parser(
@@ -181,13 +207,14 @@ def _create_parser():
         help="Payload scope to write. Defaults to the input canonical scope or full for other sources.",
     )
     canonicalize_parser.add_argument("--sha256-output", help="Optional path for a SHA-256 file over canonical bytes.")
+    _add_payload_limit_argument(canonicalize_parser)
     canonicalize_parser.set_defaults(command_func=_canonicalize)
 
     return parser
 
 
 def _summarize(parsed_args):
-    report_bundle = load_report_source(parsed_args.source)
+    report_bundle = load_report_source(parsed_args.source, parsed_args.max_payload_bytes)
     summary = _summarize_bundle(report_bundle)
     if parsed_args.format == "json":
         mx.log(json.dumps(summary, indent=2, sort_keys=True))
@@ -204,7 +231,7 @@ def _summarize(parsed_args):
 
 
 def _query(parsed_args):
-    report_bundle = load_report_source(parsed_args.source)
+    report_bundle = load_report_source(parsed_args.source, parsed_args.max_payload_bytes)
     records = [record for record in report_bundle.reports if _matches_query(record, parsed_args)]
     if parsed_args.format == "json":
         mx.log(json.dumps([record.to_dict() for record in records], indent=2, sort_keys=True))
@@ -216,7 +243,7 @@ def _query(parsed_args):
 
 
 def _canonicalize(parsed_args):
-    report_bundle = load_report_source(parsed_args.source)
+    report_bundle = load_report_source(parsed_args.source, parsed_args.max_payload_bytes)
     sha256_hash = write_canonical(report_bundle, parsed_args.output, parsed_args.payload_scope)
     if parsed_args.sha256_output:
         write_sha256(sha256_hash, parsed_args.sha256_output)
@@ -225,8 +252,8 @@ def _canonicalize(parsed_args):
 
 
 def _compare(parsed_args):
-    before_bundle = load_report_source(parsed_args.before_source)
-    after_bundle = load_report_source(parsed_args.after_source)
+    before_bundle = load_report_source(parsed_args.before_source, parsed_args.max_payload_bytes)
+    after_bundle = load_report_source(parsed_args.after_source, parsed_args.max_payload_bytes)
     result = compare_bundles(before_bundle, after_bundle)
     if parsed_args.format == "json":
         mx.log(json.dumps(result.to_dict(), indent=2, sort_keys=True))
@@ -237,7 +264,7 @@ def _compare(parsed_args):
 
 
 def _assert_expectations(parsed_args):
-    report_bundle = load_report_source(parsed_args.source)
+    report_bundle = load_report_source(parsed_args.source, parsed_args.max_payload_bytes)
     expectations = load_expectations(parsed_args.expect)
     result = check_expectations(report_bundle, expectations)
     if parsed_args.format == "json":

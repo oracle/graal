@@ -213,6 +213,28 @@ public class IDEReportStorageTest {
     }
 
     @Test
+    public void envelopeBoundsDecodedPayloadsAndAllowsTrustedOverrides() {
+        byte[] payload = new byte[IDEReportEnvelope.COMPRESSION_THRESHOLD * 2];
+        Arrays.fill(payload, (byte) 'a');
+        byte[] envelope = IDEReportEnvelope.encode(payload, "test-producer");
+
+        assertEquals(512L * 1024 * 1024, IDEReportEnvelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES);
+        assertEquals(2_000_000_000L, IDEReportEnvelope.MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES);
+        assertThrows(IllegalArgumentException.class, () -> IDEReportEnvelope.decode(envelope, payload.length - 1));
+        assertArrayEquals(payload, IDEReportEnvelope.decode(envelope, 2_000_000_000L).payload());
+        assertThrows(IllegalArgumentException.class, () -> IDEReportEnvelope.decode(envelope, 2_000_000_001L));
+
+        byte[] forged = envelope.clone();
+        int uncompressedSizeOffset = IDEReportEnvelope.MAGIC.length + Short.BYTES * 2 + "test-producer".length() + Short.BYTES * 2 + Byte.BYTES;
+        ByteBuffer.wrap(forged).order(ByteOrder.BIG_ENDIAN).putLong(uncompressedSizeOffset, payload.length + 1L);
+        assertThrows(IllegalArgumentException.class, () -> IDEReportEnvelope.decode(forged, payload.length));
+
+        byte[] expansion = envelope.clone();
+        ByteBuffer.wrap(expansion).order(ByteOrder.BIG_ENDIAN).putLong(uncompressedSizeOffset, payload.length - 1L);
+        assertThrows(IllegalArgumentException.class, () -> IDEReportEnvelope.decode(expansion, payload.length));
+    }
+
+    @Test
     public void splitStorageWritesExactEnvelopeBesideImage() throws Exception {
         Path directory = Files.createTempDirectory("ide-report-split-storage-test");
         Path imagePath = directory.resolve("demo");

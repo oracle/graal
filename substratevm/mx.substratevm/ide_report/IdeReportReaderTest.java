@@ -104,7 +104,11 @@ public final class IdeReportReaderTest {
     }
 
     private void decodedPayloadLimit() {
+        assertEquals(512L * 1024 * 1024, IdeReportReader.DEFAULT_MAX_PAYLOAD_BYTES);
+        assertEquals(2_000_000_000L, IdeReportReader.MAX_CONFIGURABLE_PAYLOAD_BYTES);
         expectFailure("exceeds", () -> IdeReportReader.decodeEnvelope(decode(COMPRESSED_VECTOR), 4096));
+        IdeReportReader.decodeEnvelope(decode(UNCOMPRESSED_VECTOR), 2_000_000_000L);
+        expectFailure("between", () -> IdeReportReader.decodeEnvelope(decode(UNCOMPRESSED_VECTOR), 2_000_000_001L));
 
         byte[] forged = decode(UNCOMPRESSED_VECTOR);
         int uncompressedSizeOffset = 14 + 4 + "test-producer".length() + 2 + 2 + 1;

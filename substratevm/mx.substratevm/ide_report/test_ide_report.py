@@ -102,6 +102,39 @@ class IDEReportEnvelopeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             envelope.decode(encoded[:-1])
 
+    def test_decoded_payload_limit_is_bounded_and_configurable(self):
+        payload = b"a" * (envelope.COMPRESSION_THRESHOLD * 2)
+        encoded = envelope.encode(payload, "test-producer")
+
+        self.assertEqual(512 * 1024 * 1024, envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES)
+        self.assertEqual(2_000_000_000, envelope.MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES)
+        with self.assertRaisesRegex(ValueError, "exceeds"):
+            envelope.decode(encoded, len(payload) - 1)
+        self.assertEqual(payload, envelope.decode(encoded, 2_000_000_000).payload)
+        with self.assertRaisesRegex(ValueError, "between"):
+            envelope.decode(encoded, 2_000_000_001)
+
+    def test_declared_oversized_payload_is_rejected_before_decompression(self):
+        encoded = bytearray(envelope.encode(b"payload", "test-producer"))
+        uncompressed_size_offset = (
+            len(envelope.MAGIC) + envelope._FIXED_HEADER.size + len("test-producer") + struct.calcsize(">HHB")
+        )
+        struct.pack_into(">Q", encoded, uncompressed_size_offset, 1025)
+
+        with self.assertRaisesRegex(ValueError, "exceeds"):
+            envelope.decode(bytes(encoded), 1024)
+
+    def test_compressed_payload_cannot_expand_past_declared_size(self):
+        payload = b"a" * (envelope.COMPRESSION_THRESHOLD * 2)
+        encoded = bytearray(envelope.encode(payload, "test-producer"))
+        uncompressed_size_offset = (
+            len(envelope.MAGIC) + envelope._FIXED_HEADER.size + len("test-producer") + struct.calcsize(">HHB")
+        )
+        struct.pack_into(">Q", encoded, uncompressed_size_offset, len(payload) - 1)
+
+        with self.assertRaisesRegex(ValueError, "exceeds its declared size"):
+            envelope.decode(bytes(encoded), len(payload))
+
 
 class IDEReportSourceTests(unittest.TestCase):
     def test_json_source_loads_reports_and_used_methods(self):
@@ -356,6 +389,20 @@ class IDEReportSourceTests(unittest.TestCase):
         self.assertEqual("full", split_bundle.payload_scope)
         self.assertEqual("split", split_bundle.provenance.format_name)
         self.assertEqual(payload, canonical_bytes(split_bundle))
+
+    def test_split_source_honors_decoded_payload_override(self):
+        payload = canonical_bytes(_load_raw_report(_sample_report()))
+        encoded_report = envelope.encode(payload, "test-producer")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            split_report_path = os.path.join(temp_dir, "demo.ide-report")
+            with open(split_report_path, "wb") as report_file:
+                report_file.write(encoded_report)
+
+            with self.assertRaisesRegex(IDEReportSourceError, "exceeds"):
+                load_report_source("split:" + split_report_path, len(payload) - 1)
+            split_bundle = load_report_source("split:" + split_report_path, len(payload))
+
+        self.assertEqual(3, len(split_bundle.reports))
 
     def test_split_source_rejects_corrupt_envelope(self):
         encoded_report = envelope.encode(canonical_bytes(_load_raw_report(_sample_report())), "test-producer")
@@ -663,6 +710,14 @@ class IDEReportCompareTests(unittest.TestCase):
 
 
 class IDEReportCLITests(unittest.TestCase):
+    def test_payload_limit_parser_uses_shared_bounds(self):
+        parsed_args = cli._create_parser().parse_args(["summarize", "split:/tmp/report.ide-report"])
+
+        self.assertEqual(envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES, parsed_args.max_payload_bytes)
+        self.assertEqual(2_000_000_000, cli._payload_limit("2000000000"))
+        with self.assertRaisesRegex(cli.ArgumentTypeError, "between"):
+            cli._payload_limit("2000000001")
+
     def test_summarize_bundle_groups_report_kinds(self):
         summary = cli._summarize_bundle(
             _bundle_with_records(

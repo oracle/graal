@@ -67,13 +67,18 @@ The parser checks required top-level JSON fields and rejects duplicate fields,
 unsupported versions, malformed UTF-8 producer data, truncated envelopes,
 size mismatches, invalid gzip data, and checksum mismatches.
 
-Decoded payloads are limited to 64 MiB by default. The header is checked before
-decompression and gzip output is bounded while streaming. A trusted larger
-report can be opened with `--max-payload-bytes`, up to the Java array limit.
+Decoded payloads are limited to 512 MiB by default. The header is checked
+before decoded-payload allocation and gzip output is bounded to the declared
+size. A trusted larger report can be opened with `--max-payload-bytes`, up to
+2,000,000,000 bytes. The same default and override ceiling apply to the Python
+and production Java envelope decoders.
 
-The 64 MiB default is intentionally conservative but still accommodates the
-largest Phase 14 payload, DaCapo H2 full scope at about 28 MiB. It is a reader
-policy, not yet a production format limit.
+The default accommodates the unfiltered Spring PetClinic full payload measured
+on 2026-06-30 at 462,254,687 bytes (440.84 MiB). The limit is a reader resource
+policy, not a format limit. The current Java reader uses `byte[]` and Jackson's
+in-memory tree model, so payloads near the override ceiling require
+substantially more than two gigabytes of heap. Supporting exact 2 GiB or larger
+payloads reliably requires a streaming parser and model.
 
 ## Java API
 
@@ -102,7 +107,6 @@ parsing, checksum corruption, truncation, decoded-size limits, schema errors,
 duplicate JSON fields, summary output, and filtered record output. The test is
 manual and does not make normal Graal gates depend on JBang or Maven downloads.
 
-The bounded JBang reader does not resolve the production-readiness issue for
-the existing Native Image Java and Python envelope readers. Those readers still
-need their own explicit limits and tests before report extraction is treated as
-a production-facing interface.
+The Java and Python production envelope readers use the same bounded policy and
+cover oversized headers and high-ratio compressed payloads in focused tests.
+The JBang test additionally checks the shared default and configurable ceiling.

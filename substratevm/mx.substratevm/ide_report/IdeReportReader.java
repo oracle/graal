@@ -26,7 +26,6 @@
 //JAVA 17+
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.22.0
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -65,14 +64,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * The reusable API accepts canonical JSON payloads and version-1 split
  * envelopes from {@link ByteBuffer}. Locating an embedded section in a Mach-O
  * or ELF image remains the responsibility of an object-file-specific adapter.
- * Decoded payloads are limited to 64 MiB by default; use
+ * Decoded payloads are limited to 512 MiB by default; use
  * {@code --max-payload-bytes} only for a trusted larger report.
  *
  * Exit status is 0 for success, 1 for an invalid report or I/O failure, and 2
  * for invalid command-line usage.
  */
 public final class IdeReportReader {
-    public static final long DEFAULT_MAX_PAYLOAD_BYTES = 64L * 1024 * 1024;
+    public static final long DEFAULT_MAX_PAYLOAD_BYTES = 512L * 1024 * 1024;
+    public static final long MAX_CONFIGURABLE_PAYLOAD_BYTES = 2_000_000_000L;
 
     private static final byte[] MAGIC = "SVM_IDE_REPORT".getBytes(StandardCharsets.US_ASCII);
     private static final int ENVELOPE_VERSION = 1;
@@ -149,7 +149,7 @@ public final class IdeReportReader {
         if (uncompressedSize < 0 || uncompressedSize > maxPayloadBytes) {
             throw invalid("IDE report payload exceeds the " + maxPayloadBytes + " byte limit");
         }
-        if (storedSize < 0 || storedSize > Integer.MAX_VALUE || storedSize != buffer.remaining() - SHA256_SIZE) {
+        if (storedSize < 0 || storedSize > maxPayloadBytes || storedSize != buffer.remaining() - SHA256_SIZE) {
             throw invalid("IDE report envelope payload size does not match the header");
         }
 
@@ -158,7 +158,7 @@ public final class IdeReportReader {
         byte[] stored = new byte[(int) storedSize];
         buffer.get(stored);
         byte[] payload = compression == COMPRESSION_GZIP
-                        ? decompress(stored, uncompressedSize, maxPayloadBytes)
+                        ? decompress(stored, uncompressedSize)
                         : stored;
         if (payload.length != uncompressedSize) {
             throw invalid("IDE report envelope uncompressed size does not match the header");
@@ -332,20 +332,21 @@ public final class IdeReportReader {
         return value.textValue();
     }
 
-    private static byte[] decompress(byte[] stored, long expectedSize, long maxPayloadBytes) {
-        try (InputStream input = new GZIPInputStream(new java.io.ByteArrayInputStream(stored));
-                        ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[8192];
-            long total = 0;
-            int count;
-            while ((count = input.read(buffer)) != -1) {
-                total += count;
-                if (total > expectedSize || total > maxPayloadBytes) {
-                    throw invalid("Compressed IDE report payload exceeds its declared or configured size");
+    private static byte[] decompress(byte[] stored, long expectedSize) {
+        try (InputStream input = new GZIPInputStream(new java.io.ByteArrayInputStream(stored))) {
+            byte[] payload = new byte[(int) expectedSize];
+            int offset = 0;
+            while (offset < payload.length) {
+                int count = input.read(payload, offset, payload.length - offset);
+                if (count < 0) {
+                    throw invalid("IDE report envelope uncompressed size does not match the header");
                 }
-                output.write(buffer, 0, count);
+                offset += count;
             }
-            return output.toByteArray();
+            if (input.read() != -1) {
+                throw invalid("Compressed IDE report payload exceeds its declared or configured size");
+            }
+            return payload;
         } catch (IOException exception) {
             throw invalid("Invalid compressed IDE report payload", exception);
         }
@@ -390,8 +391,8 @@ public final class IdeReportReader {
     }
 
     private static void validateLimit(long maxPayloadBytes) {
-        if (maxPayloadBytes <= 0 || maxPayloadBytes > Integer.MAX_VALUE) {
-            throw invalid("Payload limit must be between 1 and " + Integer.MAX_VALUE + " bytes");
+        if (maxPayloadBytes <= 0 || maxPayloadBytes > MAX_CONFIGURABLE_PAYLOAD_BYTES) {
+            throw invalid("Payload limit must be between 1 and " + MAX_CONFIGURABLE_PAYLOAD_BYTES + " bytes");
         }
     }
 
@@ -411,7 +412,7 @@ public final class IdeReportReader {
                           --list                     Print matching records as a JSON array
                           --kind <kind>              Filter records by exact kind
                           --category <category>      Filter records by exact category
-                          --max-payload-bytes <n>    Override the 64 MiB decoded-payload limit
+                          --max-payload-bytes <n>    Override the 512 MiB decoded-payload limit
                           -h, --help                 Show this help
                         """.stripTrailing();
     }
@@ -454,8 +455,8 @@ public final class IdeReportReader {
             if (!help && path == null) {
                 throw new UsageException("Missing report path");
             }
-            if (maxPayloadBytes <= 0 || maxPayloadBytes > Integer.MAX_VALUE) {
-                throw new UsageException("Payload limit must be between 1 and " + Integer.MAX_VALUE + " bytes");
+            if (maxPayloadBytes <= 0 || maxPayloadBytes > MAX_CONFIGURABLE_PAYLOAD_BYTES) {
+                throw new UsageException("Payload limit must be between 1 and " + MAX_CONFIGURABLE_PAYLOAD_BYTES + " bytes");
             }
             return new Options(path, list, kind, category, maxPayloadBytes, help);
         }

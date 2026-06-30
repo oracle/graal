@@ -49,6 +49,8 @@ public final class IDEReportEnvelope {
     public static final int COMPRESSION_GZIP = 1;
     public static final int CHECKSUM_SHA256 = 1;
     public static final int COMPRESSION_THRESHOLD = 4096;
+    public static final long DEFAULT_MAX_DECODED_PAYLOAD_BYTES = 512L * 1024 * 1024;
+    public static final long MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES = 2_000_000_000L;
 
     private static final int SHA256_SIZE = 32;
 
@@ -88,6 +90,11 @@ public final class IDEReportEnvelope {
     }
 
     public static Decoded decode(byte[] envelope) {
+        return decode(envelope, DEFAULT_MAX_DECODED_PAYLOAD_BYTES);
+    }
+
+    public static Decoded decode(byte[] envelope, long maxDecodedPayloadBytes) {
+        validateDecodedPayloadLimit(maxDecodedPayloadBytes);
         try {
             ByteBuffer input = ByteBuffer.wrap(envelope).order(ByteOrder.BIG_ENDIAN);
             requireRemaining(input, MAGIC.length + Short.BYTES * 2);
@@ -116,8 +123,11 @@ public final class IDEReportEnvelope {
             }
             long uncompressedSize = input.getLong();
             long storedSize = input.getLong();
-            if (uncompressedSize < 0 || uncompressedSize > Integer.MAX_VALUE || storedSize < 0 || storedSize > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("IDE report envelope payload is too large");
+            if (uncompressedSize < 0 || uncompressedSize > maxDecodedPayloadBytes) {
+                throw new IllegalArgumentException("IDE report payload exceeds the " + maxDecodedPayloadBytes + " byte limit");
+            }
+            if (storedSize < 0 || storedSize > maxDecodedPayloadBytes) {
+                throw new IllegalArgumentException("Stored IDE report payload exceeds the " + maxDecodedPayloadBytes + " byte limit");
             }
             int checksumKind = Byte.toUnsignedInt(input.get());
             if (checksumKind != CHECKSUM_SHA256) {
@@ -130,7 +140,7 @@ public final class IDEReportEnvelope {
             }
             byte[] storedPayload = new byte[(int) storedSize];
             input.get(storedPayload);
-            byte[] payload = compression == COMPRESSION_GZIP ? gunzip(storedPayload) : storedPayload;
+            byte[] payload = compression == COMPRESSION_GZIP ? gunzip(storedPayload, (int) uncompressedSize) : storedPayload;
             if (payload.length != (int) uncompressedSize) {
                 throw new IllegalArgumentException("IDE report envelope uncompressed size does not match the header");
             }
@@ -174,9 +184,27 @@ public final class IDEReportEnvelope {
         }
     }
 
-    private static byte[] gunzip(byte[] payload) throws IOException {
+    private static byte[] gunzip(byte[] payload, int expectedSize) throws IOException {
         try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(payload))) {
-            return input.readAllBytes();
+            byte[] result = new byte[expectedSize];
+            int offset = 0;
+            while (offset < result.length) {
+                int count = input.read(result, offset, result.length - offset);
+                if (count < 0) {
+                    throw new IllegalArgumentException("IDE report envelope uncompressed size does not match the header");
+                }
+                offset += count;
+            }
+            if (input.read() != -1) {
+                throw new IllegalArgumentException("Compressed IDE report payload exceeds its declared size");
+            }
+            return result;
+        }
+    }
+
+    private static void validateDecodedPayloadLimit(long maxDecodedPayloadBytes) {
+        if (maxDecodedPayloadBytes <= 0 || maxDecodedPayloadBytes > MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES) {
+            throw new IllegalArgumentException("IDE report payload limit must be between 1 and " + MAX_CONFIGURABLE_DECODED_PAYLOAD_BYTES + " bytes");
         }
     }
 

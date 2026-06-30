@@ -86,17 +86,17 @@ def parse_source_uri(source):
     return SourceSpec(scheme=scheme, path=path)
 
 
-def load_report_source(source):
+def load_report_source(source, max_decoded_payload_bytes=envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES):
     source_spec = parse_source_uri(source)
     if source_spec.scheme == "json":
         return load_json_report(source_spec.path, source)
     if source_spec.scheme == "canonical":
         return load_canonical_report(source_spec.path, source)
     if source_spec.scheme == "split":
-        return load_split_report(source_spec.path, source)
+        return load_split_report(source_spec.path, source, max_decoded_payload_bytes)
     if source_spec.scheme == "image":
-        return load_image_report(source_spec.path, source)
-    return load_auto_report(source_spec.path, source)
+        return load_image_report(source_spec.path, source, max_decoded_payload_bytes)
+    return load_auto_report(source_spec.path, source, max_decoded_payload_bytes)
 
 
 def load_json_report(path, source):
@@ -132,21 +132,23 @@ def load_canonical_report(path, source):
     return _load_canonical_report(raw_report, source, "canonical")
 
 
-def load_split_report(path, source):
-    with open(path, "rb") as report_file:
-        encoded_report = report_file.read()
-    return _load_enveloped_report(encoded_report, path, source, "split")
+def load_split_report(path, source, max_decoded_payload_bytes=envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES):
+    envelope.validate_decoded_payload_limit(max_decoded_payload_bytes)
+    encoded_report = _read_enveloped_file(path, max_decoded_payload_bytes)
+    return _load_enveloped_report(encoded_report, path, source, "split", max_decoded_payload_bytes)
 
 
-def load_image_report(path, source):
+def load_image_report(path, source, max_decoded_payload_bytes=envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES):
+    envelope.validate_decoded_payload_limit(max_decoded_payload_bytes)
     try:
         encoded_report = image.extract_ide_report_envelope(path)
     except (ELFIDEReportError, IDEReportImageError, MachOIDEReportError, OSError) as error:
         raise IDEReportSourceError("Could not extract embedded IDE report from '{}': {}".format(path, error)) from error
-    return _load_enveloped_report(encoded_report, path, source, "image")
+    return _load_enveloped_report(encoded_report, path, source, "image", max_decoded_payload_bytes)
 
 
-def load_auto_report(path, source):
+def load_auto_report(path, source, max_decoded_payload_bytes=envelope.DEFAULT_MAX_DECODED_PAYLOAD_BYTES):
+    envelope.validate_decoded_payload_limit(max_decoded_payload_bytes)
     searched = [path]
     if os.path.isfile(path):
         detected = _detect_file_kind(path)
@@ -162,30 +164,29 @@ def load_auto_report(path, source):
             else:
                 split_path = path + ".ide-report"
                 if os.path.isfile(split_path):
-                    with open(split_path, "rb") as report_file:
-                        split_report = report_file.read()
+                    split_report = _read_enveloped_file(split_path, max_decoded_payload_bytes)
                     if split_report != encoded_report:
                         warnings.warn(
                             "Embedded IDE report differs from '{}'; using embedded data.".format(split_path),
                             RuntimeWarning,
                             stacklevel=2,
                         )
-                return _load_enveloped_report(encoded_report, path, source, "image")
+                return _load_enveloped_report(encoded_report, path, source, "image", max_decoded_payload_bytes)
         elif detected == "split":
-            return load_split_report(path, source)
+            return load_split_report(path, source, max_decoded_payload_bytes)
         elif detected == "json":
             return _load_auto_json(path, source)
 
     split_path = path + ".ide-report"
     searched.append(split_path)
     if os.path.isfile(split_path):
-        return load_split_report(split_path, source)
+        return load_split_report(split_path, source, max_decoded_payload_bytes)
 
     artifact_path = os.path.join(os.path.dirname(os.path.abspath(path)), "build-artifacts.json")
     searched.append(artifact_path)
     artifact_candidates = _ide_report_artifacts(artifact_path)
     if len(artifact_candidates) == 1:
-        return _load_auto_existing_file(artifact_candidates[0], source)
+        return _load_auto_existing_file(artifact_candidates[0], source, max_decoded_payload_bytes)
     if len(artifact_candidates) > 1:
         raise IDEReportSourceError(
             "auto: found multiple IDE report entries in '{}': {}".format(artifact_path, ", ".join(artifact_candidates))
@@ -232,24 +233,38 @@ def _ide_report_artifacts(path):
     return [candidate for candidate in candidates if os.path.isfile(candidate)]
 
 
-def _load_auto_existing_file(path, source):
+def _load_auto_existing_file(path, source, max_decoded_payload_bytes):
     detected = _detect_file_kind(path)
     if detected == "image":
-        return load_image_report(path, source)
+        return load_image_report(path, source, max_decoded_payload_bytes)
     if detected == "split":
-        return load_split_report(path, source)
+        return load_split_report(path, source, max_decoded_payload_bytes)
     if detected == "json":
         return _load_auto_json(path, source)
     raise IDEReportSourceError("Could not identify IDE report artifact '{}'.".format(path))
 
 
-def _load_enveloped_report(encoded_report, path, source, format_name):
+def _load_enveloped_report(encoded_report, path, source, format_name, max_decoded_payload_bytes):
     try:
-        decoded_report = envelope.decode(encoded_report)
+        decoded_report = envelope.decode(encoded_report, max_decoded_payload_bytes)
         raw_report = json.loads(decoded_report.payload.decode("utf-8"))
     except ValueError as error:
         raise IDEReportSourceError("Invalid {} IDE report '{}': {}".format(format_name, path, error)) from error
     return _load_canonical_report(raw_report, source, format_name)
+
+
+def _read_enveloped_file(path, max_decoded_payload_bytes):
+    max_encoded_size = max_decoded_payload_bytes + envelope.MAX_ENVELOPE_OVERHEAD
+    try:
+        if os.path.getsize(path) > max_encoded_size:
+            raise IDEReportSourceError("IDE report input '{}' exceeds the configured payload limit.".format(path))
+        with open(path, "rb") as report_file:
+            encoded_report = report_file.read(max_encoded_size + 1)
+    except OSError as error:
+        raise IDEReportSourceError("Could not read IDE report '{}': {}".format(path, error)) from error
+    if len(encoded_report) > max_encoded_size:
+        raise IDEReportSourceError("IDE report input '{}' exceeds the configured payload limit.".format(path))
+    return encoded_report
 
 
 def _load_canonical_report(raw_report, source, format_name):
