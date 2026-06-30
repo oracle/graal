@@ -31,6 +31,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
@@ -242,20 +243,35 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
-        putThread(data, SubstrateJVM.getCurrentThreadId());
+        putThread(data, JavaThreads.getCurrentThreadOrNull());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putThread(JfrNativeEventWriterData data, Thread thread) {
-        if (thread == null) {
-            putThread(data, 0L);
-        } else {
-            putThread(data, SubstrateJVM.getThreadId(thread));
-        }
+        long threadId = Target_jdk_jfr_internal_JVM.getThreadId(thread);
+        putRegisteredThreadId(data, threadId);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putThread(JfrNativeEventWriterData data, long threadId) {
+    public static void putThread(JfrNativeEventWriterData data, long threadId, String vthreadName, long vthreadEpochId) {
+        if (vthreadName != null) {
+            /*
+             * The capture site records the vthread's observed epoch. If that epoch is not current,
+             * register from the delayed id/name data now that the event is being emitted.
+             */
+            SubstrateJVM.getThreadRepo().registerVThread(threadId, vthreadName, vthreadEpochId);
+        }
+        putRegisteredThreadId(data, threadId);
+    }
+
+    /**
+     * Writes a thread id that was already registered earlier for the current epoch.
+     * <p>
+     * If possible, use {@link #putThread} instead as it ensures that the thread is
+     * registered for the current epoch before writing the id.
+     */
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putRegisteredThreadId(JfrNativeEventWriterData data, long threadId) {
         putLong(data, threadId);
     }
 

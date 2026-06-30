@@ -136,9 +136,7 @@ public abstract class AbstractJfrTest {
     }
 
     protected static void flushAllThreads() {
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.get().flush();
-        }
+        SubstrateJVM.get().flush();
     }
 
     protected static void waitUntilTrue(BooleanSupplier supplier) throws InterruptedException {

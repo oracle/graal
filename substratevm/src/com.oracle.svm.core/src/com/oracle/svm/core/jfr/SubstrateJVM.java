@@ -45,7 +45,7 @@ import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
@@ -226,6 +226,15 @@ public class SubstrateJVM {
     @Fold
     public static JfrEventThrottling getEventThrottling() {
         return get().eventThrottler;
+    }
+
+    @Fold
+    public static boolean shouldRegisterVThreadsEagerly() {
+        /*
+         * In a signal handler, we can only execute async-signal-safe code. Registering vthreads
+         * in the thread repository is therefore impossible, and we need to do that eagerly.
+         */
+        return HasJfrSupport.get() && JfrOptions.SignalHandlerBasedExecutionSampler.getValue();
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
@@ -534,9 +543,9 @@ public class SubstrateJVM {
         JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, Word.unsigned(uncommittedSize), requestedSize);
         if (newBuffer.isNull()) {
             /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
-            JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
+            JfrEventWriterAccess.updateBuffer(writer, oldBuffer, 0, false);
         } else {
-            JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
+            JfrEventWriterAccess.updateBuffer(writer, newBuffer, uncommittedSize, true);
         }
 
         /*
@@ -811,7 +820,7 @@ public class SubstrateJVM {
             SubstrateJVM.getOldObjectProfiler().reset();
             JfrAllocationEvents.reset();
 
-            JfrTraceIdEpoch.getInstance().changeEpoch();
+            JfrEpoch.getInstance().changeEpoch();
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
             SubstrateJVM.getThreadRepo().registerRunningThreads();

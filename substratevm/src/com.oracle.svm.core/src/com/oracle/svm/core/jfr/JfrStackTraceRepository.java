@@ -45,7 +45,7 @@ import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -261,7 +261,7 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private JfrStackTraceEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        boolean epoch = previousEpoch ? JfrEpoch.getInstance().previousEpoch() : JfrEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 

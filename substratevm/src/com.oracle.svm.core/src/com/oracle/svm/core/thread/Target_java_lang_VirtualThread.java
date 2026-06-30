@@ -40,7 +40,6 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.shared.util.VMError;
@@ -237,7 +236,8 @@ public final class Target_java_lang_VirtualThread {
 
     /*
      * GR-57064: substitution should not be needed (acquireInterruptLockMaybeSwitch should not have
-     * been necessary here), but currently cannot be removed because of the JFR registration.
+     * been necessary here), but signal-handler based JFR execution sampling needs vthreads to be
+     * registered before the carrier starts reporting them as the current thread.
      */
     @Substitute
     void mount() {
@@ -256,10 +256,15 @@ public final class Target_java_lang_VirtualThread {
             }
         }
 
-        carrier.setCurrentThread(asThread(this));
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
+        if (SubstrateJVM.shouldRegisterVThreadsEagerly()) {
+            /*
+             * Do the registration before the current thread is set below. This ensures that the
+             * async sampler only sees vthreads that are already registered.
+             */
+            SubstrateJVM.getThreadRepo().registerVThread(asThread(this));
         }
+
+        carrier.setCurrentThread(asThread(this));
     }
 
     @Alias

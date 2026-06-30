@@ -31,7 +31,6 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -178,11 +177,6 @@ public final class JavaThreads {
      */
     public static boolean isInterrupted(Thread thread) {
         return toTarget(thread).interrupted;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getParentThreadId(Thread thread) {
-        return toTarget(thread).parentThreadId;
     }
 
     /**
@@ -387,20 +381,6 @@ public final class JavaThreads {
             assert id != 0 && id == getThreadId(Thread.currentThread());
         }
         return id;
-    }
-
-    /**
-     * Similar to {@link #getCurrentThreadId()} but returns 0 if the thread id is not present. There
-     * is a small number of situations where the thread id might not be available, e.g., when a
-     * freshly attached thread causes a GC (before it initializes its {@link java.lang.Thread}
-     * object) or when a VM operation is enqueued by a non-Java thread.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentThreadIdOrZero() {
-        if (CurrentIsolate.getCurrentThread().isNonNull()) {
-            return currentVThreadId.get();
-        }
-        return 0L;
     }
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")

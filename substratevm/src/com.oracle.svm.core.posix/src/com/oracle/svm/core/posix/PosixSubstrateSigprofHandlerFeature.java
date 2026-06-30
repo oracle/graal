@@ -68,7 +68,7 @@ public class PosixSubstrateSigprofHandlerFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (JfrExecutionSamplerSupported.isSupported() && JfrOptions.SignalHandlerBasedExecutionSampler.getValue()) {
-            SubstrateSigprofHandler sampler = makeNewSigprofHandler();
+            SubstrateSigprofHandler sampler = createSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);
 
@@ -89,7 +89,7 @@ public class PosixSubstrateSigprofHandlerFeature implements InternalFeature {
      * For JFR, we should use a global handler instead of a per-thread handler to adhere to the
      * sampling frequency specified in .jfc (JFR's configuration).
      */
-    private static SubstrateSigprofHandler makeNewSigprofHandler() {
+    private static SubstrateSigprofHandler createSigprofHandler() {
         if (Platform.includedIn(Platform.DARWIN.class) || HasJfrSupport.get()) {
             return new PosixSubstrateGlobalSigprofHandler();
         } else if (Platform.includedIn(Platform.LINUX.class)) {

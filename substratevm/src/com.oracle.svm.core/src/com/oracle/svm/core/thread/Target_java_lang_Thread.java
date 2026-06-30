@@ -74,7 +74,7 @@ public final class Target_java_lang_Thread {
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    long parentThreadId;
+    public Thread jfrParentThread;
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //

@@ -73,6 +73,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -264,6 +265,16 @@ public abstract class PlatformThreads {
     public static Thread fromVMThread(IsolateThread thread) {
         assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint() || ThreadsLock.hasReadAccess() ||
                         SubstrateDiagnostics.isFatalErrorHandlingThread() : "must prevent the isolate thread from exiting";
+        return fromVMThreadUnsafe(thread);
+    }
+
+    /**
+     * Similar to {@link #fromVMThread} but without proving that the isolate thread cannot exit
+     * concurrently. If possible, please use {@link #fromVMThread} instead.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Thread fromVMThreadUnsafe(IsolateThread thread) {
+        assert VMThreads.isAttached(thread);
         return currentThread.get(thread);
     }
 
@@ -471,10 +482,13 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
-    static void assignThreadObjectToNewlyStartedThread(IsolateThread isolateThread, Thread newThread, Thread parentThread) {
+    static void assignThreadObjectToNewlyStartedThread(IsolateThread isolateThread, Thread newThread) {
         assert VMThreads.wasStartedByCurrentIsolate(isolateThread);
-        assert toTarget(newThread).parentThreadId == 0;
-        toTarget(newThread).parentThreadId = JavaThreads.getThreadId(parentThread);
+
+        if (HasJfrSupport.get()) {
+            assert toTarget(newThread).jfrParentThread == null;
+            toTarget(newThread).jfrParentThread = Thread.currentThread();
+        }
 
         assert getThreadStatus(newThread) == ThreadStatus.NEW : "Started thread must still be NEW.";
         setThreadStatus(newThread, ThreadStatus.RUNNABLE);
@@ -548,6 +562,15 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Thread getMountedVirtualThread(Thread thread) {
         assert thread == currentThread.get() || VMOperation.isInProgressAtSafepoint();
+        return getMountedVirtualThreadUnsafe(thread);
+    }
+
+    /**
+     * Similar to {@link #getMountedVirtualThread} but without safety checks. If possible, please
+     * use {@link #getMountedVirtualThread} instead.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Thread getMountedVirtualThreadUnsafe(Thread thread) {
         assert !isVirtual(thread);
         return toTarget(thread).vthread;
     }
@@ -887,7 +910,7 @@ public abstract class PlatformThreads {
              * visible to the GC.
              */
             ThreadLocalHandshake.waitUntilSuspended(isolateThread);
-            PlatformThreads.assignThreadObjectToNewlyStartedThread(isolateThread, thread, Thread.currentThread());
+            PlatformThreads.assignThreadObjectToNewlyStartedThread(isolateThread, thread);
             ThreadLocalHandshake.releaseHandshake(isolateThread);
             return true;
         } catch (Throwable e) {

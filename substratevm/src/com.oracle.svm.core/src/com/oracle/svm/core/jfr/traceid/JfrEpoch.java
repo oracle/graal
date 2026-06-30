@@ -45,7 +45,9 @@ import jdk.graal.compiler.api.replacements.Fold;
  * epoch to another across an uninterruptible safepoint operation.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public class JfrTraceIdEpoch {
+public class JfrEpoch {
+    public static final long NO_EPOCH_ID = 0L;
+
     private static final long EPOCH_0_BIT = 0b01;
     private static final long EPOCH_1_BIT = 0b10;
 
@@ -57,12 +59,12 @@ public class JfrTraceIdEpoch {
     private long epochId = 1;
 
     @Fold
-    public static JfrTraceIdEpoch getInstance() {
-        return ImageSingletons.lookup(JfrTraceIdEpoch.class);
+    public static JfrEpoch getInstance() {
+        return ImageSingletons.lookup(JfrEpoch.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrTraceIdEpoch() {
+    public JfrEpoch() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -31,7 +31,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
 import com.oracle.svm.core.locks.VMMutex;
@@ -130,7 +130,7 @@ public class JfrMethodRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrMethodEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        boolean epoch = previousEpoch ? JfrEpoch.getInstance().previousEpoch() : JfrEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 

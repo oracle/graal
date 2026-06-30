@@ -31,9 +31,6 @@ import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 
 public abstract class JfrEmergencyDumpTest extends JfrRecordingTest {
     protected static AbstractJfrEmergencyDumpSupport getEmergencyDumpSupport() {
-        if (!JfrEmergencyDumpSupport.isPresent()) {
-            return null;
-        }
         return (AbstractJfrEmergencyDumpSupport) JfrEmergencyDumpSupport.singleton();
     }
 

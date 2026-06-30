@@ -31,7 +31,6 @@ import java.nio.file.Path;
 
 import jdk.jfr.Recording;
 import org.junit.Test;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrSymbolRepository;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.shared.Uninterruptible;
@@ -47,11 +46,6 @@ public class TestJfrSymbolRepository extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
-            /* Prevent that the code below is reachable on platforms that don't support JFR. */
-            return;
-        }
-
         // Ensure JFR is created in case this is the first test to run
         String[] events = new String[]{};
         Path path = createTempJfrFile();

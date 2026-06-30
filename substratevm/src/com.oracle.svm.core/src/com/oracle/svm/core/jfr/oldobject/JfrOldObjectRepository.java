@@ -43,7 +43,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrRepository;
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -172,7 +172,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private JfrOldObjectEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        boolean epoch = previousEpoch ? JfrEpoch.getInstance().previousEpoch() : JfrEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 

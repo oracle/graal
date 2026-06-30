@@ -30,9 +30,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.event.EventWriter;
@@ -48,19 +51,24 @@ public final class JfrEventWriterAccess {
     private JfrEventWriterAccess() {
     }
 
-    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter(JfrBuffer buffer, boolean isCurrentThreadExcluded) {
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/hotspot/share/jfr/writers/jfrJavaEventWriter.cpp#L230-L249")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/hotspot/share/jfr/writers/jfrJavaEventWriter.cpp#L272-L285")
+    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter(JfrBuffer buffer) {
         assert JfrBufferAccess.isEmpty(buffer) : "a fresh JFR buffer must be empty";
 
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
-        long jfrThreadId = SubstrateJVM.getCurrentThreadId();
-        boolean pinVirtualThread = JavaThreads.isCurrentThreadVirtual();
-        return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, jfrThreadId, true, pinVirtualThread, isCurrentThreadExcluded);
+
+        /*
+         * EventWriter objects are created with dummy thread data. The actual thread data
+         * needs to be filled in from uninterruptible code.
+         */
+        return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, -1, true, false, false);
     }
 
     /** Update the EventWriter so that it uses the correct buffer and positions. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void update(Target_jdk_jfr_internal_event_EventWriter writer, JfrBuffer buffer, int uncommittedSize, boolean valid) {
+    public static void updateBuffer(Target_jdk_jfr_internal_event_EventWriter writer, JfrBuffer buffer, int uncommittedSize, boolean valid) {
         assert SubstrateJVM.getThreadLocal().getJavaBuffer() == buffer;
         assert JfrBufferAccess.verify(buffer);
 
@@ -77,6 +85,41 @@ public final class JfrEventWriterAccess {
         writer.maxPosition = maxPos.rawValue();
         if (!valid) {
             markAsInvalid(writer);
+        }
+    }
+
+    /**
+     * Updates the thread data cached in the Java-level {@link EventWriter}.
+     * <p>
+     * Event writers are notified when chunk rotation changes the JFR epoch. The next commit aborts
+     * the current write attempt, and the retry reaches this method before it writes the event again.
+     * Keep the thread registration and cached-field update in one uninterruptible section so the
+     * epoch cannot change between resolving the current thread id and installing it in the writer.
+     */
+    @Uninterruptible(reason = "Prevent epoch change.")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/hotspot/share/jfr/writers/jfrJavaEventWriter.cpp#L225-L228")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/hotspot/share/jfr/writers/jfrJavaEventWriter.cpp#L251-L270")
+    public static void updateThreadData(Target_jdk_jfr_internal_event_EventWriter eventWriter) {
+        /*
+         * The Java-level EventWriter can stay associated with a long-lived virtual thread
+         * across chunk rotations. Re-register the vthread for the current epoch.
+         */
+        Thread currentThread = Thread.currentThread();
+        long currentThreadId = Target_jdk_jfr_internal_JVM.getThreadId(currentThread);
+
+        /*
+         * EventWriter objects cache various thread-specific values. Virtual threads use the
+         * EventWriter object of their carrier thread, so we need to update all cached values so
+         * that they match the virtual thread.
+         */
+        if (eventWriter.threadID != currentThreadId) {
+            eventWriter.threadID = currentThreadId;
+            Target_java_lang_Thread tjlt = SubstrateUtil.cast(currentThread, Target_java_lang_Thread.class);
+            eventWriter.excluded = tjlt.jfrExcluded;
+
+            if (!eventWriter.excluded) {
+                eventWriter.pinVirtualThread = JavaThreads.isVirtual(currentThread);
+            }
         }
     }
 

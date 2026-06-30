@@ -189,7 +189,10 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         public void run(Threading.RecurringCallbackAccess access) {
             Pointer sp = readCallerStackPointer();
             CodePointer ip = readReturnAddress();
-            tryUninterruptibleStackWalk(ip, sp, false);
+            boolean sampled = tryUninterruptibleStackWalk(ip, sp, false);
+            if (sampled) {
+                SubstrateJVM.getThreadRepo().registerMountedVThread();
+            }
         }
     }
 }

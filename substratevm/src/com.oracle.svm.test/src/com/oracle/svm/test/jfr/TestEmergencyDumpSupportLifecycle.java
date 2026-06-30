@@ -34,20 +34,11 @@ import java.nio.file.Path;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 
 public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
     @Test
     public void testRepeatedInitializeReusesPathBuffer() {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
-            return;
-        }
         AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
-        if (support == null) {
-            return;
-        }
-
         boolean wasInitialized = getPathBufferAddress(support) != 0L;
         support.teardown();
         try {
@@ -68,14 +59,7 @@ public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
 
     @Test
     public void testNullUserDirUsesRelativeDumpPath() throws Exception {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
-            return;
-        }
         AbstractJfrEmergencyDumpSupport support = getEmergencyDumpSupport();
-        if (support == null) {
-            return;
-        }
-
         String originalUserDir = System.getProperty("user.dir");
         Path dumpFile = Path.of("svm_oom_pid_" + ProcessHandle.current().pid() + ".jfr");
         try {

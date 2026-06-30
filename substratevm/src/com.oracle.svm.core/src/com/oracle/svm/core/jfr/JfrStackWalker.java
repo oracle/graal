@@ -98,22 +98,30 @@ public final class JfrStackWalker {
     }
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
-    public static void walkCurrentThread(CodePointer initialIP, Pointer initialSP, boolean isAsync) {
+    public static boolean walkCurrentThread(CodePointer initialIP, Pointer initialSP, boolean isAsync) {
         SamplerSampleWriterData data = UnsafeStackValue.get(SamplerSampleWriterData.class);
         if (SamplerSampleWriterDataAccess.initialize(data, 0, false)) {
             SamplerSampleWriter.begin(data);
             int result = walkCurrentThread(data, initialIP, initialSP, isAsync);
 
             switch (result) {
-                case NO_ERROR, TRUNCATED -> SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
+                case NO_ERROR, TRUNCATED -> {
+                    SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
+                    return true;
+                }
                 case UNPARSEABLE_STACK -> {
                     VMError.guarantee(isAsync, "Only the async sampler may encounter an unparseable stack.");
                     JfrThreadLocal.increaseUnparseableStacks();
+                    return false;
                 }
-                case BUFFER_SIZE_EXCEEDED, SKIPPED -> JfrThreadLocal.increaseMissedSamples();
+                case BUFFER_SIZE_EXCEEDED, SKIPPED -> {
+                    JfrThreadLocal.increaseMissedSamples();
+                    return false;
+                }
                 default -> throw VMError.shouldNotReachHere("Unexpected return value");
             }
         }
+        return false;
     }
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
