@@ -137,11 +137,10 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         return name + "@0x" + Long.toHexString(codeAddress);
     }
 
-    @Override
-    public String getSymbolName(SharedMethod method) {
+    public String getCodeLoadSymbolName() {
         String name = compilation == null ? null : compilation.getName();
         if (name == null || name.isEmpty()) {
-            name = method.format("%H.%n(%p)");
+            name = sharedMethod.format("%H.%n(%p)");
         }
         return name;
     }

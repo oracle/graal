@@ -327,6 +327,7 @@ public class JitdumpProvider {
         }
 
         MethodEntry methodEntry = compiledMethodEntry.primary().getMethodEntry();
+        String symbolNameString = debugInfoProvider.getCodeLoadSymbolName();
 
         /* Calculate the total size for the record headers and ByteBuffer. */
         int deSize = SizeOf.get(JitdumpEntry.DebugEntry.class);
@@ -344,7 +345,7 @@ public class JitdumpProvider {
 
         /* Symbol name +1 for null-termination. */
         int symbolNameLen = 1;
-        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(methodEntry.getSymbolName())) {
+        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(symbolNameString)) {
             symbolNameLen += NumUtil.safeToInt(SubstrateUtil.strlen(symbolName.get()).rawValue());
         }
         int codeSize = debugInfoProvider.getCompilation().getTargetCodeSize();
@@ -419,7 +420,7 @@ public class JitdumpProvider {
         cl.setCodeIndex(codeIndex.getAndIncrement());
 
         content.put(CTypeConversion.asByteBuffer(cl, codeLoadRecordSize));
-        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(methodEntry.getSymbolName())) {
+        try (CTypeConversion.CCharPointerHolder symbolName = CTypeConversion.toCString(symbolNameString)) {
             /* Add symbol name and raw bytes of the compiled code. */
             content.put(CTypeConversion.asByteBuffer(symbolName.get(), symbolNameLen));
         }
