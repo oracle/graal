@@ -39,6 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -205,7 +206,8 @@ public final class JavaStackWalker {
     private static void initializeFromFrameAnchor(JavaStackWalk walk, IsolateThread thread, Pointer endSP) {
         assert thread.isNonNull();
         assert thread != CurrentIsolate.getCurrentThread() : "Walking the stack without specifying a start SP is only allowed when walking other threads";
-        assert VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
+        assert VMOperation.isInProgressAtSafepoint() || SubstrateDiagnostics.canUnsafelyWalkOtherThreadStacks() //
+                        : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
 
         JavaFrameAnchor frameAnchor = JavaFrameAnchors.getFrameAnchor(thread);
         if (frameAnchor.isNull() || SafepointBehavior.isCrashedThread(thread)) {
@@ -227,7 +229,8 @@ public final class JavaStackWalker {
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     private static void initWalk(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
         assert thread.isNonNull();
-        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint() || SubstrateDiagnostics.canUnsafelyWalkOtherThreadStacks() //
+                        : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
         assert startSP.isNonNull();
 
         if (SafepointBehavior.isCrashedThread(thread)) {
