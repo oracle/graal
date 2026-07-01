@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -228,7 +228,7 @@ public final class BitSet {
 
         // use the calculation of power of two
         // (state & (state - 1L)) == 0L
-        builder.startParantheses().tree(masked).string(" & ").startParantheses().tree(masked).string(" - 1").end().end().string(" == 0");
+        builder.startParentheses().tree(masked).string(" & ").startParentheses().tree(masked).string(" - 1").end().end().string(" == 0");
 
         builder.string(" /* ", "is-single ", " */");
         return builder.build();
@@ -248,7 +248,7 @@ public final class BitSet {
 
     public CodeTree createNotContains(CodeTree receiver, StateQuery elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startParantheses();
+        builder.startParentheses();
         builder.tree(createMaskedReference(receiver, elements));
         builder.end();
         builder.string(" == 0");
@@ -337,7 +337,7 @@ public final class BitSet {
         int offset = getStateOffset(element);
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(receiver).string(" = ");
-        builder.startParantheses();
+        builder.startParentheses();
         builder.tree(receiver);
         builder.string(" | (");
         if (getBitCount() > 32) {

@@ -782,7 +782,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static String decodeSp(String state) {
-        return String.format("(short) (%s >>> 32)", state);
+        return String.format("((int) ((%s >>> 32) & 0xFFFFL))", state);
     }
 
     CodeTreeBuilder emitCastBytecodeIndexToInt(CodeTreeBuilder b) {
@@ -2320,6 +2320,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return String.format("safeCastShort(%s)", value);
     }
 
+    static String safeCastUnsignedShort(String value) {
+        return String.format("safeCastUnsignedShort(%s)", value);
+    }
+
     // Helpers to generate common strings
     static CodeTree readInstruction(String bc, String bci) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -2363,7 +2367,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case CONSTANT_LONG, CONSTANT_INT, CONSTANT_SHORT -> value;
             case CONSTANT_DOUBLE -> CodeTreeBuilder.createBuilder().startCall("Double.longBitsToDouble").tree(value).end().build();
             case CONSTANT_FLOAT -> CodeTreeBuilder.createBuilder().startCall("Float.intBitsToFloat").tree(value).end().build();
-            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParantheses().tree(value).string(" + " + (1 << 15)).end(2).build();
+            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParentheses().tree(value).string(" + " + (1 << 15)).end(2).build();
             case CONSTANT_BYTE -> CodeTreeBuilder.createBuilder().startGroup().cast(type(byte.class)).tree(value).end().build();
             case CONSTANT_BOOL -> CodeTreeBuilder.createBuilder().startGroup().tree(value).string(" != 0").end().build();
             default -> {
@@ -2397,6 +2401,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case INT -> "getIntUnaligned";
             case LONG -> "getLongUnaligned";
         };
+        if (immediate.kind().isUnsigned()) {
+            b.startParentheses();
+        }
         b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
@@ -2410,6 +2417,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.startComment().string(" imm ", immediate.name(), " ").end();
         b.end();
         b.end();
+        if (immediate.kind().isUnsigned()) {
+            b.string(" & 0xffff");
+            b.end();
+        }
         return b.build();
     }
 
@@ -2498,6 +2509,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     static String readShortSafe(String array, String index) {
         return String.format("SAFE_BYTES.getShort(%s, %s)", array, index);
+    }
+
+    static String readUnsignedShortSafe(String array, String index) {
+        return String.format("(SAFE_BYTES.getShort(%s, %s) & 0xffff)", array, index);
     }
 
     static String readByteSafe(String array, String index) {
@@ -2744,7 +2759,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     CodeTree hasContinuationFrame(String frameName) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-            b.startParantheses();
+            b.startParentheses();
         }
         b.startCall(frameName, "isObject").string(BytecodeRootNodeElement.CONTINUATION_FRAME_INDEX).end();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
@@ -2840,7 +2855,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                     b.startNew("LocalVariableImpl");
                     b.tree(localBytecodeNode);
                     b.startGroup();
-                    b.startParantheses().tree(localIndex).end();
+                    b.startParentheses().tree(localIndex).end();
                     b.string(" * LOCALS_LENGTH");
                     b.end();
                     b.end();

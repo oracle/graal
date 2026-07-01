@@ -221,7 +221,14 @@ public final class InstructionModel implements PrettyPrintable {
             this.width = width;
         }
 
-        public TypeMirror toType(ProcessorContext context) {
+        public boolean isUnsigned() {
+            return this == FRAME_INDEX || this == LOCAL_INDEX;
+        }
+
+        public TypeMirror toDeclaredType(ProcessorContext context) {
+            if (isUnsigned()) {
+                return context.getType(int.class);
+            }
             return width.toType(context);
         }
     }

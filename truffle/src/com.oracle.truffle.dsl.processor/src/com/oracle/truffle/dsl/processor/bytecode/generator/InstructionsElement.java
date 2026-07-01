@@ -636,7 +636,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.FRAME_INDEX.width != ImmediateWidth.SHORT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string(BytecodeRootNodeElement.readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
+            b.string(BytecodeRootNodeElement.readUnsignedShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
             b.end();
             return ex;
         }
@@ -650,7 +650,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.LOCAL_INDEX.width != ImmediateWidth.SHORT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string(BytecodeRootNodeElement.readShortSafe("bc", "bci"));
+            b.string(BytecodeRootNodeElement.readUnsignedShortSafe("bc", "bci"));
             b.end();
             return ex;
         }

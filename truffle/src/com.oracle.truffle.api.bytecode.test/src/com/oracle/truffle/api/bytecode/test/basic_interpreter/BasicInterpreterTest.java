@@ -2344,7 +2344,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.beginRoot();
                 b.beginBlock();
 
-                for (int i = 0; i < Short.MAX_VALUE; i++) {
+                for (int i = 0; i <= 0xffff; i++) {
                     b.createLocal();
                 }
                 BytecodeLocal x = b.createLocal();
