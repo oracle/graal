@@ -65,7 +65,8 @@ final class EnumSwitchSupport {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(new AnalysisMethodKey(method.getId(), method.getMethodVariantKey().toString()), methodSafeForExecution);
-        assert existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method) : "Method parsed twice: " + method.format("%H.%n(%p)");
+        assert existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method) ||
+                        (method.isInSharedLayer() && existingValue == methodSafeForExecution) : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     Boolean isMethodsSafeForExecution(AnalysisMethod method) {
