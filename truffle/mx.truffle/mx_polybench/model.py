@@ -1808,6 +1808,13 @@ _polybench_bench_suite_parser.parser.add_argument(
     ),
 )
 _polybench_bench_suite_parser.parser.add_argument(
+    "--graalhost-toolchain-lib-dir",
+    help=(
+        "Directory containing the GraalHost toolchain runtime libraries that need to be mounted into the isolate "
+        "for GraalHost PolyBench runs."
+    ),
+)
+_polybench_bench_suite_parser.parser.add_argument(
     "--flaky-failure-stability-tolerance",
     help=(
         "The number of flaky failures allowed per-benchmark for generating the stabilized metrics. "
