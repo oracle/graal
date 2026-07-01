@@ -168,20 +168,20 @@ jobs:
       MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
         fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         repository: graalvm/mx.git
         ref: ${{ env.MX_VERSION }}
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: '3.8'
     - name: Fetch LabsJDK
@@ -248,20 +248,20 @@ jobs:
       PYTHONIOENCODING: 'utf-8'
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
     - name: Determine mx version
       shell: bash
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         repository: graalvm/mx.git
         ref: ${{ env.MX_VERSION }}
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: '3.8'
     - name: Fetch LabsJDK

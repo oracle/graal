@@ -73,13 +73,13 @@ jobs:
         matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
     - name: Setup python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: '${{ env.PYTHON_VERSION }}'
     - name: Set up JAVA_HOME
-      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520  # v5.4.0
       with:
         distribution: 'oracle'
         java-version: '25'
@@ -100,7 +100,7 @@ jobs:
         coordinates: ${{ fromJson(needs.populate-matrix.outputs.matrix).coordinates }}
     steps:
       - name: Checkout oracle/graal
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - name: Download GraalVM build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -110,7 +110,7 @@ jobs:
           tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
           echo "GRAALVM_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
       - name: Setup python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: '${{ env.PYTHON_VERSION }}'
       - name: Build layer
