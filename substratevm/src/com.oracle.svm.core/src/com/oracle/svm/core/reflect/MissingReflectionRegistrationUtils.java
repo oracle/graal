@@ -60,11 +60,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
                         reflectionError("unsafe instantiate", typeDescriptor(clazz), json),
                         Class.class, null, clazz.getTypeName(), null);
         report(exception);
-        /*
-         * If report doesn't throw, we throw the exception anyway since this is a Native
-         * Image-specific error that is unrecoverable in any case.
-         */
-        throw exception;
+        return exception;
     }
 
     public static void reportFieldQuery(Class<?> declaringClass, String fieldName) {

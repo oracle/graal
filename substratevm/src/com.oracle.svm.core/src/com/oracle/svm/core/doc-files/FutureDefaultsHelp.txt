@@ -1,4 +1,4 @@
-Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'.
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'exact-reflection', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'.
 
 The meaning of each possible option is as follows:
   'all' - is the preferred option, and it enables all other behaviors.
@@ -8,6 +8,8 @@ The meaning of each possible option is as follows:
   'run-time-initialize-jdk' - enables all behaviors related to run-time initialization of the JDK: ['run-time-initialize-security-providers', 'run-time-initialize-file-system-providers', 'run-time-initialize-resource-bundles'].
 
   'class-for-name-respects-class-loader' - 'Class#forName' and 'ClassLoader#loadClass' respect their class loader argument. Instead of one flat namespace, each class loader has its own namespace and may delegate to other class loaders.
+
+  'exact-reflection' - enables stricter reflection behavior for operations that cannot continue with incomplete reachability metadata.
 
   'run-time-initialize-security-providers' - shifts away from build-time initialization for 'java.security.Provider'. Unless you store 'java.security.Provider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
 

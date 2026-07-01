@@ -9,6 +9,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-73735) Enable Java Vector API support by default when the `jdk.incubator.vector` module is part of the boot module layer. Use `-H:-VectorAPISupport` as an explicit opt-out if needed.
 * (GR-70895) Native Image `resource:` URLs now preserve the source root of duplicate resource entries using the path format `resource://<module>@<loader>/<root-id>!/<resource-path>`. This allows directory resource URLs from different class-path roots to be converted to `Path` values and walked independently instead of observing a merged directory view.
 * (GR-76779) Added support for the JFR event `jdk.Shutdown`.
+* (GR-65320) Introduced `--future-defaults=exact-reflection`. This currently makes unregistered `Unsafe.allocateInstance` operations throw a `MissingReflectionRegistrationError` instead of the legacy `IllegalArgumentException`, preparing for stricter reflection metadata behavior in a future release.
 
 ## GraalVM 25.1 (Internal Version 25.1.3)
 * (GR-76005) Improve Native Image support for constant `String.format` and `String::formatted` calls by intrinsifying simple format strings in CE. This reduces the reachability of JDK formatting and localization code for applications such as Hello World.

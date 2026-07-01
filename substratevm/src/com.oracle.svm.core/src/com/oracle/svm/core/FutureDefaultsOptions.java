@@ -87,9 +87,10 @@ public class FutureDefaultsOptions {
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
     private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
     private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
+    private static final String EXACT_REFLECTION = "exact-reflection";
     public static final String EXPLICIT_FEATURE_SINGLETON_REGISTRATION = "explicit-feature-singleton-registration";
-    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS,
-                    RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, EXACT_REFLECTION, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS,
+                    RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
@@ -256,6 +257,13 @@ public class FutureDefaultsOptions {
      */
     public static boolean resourceBundlesInitializedAtRunTime() {
         return getFutureDefaults().contains(RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean exactReflection() {
+        return getFutureDefaults().contains(EXACT_REFLECTION);
     }
 
     /**
