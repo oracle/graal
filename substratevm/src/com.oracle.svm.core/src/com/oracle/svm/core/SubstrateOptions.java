@@ -958,9 +958,13 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    /**
+     * Whether frames have a frame pointer slot. Note that the slot might just contain a spilled
+     * register value and not a valid frame pointer unless {@link #PreserveFramePointer} is enabled.
+     */
     @Fold
-    public static boolean hasFramePointer() {
-        /* We always push a frame pointer to a stack on AArch64 and RISCV64. */
+    public static boolean hasFramePointerSlot() {
+        /* We always push the frame pointer register to the stack on AArch64 and RISCV64. */
         return SubstrateOptions.PreserveFramePointer.getValue() || Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.RISCV64.class);
     }
 
