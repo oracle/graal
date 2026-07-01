@@ -241,34 +241,22 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             InstructionImmediate immediate = instruction.findChildBciImmediate(valueIndex);
 
             b.startStatement();
-            b.string("int oldOperandIndex" + valueIndex);
+            b.string("byte oldOperandOffset" + valueIndex);
             b.string(" = ");
             b.tree(readImmediate("$bc", "$bci", immediate));
             b.end();
 
-            if (instruction.isShortCircuitConverter() || instruction.isEpilogReturn()) {
-                b.declaration(context.getType(short.class), "oldOperand" + valueIndex);
+            b.startStatement();
+            b.string("int oldOperandIndex" + valueIndex);
+            b.string(" = ");
+            b.tree(BytecodeRootNodeElement.decodeRelativeBytecodeIndex("(int) $bci", "oldOperandOffset" + valueIndex));
+            b.end();
 
-                b.startIf().string("oldOperandIndex" + valueIndex).string(" != -1").end().startBlock();
-                b.startStatement();
-                b.string("oldOperand" + valueIndex);
-                b.string(" = ");
-                b.tree(readInstruction("$bc", "oldOperandIndex" + valueIndex));
-                b.end(); // statement
-                b.end().startElseBlock();
-                b.startStatement();
-                b.string("oldOperand" + valueIndex);
-                b.string(" = ");
-                b.string("-1");
-                b.end(); // statement
-                b.end(); // if
-            } else {
-                b.startStatement();
-                b.string("short oldOperand" + valueIndex);
-                b.string(" = ");
-                b.tree(readInstruction("$bc", "oldOperandIndex" + valueIndex));
-                b.end(); // statement
-            }
+            b.startDeclaration(context.getType(short.class), "oldOperand" + valueIndex);
+            b.string("oldOperandIndex" + valueIndex + " != -1 ? ");
+            b.tree(readInstruction("$bc", "oldOperandIndex" + valueIndex));
+            b.string(" : -1");
+            b.end();
 
             b.declaration(context.getType(short.class), "newOperand" + valueIndex);
         }
@@ -301,6 +289,8 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             for (int valueIndex : boxingEliminated) {
                 TypeMirror specializedType = quickening.signature.getDynamicOperandType(valueIndex);
                 if (model.isBoxingEliminated(specializedType)) {
+                    b.newLine().string("  ", sep, "oldOperandIndex" + valueIndex + " != -1");
+                    sep = " && ";
                     b.newLine().string("  ", sep, "(");
                     b.string("newOperand" + valueIndex);
                     b.string(" = ");
@@ -350,7 +340,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         for (int valueIndex : boxingEliminated) {
             b.startStatement();
-            b.string("newOperand" + valueIndex, " = undoQuickening(oldOperand" + valueIndex + ")");
+            b.string("newOperand" + valueIndex, " = oldOperandIndex" + valueIndex + " == -1 ? -1 : undoQuickening(oldOperand" + valueIndex + ")");
             b.end();
         }
 
@@ -380,13 +370,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         b.end(); // else block
 
         for (int valueIndex : boxingEliminated) {
-            if (instruction.isShortCircuitConverter()) {
-                b.startIf().string("newOperand" + valueIndex).string(" != -1").end().startBlock();
-                rootNode.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
-                b.end(); // if
-            } else {
-                rootNode.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
-            }
+            b.startIf().string("oldOperandIndex" + valueIndex).string(" != -1").end().startBlock();
+            rootNode.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+            b.end(); // if
         }
 
         rootNode.emitQuickening(b, "$bytecode", "$bc", "$bci", null, "newInstruction");

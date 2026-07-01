@@ -2372,6 +2372,19 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         };
     }
 
+    static CodeTree decodeRelativeBytecodeIndex(String bci, String rawOffset) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startGroup();
+        b.string(rawOffset);
+        b.string(" == (byte) 0xff ? -1 : ");
+        b.string(bci);
+        b.string(" - ((0xff & ");
+        b.string(rawOffset);
+        b.string(") << 1)");
+        b.end();
+        return b.build();
+    }
+
     static CodeTree readImmediate(String bc, String bci, InstructionImmediate immediate) {
         return readImmediateWithOffset(bc, bci, immediate, immediate.offset());
     }

@@ -41,9 +41,11 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -62,6 +64,7 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public final class InstructionModel implements PrettyPrintable {
     public static final int OPCODE_WIDTH = 2; // short
+    public static final int INSTRUCTION_ALIGNMENT = 2;
 
     /*
      * Sort by how commonly they are used.
@@ -207,7 +210,8 @@ public final class InstructionModel implements PrettyPrintable {
         CONSTANT_BOOL("const_bool", ImmediateWidth.SHORT),
         NODE_PROFILE("node", ImmediateWidth.INT),
         TAG_NODE("tag", ImmediateWidth.INT),
-        BRANCH_PROFILE("branch_profile", ImmediateWidth.INT);
+        BRANCH_PROFILE("branch_profile", ImmediateWidth.INT),
+        RELATIVE_BYTECODE_INDEX("relative_bci", ImmediateWidth.BYTE);
 
         public final String shortName;
         public final ImmediateWidth width;
@@ -266,10 +270,62 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediateEncoding(int offset, ImmediateWidth width) {
+    public static final class InstructionImmediateEncoding {
 
         public static final InstructionImmediateEncoding NONE = new InstructionImmediateEncoding(0, null);
 
+        private int offset;
+        private final ImmediateWidth width;
+
+        public InstructionImmediateEncoding(ImmediateWidth width) {
+            this.offset = -1;
+            this.width = width;
+        }
+
+        /* Only used to initialize the NONE case. */
+        private InstructionImmediateEncoding(int offset, ImmediateWidth width) {
+            this.offset = offset;
+            this.width = width;
+        }
+
+        public int offset() {
+            if (this.offset == -1) {
+                throw new AssertionError("Attempting to read an immediate offset prior to it being set");
+            }
+            return offset;
+        }
+
+        public void setOffset(int offset) {
+            if (this.offset != -1) {
+                throw new AssertionError("Attempting to set an immediate offset twice");
+            }
+            this.offset = offset;
+        }
+
+        public ImmediateWidth width() {
+            return width;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof InstructionImmediateEncoding other)) {
+                return false;
+            }
+            return offset == other.offset && width == other.width;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(offset, width);
+        }
+
+        @Override
+        public String toString() {
+            return "InstructionImmediateEncoding[offset=" + offset + ", width=" + width + "]";
+        }
     }
 
     private int byteLength = OPCODE_WIDTH;
@@ -389,7 +445,13 @@ public final class InstructionModel implements PrettyPrintable {
         this.operation = base.operation;
         this.shortCircuitModel = base.shortCircuitModel;
         for (InstructionImmediate imm : base.immediates) {
-            addImmediate(imm);
+            addImmediate(new InstructionImmediate(
+                            imm.kind(),
+                            imm.name(),
+                            new InstructionImmediateEncoding(imm.kind().width),
+                            imm.dynamic(),
+                            imm.operandIndex()));
+
         }
         base.quickenedInstructions.add(this);
     }
@@ -551,7 +613,6 @@ public final class InstructionModel implements PrettyPrintable {
             };
             printer.field("quicken-kind", quickenKind);
         }
-
     }
 
     public boolean isTagInstrumentation() {
@@ -625,7 +686,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean dynamic) {
-        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width), dynamic, OptionalInt.empty()));
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(immediateKind.width), dynamic, OptionalInt.empty()));
         return this;
     }
 
@@ -634,7 +695,7 @@ public final class InstructionModel implements PrettyPrintable {
             throw new IllegalArgumentException("Operand must be constant: " + operand);
         }
         ConstantOperandModel constantOperand = operand.constant();
-        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width), false,
+        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(constantOperand.kind().width), false,
                         OptionalInt.of(operand.index())));
         return this;
     }
@@ -643,15 +704,13 @@ public final class InstructionModel implements PrettyPrintable {
         if (!operand.isDynamic()) {
             throw new IllegalArgumentException("Operand must be dynamic: " + operand);
         }
-        addImmediate(new InstructionImmediate(ImmediateKind.BYTECODE_INDEX, "child" + operand.dynamicIndex(), new InstructionImmediateEncoding(byteLength, ImmediateKind.BYTECODE_INDEX.width),
+
+        addImmediate(new InstructionImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX, "child" + operand.dynamicIndex(), new InstructionImmediateEncoding(ImmediateKind.RELATIVE_BYTECODE_INDEX.width),
                         false, OptionalInt.of(operand.index())));
         return this;
     }
 
-    private void addImmediate(InstructionImmediate immediate) {
-        if (immediate.offset() != byteLength) {
-            throw new AssertionError("Immediate has offset " + immediate.offset() + " but the instruction is currently only " + byteLength + " bytes long.");
-        }
+    public void addImmediate(InstructionImmediate immediate) {
         immediates.add(immediate);
         resolveConstantOperand(immediate).ifPresent(constantOperand -> constantOperandImmediates.put(constantOperand, immediate));
         byteLength += immediate.kind.width.byteSize;
@@ -687,7 +746,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     public InstructionImmediate findChildBciImmediate(int dynamicOperandIndex) {
         for (InstructionImmediate immediate : immediates) {
-            if (immediate.kind != ImmediateKind.BYTECODE_INDEX) {
+            if (immediate.kind != ImmediateKind.RELATIVE_BYTECODE_INDEX) {
                 continue;
             }
             if (resolveDynamicOperandIndex(immediate).orElse(-1) == dynamicOperandIndex) {
@@ -801,6 +860,9 @@ public final class InstructionModel implements PrettyPrintable {
             b.append(" : ");
             b.append(imm.kind.width);
         }
+        if (immediates.stream().filter((imm) -> imm.kind.width == ImmediateWidth.BYTE).count() % INSTRUCTION_ALIGNMENT == 1) {
+            b.append(", padding : byte");
+        }
         b.append("]");
         return b.toString();
     }
@@ -877,6 +939,22 @@ public final class InstructionModel implements PrettyPrintable {
         return result;
     }
 
+    /**
+     * Order immediates from biggest to smallest.
+     * This helps keep immediates short-aligned, by ensuring potential byte-sized immediates are at the end of the instruction.
+     * Otherwise, we would need to emit padding in the middle of the instruction to ensure short-alignment.
+     */
+    public void orderImmediates() {
+        immediates.sort(Comparator.comparingInt((InstructionImmediate imm) -> imm.kind().width.byteSize).reversed());
+
+        byteLength = OPCODE_WIDTH;
+        for (InstructionImmediate immediate : immediates) {
+            immediate.encoding().setOffset(byteLength);
+            byteLength += immediate.kind().width.byteSize;
+        }
+        byteLength += byteLength % INSTRUCTION_ALIGNMENT;
+    }
+
     public void validateAlignment() {
         /*
          * Unaligned accesses are not atomic. For correctness, since we overwrite opcodes for
@@ -890,13 +968,13 @@ public final class InstructionModel implements PrettyPrintable {
          * special PE-able methods for int reads that split unaligned reads into multiple aligned
          * reads in compiled code. Since immediates are never modified, atomicity is not important.
          */
-        if (getInstructionLength() % 2 != 0) {
+        if (getInstructionLength() % INSTRUCTION_ALIGNMENT != 0) {
             throw new AssertionError(String.format("All instructions should be short-aligned, but instruction %s has length %s.",
                             name, getInstructionLength()));
         }
 
         for (InstructionImmediate immediate : immediates) {
-            if (immediate.kind == ImmediateKind.SHORT && immediate.offset() % 2 != 0) {
+            if (immediate.kind.width == ImmediateWidth.SHORT && immediate.offset() % INSTRUCTION_ALIGNMENT != 0) {
                 throw new AssertionError(String.format("Immediate %s of instruction %s should be short-aligned, but it appears at offset %s.",
                                 immediate.name, name, immediate.offset()));
             }

@@ -44,6 +44,7 @@ import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.O
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -406,6 +407,9 @@ public class BytecodeDSLBuiltins {
             m.traceInstruction = m.instruction(InstructionKind.TRACE_INSTRUCTION, "trace.instruction", m.signature(void.class));
         }
 
+    }
+
+    public static void addInvalidateBuiltinsOnFinalize(BytecodeDSLModel m) {
         // invalidate instructions should be the last instructions to add as it they depend on the
         // length of all other instructions
         if (m.isBytecodeUpdatable()) {
@@ -419,9 +423,13 @@ public class BytecodeDSLBuiltins {
             for (int i = 0; i < numShortImmediates + 1; i++) {
                 InstructionModel model = m.instruction(InstructionKind.INVALIDATE, "invalidate" + i, m.signature(void.class));
                 for (int j = 0; j < i; j++) {
-                    model.addImmediate(ImmediateKind.SHORT, "invalidated" + j);
+                    InstructionModel.InstructionImmediate imm = new InstructionModel.InstructionImmediate(ImmediateKind.SHORT, "invalidated" + j, new InstructionModel.InstructionImmediateEncoding(
+                                    ImmediateKind.SHORT.width), false, OptionalInt.empty());
+                    imm.encoding().setOffset(model.getInstructionLength());
+                    model.addImmediate(imm);
                 }
                 m.invalidateInstructions[i] = model;
+                model.finalizeModel();
             }
         }
     }

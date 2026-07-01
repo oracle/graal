@@ -809,8 +809,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEquals(42, node.getCallTarget().call());
         assertEvents(node, events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, RootTag.class, RootBodyTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, RootTag.class, RootBodyTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0016, null, RootTag.class, RootBodyTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0016, 42, RootTag.class, RootBodyTag.class));
 
     }
 
@@ -844,8 +844,8 @@ public class TagTest extends AbstractInstructionTest {
         assertFails(() -> node.getCallTarget().call(), TestException.class);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0020, null, RootTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x0020, TestException.class, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x001e, null, RootTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x001e, TestException.class, RootTag.class));
     }
 
     @Test
@@ -881,8 +881,8 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(42, node.getCallTarget().call());
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x002a, null, RootTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x002a, Integer.class, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0026, null, RootTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0026, Integer.class, RootTag.class));
 
     }
 
@@ -1130,8 +1130,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x001e, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x001e, 42, ExpressionTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, ExpressionTag.class));
 
     }
 
@@ -1168,8 +1168,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x001e, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x001e, 42, ExpressionTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, ExpressionTag.class));
 
     }
 
@@ -1201,8 +1201,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, RootBodyTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, RootBodyTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0016, null, RootBodyTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0016, 42, RootBodyTag.class));
 
     }
 
@@ -1234,8 +1234,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, RootTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0016, null, RootTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0016, 42, RootTag.class));
 
     }
 
@@ -1285,8 +1285,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(0, EventKind.ENTER, 0x0000, 0x002a, null, RootTag.class),
-                        new Event(3, EventKind.RETURN_VALUE, 0x0000, 0x002a, 42, RootTag.class));
+                        new Event(0, EventKind.ENTER, 0x0000, 0x0026, null, RootTag.class),
+                        new Event(3, EventKind.RETURN_VALUE, 0x0000, 0x0026, 42, RootTag.class));
 
     }
 
@@ -1337,8 +1337,8 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(1, EventKind.ENTER, 0x0006, 0x002a, null, RootBodyTag.class),
-                        new Event(2, EventKind.RETURN_VALUE, 0x0006, 0x002a, 42, RootBodyTag.class));
+                        new Event(1, EventKind.ENTER, 0x0006, 0x0026, null, RootBodyTag.class),
+                        new Event(2, EventKind.RETURN_VALUE, 0x0006, 0x0026, 42, RootBodyTag.class));
     }
 
     @Test
@@ -1390,10 +1390,10 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(0, EventKind.ENTER, 0x0000, 0x0050, null, RootTag.class),
-                        new Event(2, EventKind.ENTER, 0x000c, 0x003a, null, RootBodyTag.class),
-                        new Event(3, EventKind.RETURN_VALUE, 0x000c, 0x003a, 42, RootBodyTag.class),
-                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0050, 42, RootTag.class));
+                        new Event(0, EventKind.ENTER, 0x0000, 0x0046, null, RootTag.class),
+                        new Event(2, EventKind.ENTER, 0x000c, 0x0034, null, RootBodyTag.class),
+                        new Event(3, EventKind.RETURN_VALUE, 0x000c, 0x0034, 42, RootBodyTag.class),
+                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0046, 42, RootTag.class));
 
     }
 
@@ -1444,10 +1444,10 @@ public class TagTest extends AbstractInstructionTest {
         // instrumentation events should be correct even if we hit a trap
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0032, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x0030, null, RootTag.class),
                         new Event(EventKind.ENTER, 0x0006, 0x0018, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0006, 0x0018, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0032, null, RootTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0030, null, RootTag.class));
 
     }
 
@@ -1647,10 +1647,10 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0030, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x002e, null, RootTag.class),
                         new Event(EventKind.ENTER, 0x0006, 0x0018, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0006, 0x0018, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0030, 42, RootTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x002e, 42, RootTag.class));
     }
 
     @Test
@@ -1699,10 +1699,10 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x001a, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x001a, 42L, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0016, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0018, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0018, 42L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0016, 42L, StatementTag.class));
 
         // Now, add expressions.
         events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, StatementTag.class).build());
@@ -1719,14 +1719,14 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0028, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x0024, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0006, 0x0012, null, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x002a, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0026, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0008, 0x0014, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0008, 0x0014, 42L, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x002a, 42L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0026, 42L, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0006, 0x0012, 42L, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0028, 42L, StatementTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0024, 42L, StatementTag.class));
     }
 
     @Test
@@ -1781,10 +1781,10 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0018, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x0016, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0000, 0x000c, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x000c, 42L, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0018, 42L, StatementTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0016, 42L, StatementTag.class));
     }
 
     @Test
@@ -1837,23 +1837,23 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(123L, node.getCallTarget().call(false));
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00a6, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x0056, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x0056, 42L, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0026, 0x0044, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0026, 0x0044, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00a6, null, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x009e, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0050, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x0050, 42L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0024, 0x0040, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0024, 0x0040, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x009e, null, StatementTag.class));
 
         events.clear();
         assertEquals(123L, node.getCallTarget().call(true));
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00a6, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x0056, null, ExpressionTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0056, TestException.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0080, 0x009e, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0080, 0x009e, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00a6, null, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x009e, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0050, null, ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0050, TestException.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x007a, 0x0096, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x007a, 0x0096, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x009e, null, StatementTag.class));
     }
 
     @Test
@@ -2030,31 +2030,31 @@ public class TagTest extends AbstractInstructionTest {
         cont = (ContinuationResult) node.getCallTarget().call(false);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00b8, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006e, null, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0006, 0x006e, 42L, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00b8, 42L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00a8, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0066, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0006, 0x0066, 42L, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00a8, 42L, StatementTag.class));
         assertEquals(42L, cont.getResult());
         events.clear();
         assertEquals(456L, cont.continueWith(456L));
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00b8, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x0006, 0x006e, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x006e, 456L, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0044, 0x0052, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0044, 0x0052, 123L, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00b8, 456L, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00a8, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x0006, 0x0066, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x0066, 456L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0042, 0x0050, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0042, 0x0050, 123L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00a8, 456L, StatementTag.class));
 
         events.clear();
 
         cont = (ContinuationResult) node.getCallTarget().call(true);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00b8, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006e, null, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0006, 0x006e, 42L, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00b8, 42L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00a8, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0066, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0006, 0x0066, 42L, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00a8, 42L, StatementTag.class));
         assertEquals(42L, cont.getResult());
         events.clear();
         try {
@@ -2065,12 +2065,12 @@ public class TagTest extends AbstractInstructionTest {
         }
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00b8, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x0006, 0x006e, null, ExpressionTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x006e, TestException.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0098, 0x00a6, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0098, 0x00a6, 123L, StatementTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00b8, TestException.class, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00a8, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x0006, 0x0066, null, ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0066, TestException.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x008c, 0x009a, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x008c, 0x009a, 123L, StatementTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00a8, TestException.class, StatementTag.class));
     }
 
     @Test
@@ -2135,33 +2135,33 @@ public class TagTest extends AbstractInstructionTest {
         cont = (ContinuationResult) node.getCallTarget().call(false);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00ee, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x006c, 42L, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0026, 0x0050, null, StatementTag.class),
-                        new Event(EventKind.YIELD, 0x0026, 0x0050, 123L, StatementTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00ee, 123L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00de, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0064, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x0064, 42L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0024, 0x004e, null, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x0024, 0x004e, 123L, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00de, 123L, StatementTag.class));
         assertEquals(123L, cont.getResult());
         events.clear();
         assertEquals(42L, cont.continueWith(456L));
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00ee, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x0026, 0x0050, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0026, 0x0050, 456L, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00ee, 42L, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00de, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x0024, 0x004e, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0024, 0x004e, 456L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00de, 42L, StatementTag.class));
 
         events.clear();
 
         cont = (ContinuationResult) node.getCallTarget().call(true);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00ee, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x006c, TestException.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x00b2, 0x00dc, null, StatementTag.class),
-                        new Event(EventKind.YIELD, 0x00b2, 0x00dc, 123L, StatementTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00ee, 123L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00de, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x0064, null, ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0064, TestException.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x00a6, 0x00d0, null, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x00a6, 0x00d0, 123L, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00de, 123L, StatementTag.class));
         assertEquals(123L, cont.getResult());
         events.clear();
         try {
@@ -2172,10 +2172,10 @@ public class TagTest extends AbstractInstructionTest {
         }
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00ee, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x00b2, 0x00dc, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x00b2, 0x00dc, 456L, StatementTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00ee, TestException.class, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00de, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x00a6, 0x00d0, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x00a6, 0x00d0, 456L, StatementTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00de, TestException.class, StatementTag.class));
     }
 
     @Test
@@ -2237,12 +2237,12 @@ public class TagTest extends AbstractInstructionTest {
                         "return");
         assertEquals(123L, node.getCallTarget().call());
         assertEvents(node, events,
-                        new Event(EventKind.ENTER, 0x0000, 0x01e, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x01c, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0000, 0x01e, null, ExpressionTag.class),
                         new Event(EventKind.YIELD, 0x0000, 0x01e, 42L, ExpressionTag.class),
                         new Event(EventKind.RESUME, 0x0000, 0x01e, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x01e, 123L, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x01e, 123L, StatementTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x01c, 123L, StatementTag.class));
 
     }
 

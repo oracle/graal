@@ -66,6 +66,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -233,6 +234,7 @@ final class BuilderElement extends AbstractElement {
         this.add(createAfterChild());
         this.add(createValidateSourceSection());
         this.add(createSafeCastShort());
+        this.add(createEncodeRelativeBytecodeIndex());
         this.add(createCheckOverflowShort());
         this.add(createCheckOverflowInt());
         this.add(createCheckBci());
@@ -1687,7 +1689,7 @@ final class BuilderElement extends AbstractElement {
                     b.tree(operationStack.write(rootOperation, operationFields.prologBci, "state.bci"));
                 }
 
-                List<String> constantOperandValues = emitConstantOperands(b, model.prolog.operation);
+                Map<ConstantOperandModel, String> constantOperandValues = emitConstantOperands(b, model.prolog.operation);
                 buildEmitOperationInstruction(b, model.prolog.operation, constantOperandValues);
             }
             if (model.epilogReturn != null) {
@@ -2036,7 +2038,7 @@ final class BuilderElement extends AbstractElement {
             }
         }
 
-        List<String> constantOperandValues = emitConstantOperands(b, operation);
+        Map<ConstantOperandModel, String> constantOperandValues = emitConstantOperands(b, operation);
 
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             b.startIf().string(parent.configEncoder.checkInstrumentationDisabled("instrumentations", operation)).end().startBlock();
@@ -2220,11 +2222,11 @@ final class BuilderElement extends AbstractElement {
 
                 b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
                 String[] args;
-                InstructionImmediate imm = operation.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
+                InstructionImmediate imm = operation.instruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX);
                 if (imm == null) {
                     args = new String[]{operationStack.read(operation, operationFields.nodeId)};
                 } else {
-                    args = new String[]{operationStack.read(operation, operationFields.nodeId), operationStack.read(operation, operationFields.childBci)};
+                    args = new String[]{operationStack.read(operation, operationFields.nodeId), encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci))};
                 }
 
                 b.startIf().string(operationStack.read(operation, operationFields.operationReachable)).end().startBlock();
@@ -3104,11 +3106,11 @@ final class BuilderElement extends AbstractElement {
         b.end();
     }
 
-    private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, List<String> constantOperandValues) {
+    private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, Map<ConstantOperandModel, String> constantOperandValues) {
         buildEmitOperationInstruction(b, operation, null, constantOperandValues);
     }
 
-    private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, List<String> constantOperandValues) {
+    private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, Map<ConstantOperandModel, String> constantOperandValues) {
         String[] args = switch (operation.kind) {
             case LOAD_LOCAL -> {
                 List<String> immediates = new ArrayList<>();
@@ -3125,7 +3127,7 @@ final class BuilderElement extends AbstractElement {
                     immediates.add(operationStack.read(operation, operationFields.local) + ".localIndex");
                 }
                 if (model.usesBoxingElimination()) {
-                    immediates.add(operationStack.read(operation, operationFields.childBci));
+                    immediates.add(encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci)));
                 }
                 yield immediates.toArray(String[]::new);
             }
@@ -3138,7 +3140,7 @@ final class BuilderElement extends AbstractElement {
                     immediates.add(operationStack.read(operation, operationFields.local) + ".localIndex");
                 }
                 if (model.usesBoxingElimination()) {
-                    immediates.add(operationStack.read(operation, operationFields.childBci));
+                    immediates.add(encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci)));
                 }
                 yield immediates.toArray(String[]::new);
             }
@@ -3374,7 +3376,7 @@ final class BuilderElement extends AbstractElement {
             }
         }
 
-        List<String> constantOperandValues = emitConstantOperands(b, operation);
+        Map<ConstantOperandModel, String> constantOperandValues = emitConstantOperands(b, operation);
 
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             b.startIf().string(parent.configEncoder.checkInstrumentationDisabled("instrumentations", operation)).end().startBlock();
@@ -3498,26 +3500,27 @@ final class BuilderElement extends AbstractElement {
      *
      * Returns the names of the declared variables for later use in code gen.
      */
-    private List<String> emitConstantOperands(CodeTreeBuilder b, OperationModel operation) {
+    private Map<ConstantOperandModel, String> emitConstantOperands(CodeTreeBuilder b, OperationModel operation) {
         InstructionModel instruction = operation.instruction;
         if (instruction == null) {
-            return List.of();
+            return Map.of();
         }
         List<ConstantOperandModel> before = operation.constantOperands.before();
         List<ConstantOperandModel> after = operation.constantOperands.after();
         if (before.isEmpty() && after.isEmpty()) {
-            return List.of();
+            return Map.of();
         }
 
         boolean inEmit = !operation.hasChildren();
-        List<String> result = new ArrayList<>(before.size() + after.size());
+        Map<ConstantOperandModel, String> resultMap = new IdentityHashMap<>();
         if (inEmit) {
             for (int i = 0; i < before.size(); i++) {
-                result.add(emitConstantOperand(b, operation.operationBeginArguments[i], operation.getConstantOperandBeforeName(i)));
+                resultMap.put(before.get(i), emitConstantOperand(b, operation.operationBeginArguments[i], operation.getConstantOperandBeforeName(i)));
             }
         } else {
-            for (var field : operationFields.getConstants(before, false)) {
-                result.add(operationStack.read(operation, field));
+            List<OperationField> fields = operationFields.getConstants(before, false);
+            for (int i = 0; i < before.size(); i++) {
+                resultMap.put(before.get(i), operationStack.read(operation, fields.get(i)));
             }
         }
         for (int i = 0; i < after.size(); i++) {
@@ -3526,16 +3529,16 @@ final class BuilderElement extends AbstractElement {
                  * Special case: when emitting the prolog in beginRoot, end constants are not yet
                  * known. They will be patched in endRoot.
                  */
-                result.add(UNINIT);
+                resultMap.put(after.get(i), UNINIT);
             } else {
-                result.add(emitConstantOperand(b, operation.operationEndArguments[i], operation.getConstantOperandAfterName(i)));
+                resultMap.put(after.get(i), emitConstantOperand(b, operation.operationEndArguments[i], operation.getConstantOperandAfterName(i)));
             }
 
         }
-        return result;
+        return resultMap;
     }
 
-    private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, List<String> constantOperandValues) {
+    private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, Map<ConstantOperandModel, String> constantOperandValues) {
         if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
             throw new AssertionError("short circuit operations should not be emitted directly.");
         }
@@ -3570,7 +3573,6 @@ final class BuilderElement extends AbstractElement {
         List<InstructionImmediate> immediates = instruction.getImmediates();
         String[] args = new String[immediates.size()];
 
-        int constantIndex = 0;
         for (int i = 0; i < immediates.size(); i++) {
             InstructionImmediate immediate = immediates.get(i);
             if (immediate.dynamic()) {
@@ -3578,15 +3580,15 @@ final class BuilderElement extends AbstractElement {
                 continue;
             }
             args[i] = switch (immediate.kind()) {
-                case BYTECODE_INDEX -> {
+                case RELATIVE_BYTECODE_INDEX -> {
                     if (customChildBci != null) {
-                        yield customChildBci;
+                        yield encodeRelativeBytecodeIndexArgument(customChildBci);
                     } else {
                         if (operation.isTransparent) {
                             if (instruction.resolveDynamicOperandIndex(immediate).orElse(-1) != 0) {
                                 throw new AssertionError("Unexpected transparent child.");
                             }
-                            yield operationStack.read(operation, operationFields.childBci);
+                            yield encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci));
                         } else {
                             Operand operand = instruction.resolveOperand(immediate).orElseThrow(
                                             () -> new AssertionError("Instruction immediate is missing a linked operand: " + immediate));
@@ -3595,27 +3597,39 @@ final class BuilderElement extends AbstractElement {
                             }
                             String childBci = getChildBciName(operand.dynamicIndex());
                             b.declaration(type(int.class), childBci, operationStack.read(operation, operationFields.getChildBci(operand.dynamicIndex(), false)));
-                            yield childBci;
+                            yield encodeRelativeBytecodeIndexArgument(childBci);
                         }
                     }
                 }
                 case CONSTANT -> {
-                    if (constantIndex < constantOperandValues.size()) {
-                        yield constantOperandValues.get(constantIndex++);
+                    ConstantOperandModel constantOperand = instruction.resolveConstantOperand(immediate).orElse(null);
+                    if (constantOperand != null) {
+                        String value = constantOperandValues.get(constantOperand);
+                        if (value == null) {
+                            throw new AssertionError("Missing constant operand value for " + constantOperand + ".");
+                        }
+                        yield value;
                     } else if (operation.kind == OperationKind.CUSTOM_YIELD) {
                         // The continuation root is the last constant, after constant operands.
                         b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
                         yield "constantPoolIndex";
                     } else {
-                        throw new AssertionError("Operation has more constant immediates than constant operands: " + operation);
+                        throw new AssertionError("Instruction immediate is missing an associated constant operand: " + immediate);
                     }
                 }
-                case CONSTANT_LONG, CONSTANT_DOUBLE, CONSTANT_INT, CONSTANT_FLOAT, CONSTANT_SHORT, CONSTANT_CHAR, CONSTANT_BOOL, CONSTANT_BYTE -> constantOperandValues.get(constantIndex++);
+                case CONSTANT_LONG, CONSTANT_DOUBLE, CONSTANT_INT, CONSTANT_FLOAT, CONSTANT_SHORT, CONSTANT_CHAR, CONSTANT_BOOL, CONSTANT_BYTE -> {
+                    ConstantOperandModel constantOperand = instruction.resolveConstantOperand(immediate).orElseThrow(
+                                    () -> new AssertionError("Instruction immediate is missing an associated constant operand: " + immediate));
+                    String value = constantOperandValues.get(constantOperand);
+                    if (value == null) {
+                        throw new AssertionError("Missing constant operand value for " + constantOperand + ".");
+                    }
+                    yield value;
+                }
                 case NODE_PROFILE -> "state.allocateNode()";
                 case TAG_NODE -> "node";
-                case FRAME_INDEX, LOCAL_INDEX, SHORT, STATE_PROFILE, LOCAL_ROOT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError("Operation " + operation.name +
+                case BYTECODE_INDEX, FRAME_INDEX, LOCAL_INDEX, SHORT, STATE_PROFILE, LOCAL_ROOT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError("Operation " + operation.name +
                                 " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() + ". This is a bug in the Bytecode DSL processor.");
-
             };
         }
 
@@ -3806,7 +3820,7 @@ final class BuilderElement extends AbstractElement {
                 continue;
             }
             args[i] = switch (immediate.kind()) {
-                case BYTECODE_INDEX -> {
+                case RELATIVE_BYTECODE_INDEX -> {
                     if (shortCircuitInstruction.shortCircuitModel.producesBoolean()) {
                         b.statement("int childBci = ", operationStack.read(shortCircuitInstruction.operation, operationFields.childBci));
                         b.startAssert();
@@ -3816,7 +3830,8 @@ final class BuilderElement extends AbstractElement {
                         b.lineComment("Boxing elimination not supported for converter operations if the value is returned.");
                         b.statement("int childBci = -1");
                     }
-                    yield "childBci";
+
+                    yield encodeRelativeBytecodeIndexArgument("childBci");
                 }
                 case NODE_PROFILE -> "state.allocateNode()";
                 default -> throw new AssertionError(String.format("Boolean converter instruction had unexpected encoding: %s", immediates));
@@ -4164,7 +4179,14 @@ final class BuilderElement extends AbstractElement {
         for (int index = 0; index < branchArguments.length; index++) {
             InstructionImmediate immediate = immediates.get(index);
             branchArguments[index] = switch (immediate.kind()) {
-                case BYTECODE_INDEX -> (index == 0) ? UNINIT : "childBci";
+                case BYTECODE_INDEX -> {
+                    if (index != 0) {
+                        throw new AssertionError("branch target should be first");
+                    } else {
+                        yield UNINIT;
+                    }
+                }
+                case RELATIVE_BYTECODE_INDEX -> encodeRelativeBytecodeIndexArgument("childBci");
                 case BRANCH_PROFILE -> "state.allocateBranchProfile()";
                 default -> throw new AssertionError("Unexpected immediate: " + immediate);
             };
@@ -4178,13 +4200,14 @@ final class BuilderElement extends AbstractElement {
         for (int index = 0; index < branchArguments.length; index++) {
             InstructionImmediate immediate = immediates.get(index);
             branchArguments[index] = switch (immediate.kind()) {
-                case BYTECODE_INDEX -> {
+                case RELATIVE_BYTECODE_INDEX -> {
                     String readChildBci = operationStack.read(instr.operation, operationFields.getChildBci(index, false));
                     if (index == 0) {
-                        yield operationStack.read(instr.operation, operationFields.thenReachable) + " ? " + readChildBci + " : -1";
+                        readChildBci = operationStack.read(instr.operation, operationFields.thenReachable) + " ? " + readChildBci + " : -1";
                     } else {
-                        yield operationStack.read(instr.operation, operationFields.elseReachable) + " ? " + readChildBci + " : -1";
+                        readChildBci = operationStack.read(instr.operation, operationFields.elseReachable) + " ? " + readChildBci + " : -1";
                     }
+                    yield encodeRelativeBytecodeIndexArgument(readChildBci);
                 }
                 default -> throw new AssertionError("Unexpected immediate: " + immediate);
             };
@@ -4198,7 +4221,7 @@ final class BuilderElement extends AbstractElement {
         for (int index = 0; index < branchArguments.length; index++) {
             InstructionImmediate immediate = immediates.get(index);
             branchArguments[index] = switch (immediate.kind()) {
-                case BYTECODE_INDEX -> childBciName;
+                case RELATIVE_BYTECODE_INDEX -> encodeRelativeBytecodeIndexArgument(childBciName);
                 default -> throw new AssertionError("Unexpected immediate: " + immediate);
             };
         }
@@ -4209,6 +4232,10 @@ final class BuilderElement extends AbstractElement {
         return "child" + childIndex + "Bci";
     }
 
+    private static String encodeRelativeBytecodeIndexArgument(String childBciExpression) {
+        return "encodeRelativeBytecodeIndex(" + childBciExpression + ", " + "state.bci" + ")";
+    }
+
     private CodeExecutableElement createSafeCastShort() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(short.class), "safeCastShort");
         ex.addParameter(new CodeVariableElement(type(int.class), "num"));
@@ -4217,6 +4244,33 @@ final class BuilderElement extends AbstractElement {
         b.startReturn().string("(short) num").end();
         b.end();
         emitThrowEncodingException(b, "\"Value \" + num + \" cannot be encoded as a short.\"");
+        return ex;
+    }
+
+    private CodeExecutableElement createEncodeRelativeBytecodeIndex() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(byte.class), "encodeRelativeBytecodeIndex");
+        ex.addParameter(new CodeVariableElement(type(int.class), "childBci"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "parentBci"));
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("childBci == -1 || !state.reachable").end().startBlock();
+        b.startReturn().string("(byte) 0xff").end();
+        b.end();
+
+        b.declaration(type(int.class), "delta", "parentBci - childBci");
+
+        if (model.enableInstructionTracing) {
+            b.lineComment("account for trace.instruction");
+            b.statement("delta += (" + parent.configEncoder.checkInstructionTracingEnabled("state.instrumentations") + " ? " + model.traceInstruction.getInstructionLength() + " : 0)");
+        }
+
+        b.startAssert().string("delta > 0").end();
+        b.startAssert().string("(delta & 1) == 0").end();
+        b.declaration(type(int.class), "shortDelta", "delta >> 1");
+        b.startIf().string("0 <= shortDelta && shortDelta < 0xff").end().startBlock();
+        b.startReturn().string("(byte) shortDelta").end();
+        b.end();
+        b.startReturn().string("(byte) 0xff").end();
         return ex;
     }
 
@@ -4479,9 +4533,10 @@ final class BuilderElement extends AbstractElement {
         b.tree(parent.createInstructionConstant(instr));
         b.string(stackEffect);
         int argumentsLength = arguments != null ? arguments.length : 0;
-        if (argumentsLength != instr.getImmediates().size()) {
+        List<InstructionImmediate> immediates = instr.getImmediates();
+        if (argumentsLength != immediates.size()) {
             throw new AssertionError(
-                            "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
+                            "Invalid number of immediates for instruction " + instr.name + ". Expected " + immediates.size() + " but got " + argumentsLength + ". Immediates: " +
                                             String.join(", ", arguments));
         }
 
@@ -4490,6 +4545,7 @@ final class BuilderElement extends AbstractElement {
                 b.string(argument);
             }
         }
+
         b.end(2);
     }
 
@@ -5074,12 +5130,12 @@ final class BuilderElement extends AbstractElement {
     }
 
     private String[] buildTagLeaveArguments(InstructionModel instr) {
-        InstructionImmediate operandIndex = instr.getImmediate(ImmediateKind.BYTECODE_INDEX);
+        InstructionImmediate operandIndex = instr.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX);
         String[] args;
         if (operandIndex == null) {
             args = new String[]{operationStack.read(instr.operation, operationFields.nodeId)};
         } else {
-            args = new String[]{operationStack.read(instr.operation, operationFields.nodeId), "childBci"};
+            args = new String[]{operationStack.read(instr.operation, operationFields.nodeId), encodeRelativeBytecodeIndexArgument("childBci")};
         }
         return args;
     }
@@ -5994,10 +6050,18 @@ final class BuilderElement extends AbstractElement {
 
             b.statement(BytecodeRootNodeElement.writeInstruction("this.bc", "this.bci + 0", "instruction"));
 
+            int byteImmediateCount = 0;
             for (int i = 0; i < encoding.immediates().size(); i++) {
                 InstructionImmediateEncoding immediateEncoding = encoding.immediates().get(i);
+                if (immediateEncoding.width() == ImmediateWidth.BYTE) {
+                    byteImmediateCount++;
+                }
                 CodeVariableElement dataParam = dataParams.get(i);
                 b.statement(BytecodeRootNodeElement.writeImmediate("this.bc", "this.bci", dataParam.getName(), immediateEncoding));
+            }
+            if (byteImmediateCount % 2 == 1) {
+                b.lineComment("padding");
+                b.statement("this.bc[this.bci + " + (encoding.length() - 1) + "] = (byte) 0xff");
             }
 
             b.statement("this.bci = newBci");

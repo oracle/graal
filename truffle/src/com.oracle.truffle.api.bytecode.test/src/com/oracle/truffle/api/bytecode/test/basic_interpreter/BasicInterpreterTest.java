@@ -3566,6 +3566,54 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "return");
     }
 
+    @Test
+    public void testNegativeRelativeBytecodeIndex() {
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("relativeChildBytecodeIndexUnavailableWhenOffsetTooLarge", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadConstant(1L);
+            emitNestedConditionalExpression(b, 0, 16);
+            b.endAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(1L, node.getCallTarget().call(0L));
+        assertEquals(6L, node.getCallTarget().call(5L));
+        assertEquals(17L, node.getCallTarget().call(16L));
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+
+        List<Instruction> addInstr = node.getBytecodeNode().getInstructionsAsList().stream().filter((i) -> i.getName().equals("c.Add$AddInts#AddLongs")).toList();
+        assertEquals(1, addInstr.size());
+
+        for (Argument argument : addInstr.get(0).getArguments()) {
+            if (argument.getKind() == Kind.BYTECODE_INDEX && argument.getName().equals("child0")) {
+                assertEquals(-1, argument.asBytecodeIndex());
+                return;
+            }
+        }
+        fail("Relative child BCI wasn't -1 for the final ADD instruction");
+    }
+
+    private static void emitNestedConditionalExpression(BasicInterpreterBuilder b, int value, int fallbackValue) {
+        b.beginConditional();
+        b.beginLess();
+        b.emitLoadArgument(0);
+        b.emitLoadConstant((long) value + 1);
+        b.endLess();
+        b.emitLoadConstant((long) value);
+        if (value + 1 == fallbackValue) {
+            b.emitLoadConstant((long) fallbackValue);
+        } else {
+            emitNestedConditionalExpression(b, value + 1, fallbackValue);
+        }
+        b.endConditional();
+    }
+
     /**
      * Tests that transitioning from uncached to cached correctly adapts cached local tags to the
      * current variables in the frame.

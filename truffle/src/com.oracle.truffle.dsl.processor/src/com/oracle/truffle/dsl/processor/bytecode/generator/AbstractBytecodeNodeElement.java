@@ -64,12 +64,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -734,11 +732,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return ex;
     }
 
-    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean allowNegativeChildBci, boolean localVar, boolean localVarMat) {
+    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean localVar, boolean localVarMat) {
 
-        InstructionValidationGroup(BytecodeDSLModel model, InstructionModel instruction) {
+        InstructionValidationGroup(InstructionModel instruction) {
             this(instruction.getImmediates(), instruction.getInstructionLength(),
-                            acceptsInvalidChildBci(model, instruction),
                             instruction.kind.isLocalVariableAccess(),
                             instruction.kind.isLocalVariableMaterializedAccess());
         }
@@ -773,7 +770,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startSwitch().tree(BytecodeRootNodeElement.readInstruction("bc", "bci")).end().startBlock();
 
         Map<InstructionValidationGroup, List<InstructionModel>> groups = parent.model.getInstructions().stream().collect(
-                        BytecodeRootNodeElement.deterministicGroupingBy((i) -> new AbstractBytecodeNodeElement.InstructionValidationGroup(parent.model, i)));
+                        BytecodeRootNodeElement.deterministicGroupingBy(InstructionValidationGroup::new));
 
         for (var entry : groups.entrySet()) {
             InstructionValidationGroup group = entry.getKey();
@@ -797,13 +794,17 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                     case BYTECODE_INDEX:
                         b.tree(declareImmediate);
                         b.startIf();
-                        if (group.allowNegativeChildBci()) {
-                            // supports -1 immediates
-                            b.string(localName, " < -1");
-                        } else {
-                            b.string(localName, " < 0");
-                        }
+                        b.string(localName, " < 0");
                         b.string(" || ").string(localName).string(" >= bc.length").end().startBlock();
+                        b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
+                        b.end();
+                        break;
+                    case RELATIVE_BYTECODE_INDEX:
+                        String rawName = localName + "Raw";
+                        b.declaration(type(byte.class), rawName, BytecodeRootNodeElement.readImmediateWithOffset("bc", "bci", immediate, immediate.offset()));
+                        b.declaration(type(int.class), localName, BytecodeRootNodeElement.decodeRelativeBytecodeIndex("bci", rawName));
+                        b.startIf();
+                        b.string(localName, " < -1 || ", localName, " >= bc.length").end().startBlock();
                         b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
                         b.end();
                         break;
@@ -1033,27 +1034,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Returns true if the instruction can take -1 as a child bci.
-     */
-    private static boolean acceptsInvalidChildBci(BytecodeDSLModel model, InstructionModel instr) {
-        if (!model.usesBoxingElimination()) {
-            // Child bci immediates are only used for boxing elimination.
-            return false;
-        }
-
-        if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
-            return true;
-        }
-        return isSameOrGenericQuickening(instr, model.popInstruction) //
-                        || isSameOrGenericQuickening(instr, model.storeLocalInstruction) //
-                        || (model.usesBoxingElimination() && isSameOrGenericQuickening(instr, model.conditionalOperation.instruction));
-    }
-
-    private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
-        return instr == expected || instr.getQuickeningRoot() == expected && instr.quickeningKind == QuickeningKind.GENERIC;
     }
 
     // calls dump, but catches any exceptions and falls back on an error string
