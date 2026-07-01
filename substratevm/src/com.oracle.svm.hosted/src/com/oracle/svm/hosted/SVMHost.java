@@ -326,14 +326,15 @@ public class SVMHost extends HostVM {
     }
 
     /**
-     * Returns true if the type is part of the {@code svm.core} module. Note that builderModules
-     * also encloses the {@code svm.hosted} classes, but since those classes are not allowed at run
-     * time then they cannot be an {@link AnalysisType}.
+     * Returns true if the type is part of a module in
+     * {@link ImageClassLoader#getCoreGuestModules()} and is not annotated with
+     * {@link FactoryMethodMarker}. During the Terminus migration, non-isolated builds also treat
+     * host-side SVM modules that still own runtime code as core modules.
      */
     @Override
     public boolean isCoreType(ResolvedJavaType type) {
         ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
-        if (!loader.getCoreModules().contains(GuestAccess.get().getModule(originalType))) {
+        if (!loader.getCoreGuestModules().contains(GuestAccess.get().getModule(originalType))) {
             return false;
         }
         return !AnnotationUtil.isAnnotationPresent(originalType, FactoryMethodMarker.class);

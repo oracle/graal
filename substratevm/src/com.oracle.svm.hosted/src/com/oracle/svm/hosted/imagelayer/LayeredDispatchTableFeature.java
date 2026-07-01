@@ -213,7 +213,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     public void beforeCompilation(Feature.BeforeCompilationAccess a) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
         hUniverse = access.getUniverse();
-        installBuilderModules(access.getImageClassLoader().getCoreModules());
+        installCoreGuestModules(access.getImageClassLoader().getCoreGuestModules());
     }
 
     private PriorDispatchMethod createPriorDispatchMethodInfo(int index) {
@@ -287,9 +287,9 @@ public class LayeredDispatchTableFeature implements InternalFeature {
         return ImageSingletons.lookup(LayeredDispatchTableFeature.class);
     }
 
-    void installBuilderModules(Set<ResolvedJavaModule> newCoreTypes) {
+    void installCoreGuestModules(Set<ResolvedJavaModule> newCoreModules) {
         assert coreModules == null : coreModules;
-        coreModules = newCoreTypes;
+        coreModules = newCoreModules;
     }
 
     /**

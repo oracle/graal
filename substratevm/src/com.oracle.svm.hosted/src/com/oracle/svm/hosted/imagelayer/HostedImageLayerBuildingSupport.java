@@ -88,7 +88,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -97,7 +96,6 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsContainer;
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -284,12 +282,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
                 });
             }
-            GuestAccess guestAccess = GuestAccess.get();
-            ResolvedJavaType singletonType = guestAccess.lookupType(value.getClass());
-            ResolvedJavaModule singletonModule = guestAccess.getModule(singletonType);
+            Module singletonModule = value.getClass().getModule();
             if (traitMap.isEmpty() && imageClassLoader.getBuilderModules().contains(singletonModule)) {
                 throw VMError.shouldNotReachHere("All singletons should be annotated with @%s. Singleton of value %s with key of %s is not annotated",
-                                guestAccess.lookupType(SingletonTraits.class).toJavaName(), value.getClass(), key);
+                                SingletonTraits.class.getTypeName(), value.getClass(), key);
             }
         };
     }
