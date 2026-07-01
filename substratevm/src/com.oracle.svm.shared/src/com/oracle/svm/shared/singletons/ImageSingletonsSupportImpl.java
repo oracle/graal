@@ -80,9 +80,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
              * Micronaut's StaticServiceDefinitions singleton bypasses runtime resource walking and returns the full
              * build-time service set for each discovered resource root. That does not match HotSpot when resources are
              * split across multiple jars and can duplicate bean definitions.
+             *
+             * Older layered-image configurations may mark this singleton as application-layer-only. Record it as
+             * forbidden with no traits so that such configuration does not create a cross-layer singleton slot.
              */
             LogUtils.warning("Ignoring ImageSingletons.add(%s, ...) for compatibility with Micronaut service discovery. See GR-76887. " +
                             "Micronaut should register StaticServiceDefinitions only with Native Image versions that lack root-preserving resource URLs.", key.getName());
+            HostedManagement.getAndAssertExists().doIgnore(key);
             return;
         }
         HostedManagement.getAndAssertExists().doAdd(key, value);
@@ -410,6 +414,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             addSingleton(key, value);
         }
 
+        void doIgnore(Class<?> key) {
+            SingletonInfo previous = configObjects.put(key, FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS);
+            Invariants.guarantee(previous == null || previous.singleton == SINGLETON_INSTALLATION_FORBIDDEN,
+                            "Cannot ignore already installed ImageSingletons key %s", key.getTypeName());
+        }
+
         public record SingletonRegistration(Class<?> key, Object value) {
         }
 
@@ -581,7 +591,11 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 if (singletonTraitInjector != null) {
                     var traits = singletonTraitInjector.apply(key);
                     if (traits.length != 0) {
-                        SingletonTraitMap traitMap = SingletonTraitMap.create(traits);
+                        /*
+                         * Uninstalled singletons bypass addSingleton(), which normally seals the
+                         * trait map before constructing SingletonInfo.
+                         */
+                        SingletonTraitMap traitMap = SingletonTraitMap.create(traits).seal();
                         return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
                     }
                 }
