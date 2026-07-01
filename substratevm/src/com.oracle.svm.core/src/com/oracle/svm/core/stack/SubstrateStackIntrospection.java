@@ -187,26 +187,6 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
     }
 }
 
-final class FrameInfoValueInfoSupport {
-    private FrameInfoValueInfoSupport() {
-    }
-
-    static boolean hasVirtualObjects(ValueInfo[] valueInfos) {
-        if (valueInfos != null) {
-            /*
-             * Frame value info is ordered as locals, expression stack, then locks. Virtual objects
-             * outside the local prefix still make the frame report virtual objects.
-             */
-            for (ValueInfo valueInfo : valueInfos) {
-                if (valueInfo.getType() == ValueType.VirtualObject) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-}
-
 class SubstrateInspectedFrame implements InspectedFrame {
     private final Pointer sp;
     private final CodePointer ip;
@@ -263,22 +243,22 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     @Override
     public int getLocalInt(int index) {
-        return (int) requirePrimitive32Local(index).getRawValue();
+        return requirePrimitive32Local(index);
     }
 
     @Override
     public long getLocalLong(int index) {
-        return requirePrimitive64Local(index).getRawValue();
+        return requirePrimitive64Local(index);
     }
 
     @Override
     public float getLocalFloat(int index) {
-        return Float.intBitsToFloat((int) requirePrimitive32Local(index).getRawValue());
+        return Float.intBitsToFloat(requirePrimitive32Local(index));
     }
 
     @Override
     public double getLocalDouble(int index) {
-        return Double.longBitsToDouble(requirePrimitive64Local(index).getRawValue());
+        return Double.longBitsToDouble(requirePrimitive64Local(index));
     }
 
     private JavaConstant getLocalConstant(int index) {
@@ -295,22 +275,22 @@ class SubstrateInspectedFrame implements InspectedFrame {
      * metadata, but the shared contract only relies on whether 32-bit or 64-bit primitive storage
      * is available.
      */
-    private PrimitiveConstant requirePrimitive32Local(int index) {
+    private int requirePrimitive32Local(int index) {
         JavaConstant result = getLocalConstant(index);
         JavaKind kind = result.getJavaKind();
         if (!(result instanceof PrimitiveConstant primitiveConstant) || kind == JavaKind.Illegal || kind == JavaKind.Long || kind == JavaKind.Double) {
             throw new UnsupportedOperationException("Local " + index + " is " + kind + ", not 32-bit primitive storage");
         }
-        return primitiveConstant;
+        return (int) primitiveConstant.getRawValue();
     }
 
-    private PrimitiveConstant requirePrimitive64Local(int index) {
+    private long requirePrimitive64Local(int index) {
         JavaConstant result = getLocalConstant(index);
         JavaKind kind = result.getJavaKind();
         if (!(result instanceof PrimitiveConstant primitiveConstant) || (kind != JavaKind.Long && kind != JavaKind.Double)) {
             throw new UnsupportedOperationException("Local " + index + " is " + kind + ", not 64-bit primitive storage");
         }
-        return primitiveConstant;
+        return primitiveConstant.getRawValue();
     }
 
     @Override
@@ -327,7 +307,22 @@ class SubstrateInspectedFrame implements InspectedFrame {
     @Override
     public boolean hasVirtualObjects() {
         checkDeoptimized();
-        return virtualFrame == null && FrameInfoValueInfoSupport.hasVirtualObjects(frameInfo.getValueInfos());
+        return virtualFrame == null && hasVirtualObjects(frameInfo.getValueInfos());
+    }
+
+    private static boolean hasVirtualObjects(ValueInfo[] valueInfos) {
+        if (valueInfos != null) {
+            /*
+             * Frame value info is ordered as locals, expression stack, then locks. Virtual objects
+             * outside the local prefix still make the frame report virtual objects.
+             */
+            for (ValueInfo valueInfo : valueInfos) {
+                if (valueInfo.getType() == ValueType.VirtualObject) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static FrameInfoQueryResult lookupFrameInfo(FrameInfoQueryResult topFrameInfo, int frameIndex) {
