@@ -138,7 +138,7 @@ public class CFGVerifier {
                     CFGLoop<?> blockLoop = block.getLoop();
                     while (blockLoop != null) {
                         blockLoop = blockLoop.getParent();
-                        assert blockLoop != loop : "Parent loop must be different than loop that is exitted " + Assertions.errorMessageContext("blockLoop", blockLoop, "loop", loop);
+                        assert blockLoop != loop : "Parent loop must be different than loop that is exited " + Assertions.errorMessageContext("blockLoop", blockLoop, "loop", loop);
                     }
                 }
             }
