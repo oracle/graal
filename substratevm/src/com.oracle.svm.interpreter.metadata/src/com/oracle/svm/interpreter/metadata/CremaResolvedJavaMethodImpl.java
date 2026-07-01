@@ -67,7 +67,7 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
         this.attributes = parserMethod.getAttributes();
         if (Modifier.isNative(getFlags())) {
             this.jniPreparedSignature = InterpreterSupport.singleton().prepareJNISignature(getSignature(), !Modifier.isStatic(getFlags()), declaringClass);
-            this.jniNativeLinkage = new JNINativeLinkage(getDeclaringClass().getJavaClass(), getDeclaringClass().getName(), getName(), getSignature().toMethodDescriptor());
+            this.jniNativeLinkage = new JNINativeLinkage(getDeclaringClass().getHub(), getName(), getSignature().toMethodDescriptor());
         }
     }
 

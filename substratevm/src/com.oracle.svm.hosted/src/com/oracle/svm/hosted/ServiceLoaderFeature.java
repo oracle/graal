@@ -42,12 +42,12 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -169,31 +169,29 @@ public class ServiceLoaderFeature implements InternalFeature {
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             Collection<String> providersToSkip = providers;
             try {
-                /*
-                 * The following will throw an `UnsupportedPlatformException` if the service is not
-                 * supported.
-                 */
-                ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
-                boolean skipService = false;
-                /*
-                 * If the service should not end up in the image, we remove all the providers with
-                 * it.
-                 */
-                if (servicesToSkip.contains(serviceName)) {
-                    skipService = true;
-                } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
-                    skipService = true;
-                } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
-                    skipService = true;
-                } else {
-                    providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
-                    if (!providersToSkip.isEmpty()) {
+                if (!servicesToSkip.contains(serviceName)) {
+                    /*
+                     * The following will throw an `UnsupportedPlatformException` if the service is not
+                     * supported.
+                     * If the service should not end up in the image, we remove all the providers with
+                     * it.
+                     */
+                    boolean skipService = false;
+                    ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
+                    if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
                         skipService = true;
+                    } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+                        skipService = true;
+                    } else {
+                        providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
+                        if (!providersToSkip.isEmpty()) {
+                            skipService = true;
+                        }
                     }
-                }
-                if (!skipService) {
-                    access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
-                    return;
+                    if (!skipService) {
+                        access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
+                        return;
+                    }
                 }
             } catch (UnsupportedPlatformException e) {
                 // Service class is not supported - skipping

@@ -28,7 +28,6 @@ import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrat
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
@@ -45,6 +44,7 @@ import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
@@ -63,7 +63,6 @@ import com.oracle.svm.shared.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -177,8 +176,8 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addLinkages(Map<JNINativeLinkage, JNINativeLinkage> linkages) {
-        nativeLinkages.putAll(EconomicMap.wrapMap(linkages));
+    public void addLinkage(JNINativeLinkage linkage) {
+        nativeLinkages.put(linkage, linkage);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -221,14 +220,13 @@ public final class JNIReflectionDictionary {
     /**
      * Gets the linkage for a native method.
      *
-     * @param declaringClass the {@linkplain JavaType#getName() name} of the class declaring the
-     *            native method
+     * @param declaringClass the class declaring the native method
      * @param name the name of the native method
      * @param descriptor the {@linkplain Signature#toMethodDescriptor() descriptor} of the native
      *            method
      * @return the linkage for the native method or {@code null} if no linkage exists
      */
-    public static JNINativeLinkage getLinkage(CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
+    public static JNINativeLinkage getLinkage(DynamicHub declaringClass, CharSequence name, CharSequence descriptor) {
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
         for (var dictionary : layeredSingletons()) {
             var linkage = dictionary.nativeLinkages.get(key);

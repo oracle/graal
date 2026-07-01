@@ -29,18 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -60,35 +57,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * transitioning to native code and back to Java, and if required, for boxing object arguments in
  * handles and for unboxing an object return value.
  */
-class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
+class JNINativeCallWrapperMethod extends AbstractJNINativeCallWrapperMethod {
     /** Line number that indicates a native method to {@link StackTraceElement}. */
     private static final int NATIVE_LINE_NUMBER = -2;
     private static final LineNumberTable LINE_NUMBER_TABLE = new LineNumberTable(new int[]{1}, new int[]{NATIVE_LINE_NUMBER});
 
-    private final JNINativeLinkage linkage;
-
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
         super(method);
-        assert !(method instanceof WrappedJavaMethod);
-        this.linkage = createLinkage(method);
-    }
-
-    boolean isBuiltInFunction() {
-        return linkage.isBuiltInFunction();
-    }
-
-    String getShortName() {
-        return linkage.getShortName();
-    }
-
-    String getLongName() {
-        return linkage.getLongName();
-    }
-
-    private static JNINativeLinkage createLinkage(ResolvedJavaMethod method) {
-        String className = method.getDeclaringClass().getName();
-        String descriptor = method.getSignature().toMethodDescriptor();
-        return JNIAccessFeature.singleton().makeLinkage(className, method.getName(), descriptor);
     }
 
     @Override
