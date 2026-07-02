@@ -65,6 +65,7 @@ import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.OpMaskOrTestNode;
 import jdk.graal.compiler.nodes.calc.OpMaskTestNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.calc.SaturatingAddNode;
 import jdk.graal.compiler.nodes.calc.ShiftNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnaryArithmeticNode;
@@ -75,6 +76,7 @@ import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
 import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64.MaySimulateBT;
 import jdk.graal.compiler.vector.lir.amd64.AMD64AVX512ArithmeticLIRGenerator;
+import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdPairwiseMultiplyAddNode;
 import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdSliceNode;
 import jdk.graal.compiler.vector.nodes.amd64.AVX512MaskedOpNode;
 import jdk.graal.compiler.vector.nodes.amd64.GeneralSimdPermuteNode;
@@ -127,6 +129,12 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
     @Override
     public void run(StructuredGraph graph, LowTierContext context) {
         VectorAMD64 vectorArch = (VectorAMD64) ((VectorLoweringProvider) context.getLowerer()).getVectorArchitecture();
+        /*
+         * Match pairwise multiply-add before lowering cuts and permutes. The recognizer relies on
+         * constant permutations and optional cuts feeding extensions and multiply-add. The later
+         * cut and permute rewrites can make that pattern harder to recognize.
+         */
+        lowerPairwiseMultiplyAdd(graph, vectorArch);
         for (Node node : graph.getNodes()) {
             if (node instanceof SimdCutNode) {
                 lowerSimdCut((SimdCutNode) node, context, vectorArch);
@@ -159,6 +167,32 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
         graphState.removeRequirementToStage(StageFlag.TARGET_VECTOR_LOWERING);
+    }
+
+    private static void lowerPairwiseMultiplyAdd(StructuredGraph graph, VectorAMD64 vectorArch) {
+        for (Node node : graph.getNodes()) {
+            if (!(node instanceof BinaryArithmeticNode<?> binary) || !(binary.stamp(NodeView.DEFAULT) instanceof SimdStamp stamp)) {
+                continue;
+            }
+            AMD64SimdPairwiseMultiplyAddNode.OpKind opKind = pairwiseMultiplyAddKind(binary, stamp, vectorArch);
+            if (opKind != null) {
+                AMD64SimdPairwiseMultiplyAddNode pairwise = AMD64SimdPairwiseMultiplyAddNode.tryMatch(binary.getX(), binary.getY(), opKind);
+                if (pairwise != null) {
+                    binary.replaceAtUsagesAndDelete(graph.addOrUniqueWithInputs(pairwise));
+                }
+            }
+        }
+    }
+
+    private static AMD64SimdPairwiseMultiplyAddNode.OpKind pairwiseMultiplyAddKind(BinaryArithmeticNode<?> node, SimdStamp stamp, VectorAMD64 vectorArch) {
+        Stamp elementStamp = stamp.getComponent(0);
+        int vectorLength = stamp.getVectorLength();
+        if (node instanceof AddNode && vectorArch.supportsPairwiseMultiplyAdd(IntegerStamp.create(Short.SIZE), elementStamp, vectorLength, IntegerStamp.OPS.getAdd())) {
+            return AMD64SimdPairwiseMultiplyAddNode.OpKind.SIGNED_SHORTS_TO_INTS;
+        } else if (node instanceof SaturatingAddNode && vectorArch.supportsPairwiseMultiplyAdd(IntegerStamp.create(Byte.SIZE), elementStamp, vectorLength, IntegerStamp.OPS.getSAdd())) {
+            return AMD64SimdPairwiseMultiplyAddNode.OpKind.UNSIGNED_SIGNED_BYTES_TO_SHORTS_SATURATING;
+        }
+        return null;
     }
 
     /**
@@ -808,6 +842,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
             case BinaryArithmeticNode<?> b -> AVX512MaskedOpNode.createBinaryArithmetic(b, other, selector, b.getX(), b.getY());
             case ShiftNode<?> s -> AVX512MaskedOpNode.createShift(s, other, selector, s.getX(), s.getY());
             case FusedMultiplyAddNode f -> AVX512MaskedOpNode.createFusedMultiplyAdd(f, other, selector, f.getX(), f.getY(), f.getZ());
+            case AMD64SimdPairwiseMultiplyAddNode p -> AVX512MaskedOpNode.createPairwiseMultiplyAdd(p, other, selector);
             default -> throw GraalError.shouldNotReachHereUnexpectedValue(op);
         };
         newNode = blend.graph().unique(newNode);
@@ -818,7 +853,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
      * Checks whether the blend can be folded into a masked AVX-512 operation.
      */
     private static boolean canLowerSimdBlendOp(VectorAMD64 vectorArch, ValueNode op, ValueNode other, AMD64Kind eKind) {
-        if (!op.hasExactlyOneUsage() || AMD64AVX512ArithmeticLIRGenerator.getMaskedOpcode(vectorArch.arch, new MaskedOpMetaData(op), eKind, null) == null) {
+        if (!op.hasExactlyOneUsage() || AMD64AVX512ArithmeticLIRGenerator.getMaskedOpcode(vectorArch.arch, maskedOpMetaData(op), eKind, null) == null) {
             return false;
         }
         if (op instanceof ShiftNode<?> shift && !(shift.getY().stamp(NodeView.DEFAULT) instanceof SimdStamp)) {
@@ -828,6 +863,13 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
             return false;
         }
         return true;
+    }
+
+    private static MaskedOpMetaData maskedOpMetaData(ValueNode op) {
+        if (op instanceof AMD64SimdPairwiseMultiplyAddNode pairwise) {
+            return new MaskedOpMetaData(pairwise);
+        }
+        return new MaskedOpMetaData(op);
     }
 
     private static boolean requiresMergeMasking(ValueNode op, AMD64Kind eKind) {

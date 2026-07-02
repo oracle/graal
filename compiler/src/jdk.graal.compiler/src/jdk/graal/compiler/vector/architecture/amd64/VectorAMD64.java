@@ -249,6 +249,34 @@ public final class VectorAMD64 extends VectorArchitecture {
     }
 
     @Override
+    public boolean supportsPairwiseMultiplyAdd(Stamp inputElementStamp, Stamp resultElementStamp, int resultLength, ArithmeticOpTable.Op resultOp) {
+        if (!(inputElementStamp instanceof IntegerStamp) || !(resultElementStamp instanceof IntegerStamp)) {
+            return false;
+        }
+        int inputBits = PrimitiveStamp.getBits(inputElementStamp);
+        int resultBits = PrimitiveStamp.getBits(resultElementStamp);
+        boolean supportedOp = (IntegerStamp.OPS.getAdd().equals(resultOp) && inputBits == Short.SIZE && resultBits == Integer.SIZE) ||
+                        (IntegerStamp.OPS.getSAdd().equals(resultOp) && inputBits == Byte.SIZE && resultBits == Short.SIZE);
+        if (!supportedOp) {
+            return false;
+        }
+
+        int inputLength = 2 * resultLength;
+        int vectorBytes = resultLength * getVectorStride(resultElementStamp);
+        /*
+         * The pairwise multiply-add operations match VPMADDWD and VPMADDUBSW.
+         * The XMM forms are available with AVX. The wider YMM and ZMM forms need AVX2 and
+         * AVX512BW, respectively.
+         */
+        if ((vectorBytes > AVXSize.XMM.getBytes() && !arch.getFeatures().contains(CPUFeature.AVX2)) ||
+                        (vectorBytes > AVXSize.YMM.getBytes() && !arch.getFeatures().contains(CPUFeature.AVX512BW))) {
+            return false;
+        }
+        return getSupportedVectorMoveLength(inputElementStamp, inputLength) == inputLength &&
+                        getSupportedVectorMoveLength(resultElementStamp, resultLength) == resultLength;
+    }
+
+    @Override
     public int getSupportedVectorShiftWithScalarCount(Stamp stamp, int maxLength, ArithmeticOpTable.Op op) {
         if (!hasMinimumVectorizationRequirements(maxLength)) {
             return 1;
