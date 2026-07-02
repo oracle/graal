@@ -714,6 +714,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                 }
 
                 return externalizableConstructor.getDeclaringClass();
+            } catch (LinkageError e) {
+                /* An incomplete optional class cannot be registered for deserialization. */
+                return null;
             } catch (Exception e) {
                 throw VMError.shouldNotReachHere(e);
             }
