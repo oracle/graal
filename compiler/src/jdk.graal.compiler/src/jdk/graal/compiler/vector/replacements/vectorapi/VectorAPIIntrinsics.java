@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIConvertNo
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIExtractNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIFromBitsCoercedNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIIndexPartiallyInUpperRangeNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIIndexVectorNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIInsertNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadMaskedNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadNode;
@@ -123,6 +124,7 @@ public class VectorAPIIntrinsics {
         /* Types of operations on vectors. */
         OptionalLazySymbol fromBitsCoercedOperation = new OptionalLazySymbol(vectorSupportName + "$FromBitsCoercedOperation");
         OptionalLazySymbol indexPartiallyInUpperRangeOp = new OptionalLazySymbol(vectorSupportName + "$IndexPartiallyInUpperRangeOperation");
+        OptionalLazySymbol indexOperation = new OptionalLazySymbol(vectorSupportName + "$IndexOperation");
         OptionalLazySymbol reductionOperation = new OptionalLazySymbol(vectorSupportName + "$ReductionOperation");
         OptionalLazySymbol extractOp = new OptionalLazySymbol(vectorSupportName + "$VecExtractOp");
         OptionalLazySymbol insertOp = new OptionalLazySymbol(vectorSupportName + "$VecInsertOp");
@@ -161,6 +163,18 @@ public class VectorAPIIntrinsics {
                 StampPair returnStamp = makeReturnStamp(b, speciesStamp);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, mClass, eClass, length, offset, limit, defaultImpl);
                 b.addPush(JavaKind.Object, VectorAPIIndexPartiallyInUpperRangeNode.create(params, b));
+                return true;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("indexVector", Class.class, Class.class, int.class, vector, int.class, vectorSpecies, indexOperation) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode vClass, ValueNode eClass, ValueNode length, ValueNode v, ValueNode scale,
+                            ValueNode s, ValueNode defaultImpl) {
+                ObjectStamp speciesStamp = VectorAPIUtils.nonNullStampForClassValue(b, vClass);
+                StampPair returnStamp = makeReturnStamp(b, speciesStamp);
+                MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vClass, eClass, length, b.nullCheckedValue(v), scale, s, defaultImpl);
+                b.addPush(JavaKind.Object, VectorAPIIndexVectorNode.create(params, b));
                 return true;
             }
         });

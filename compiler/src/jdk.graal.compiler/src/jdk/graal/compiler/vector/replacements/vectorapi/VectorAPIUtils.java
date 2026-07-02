@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package jdk.graal.compiler.vector.replacements.vectorapi;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -241,13 +242,27 @@ public class VectorAPIUtils {
     }
 
     /**
-     * Create a iota vector (a vector with elements being 0, 1, 2, etc) with the given element width
-     * and vector length.
+     * Create an integer iota vector (a vector with elements being 0, 1, 2, etc) with the given
+     * element width and vector length. See {@link #iotaVector(Stamp, int)} for other element
+     * stamps.
      */
     public static ConstantNode iotaVector(int elementBits, int vectorLength) {
+        return iotaVector(IntegerStamp.create(elementBits), vectorLength);
+    }
+
+    /**
+     * Create an iota vector with the given element stamp and vector length.
+     */
+    public static ConstantNode iotaVector(Stamp elementStamp, int vectorLength) {
         JavaConstant[] iotaValues = new JavaConstant[vectorLength];
         for (int i = 0; i < iotaValues.length; i++) {
-            iotaValues[i] = JavaConstant.forPrimitiveInt(elementBits, i);
+            if (elementStamp instanceof IntegerStamp integerStamp) {
+                iotaValues[i] = JavaConstant.forPrimitiveInt(integerStamp.getBits(), i);
+            } else if (elementStamp instanceof FloatStamp floatStamp) {
+                iotaValues[i] = floatStamp.getBits() == Float.SIZE ? JavaConstant.forFloat(i) : JavaConstant.forDouble(i);
+            } else {
+                throw GraalError.shouldNotReachHereUnexpectedValue(elementStamp); // ExcludeFromJacocoGeneratedReport
+            }
         }
         return SimdConstant.constantNodeForConstants(iotaValues);
     }
