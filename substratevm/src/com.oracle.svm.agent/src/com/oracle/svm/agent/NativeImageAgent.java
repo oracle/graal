@@ -32,6 +32,8 @@ import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.USAGE_ERROR;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -627,7 +629,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
             compulsoryDelete(tempDirectory);
         } catch (IOException e) {
-            warnUpToLimit(currentFailuresWritingConfigs++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES, "Error when writing configuration files: " + e);
+            warnUpToLimit(currentFailuresWritingConfigs++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES,
+                            "Error when writing configuration files:" + System.lineSeparator() + stackTraceToString(e));
         } catch (ConcurrentModificationException e) {
             warnUpToLimit(currentFailuresModifiedTargetDirectory++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES,
                             "file or directory '" + e.getMessage() + "' has been modified by another process. " +
@@ -685,6 +688,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             warn(message);
             warn("The above warning will no longer be reported.");
         }
+    }
+
+    private static String stackTraceToString(Throwable throwable) {
+        StringWriter stringWriter = new StringWriter();
+        throwable.printStackTrace(new PrintWriter(stringWriter));
+        return stringWriter.toString();
     }
 
     private static final int MAX_FAILURES_ATOMIC_MOVE = 20;
