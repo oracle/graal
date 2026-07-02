@@ -42,8 +42,8 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * This class implements an instance object snapshot. It stores the field values in an Object[],
  * indexed by {@link AnalysisField#getPosition()}. Each array entry is either
- * <li>a not-yet-executed {@link AnalysisFuture} of {@link JavaConstant} which captures the
- * original, hosted field value and contains logic to transform and replace this value</li>, or
+ * <li>a not-yet-executed field task which captures the original, hosted field value and contains
+ * logic to transform and replace this value</li>, or
  * <li>the result of executing the future, a replaced {@link JavaConstant}, i.e., the snapshot.</li>
  * <p>
  * The future task is executed when the field is marked as read. Moreover, the future is
@@ -55,6 +55,27 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
     public static final VarHandle valuesHandle = ReflectionUtil.unreflectField(InstanceData.class, "fieldValues", MethodHandles.lookup());
 
+    /**
+     * A field task whose execution must be deferred until the captured hosted value is available.
+     */
+    static final class FieldValueTask {
+        private final ValueSupplier<JavaConstant> rawValue;
+        private final AnalysisFuture<JavaConstant> task;
+
+        FieldValueTask(ValueSupplier<JavaConstant> rawValue, AnalysisFuture<JavaConstant> task) {
+            this.rawValue = Objects.requireNonNull(rawValue);
+            this.task = Objects.requireNonNull(task);
+        }
+
+        boolean isAvailable() {
+            return rawValue.isAvailable();
+        }
+
+        JavaConstant ensureDone() {
+            return task.ensureDone();
+        }
+    }
+
     private static final class InstanceData extends ConstantData {
 
         /**
@@ -63,8 +84,8 @@ public final class ImageHeapInstance extends ImageHeapConstant {
          * actually used and the hosted values of its fields may be read. For simulated constants it
          * is set on creation.
          * <p>
-         * Each value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
-         * {@link JavaConstant}. Evaluating the {@link AnalysisFuture} runs
+         * Each value is either a {@link FieldValueTask}, an always-available {@link AnalysisFuture}
+         * of {@link JavaConstant}, or its result, a {@link JavaConstant}. Evaluating the task runs
          * {@link ImageHeapScanner#createFieldValue(AnalysisField, ImageHeapInstance, ValueSupplier, ObjectScanner.ScanReason)}
          * which adds the result to the image heap.
          */
@@ -163,14 +184,26 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         return 0;
     }
 
+    /** Returns whether the captured hosted value can be materialized. */
+    boolean isFieldValueAvailable(AnalysisField field) {
+        Object value = getFieldValue(field);
+        return value != null && (!(value instanceof FieldValueTask task) || task.isAvailable());
+    }
+
     /**
      * Returns the field value, i.e., a {@link JavaConstant}. If the value is not yet materialized
      * then the future is executed on the current thread.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     public JavaConstant readFieldValue(AnalysisField field) {
         Object value = getFieldValue(field);
-        return value instanceof JavaConstant ? (JavaConstant) value : ((AnalysisFuture<ImageHeapConstant>) value).ensureDone();
+        if (value instanceof JavaConstant javaConstant) {
+            return javaConstant;
+        } else if (value instanceof FieldValueTask task) {
+            return task.ensureDone();
+        } else {
+            return ((AnalysisFuture<JavaConstant>) value).ensureDone();
+        }
     }
 
     @Override
