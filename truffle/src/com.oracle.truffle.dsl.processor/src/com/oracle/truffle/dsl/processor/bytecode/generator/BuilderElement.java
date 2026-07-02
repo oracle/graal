@@ -7074,52 +7074,52 @@ final class BuilderElement extends AbstractElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             buildOperationStackWalk(b, "rootOperationSp", () -> {
+                Map<EqualityCodeTree, List<OperationModel>> caseGrouping = EqualityCodeTree.group(b, model.getOperations(), (OperationModel operation, CodeTreeBuilder group) -> {
+                    emitRemapOperationBcis(group, operation);
+                    group.statement("break");
+                });
+
                 b.startSwitch().string("operation.operation").end().startBlock();
-
-                Collection<OperationModel> tryOperations = List.of(model.tryFinallyOperation, model.tryCatchOtherwiseOperation, model.tryCatchOperation);
-                for (OperationModel tryOperation : tryOperations) {
-                    b.startCase().tree(parent.createOperationConstant(tryOperation)).end();
-                }
-                b.startCaseBlock();
-                b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
-                b.declaration(type(int.class), "tryStartBci", operationStack.read(tryOperations, operationFields.tryStartBci));
-                b.startIf().string("startBci < tryStartBci").end().startBlock();
-                b.tree(operationStack.write(tryOperations, operationFields.tryStartBci, "remapBci.applyAsInt(startBci, tryStartBci)"));
-                b.end();
-                b.end();
-                b.statement("break");
-                b.end();
-
-                Collection<OperationModel> sourceSectionOperations = List.of(model.sourceSectionPrefixOperation, model.sourceSectionSuffixOperation);
-                for (OperationModel sourceSectionOperation : sourceSectionOperations) {
-                    b.startCase().tree(parent.createOperationConstant(sourceSectionOperation)).end();
-                }
-                b.startCaseBlock();
-                b.declaration(type(int.class), "sourceStartBci", operationStack.read(sourceSectionOperations, operationFields.startBci));
-                b.startIf().string("startBci < sourceStartBci").end().startBlock();
-                b.tree(operationStack.write(sourceSectionOperations, operationFields.startBci, "remapBci.applyAsInt(startBci, sourceStartBci)"));
-                b.end();
-                b.statement("break");
-                b.end();
-
-                Collection<OperationModel> variadicOperations = model.getCustomVariadicOperations();
-                if (!variadicOperations.isEmpty()) {
-                    for (OperationModel variadicOperation : variadicOperations) {
-                        b.startCase().tree(parent.createOperationConstant(variadicOperation)).end();
+                for (var entry : caseGrouping.entrySet()) {
+                    for (OperationModel operation : entry.getValue()) {
+                        b.startCase().tree(parent.createOperationConstant(operation)).end();
                     }
-                    b.startCaseBlock();
-                    b.declaration(type(int.class), "createVariadicBci", operationStack.read(variadicOperations, operationFields.createVariadicBci));
-                    b.startIf().string("createVariadicBci != ", UNINIT, " && startBci < createVariadicBci").end().startBlock();
-                    b.tree(operationStack.write(variadicOperations, operationFields.createVariadicBci, "remapBci.applyAsInt(startBci, createVariadicBci)"));
-                    b.end();
-                    b.statement("break");
+                    b.startBlock();
+                    b.tree(entry.getKey().getTree());
                     b.end();
                 }
-
                 b.end(); // switch
             }, "this");
 
             return ex;
+        }
+
+        private void emitRemapOperationBcis(CodeTreeBuilder b, OperationModel operation) {
+            if (operation == model.tryFinallyOperation || operation == model.tryCatchOtherwiseOperation || operation == model.tryCatchOperation) {
+                b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
+                b.declaration(type(int.class), "tryStartBci", operationStack.read(operation, operationFields.tryStartBci));
+                b.startIf().string("startBci < tryStartBci").end().startBlock();
+                b.tree(operationStack.write(operation, operationFields.tryStartBci, "remapBci.applyAsInt(startBci, tryStartBci)"));
+                b.end();
+                b.end();
+            } else if (operation == model.sourceSectionPrefixOperation || operation == model.sourceSectionSuffixOperation) {
+                b.declaration(type(int.class), "sourceStartBci", operationStack.read(operation, operationFields.startBci));
+                b.startIf().string("startBci < sourceStartBci").end().startBlock();
+                b.tree(operationStack.write(operation, operationFields.startBci, "remapBci.applyAsInt(startBci, sourceStartBci)"));
+                b.end();
+            } else if (operation.isCustomVariadic()) {
+                b.declaration(type(int.class), "createVariadicBci", operationStack.read(operation, operationFields.createVariadicBci));
+                b.startIf().string("createVariadicBci != ", UNINIT, " && startBci < createVariadicBci").end().startBlock();
+                b.tree(operationStack.write(operation, operationFields.createVariadicBci, "remapBci.applyAsInt(startBci, createVariadicBci)"));
+                b.end();
+            }
+            for (OperationField childBciField : operationStack.variables.operationToField.get(operation).stream().filter((field) -> field.childBci).toList()) {
+                String childBciName = childBciField.name + "ToRemap";
+                b.declaration(type(int.class), childBciName, operationStack.read(operation, childBciField));
+                b.startIf().string(childBciName, " != ", UNINIT, " && ", childBciName, " != -1 && startBci < ", childBciName).end().startBlock();
+                b.tree(operationStack.write(operation, childBciField, "remapBci.applyAsInt(startBci, " + childBciName + ")"));
+                b.end();
+            }
         }
 
         private CodeExecutableElement createFixStableBciDeltasBeforeRewrite() {
@@ -7838,7 +7838,7 @@ final class BuilderElement extends AbstractElement {
 
         private final OperationField index = field(type(int.class), "index").asFinal();
         private final OperationField producedValue = field(type(boolean.class), "producedValue").withInitializer("false");
-        private final OperationField childBci = field(type(int.class), "childBci").withInitializer(UNINIT);
+        private final OperationField childBci = field(type(int.class), "childBci").withInitializer(UNINIT).asChildBci();
         private final OperationField shortCircuitBci = field(type(int.class), "shortCircuitBci").withInitializer(UNINIT);
         private final OperationField reachable = field(type(boolean.class), "reachable").withInitializer("true");
         private final OperationField prologBci = field(type(int.class), "prologBci").withInitializer(UNINIT);
@@ -8112,7 +8112,7 @@ final class BuilderElement extends AbstractElement {
             // ensure child bcis created
             if (create) {
                 for (int i = childBcis.size(); i < childIndex + 1; i++) {
-                    childBcis.add(field(type(int.class), getChildBciName(i)).withInitializer(UNINIT));
+                    childBcis.add(field(type(int.class), getChildBciName(i)).withInitializer(UNINIT).asChildBci());
                 }
             }
             return childBcis.get(childIndex);
@@ -8710,6 +8710,7 @@ final class BuilderElement extends AbstractElement {
 
         boolean skipInitialization;
         boolean dynamicType;
+        boolean childBci;
 
         OperationField lengthField;
         boolean isLengthField;
@@ -8731,6 +8732,11 @@ final class BuilderElement extends AbstractElement {
          */
         OperationField asFinal() {
             this.isFinal = true;
+            return this;
+        }
+
+        OperationField asChildBci() {
+            this.childBci = true;
             return this;
         }
 
