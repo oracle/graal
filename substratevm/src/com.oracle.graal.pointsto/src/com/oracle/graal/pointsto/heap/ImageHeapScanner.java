@@ -417,13 +417,12 @@ public abstract class ImageHeapScanner {
                         continue;
                     }
                 }
-                AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
+                hostedFieldValues[field.getPosition()] = new ImageHeapInstance.FieldValueTask(rawFieldValue, () -> {
                     ScanReason fieldReason = new FieldScan(field, instance, reason);
                     JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
                     instance.setFieldValue(field, value);
                     return value;
                 });
-                hostedFieldValues[field.getPosition()] = new ImageHeapInstance.FieldValueTask(rawFieldValue, task);
             }
             instance.setFieldValues(hostedFieldValues);
         });

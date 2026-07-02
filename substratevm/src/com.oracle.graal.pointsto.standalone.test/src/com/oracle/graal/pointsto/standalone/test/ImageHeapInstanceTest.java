@@ -30,6 +30,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
@@ -45,12 +46,13 @@ public class ImageHeapInstanceTest {
     public void fieldValueTaskTracksRawValueAvailability() throws ReflectiveOperationException {
         AtomicBoolean available = new AtomicBoolean();
         ValueSupplier<JavaConstant> rawValue = ValueSupplier.lazyValue(() -> JavaConstant.NULL_POINTER, available::get);
-        AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(rawValue::get);
+        Callable<JavaConstant> task = rawValue::get;
 
         Class<?> fieldValueTaskClass = Class.forName("com.oracle.graal.pointsto.heap.ImageHeapInstance$FieldValueTask");
-        Constructor<?> constructor = fieldValueTaskClass.getDeclaredConstructor(ValueSupplier.class, AnalysisFuture.class);
+        assertTrue(AnalysisFuture.class.isAssignableFrom(fieldValueTaskClass));
+        Constructor<?> constructor = fieldValueTaskClass.getDeclaredConstructor(ValueSupplier.class, Callable.class);
         Method isAvailable = fieldValueTaskClass.getDeclaredMethod("isAvailable");
-        Method ensureDone = fieldValueTaskClass.getDeclaredMethod("ensureDone");
+        Method ensureDone = fieldValueTaskClass.getMethod("ensureDone");
         constructor.setAccessible(true);
         isAvailable.setAccessible(true);
         ensureDone.setAccessible(true);

@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
@@ -58,21 +59,16 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     /**
      * A field task whose execution must be deferred until the captured hosted value is available.
      */
-    static final class FieldValueTask {
+    static final class FieldValueTask extends AnalysisFuture<JavaConstant> {
         private final ValueSupplier<JavaConstant> rawValue;
-        private final AnalysisFuture<JavaConstant> task;
 
-        FieldValueTask(ValueSupplier<JavaConstant> rawValue, AnalysisFuture<JavaConstant> task) {
+        FieldValueTask(ValueSupplier<JavaConstant> rawValue, Callable<JavaConstant> task) {
+            super(task);
             this.rawValue = Objects.requireNonNull(rawValue);
-            this.task = Objects.requireNonNull(task);
         }
 
         boolean isAvailable() {
             return rawValue.isAvailable();
-        }
-
-        JavaConstant ensureDone() {
-            return task.ensureDone();
         }
     }
 
@@ -199,8 +195,6 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         Object value = getFieldValue(field);
         if (value instanceof JavaConstant javaConstant) {
             return javaConstant;
-        } else if (value instanceof FieldValueTask task) {
-            return task.ensureDone();
         } else {
             return ((AnalysisFuture<JavaConstant>) value).ensureDone();
         }
