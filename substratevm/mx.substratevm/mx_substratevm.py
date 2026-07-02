@@ -652,14 +652,18 @@ def svm_gate_body(args, tasks):
 # Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
 TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.util.VMError.shouldNotReachHere(VMError.java:121)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.ImageClassLoader.lambda$initBuilderModules$0(ImageClassLoader.java:468)
-    at java.base/java.util.Optional.orElseThrow(Optional.java:403)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.ImageClassLoader.initBuilderModules(ImageClassLoader.java:468)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:576)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:604)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:787)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:186)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:134)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.lambda$createSingletonValidationCallback$0(HostedImageLayerBuildingSupport.java:287)
+    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.addSingleton(ImageSingletonsSupportImpl.java:399)
+    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.doAdd(ImageSingletonsSupportImpl.java:384)
+    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.add(ImageSingletonsSupportImpl.java:74)
+    at org.graalvm.nativeimage/org.graalvm.nativeimage.ImageSingletons.add(ImageSingletons.java:73)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.loadAndInstallLayeredSingletons(NativeImageGenerator.java:493)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.installSingletonRegistries(NativeImageGenerator.java:1336)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:582)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:613)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:801)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:185)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:133)
 """
 
 
