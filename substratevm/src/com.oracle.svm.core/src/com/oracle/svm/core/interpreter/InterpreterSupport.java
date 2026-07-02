@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -224,7 +224,13 @@ public abstract class InterpreterSupport {
 
     public abstract PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
 
-    public abstract PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
+    public abstract PreparedSignature prepareJNIDowncallSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
+
+    /**
+     * Prepares the native ABI signature for a JNI varargs call with {@code signature},
+     * {@code hasReceiver}, {@code accessingClass}, and {@code nonVirtual}.
+     */
+    public abstract PreparedSignature prepareJNIUpcallVarargsSignature(Signature signature, ResolvedJavaType accessingClass, boolean nonVirtual);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLeaveStubPointer(CFunctionPointer leaveStubPointer, int length) {

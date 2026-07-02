@@ -39,7 +39,9 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -152,6 +154,12 @@ public interface CremaSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive);
 
+    /** Gets the runtime-loaded executable encoded by {@code methodId}. */
+    Executable getCremaMethodExecutable(JNIMethodId methodId);
+
+    /** Gets a method declared by runtime-loaded {@code clazz} with {@code name}, {@code signature}. */
+    ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature);
+
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
     Class<?> computeDeclaringClass(DynamicHub hub);
@@ -195,8 +203,18 @@ public interface CremaSupport {
 
     CFunctionPointer getEnterDirectInterpreterStubEntryPoint();
 
+    /** Gets the JNI method-call wrapper entry point for {@code variant} and {@code nonVirtual}. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CFunctionPointer getCremaJNIMethodCallWrapperEntryPoint(CallVariant variant, boolean nonVirtual);
+
     @Platforms(Platform.HOSTED_ONLY.class)
     void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
+
+    /** Sets the JNI method-call wrapper entry points for all JNI call variants to perform a JNI upcall on a runtime-loaded method. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void setCremaJNIMethodCallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
+                    CFunctionPointer arrayNonVirtual,
+                    CFunctionPointer vaListNonVirtual);
 
     <T extends ConstantPool & jdk.vm.ci.meta.ConstantPool> T getConstantPool(DynamicHub hub);
 

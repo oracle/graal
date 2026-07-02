@@ -854,7 +854,7 @@ public final class InterpreterToVM {
         }
     }
 
-    private static InterpreterResolvedJavaMethod resolveCallSiteTarget(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind, boolean quiet) {
+    static InterpreterResolvedJavaMethod resolveCallSiteTarget(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind, boolean quiet) {
         boolean isVirtual = callKind.hasLookup();
         if (callKind.isStatic()) {
             InterpreterUtil.guarantee(seedMethod.isStatic(), "Statically calling a non-static method: %s", seedMethod);

@@ -98,6 +98,7 @@ import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -106,7 +107,12 @@ import com.oracle.svm.core.hub.registry.TypeIDs;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -131,6 +137,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.constraints.LoadingConstraintViolationException;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
@@ -182,6 +189,18 @@ public class CremaSupportImpl implements CremaSupport {
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private CFunctionPointer enterDirectInterpreterStubEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVarargsVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodArrayVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVaListVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVarargsNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodArrayNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVaListNonVirtualWrapperEntryPoint;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
@@ -1594,6 +1613,37 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
+    public Executable getCremaMethodExecutable(JNIMethodId methodId) {
+        if (JNIObjectHandles.getHandleType((JNIObjectHandle) methodId) != JNIObjectRefType.WeakGlobal) {
+            return null;
+        }
+        Object object = JNIObjectHandles.getObject((JNIObjectHandle) methodId);
+        if (object instanceof CremaResolvedJavaMethod method) {
+            return RuntimeReflectionMetadata.fromResolvedMethod(method);
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature) {
+        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
+
+        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
+        if (symbolicName == null) {
+            return null;
+        }
+        Symbol<Signature> symbolicDescriptor = SymbolsSupport.getSignatures().lookupValidSignature(signature);
+        if (symbolicDescriptor == null) {
+            return null;
+        }
+        try {
+            return ((InterpreterResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType()).lookupMethod(symbolicName, symbolicDescriptor);
+        } catch (LookupSuccessInvocationFailure e) {
+            return e.getResult();
+        }
+    }
+
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
         InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
@@ -2049,8 +2099,37 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
+    public CFunctionPointer getCremaJNIMethodCallWrapperEntryPoint(CallVariant variant, boolean nonVirtual) {
+        CFunctionPointer result;
+        if (variant == CallVariant.VARARGS) {
+            result = nonVirtual ? cremaJNIMethodVarargsNonVirtualWrapperEntryPoint : cremaJNIMethodVarargsVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.ARRAY) {
+            result = nonVirtual ? cremaJNIMethodArrayNonVirtualWrapperEntryPoint : cremaJNIMethodArrayVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.VA_LIST) {
+            result = nonVirtual ? cremaJNIMethodVaListNonVirtualWrapperEntryPoint : cremaJNIMethodVaListVirtualWrapperEntryPoint;
+        } else {
+            throw VMError.shouldNotReachHereUnexpectedInput(variant);
+        }
+        VMError.guarantee(result.isNonNull(), "entry point for runtime JNI method call wrapper was not setup at build-time");
+        return result;
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint) {
         enterDirectInterpreterStubEntryPoint = stubEntryPoint;
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setCremaJNIMethodCallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
+                    CFunctionPointer arrayNonVirtual, CFunctionPointer vaListNonVirtual) {
+        cremaJNIMethodVarargsVirtualWrapperEntryPoint = varargsVirtual;
+        cremaJNIMethodArrayVirtualWrapperEntryPoint = arrayVirtual;
+        cremaJNIMethodVaListVirtualWrapperEntryPoint = vaListVirtual;
+        cremaJNIMethodVarargsNonVirtualWrapperEntryPoint = varargsNonVirtual;
+        cremaJNIMethodArrayNonVirtualWrapperEntryPoint = arrayNonVirtual;
+        cremaJNIMethodVaListNonVirtualWrapperEntryPoint = vaListNonVirtual;
     }
 
     @Override

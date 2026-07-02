@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -59,6 +60,14 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     public RuntimeReflectionMetadata(CremaResolvedJavaType type) {
         this.type = type;
+    }
+
+    /** Creates a reflection executable for runtime-loaded {@code method}. */
+    public static Executable fromResolvedMethod(CremaResolvedJavaMethod method) {
+        Class<?> declaringClass = InterpreterSupport.singleton().toClass(method.getDeclaringClass());
+        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
+        RuntimeReflectionMetadata metadata = (RuntimeReflectionMetadata) declaringHub.getCompanion().reflectionMetadata;
+        return method.isConstructor() ? metadata.fromResolvedConstructor(declaringHub, method) : metadata.fromResolvedMethod(declaringHub, method);
     }
 
     @Override
@@ -149,17 +158,18 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
     }
 
     private Constructor<?> fromResolvedConstructor(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedConstructor) {
+        Class<?> receiverType = DynamicHub.toClass(declaringClass);
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedConstructor.toParameterTypes(), type);
         return ReflectionObjectFactory.newConstructor(
                         RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
-                        DynamicHub.toClass(declaringClass),
+                        receiverType,
                         parameterTypes,
                         toClassArrayOrThrow(resolvedConstructor.getDeclaredExceptions(), type),
                         resolvedConstructor.getModifiers(),
                         resolvedConstructor.getGenericSignature(),
                         resolvedConstructor.getRawAnnotations(),
                         resolvedConstructor.getRawParameterAnnotations(),
-                        resolvedConstructor.getAccessor(DynamicHub.toClass(declaringClass), parameterTypes),
+                        resolvedConstructor.getAccessor(receiverType, parameterTypes),
                         resolvedConstructor.getParametersAttribute(),
                         resolvedConstructor.getRawTypeAnnotations());
     }

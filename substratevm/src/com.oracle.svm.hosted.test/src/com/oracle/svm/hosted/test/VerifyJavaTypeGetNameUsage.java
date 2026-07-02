@@ -127,7 +127,8 @@ public class VerifyJavaTypeGetNameUsage extends VerifyPhase<CoreProviders> {
                     "com.oracle.svm.polyglot.scala.ScalaAnalysisPlugin",
                     "com.oracle.svm.truffle.tck.AbstractMethodListParser$SignaturePredicate",
                     "com.oracle.svm.util.JVMCIReflectionUtil",
-                    "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl");
+                    "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl",
+                    "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl$CremaResolvedNativeJavaMethod");
 
     protected VerifyJavaTypeGetNameUsage(Set<String> additionalExcludes) {
         this.exclude = Stream.concat(DEFAULT_EXCLUDE.stream(), additionalExcludes.stream()).collect(Collectors.toUnmodifiableSet());
