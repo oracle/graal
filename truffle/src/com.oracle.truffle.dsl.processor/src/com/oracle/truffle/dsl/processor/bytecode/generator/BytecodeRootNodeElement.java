@@ -759,23 +759,23 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * transition, and on continuation resumption (if enabled). The encoding is as follows:
      *
      * <pre>
-     * 00000000 00000000 SSSSSSSS SSSSSSSS BBBBBBBBB BBBBBBBBB BBBBBBBBB BBBBBBBBB
+     * SSSSSSSS SSSSSSSS SSSSSSSS SSSSSSSS BBBBBBBBB BBBBBBBBB BBBBBBBBB BBBBBBBBB
      * </pre>
      *
      * Where {@code B} represents the bci and {@code S} represents the sp.
      */
     static String encodeState(String bci, String sp) {
-        return String.format("((%s & 0xFFFFL) << 32) | (%s & 0xFFFFFFFFL)", sp, bci);
+        return String.format("((%s & 0xFFFFFFFFL) << 32) | (%s & 0xFFFFFFFFL)", sp, bci);
     }
 
     static final String RETURN_BCI = "0xFFFFFFFF";
 
     static String encodeReturnState(String sp) {
-        return String.format("((%s & 0xFFFFL) << 32) | %sL", sp, RETURN_BCI);
+        return String.format("((%s & 0xFFFFFFFFL) << 32) | %sL", sp, RETURN_BCI);
     }
 
     static String encodeNewBci(String bci, String state) {
-        return String.format("(%s & 0xFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
+        return String.format("(%s & 0xFFFFFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
     }
 
     static String decodeBci(String state) {
@@ -783,7 +783,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static String decodeSp(String state) {
-        return String.format("((int) ((%s >>> 32) & 0xFFFFL))", state);
+        return String.format("((int) (%s >>> 32))", state);
     }
 
     CodeTreeBuilder emitCastBytecodeIndexToInt(CodeTreeBuilder b) {

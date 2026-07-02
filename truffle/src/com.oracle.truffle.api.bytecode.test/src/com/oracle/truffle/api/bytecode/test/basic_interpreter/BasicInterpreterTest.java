@@ -2362,6 +2362,38 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testLargeStackPointer() {
+        BasicInterpreter node = parseNode("largeStackPointer", b -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            BytecodeLocal x = b.createLocal();
+            int localCount = 0x10000 - run.getFrameBaseSlots();
+            for (int i = 1; i < localCount; i++) {
+                b.createLocal();
+            }
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            // The operand stack begins above the maximum unsigned-short frame index. This
+            // expression must not overwrite the low-index local.
+            b.beginVariadicOperation();
+            for (int i = 0; i < 4; i++) {
+                b.emitLoadConstant(0L);
+            }
+            b.endVariadicOperation();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
     public void testManyRoots() {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             for (int i = 0; i < Short.MAX_VALUE; i++) {
