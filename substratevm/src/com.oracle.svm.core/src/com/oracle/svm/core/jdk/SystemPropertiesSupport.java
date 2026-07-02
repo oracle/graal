@@ -51,7 +51,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
+import com.oracle.svm.core.libjvm.LibJVMSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.VMError;
 
@@ -375,7 +375,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     @NeverInline("Reads the return address.")
     private String javaHomeValue() {
 
-        if (!ImageSingletons.contains(LibJVMMainMethodWrappers.class)) {
+        if (!ImageSingletons.contains(LibJVMSupport.class)) {
             return null;
         }
 

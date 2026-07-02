@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -51,13 +50,9 @@ final class LibJVMEntryPoints {
      * unnecessary searching of the classpath for the required classes. It is used for shared
      * library images that provide the functionality of {@code libjvm.so}.
      */
-    @CEntryPoint(name = "JVM_FindClassFromBootLoader", exceptionHandler = ReturnNullHandleHandler.class, publishAs = Publish.SymbolOnly, include = LibJVMMainMethodWrappers.Enabled.class)
+    @CEntryPoint(name = "JVM_FindClassFromBootLoader", exceptionHandler = ReturnNullHandleHandler.class, publishAs = Publish.SymbolOnly, include = ClassRegistries.RespectsClassLoader.class)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle findClassFromBootLoader(@SuppressWarnings("unused") JNIEnvironment env, CCharPointer name) {
-        if (!ClassRegistries.respectClassLoader()) {
-            return Word.nullPointer();
-        }
-
         try {
             var clazzSymbol = SymbolsSupport.getTypes().fromClassGetName(CTypeConversion.toJavaString(name));
             for (var singleton : ClassRegistries.layeredSingletons()) {

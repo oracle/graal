@@ -119,7 +119,6 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -1928,15 +1927,12 @@ public final class JNIFunctions {
 
         private static JNIMethodId getMethodID(Class<?> origClazz, CharSequence name, CharSequence signature, boolean isStatic) {
 
-            // Workaround for GR-71358
-            Class<?> clazz = LibJVMMainMethodWrappers.patchMethodHolderClass(origClazz);
-
             JNIMethodId methodID = Word.nullPointer();
             ResolvedJavaMethod resolvedJavaMethod = null;
             boolean methodFoundWithOppositeStaticKind = false;
-            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && DynamicHub.fromClass(clazz).isRuntimeLoaded();
+            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && DynamicHub.fromClass(origClazz).isRuntimeLoaded();
             if (runtimeLoaded) {
-                resolvedJavaMethod = CremaSupport.singleton().lookupMethodForRuntimeClass(clazz, name.toString(), signature.toString());
+                resolvedJavaMethod = CremaSupport.singleton().lookupMethodForRuntimeClass(origClazz, name.toString(), signature.toString());
                 if (resolvedJavaMethod instanceof CremaResolvedJavaMethod cremaResolvedJavaMethod) {
                     if (resolvedJavaMethod.isStatic() == isStatic) {
                         methodID = cremaResolvedJavaMethod.getOrCreateJNIMethodId();
@@ -1956,14 +1952,14 @@ public final class JNIFunctions {
                             (resolvedJavaMethod != null && !(resolvedJavaMethod instanceof CremaResolvedJavaMethod));
             if (lookupInDictionary) {
                 assert methodID.isNull();
-                methodID = JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic);
+                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic);
                 if (methodID.isNull()) {
-                    methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(clazz, name, signature, !isStatic).isNonNull();
+                    methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic).isNonNull();
                 }
             }
 
             if (methodID.isNull()) {
-                String message = clazz.getName() + "." + name + signature;
+                String message = origClazz.getName() + "." + name + signature;
                 if (methodFoundWithOppositeStaticKind) {
                     if (isStatic) {
                         message += " (found matching non-static method that would be returned by GetMethodID)";
