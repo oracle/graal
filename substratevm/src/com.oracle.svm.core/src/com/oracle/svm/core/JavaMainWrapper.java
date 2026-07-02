@@ -65,8 +65,8 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
@@ -248,16 +248,15 @@ public class JavaMainWrapper {
     private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
         try {
             Isolate isolate = createMainIsolate(argc, argv);
-            PlatformThreads platformThreads = PlatformThreads.singleton();
-            long stackSize = platformThreads.getMainThreadRunnerStackSize();
-            platformThreads.releaseMainThreadFromCurrent();
+            long javaStackSize = PlatformThreads.singleton().getMainThreadRunnerJavaStackSize();
+            PlatformThreads.singleton().releaseMainThreadFromCurrent();
             WordPointer threadExitStatus = StackValue.get(WordPointer.class);
             /*
              * The launcher blocks in a no-transition OS join, so detach it before the runner can
              * request VM operations.
              */
             VMThreads.singleton().detachCurrentThread();
-            int exitCode = startAndJoinMainRunner(platformThreads, isolate, stackSize, threadExitStatus);
+            int exitCode = startAndJoinMainRunner(isolate, javaStackSize, threadExitStatus);
 
             runShutdownOnInitialThread(isolate);
             return exitCode;
@@ -270,22 +269,22 @@ public class JavaMainWrapper {
      * Starts and joins the runner while the current launcher thread is detached from the isolate.
      */
     @Uninterruptible(reason = "Thread state detached.")
-    private static int startAndJoinMainRunner(PlatformThreads platformThreads, Isolate isolate, long stackSize, WordPointer threadExitStatus) {
-        OSThreadHandle osThreadHandle = platformThreads.startThreadUnmanaged(RUN_MAIN_ROUTINE.getFunctionPointer(), isolate, stackSize);
+    private static int startAndJoinMainRunner(Isolate isolate, long javaStackSize, WordPointer threadExitStatus) {
+        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.getFunctionPointer(), isolate, javaStackSize, true);
         if (osThreadHandle.isNull()) {
             CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
             return 1;
         }
 
         try {
-            boolean joined = platformThreads.joinThreadUnmanaged(osThreadHandle, threadExitStatus);
+            boolean joined = PlatformThreads.singleton().joinThreadUnmanaged(osThreadHandle, threadExitStatus);
             if (!joined) {
                 CEntryPointActions.failFatally(1, JOIN_THREAD_UNMANAGED_ERROR_MESSAGE.get());
                 return 1;
             }
             return (int) threadExitStatus.read().rawValue();
         } finally {
-            platformThreads.closeOSThreadHandle(osThreadHandle);
+            PlatformThreads.singleton().closeOSThreadHandle(osThreadHandle);
         }
     }
 

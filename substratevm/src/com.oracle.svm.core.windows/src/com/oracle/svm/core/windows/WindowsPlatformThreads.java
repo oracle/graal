@@ -66,30 +66,30 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
     /** This method must not throw any exceptions. */
     @Override
-    protected IsolateThread doStartThread(Thread thread, long stackSize) {
+    protected IsolateThread doStartThread(Thread thread, long javaStackSize) {
         assert StackOverflowCheck.singleton().isYellowZoneAvailable();
 
-        int threadStackSize = NumUtil.safeToUInt(stackSize);
+        int nativeStackSize = NumUtil.safeToUInt(javaStackSize);
         int initFlag = 0;
-        // If caller specified a stack size, don't commit it all at once.
-        if (threadStackSize != 0) {
+        // If the caller requested a Java stack size, don't commit it all at once.
+        if (nativeStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
-        return doStartThread0(thread, threadStackSize, initFlag);
+        return doStartThread0(thread, nativeStackSize, initFlag);
     }
 
     /**
      * Starts a thread to the point so that it is executing. This method must not throw any
      * exceptions.
      */
-    private IsolateThread doStartThread0(Thread thread, int threadStackSize, int initFlag) {
+    private IsolateThread doStartThread0(Thread thread, int nativeStackSize, int initFlag) {
         assert StackOverflowCheck.singleton().isYellowZoneAvailable();
 
         IsolateThread isolateThread = prepareThreadStart(thread);
         if (isolateThread.isNull()) {
             return Word.nullPointer();
         }
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), nativeStackSize, threadStartRoutine.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
         if (osThreadHandle.isNull()) {
             undoPrepareStartOnError(thread, isolateThread);
             return Word.nullPointer();
@@ -100,14 +100,14 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize, boolean isJavaStackSize) {
         // _beginthreadex takes an unsigned int stack size; reject values that cannot be preserved.
         if (stackSize > 0xFFFF_FFFFL) {
             return Word.nullPointer();
         }
         int initFlag = 0;
 
-        // If caller specified a stack size, don't commit it all at once.
+        // If the caller requested a stack size, don't commit it all at once.
         if (stackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }

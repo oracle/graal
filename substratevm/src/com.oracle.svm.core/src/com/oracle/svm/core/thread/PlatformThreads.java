@@ -325,21 +325,21 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Returns the stack size requested for {@code thread}, or the VM default for isolate-started
-     * threads when no explicit size was requested.
+     * Returns the Java stack size requested for {@code thread}, or the VM default for
+     * isolate-started threads when no explicit size was requested.
      */
-    public static long getRequestedStackSize(Thread thread) {
-        return getRequestedStackSize(thread, VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()));
+    public static long getRequestedJavaStackSize(Thread thread) {
+        return getRequestedJavaStackSize(thread, VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()));
     }
 
     /**
-     * Returns the stack size requested for {@code thread}.
+     * Returns the Java stack size requested for {@code thread}.
      *
      * @param isolateStartedThread true if {@code thread} is (or will be) started by the isolate, false
      *        if it's an existing native thread that attached to the isolate and already has an OS stack
      * @return 0 if no size was explicitly requested
      */
-    public static long getRequestedStackSize(Thread thread, boolean isolateStartedThread) {
+    public static long getRequestedJavaStackSize(Thread thread, boolean isolateStartedThread) {
         /* Return a stack size based on parameters and command line flags. */
         long stackSize;
         Target_java_lang_Thread tjlt = toTarget(thread);
@@ -576,11 +576,12 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Returns the stack size for the launcher-created runner that will execute application main.
+     * Returns the requested Java stack size for the launcher-created runner that will execute
+     * application main.
      */
     @Uninterruptible(reason = "Computes the stack size before the main Thread object is transferred to the runner thread.", calleeMustBe = false)
-    public long getMainThreadRunnerStackSize() {
-        return getRequestedStackSize(mainThread, true);
+    public long getMainThreadRunnerJavaStackSize() {
+        return getRequestedJavaStackSize(mainThread, true);
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
@@ -603,9 +604,16 @@ public abstract class PlatformThreads {
         }
     }
 
+    /**
+     * Starts an unmanaged thread.
+     *
+     * @param stackSize the requested stack size, or zero to select the platform default
+     * @param isJavaStackSize whether {@code stackSize} is a Java stack size before platform-specific
+     *            native adjustments such as alignment and guard regions, or a native stack size
+     */
     @SuppressWarnings("unused")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize, boolean isJavaStackSize) {
         throw unmanagedThreadUnsupported();
     }
 
@@ -897,10 +905,10 @@ public abstract class PlatformThreads {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             Thread thread = JavaThreads.fromTarget(targetThread);
-            long stackSize = PlatformThreads.getRequestedStackSize(thread, true);
+            long javaStackSize = PlatformThreads.getRequestedJavaStackSize(thread, true);
 
             /* Run the platform-specific code that tries to start the thread. */
-            IsolateThread isolateThread = PlatformThreads.singleton().doStartThread(thread, stackSize);
+            IsolateThread isolateThread = PlatformThreads.singleton().doStartThread(thread, javaStackSize);
             if (isolateThread.isNull()) {
                 return false;
             }
@@ -925,11 +933,13 @@ public abstract class PlatformThreads {
      * preparations and before starting the thread. The new OS thread must call
      * {@link #threadStartRoutine}. This method must not throw any exceptions.
      *
+     * @param javaStackSize the requested Java stack size before platform-specific native
+     *        adjustments, or zero to select the platform default
      * @return the {@link IsolateThread} of the new thread, or {@code null} if the thread could not
      *         be started.
      */
     @RestrictHeapAccess(reason = "Simplifies error handling.", access = NO_ALLOCATION)
-    protected abstract IsolateThread doStartThread(Thread thread, long stackSize);
+    protected abstract IsolateThread doStartThread(Thread thread, long javaStackSize);
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = ThreadStartRoutinePrologue.class, epilogue = CEntryPointSetup.LeaveDetachThreadEpilogue.class)
