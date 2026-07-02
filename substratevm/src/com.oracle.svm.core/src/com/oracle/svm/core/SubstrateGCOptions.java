@@ -34,7 +34,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.HostedOptionKey;

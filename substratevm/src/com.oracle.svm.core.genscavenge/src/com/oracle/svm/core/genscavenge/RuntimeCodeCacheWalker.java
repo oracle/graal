@@ -37,7 +37,7 @@ import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.genscavenge.RuntimeCodeCacheReachabilityAnalyzer.UnreachableObjectsException;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**

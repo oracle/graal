@@ -39,7 +39,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneSnippets;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
