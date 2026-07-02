@@ -43,8 +43,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface InternalFeature extends Feature {
-
+public interface InternalFeature extends InternalFeatureBridge {
     /**
      * Called to register foreign calls.
      *
@@ -123,7 +122,7 @@ public interface InternalFeature extends Feature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAbstractImageCreationAccess extends FeatureAccess {
+    interface AfterAbstractImageCreationAccess extends Feature.FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
     }
 
     /**
@@ -139,9 +138,11 @@ public interface InternalFeature extends Feature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface InternalFeatureAccess extends FeatureAccess {
+    interface InternalFeatureAccess extends Feature.FeatureAccess, JVMCIFeatureAccess.FeatureAccess {
+        @Override
         ResolvedJavaType findTypeByName(String className);
 
+        @Override
         MetaAccessProvider getMetaAccess();
     }
 }
