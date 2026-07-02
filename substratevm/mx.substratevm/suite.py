@@ -1207,7 +1207,6 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "SVM",
-                "mx:ASM_9.8",
             ],
             "requires": [
                 "java.compiler",
@@ -2803,9 +2802,6 @@ suite = {
             "sdk:NATIVEIMAGE",
             "SVM",
             "SVM_CONFIGURE",
-          ],
-          "exclude": [
-            "mx:ASM_9.8",
           ],
           "testDistribution" : True,
         },
