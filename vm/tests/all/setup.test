@@ -1,0 +1,14 @@
+# All Maven tests consume the GraalVM version and local public Maven repository
+# prepared by the CI job. Keep mx-specific repository discovery out of reusable tests.
+> if [ -z "${GRAALVM_VERSION}" ]
+> echo GRAALVM_VERSION must be set by the all tests job
+> exit 1
+> fi
+> if [ -z "${GRAALVM_MAVEN_REPO_URL}" -a -n "${GRAALVM_MAVEN_REPO}" ]
+> set-export GRAALVM_MAVEN_REPO_URL file://${GRAALVM_MAVEN_REPO}
+> fi
+> if [ -z "${GRAALVM_MAVEN_REPO_URL}" ]
+> echo GRAALVM_MAVEN_REPO_URL must be set by the all tests job
+> exit 1
+> fi
+> export JAVA_HOME=${GRAALVM_HOME}
