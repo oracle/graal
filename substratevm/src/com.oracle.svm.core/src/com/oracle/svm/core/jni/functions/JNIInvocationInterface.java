@@ -45,6 +45,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.events.ShutdownEvent;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
@@ -311,6 +312,7 @@ public final class JNIInvocationInterface {
         }
         RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
         PlatformThreads.singleton().joinAllNonDaemonsInNative();
+        ShutdownEvent.emit("No remaining non-daemon Java threads", false);
         try {
             VMRuntime.shutdown();
         } catch (Throwable ignored) {

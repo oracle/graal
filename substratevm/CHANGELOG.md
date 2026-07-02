@@ -4,6 +4,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)
 * (GR-70895) Native Image `resource:` URLs now preserve the source root of duplicate resource entries using the path format `resource://<module>@<loader>/<root-id>!/<resource-path>`. This allows directory resource URLs from different class-path roots to be converted to `Path` values and walked independently instead of observing a merged directory view.
+* (GR-76779) Added support for the JFR event `jdk.Shutdown`.
 
 ## GraalVM 25.1 (Internal Version 25.1.3)
 * (GR-76005) Improve Native Image support for constant `String.format` and `String::formatted` calls by intrinsifying simple format strings in CE. This reduces the reachability of JDK formatting and localization code for applications such as Hello World.

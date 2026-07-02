@@ -87,6 +87,7 @@ import jdk.jfr.internal.LogTag;
 public class SubstrateJVM {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L553") //
     private static final String OUT_OF_MEMORY = "Out of Memory";
+
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
@@ -786,9 +787,11 @@ public class SubstrateJVM {
         if (!recording || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
+
         // Hotspot emits GC root paths, but we don't support that yet. So cutoff = 0.
         emitOldObjectSamples(0, false, false);
         DumpReasonEvent.emit(OUT_OF_MEMORY, -1);
+
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
@@ -807,7 +810,6 @@ public class SubstrateJVM {
             chunkWriter.unlock();
         }
         JfrEmergencyDumpSupport.singleton().onVmError();
-
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
