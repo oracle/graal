@@ -177,6 +177,15 @@ public final class JavaStackWalker {
         initWalk(walk, thread, startSP, Word.nullPointer(), startIP, anchor);
     }
 
+    /**
+     * This method should only be used rarely as it is usually not necessary (and potentially
+     * dangerous) to specify a {@code startIP} for the stack walk.
+     */
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
+        initWalk(walk, thread, startSP, endSP, startIP, anchor);
+    }
+
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static void initializeForContinuation(JavaStackWalk walk, StoredContinuation continuation) {
         assert continuation != null;

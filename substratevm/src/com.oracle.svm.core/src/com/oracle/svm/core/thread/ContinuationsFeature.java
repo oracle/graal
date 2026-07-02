@@ -118,6 +118,8 @@ public class ContinuationsFeature implements InternalFeature {
 
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             access.registerAsAccessed(ipField);
+            Field originalCarrierSPField = ReflectionUtil.lookupField(StoredContinuation.class, "originalCarrierSP");
+            access.registerAsAccessed(originalCarrierSPField);
 
             access.registerReachabilityHandler(_ -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));

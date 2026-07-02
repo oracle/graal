@@ -24,20 +24,29 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaFrame;
+import com.oracle.svm.core.stack.JavaFrames;
+import com.oracle.svm.core.stack.JavaStackWalk;
+import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -110,6 +119,7 @@ public class ContinuationSupport {
         // copyFrames() may do something interruptible before uninterruptibly copying frames.
         // Code must not rely on remaining uninterruptible until after frames were copied.
         CodePointer enterIP = singleton().copyFrames(storedCont, topSP, preparedData);
+        patchFramePointersInCopiedFrames(storedCont, enterIP, topSP);
         KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
     }
 
@@ -126,5 +136,47 @@ public class ContinuationSupport {
     @Uninterruptible(reason = "Copies stack frames containing references.")
     public CodePointer copyFrames(StoredContinuation fromCont, StoredContinuation toCont, Object preparedData) {
         return copyFrames(fromCont, StoredContinuationAccess.getFramesStart(toCont), preparedData);
+    }
+
+    @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
+    public static void patchFramePointersInCopiedFrames(StoredContinuation continuation, CodePointer ip, Pointer newFramesStart) {
+        if (!SubstrateOptions.PreserveFramePointer.getValue()) {
+            return;
+        }
+
+        Pointer originalFramesStart = StoredContinuationAccess.getOriginalCarrierSP(continuation);
+        if (newFramesStart.equal(originalFramesStart)) {
+            return;
+        }
+
+        int framesSize = StoredContinuationAccess.getFramesSizeInBytes(continuation);
+        Pointer newFramesEnd = newFramesStart.add(framesSize);
+
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        JavaStackWalker.initialize(walk, thread, newFramesStart, newFramesEnd, ip, Word.nullPointer());
+        while (JavaStackWalker.advance(walk, thread)) {
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            Pointer callerSP = JavaFrames.getCallerSP(frame);
+            boolean isContEntryFrame = callerSP.equal(newFramesEnd);
+            Pointer framePointerSlot = FrameAccess.singleton().unsafePreservedFramePointerLocation(callerSP);
+            patchFramePointer(originalFramesStart, newFramesStart, newFramesEnd, framePointerSlot, isContEntryFrame);
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
+    private static void patchFramePointer(Pointer originalFramesStart, Pointer newFramesStart, Pointer newFramesEnd, Pointer framePointerSlot, boolean isContEntryFrame) {
+        assert framePointerSlot.aboveOrEqual(newFramesStart) && framePointerSlot.belowThan(newFramesEnd);
+
+        Pointer address = framePointerSlot.readWord(0);
+        Pointer adjustedAddress = newFramesStart.add(address.subtract(originalFramesStart));
+
+        if (isContEntryFrame) {
+            assert adjustedAddress.aboveOrEqual(newFramesEnd);
+        } else {
+            assert adjustedAddress.aboveOrEqual(newFramesStart) && adjustedAddress.belowThan(newFramesEnd);
+        }
+
+        framePointerSlot.writeWord(0, adjustedAddress);
     }
 }
