@@ -68,6 +68,29 @@ Use:
 - `ResolvedJavaType`, `ResolvedJavaMethod`, and `ResolvedJavaField` for type and member reasoning
 - `VMAccess` and constant-reflection APIs when translating guest objects into build-time metadata
 
+### Use JVMCI Feature Access Methods Through Access Implementations
+
+When migrating an `InternalFeature`, keep the lifecycle method signatures typed with the normal `Feature.*Access` interfaces for now.
+If the feature needs a JVMCI-based operation, cast the access object to the matching `FeatureImpl.*AccessImpl` class and call the method provided by the corresponding `JVMCIFeatureAccess.*Access` interface.
+
+For example, prefer:
+
+```java
+@Override
+public void beforeAnalysis(BeforeAnalysisAccess access) {
+    FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+    ResolvedJavaType type = accessImpl.findTypeByName("com.example.Foo");
+    accessImpl.registerAsInHeap(type);
+}
+```
+
+over changing the feature method signature to use `JVMCIFeatureAccess.BeforeAnalysisAccess` directly.
+
+The `FeatureImpl.*AccessImpl` classes implement both the public `Feature.*Access` interface and the matching `JVMCIFeatureAccess.*Access` interface.
+This lets internal features gradually replace reflection types such as `Class<?>`, `Field`, `Method`, and `Constructor` with JVMCI types such as `ResolvedJavaType`, `ResolvedJavaField`, and `ResolvedJavaMethod`, while migrated and non-migrated features keep the same lifecycle shape.
+
+Once the migration is complete and `InternalFeature` no longer extends the core-reflection-based `Feature` interface, most casts to `FeatureImpl.*AccessImpl` should become cleanup work.
+
 ### Be Careful With Lookup Semantics
 
 Several JVMCI replacements are intentionally stricter than reflection lookups.
@@ -91,6 +114,7 @@ If existing hosted code uses `Method.invoke(...)` or helper wrappers around core
 ## Migration Checklist
 
 - Identify whether the code is operating on guest-loaded types or known hosted types.
+- Use `JVMCIFeatureAccess.*Access` methods through the matching `FeatureImpl.*AccessImpl` cast when migrating feature access operations.
 - Replace core reflection lookups with `JVMCIReflectionUtil` or JVMCI metadata APIs.
 - Replace class-based assignability checks with `ResolvedJavaType.isAssignableFrom(...)` when dealing with guest/runtime types.
 - Replace reflective invocation with `GuestAccess.get().invoke(...)`.
