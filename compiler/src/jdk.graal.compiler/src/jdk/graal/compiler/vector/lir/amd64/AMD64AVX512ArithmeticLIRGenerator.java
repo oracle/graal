@@ -176,6 +176,8 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPERMPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPERMPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPERMQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPERMW;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPMADDUBSW;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPMADDWD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPMAXSB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPMAXSD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPMAXSQ;
@@ -299,6 +301,7 @@ import jdk.graal.compiler.nodes.calc.SqrtNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
+import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdPairwiseMultiplyAddNode;
 import jdk.graal.compiler.vector.nodes.simd.MaskedOpMetaData;
 import jdk.graal.compiler.vector.nodes.simd.SimdPermuteWithVectorIndicesNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
@@ -2228,6 +2231,15 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                 case DWORD -> AMD64Assembler.VexRVMOp.EVPSRLVD;
                 case QWORD -> AMD64Assembler.VexRVMOp.EVPSRLVQ;
                 default -> null;
+            };
+        } else if (op == AMD64SimdPairwiseMultiplyAddNode.class) {
+            AMD64SimdPairwiseMultiplyAddNode.OpKind opKind = meta.pairwiseMultiplyAddKind();
+            if (opKind == null) {
+                return null;
+            }
+            return switch (opKind) {
+                case SIGNED_SHORTS_TO_INTS -> EVPMADDWD;
+                case UNSIGNED_SIGNED_BYTES_TO_SHORTS_SATURATING -> EVPMADDUBSW;
             };
         } else if (op == SimdPermuteWithVectorIndicesNode.class) {
             return switch (dstEKind) {
