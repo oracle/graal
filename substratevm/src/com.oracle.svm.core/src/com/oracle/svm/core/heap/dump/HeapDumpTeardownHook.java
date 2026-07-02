@@ -26,7 +26,7 @@ package com.oracle.svm.core.heap.dump;
 
 import com.oracle.svm.core.jdk.RuntimeSupport;
 
-public class HeapDumpShutdownHook implements RuntimeSupport.Hook {
+public class HeapDumpTeardownHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         /* Do this unconditionally, the runtime option could have changed in the meanwhile. */

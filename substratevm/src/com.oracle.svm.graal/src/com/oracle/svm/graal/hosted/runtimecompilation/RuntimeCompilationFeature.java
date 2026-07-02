@@ -497,7 +497,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         objectReplacer.setGraalRuntime(graalRuntime);
         objectReplacer.setAnalysisAccess(config);
         ImageSingletons.add(GraalRuntime.class, graalRuntime);
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(new GraalSupport.GraalShutdownHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(new GraalSupport.GraalTeardownHook());
 
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);

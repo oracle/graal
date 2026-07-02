@@ -31,14 +31,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -47,6 +47,17 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/**
+ * Manages VM-level lifecycle hooks for an isolate. These hooks are internal runtime callbacks and
+ * are distinct from Java-level shutdown hooks registered with {@link Runtime#addShutdownHook}.
+ * <p>
+ * The VM-level hooks are executed in the following order:
+ * <ol>
+ * <li>Initialization hooks (always executed)</li>
+ * <li>Startup hooks (only executed if {@link #initialize} is called)</li>
+ * <li>Teardown hooks (always executed on isolate teardown, except for abnormal termination)</li>
+ * </ol>
+ */
 @AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class RuntimeSupport implements VMRuntimeSupport {
@@ -57,26 +68,8 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     }
 
     private final AtomicReference<InitializationState> initializationState = new AtomicReference<>(InitializationState.Uninitialized);
-
-    /** Hooks that run before calling Java {@code main} or in {@link VMRuntime#initialize()}. */
-    private final AtomicReference<Hook[]> startupHooks = new AtomicReference<>();
-
-    /**
-     * Hooks that run after the Java {@code main} method or when calling {@link Runtime#exit} (or
-     * {@link System#exit}).
-     *
-     * Note that it is possible for shutdownHooks to be called even if the {@link #startupHooks}
-     * have not executed.
-     */
-    private final AtomicReference<Hook[]> shutdownHooks = new AtomicReference<>();
-
-    /** Hooks that run during isolate initialization. */
     private final AtomicReference<Hook[]> initializationHooks = new AtomicReference<>();
-
-    /**
-     * Hooks that run during isolate tear-down. Note it is possible for these hooks to run even if
-     * the {@link #initializationHooks} have not executed.
-     */
+    private final AtomicReference<Hook[]> startupHooks = new AtomicReference<>();
     private final AtomicReference<Hook[]> tearDownHooks = new AtomicReference<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -89,8 +82,11 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     }
 
     /**
-     * Adds a hook that executes before Java {@code main}. Each registered startup hook executes at
-     * most once per isolate because the hook list is atomically drained during startup.
+     * Adds a VM-level startup hook that executes <b>after</b> the isolate is fully
+     * {@link #initialize initialized}. Argument parsing is finished at that point, so it is safe to
+     * access options and environment variables in such hooks. However, execution of VM-level
+     * startup hooks may be skipped if {@link SubstrateGuestOptions#InitializeVM} is disabled and
+     * {@link #initialize} is not called manually.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStartupHook(Hook hook) {
@@ -118,46 +114,45 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     }
 
     /**
-     * Adds a hook which will execute during the shutdown process. Note it is possible for the
-     * {@link #shutdownHooks} to be called without the {@link #startupHooks} executing first.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addShutdownHook(Hook hook) {
-        addHook(shutdownHooks, hook);
-    }
-
-    static void executeShutdownHooks() {
-        executeHooks(getRuntimeSupport().shutdownHooks);
-    }
-
-    /**
-     * Initialization hooks are executed during isolate initialization, before runtime options are
-     * parsed. The executed code should therefore not try to access any runtime options. If it is
-     * necessary to access a runtime option, then its value must be accessed via
-     * {@link com.oracle.svm.core.IsolateArgumentParser}. Each registered initialization hook
-     * executes at most once per isolate because the hook list is atomically drained during isolate
-     * initialization.
+     * Adds a VM-level initialization hook. Initialization hooks are executed during isolate
+     * initialization, before runtime options are parsed. The executed code should therefore not
+     * try to access any runtime options. If it is necessary to access a runtime option, then its
+     * value must be parsed early and accessed via {@link com.oracle.svm.core.IsolateArgumentParser}.
      */
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
     }
 
-    /** Runs isolate initialization hooks. Although public, this method should not be public API. */
     public static void executeInitializationHooks() {
         executeHooks(getRuntimeSupport().initializationHooks);
     }
 
     /**
-     * Adds a hook which will execute during isolate tear-down. Note it is possible for the
-     * {@link #tearDownHooks} to be called without the {@link #initializationHooks} executing first.
+     * Adds a VM-level teardown hook that executes during isolate teardown. Teardown hooks may run
+     * even if initialization hooks or startup hooks did not run.
      */
     public void addTearDownHook(Hook tearDownHook) {
         addHook(tearDownHooks, tearDownHook);
     }
 
-    /** Runs isolate tear-down hooks. Although public, this method should not be public API. */
     public static void executeTearDownHooks() {
-        executeHooks(getRuntimeSupport().tearDownHooks);
+        Hook[] hooks = getRuntimeSupport().tearDownHooks.getAndSet(null);
+        if (hooks != null) {
+            boolean firstIsolate = Isolates.isCurrentFirst();
+            for (Hook hook : hooks) {
+                try {
+                    hook.execute(firstIsolate);
+                } catch (Throwable ignored) {
+                    /* We can't do much during teardown. */
+                }
+            }
+        }
+
+        /*
+         * Execute the LogManager shutdown hook after all other hooks. This is a workaround for
+         * GR-39429, as stderr might be closed afterwards.
+         */
+        Util_java_lang_Shutdown.runLogManagerShutdownHook();
     }
 
     private static void addHook(AtomicReference<Hook[]> hooksReference, Hook newHook) {
@@ -186,14 +181,13 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         }
     }
 
+    /**
+     * Runs Java-level shutdown hooks that were registered via the JDK API (unlike the VM-internal
+     * hooks registered in this class). This method is invoked even when {@link #initialize} is not
+     * (e.g., when option {@link SubstrateGuestOptions#InitializeVM} is disabled).
+     */
     @Override
     public void shutdown() {
-        /*
-         * This method is invoked even when initialize() is not (e.g., when option InitializeVM is
-         * disabled). It calls shutdown hooks, which are defined by the JDK, unlike the hooks in
-         * this class. For optional shutdown tasks or shutdown tasks that depend on initialization,
-         * a second method should be split off (GR-76779).
-         */
         Target_java_lang_Shutdown.shutdown();
     }
 

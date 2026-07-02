@@ -42,7 +42,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
@@ -67,7 +66,6 @@ import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -85,6 +83,8 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.Utf8;
@@ -310,11 +310,16 @@ public final class JNIInvocationInterface {
         if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
             return JNIErrors.JNI_ERR();
         }
+
+        /* Keep this shutdown logic in sync with the shutdown logic in JavaMainWrapper. */
         RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
+
         PlatformThreads.singleton().joinAllNonDaemonsInNative();
         ShutdownEvent.emit("No remaining non-daemon Java threads", false);
+
         try {
             VMRuntime.shutdown();
+            /* Teardown hooks are executed by the epilogue. */
         } catch (Throwable ignored) {
         }
         return JNIErrors.JNI_OK();

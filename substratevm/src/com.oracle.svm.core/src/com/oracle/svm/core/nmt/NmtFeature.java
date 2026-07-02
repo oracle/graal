@@ -29,10 +29,10 @@ package com.oracle.svm.core.nmt;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
 public class NmtFeature implements InternalFeature {
@@ -49,6 +49,6 @@ public class NmtFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addInitializationHook(NativeMemoryTracking.initializationHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(NativeMemoryTracking.teardownHook());
     }
 }

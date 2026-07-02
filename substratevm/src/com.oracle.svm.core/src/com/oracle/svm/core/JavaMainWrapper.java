@@ -66,8 +66,8 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
@@ -178,8 +178,15 @@ public class JavaMainWrapper {
         }
     }
 
+    /** Keep this shutdown logic in sync with the shutdown logic in {@code DestroyJavaVM}. */
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static void runShutdown() {
+        /*
+         * Once the shutdown is in progress, we need to prevent any unexpected exceptions as they
+         * could mess with the shutdown logic. Some recurring callbacks may throw exceptions, so we
+         * disable recurring callbacks for the current thread. Ideally, we would handle throwing vs.
+         * non-throwing recurring callbacks differently, see GR-77073.
+         */
         RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
         runShutdown0();
     }
@@ -198,14 +205,13 @@ public class JavaMainWrapper {
 
         try {
             /*
-             * Run shutdown hooks (both our own hooks and application-registered hooks) and teardown
-             * hooks. Note that this can start new non-daemon threads. We are not responsible to
-             * wait until they have exited.
+             * Run shutdown and teardown hooks. Note that this can start new non-daemon threads. We
+             * are not responsible to wait until they have exited.
              */
-            RuntimeSupport.getRuntimeSupport().shutdown();
+            VMRuntime.shutdown();
             RuntimeSupport.executeTearDownHooks();
         } catch (Throwable e) {
-            Log.log().string("Exception occurred while executing shutdown hooks: ").exception(e).newline();
+            Log.log().string("Exception occurred while executing shutdown/teardown hooks: ").exception(e).newline();
         }
     }
 

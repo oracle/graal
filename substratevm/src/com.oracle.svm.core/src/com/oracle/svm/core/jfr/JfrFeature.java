@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -197,6 +197,6 @@ public class JfrFeature implements InternalFeature {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
         runtime.addInitializationHook(JfrManager.initializationHook());
         runtime.addStartupHook(JfrManager.startupHook());
-        runtime.addShutdownHook(JfrManager.shutdownHook());
+        runtime.addTearDownHook(JfrManager.teardownHook());
     }
 }

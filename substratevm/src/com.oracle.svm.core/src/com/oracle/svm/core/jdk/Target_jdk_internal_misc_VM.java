@@ -57,7 +57,7 @@ public final class Target_jdk_internal_misc_VM {
 
     @Substitute
     public static String[] getRuntimeArguments() {
-        /**
+        /*
          * This method is called by SourceLauncher to find arguments that the java launcher usually
          * gives to the JVM rather than the application (--add-exports, --add-opens, etc).
          */

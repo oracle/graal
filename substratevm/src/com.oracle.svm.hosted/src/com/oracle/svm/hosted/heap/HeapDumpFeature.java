@@ -40,14 +40,12 @@ import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.encoder.SymbolEncoder;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
-import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
 import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
+import com.oracle.svm.core.heap.dump.HeapDumpTeardownHook;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
@@ -57,8 +55,9 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -69,6 +68,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks.Layered
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
@@ -112,7 +112,7 @@ public class HeapDumpFeature implements InternalFeature {
         /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
         if (VMInspectionOptions.hasHeapDumpSupport() && ImageLayerBuildingSupport.firstImageBuild()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(new HeapDumpTeardownHook());
         }
     }
 

@@ -62,7 +62,7 @@ public final class ThreadStartDeathSupport implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class)
     ThreadStartDeathSupport() {
         ThreadListenerSupport.get().register(this);
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(new RuntimeSupport.Hook() {
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
             @Override
             public void execute(boolean isFirstIsolate) {
                 Listener l = listener;
