@@ -31,6 +31,7 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 
 final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     private final EspressoExternalVMAccess access;
@@ -45,6 +46,12 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
         this.access = access;
         this.moduleValue = moduleValue;
         this.name = access.java_lang_Module_getName.getMirror().execute(moduleValue).asString();
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer getLayer() {
+        Value layer = moduleValue.invokeMember("getLayer");
+        return layer.isNull() ? null : new EspressoExternalResolvedJavaModuleLayer(access, layer);
     }
 
     @Override
@@ -106,5 +113,22 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
         Value moduleDescriptor = access.java_lang_Module_getDescriptor.getMirror().execute(moduleValue);
         Value isAutomatic = access.java_lang_module_ModuleDescriptor_isAutomatic.getMirror().execute(moduleDescriptor);
         return isAutomatic.asBoolean();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        EspressoExternalResolvedJavaModule that = (EspressoExternalResolvedJavaModule) o;
+        return moduleValue.equals(that.moduleValue);
+    }
+
+    @Override
+    public int hashCode() {
+        return moduleValue.hashCode();
     }
 }

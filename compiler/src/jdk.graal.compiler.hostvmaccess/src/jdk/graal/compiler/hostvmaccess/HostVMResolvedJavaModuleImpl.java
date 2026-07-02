@@ -29,6 +29,7 @@ import java.util.Set;
 
 import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 
 /**
  * Fallback implementation of {@link ResolvedJavaModule} based on {@link Module}.
@@ -39,6 +40,12 @@ final class HostVMResolvedJavaModuleImpl implements ResolvedJavaModule {
 
     HostVMResolvedJavaModuleImpl(Module module) {
         this.module = Objects.requireNonNull(module);
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer getLayer() {
+        ModuleLayer layer = module.getLayer();
+        return layer == null ? null : new HostVMResolvedJavaModuleLayerImpl(layer);
     }
 
     @Override
