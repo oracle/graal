@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.guest.staging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -42,6 +45,8 @@ import com.oracle.svm.shared.util.VMError;
  */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ArgsSupport {
+    private static final String END_OF_OPTIONS_MARKER = "--";
+
     /**
      * Returns the registered argument support implementation for the current image.
      */
@@ -87,6 +92,20 @@ public class ArgsSupport {
             args[i - 1] = singleton().toJavaArg(argv.read(i));
         }
         return args;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isEndOfOptionsMarker(CCharPointer arg) {
+        return arg.read(0) == '-' && arg.read(1) == '-' && arg.read(2) == 0;
+    }
+
+    public static int firstEndOfOptionsMarkerIndex(String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (END_OF_OPTIONS_MARKER.equals(args[i])) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Converts a single argv element to a Java string. */

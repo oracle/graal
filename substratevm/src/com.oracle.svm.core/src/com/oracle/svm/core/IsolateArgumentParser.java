@@ -55,14 +55,15 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.guest.staging.util.ImageHeapList;
+import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
@@ -286,7 +287,8 @@ public class IsolateArgumentParser {
         if (LibC.isSupported() && shouldParseArguments(arguments)) {
             CLongPointer value = StackValue.get(Long.BYTES);
             // Ignore the first argument as it represents the executable file name.
-            for (int i = 1; i < arguments.getArgc(); i++) {
+            int parseLimit = isolateArgumentParseLimit(parameters, arguments);
+            for (int i = 1; i < parseLimit; i++) {
                 CCharPointer arg = arguments.getArgv().read(i);
                 if (arg.isNonNull()) {
                     CCharPointer tail = matchPrefix(arg);
@@ -306,6 +308,21 @@ public class IsolateArgumentParser {
         }
 
         copyStringArguments(arguments);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int isolateArgumentParseLimit(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
+        if (SubstrateOptions.LegacyJavaOptionMode.getValue() || parameters.isNull() || parameters.version() < 4 || !parameters.getForJavaMainCall()) {
+            return arguments.getArgc();
+        }
+
+        for (int i = 1; i < arguments.getArgc(); i++) {
+            CCharPointer arg = arguments.getArgv().read(i);
+            if (arg.isNonNull() && ArgsSupport.isEndOfOptionsMarker(arg)) {
+                return i;
+            }
+        }
+        return arguments.getArgc();
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")

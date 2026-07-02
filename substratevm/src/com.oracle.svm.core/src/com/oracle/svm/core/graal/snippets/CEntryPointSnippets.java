@@ -75,8 +75,6 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.guest.staging.JavaMainSupport;
-import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -104,7 +102,8 @@ import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -114,6 +113,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -507,23 +507,26 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
             ArgsSupport.singleton().setInitialArgs(initialArgs);
             try {
-                String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
                 if (forJavaMainCall) {
                     if (ImageSingletons.contains(JavaMainSupport.class)) {
-                        ImageSingletons.lookup(JavaMainSupport.class).mainArgs = remainingArgs;
+                        JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
+                        javaMainSupport.mainArgs = RuntimeOptionParser.parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized);
                     } else {
                         throw VMError.shouldNotReachHereAtRuntime();
                     }
-                } else if (!ignoreUnrecognized && remainingArgs.length != 0) {
-                    if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
-                        Log.logStream().println("Error: Unrecognized option: " + remainingArgs[0]);
-                        return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
-                    } else {
-                        /*
-                         * GR-73367: Failing here would be disruptive to existing/legacy code.
-                         *
-                         * (Note: such options are passed as args to a Java main method above)
-                         */
+                } else {
+                    String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+                    if (!ignoreUnrecognized && remainingArgs.length != 0) {
+                        if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+                            Log.logStream().println("Error: Unrecognized option: " + remainingArgs[0]);
+                            return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
+                        } else {
+                            /*
+                             * GR-73367: Failing here would be disruptive to existing/legacy code.
+                             *
+                             * (Note: such options are passed as args to a Java main method above)
+                             */
+                        }
                     }
                 }
             } catch (IllegalArgumentException e) {
