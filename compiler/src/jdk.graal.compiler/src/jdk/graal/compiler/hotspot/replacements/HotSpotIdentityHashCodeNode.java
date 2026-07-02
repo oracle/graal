@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.MARK_WORD_LOCATION;
+
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.graph.NodeClass;
@@ -44,6 +46,6 @@ public class HotSpotIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return HotSpotReplacementsUtil.MARK_WORD_LOCATION;
+        return MARK_WORD_LOCATION;
     }
 }

@@ -25,12 +25,9 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.LOAD_AND_CLEAR_EXCEPTION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.EXCEPTION_OOP_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.EXCEPTION_PC_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.readExceptionOop;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.EXCEPTION_OOP_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.EXCEPTION_PC_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
 import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.LoadExceptionObjectInVM;
 import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
@@ -71,9 +68,10 @@ public class LoadExceptionObjectSnippets implements Snippets {
     @Snippet
     public static Object loadException(@ConstantParameter Register threadRegister) {
         Word thread = registerAsWord(threadRegister);
-        Object exception = readExceptionOop(thread);
-        writeExceptionOop(thread, null);
-        writeExceptionPc(thread, Word.zero());
+        Object exception = EXCEPTION_OOP_LOCATION.readObject(thread);
+        // Reset the JavaThread exception state after loading the pending exception.
+        EXCEPTION_OOP_LOCATION.writeObject(thread, null);
+        EXCEPTION_PC_LOCATION.writeWord(thread, Word.zero());
         return piCastToSnippetReplaceeStamp(exception);
     }
 

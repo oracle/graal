@@ -454,13 +454,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_top", Integer.class, "HeapWord*");
 
-    public int threadTlabEndOffset() {
-        return threadTlabOffset + threadLocalAllocBufferEndOffset;
-    }
+    public final int threadTlabEndOffset = threadTlabOffset + threadLocalAllocBufferEndOffset;
 
-    public int threadTlabTopOffset() {
-        return threadTlabOffset + threadLocalAllocBufferTopOffset;
-    }
+    public final int threadTlabTopOffset = threadTlabOffset + threadLocalAllocBufferTopOffset;
 
     public final int zvaLength = access.getFieldValue("VM_Version::_zva_length", Integer.class, "int", 0);
 
