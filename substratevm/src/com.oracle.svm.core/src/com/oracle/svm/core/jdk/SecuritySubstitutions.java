@@ -270,23 +270,25 @@ final class Target_javax_crypto_JceSecurity {
         Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
         Object o = verificationResults.get(key);
         if (o == PROVIDER_VERIFIED) {
+            SecurityProvidersSupport.traceProviderLookup(p);
             return null;
         } else if (o != null) {
             return (Exception) o;
         }
         o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
         if (o == Boolean.TRUE) {
+            SecurityProvidersSupport.traceProviderLookup(p);
             return null;
         } else if (o != null) {
             return (Exception) o;
         }
         /*
-         * If the verification result is not found in the verificationResults map, HotSpot will
-         * attempt to verify the provider. This requires accessing the code base, which isn't
-         * supported in Native Image, so we need to fail. We could either fail here or substitute
-         * getCodeBase() and fail there, but handling it here is a cleaner approach.
+         * A provider without a verification result was not included by reflection metadata.
+         * Trigger the regular Class.forName missing-registration path so diagnostics and metadata
+         * tracing handle this like any other missing reflection access.
          */
-        throw new SecurityException(SecurityProvidersSupport.missingProviderMessage(p.getName(), p.getClass().getName()));
+        SecurityProvidersSupport.reportMissingProviderRegistration(p.getClass());
+        throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + p.getClass().getName());
     }
 }
 
