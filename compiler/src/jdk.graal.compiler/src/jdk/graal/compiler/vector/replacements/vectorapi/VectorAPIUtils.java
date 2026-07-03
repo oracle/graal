@@ -180,16 +180,38 @@ public class VectorAPIUtils {
     }
 
     /**
-     * Computes a location identity from the given {@code container}. If the container is a
-     * primitive array, returns a location identity representing that array. Otherwise, returns
-     * {@link LocationIdentity#ANY_LOCATION}.
+     * Returns the array location for a primitive array object. Returns
+     * {@link LocationIdentity#ANY_LOCATION} when the object type is unknown or not a primitive array.
      */
-    public static LocationIdentity containerLocationIdentity(ValueNode container) {
-        ResolvedJavaType containerType = StampTool.typeOrNull(container);
-        if (containerType != null && containerType.isArray() && containerType.getComponentType().isPrimitive()) {
-            return NamedLocationIdentity.getArrayLocation(containerType.getComponentType().getJavaKind());
+    private static LocationIdentity primitiveArrayLocationIdentity(ValueNode object) {
+        ResolvedJavaType objectType = StampTool.typeOrNull(object);
+        if (objectType != null && objectType.isArray() && objectType.getComponentType().isPrimitive()) {
+            return NamedLocationIdentity.getArrayLocation(objectType.getComponentType().getJavaKind());
         }
         return LocationIdentity.ANY_LOCATION;
+    }
+
+    /**
+     * Computes the location identity for a Vector API memory access. A non-constant
+     * {@code fromSegment} value means the location is unknown.
+     *
+     * A zero {@code fromSegment} value means a regular array or buffer access through
+     * {@code container}.
+     *
+     * A nonzero {@code fromSegment} value means MemorySegment access through {@code base}. A null
+     * {@code base} is native memory. A primitive array {@code base} is a heap segment.
+     */
+    public static LocationIdentity memoryLocationIdentity(ValueNode base, ValueNode container, ValueNode fromSegment) {
+        if (!fromSegment.isJavaConstant()) {
+            return LocationIdentity.ANY_LOCATION;
+        }
+        if (fromSegment.asJavaConstant().asInt() == 0) {
+            return primitiveArrayLocationIdentity(container);
+        }
+        if (StampTool.isPointerAlwaysNull(base)) {
+            return NamedLocationIdentity.OFF_HEAP_LOCATION;
+        }
+        return primitiveArrayLocationIdentity(base);
     }
 
     public static SimdPrimitiveCompareNode isZero(ValueNode vector, VectorArchitecture vectorArch) {

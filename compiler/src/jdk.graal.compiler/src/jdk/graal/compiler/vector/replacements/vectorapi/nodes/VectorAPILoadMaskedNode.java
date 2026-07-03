@@ -52,6 +52,7 @@ import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.SimdMaskedReadNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 
 /**
  * Intrinsic node for the {@code VectorSupport.loadMasked} method. This operation performs a read
@@ -73,7 +74,10 @@ public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements Canon
     private static final int VCLASS_ARG_INDEX = 0;
     private static final int ECLASS_ARG_INDEX = 2;
     private static final int LENGTH_ARG_INDEX = 3;
+    private static final int BASE_ARG_INDEX = 4;
+    private static final int FROM_SEGMENT_ARG_INDEX = 6;
     private static final int M_ARG_INDEX = 7;
+    private static final int CONTAINER_ARG_INDEX = 9;
 
     protected VectorAPILoadMaskedNode(MacroParams p, SimdStamp loadStamp, VectorAPIType loadType, AddressNode address, LocationIdentity location, FrameState stateAfter) {
         super(TYPE, p, null /* can't constant fold loads */);
@@ -84,9 +88,11 @@ public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements Canon
         this.stateAfter = stateAfter;
     }
 
-    public static VectorAPILoadMaskedNode create(MacroParams params, VectorAPIType loadType, AddressNode address, LocationIdentity location, CoreProviders providers) {
+    public static VectorAPILoadMaskedNode create(MacroParams params, VectorAPIType loadType, AddressNode address, CoreProviders providers) {
         SimdStamp loadStamp = improveVectorStamp(null, params.arguments, VCLASS_ARG_INDEX, ECLASS_ARG_INDEX, LENGTH_ARG_INDEX, providers);
-        return new VectorAPILoadMaskedNode(params, loadStamp, loadType, address, location, null);
+        AddressNode newAddress = improveAddress(address);
+        LocationIdentity location = VectorAPIUtils.memoryLocationIdentity(params.arguments[BASE_ARG_INDEX], params.arguments[CONTAINER_ARG_INDEX], params.arguments[FROM_SEGMENT_ARG_INDEX]);
+        return new VectorAPILoadMaskedNode(params, loadStamp, loadType, newAddress, location, null);
     }
 
     @Override
@@ -114,10 +120,11 @@ public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements Canon
         ObjectStamp newSpeciesStamp = improveSpeciesStamp(tool, VCLASS_ARG_INDEX);
         SimdStamp newLoadStamp = improveVectorStamp(loadStamp, toArgumentArray(), VCLASS_ARG_INDEX, ECLASS_ARG_INDEX, LENGTH_ARG_INDEX, tool);
         AddressNode newAddress = improveAddress(address);
-        if (newSpeciesStamp != speciesStamp || newLoadStamp != loadStamp || newAddress != address) {
+        LocationIdentity newLocation = VectorAPIUtils.memoryLocationIdentity(getArgument(BASE_ARG_INDEX), getArgument(CONTAINER_ARG_INDEX), getArgument(FROM_SEGMENT_ARG_INDEX));
+        if (newSpeciesStamp != speciesStamp || newLoadStamp != loadStamp || newAddress != address || !newLocation.equals(location)) {
             ValueNode vClass = getArgument(VCLASS_ARG_INDEX);
             VectorAPIType newLoadType = VectorAPIType.ofConstant(vClass, tool);
-            return new VectorAPILoadMaskedNode(copyParamsWithImprovedStamp(newSpeciesStamp), newLoadStamp, newLoadType, newAddress, location, stateAfter());
+            return new VectorAPILoadMaskedNode(copyParamsWithImprovedStamp(newSpeciesStamp), newLoadStamp, newLoadType, newAddress, newLocation, stateAfter());
         }
         return this;
     }

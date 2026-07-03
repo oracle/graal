@@ -36,6 +36,7 @@ import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIBoxingUtils;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -73,20 +74,25 @@ public class VectorAPIStoreNode extends VectorAPISinkNode implements Canonicaliz
     private static final int VCLASS_ARG_INDEX = 0;
     private static final int ECLASS_ARG_INDEX = 1;
     private static final int LENGTH_ARG_INDEX = 2;
+    private static final int BASE_ARG_INDEX = 3;
+    private static final int FROM_SEGMENT_ARG_INDEX = 5;
     /* JDK 22+27 added the fromSegment flag before the vector to be stored. */
     private static final int VECTOR_ARG_INDEX = 6;
+    private static final int CONTAINER_ARG_INDEX = 7;
 
-    public VectorAPIStoreNode(MacroParams p, SimdStamp inputStamp, VectorAPIType storeType, AddressNode address, LocationIdentity location) {
-        this(p, inputStamp, storeType, address, location, null);
-    }
-
-    private VectorAPIStoreNode(MacroParams p, SimdStamp inputStamp, VectorAPIType storeType, AddressNode address, LocationIdentity location, FrameState stateAfter) {
+    protected VectorAPIStoreNode(MacroParams p, SimdStamp inputStamp, VectorAPIType storeType, AddressNode address, LocationIdentity location, FrameState stateAfter) {
         super(TYPE, p);
         this.inputStamp = inputStamp;
         this.storeType = storeType;
         this.address = address;
         this.location = location;
         this.stateAfter = stateAfter;
+    }
+
+    public static VectorAPIStoreNode create(MacroParams p, SimdStamp inputStamp, VectorAPIType storeType, AddressNode address) {
+        AddressNode newAddress = improveAddress(address);
+        LocationIdentity location = VectorAPIUtils.memoryLocationIdentity(p.arguments[BASE_ARG_INDEX], p.arguments[CONTAINER_ARG_INDEX], p.arguments[FROM_SEGMENT_ARG_INDEX]);
+        return new VectorAPIStoreNode(p, inputStamp, storeType, newAddress, location, null);
     }
 
     private ValueNode getVector() {
@@ -107,10 +113,11 @@ public class VectorAPIStoreNode extends VectorAPISinkNode implements Canonicaliz
 
         SimdStamp newInputStamp = improveVectorStamp(inputStamp, toArgumentArray(), VCLASS_ARG_INDEX, ECLASS_ARG_INDEX, LENGTH_ARG_INDEX, tool);
         AddressNode newAddress = improveAddress(address);
-        if (newInputStamp != inputStamp || newAddress != address) {
+        LocationIdentity newLocation = VectorAPIUtils.memoryLocationIdentity(getArgument(BASE_ARG_INDEX), getArgument(CONTAINER_ARG_INDEX), getArgument(FROM_SEGMENT_ARG_INDEX));
+        if (newInputStamp != inputStamp || newAddress != address || !newLocation.equals(location)) {
             ValueNode vClass = arguments.get(VCLASS_ARG_INDEX);
             VectorAPIType newStoreType = VectorAPIType.ofConstant(vClass, tool);
-            return new VectorAPIStoreNode(copyParams(), newInputStamp, newStoreType, newAddress, location, stateAfter());
+            return new VectorAPIStoreNode(copyParams(), newInputStamp, newStoreType, newAddress, newLocation, stateAfter());
         }
         return this;
     }
