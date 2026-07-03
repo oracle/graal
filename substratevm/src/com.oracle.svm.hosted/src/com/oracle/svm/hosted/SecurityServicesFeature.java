@@ -197,6 +197,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      * https://docs.oracle.com/en/java/javase/11/docs/specs/security/standard-names.html
      */
     private static final String SECURE_RANDOM_SERVICE = "SecureRandom";
+    private static final String GSS_API_MECHANISM_SERVICE = "GssApiMechanism";
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
@@ -691,6 +692,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
             registerSASLReachabilityHandlers(access);
         }
+        registerGSSReachabilityHandler(access);
 
         /*
          * On Oracle JDK the SecureRandom service implementations are not automatically discovered
@@ -701,6 +703,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         Optional<ResolvedJavaMethod> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
         defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), OriginalMethodProvider.getJavaMethod(m)));
+    }
+
+    private void registerGSSReachabilityHandler(BeforeAnalysisAccess access) {
+        Class<?> gssManager = access.findClassByName("org.ietf.jgss.GSSManager");
+        if (gssManager == null) {
+            return;
+        }
+        Method getInstance = ReflectionUtil.lookupMethod(gssManager, "getInstance");
+        // The GSS facade uses Provider services but does not follow the JCA getInstance convention.
+        // \u00a7FS-001-jca-security-provider-inclusion.1
+        access.registerReachabilityHandler(a -> registerServices(a, getInstance, GSS_API_MECHANISM_SERVICE), gssManager);
     }
 
     private void initializeServiceRegistrationData() {
