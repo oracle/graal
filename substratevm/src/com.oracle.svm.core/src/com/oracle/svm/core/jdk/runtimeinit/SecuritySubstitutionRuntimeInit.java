@@ -223,6 +223,9 @@ final class Target_sun_security_jca_ProviderList {
                 if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
                     throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
                 }
+                if (!SecurityProvidersSupport.singleton().isSecurityProviderIncluded(configuredProviderName, configuredProviderName)) {
+                    throw new SecurityException(SecurityProvidersSupport.missingConfiguredProviderMessage(configuredProviderName));
+                }
                 return SecurityProvidersSupport.traceProviderLookup(config.getProvider());
             }
         }
