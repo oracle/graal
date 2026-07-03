@@ -1162,7 +1162,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         if (config.useCompactObjectHeaders) {
             AddressNode address = createOffsetAddress(graph, object, config.markOffset);
             Stamp stamp = StampFactory.forKind(JavaKind.Long);
-            ValueNode memoryRead = FloatingReadNode.createRead(graph, address, MARK_WORD_LOCATION, stamp, null, BarrierType.NONE, insertAfter);
+            ReadNode memoryRead = graph.add(new ReadNode(address, MARK_WORD_LOCATION, stamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
+            graph.addAfterFixed(insertAfter, memoryRead);
             ValueNode rawCompressedHubWordSize = graph.addOrUnique(UnsignedRightShiftNode.create(memoryRead, ConstantNode.forInt(config.markWordKlassShift, graph), NodeView.DEFAULT));
             ValueNode rawCompressedHub = graph.addOrUnique(NarrowNode.create(rawCompressedHubWordSize, 32, NodeView.DEFAULT));
             ValueNode compressedKlassPointer = graph.addOrUnique(PointerCastNode.create(hubStamp, rawCompressedHub));
