@@ -728,6 +728,12 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean addStaticSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle provider = getObjectArgument(thread, 0);
+        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()), state.getDirectCallerClass(), state);
+        return true;
+    }
+
     private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle name = getObjectArgument(thread, 0);
@@ -1843,6 +1849,8 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
+                    brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
+                    brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", BreakpointInterceptor::getStaticSecurityProviderByName),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
