@@ -1274,6 +1274,7 @@ suite = {
                 "jdk.management.jfr",
                 "java.instrument",
                 "java.rmi",
+                "java.security.jgss",
             ],
             "requiresConcealed" : {
                 "java.base" : [
