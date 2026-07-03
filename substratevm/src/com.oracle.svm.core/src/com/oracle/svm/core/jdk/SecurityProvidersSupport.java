@@ -48,6 +48,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import sun.security.util.Debug;
 
@@ -153,36 +154,17 @@ public final class SecurityProvidersSupport {
         };
     }
 
-    public boolean isMissingBuiltInProvider(String provName) {
-        String providerName = getBuiltInProviderName(provName);
-        String providerFQName = getBuiltInProviderClassName(provName);
-        return providerName != null && !isSecurityProviderIncluded(providerName, providerFQName);
-    }
-
-    public static SecurityException missingBuiltInProvider(String provName) {
-        String providerName = getBuiltInProviderName(provName);
-        String providerFQName = getBuiltInProviderClassName(provName);
-        if (providerName == null || providerFQName == null) {
-            throw VMError.shouldNotReachHere("Unsupported built-in provider: " + provName);
+    public static void reportMissingProviderRegistration(Class<?> providerClass) {
+        try {
+            Class.forName(GraalDirectives.opaque(providerClass.getName()), false, providerClass.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere("A reachable security provider class was not found.", ex);
         }
-        return new SecurityException(
-                        missingProviderMessage(providerName, providerFQName));
-    }
-
-    public static String missingProviderMessage(String providerName, String providerFQName) {
-        return "The security provider '" + providerName + "' (" + providerFQName + ") was requested at run time but was not included in the native image. " +
-                        "Run your application with the tracing agent so the provider is recorded automatically, register " + providerFQName +
-                        " for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
-    }
-
-    public static String missingConfiguredProviderMessage(String providerName) {
-        return "The configured security provider '" + providerName + "' was requested at run time but was not included in the native image. " +
-                        "Run your application with the tracing agent so the provider is recorded automatically, register its implementation class " +
-                        "for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
+        throw VMError.shouldNotReachHere("A security provider without a verification result was registered for reflection: " + providerClass.getName());
     }
 
     public static Provider traceProviderLookup(Provider provider) {
-        if (provider == null || singleton().isMissingBuiltInProvider(provider.getName()) || singleton().isMissingBuiltInProvider(provider.getClass().getName())) {
+        if (provider == null) {
             return null;
         }
         if (MetadataTracer.enabled()) {
@@ -192,18 +174,33 @@ public final class SecurityProvidersSupport {
         return provider;
     }
 
+    private static Provider loadProviderReflectively(String providerClassName, Debug debug) {
+        try {
+            Class<?> providerClass = Class.forName(GraalDirectives.opaque(providerClassName));
+            return (Provider) providerClass.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException ex) {
+            if (debug != null) {
+                debug.println("Error loading provider " + providerClassName);
+                // Checkstyle: allow System.err (for JDK compatibility)
+                ex.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
+            }
+            return null;
+        }
+    }
+
     public Provider loadBuiltInProvider(String provName, Debug debug) {
         return switch (provName) {
             case "SUN", "sun.security.provider.Sun" ->
-                isSecurityProviderIncluded("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
+                isSecurityProviderIncluded("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : loadProviderReflectively("sun.security.provider.Sun", debug);
             case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                isSecurityProviderIncluded("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
+                isSecurityProviderIncluded("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : loadProviderReflectively("sun.security.rsa.SunRsaSign", debug);
             case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                isSecurityProviderIncluded("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
+                isSecurityProviderIncluded("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : loadProviderReflectively("com.sun.crypto.provider.SunJCE", debug);
             case "SunJSSE", "sun.security.ssl.SunJSSE" ->
-                isSecurityProviderIncluded("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
+                isSecurityProviderIncluded("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : loadProviderReflectively("sun.security.ssl.SunJSSE", debug);
             case "SunEC", "sun.security.ec.SunEC" ->
-                isSecurityProviderIncluded("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : null;
+                isSecurityProviderIncluded("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : loadProviderReflectively("sun.security.ec.SunEC", debug);
             case "Apple", "apple.security.AppleProvider" -> {
                 try {
                     Class<?> c = Class.forName("apple.security.AppleProvider");
