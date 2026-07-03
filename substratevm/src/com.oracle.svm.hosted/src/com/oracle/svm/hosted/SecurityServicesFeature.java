@@ -93,7 +93,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -395,6 +394,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         initializeServiceRegistrationData();
         access.registerSubtypeReachabilityHandler((_, providerClass) -> candidateProviderClasses.add(providerClass), Provider.class);
+        registerServiceProviderCandidates(access);
         registerManuallyConfiguredProvidersForReflection(access);
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
@@ -713,6 +713,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    private void registerServiceProviderCandidates(BeforeAnalysisAccess access) {
+        BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
+        accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+            if (serviceName.equals(Provider.class.getName())) {
+                for (String provider : providers) {
+                    Class<?> providerClass = access.findClassByName(provider);
+                    if (providerClass != null) {
+                        candidateProviderClasses.add(providerClass);
+                    }
+                }
+            }
+        });
+    }
+
     private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
         /*
          * SPI classes, i.e., base classes for concrete service implementations, such as
@@ -906,6 +920,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             provider = instantiateProvider(providerClass);
         }
         registerProvider(provider);
+        SecurityProvidersSupport.singleton().addIncludedSecurityProviderClass(providerClass.getName());
         for (Service service : provider.getServices()) {
             if (isValid(service)) {
                 registerService(access, service);
@@ -944,10 +959,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerService(DuringAnalysisAccess a, Service service) {
-        if (shouldSkipOmittedBuiltInProviderService(service)) {
-            trace("Skipped service %s because provider %s was not included by reachability metadata.", asString(service), service.getProvider().getClass().getName());
-            return;
-        }
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable _ = trace(service)) {
@@ -975,20 +986,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         } else {
             trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
         }
-    }
-
-    private static boolean shouldSkipOmittedBuiltInProviderService(Service service) {
-        if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-            return false;
-        }
-        Provider provider = service.getProvider();
-        return shouldSkipOmittedSunECProviderClass(provider.getClass());
-    }
-
-    private static boolean shouldSkipOmittedSunECProviderClass(Class<?> providerClass) {
-        return MissingRegistrationUtils.throwMissingRegistrationErrors() &&
-                        providerClass.getName().equals("sun.security.ec.SunEC") &&
-                        !isProviderRegisteredForReflection(providerClass);
     }
 
     private static boolean isProviderRegisteredForReflection(Class<?> providerClass) {
@@ -1032,17 +1029,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static Method findProviderMethod(Class<?> providerClass) {
         Method nullaryProviderMethod = null;
         try {
-            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                for (Method method : providerClass.getDeclaredMethods()) {
-                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) && method.getParameterCount() == 0 && method.getName().equals("provider") &&
-                                    Provider.class.isAssignableFrom(method.getReturnType())) {
-                        if (nullaryProviderMethod == null) {
-                            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityServicesFeature.class, providerClass);
-                            method.setAccessible(true);
-                            nullaryProviderMethod = method;
-                        } else {
-                            return null;
-                        }
+            for (Method method : providerClass.getDeclaredMethods()) {
+                if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) && method.getParameterCount() == 0 && method.getName().equals("provider") &&
+                                Provider.class.isAssignableFrom(method.getReturnType())) {
+                    if (nullaryProviderMethod == null) {
+                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityServicesFeature.class, providerClass);
+                        method.setAccessible(true);
+                        nullaryProviderMethod = method;
+                    } else {
+                        return null;
                     }
                 }
             }
