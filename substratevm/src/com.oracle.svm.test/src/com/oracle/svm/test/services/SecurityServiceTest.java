@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,9 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
+import org.ietf.jgss.GSSManager;
+import org.ietf.jgss.GSSName;
+import org.ietf.jgss.Oid;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -151,6 +154,15 @@ public class SecurityServiceTest {
         } catch (NoSuchAlgorithmException e) {
             Assert.fail("Failed to fetch noop service with exception: " + e);
         }
+    }
+
+    /** Verifies service-driven GSS provider inclusion. \u00a7FS-001-jca-security-provider-inclusion.1 */
+    @Test
+    public void testGSSProviderServiceRegistration() throws Exception {
+        Oid kerberosV5 = new Oid("1.2.840.113554.1.2.2");
+        GSSManager manager = GSSManager.getInstance();
+        Assert.assertTrue("The reachable GSS facade must preserve the Kerberos mechanism.", Set.of(manager.getMechs()).contains(kerberosV5));
+        Assert.assertEquals("user@REALM", manager.createName("user@REALM", GSSName.NT_USER_NAME, kerberosV5).toString());
     }
 
     @Test
