@@ -25,9 +25,8 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.KLASS_MISC_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccHasFinalizer;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -58,7 +57,7 @@ public class RegisterFinalizerSnippets implements Snippets {
     public static void registerFinalizerSnippet(final Object thisObj) {
         KlassPointer klass = HotSpotReplacementsUtil.loadHub(thisObj);
 
-        int flags = klass.readByte(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION);
+        int flags = KLASS_MISC_FLAGS_LOCATION.readUnsignedByte(klass);
         if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccHasFinalizer(INJECTED_VMCONFIG)) != 0)) {
             LoweredRegisterFinalizerNode.registerFinalizer(thisObj);
         }
