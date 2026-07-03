@@ -377,7 +377,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.jdk.Target_java_net_URL$DefaultFactory", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.jfr.JfrTypeRepository", SVM_RUN_TIME_ONLY),
                     pkg("com.oracle.svm.guest", GUEST_CONTEXT_ONLY),
-                    method("com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport", "lambda$createSingletonValidationCallback$0", NI_HOSTED_IMPLEMENTATION),
+                    method("com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport", "validateSingletonRegistration", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.hosted.ModuleLayerFeature", TERMINUS_OBSOLETED),
                     clazz("com.oracle.svm.interpreter.metadata.AccessChecks", CREMA_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.interpreter.metadata.CremaMethodAccess", CREMA_RUN_TIME_ONLY),

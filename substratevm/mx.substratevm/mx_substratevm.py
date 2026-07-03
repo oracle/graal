@@ -657,7 +657,7 @@ def svm_gate_body(args, tasks):
 # Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
 TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.util.VMError.shouldNotReachHere(VMError.java:121)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.lambda$createSingletonValidationCallback$0(HostedImageLayerBuildingSupport.java:287)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.validateSingletonRegistration(HostedImageLayerBuildingSupport.java:291)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.addSingleton(ImageSingletonsSupportImpl.java:399)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.doAdd(ImageSingletonsSupportImpl.java:384)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.add(ImageSingletonsSupportImpl.java:74)
