@@ -1345,16 +1345,16 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
      * Calling a native function from Java code requires filling the JavaFrameAnchor with the return
      * address of the call. This wrapper allows this by creating an intermediary call frame from
      * which the return address can be accessed. The parameters to this wrapper are the anchor, the
-     * native callee, and the arguments to the callee.
+     * native callee, the new thread status, and the arguments to the callee.
      */
-    LLVMValueRef createJNIWrapper(LLVMValueRef callee, boolean nativeABI, int numArgs, int anchorIPOffset) {
+    LLVMValueRef createJNIWrapper(LLVMValueRef callee, boolean nativeABI, int numArgs, int anchorIPOffset, int threadStatusOffset) {
         LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(LLVMIRBuilder.typeOf(callee));
         String wrapperName = JNI_WRAPPER_BASE_NAME + LLVMIRBuilder.intrinsicType(calleeType) + (nativeABI ? "_native" : "");
 
         LLVMValueRef transitionWrapper = builder.getNamedFunction(wrapperName);
         if (transitionWrapper == null) {
             try (LLVMIRBuilder tempBuilder = new LLVMIRBuilder(builder)) {
-                LLVMTypeRef wrapperType = prependArgumentTypes(calleeType, 0, tempBuilder.rawPointerType(), LLVMIRBuilder.typeOf(callee));
+                LLVMTypeRef wrapperType = prependArgumentTypes(calleeType, 0, tempBuilder.rawPointerType(), LLVMIRBuilder.typeOf(callee), tempBuilder.intType());
                 transitionWrapper = tempBuilder.addFunction(wrapperName, wrapperType);
                 LLVMIRBuilder.setLinkage(transitionWrapper, LinkageType.LinkOnce);
                 tempBuilder.setGarbageCollector(transitionWrapper, GCStrategy.CompressedPointers);
@@ -1378,9 +1378,14 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
                 LLVMValueRef castedLastIPAddr = tempBuilder.buildBitcast(lastIPAddr, tempBuilder.pointerType(tempBuilder.rawPointerType()));
                 tempBuilder.buildStore(callIP, castedLastIPAddr);
 
+                /* A safepoint may walk the frame anchor as soon as the thread status changes. */
+                LLVMValueRef statusAddress = tempBuilder.buildGEP(tempBuilder.buildIntToPtr(savedThread, tempBuilder.rawPointerType()), tempBuilder.constantInt(threadStatusOffset));
+                LLVMValueRef newThreadStatus = LLVMIRBuilder.getParam(transitionWrapper, 2);
+                tempBuilder.buildVolatileStore(newThreadStatus, tempBuilder.buildBitcast(statusAddress, tempBuilder.pointerType(tempBuilder.intType())), Integer.BYTES);
+
                 LLVMValueRef[] args = new LLVMValueRef[numArgs];
                 for (int i = 0; i < numArgs; ++i) {
-                    args[i] = LLVMIRBuilder.getParam(transitionWrapper, i + 2);
+                    args[i] = LLVMIRBuilder.getParam(transitionWrapper, i + 3);
                 }
                 LLVMValueRef target = LLVMIRBuilder.getParam(transitionWrapper, 1);
                 LLVMValueRef ret = tempBuilder.buildCall(target, args);

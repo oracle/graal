@@ -679,21 +679,22 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
-        LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
-        LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
-        LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
         LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
-        builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
 
         if (!nativeABI) {
+            LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
+            LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
+            LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
+            builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
             return emitCallInstruction(invoke, false, callee, patchpointId, args);
         } else {
-            LLVMValueRef wrapper = gen.createJNIWrapper(callee, true, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
+            LLVMValueRef wrapper = gen.createJNIWrapper(callee, true, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset(), KnownOffsets.singleton().getVMThreadStatusOffset());
 
-            LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
+            LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 3];
             newArgs[0] = anchor;
             newArgs[1] = callee;
-            System.arraycopy(args, 0, newArgs, 2, args.length);
+            newArgs[2] = newThreadStatus;
+            System.arraycopy(args, 0, newArgs, 3, args.length);
             LLVMValueRef wrapperCall = emitCallInstruction(invoke, true, wrapper, patchpointId, newArgs);
             builder.setInstructionCallingConvention(wrapperCall, LLVMIRBuilder.LLVMCallingConvention.GraalCallingConvention);
             return wrapperCall;
