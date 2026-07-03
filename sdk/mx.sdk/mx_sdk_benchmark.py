@@ -2202,15 +2202,14 @@ class PolyBenchPyodideGuestVm(PolyBenchEmscriptenGuestVm):
 class GraalHostPolyBenchStagingVm(PolyBenchStagingVm):
     """
     Stages a PolyBench benchmark and configures a GraalHost boot script that runs the benchmark.
-    * In the image stage: First stages the benchmark to the target language and then runs
-                          the graalos-run-config tool to create a boot script that executes the staged
+    * In the image stage: First stages the benchmark to the target language and then generates
+                          a GraalHost endpoint configuration and boot script that execute the staged
                           benchmark with GraalHost.
     * In the run stage:   Executes the GraalHost boot script.
 
     Relies on the following environment variables:
     * GRAALOS_BUILD pointing to the GraalOS build directdory.
     * ROOTFS pointing to the GraalOS language launcher (e.g. CPython) file-system root.
-      This directory should contain a venv/bin subdirectory containing the graalos-run-config tool.
     """
     GRAALHOST_FSMAPPING_TEMPLATE: Template = Template("""
     {
@@ -2219,10 +2218,14 @@ class GraalHostPolyBenchStagingVm(PolyBenchStagingVm):
       ]
     }
     """)
-
-    def __init__(self, name, config_name, language, launcher, ext, extra_java_args=None, extra_launcher_args=None):
-        super().__init__(name, config_name, language, launcher, ext, extra_java_args, extra_launcher_args)
-        self.run_script_file_name: str | None = None
+    GRAALHOST_TOOLCHAIN_FSMAPPING_TEMPLATE: Template = Template("""
+    {
+      "concrete": "${concrete}",
+      "virt": "${virt}",
+      "verif": true
+    }
+    """)
+    GRAALHOST_TOOLCHAIN_LIBRARIES: tuple[str, ...] = ("libc++.so.1", "libc++abi.so.1", "libunwind.so.1")
 
     def _prepare_for_running(self, args, out, err, cwd, nonZeroIsFatal):
         super()._prepare_for_running(args, out, err, cwd, nonZeroIsFatal)
@@ -2234,25 +2237,9 @@ class GraalHostPolyBenchStagingVm(PolyBenchStagingVm):
     def run_stage_image(self):
         # Start with resolving prerequisite environment variables
         build_dir = self._resolve_graalos_build_dir()
-        graalos_run_config = self._resolve_graalos_configuration_script()
         # Stage benchmark
         super().run_stage_image()
-        # Prepare command that will configure graalhost to run staged benchmark
-        bench_dir_mapping_config = self._create_staged_benchmark_fs_mapping_file()
-        graalos_run_config_cmd = [str(graalos_run_config), "--graalos-build-path", str(build_dir)]
-        graalos_run_config_cmd += ["--extra-config-path", str(bench_dir_mapping_config)]
-        graalos_run_config_cmd += [self.launcher, str(self.staged_program_file_path)]
-        # Run the graalhost configuration and handle output
-        out = mx.OutputCapture()
-        err = mx.OutputCapture()
-        rc = mx.run(graalos_run_config_cmd, out=out, err=err, nonZeroIsFatal=False)
-        mx.log(out.data)
-        if rc != 0:
-            mx.log(err.data)
-            raise ChildProcessError(f"GraalHost configuration command finished unsuccessfully with return code {rc}!")
-        m = re.search(r"^run script: (.+)$", out.data)
-        if m:
-            self.run_script_file_name = m.group(1)
+        self._create_staged_benchmark_run_config_file(build_dir)
 
     @staticmethod
     def _resolve_graalos_build_dir() -> Path:
@@ -2265,53 +2252,139 @@ class GraalHostPolyBenchStagingVm(PolyBenchStagingVm):
             raise ValueError(f"Environment variable 'GRAALOS_BUILD' points to '{build_dir}' which is not a directory!")
         return build_dir
 
-    def _resolve_graalos_configuration_script(self) -> Path:
-        """
-        Verifies that the ROOTFS env var is set and points to a directory containing a valid 'venv' subdirectory.
-        Returns the path to the virtual environment's 'graalos-run-config' tool.
-        """
+    @staticmethod
+    def _resolve_rootfs() -> Path:
+        """Verifies that the ROOTFS env var is set and points to a directory. Returns the directory path."""
         rootfs_env_var = os.getenv("ROOTFS")
         if rootfs_env_var is None:
             raise ValueError("Environment variable 'ROOTFS' is unset! It must point to the CPython file-system root!")
         rootfs = Path(rootfs_env_var).resolve()
         if not rootfs.is_dir():
             raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which is not a directory!")
-        venv_bin = rootfs / "venv" / "bin"
-        if not venv_bin.is_dir():
-            raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which does not contain a 'venv/bin' subdirectory!")
-        graalos_run_config = venv_bin / "graalos-run-config"
-        if not graalos_run_config.is_file():
-            raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which does not contain a 'graalos-run-config' file in its 'venv/bin' subdirectory!")
-        return graalos_run_config
+        return rootfs
+
+    @staticmethod
+    def _require_executable(path: Path, description: str) -> Path:
+        if not path.is_file():
+            raise ValueError(f"{description} '{path}' does not exist!")
+        if not os.access(path, os.X_OK):
+            raise ValueError(f"{description} '{path}' is not executable!")
+        return path
+
+    @staticmethod
+    def _resolve_graalhost_binary(build_dir: Path) -> Path:
+        """Resolve the GraalHost binary from the GraalOS build directory."""
+        return GraalHostPolyBenchStagingVm._require_executable(build_dir / "graalhost" / "graalhost", "GraalHost binary")
+
+    @staticmethod
+    def _resolve_graalos_config_util() -> Path:
+        """Resolve the graalos-config-util CLI from PATH."""
+        config_util = shutil.which("graalos-config-util")
+        if config_util is None:
+            raise ValueError("Could not resolve 'graalos-config-util' from PATH!")
+        return GraalHostPolyBenchStagingVm._require_executable(Path(config_util).resolve(), "graalos-config-util")
+
+    def _get_staged_benchmark_run_config_path(self) -> Path:
+        return self.output_dir / "staged_benchmark_run_config.json"
+
+    @staticmethod
+    def _merge_graalhost_config_values(base: object, extra: object) -> object:
+        if isinstance(base, dict) and isinstance(extra, dict):
+            merged = dict(base)
+            for key, value in extra.items():
+                if key == "fsmappings" and isinstance(merged.get(key), list) and isinstance(value, list):
+                    merged[key] = [*merged[key], *value]
+                elif key in merged:
+                    merged[key] = GraalHostPolyBenchStagingVm._merge_graalhost_config_values(merged[key], value)
+                else:
+                    merged[key] = value
+            return merged
+        return extra
+
+    @staticmethod
+    def _resolve_graalhost_toolchain_lib_dir(vm: "GraalHostPolyBenchStagingVm", args: list[str]) -> Path | None:
+        toolchain_lib_dir = vm.bmSuite.polybench_bench_suite_args(args).graalhost_toolchain_lib_dir
+        if toolchain_lib_dir is None:
+            return None
+        toolchain_lib_path = Path(toolchain_lib_dir).resolve()
+        if not toolchain_lib_path.is_dir():
+            raise ValueError(f"GraalHost toolchain library directory '{toolchain_lib_path}' is not a directory!")
+        return toolchain_lib_path
+
+    @staticmethod
+    def _graalhost_toolchain_fs_mapping(toolchain_lib_dir: Path, library_name: str) -> dict[str, object]:
+        return json.loads(
+            GraalHostPolyBenchStagingVm.GRAALHOST_TOOLCHAIN_FSMAPPING_TEMPLATE.substitute(
+                concrete=str((toolchain_lib_dir / library_name).resolve()),
+                virt=f"/lib/{library_name}",
+            )
+        )
 
     def _create_staged_benchmark_fs_mapping_file(self) -> Path:
         """
         Create a graalhost configuration file that contains a single fs-mapping entry,
         exposing the staged benchmark directory to the isolate.
         """
-        file_name = "staged_benchmark_fs_mapping.json"
-        file_path = self.output_dir / file_name
+        # The staged PolyBench artifact is produced on the host side, so GraalHost needs an explicit
+        # fs-mapping for this output dir or the benchmark file is not visible inside the isolate.
+        file_path = self.output_dir / "staged_benchmark_fs_mapping.json"
         with open(file_path, "w", encoding='utf-8') as f:
-            fs_mapping = self.GRAALHOST_FSMAPPING_TEMPLATE.substitute(path=self.output_dir)
-            f.write(fs_mapping)
+            fs_mapping_config = json.loads(self.GRAALHOST_FSMAPPING_TEMPLATE.substitute(path=self.output_dir))
+            toolchain_lib_dir = self._resolve_graalhost_toolchain_lib_dir(self, self.staging_args)
+            if toolchain_lib_dir is not None:
+                extra_config = {
+                    'fsmappings': [self._graalhost_toolchain_fs_mapping(toolchain_lib_dir, library_name)
+                                   for library_name in self.GRAALHOST_TOOLCHAIN_LIBRARIES],
+                }
+                fs_mapping_config = self._merge_graalhost_config_values(fs_mapping_config, extra_config)
+            json.dump(fs_mapping_config, f)
         return file_path
 
-    def _get_run_script_file_name(self):
-        """Returns the name of the run script - the script that starts graalhost and runs the staged benchmark on it."""
-        if self.run_script_file_name is not None:
-            return self.run_script_file_name
-        # Fallback value to enable running just the 'run' stage of the benchmark
-        launcher_file_name = Path(self.launcher).name
-        return f"run_config_{launcher_file_name}.sh"
+    def _create_staged_benchmark_run_config_file(self, build_dir: Path) -> Path:
+        """Create the GraalHost endpoint/run configuration JSON for the staged benchmark directory."""
+        rootfs = self._resolve_rootfs()
+        file_path = self._get_staged_benchmark_run_config_path()
+        binsweep = self._require_executable(build_dir / "binsweep" / "home" / "bin" / "binsweep", "binsweep")
+
+        extra_config_path = self._create_staged_benchmark_fs_mapping_file()
+        config_util = self._resolve_graalos_config_util()
+        cmd = [
+            str(config_util),
+            "--host-dir", str(rootfs),
+            "--binsweep", str(binsweep),
+            "--endpoint-config", str(file_path),
+            "--extra-config-path", str(extra_config_path),
+        ]
+        out = mx.OutputCapture()
+        err = mx.OutputCapture()
+        rc = mx.run(cmd, out=out, err=err, nonZeroIsFatal=False)
+        mx.log(out.data)
+        if rc != 0:
+            mx.log(err.data)
+            raise ChildProcessError(f"graalos-config-util finished unsuccessfully with return code {rc}!")
+        return file_path
 
     def run_stage_run(self):
+        rootfs = self._resolve_rootfs()
+        build_dir = self._resolve_graalos_build_dir()
+        graalhost = self._resolve_graalhost_binary(build_dir)
+        run_config_path = self._get_staged_benchmark_run_config_path()
+        if not run_config_path.is_file():
+            raise ValueError(f"Expected staged GraalHost run config at '{run_config_path}' but it does not exist!")
+        ephemeral_dir = tempfile.mkdtemp(prefix="graalhost_staged_benchmark_", dir=rootfs / "tmp")
         with self.get_stage_runner() as s:
-            # Unfortunately, the 'graalos-run-config' tool always outputs the run script into the working dir and
-            # does not allow modifying the output path.
-            # Both the run script and the accompanying graalhost configuration file end up in the current working
-            # directory.
-            run_script_file_path = str(Path.cwd() / self._get_run_script_file_name())
-            s.execute_command(self, [run_script_file_path])
+            cmd = [
+                str(graalhost),
+                f"--ephemeral_dir={ephemeral_dir}",
+                "--enable_resolving_env_refs",
+                "--visorcalloutput=@none",
+                "--log_to=file",
+                f"--run_config=@{run_config_path}",
+                "--run",
+                self.launcher,
+                str(self.staged_program_file_path),
+            ]
+            s.execute_command(self, cmd)
 
 
 def register_graalvm_vms():
