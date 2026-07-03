@@ -36,6 +36,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.MacSpi;
 
@@ -64,6 +65,7 @@ public class SecurityServiceTest {
     private static final String OMITTED_PROVIDER_ALGORITHM = "SHA256withECDSA";
     private static final String OMITTED_PROVIDER_SERVICE = "Signature";
     private static final String OMITTED_PROVIDER_ERROR = "SHA256withECDSA Signature not available";
+    private static final String MISSING_KEY_GENERATOR_ALGORITHM = "GR69858DefinitelyMissing";
     private static final String OMITTED_PROVIDER_HINT = "-H:Preserve=all";
     private static final String REFLECTION_METADATA_PROVIDER_CLASS_NAME = "com.oracle.svm.test.services.SecurityServiceTest$ReflectionMetadataProvider";
     private static final String REFLECTION_METADATA_PROVIDER_NAME = "reflection-metadata-provider";
@@ -285,6 +287,12 @@ public class SecurityServiceTest {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Iterator<Provider.Service> services = GetInstance.getServices(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
         Assert.assertFalse("Generic service iteration should silently skip the omitted built-in provider.", services.hasNext());
+    }
+
+    @Test
+    public void testGenericMissingAlgorithmExhaustsProviderList() {
+        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
+        Assert.assertThrows(NoSuchAlgorithmException.class, () -> KeyGenerator.getInstance(MISSING_KEY_GENERATOR_ALGORITHM));
     }
 
     @Test

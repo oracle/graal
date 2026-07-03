@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -86,6 +87,7 @@ import sun.util.locale.provider.LocaleDataMetaInfo;
  */
 @AutomaticallyRegisteredFeature
 public class ServiceLoaderFeature implements InternalFeature {
+    private static final String SECURITY_PROVIDER_SERVICE_RESOURCE = "META-INF/services/" + java.security.Provider.class.getName();
 
     public static class Options {
         @Option(help = "Automatically register services for run-time lookup using ServiceLoader", type = OptionType.Expert) //
@@ -165,6 +167,11 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+            // Permit an absent class-path descriptor without including omitted providers.
+            // \u00a7FS-001-jca-security-provider-inclusion
+            Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
+        }
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             Collection<String> providersToSkip = providers;
             try {
