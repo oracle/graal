@@ -165,6 +165,10 @@ final class Target_sun_security_jca_ProviderConfig {
             // Create providers which are in java.base directly
             if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
                 provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            } else if (!SecurityProvidersSupport.singleton().isSecurityProviderIncluded(provName, provName)) {
+                // Skip omitted providers before the JDK falls back to ServiceLoader.
+                // \u00a7FS-001-jca-security-provider-inclusion
+                provider = null;
             } else {
                 if (isLoading) {
                     /*
