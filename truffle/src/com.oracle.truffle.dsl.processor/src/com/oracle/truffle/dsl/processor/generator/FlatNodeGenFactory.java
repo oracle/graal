@@ -522,7 +522,7 @@ public class FlatNodeGenFactory {
         if (specialization.hasMultipleInstances()) {
             return false;
         }
-        if (specialization.isGuardBindsExclusiveCache() && FlatNodeGenFactory.usesExclusiveInstanceField(specialization)) {
+        if (specialization.isGuardBindsExclusiveCache() && FlatNodeGenFactory.usesSeparateCacheFieldInDuplicateCheck(specialization)) {
             return false;
         }
         return !FlatNodeGenFactory.shouldUseSpecializationClassBySize(specialization);
@@ -539,12 +539,12 @@ public class FlatNodeGenFactory {
                 return true;
             }
 
-            if (specialization.isGuardBindsExclusiveCache() && usesExclusiveInstanceField(specialization)) {
+            if (specialization.isGuardBindsExclusiveCache() && usesSeparateCacheFieldInDuplicateCheck(specialization)) {
                 /*
-                 * For specializations that bind cached values in guards that use instance fields we
-                 * need to use specialization classes because the duplication check is not reliable
-                 * otherwise. E.g. NeverDefaultTest#testSingleInstancePrimitiveCacheNode fails
-                 * without this check.
+                 * The duplicate-flag path uses the specialization-active state as its publication
+                 * marker. If duplicate detection also reads a separately stored cache field, the
+                 * active state may become visible before that field. Use a specialization class to
+                 * publish the cache fields through the existing volatile/CAS protocol.
                  */
                 return true;
             }
@@ -569,9 +569,9 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static boolean usesExclusiveInstanceField(SpecializationData s) {
-        for (CacheExpression cache : s.getCaches()) {
-            if (usesExclusiveInstanceField(cache)) {
+    private static boolean usesSeparateCacheFieldInDuplicateCheck(SpecializationData specialization) {
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (usesSeparateCacheFieldInDuplicateCheck(cache)) {
                 return true;
             }
         }
@@ -5049,20 +5049,24 @@ public class FlatNodeGenFactory {
 
     private static void validateDuplicateFlagUsage(SpecializationData specialization) throws AssertionError {
         for (CacheExpression cache : specialization.getCaches()) {
-            if (usesExclusiveInstanceField(cache)) {
-                throw new AssertionError("Using duplicate flag with cached reference fields is not thread-safe. " + specialization + ": " + cache);
+            if (usesSeparateCacheFieldInDuplicateCheck(cache)) {
+                throw new AssertionError("Using duplicate flag with a separately stored cached field is not thread-safe. " + specialization + ": " + cache);
             }
         }
     }
 
-    static boolean usesExclusiveInstanceField(CacheExpression cache) {
+    /*
+     * Returns whether duplicate detection checks cache initialization through a field that is
+     * stored separately from the specialization-active state. Always and eagerly initialized
+     * caches require no such check. Encoded enums are stored in the active-state bit set, and
+     * inlined caches manage their own state.
+     */
+    static boolean usesSeparateCacheFieldInDuplicateCheck(CacheExpression cache) {
         if (cache.isAlwaysInitialized()) {
             return false;
         } else if (cache.isEagerInitialize()) {
             return false;
         } else if (cache.isEncodedEnum()) {
-            return false;
-        } else if (cache.getSharedGroup() != null) {
             return false;
         } else if (cache.getInlinedNode() != null) {
             return false;
