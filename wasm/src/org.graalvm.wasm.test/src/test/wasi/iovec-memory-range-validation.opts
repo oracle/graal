@@ -1,2 +1,3 @@
 enable-io=true
 stdin=Z
+async-iterations=10000
