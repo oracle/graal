@@ -10,6 +10,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-74889) Added Windows support for Native Image JFR recordings and heap dumps.
 * (GR-67169) Added POSIX support for Native Image JFR emergency dumps. When an out-of-memory error occurs while a JFR recording is active, Native Image can preserve in-memory recording data in an emergency JFR file.
 * (GR-75641) Added experimental support for Native Image layered images on Windows.
+* (GR-68156) Reflection queries in Native Image now preserve lookup-specific linkage errors for registered classes, matching JVM behavior for member and record component lookups when referenced types are missing.
 * (GR-75640) Added experimental support for Native Image layered images on Darwin.
 * (GR-53498) Added experimental support for Native Image layered images on AArch64.
 * (GR-76207) `-H:Preserve` now preserves reached lambda proxy classes whose capturing classes are preserved.

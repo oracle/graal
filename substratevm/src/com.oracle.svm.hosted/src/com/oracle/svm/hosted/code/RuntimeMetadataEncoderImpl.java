@@ -179,9 +179,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private Map<HostedType, Map<Object, ConstructorMetadata>> constructorData = new HashMap<>();
 
     private Map<HostedType, Throwable> classLookupErrors = new HashMap<>();
-    private Map<HostedType, Throwable> fieldLookupErrors = new HashMap<>();
-    private Map<HostedType, Throwable> methodLookupErrors = new HashMap<>();
-    private Map<HostedType, Throwable> constructorLookupErrors = new HashMap<>();
+    private Map<HostedType, MemberLookupErrors> fieldLookupErrors = new HashMap<>();
+    private Map<HostedType, MemberLookupErrors> methodLookupErrors = new HashMap<>();
+    private Map<HostedType, MemberLookupErrors> constructorLookupErrors = new HashMap<>();
     private Map<HostedType, Throwable> recordComponentLookupErrors = new HashMap<>();
 
     private EconomicSet<AccessibleObjectMetadata> heapData = EconomicSet.create();
@@ -696,24 +696,24 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addFieldLookupError(HostedType declaringClass, Throwable exception) {
+    public void addFieldLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException) {
         addType(declaringClass);
-        registerError(exception);
-        fieldLookupErrors.put(declaringClass, exception);
+        registerLookupErrors(declaredException, publicException);
+        fieldLookupErrors.put(declaringClass, new MemberLookupErrors(declaredException, publicException));
     }
 
     @Override
-    public void addMethodLookupError(HostedType declaringClass, Throwable exception) {
+    public void addMethodLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException) {
         addType(declaringClass);
-        registerError(exception);
-        methodLookupErrors.put(declaringClass, exception);
+        registerLookupErrors(declaredException, publicException);
+        methodLookupErrors.put(declaringClass, new MemberLookupErrors(declaredException, publicException));
     }
 
     @Override
-    public void addConstructorLookupError(HostedType declaringClass, Throwable exception) {
+    public void addConstructorLookupErrors(HostedType declaringClass, Throwable declaredException, Throwable publicException) {
         addType(declaringClass);
-        registerError(exception);
-        constructorLookupErrors.put(declaringClass, exception);
+        registerLookupErrors(declaredException, publicException);
+        constructorLookupErrors.put(declaringClass, new MemberLookupErrors(declaredException, publicException));
     }
 
     @Override
@@ -721,6 +721,15 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         addType(declaringClass);
         registerError(exception);
         recordComponentLookupErrors.put(declaringClass, exception);
+    }
+
+    private void registerLookupErrors(Throwable declaredException, Throwable publicException) {
+        if (declaredException != null) {
+            registerError(declaredException);
+        }
+        if (publicException != null && publicException != declaredException) {
+            registerError(publicException);
+        }
     }
 
     private static HostedType[] getParameterTypes(HostedMethod method) {
@@ -833,9 +842,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 }
             }
 
-            int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), fieldLookupErrors.get(declaringType), this::encodeField, false);
-            int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), methodLookupErrors.get(declaringType), this::encodeExecutable, false);
-            int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), constructorLookupErrors.get(declaringType), this::encodeExecutable, false);
+            int fieldsIndex = encodeAndAddMemberCollection(buf, getFields(declaringType), fieldLookupErrors.get(declaringType), this::encodeField, false);
+            int methodsIndex = encodeAndAddMemberCollection(buf, getMethods(declaringType), methodLookupErrors.get(declaringType), this::encodeExecutable, false);
+            int constructorsIndex = encodeAndAddMemberCollection(buf, getConstructors(declaringType), constructorLookupErrors.get(declaringType), this::encodeExecutable, false);
             int recordComponentsIndex = encodeAndAddCollection(buf, classMetadata != null ? classMetadata.recordComponents : null, recordComponentLookupErrors.get(declaringType),
                             this::encodeRecordComponent, true);
             int dynamicAccessIndex = encodeAndAddElement(buf, b -> encodeDynamicAccess(b, classMetadata != null ? classMetadata.dynamicAccess : null));
@@ -894,6 +903,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return encodedIndex;
     }
 
+    private int encodeOptionalErrorIndex(Throwable error) {
+        return error == null ? NO_DATA : encodeErrorIndex(error);
+    }
+
     private <T> int encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
         return encodeAndAddCollection(buf, data, null, encodeCallback, canBeNull);
     }
@@ -912,6 +925,25 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             encodeArray(buf, data, element -> encodeCallback.accept(buf, element));
         }
         return offset;
+    }
+
+    private <T> int encodeAndAddMemberCollection(UnsafeArrayTypeWriter buf, T[] data, MemberLookupErrors lookupErrors, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
+        if (lookupErrors == null) {
+            return encodeAndAddCollection(buf, data, encodeCallback, canBeNull);
+        }
+        int offset = TypeConversion.asS4(buf.getBytesWritten());
+        buf.putSV(NO_DATA);
+        buf.putSV(encodeOptionalErrorIndex(lookupErrors.declaredError()));
+        buf.putSV(encodeOptionalErrorIndex(lookupErrors.publicError()));
+        if (data == null || (!canBeNull && data.length == 0)) {
+            buf.putSV(0);
+        } else {
+            encodeArray(buf, data, element -> encodeCallback.accept(buf, element));
+        }
+        return offset;
+    }
+
+    private record MemberLookupErrors(Throwable declaredError, Throwable publicError) {
     }
 
     private static int encodeAndAddElement(UnsafeArrayTypeWriter buf, Consumer<UnsafeArrayTypeWriter> encoder) {
