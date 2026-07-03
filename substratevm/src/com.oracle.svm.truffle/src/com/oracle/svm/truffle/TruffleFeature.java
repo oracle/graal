@@ -177,6 +177,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
+import jdk.graal.compiler.bytecode.BytecodeLookupSwitch;
+import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.bytecode.BytecodeSwitch;
+import jdk.graal.compiler.bytecode.BytecodeTableSwitch;
+import jdk.graal.compiler.bytecode.Bytecodes;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FrameState;
@@ -529,7 +534,7 @@ public class TruffleFeature implements InternalFeature {
             this.allowRuntimeCompilationPredicate = allowRuntimeCompilationPredicate;
         }
 
-        public RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target) {
+        public RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision allowInlining(GraphBuilderContext builder, AnalysisMethod root, ResolvedJavaMethod target) {
 
             if (target.hasNeverInlineDirective()) {
                 return INLINING_DISALLOWED;
@@ -541,10 +546,14 @@ public class TruffleFeature implements InternalFeature {
                  * longer exploded.
                  */
                 return INLINING_DISALLOWED;
-            } else if (AnnotationUtil.getAnnotation(builder.getMethod(), ExplodeLoop.class) != null) {
+            } else if (AnnotationUtil.getAnnotation(root, ExplodeLoop.class) != null && calleeBytecodeHasLoops(target)) {
                 /*
-                 * We cannot inline anything into a method annotated with @ExplodeLoop, because then
-                 * loops of the inlined callee are exploded too.
+                 * We cannot inline a method with loops into a method annotated with @ExplodeLoop,
+                 * because then loops of the inlined callee are exploded too. This predicate is on
+                 * the Truffle-specific runtime-compilation path and runs before opening the callee
+                 * decode scope, so raw bytecode is the cheapest available loop summary for the
+                 * candidate method. The check is intentionally conservative: methods without
+                 * bytecode are treated as possibly containing loops.
                  */
                 return INLINING_DISALLOWED;
             } else if (replacements.hasSubstitution(target, builder.getOptions())) {
@@ -562,6 +571,46 @@ public class TruffleFeature implements InternalFeature {
             }
 
             return NO_DECISION;
+        }
+
+        private static boolean calleeBytecodeHasLoops(ResolvedJavaMethod target) {
+            byte[] code = target.getCode();
+            if (code == null) {
+                return true;
+            }
+            BytecodeStream stream = new BytecodeStream(code);
+            while (stream.currentBC() != Bytecodes.END) {
+                int currentBCI = stream.currentBCI();
+                int opcode = stream.currentBC();
+                if (Bytecodes.isBranch(opcode)) {
+                    if (stream.readBranchDest() <= currentBCI) {
+                        return true;
+                    }
+                } else if (opcode == Bytecodes.TABLESWITCH) {
+                    if (switchHasBackwardTarget(new BytecodeTableSwitch(stream, currentBCI))) {
+                        return true;
+                    }
+                } else if (opcode == Bytecodes.LOOKUPSWITCH) {
+                    if (switchHasBackwardTarget(new BytecodeLookupSwitch(stream, currentBCI))) {
+                        return true;
+                    }
+                }
+                stream.next();
+            }
+            return false;
+        }
+
+        private static boolean switchHasBackwardTarget(BytecodeSwitch bytecodeSwitch) {
+            int bci = bytecodeSwitch.bci();
+            if (bytecodeSwitch.defaultTarget() <= bci) {
+                return true;
+            }
+            for (int i = 0; i < bytecodeSwitch.numberOfCases(); i++) {
+                if (bytecodeSwitch.targetAt(i) <= bci) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

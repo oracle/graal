@@ -1812,6 +1812,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
         if (handlerLayout.isTailCall()) {
             b.startCatchBlock(parent.abstractBytecodeNode.branchBackwardReturnException.asType(), "bre");
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.statement("return bre.targetState");
             b.end();
         }

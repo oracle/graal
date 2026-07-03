@@ -55,7 +55,7 @@ final class BranchBackwardReturnExceptionElement extends AbstractElement {
 
     BranchBackwardReturnExceptionElement(BytecodeRootNodeElement parent) {
         super(parent, Set.of(PROTECTED, STATIC, FINAL), ElementKind.CLASS, null, "BranchBackwardReturnException");
-        this.setSuperClass(types.ControlFlowException);
+        this.setSuperClass(types.SlowPathException);
         this.add(new CodeVariableElement(Set.of(), type(long.class), "targetState"));
         this.add(GeneratorUtils.createConstructorUsingFields(Set.of(), this));
     }
