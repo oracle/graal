@@ -64,9 +64,7 @@ import sun.security.jca.GetInstance;
 public class SecurityServiceTest {
     private static final String OMITTED_PROVIDER_ALGORITHM = "SHA256withECDSA";
     private static final String OMITTED_PROVIDER_SERVICE = "Signature";
-    private static final String OMITTED_PROVIDER_ERROR = "SHA256withECDSA Signature not available";
     private static final String MISSING_KEY_GENERATOR_ALGORITHM = "GR69858DefinitelyMissing";
-    private static final String OMITTED_PROVIDER_HINT = "-H:Preserve=all";
     private static final String REFLECTION_METADATA_PROVIDER_CLASS_NAME = "com.oracle.svm.test.services.SecurityServiceTest$ReflectionMetadataProvider";
     private static final String REFLECTION_METADATA_PROVIDER_NAME = "reflection-metadata-provider";
     private static final String REFLECTION_METADATA_PROVIDER_ALGORITHM = "reflection-metadata-algo";
@@ -242,51 +240,29 @@ public class SecurityServiceTest {
     }
 
     @Test
-    public void testMissingBuiltInProviderErrorMessage() {
+    public void testReachableBuiltInProviderIsIncluded() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
-        try {
-            Security.getProvider("SunEC");
-            Assert.fail("Fetching an omitted built-in provider should fail.");
-        } catch (SecurityException e) {
-            Assert.assertTrue("Missing provider message should mention the provider name.", e.getMessage().contains("SunEC"));
-            Assert.assertTrue("Missing provider message should mention the provider class.", e.getMessage().contains("sun.security.ec.SunEC"));
-            Assert.assertTrue("Missing provider message should mention the tracing agent.", e.getMessage().contains("tracing agent"));
-            Assert.assertTrue("Missing provider message should mention reflection metadata.", e.getMessage().contains("reachability-metadata.json"));
-            Assert.assertTrue("Missing provider message should mention preserve all.", e.getMessage().contains(OMITTED_PROVIDER_HINT));
-        }
+        Assert.assertNotNull("Service-driven registration should include SunEC.", Security.getProvider("SunEC"));
     }
 
     @Test
-    public void testGenericMissingBuiltInProviderGetServiceUsesBroadError() {
+    public void testReachableBuiltInProviderGetService() throws NoSuchAlgorithmException {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
-        try {
-            GetInstance.getService(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
-            Assert.fail("Generic provider discovery should not find an omitted built-in provider.");
-        } catch (NoSuchAlgorithmException e) {
-            Assert.assertEquals(OMITTED_PROVIDER_ERROR, e.getMessage());
-            Assert.assertFalse("Generic discovery should not use the explicit-provider diagnostic yet.",
-                            e.getMessage().contains(OMITTED_PROVIDER_HINT));
-        }
+        Provider.Service service = GetInstance.getService(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
+        Assert.assertEquals("SunEC", service.getProvider().getName());
     }
 
     @Test
-    public void testGenericMissingBuiltInProviderGetInstanceUsesBroadError() {
+    public void testReachableBuiltInProviderGetInstance() throws NoSuchAlgorithmException {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
-        try {
-            GetInstance.getInstance(OMITTED_PROVIDER_SERVICE, null, OMITTED_PROVIDER_ALGORITHM);
-            Assert.fail("Generic provider discovery should not instantiate an omitted built-in provider.");
-        } catch (NoSuchAlgorithmException e) {
-            Assert.assertEquals(OMITTED_PROVIDER_ERROR, e.getMessage());
-            Assert.assertFalse("Generic discovery should not use the explicit-provider diagnostic yet.",
-                            e.getMessage().contains(OMITTED_PROVIDER_HINT));
-        }
+        Assert.assertNotNull(GetInstance.getInstance(OMITTED_PROVIDER_SERVICE, null, OMITTED_PROVIDER_ALGORITHM));
     }
 
     @Test
-    public void testGenericMissingBuiltInProviderGetServicesReturnsEmptyIterator() {
+    public void testReachableBuiltInProviderGetServices() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Iterator<Provider.Service> services = GetInstance.getServices(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
-        Assert.assertFalse("Generic service iteration should silently skip the omitted built-in provider.", services.hasNext());
+        Assert.assertTrue("Generic service iteration should include the reachable built-in provider.", services.hasNext());
     }
 
     @Test
@@ -296,17 +272,17 @@ public class SecurityServiceTest {
     }
 
     @Test
-    public void testSecurityGetAlgorithmsOmitsMissingBuiltInProviderAlgorithm() {
+    public void testSecurityGetAlgorithmsIncludesReachableBuiltInProviderAlgorithm() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Set<String> algorithms = Security.getAlgorithms(OMITTED_PROVIDER_SERVICE);
-        Assert.assertFalse("Generic algorithm discovery should not expose the omitted built-in provider algorithm.",
+        Assert.assertTrue("Generic algorithm discovery should expose the reachable built-in provider algorithm.",
                         algorithms.contains(OMITTED_PROVIDER_ALGORITHM.toUpperCase()));
     }
 
     @Test
-    public void testSecurityGetProvidersFilterOmitsMissingBuiltInProvider() {
+    public void testSecurityGetProvidersFilterIncludesReachableBuiltInProvider() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
-        Assert.assertNull("Provider filtering should silently omit algorithms from the omitted built-in provider.",
+        Assert.assertNotNull("Provider filtering should include algorithms from the reachable built-in provider.",
                         Security.getProviders(OMITTED_PROVIDER_SERVICE + "." + OMITTED_PROVIDER_ALGORITHM));
     }
 

@@ -89,6 +89,11 @@ public final class SecurityProvidersSupport {
         verifiedSecurityProviderClasses.put(providerClassName, verificationResult);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addIncludedSecurityProviderClass(String providerClassName) {
+        verifiedSecurityProviderClasses.put(providerClassName, Boolean.TRUE);
+    }
+
     public Object getSecurityProviderVerificationResult(Provider provider) {
         Object result = verifiedSecurityProviderClasses.get(provider.getClass().getName());
         return result != null ? result : verifiedSecurityProviders.get(provider.getName());
@@ -168,6 +173,12 @@ public final class SecurityProvidersSupport {
         return "The security provider '" + providerName + "' (" + providerFQName + ") was requested at run time but was not included in the native image. " +
                         "Run your application with the tracing agent so the provider is recorded automatically, register " + providerFQName +
                         " for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
+    }
+
+    public static String missingConfiguredProviderMessage(String providerName) {
+        return "The configured security provider '" + providerName + "' was requested at run time but was not included in the native image. " +
+                        "Run your application with the tracing agent so the provider is recorded automatically, register its implementation class " +
+                        "for reflection in reachability-metadata.json, or build with -H:Preserve=all to include all JDK providers.";
     }
 
     public static Provider traceProviderLookup(Provider provider) {
