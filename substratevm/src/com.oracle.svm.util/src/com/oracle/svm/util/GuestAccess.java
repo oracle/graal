@@ -421,6 +421,94 @@ public final class GuestAccess implements VMAccess {
     }
 
     /**
+     * Safely converts the guest {@code value} to a host object of {@code type}. Unlike
+     * {@link SnippetReflectionProvider#asObject}, this method does not expose an arbitrary guest
+     * object to the host. It only materializes primitive values, boxed primitive values, strings,
+     * enums, and {@code null}.
+     *
+     * @throws IllegalArgumentException if {@code type} is not supported
+     */
+    public <T> T asSafeHostObject(Class<T> type, JavaConstant value) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(value, "value");
+        if (value.getJavaKind().isObject() && value.isNull()) {
+            GraalError.guarantee(!type.isPrimitive(), "Cannot convert null guest value to primitive host type %s", type.getName());
+            return null;
+        }
+
+        Class<T> boxedType = box(type);
+        if (value.getJavaKind().isPrimitive()) {
+            return boxedType.cast(value.asBoxedPrimitive());
+        } else if (boxedType == String.class) {
+            return boxedType.cast(asHostString(value));
+        } else if (lookupType(boxedType).isEnum()) {
+            return asHostEnum(boxedType, value);
+        } else if (isBoxedPrimitive(boxedType)) {
+            return boxedType.cast(asHostBoxedPrimitive(boxedType, value));
+        } else {
+            throw new IllegalArgumentException("Cannot safely convert guest constant to " + type.getName());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> Class<T> box(Class<T> type) {
+        if (type == boolean.class) {
+            return (Class<T>) Boolean.class;
+        } else if (type == byte.class) {
+            return (Class<T>) Byte.class;
+        } else if (type == short.class) {
+            return (Class<T>) Short.class;
+        } else if (type == char.class) {
+            return (Class<T>) Character.class;
+        } else if (type == int.class) {
+            return (Class<T>) Integer.class;
+        } else if (type == long.class) {
+            return (Class<T>) Long.class;
+        } else if (type == float.class) {
+            return (Class<T>) Float.class;
+        } else if (type == double.class) {
+            return (Class<T>) Double.class;
+        } else {
+            return type;
+        }
+    }
+
+    private static boolean isBoxedPrimitive(Class<?> type) {
+        return type == Boolean.class || type == Byte.class || type == Short.class || type == Character.class || type == Integer.class || type == Long.class || type == Float.class ||
+                        type == Double.class;
+    }
+
+    private Object asHostBoxedPrimitive(Class<?> type, JavaConstant value) {
+        ResolvedJavaMethod method;
+        if (type == Boolean.class) {
+            method = elements.java_lang_Boolean_booleanValue;
+        } else if (type == Byte.class) {
+            method = elements.java_lang_Byte_byteValue;
+        } else if (type == Short.class) {
+            method = elements.java_lang_Short_shortValue;
+        } else if (type == Character.class) {
+            method = elements.java_lang_Character_charValue;
+        } else if (type == Integer.class) {
+            method = elements.java_lang_Integer_intValue;
+        } else if (type == Long.class) {
+            method = elements.java_lang_Long_longValue;
+        } else if (type == Float.class) {
+            method = elements.java_lang_Float_floatValue;
+        } else if (type == Double.class) {
+            method = elements.java_lang_Double_doubleValue;
+        } else {
+            throw new IllegalArgumentException("Not a boxed primitive type: " + type.getName());
+        }
+        return invoke(method, value).asBoxedPrimitive();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private <T> T asHostEnum(Class<T> type, JavaConstant value) {
+        JavaConstant name = invoke(elements.java_lang_Enum_name, value);
+        return (T) Enum.valueOf((Class<? extends Enum>) type, asHostString(name));
+    }
+
+    /**
      * Boxes a primitive {@link JavaConstant} into its corresponding object wrapper.
      * <p>
      * This method takes a primitive {@link JavaConstant} and invokes the corresponding

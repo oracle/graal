@@ -62,27 +62,38 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     // Checkstyle: stop field name check
     public final ResolvedJavaType java_lang_Boolean = lookupType(Boolean.class);
     public final ResolvedJavaMethod java_lang_Boolean_valueOf = lookupMethod(java_lang_Boolean, "valueOf", boolean.class);
+    public final ResolvedJavaMethod java_lang_Boolean_booleanValue = lookupMethod(java_lang_Boolean, "booleanValue");
 
     public final ResolvedJavaType java_lang_Byte = lookupType(Byte.class);
     public final ResolvedJavaMethod java_lang_Byte_valueOf = lookupMethod(java_lang_Byte, "valueOf", byte.class);
+    public final ResolvedJavaMethod java_lang_Byte_byteValue = lookupMethod(java_lang_Byte, "byteValue");
 
     public final ResolvedJavaType java_lang_Character = lookupType(Character.class);
     public final ResolvedJavaMethod java_lang_Character_valueOf = lookupMethod(java_lang_Character, "valueOf", char.class);
+    public final ResolvedJavaMethod java_lang_Character_charValue = lookupMethod(java_lang_Character, "charValue");
 
     public final ResolvedJavaType java_lang_Integer = lookupType(Integer.class);
     public final ResolvedJavaMethod java_lang_Integer_valueOf = lookupMethod(java_lang_Integer, "valueOf", int.class);
+    public final ResolvedJavaMethod java_lang_Integer_intValue = lookupMethod(java_lang_Integer, "intValue");
 
     public final ResolvedJavaType java_lang_Short = lookupType(Short.class);
     public final ResolvedJavaMethod java_lang_Short_valueOf = lookupMethod(java_lang_Short, "valueOf", short.class);
+    public final ResolvedJavaMethod java_lang_Short_shortValue = lookupMethod(java_lang_Short, "shortValue");
 
     public final ResolvedJavaType java_lang_Long = lookupType(Long.class);
     public final ResolvedJavaMethod java_lang_Long_valueOf = lookupMethod(java_lang_Long, "valueOf", long.class);
+    public final ResolvedJavaMethod java_lang_Long_longValue = lookupMethod(java_lang_Long, "longValue");
 
     public final ResolvedJavaType java_lang_Float = lookupType(Float.class);
     public final ResolvedJavaMethod java_lang_Float_valueOf = lookupMethod(java_lang_Float, "valueOf", float.class);
+    public final ResolvedJavaMethod java_lang_Float_floatValue = lookupMethod(java_lang_Float, "floatValue");
 
     public final ResolvedJavaType java_lang_Double = lookupType(Double.class);
     public final ResolvedJavaMethod java_lang_Double_valueOf = lookupMethod(java_lang_Double, "valueOf", double.class);
+    public final ResolvedJavaMethod java_lang_Double_doubleValue = lookupMethod(java_lang_Double, "doubleValue");
+
+    public final ResolvedJavaType java_lang_Enum = lookupType(Enum.class);
+    public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
