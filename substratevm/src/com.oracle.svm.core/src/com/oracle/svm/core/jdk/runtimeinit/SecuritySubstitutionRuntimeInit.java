@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -105,17 +106,18 @@ final class Target_javax_crypto_JceSecurity {
         /* The verification results map key is an identity wrapper object. */
         Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
         if (o == Boolean.TRUE) {
+            SecurityProvidersSupport.traceProviderLookup(p);
             return null;
         } else if (o != null) {
             return (Exception) o;
         }
         /*
-         * If the verification result is not found in the verificationResults map, HotSpot will
-         * attempt to verify the provider. This requires accessing the code base, which isn't
-         * supported in Native Image, so we need to fail. We could either fail here or substitute
-         * getCodeBase() and fail there, but handling it here is a cleaner approach.
+         * A provider without a verification result was not included by reflection metadata.
+         * Trigger the regular Class.forName missing-registration path so diagnostics and metadata
+         * tracing handle this like any other missing reflection access.
          */
-        throw new SecurityException(SecurityProvidersSupport.missingProviderMessage(p.getName(), p.getClass().getName()));
+        SecurityProvidersSupport.reportMissingProviderRegistration(p.getClass());
+        throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + p.getClass().getName());
     }
 }
 
@@ -165,10 +167,6 @@ final class Target_sun_security_jca_ProviderConfig {
             // Create providers which are in java.base directly
             if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
                 provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
-            } else if (!SecurityProvidersSupport.singleton().isSecurityProviderIncluded(provName, provName)) {
-                // Skip omitted providers before the JDK falls back to ServiceLoader.
-                // \u00a7FS-001-jca-security-provider-inclusion
-                provider = null;
             } else {
                 if (isLoading) {
                     /*
@@ -220,12 +218,6 @@ final class Target_sun_security_jca_ProviderList {
             String providerFQName = SecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
-                if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
-                    throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
-                }
-                if (!SecurityProvidersSupport.singleton().isSecurityProviderIncluded(configuredProviderName, configuredProviderName)) {
-                    throw new SecurityException(SecurityProvidersSupport.missingConfiguredProviderMessage(configuredProviderName));
-                }
                 return SecurityProvidersSupport.traceProviderLookup(config.getProvider());
             }
         }
