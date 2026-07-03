@@ -37,7 +37,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -53,6 +52,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -403,10 +403,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         public final JavaKind returnKind;
         public final int parameterSlots;
         public final boolean hasReceiver;
-        public final boolean needsInterfaceReceiverCheck;
+        public final boolean requiresSymbolicTypeCheck;
 
-        public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, int opcode) {
-            assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+        public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, boolean requiresInterfaceReceiverCheck) {
             this.symbolicHolder = symbolicHolder;
             this.seedMethod = seedMethod;
             this.callKind = callKind;
@@ -415,7 +414,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             this.returnKind = signature.getReturnKind();
             this.hasReceiver = !seedMethod.isStatic();
             this.parameterSlots = signature.slotsForParameters(hasReceiver);
-            this.needsInterfaceReceiverCheck = opcode == Bytecodes.INVOKEINTERFACE;
+            this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
         }
     }
 

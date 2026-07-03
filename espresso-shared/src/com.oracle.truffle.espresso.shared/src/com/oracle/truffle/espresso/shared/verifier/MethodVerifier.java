@@ -1981,9 +1981,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         int methodIndex = code.readCPI(bci);
         validateMethodRefIndex(methodIndex);
 
+        boolean isInterfaceMethodTarget = pool.tagAt(methodIndex) == INTERFACE_METHOD_REF;
         // Checks versioning
         if (version51OrEarlier()) {
-            verifyGuarantee(pool.tagAt(methodIndex) != INTERFACE_METHOD_REF, "invokeSpecial refers to an interface method with classfile version " + majorVersion);
+            verifyGuarantee(!isInterfaceMethodTarget, "invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = pool.methodName(methodIndex);
 
@@ -2027,7 +2028,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
             checkProtectedMember(stackOp, methodHolder, methodIndex, true);
         } else {
-            verifyGuarantee(checkMethodSpecialAccess(methodHolderOp), "invokespecial must specify a method in this class or a super class");
+            checkMethodSpecialAccess(methodHolderOp, isInterfaceMethodTarget);
             Operand<R, C, M, F> stackOp = checkInit(stack.popRef(methodHolderOp));
             /*
              * 4.10.1.9.invokespecial:
@@ -2162,19 +2163,50 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return stackOp.compliesWith(thisOperand, this) || isMagicAccessor() || checkReceiverHostAccess(stackOp);
     }
 
+    private void checkMethodSpecialAccess(Operand<R, C, M, F> methodHolder, boolean isInterfaceMethodTarget) {
+        if (isMagicAccessor() || checkHostAccess(methodHolder)) {
+            return;
+        }
+
+        // Note: These two shortcuts taken from HotSpot will actually let through "interface methods"
+        // that refer to this concrete class or its super type. This will get caught at runtime
+        // later, during resolution with an IncompatibleClassChangeError.
+
+        if (thisOperand.getType() == methodHolder.getType()) {
+            // Same klass as holder -> trivial success
+            return;
+        }
+        if (thisKlass.getSuperClass().getSymbolicType() == methodHolder.getType()) {
+            // Direct superclass -> success.
+            return;
+        }
+
+        // Note: This check always passes for interface methods, as interfaces are erased to
+        // Object.
+        if (!thisOperand.compliesWith(methodHolder, this)) {
+            throw failVerify("Bad invokespecial instruction: current class isn't assignable to reference class.");
+        }
+
+        if (isInterfaceMethodTarget) {
+            // Holder must be in the direct superinterfaces.
+            for (C intf : thisKlass.getSuperInterfacesList()) {
+                if (intf.getSymbolicType() == methodHolder.getType()) {
+                    return;
+                }
+            }
+            throw failVerify("Bad invokespecial instruction: interface method to invoke is not in a direct superinterface.");
+        }
+    }
+
+    private boolean isMagicAccessor() {
+        return thisKlass.isMagicAccessor();
+    }
+
     private boolean checkReceiverHostAccess(Operand<R, C, M, F> stackOp) {
         if (thisKlass.getHostType() != null) {
             return thisKlass.getHostType().isAssignableFrom(stackOp.getKlass(this));
         }
         return false;
-    }
-
-    private boolean checkMethodSpecialAccess(Operand<R, C, M, F> methodHolder) {
-        return thisOperand.compliesWith(methodHolder, this) || isMagicAccessor() || checkHostAccess(methodHolder);
-    }
-
-    private boolean isMagicAccessor() {
-        return thisKlass.isMagicAccessor();
     }
 
     /**
