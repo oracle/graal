@@ -428,10 +428,16 @@ public class JNIAccessFeature implements Feature {
             return;
         }
 
+        /*
+         * Remove each positive registration before processing it instead of clearing the worklists
+         * afterwards. Reachability callbacks can add registrations concurrently; a final clear
+         * could otherwise discard an entry that the weakly consistent iterator did not observe.
+         */
         for (var registration : newClasses) {
-            addClass(registration.element(), registration.preserved(), access);
+            if (newClasses.remove(registration)) {
+                addClass(registration.element(), registration.preserved(), access);
+            }
         }
-        newClasses.clear();
 
         for (String className : newNegativeClassLookups) {
             addNegativeClassLookup(className);
@@ -439,9 +445,10 @@ public class JNIAccessFeature implements Feature {
         newNegativeClassLookups.clear();
 
         for (var registration : newMethods) {
-            addMethod(registration.element(), registration.preserved(), access);
+            if (newMethods.remove(registration)) {
+                addMethod(registration.element(), registration.preserved(), access);
+            }
         }
-        newMethods.clear();
 
         newNegativeMethodLookups.forEach((clazz, signatures) -> {
             for (Pair<String, Class<?>[]> signature : signatures) {
@@ -451,9 +458,10 @@ public class JNIAccessFeature implements Feature {
         newNegativeMethodLookups.clear();
 
         newFields.forEach((registration, writable) -> {
-            addField(registration.element(), registration.preserved(), writable, access);
+            if (newFields.remove(registration, writable)) {
+                addField(registration.element(), registration.preserved(), writable, access);
+            }
         });
-        newFields.clear();
 
         newNegativeFieldLookups.forEach((clazz, fieldNames) -> {
             for (String fieldName : fieldNames) {
