@@ -154,6 +154,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         }
         parent.initializeInstructionHandler(this, returnType, "handle" + firstLetterUpperCase(instruction.getInternalName()));
+        if (handlerLayout.isTailCall() && handlerKind == HandlerKind.BRANCH_BACKWARD) {
+            getThrownTypes().add(parent.parent.abstractBytecodeNode.branchBackwardReturnException.asType());
+        }
 
         if (instruction.isInliningCutoff()) {
             this.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -231,7 +231,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             NO_DECISION
         }
 
-        InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target);
+        InlineDecision allowInlining(GraphBuilderContext builder, AnalysisMethod root, ResolvedJavaMethod target);
     }
 
     private GraalGraphObjectReplacer objectReplacer;
@@ -255,7 +255,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
     private HostedProviders analysisProviders = null;
-    private AllowInliningPredicate allowInliningPredicate = (_, _) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+    private AllowInliningPredicate allowInliningPredicate = (_, _, _) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
     private boolean allowInliningPredicateUpdated = false;
     private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
     private Consumer<CallTreeInfo> blocklistChecker = _ -> {
@@ -1013,8 +1013,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
-            if (allowInliningPredicate.allowInlining(b, method) != AllowInliningPredicate.InlineDecision.INLINE) {
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod rootMethod, AnalysisMethod method, ValueNode[] args) {
+            if (allowInliningPredicate.allowInlining(b, rootMethod, method) != AllowInliningPredicate.InlineDecision.INLINE) {
                 return false;
             }
             if (isRuntimeCheckedInvocationPlugin(b, method)) {

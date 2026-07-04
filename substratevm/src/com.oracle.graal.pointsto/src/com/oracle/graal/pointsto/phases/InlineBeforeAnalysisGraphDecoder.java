@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,6 +68,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
         public final AbstractPolicyScope policyScope;
 
+        private final AnalysisMethod rootMethod;
         private boolean inliningAborted;
 
         /*
@@ -82,6 +83,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
             if (caller == null) {
                 /* The root method that we are decoding, i.e., inlining into. */
+                rootMethod = method;
                 policyScope = policy.createRootScope();
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
@@ -91,7 +93,9 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                 for (int i = 0; i < arguments.length; i++) {
                     constArgsWithReceiver[i] = arguments[i].isConstant();
                 }
-                policyScope = policy.openCalleeScope(cast(caller).policyScope, (AnalysisMethod) caller.method, method);
+                InlineBeforeAnalysisMethodScope callerScope = cast(caller);
+                rootMethod = callerScope.rootMethod;
+                policyScope = policy.openCalleeScope(callerScope.policyScope, (AnalysisMethod) caller.method, method);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
@@ -121,8 +125,9 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
             AnalysisMethod method = (AnalysisMethod) m;
 
-            AbstractPolicyScope policyScope = cast(((PENonAppendGraphBuilderContext) b).methodScope).policyScope;
-            if (policy.shouldInlineInvoke(b, policyScope, method, args)) {
+            InlineBeforeAnalysisMethodScope methodScope = cast(((PENonAppendGraphBuilderContext) b).methodScope);
+            AbstractPolicyScope policyScope = methodScope.policyScope;
+            if (policy.shouldInlineInvoke(b, policyScope, methodScope.rootMethod, method, args)) {
                 return policy.createInvokeInfo(method);
             } else {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
