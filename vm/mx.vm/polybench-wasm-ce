@@ -1,3 +1,4 @@
 DYNAMIC_IMPORTS=/substratevm,/wasm
 COMPONENTS=PolyBench Launcher,PolyBench Instruments,Native Image,GraalWasm,LibGraal
 NATIVE_IMAGES=polybench,lib:jvmcicompiler
+EXTRA_IMAGE_BUILDER_ARGUMENTS=polybench:-H:+UnlockExperimentalVMOptions polybench:-H:+VectorAPISupport polybench:--add-modules=jdk.incubator.vector
