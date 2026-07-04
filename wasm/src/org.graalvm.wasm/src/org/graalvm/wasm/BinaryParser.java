@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2302,7 +2302,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void store(ParserState state, byte type, int n, long[] result) {
         int alignHint = readAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
@@ -2316,7 +2316,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void load(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
@@ -2330,7 +2330,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicStore(ParserState state, byte type, int n, long[] result) {
         int alignHint = readAtomicAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
@@ -2344,7 +2344,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicLoad(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAtomicAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
@@ -2358,7 +2358,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicReadModifyWrite(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAtomicAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(type); // RMW value
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -2373,7 +2373,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicCompareExchange(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAtomicAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(type); // replacement value
         state.popChecked(type); // expected value
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
@@ -2389,7 +2389,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicNotify(ParserState state, long[] result) {
         final int alignHint = readAtomicAlignHint(32);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(I32_TYPE); // 32-bit count (number of threads to notify)
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -2404,7 +2404,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void atomicWait(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAtomicAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
-        final long memoryOffset = readBaseMemoryOffset();
+        final long memoryOffset = readBaseMemoryOffset(memoryIndex);
         state.popChecked(I64_TYPE); // 64-bit relative timeout
         state.popChecked(type); // expected value
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
@@ -2976,12 +2976,16 @@ public class BinaryParser extends BinaryStreamParser {
         return memoryIndex;
     }
 
-    private long readBaseMemoryOffset() {
+    private long readBaseMemoryOffset(int memoryIndex) {
         final long memoryOffset;
         if (memory64) {
             memoryOffset = readUnsignedInt64(); // 64-bit store offset
         } else {
             memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
+        }
+        if (!module.memoryHasIndexType64(memoryIndex)) {
+            assertUnsignedLongLessOrEqual(memoryOffset, 0xFFFF_FFFFL, Failure.UNSPECIFIED_INVALID,
+                            "Memory offset must fit into the 32-bit address type");
         }
         return memoryOffset;
     }
