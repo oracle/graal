@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import org.graalvm.wasm.predefined.wasi.types.Rights;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -78,6 +79,11 @@ class FileFd extends SeekableByteChannelFd {
 
     private final TruffleFile file;
     private final short oflags;
+    private final boolean followSymlinks;
+
+    private LinkOption[] linkOptions() {
+        return FdUtils.linkOptions(followSymlinks);
+    }
 
     /**
      * @throws FileAlreadyExistsException if {@link StandardOpenOption#CREATE_NEW} option is set and
@@ -89,13 +95,14 @@ class FileFd extends SeekableByteChannelFd {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @see TruffleFile#newByteChannel(Set, FileAttribute[])
      */
-    FileFd(TruffleFile file, short oflags, long fsRightsBase, long fsRightsInheriting, short fdFlags) throws IOException {
-        super(file.newByteChannel(parseOptions(oflags, fdFlags)), Filetype.RegularFile, fsRightsBase, fsRightsInheriting, fdFlags);
+    FileFd(TruffleFile file, short oflags, long fsRightsBase, long fsRightsInheriting, short fdFlags, boolean followSymlinks) throws IOException {
+        super(file.newByteChannel(parseOptions(oflags, fdFlags, followSymlinks)), Filetype.RegularFile, fsRightsBase, fsRightsInheriting, fdFlags);
         this.file = file;
         this.oflags = oflags;
+        this.followSymlinks = followSymlinks;
     }
 
-    private static Set<? extends OpenOption> parseOptions(short oflags, short fdFlags) {
+    private static Set<? extends OpenOption> parseOptions(short oflags, short fdFlags, boolean followSymlinks) {
         final Set<OpenOption> openOptions = new LinkedHashSet<>();
 
         // In WASI, the file access mode (read vs. write) is not specified when opening a file.
@@ -103,6 +110,9 @@ class FileFd extends SeekableByteChannelFd {
         // reading and writing.
         openOptions.add(StandardOpenOption.READ);
         openOptions.add(StandardOpenOption.WRITE);
+        if (!followSymlinks) {
+            openOptions.add(LinkOption.NOFOLLOW_LINKS);
+        }
         if (isSet(oflags, Oflags.Creat)) {
             openOptions.add(StandardOpenOption.CREATE);
         }
@@ -155,7 +165,7 @@ class FileFd extends SeekableByteChannelFd {
         if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
             return Errno.Notcapable;
         }
-        return FdUtils.writeFilestat(node, memory, resultAddress, file);
+        return FdUtils.writeFilestat(node, memory, resultAddress, file, linkOptions());
     }
 
     @Override
@@ -166,7 +176,7 @@ class FileFd extends SeekableByteChannelFd {
         try {
             close();
             fdFlags = newFsflags;
-            setChannel(file.newByteChannel(parseOptions(oflags, newFsflags)));
+            setChannel(file.newByteChannel(parseOptions(oflags, newFsflags, followSymlinks)));
             return Errno.Success;
         } catch (IOException e) {
             return Errno.Io;
@@ -226,16 +236,16 @@ class FileFd extends SeekableByteChannelFd {
         }
         try {
             if (isSet(fstFlags, Fstflags.Atim)) {
-                file.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS));
+                file.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.AtimNow)) {
-                file.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                file.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.Mtim)) {
-                file.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS));
+                file.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.MtimNow)) {
-                file.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                file.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions());
             }
         } catch (IOException e) {
             return Errno.Io;
