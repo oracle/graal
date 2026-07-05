@@ -506,7 +506,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    protected int getVMPageSize() {
+    protected int getPageSizeForReadBoundaryCheck() {
         return config.vmPageSize;
     }
 

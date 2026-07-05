@@ -709,7 +709,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    protected abstract int getVMPageSize();
+    protected abstract int getPageSizeForReadBoundaryCheck();
 
     protected int getSoftwarePrefetchHintDistance() {
         return -1;
@@ -718,7 +718,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitCountPositives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64CountPositivesOp(this, result, asAllocatable(array), asAllocatable(length), getVMPageSize(), getSoftwarePrefetchHintDistance()));
+        append(new AArch64CountPositivesOp(this, result, asAllocatable(array), asAllocatable(length), getPageSizeForReadBoundaryCheck(), getSoftwarePrefetchHintDistance()));
         return result;
     }
 
