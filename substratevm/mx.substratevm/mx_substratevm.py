@@ -2530,3 +2530,29 @@ import org.graalvm.nativeimage.Platforms;
             shaded = line.replace("org.capnproto", "com.oracle.svm.shaded.org.capnproto")
             f.write(shaded)
         f.write('}\n')
+
+
+class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
+
+    def __init__(self):
+        super().__init__('svm-driver-unittest')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+
+        vmArgs.extend([
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
+            '--add-exports=java.base/jdk.internal.module=jdk.graal.compiler.vmaccess',
+        ])
+
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.graal.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
+
+        return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.register_unittest_config(SVMDriverUnittestsConfig())

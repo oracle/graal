@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM for JDK 25
+* (GR-49923) Make bundle path maps portable across platforms. Bundle format version is now 1.0. Bundles prior to 1.0 can still be used (backward compatible).
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
 * (GR-58668) Enabled [Whole-Program Sparse Conditional Constant Propagation (WP-SCCP)](https://github.com/oracle/graal/pull/9821) by default, improving the precision of points-to analysis in Native Image. This optimization enhances static analysis accuracy and scalability, potentially reducing the size of the final native binary.
 * (GR-59313) Deprecated class-level metadata extraction using `native-image-inspect` and removed option `DumpMethodsData`. Use class-level SBOMs instead by passing `--enable-sbom=class-level,export` to the `native-image` builder. The default value of option `IncludeMethodData` was changed to `false`.
