@@ -1332,6 +1332,12 @@ public class SubstrateOptions {
         }
     }
 
+    /**
+     * Minimum runtime page size for AMD64IndexOfZeroOp and AArch64IndexOfZeroOp. If we ever target
+     * a system with a smaller page size, this would need to be configurable.
+     */
+    public static final int MINIMUM_PAGE_SIZE = 4096;
+
     @Fold
     public static int getPageSize() {
         int value = ConcealedOptions.PageSize.getValue();
