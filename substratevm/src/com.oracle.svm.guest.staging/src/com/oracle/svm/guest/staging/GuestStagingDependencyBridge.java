@@ -59,6 +59,20 @@ public interface GuestStagingDependencyBridge {
     void verifyHeapOptions();
 
     /**
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.
+     * <p>
+     * Remove this method when GC selection becomes guest-owned.
+     */
+    boolean useEpsilonGC();
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useSerialGC()}.
+     * <p>
+     * Remove this method when GC selection becomes guest-owned.
+     */
+    boolean useSerialGC();
+
+    /**
      * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().optionValueChanged(key)}.
      * <p>
      * Remove this method when GC option change notification moves to guest/staging.

@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
@@ -52,6 +53,16 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void verifyHeapOptions() {
         HeapSizeVerifier.verifyHeapOptions();
+    }
+
+    @Override
+    public boolean useEpsilonGC() {
+        return SubstrateOptions.useEpsilonGC();
+    }
+
+    @Override
+    public boolean useSerialGC() {
+        return SubstrateOptions.useSerialGC();
     }
 
     @Override

@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UserError;
@@ -175,9 +176,10 @@ public class SubstrateGCOptions {
         public static void validateVerifyGCOption(RuntimeOptionKey<Boolean> key) {
             Boolean value = key.getValue();
             if (value != null && value) {
-                if (SubstrateOptions.useEpsilonGC()) {
+                GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+                if (dependencyBridge.useEpsilonGC()) {
                     throw UserError.invalidOptionValue(key, true, "This option cannot be enabled if epsilon GC is used");
-                } else if (SubstrateOptions.useSerialGC() && !VerifyHeap.getValue()) {
+                } else if (dependencyBridge.useSerialGC() && !VerifyHeap.getValue()) {
                     throw UserError.invalidOptionValue(key, true, "This option can only be used together with " + SubstrateOptionsParser.commandArgument(VerifyHeap, "+"));
                 }
             }
