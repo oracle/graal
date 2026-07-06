@@ -33,6 +33,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;

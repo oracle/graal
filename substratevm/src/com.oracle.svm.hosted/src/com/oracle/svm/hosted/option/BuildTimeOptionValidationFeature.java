@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.hosted.option;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
 
@@ -47,6 +49,8 @@ public class BuildTimeOptionValidationFeature implements InternalFeature {
         while (cursor.advance()) {
             validate(cursor.getValue());
         }
+
+        SubstrateGCOptions.validateWriteBarrierOutlining(SubstrateOptions.useG1GC());
     }
 
     private static void validate(OptionDescriptor desc) {
