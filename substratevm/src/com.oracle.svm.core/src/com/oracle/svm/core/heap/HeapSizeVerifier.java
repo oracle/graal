@@ -29,8 +29,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 
@@ -140,14 +138,5 @@ public final class HeapSizeVerifier {
             index++;
         }
         return value.rawValue() + units[index];
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class HostedHeapSizeVerifierFeature implements InternalFeature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /* At build-time, we can do a GC-independent verification of all the heap size settings. */
-        HeapSizeVerifier.verifyHeapOptions();
     }
 }
