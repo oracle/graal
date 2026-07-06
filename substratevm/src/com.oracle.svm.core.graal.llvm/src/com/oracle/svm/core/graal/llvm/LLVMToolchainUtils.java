@@ -154,6 +154,23 @@ public class LLVMToolchainUtils {
         }
     }
 
+    public static void llvmCleanupRISCVAttributes(DebugContext debug, String inputPath, Path basePath) {
+        if (!LLVMTargetSpecific.get().getLLVMArchName().equals("riscv64")) {
+            return;
+        }
+
+        List<String> args = new ArrayList<>();
+        args.add("--remove-section=.riscv.attributes");
+        args.add(inputPath);
+
+        try {
+            LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
+        } catch (LLVMToolchain.RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Removing RISC-V attributes failed for " + inputPath + ": " + e.getStatus() + System.lineSeparator() + "Command: llvm-objcopy " + String.join(" ", args));
+        }
+    }
+
     public static void llvmAddTextSectionSymbols(DebugContext debug, String inputPath, String startSymbolName, String endSymbolName, long textSectionSize, Path basePath) {
         String textSectionName = SectionName.TEXT.getFormatDependentName(ObjectFile.getNativeFormat());
         String symbolPrefix = ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O ? "_" : "";

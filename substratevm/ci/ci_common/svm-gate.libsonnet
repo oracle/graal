@@ -129,25 +129,33 @@
     setup+: [["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"]],
   }),
 
-  riscv64_cross_compile:: task_spec({
-    mxgate_target_arch:: "riscv64",
-    environment+: {CAPCACHE: "$HOME/capcache"},
+  riscv64_emulator:: task_spec({
     packages+: {
-      "git": ">=1.8.3",
+      "git": "==2.9.3",
       "python": "==3.4.1",
-      "make": ">=3.83",
-      "zlib": ">=1.2.11",
-      "riscv-gnu-toolchain": "==8.3.0",
-      "qemu": ">=4.0.0",
+      "make": "==3.83",
+      "zlib": "==1.2.11",
+      "qemu": "==4.0.0",
       "glib": "==2.56.1",
       "pcre": "==8.43",
       "sshpass": "==1.05"
     },
+  } + evaluate_late("riscv64-emulator", function(b) {
+    downloads+: {
+      QEMU_HOME       : {name : "qemu-riscv64", version : "1.0"},
+      JAVA_HOME_RISCV : {name : "labsjdk", version : b.downloads.JAVA_HOME.version + "-linux-riscv64" }
+    },
+  })),
+
+  riscv64_cross_compile:: $.riscv64_emulator + task_spec({
+    mxgate_target_arch:: "riscv64",
+    environment+: {CAPCACHE: "$HOME/capcache"},
+    packages+: {
+      "riscv-gnu-toolchain": "==8.3.0",
+    },
   } + evaluate_late("riscv64-svmtest", function(b) {
     downloads+: {
-      QEMU_HOME          : {name : "qemu-riscv64", version : "1.0"},
-      C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : std.toString(b.jdk_version)},
-      JAVA_HOME_RISCV    : {name : "labsjdk", version : b.downloads.JAVA_HOME.version + "-linux-riscv64" }
+      C_LIBRARY_PATH : {name : "riscv-static-libraries", version : std.toString(b.jdk_version)},
     },
   })),
 
