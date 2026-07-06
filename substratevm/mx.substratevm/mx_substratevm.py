@@ -273,6 +273,7 @@ GraalTags = Tags([
     'truffle_unittests',
     'check_libcontainer_annotations',
     'check_libcontainer_namespace',
+    'check_svm_invariants',
     'java_agent'
 ])
 
@@ -545,6 +546,10 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments, include_custom_test_groups=True)
 
+    with Task('SVM invariants', tasks, tags=[GraalTags.check_svm_invariants]) as t:
+        if t:
+            jvm_unittest(["-Dsvm.invariants.VerifyReflectionUsage.mode=check_exclude_list", "CheckSVMInvariants"])
+
     with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
         if t:
             if '--static' in args.extra_image_builder_arguments:
@@ -652,7 +657,7 @@ def svm_gate_body(args, tasks):
 # Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
 TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.util.VMError.shouldNotReachHere(VMError.java:121)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.lambda$createSingletonValidationCallback$0(HostedImageLayerBuildingSupport.java:287)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.validateSingletonRegistration(HostedImageLayerBuildingSupport.java:291)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.addSingleton(ImageSingletonsSupportImpl.java:399)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.doAdd(ImageSingletonsSupportImpl.java:384)
     at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.add(ImageSingletonsSupportImpl.java:74)
@@ -3622,6 +3627,31 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(StandalonePointstoUnittestsConfig())
+
+
+class SVMInvariantsUnittestConfig(mx_compiler.GraalUnittestConfig):
+
+    def __init__(self):
+        super().__init__('svm-invariants-tests')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = super().apply(config)
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.espresso.shared.svm/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'java.base/jdk.internal.module=jdk.graal.compiler.vmaccess'])
+        vmArgs.append('-Dsvm.test.CheckSVMInvariants.jars=' + os.pathsep.join([d.path for d in self._check_svm_invariants_jars()]))
+        return (vmArgs, mainClass, mainClassArgs)
+
+    def processDeps(self, deps):
+        # Add all jars that are to be checked by CheckSVMInvariants to the classpath.
+        deps.update(self._check_svm_invariants_jars())
+        return deps
+
+    def _check_svm_invariants_jars(self):
+        return [d for s in svmSuites for d in s.dists if d.isJARDistribution() and not d.is_test_distribution()]
+
+
+mx_unittest.register_unittest_config(SVMInvariantsUnittestConfig())
 
 
 class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):

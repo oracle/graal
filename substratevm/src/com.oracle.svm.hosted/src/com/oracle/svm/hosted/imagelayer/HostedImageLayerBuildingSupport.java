@@ -267,28 +267,30 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public BiConsumer<SingletonRegistration, ImageSingletonsSupportImpl.SingletonTraitMap> createSingletonValidationCallback() {
-        return (singletonRegistration, traitMap) -> {
-            Class<?> key = singletonRegistration.key();
-            Object value = singletonRegistration.value();
-            if (buildingImageLayer) {
-                var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
-                installationTrait.ifPresent(t -> {
-                    if (forbiddenInstallationKinds.contains(t.metadata())) {
-                        if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
-                            throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
-                        }
+        return this::validateSingletonRegistration;
+    }
+
+    private void validateSingletonRegistration(SingletonRegistration singletonRegistration, ImageSingletonsSupportImpl.SingletonTraitMap traitMap) {
+        Class<?> key = singletonRegistration.key();
+        Object value = singletonRegistration.value();
+        if (buildingImageLayer) {
+            var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
+            installationTrait.ifPresent(t -> {
+                if (forbiddenInstallationKinds.contains(t.metadata())) {
+                    if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
+                        throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
                     }
-                });
-                traitMap.getTrait(DisallowLayeredSingletonTrait.class).ifPresent(_ -> {
-                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOW_LAYERED);
-                });
-            }
-            Module singletonModule = value.getClass().getModule();
-            if (traitMap.isEmpty() && imageClassLoader.getBuilderModules().contains(singletonModule)) {
-                throw VMError.shouldNotReachHere("All singletons should be annotated with @%s. Singleton of value %s with key of %s is not annotated",
-                                SingletonTraits.class.getTypeName(), value.getClass(), key);
-            }
-        };
+                }
+            });
+            traitMap.getTrait(DisallowLayeredSingletonTrait.class).ifPresent(_ -> {
+                throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOW_LAYERED);
+            });
+        }
+        Module singletonModule = value.getClass().getModule();
+        if (traitMap.isEmpty() && imageClassLoader.getBuilderModules().contains(singletonModule)) {
+            throw VMError.shouldNotReachHere("All singletons should be annotated with @%s. Singleton of value %s with key of %s is not annotated",
+                            SingletonTraits.class.getTypeName(), value.getClass(), key);
+        }
     }
 
     public Function<Class<?>, SingletonTrait<?>[]> getSingletonTraitInjector() {
