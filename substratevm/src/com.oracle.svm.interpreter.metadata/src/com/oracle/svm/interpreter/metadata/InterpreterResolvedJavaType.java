@@ -231,6 +231,9 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     @Override
     public abstract InterpreterResolvedJavaMethod[] getDeclaredMethods(boolean forceLink);
 
+    @Override
+    public abstract InterpreterResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink);
+
     /**
      * Resolves the target using the same metadata shape that interpreter dispatch uses.
      */
@@ -407,7 +410,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public InterpreterResolvedJavaMethod[] getDeclaredConstructors() {
-        throw VMError.intentionallyUnimplemented();
+        return getDeclaredConstructors(true);
     }
 
     @Override

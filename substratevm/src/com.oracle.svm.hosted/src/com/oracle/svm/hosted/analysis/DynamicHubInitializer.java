@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -182,7 +183,7 @@ public class DynamicHubInitializer {
             ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
             hub.setInterpreterType(interpreterType);
             heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType, reason);
-            heapScanner.rescanObject(interpreterType.getDeclaredMethods(false), reason);
+            heapScanner.rescanObject(CremaSupport.singleton().getAllDeclaredMethods(interpreterType), reason);
         }
     }
 

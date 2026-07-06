@@ -46,7 +46,7 @@ public final class CremaVerifier {
             return;
         }
         InterpreterUtil.assertion(type.getSuperClass() == null || !type.getSuperClass().isFinalFlagSet(), "super type final flag check should have been checked at class creation time.");
-        for (InterpreterResolvedJavaMethod m : type.getDeclaredMethods(false)) {
+        for (InterpreterResolvedJavaMethod m : type.getAllDeclaredMethods()) {
             if (!m.isInternal()) {
                 verify(m);
             }

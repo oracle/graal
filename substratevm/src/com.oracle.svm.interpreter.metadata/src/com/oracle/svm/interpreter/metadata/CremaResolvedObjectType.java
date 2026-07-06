@@ -127,7 +127,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     public CremaResolvedJavaMethod[] getDeclaredCremaMethods() {
         // filter out constructors
         ArrayList<CremaResolvedJavaMethod> result = new ArrayList<>();
-        for (InterpreterResolvedJavaMethod declaredMethod : getDeclaredMethods()) {
+        for (InterpreterResolvedJavaMethod declaredMethod : getAllDeclaredMethods()) {
             if (!declaredMethod.isConstructor() && !declaredMethod.isInternal()) {
                 result.add((CremaResolvedJavaMethod) declaredMethod);
             }
@@ -155,7 +155,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     @Override
     public CremaResolvedJavaMethod[] getDeclaredCremaConstructors() {
         ArrayList<CremaResolvedJavaMethod> result = new ArrayList<>();
-        for (InterpreterResolvedJavaMethod declaredMethod : getDeclaredMethods()) {
+        for (InterpreterResolvedJavaMethod declaredMethod : getAllDeclaredMethods()) {
             if (declaredMethod.isConstructor()) {
                 result.add((CremaResolvedJavaMethod) declaredMethod);
             }
@@ -224,7 +224,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
             return null;
         }
 
-        InterpreterResolvedJavaMethod[] methods = info.isMethod() ? info.enclosingClass.getDeclaredMethods() : info.isConstructor() ? info.enclosingClass.getDeclaredConstructors() : null;
+        InterpreterResolvedJavaMethod[] methods = (info.isMethod() || info.isConstructor()) ? info.enclosingClass.getAllDeclaredMethods() : null;
         if (methods != null) {
             for (InterpreterResolvedJavaMethod m : methods) {
                 if (info.name.equals(m.getSymbolicName()) && info.descriptor.equals(m.getSymbolicSignature())) {
