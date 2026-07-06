@@ -26,8 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -50,6 +53,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void verifyHeapOptions() {
         HeapSizeVerifier.verifyHeapOptions();
+    }
+
+    @Override
+    public void heapOptionValueChanged(RuntimeOptionKey<?> key) {
+        Heap.getHeap().optionValueChanged((NotifyGCRuntimeOptionKey<?>) key);
     }
 
     @Override
