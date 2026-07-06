@@ -51,6 +51,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -322,7 +323,7 @@ final class BuildTimeConstantPool {
         processLDC(allDeclaredMethods);
 
         for (InterpreterResolvedJavaMethod method : allDeclaredMethods) {
-            ResolvedJavaMethod originalMethod = method.getOriginalMethod();
+            AnalysisMethod originalMethod = method.getOriginalMethod();
             method.setExceptionHandlers(processExceptionHandlers(originalMethod.getExceptionHandlers()));
 
             LocalVariableTable hostLocalVariableTable = method.getOriginalMethod().getLocalVariableTable();

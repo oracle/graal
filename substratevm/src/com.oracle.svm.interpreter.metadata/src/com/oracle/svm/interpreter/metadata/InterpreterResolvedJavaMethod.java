@@ -57,6 +57,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.SubstrateMetadata;
@@ -173,7 +174,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     private final int flags;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    private ResolvedJavaMethod originalMethod;
+    private AnalysisMethod originalMethod;
 
     private final InterpreterResolvedObjectType declaringClass;
     private final InterpreterUnresolvedSignature signature;
@@ -235,7 +236,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     // Only called during universe building
     @Platforms(Platform.HOSTED_ONLY.class)
-    private InterpreterResolvedJavaMethod(ResolvedJavaMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
+    private InterpreterResolvedJavaMethod(AnalysisMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
                     InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature, PreparedSignature preparedSignature, Symbol<Signature> signatureSymbol,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<MethodRefHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
@@ -384,7 +385,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     // Only called during universe building
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static InterpreterResolvedJavaMethod createAtBuildTime(ResolvedJavaMethod originalMethod, String name, int maxLocals, int maxStackSize, int modifiers,
+    public static InterpreterResolvedJavaMethod createAtBuildTime(AnalysisMethod originalMethod, String name, int maxLocals, int maxStackSize, int modifiers,
                     InterpreterResolvedObjectType declaringClass,
                     InterpreterUnresolvedSignature signature, boolean isSubstitutedNative,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
@@ -556,7 +557,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public final ResolvedJavaMethod getOriginalMethod() {
+    public final AnalysisMethod getOriginalMethod() {
         return originalMethod;
     }
 
