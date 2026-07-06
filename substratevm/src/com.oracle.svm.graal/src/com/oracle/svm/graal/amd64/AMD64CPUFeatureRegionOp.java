@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,13 @@ package com.oracle.svm.graal.amd64;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -70,8 +74,36 @@ public class AMD64CPUFeatureRegionOp {
     public static final class AMD64CPUFeatureRegionLeaveOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AMD64CPUFeatureRegionLeaveOp> TYPE = LIRInstructionClass.create(AMD64CPUFeatureRegionLeaveOp.class);
 
+        @Temp private Value[] temps;
+
         public AMD64CPUFeatureRegionLeaveOp() {
             super(TYPE);
+            this.temps = xmmRegistersToValues(new Register[]{
+                            AMD64.xmm0,
+                            AMD64.xmm1,
+                            AMD64.xmm2,
+                            AMD64.xmm3,
+                            AMD64.xmm4,
+                            AMD64.xmm5,
+                            AMD64.xmm6,
+                            AMD64.xmm7,
+                            AMD64.xmm8,
+                            AMD64.xmm9,
+                            AMD64.xmm10,
+                            AMD64.xmm11,
+                            AMD64.xmm12,
+                            AMD64.xmm13,
+                            AMD64.xmm14,
+                            AMD64.xmm15
+            });
+        }
+
+        private static Value[] xmmRegistersToValues(Register[] registers) {
+            Value[] values = new Value[registers.length];
+            for (int i = 0; i < registers.length; i++) {
+                values[i] = registers[i].asValue(LIRKind.value(AMD64Kind.DOUBLE));
+            }
+            return values;
         }
 
         @Override
