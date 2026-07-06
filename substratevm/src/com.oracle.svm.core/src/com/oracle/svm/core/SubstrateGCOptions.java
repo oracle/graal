@@ -33,7 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
-import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
