@@ -26,9 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jfr.events.ShutdownEvent;
 import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "java.lang.Shutdown")
@@ -38,20 +40,20 @@ public final class Target_java_lang_Shutdown {
      * construction can not survive into the running image.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static Runnable[] hooks;
+    static Runnable[] hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
 
-    static {
-        hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
-        hooks[Util_java_lang_Shutdown.NATIVE_IMAGE_SHUTDOWN_HOOKS_SLOT] = RuntimeSupport::executeShutdownHooks;
-    }
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.Shutdown$Lock")//
+    static Object lock;
 
     @Substitute
-    static void beforeHalt() {
+    public static void beforeHalt() {
+        ShutdownEvent.emit("Shutdown requested from Java", true);
     }
 
     /**
      * Invoked by the JNI DestroyJavaVM procedure when the last non-daemon thread has finished.
-     * Unlike the exit method, this method does not actually halt the VM.
+     * Unlike the exit method, this method only calls {@link #runHooks()} and does not actually
+     * halt the VM.
      */
     @Alias
     static native void shutdown();
@@ -63,24 +65,21 @@ public final class Target_java_lang_Shutdown {
         // Disable exit logging (GR-45418/JDK-8301627)
     }
 
+    /** Runs Java-level shutdown hooks. Does not run any isolate teardown hooks. */
     @Alias
     static native void runHooks();
 
     @Alias
     static native void halt(int status);
 
-    /**
-     * This substitution makes a few modifications to {@code Shutdown#exit}:
-     * <ul>
-     * <li>it omits {@code logRuntimeExit} (exit logging is disabled: GR-45418/JDK-8301627).</li>
-     * <li>it omits {@code beforeHalt} (not implemented).</li>
-     * <li>it runs teardown hooks after running shutdown hooks and before halting.</li>
-     * </ul>
-     */
     @Substitute
     static void exit(int status) {
+        logRuntimeExit(status);
+
         synchronized (Target_java_lang_Shutdown.class) {
+            beforeHalt();
             runHooks();
+            /* halt() stops the process abnormally, so we need to run the teardown hooks explicitly. */
             RuntimeSupport.executeTearDownHooks();
             halt(status);
         }
@@ -97,16 +96,27 @@ final class Util_java_lang_Shutdown {
      */
     static final int MAX_SYSTEM_HOOKS = 10;
 
-    static final int LOG_MANAGER_SHUTDOWN_HOOK_SLOT = MAX_SYSTEM_HOOKS - 1;
-    static final int NATIVE_IMAGE_SHUTDOWN_HOOKS_SLOT = LOG_MANAGER_SHUTDOWN_HOOK_SLOT - 1;
+    private static Runnable logManagerShutdownHook;
+
+    static void runLogManagerShutdownHook() {
+        try {
+            Runnable hook;
+            synchronized (Target_java_lang_Shutdown.lock) {
+                hook = logManagerShutdownHook;
+                logManagerShutdownHook = null;
+            }
+            if (hook != null) {
+                hook.run();
+            }
+        } catch (Throwable ignored) {
+            /* Ignore exceptions in shutdown hooks, matching the JDK behavior. */
+        }
+    }
 
     public static void registerLogManagerShutdownHook(Runnable hook) {
-        /*
-         * Execute the LogManager shutdown hook after all other shutdown hooks. This is a workaround
-         * for GR-39429.
-         */
-        Runnable[] hooks = Target_java_lang_Shutdown.hooks;
-        VMError.guarantee(hooks[LOG_MANAGER_SHUTDOWN_HOOK_SLOT] == null, "slot must not be used");
-        hooks[LOG_MANAGER_SHUTDOWN_HOOK_SLOT] = hook;
+        synchronized (Target_java_lang_Shutdown.lock) {
+            VMError.guarantee(logManagerShutdownHook == null, "LogManager shutdown hook must not be registered twice");
+            logManagerShutdownHook = hook;
+        }
     }
 }

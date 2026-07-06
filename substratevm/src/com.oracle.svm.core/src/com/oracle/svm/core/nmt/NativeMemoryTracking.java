@@ -317,7 +317,7 @@ public class NativeMemoryTracking {
         };
     }
 
-    public static RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook teardownHook() {
         return _ -> {
             NativeMemoryTracking.singleton().printStatistics();
         };

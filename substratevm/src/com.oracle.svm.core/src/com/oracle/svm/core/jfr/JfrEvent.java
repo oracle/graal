@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,7 @@ public final class JfrEvent {
     public static final JfrEvent NativeMemoryUsage = create("jdk.NativeMemoryUsage");
     public static final JfrEvent NativeMemoryUsageTotal = create("jdk.NativeMemoryUsageTotal");
     public static final JfrEvent DumpReason = create("jdk.DumpReason");
+    public static final JfrEvent Shutdown = create("jdk.Shutdown", 5);
 
     private final long id;
     private final String name;

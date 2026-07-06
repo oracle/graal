@@ -218,7 +218,7 @@ public class JitdumpProvider {
      *
      * @return the shutdown hook that only runs for the first isolate
      */
-    public static RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook teardownHook() {
         return isFirstIsolate -> {
             if (!isFirstIsolate) {
                 return;

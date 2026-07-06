@@ -91,6 +91,6 @@ class PosixPerfSubstrateDebugInfoFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(JitdumpProvider.startupHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(JitdumpProvider.shutdownHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(JitdumpProvider.teardownHook());
     }
 }

@@ -30,7 +30,7 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 // GR-49971 move to TruffleRuntimeCompilationSupport
 public class GraalSupport {
 
-    public static class GraalShutdownHook implements RuntimeSupport.Hook {
+    public static class GraalTeardownHook implements RuntimeSupport.Hook {
         @Override
         public void execute(boolean isFirstIsolate) {
             RuntimeCompilationSupport runtimeCompilationSupport = RuntimeCompilationSupport.get();

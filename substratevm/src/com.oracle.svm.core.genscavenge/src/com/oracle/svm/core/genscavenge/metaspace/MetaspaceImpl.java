@@ -37,7 +37,6 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
-import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -182,21 +181,6 @@ public class MetaspaceImpl implements Metaspace {
         space.tearDown();
     }
 
-    public static final class ShutdownHook implements RuntimeSupport.Hook {
-        private final MetaspaceImpl metaspace;
-
-        public ShutdownHook(MetaspaceImpl metaspace) {
-            this.metaspace = metaspace;
-        }
-
-        @Override
-        public void execute(boolean isFirstIsolate) {
-            if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
-                metaspace.logUsageAndStats();
-            }
-        }
-    }
-
     private void logUsageAndStats() {
         Log log = Log.log();
         logUsage(log);
@@ -207,6 +191,19 @@ public class MetaspaceImpl implements Metaspace {
         log.string("Metaspace allocation stats:").indent(true);
         allocator.logStats(log);
         log.indent(false);
+    }
+
+    public static final class TeardownHook implements RuntimeSupport.Hook {
+        private final MetaspaceImpl metaspace;
+
+        public TeardownHook(MetaspaceImpl metaspace) {
+            this.metaspace = metaspace;
+        }
+
+        @Override
+        public void execute(boolean isFirstIsolate) {
+            metaspace.logUsageAndStats();
+        }
     }
 
     private static final class DumpMetaspaceInfo extends SubstrateDiagnostics.DiagnosticThunk {

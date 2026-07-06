@@ -57,7 +57,7 @@ public class CounterSupport {
         return ImageSingletons.lookup(CounterSupport.class);
     }
 
-    public static RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook teardownHook() {
         return _ -> CounterSupport.singleton().logValues(Log.log());
     }
 
