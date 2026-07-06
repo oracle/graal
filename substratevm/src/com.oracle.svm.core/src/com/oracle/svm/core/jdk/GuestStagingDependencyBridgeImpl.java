@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.IsolateArgumentParser;
@@ -32,6 +33,7 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
@@ -67,6 +69,16 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public boolean useSerialGC() {
         return SubstrateOptions.useSerialGC();
+    }
+
+    @Override
+    public UnsignedWord getMaxHeapAddressSpaceSize() {
+        return ReferenceAccess.singleton().getMaxAddressSpaceSize();
+    }
+
+    @Override
+    public int getHeapCompressionShift() {
+        return ReferenceAccess.singleton().getCompressionShift();
     }
 
     @Override

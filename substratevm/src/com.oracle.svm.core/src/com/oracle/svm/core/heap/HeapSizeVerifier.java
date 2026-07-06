@@ -27,6 +27,7 @@ package com.oracle.svm.core.heap;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;
@@ -100,10 +101,11 @@ public final class HeapSizeVerifier {
     }
 
     private static void verifyAgainstMaxAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
-        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
+        GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+        UnsignedWord maxAddressSpaceSize = dependencyBridge.getMaxHeapAddressSpaceSize();
         if (actualValue.aboveThan(maxAddressSpaceSize)) {
             String message = formatError(actualValue, actualValueName, maxAddressSpaceSize, "largest possible heap address space");
-            if (ReferenceAccess.singleton().getCompressionShift() > 0) {
+            if (dependencyBridge.getHeapCompressionShift() > 0) {
                 message += " To allow larger values, please disable compressed references when building the image by adding the option '-H:-UseCompressedReferences'";
             }
             throw reportError(message);

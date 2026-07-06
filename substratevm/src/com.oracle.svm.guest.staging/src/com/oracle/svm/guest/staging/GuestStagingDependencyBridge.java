@@ -25,6 +25,7 @@
 package com.oracle.svm.guest.staging;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 
@@ -71,6 +72,22 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when GC selection becomes guest-owned.
      */
     boolean useSerialGC();
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.heap.ReferenceAccess.singleton().getMaxAddressSpaceSize()}.
+     * <p>
+     * Remove this method when reference layout information becomes guest-owned.
+     */
+    UnsignedWord getMaxHeapAddressSpaceSize();
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.heap.ReferenceAccess.singleton().getCompressionShift()}.
+     * <p>
+     * Remove this method when reference layout information becomes guest-owned.
+     */
+    int getHeapCompressionShift();
 
     /**
      * Verifies and records an updated minimum heap size.
