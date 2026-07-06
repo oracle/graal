@@ -44,7 +44,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.config.ObjectLayout;

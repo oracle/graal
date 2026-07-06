@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.headers.LibC;
