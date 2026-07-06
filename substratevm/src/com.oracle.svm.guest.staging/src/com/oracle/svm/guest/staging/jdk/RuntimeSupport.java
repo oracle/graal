@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.shared.meta.GuestFold;
@@ -99,7 +100,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
             RuntimeOptionValidationSupport.singleton().validate();
 
             GuestStagingDependencyBridge.singleton().verifyIsolateArgumentOptionValues();
-            GuestStagingDependencyBridge.singleton().verifyHeapOptions();
+            HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);
             VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");

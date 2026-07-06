@@ -30,8 +30,11 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
 public class BuildTimeOptionValidationFeature implements InternalFeature {
@@ -50,7 +53,10 @@ public class BuildTimeOptionValidationFeature implements InternalFeature {
             validate(cursor.getValue());
         }
 
-        SubstrateGCOptions.validateWriteBarrierOutlining(SubstrateOptions.useG1GC());
+        GuestAccess guestAccess = GuestAccess.get();
+        var validateWriteBarrierOutlining = JVMCIReflectionUtil.getUniqueDeclaredMethod(guestAccess.lookupType(SubstrateGCOptions.class), "validateWriteBarrierOutlining",
+                        guestAccess.lookupType(boolean.class));
+        guestAccess.invoke(validateWriteBarrierOutlining, null, JavaConstant.forBoolean(SubstrateOptions.useG1GC()));
     }
 
     private static void validate(OptionDescriptor desc) {

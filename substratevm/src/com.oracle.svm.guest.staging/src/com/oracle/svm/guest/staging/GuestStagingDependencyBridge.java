@@ -52,14 +52,6 @@ public interface GuestStagingDependencyBridge {
     void verifyIsolateArgumentOptionValues();
 
     /**
-     * Delegates to {@code com.oracle.svm.core.heap.HeapSizeVerifier.verifyHeapOptions()}.
-     * <p>
-     * Remove this method when {@code com.oracle.svm.core.heap.HeapSizeVerifier} moves to
-     * guest/staging.
-     */
-    void verifyHeapOptions();
-
-    /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.
      * <p>
      * Remove this method when GC selection becomes guest-owned.

@@ -25,13 +25,21 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
+/**
+ * Invokes guest-owned heap option verification during image building.
+ */
 @AutomaticallyRegisteredFeature
 class HostedHeapSizeVerifierFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /* At build-time, we can do a GC-independent verification of all the heap size settings. */
-        HeapSizeVerifier.verifyHeapOptions();
+        GuestAccess guestAccess = GuestAccess.get();
+        var verifyHeapOptions = JVMCIReflectionUtil.getUniqueDeclaredMethod(guestAccess.lookupType(HeapSizeVerifier.class), "verifyHeapOptions");
+        guestAccess.invoke(verifyHeapOptions, null);
     }
 }

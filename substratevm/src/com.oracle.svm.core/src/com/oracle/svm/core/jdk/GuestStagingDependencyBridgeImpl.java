@@ -29,18 +29,17 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
@@ -48,17 +47,12 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * directly.
  */
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
 
     @Override
     public void verifyIsolateArgumentOptionValues() {
         IsolateArgumentParser.singleton().verifyOptionValues();
-    }
-
-    @Override
-    public void verifyHeapOptions() {
-        HeapSizeVerifier.verifyHeapOptions();
     }
 
     @Override
