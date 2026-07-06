@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.word.impl.Word;
+
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
@@ -63,6 +66,27 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public boolean useSerialGC() {
         return SubstrateOptions.useSerialGC();
+    }
+
+    @Override
+    public void minHeapSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MinHeapSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+    }
+
+    @Override
+    public void maxHeapSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+    }
+
+    @Override
+    public void maxNewSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxNewSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
     }
 
     @Override

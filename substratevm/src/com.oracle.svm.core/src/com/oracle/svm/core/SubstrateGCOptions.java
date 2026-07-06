@@ -30,9 +30,6 @@ import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOption
 import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.impl.Word;
-
-import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
@@ -57,11 +54,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MinHeapSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().minHeapSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -73,11 +66,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxHeapSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().maxHeapSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -89,11 +78,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxNewSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().maxNewSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);

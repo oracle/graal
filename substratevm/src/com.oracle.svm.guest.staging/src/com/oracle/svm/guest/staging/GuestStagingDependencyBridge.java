@@ -73,6 +73,30 @@ public interface GuestStagingDependencyBridge {
     boolean useSerialGC();
 
     /**
+     * Verifies and records an updated minimum heap size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging.
+     */
+    void minHeapSizeOptionValueChanged(long newValue);
+
+    /**
+     * Verifies and records an updated maximum heap size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging.
+     */
+    void maxHeapSizeOptionValueChanged(long newValue);
+
+    /**
+     * Verifies and records an updated maximum young-generation size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging.
+     */
+    void maxNewSizeOptionValueChanged(long newValue);
+
+    /**
      * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().optionValueChanged(key)}.
      * <p>
      * Remove this method when GC option change notification moves to guest/staging.
