@@ -820,6 +820,16 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtIndexNode}.
      *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public final int codePointAtIndexUTF32Uncached(int i) {
+        return TruffleString.CodePointAtIndexUTF32Node.getUncached().execute(this, i);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtIndexNode}.
+     *
      * @since 22.3
      */
     @TruffleBoundary
@@ -948,6 +958,16 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     @TruffleBoundary
     public final int byteIndexOfStringUncached(TruffleString.WithMask b, int fromIndex, int toIndex, TruffleString.Encoding expectedEncoding) {
         return TruffleString.ByteIndexOfStringNode.getUncached().execute(this, b.string, fromIndex, toIndex, b.mask, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.ByteIndexOfStringSetNode}.
+     *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public final long byteIndexOfStringSetUncached(int fromByteIndex, int toByteIndex, TruffleString.StringSet stringSet) {
+        return TruffleString.ByteIndexOfStringSetNode.getUncached().execute(this, fromByteIndex, toByteIndex, stringSet);
     }
 
     /**

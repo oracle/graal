@@ -1262,6 +1262,19 @@ final class TStringInternalNodes {
         }
     }
 
+    abstract static class IndexOfStringSetNode extends AbstractInternalNode {
+
+        abstract long execute(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.StringSet stringSet);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT)
+        static long dynamicStride(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.StringSet stringSet,
+                        @Bind("fromStride(strideA)") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return stringSet.doIndexOf(node, arrayA, offsetA, lengthA, cachedCompaction.getStride(), codeRangeA, fromIndex, toIndex);
+        }
+    }
+
     abstract static class SubstringInternalNode extends AbstractInternalNode {
 
         abstract TruffleString execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,

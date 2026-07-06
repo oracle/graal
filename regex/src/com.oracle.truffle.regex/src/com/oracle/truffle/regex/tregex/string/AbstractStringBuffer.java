@@ -56,6 +56,10 @@ public interface AbstractStringBuffer {
 
     void clear();
 
+    AbstractStringBuffer copy();
+
+    long prefixHash(int maxLength);
+
     TruffleString asTString();
 
     TruffleString.WithMask asTStringMask(TruffleString pattern);

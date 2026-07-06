@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,6 +120,9 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         done = false;
         init(runRoot);
         while (!done) {
+            if (cur instanceof RegexASTVisitorIterable) {
+                ((RegexASTVisitorIterable) cur).resetVisitorIterator();
+            }
             doVisit(cur);
             while (doAdvance()) {
                 // advance until we reach the next node to visit
@@ -132,7 +135,7 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
     }
 
     private boolean doAdvance() {
-        if (cur == null || cur == root.getParent()) {
+        if (cur == null || cur == root.getParent() || done) {
             done = true;
             return false;
         }
@@ -204,7 +207,6 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
             cur = iterable.visitorGetNext(reverse);
             return false;
         }
-        iterable.resetVisitorIterator();
         doLeave(cur);
         cur = ((RegexASTNode) iterable).getParent();
         return true;

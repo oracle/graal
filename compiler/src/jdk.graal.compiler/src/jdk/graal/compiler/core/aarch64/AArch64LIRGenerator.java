@@ -711,7 +711,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
-        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        Variable result = newVariable(LIRKind.value(variant.returnsLong() ? AArch64Kind.QWORD : AArch64Kind.DWORD));
         AllocatableValue[] allocatableSearchValues = new AllocatableValue[searchValues.length];
         for (int i = 0; i < searchValues.length; i++) {
             allocatableSearchValues[i] = asAllocatable(searchValues[i]);

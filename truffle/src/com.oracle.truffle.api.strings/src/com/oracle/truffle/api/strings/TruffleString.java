@@ -4792,6 +4792,93 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * A set of strings in a given encoding. Used in
+     * {@link ByteIndexOfStringSetNode#execute(AbstractTruffleString, int, int, TruffleString.StringSet)}.
+     *
+     * @since 25.1
+     */
+    public static final class StringSet {
+
+        private final Encoding encoding;
+        private final boolean isUTF16Or32;
+        @CompilationFinal(dimensions = 1) final IndexOfStringSet.SearchPlan[] indexOfOps;
+
+        StringSet(Encoding encoding, IndexOfStringSet.SearchPlan[] indexOfOps) {
+            this.encoding = encoding;
+            this.isUTF16Or32 = TStringGuards.isUTF16(encoding) || TStringGuards.isUTF32(encoding);
+            this.indexOfOps = indexOfOps;
+            assert indexOfOps.length > 0;
+        }
+
+        /**
+         * Creates a new {@link StringSet} from the given array of strings. This operation is
+         * expensive, it is recommended to cache the result.
+         * 
+         * @param strings list of strings to search for. Empty and {@link CodeRange#BROKEN} 
+         *                strings are unsupported.
+         * @param encoding {@code strings}' encoding. Must be a <i>supported</i> encoding, i.e.
+         *                 {@code UTF-8/16/32}, {@link Encoding#ISO_8859_1} or 
+         *                 {@link Encoding#US_ASCII}. 
+         *
+         * @since 25.1
+         */
+        @TruffleBoundary
+        public static StringSet fromArray(AbstractTruffleString[] strings, Encoding encoding) {
+            return IndexOfStringSet.fromArray(strings, encoding);
+        }
+
+        /**
+         * Creates a new {@link StringSet} from the given array of strings with masks. This operation
+         * is expensive, it is recommended to cache the result. Matching uses the same semantics as
+         * {@link WithMask} with some additional restrictions: a pattern code unit matches a haystack
+         * code unit if {@code (haystack | mask) == pattern}, but the mask may only have one set bit
+         * per code unit, and it may not have a larger code range than all search patterns, e.g. if
+         * all strings are {@link CodeRange#ASCII}, the mask may not have a code unit {@code 0x80}.
+         * The restrictions of the maskless variant also apply here.
+         *
+         * @since 25.1
+         */
+        @TruffleBoundary
+        public static StringSet fromArray(WithMask[] strings, Encoding encoding) {
+            return IndexOfStringSet.fromArray(strings, encoding);
+        }
+
+        /**
+         * Returns {@code true} if {@link ByteIndexOfStringSetNode} may implement the search for
+         * this particular string set in strings with the given code range by dispatching to a
+         * compiler intrinsic.
+         * <p>
+         * This is useful for use cases where the caller has a faster implementation for
+         * non-intrinsified paths.
+         *
+         * @since 25.1
+         */
+        public boolean isIntrinsicCandidate(CodeRange codeRange) {
+            for (int i = 0; i < indexOfOps.length - 1; i++) {
+                IndexOfStringSet.SearchPlan op = indexOfOps[i];
+                if (codeRange.ordinal() <= Byte.toUnsignedInt(op.maxCodeRange)) {
+                    return op.isIntrinsicCandidate();
+                }
+            }
+            return indexOfOps[indexOfOps.length - 1].isIntrinsicCandidate();
+        }
+
+        @ExplodeLoop
+        long doIndexOf(Node location, byte[] arrayA, long offsetA, int lengthA, int searchStride, int codeRangeA, int fromIndex, int toIndex) {
+            CompilerAsserts.partialEvaluationConstant(indexOfOps);
+            for (int i = 0; i < indexOfOps.length - 1; i++) {
+                CompilerAsserts.partialEvaluationConstant(i);
+                IndexOfStringSet.SearchPlan op = indexOfOps[i];
+                CompilerAsserts.partialEvaluationConstant(op);
+                if (TSCodeRange.isMoreRestrictiveOrEqual(codeRangeA, Byte.toUnsignedInt(op.maxCodeRange))) {
+                    return op.runSearch(location, arrayA, offsetA, lengthA, searchStride, fromIndex, toIndex, encoding);
+                }
+            }
+            return indexOfOps[indexOfOps.length - 1].runSearch(location, arrayA, offsetA, lengthA, searchStride, fromIndex, toIndex, encoding);
+        }
+    }
+
+    /**
      * Node to find the byte index of the first occurrence of a codepoint present in a given
      * codepoint set. See
      * {@link #execute(AbstractTruffleString, int, int, TruffleString.CodePointSet)} for details.
@@ -4961,6 +5048,142 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static ByteIndexOfCodePointSetNode getUncached() {
             return TruffleStringFactory.ByteIndexOfCodePointSetNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Node to find the byte index of the first occurrence of any string contained in a given string
+     * set. See {@link #execute(AbstractTruffleString, int, int, TruffleString.StringSet)} for
+     * details.
+     *
+     * @since 25.1
+     */
+    public abstract static class ByteIndexOfStringSetNode extends AbstractPublicNode {
+
+        static final long NO_MATCH = packResult(-1, -1);
+
+        ByteIndexOfStringSetNode() {
+        }
+
+        /**
+         * Returns the byte index of the first occurrence of any string present in the given
+         * {@link StringSet}, bounded by {@code fromByteIndex} (inclusive) and {@code toByteIndex}
+         * (exclusive). The returned {@code long} packs the resulting byte index into the high 32
+         * bits and the matching pattern's index into the low 32 bits. If no match is found, the
+         * result packs {@code -1} for both fields. If multiple strings match at the first matching
+         * byte index, the string with the lowest index in the array passed to
+         * {@link StringSet#fromArray(AbstractTruffleString[], Encoding)} is selected.
+         * <p>
+         * {@link ByteIndexOfStringSetNode} will specialize on the given {@link StringSet}'s
+         * content, which is therefore required to be
+         * {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation constant}.
+         *
+         * @since 25.1
+         */
+        public abstract long execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, StringSet stringSet);
+
+        @Specialization
+        static long indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, StringSet stringSet,
+                        @Bind Node node,
+                        @Cached InlinedConditionProfile managedProfileA,
+                        @Cached InlinedConditionProfile nativeProfileA,
+                        @Cached InlinedConditionProfile impreciseProfile,
+                        @Cached TStringInternalNodes.IndexOfStringSetNode internalNode) {
+            Encoding encoding = stringSet.encoding;
+            CompilerAsserts.partialEvaluationConstant(stringSet);
+            CompilerAsserts.partialEvaluationConstant(encoding);
+            a.checkEncoding(encoding);
+            int fromIndex = rawIndex(fromByteIndex, encoding);
+            int toIndex = rawIndex(toByteIndex, encoding);
+            Object dataA = a.data();
+            try {
+                final byte[] arrayA;
+                final long addOffsetA;
+                if (managedProfileA.profile(node, dataA instanceof byte[])) {
+                    arrayA = (byte[]) dataA;
+                    addOffsetA = byteArrayBaseOffset();
+                } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
+                    arrayA = null;
+                    addOffsetA = NativePointer.unwrap(dataA);
+                } else {
+                    arrayA = a.materializeLazy(node, dataA);
+                    addOffsetA = byteArrayBaseOffset();
+                }
+                final long offsetA = a.offset() + addOffsetA;
+                final int lengthA = a.length();
+                final int strideA = a.stride();
+
+                if (lengthA == 0) {
+                    return NO_MATCH;
+                }
+                boundsCheckRawRange(lengthA, fromIndex, toIndex);
+                if (fromIndex == toIndex) {
+                    return NO_MATCH;
+                }
+                int codeRangeA = getPreciseCodeRange(node, a, arrayA, offsetA, encoding, impreciseProfile);
+                if (stringSet.isUTF16Or32) {
+                    return internalNode.execute(node, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, stringSet);
+                } else {
+                    assert strideA == encoding.naturalStride;
+                    return stringSet.doIndexOf(node, arrayA, offsetA, lengthA, encoding.naturalStride, codeRangeA, fromIndex, toIndex);
+                }
+            } finally {
+                Reference.reachabilityFence(dataA);
+            }
+        }
+
+        /**
+         * Returns the byte index part of a result returned by
+         * {@link #execute(AbstractTruffleString, int, int, TruffleString.StringSet)}.
+         *
+         * @since 25.1
+         */
+        public static int unpackResultByteIndex(long result) {
+            return (int) (result >> Integer.SIZE);
+        }
+
+        /**
+         * Returns the pattern index part of a result returned by
+         * {@link #execute(AbstractTruffleString, int, int, TruffleString.StringSet)}.
+         *
+         * @since 25.1
+         */
+        public static int unpackResultPatternIndex(long result) {
+            return (int) result;
+        }
+
+        /**
+         * Returns {@code true} if the given result, as returned by
+         * {@link #execute(AbstractTruffleString, int, int, TruffleString.StringSet)}, represents a
+         * successful match.
+         *
+         * @since 25.1
+         */
+        public static boolean resultIsMatch(long result) {
+            return unpackResultByteIndex(result) >= 0;
+        }
+
+        static long packResult(int byteIndex, int patternIndex) {
+            return ((long) byteIndex << Integer.SIZE) | Integer.toUnsignedLong(patternIndex);
+        }
+
+        /**
+         * Create a new {@link ByteIndexOfStringSetNode}.
+         *
+         * @since 25.1
+         */
+        @NeverDefault
+        public static ByteIndexOfStringSetNode create() {
+            return TruffleStringFactory.ByteIndexOfStringSetNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link ByteIndexOfStringSetNode}.
+         *
+         * @since 25.1
+         */
+        public static ByteIndexOfStringSetNode getUncached() {
+            return TruffleStringFactory.ByteIndexOfStringSetNodeGen.getUncached();
         }
     }
 

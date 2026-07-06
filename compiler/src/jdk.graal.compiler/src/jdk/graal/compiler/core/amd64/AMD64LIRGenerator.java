@@ -1664,7 +1664,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        Variable result = newVariable(LIRKind.value(variant.returnsLong() ? AMD64Kind.QWORD : AMD64Kind.DWORD));
         int nValues = searchValues.length;
         int constOffset = isConstantValue(arrayOffset) && asConstantValue(arrayOffset).isJavaConstant() &&
                         asConstantValue(arrayOffset).getJavaConstant().asLong() >= 0 &&

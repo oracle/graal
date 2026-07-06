@@ -1335,6 +1335,14 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         simdRVMOp(VexRVMOp.VPACKUSWB, SSEOp.PACKUSWB, size, dst, src1, src2, false);
     }
 
+    public final void packssdw(AVXKind.AVXSize size, Register dst, Register src) {
+        packssdw(size, dst, dst, src);
+    }
+
+    public final void packssdw(AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
+        simdRVMOp(VexRVMOp.VPACKSSDW, SSEOp.PACKSSDW, size, dst, src1, src2, false);
+    }
+
     public final void packusdw(AVXKind.AVXSize size, Register dst, Register src) {
         packusdw(size, dst, dst, src);
     }
@@ -1364,6 +1372,18 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void pand(AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
+        if (isAVX()) {
+            VexRVMOp.VPAND.encoding(avxEncoding).emit(this, size, dst, src1, src2);
+        } else {
+            // SSE
+            if (!dst.equals(src1)) {
+                movdqu(dst, src1);
+            }
+            pand(dst, src2);
+        }
+    }
+
+    public final void pand(AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2) {
         if (isAVX()) {
             VexRVMOp.VPAND.encoding(avxEncoding).emit(this, size, dst, src1, src2);
         } else {

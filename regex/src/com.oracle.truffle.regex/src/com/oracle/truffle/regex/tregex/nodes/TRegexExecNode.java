@@ -94,6 +94,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         this.optimizeLock = new ReentrantLock();
         this.runnerNode = insert(runnerNode);
         if (!backtrackingMode && runnerNode instanceof NFARegexSearchNode nfaNode && ast.getOptions().isGenerateDFAImmediately()) {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "switching to DFA because GenerateDFAImmediately is set");
             switchToLazyDFA(ast.getLanguage(), ast.getSource(), nfaNode, nfa);
         }
     }
@@ -116,6 +117,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
             if (curRunnerNode instanceof NFARegexSearchNode nfaNode) {
                 if (profile.shouldGenerateDFA(maxIndex - fromIndex) && optimizeLock.tryLock()) {
                     try {
+                        Loggers.LOG_MATCHING_STRATEGY.fine(() -> "switching to DFA because expression is hot");
                         switchToLazyDFA(getRegexLanguage(), getSource(), nfaNode, null);
                         profile.resetCalls();
                     } finally {
