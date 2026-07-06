@@ -61,9 +61,10 @@ public final class Constants {
     public static final int ACC_DONT_INLINE           = 0x00400000;
     public static final int ACC_SIGNATURE_POLYMORPHIC = 0x00800000;
     // Classes
-    public static final int ACC_FINALIZER             = 0x00010000;
-    public static final int ACC_IS_HIDDEN_CLASS       = 0x04000000; // synchronized with JVM_ACC_IS_HIDDEN_CLASS
-    public static final int ACC_VALUE_BASED           = 0x00020000;
+    public static final int ACC_FINALIZER                = 0x00010000;
+    public static final int ACC_IS_HIDDEN_CLASS          = 0x04000000; // synchronized with JVM_ACC_IS_HIDDEN_CLASS
+    public static final int ACC_CONTAINS_UNHIDDEN_FIELDS = 0x08000000;
+    public static final int ACC_VALUE_BASED              = 0x00020000;
     // Fields
     public static final int ACC_STABLE                = 0x00010000;
 
