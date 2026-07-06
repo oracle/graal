@@ -119,17 +119,22 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     }
 
     /**
-     * This variant of {@link #invoke(Object, Object[])} is @Hidden. This is important when this is
-     * called as part of the method handle implementation where this frame is not expected to
-     * appear.
+     * This variant of {@link #invoke(Object, Object[], Class)} is @Hidden. This is important when
+     * this is called as part of the method handle implementation where this frame is not expected
+     * to appear.
      */
     @Hidden
-    public Object methodHandleInvoke(Object obj, Object[] args) {
+    public Object methodHandleInvoke(Object obj, Object[] args, Class<?> caller) {
         if (callerSensitiveAdapter) {
-            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+            if (caller == null) {
+                throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+            }
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) getExpandSignature()).invoke(obj, args, invokeTarget(obj), caller);
+        } else {
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
         }
-        preInvoke(obj);
-        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override

@@ -26,10 +26,10 @@ package com.oracle.svm.core.methodhandles;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -40,6 +40,10 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.shared.util.BasedOnJDKClass;
+import com.oracle.svm.shared.util.SubstrateUtil;
+
+import jdk.internal.reflect.Reflection;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup")
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -66,8 +70,13 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Target_java_lang_invoke_MethodHandles_Lookup boundCaller)
                     throws IllegalAccessException {
-        /* Binding the caller triggers the generation of an invoker */
-        return mh;
+        if (boundCaller.allowedModes == TRUSTED || !MethodHandleCallerSensitiveSupport.isCallerSensitive(method)) {
+            return mh;
+        }
+        if ((boundCaller.lookupModes() & ORIGINAL) == 0) {
+            throw new IllegalAccessException("Attempt to lookup caller-sensitive method using restricted lookup object");
+        }
+        return MethodHandleCallerSensitiveSupport.createWrappedMember(mh, method, boundCaller.lookupClass);
     }
 
     @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
@@ -78,6 +87,15 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     private int allowedModes;
+
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    static int ORIGINAL;
+
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    private static int TRUSTED;
+
+    @Alias
+    native int lookupModes();
 
     @Substitute
     private IllegalAccessException makeAccessException(Class<?> targetClass) {
@@ -98,4 +116,72 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     @Delete
     @TargetElement(onlyWith = NoRuntimeClassLoading.class) //
     native MethodHandle linkMethodHandleConstant(byte refKind, Class<?> defc, String name, Object type) throws ReflectiveOperationException;
+}
+
+@BasedOnJDKClass(className = "java.lang.invoke.MethodHandleNatives")
+final class MethodHandleCallerSensitiveSupport {
+    private MethodHandleCallerSensitiveSupport() {
+    }
+
+    static boolean isCallerSensitive(Target_java_lang_invoke_MemberName mem) {
+        if (!mem.isInvocable()) {
+            return false;
+        }
+        if (mem.reflectAccess == null && mem.intrinsic == null) {
+            Util_java_lang_invoke_MethodHandleNatives.resolve(mem, null, false);
+        }
+        return (mem.reflectAccess instanceof Method reflectMethod && Reflection.isCallerSensitive(reflectMethod)) || canBeCalledVirtual(mem);
+    }
+
+    private static boolean canBeCalledVirtual(Target_java_lang_invoke_MemberName mem) {
+        if ("getContextClassLoader".equals(mem.name)) {
+            return canBeCalledVirtual(mem, Thread.class);
+        }
+        return false;
+    }
+
+    private static boolean canBeCalledVirtual(Target_java_lang_invoke_MemberName symbolicRef, Class<?> definingClass) {
+        Class<?> symbolicRefClass = symbolicRef.getDeclaringClass();
+        if (symbolicRefClass == definingClass) {
+            return true;
+        }
+        if (symbolicRef.isStatic() || symbolicRef.isPrivate()) {
+            return false;
+        }
+        DynamicHub definingClassHub = DynamicHub.fromClass(definingClass);
+        DynamicHub symbolicRefClassHub = DynamicHub.fromClass(symbolicRefClass);
+        return isAssignableFrom(definingClassHub, symbolicRefClassHub) || symbolicRefClassHub.isInterface();
+    }
+
+    private static boolean isAssignableFrom(DynamicHub definingClassHub, DynamicHub symbolicRefClassHub) {
+        if (definingClassHub == symbolicRefClassHub) {
+            return true;
+        }
+        if (definingClassHub.isInterface()) {
+            return implementsInterface(symbolicRefClassHub, definingClassHub);
+        }
+        for (DynamicHub current = symbolicRefClassHub.getSuperHub(); current != null; current = current.getSuperHub()) {
+            if (current == definingClassHub) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean implementsInterface(DynamicHub symbolicRefClassHub, DynamicHub definingClassHub) {
+        for (DynamicHub interfaceHub : symbolicRefClassHub.getInterfaces()) {
+            if (interfaceHub == definingClassHub || implementsInterface(interfaceHub, definingClassHub)) {
+                return true;
+            }
+        }
+        DynamicHub superHub = symbolicRefClassHub.getSuperHub();
+        return superHub != null && implementsInterface(superHub, definingClassHub);
+    }
+
+    static MethodHandle createWrappedMember(MethodHandle target, Target_java_lang_invoke_MemberName member, Class<?> callerClass) {
+        Target_java_lang_invoke_MethodHandle targetHandle = SubstrateUtil.cast(target, Target_java_lang_invoke_MethodHandle.class);
+        Target_java_lang_invoke_MethodHandleImpl_WrappedMember result = new Target_java_lang_invoke_MethodHandleImpl_WrappedMember();
+        result.constructor(target, target.type(), member, targetHandle.isInvokeSpecial(), callerClass);
+        return SubstrateUtil.cast(result, MethodHandle.class);
+    }
 }
