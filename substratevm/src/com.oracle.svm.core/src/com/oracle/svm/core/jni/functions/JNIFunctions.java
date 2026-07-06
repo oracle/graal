@@ -35,8 +35,6 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -64,18 +62,20 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -139,6 +139,7 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -1925,20 +1926,30 @@ public final class JNIFunctions {
                 throw new NoSuchFieldError("Field name is either null or invalid UTF-8 string");
             }
 
+            /*
+             * Resolve the complete hierarchy through interpreter metadata first. Consulting the
+             * reflection dictionary for a runtime-loaded class could report a missing registration
+             * before a matching Crema field is found.
+             */
             if (RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded()) {
                 CharSequence signature = Utf8.wrapUtf8CString(csig);
                 if (signature == null) {
                     throw new NoSuchFieldError("Field signature is either null or invalid UTF-8 string");
                 }
-                CremaResolvedJavaField resolvedField = CremaSupport.singleton().lookupCremaField(clazz, name.toString(), signature.toString(), isStatic);
-                if (resolvedField != null) {
-                    JNIFieldId fieldID = resolvedField.getOrCreateJNIFieldId();
+                ResolvedJavaField resolvedField = CremaSupport.singleton().lookupFieldForRuntimeClass(clazz, name.toString(), signature.toString(), isStatic);
+                if (resolvedField instanceof CremaResolvedJavaField cremaField) {
+                    JNIFieldId fieldID = cremaField.getOrCreateJNIFieldId();
                     assert CremaJNIFieldIds.isCremaFieldId(fieldID);
                     return fieldID;
+                } else if (resolvedField == null) {
+                    throw new NoSuchFieldError(clazz.getName() + '.' + name);
                 }
-                throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
 
+            /*
+             * Image-built classes, and image-built fields inherited by runtime-loaded classes, use
+             * dictionary field IDs and retain the usual JNI registration checks.
+             */
             JNIFieldId fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);

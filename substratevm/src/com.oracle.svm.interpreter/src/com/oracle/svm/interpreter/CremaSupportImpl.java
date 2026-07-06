@@ -85,7 +85,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -159,6 +158,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -1537,24 +1537,38 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public CremaResolvedJavaField lookupCremaField(Class<?> clazz, String name, String signature, boolean isStatic) {
-        if (clazz.isPrimitive()) {
+    public ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic) {
+        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
+        assert !clazz.isPrimitive();
+
+        if (clazz.isArray()) {
             return null;
         }
-        Object interpreterType = DynamicHub.fromClass(clazz).getInterpreterType();
-        if (!(interpreterType instanceof CremaResolvedObjectType type)) {
-            return null;
-        }
+        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType();
         Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
         Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
         if (fieldName == null || fieldType == null) {
             return null;
         }
-        ResolvedJavaField resolvedField = type.lookupField(fieldName, fieldType);
-        if (resolvedField instanceof CremaResolvedJavaField cremaField && cremaField.isStatic() == isStatic) {
-            return cremaField;
+        return lookupInterpreterField(type, fieldName, fieldType, isStatic);
+    }
+
+    private static InterpreterResolvedJavaField lookupInterpreterField(InterpreterResolvedObjectType holder, Symbol<Name> name, Symbol<Type> type, boolean isStatic) {
+        for (InterpreterResolvedJavaField field : holder.getDeclaredFields()) {
+            if (name.equals(field.getSymbolicName()) && type.equals(field.getSymbolicType()) && field.isStatic() == isStatic) {
+                return field;
+            }
         }
-        return null;
+        if (isStatic) {
+            for (InterpreterResolvedObjectType superInterface : holder.getInterfaces()) {
+                InterpreterResolvedJavaField field = lookupInterpreterField(superInterface, name, type, true);
+                if (field != null) {
+                    return field;
+                }
+            }
+        }
+        InterpreterResolvedObjectType superclass = holder.getSuperclass();
+        return superclass == null ? null : lookupInterpreterField(superclass, name, type, isStatic);
     }
 
     @Override

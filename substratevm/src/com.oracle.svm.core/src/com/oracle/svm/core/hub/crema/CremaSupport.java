@@ -142,10 +142,10 @@ public interface CremaSupport {
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
 
-    /** Gets a runtime-loaded field declared by {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
-    CremaResolvedJavaField lookupCremaField(Class<?> clazz, String name, String signature, boolean isStatic);
+    /** Gets a field declared by a runtime-loaded {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
+    ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic);
 
-    /** Gets the runtime-loaded field metadata encoded by {@code fieldId} in the context of {@code clazz}. */
+    /** Gets the field metadata encoded by {@code fieldId} in the context of a runtime-loaded {@code clazz}. */
     CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
 
     /** Gets the static storage base encoded by a runtime-loaded static JNI field id. */
