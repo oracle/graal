@@ -26,7 +26,7 @@ package com.oracle.svm.guest.staging;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 
 /**
  * Temporary bridge for cutting builder-to-guest migration dependencies.
@@ -63,7 +63,7 @@ public interface GuestStagingDependencyBridge {
      * <p>
      * Remove this method when GC option change notification moves to guest/staging.
      */
-    void heapOptionValueChanged(RuntimeOptionKey<?> key);
+    void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key);
 
     /**
      * Delegates to {@code com.oracle.svm.core.Isolates.isCurrentFirst()}.

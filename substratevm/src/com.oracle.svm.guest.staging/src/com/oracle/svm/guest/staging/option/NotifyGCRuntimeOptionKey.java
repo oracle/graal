@@ -22,16 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
- * Notifies the {@link Heap} implementation after the value of the option has changed.
+ * Notifies the {@code Heap} implementation after the value of the option has changed.
  */
 public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
     public NotifyGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
@@ -46,7 +45,7 @@ public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
     protected void afterValueUpdate() {
         super.afterValueUpdate();
         if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
+            GuestStagingDependencyBridge.singleton().heapOptionValueChanged(this);
         }
     }
 }
