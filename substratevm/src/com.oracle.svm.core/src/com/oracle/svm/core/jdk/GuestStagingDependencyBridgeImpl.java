@@ -191,6 +191,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public void setVerifyMode(String mode) {
+        RuntimeClassLoading.Options.ClassVerification.update(RuntimeClassLoading.VerifyMode.valueOf(mode));
+    }
+
+    @Override
     public void endOfParsing() {
         maybeReportImageClasses();
     }

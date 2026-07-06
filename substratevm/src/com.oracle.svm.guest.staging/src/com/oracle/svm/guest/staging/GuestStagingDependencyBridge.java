@@ -225,6 +225,12 @@ public interface GuestStagingDependencyBridge {
     /// Remove this method when runtime assertion support moves to guest/staging.
     void updateRuntimeSystemAssertionStatus(boolean enable);
 
+    /// Updates the bytecode verification mode selected by a Java VM option.
+    ///
+    /// The mode is represented as a string here because guest/staging must not depend on the
+    /// runtime class-loading implementation.
+    void setVerifyMode(String mode);
+
     /**
      * This method is called at the end of runtime options parsing.
      * <p>

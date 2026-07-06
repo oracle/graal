@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.security.ProtectionDomain;
@@ -117,7 +118,7 @@ public class RuntimeClassLoading {
         }
 
         @Option(help = "Verification mode for runtime class loading.") //
-        public static final HostedOptionKey<VerifyMode> ClassVerification = new HostedOptionKey<>(VerifyMode.REMOTE);
+        public static final RuntimeOptionKey<VerifyMode> ClassVerification = new RuntimeOptionKey<>(VerifyMode.REMOTE, Immutable);
 
         @Option(help = "Trace runtime class loading events.") //
         public static final RuntimeOptionKey<Boolean> TraceClassLoading = new RuntimeOptionKey<>(false, Options::validateTraceRuntimeClassLoading);
