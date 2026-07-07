@@ -33,7 +33,7 @@ suite = {
       {
         "name": "barista",
         "subdir": False,
-        "version": "0.7.4",
+        "version": "0.7.8",
         "foreign": True, # barista is not an mx suite
         "dynamic": True,
         "urls": [
