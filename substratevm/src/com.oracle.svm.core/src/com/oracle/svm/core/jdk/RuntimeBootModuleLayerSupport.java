@@ -24,6 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.ADD_MODULES_PROPERTY_PREFIX;
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MAIN_MODULE_PROPERTY;
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY;
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION;
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_PROPERTY;
+
 import java.io.File;
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
@@ -98,37 +104,6 @@ final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
 /// - Grafts those modules onto the real boot layer, and
 /// - Rebuilds the boot-layer configuration and caches to match the augmented contents.
 public final class RuntimeBootModuleLayerSupport {
-    public static final String UPGRADE_MODULE_PATH_OPTION = "--upgrade-module-path";
-    public static final String MODULE_PATH_OPTION = "--module-path";
-    public static final String ADD_MODULES_OPTION = "--add-modules";
-    public static final String ADD_READS_OPTION = "--add-reads";
-    public static final String ADD_EXPORTS_OPTION = "--add-exports";
-    public static final String ADD_OPENS_OPTION = "--add-opens";
-    public static final String ENABLE_NATIVE_ACCESS_OPTION = "--enable-native-access";
-
-    /// Used by `ModuleBootstrap#boot2` and `ModulePathValidator#scanAllModules`.
-    public static final String UPGRADE_MODULE_PATH_PROPERTY = "jdk.module.upgrade.path";
-
-    public static final String MODULE_PATH_PROPERTY = "jdk.module.path";
-
-    /// Read by `jdk.internal.loader.ClassLoaders.<clinit>`.
-    public static final String MAIN_MODULE_PROPERTY = "jdk.module.main";
-
-    public static final String ADD_MODULES_PROPERTY_PREFIX = "jdk.module.addmods.";
-
-    /// Used by `ModuleBootstrap#addExtraReads`.
-    public static final String ADD_READS_PROPERTY_PREFIX = "jdk.module.addreads.";
-
-    /// Used by `ModuleBootstrap#addExtraExportsAndOpens`.
-    public static final String ADD_EXPORTS_PROPERTY_PREFIX = "jdk.module.addexports.";
-
-    /// Used by `ModuleBootstrap#addExtraExportsAndOpens`.
-    public static final String ADD_OPENS_PROPERTY_PREFIX = "jdk.module.addopens.";
-
-    /// Used by `ModuleBootstrap#decodeEnableNativeAccess` and replayed by
-    /// `ModuleBootstrap#addEnableNativeAccess`.
-    public static final String ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX = "jdk.module.enable.native.access.";
-
     public static final String ALL_MODULE_PATH = "ALL-MODULE-PATH";
     public static final String ALL_DEFAULT = "ALL-DEFAULT";
     public static final String ALL_SYSTEM = "ALL-SYSTEM";

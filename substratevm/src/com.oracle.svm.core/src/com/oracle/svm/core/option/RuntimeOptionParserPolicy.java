@@ -36,7 +36,6 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.Target_java_lang_runtime_SwitchBootstraps;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_PreviewFeatures;
@@ -44,6 +43,7 @@ import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.XOptions;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
@@ -472,32 +472,32 @@ public final class RuntimeOptionParserPolicy {
     /// Parses module options that SVM applies to the runtime boot layer into the normalized
     /// `jdk.module.*` property scheme.
     private static boolean parseModuleOption(String arg, ParseContext context) {
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.MODULE_PATH_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.MODULE_PATH_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.UPGRADE_MODULE_PATH_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.UPGRADE_MODULE_PATH_PROPERTY, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_PROPERTY, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_MODULES_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + context.addModulesIndex++, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_MODULES_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_MODULES_PROPERTY_PREFIX + context.addModulesIndex++, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_READS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_READS_PROPERTY_PREFIX + context.addReadsIndex++, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_READS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_READS_PROPERTY_PREFIX + context.addReadsIndex++, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_EXPORTS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + context.addExportsIndex++, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_EXPORTS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_EXPORTS_PROPERTY_PREFIX + context.addExportsIndex++, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_OPENS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + context.addOpensIndex++, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_OPENS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_OPENS_PROPERTY_PREFIX + context.addOpensIndex++, optionValue(arg));
             return true;
         }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX + context.enableNativeAccessIndex++, optionValue(arg));
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX + context.enableNativeAccessIndex++, optionValue(arg));
             return true;
         }
         return false;

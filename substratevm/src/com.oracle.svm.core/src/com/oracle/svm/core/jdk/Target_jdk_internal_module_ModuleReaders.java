@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -448,7 +450,7 @@ final class ResourceBasedModuleReaderSupport {
     }
 
     private static ModuleFinder createRuntimeModulePathFinder() {
-        ModuleFinder finder = Target_jdk_internal_module_ModuleBootstrap.finderFor(RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY);
+        ModuleFinder finder = Target_jdk_internal_module_ModuleBootstrap.finderFor(MODULE_PATH_PROPERTY);
         return finder == null ? EMPTY_RUNTIME_MODULE_PATH_FINDER : finder;
     }
 
