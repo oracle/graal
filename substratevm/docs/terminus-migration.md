@@ -61,6 +61,12 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Builder singleton installed in the guest through `GuestAccess.createCallback(...)` | Shared provider interface plus builder and guest helper classes | Keep the builder-facing helper in its original module when hosted code still uses it. Register the callback under the shared provider key, such as `ImageLayerBuildingSupportProvider`, so guest code can look it up through `ImageSingletons`. |
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 
+### Preserve Guest Module Encapsulation
+
+Never add an `opens` edge from `SVM_GUEST` or `SVM_GUEST_STAGING` to `org.graalvm.nativeimage.builder`.
+If builder code appears to require reflective access to a guest or guest-staging package, treat that requirement as a boundary-design red flag.
+Keep the operation in the guest context and expose a narrow guest-aware API or bridge instead.
+
 For reviewability, prefer splitting broad moves into one commit for the real code movement and
 non-mechanical adaptations, followed by a second commit for mechanical import and reference
 adjustments caused by the move. The final tree should be validated as a whole; the split is meant to
@@ -132,3 +138,4 @@ If existing hosted code uses `Method.invoke(...)` or helper wrappers around core
 - Replace reflective invocation with `GuestAccess.get().invoke(...)`.
 - Replace module-layer queries with JVMCI module-layer APIs.
 - Document and handle cases where JVMCI helpers can return `null` instead of assuming reflection-style success.
+- Confirm that guest and guest-staging packages are not open to the builder; redesign the boundary instead of adding an `opens` edge.
