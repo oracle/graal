@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.2
+* GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.
+* GR-75438: Bytecode DSL: Added `@Return` for user-defined return operations that customize the value returned from a bytecode root node.
+
 ## Version 25.1
 * GR-76434: Added `engine.DynamicCompilationThresholdsHighLoadSlope` to tune dynamic compilation threshold scaling under high compilation queue load. The default value of `engine.DynamicCompilationThresholdsMinNormalLoad` is now `0`, which disables low-load threshold reduction by default.
 * GR-71645: Host adapter instances created with `TruffleLanguage.Env#createHostAdapter` now delegate unresolved direct member operations to the original guest object, while Java host members and the special `super` and `this` adapter members take precedence.

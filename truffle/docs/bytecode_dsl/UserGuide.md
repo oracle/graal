@@ -196,7 +196,7 @@ They model language-specific behaviour, such as arithmetic operations, value con
 Here, we discuss regular custom operations that eagerly evaluate their
 children; the Bytecode DSL also supports [short circuit operations](ShortCircuitOperations.md).
 
-Custom operations are defined using Java classes in one of two ways:
+Regular custom operations are defined using Java classes in one of two ways:
 
 1. Typically, operations are defined as inner classes of the root class annotated with [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java).
 2. To support migration from an AST interpreter, custom operations can also be *proxies* of existing existing Truffle node classes. To define an operation proxy, the root class should have an [`@OperationProxy`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/OperationProxy.java) annotation referencing the node class, and the node class itself should be marked `@OperationProxy.Proxyable`. Proxied nodes have additional restrictions compared to regular Truffle AST nodes, so making a node proxyable can require some (minimal) refactoring.
@@ -264,8 +264,13 @@ These static imports can be declared on the root node and on individual operatio
 
 #### Advanced use cases
 
-This section discussed regular operations. There are also [short circuit operations](ShortCircuitOperations.md) to implement short-circuit behaviour, and special [`@Prolog`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Prolog.java), [`@EpilogReturn`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogReturn.java), and [`@EpilogExceptional`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogExceptional.java) operations to guarantee certain behaviour happens on entry/exit.
-
+In addition to the regular custom operations described above, there are special operations you can define for custom control flow and entry/exit behaviour:
+- [short circuit operations](ShortCircuitOperations.md) to implement short-circuit behaviour
+- [`@Yield`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Yield.java) for custom yield behaviour
+- [`@Return`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Return.java) for custom return behaviour
+- [`@Prolog`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Prolog.java) for custom behaviour on root entry
+- [`@EpilogReturn`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogReturn.java) for custom behaviour on root exit
+- [`@EpilogExceptional`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogExceptional.java) for custom behaviour on exceptional root exit
 
 An operation can take zero or more values for its last dynamic operand by declaring the last dynamic operand [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Variadic.java).
 The builder will emit code to collect these values into an `Object[]`.

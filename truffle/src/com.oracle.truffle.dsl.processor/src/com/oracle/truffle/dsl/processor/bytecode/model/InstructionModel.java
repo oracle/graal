@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.InlineFieldData;
@@ -138,6 +139,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public enum ImmediateWidth {
+        NONE(0),
         BYTE(1),
         SHORT(2),
         INT(4),
@@ -151,6 +153,7 @@ public final class InstructionModel implements PrettyPrintable {
 
         public TypeMirror toType(ProcessorContext context) {
             return switch (this) {
+                case NONE -> throw new AssertionError("Non-encoded immediates do not have a Java storage type.");
                 case BYTE -> context.getType(byte.class);
                 case SHORT -> context.getType(short.class);
                 case INT -> context.getType(int.class);
@@ -163,6 +166,7 @@ public final class InstructionModel implements PrettyPrintable {
          */
         public String toEncodedName() {
             return switch (this) {
+                case NONE -> "";
                 case BYTE -> "B";
                 case SHORT -> "S";
                 case INT -> "I";
@@ -233,17 +237,50 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, boolean dynamic, OptionalInt operandIndex) {
+    /**
+     * Models the value and {@link CodeTree} of a fixed immediate.
+     */
+    public record FixedImmediateValue(Object value, CodeTree tree) {
+    }
+
+    /**
+     * Models an immediate of an instruction.
+     *
+     * @param kind the kind of the immediate
+     * @param name the unique name of the immediate
+     * @param encoding how the immediate is encoded
+     * @param dynamic whether the immediate's value is initialized during execution instead of at parse time (e.g., profiles)
+     * @param operandIndex the operand index this immediate corresponds to, if any
+     * @param fixedValue the fixed value this immediate takes on, if any; if an immediate has a fixed value, it must not be {@link #isEncoded()} encoded}
+     */
+    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, boolean dynamic, OptionalInt operandIndex, Optional<FixedImmediateValue> fixedValue) {
+
+        public InstructionImmediate {
+            if (fixedValue.isPresent() && encoding.width() != ImmediateWidth.NONE) {
+                throw new IllegalArgumentException("Fixed immediates must not be encoded.");
+            }
+        }
+
+        /**
+         * Returns a fresh copy of the immediate for quickened/variant instructions.
+         */
+        public InstructionImmediate copy() {
+            return new InstructionImmediate(kind, name, encoding.copy(), dynamic, operandIndex, fixedValue);
+        }
 
         public int offset() {
             return encoding.offset();
+        }
+
+        public boolean isEncoded() {
+            return encoding.width() != ImmediateWidth.NONE;
         }
     }
 
     public record InstructionEncoding(List<InstructionImmediateEncoding> immediates, int length) implements Comparable<InstructionEncoding> {
 
         InstructionEncoding(InstructionModel instruction) {
-            this(instruction.immediates.stream().map((i) -> i.encoding()).toList(),
+            this(instruction.getEncodedImmediates().stream().map(InstructionImmediate::encoding).toList(),
                             instruction.getInstructionLength());
         }
 
@@ -278,9 +315,6 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public static final class InstructionImmediateEncoding {
-
-        public static final InstructionImmediateEncoding NONE = new InstructionImmediateEncoding(0, null);
-
         private int offset;
         private final ImmediateWidth width;
 
@@ -289,10 +323,11 @@ public final class InstructionModel implements PrettyPrintable {
             this.width = width;
         }
 
-        /* Only used to initialize the NONE case. */
-        private InstructionImmediateEncoding(int offset, ImmediateWidth width) {
-            this.offset = offset;
-            this.width = width;
+        /**
+         * Returns a fresh copy of the current encoding with unassigned offset.
+         */
+        private InstructionImmediateEncoding copy() {
+            return new InstructionImmediateEncoding(this.width);
         }
 
         public int offset() {
@@ -337,8 +372,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     private int byteLength = OPCODE_WIDTH;
     public final InstructionKind kind;
-    public final String name;
-    public final String quickeningName;
+    private final InstructionName instructionName;
     public final Signature signature;
     public CodeTypeElement nodeType;
     public NodeData nodeData;
@@ -425,9 +459,8 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public InstructionModel(InstructionKind kind, String name, Signature signature) {
         this.kind = kind;
-        this.name = name;
+        this.instructionName = InstructionName.create(kind, name);
         this.signature = signature;
-        this.quickeningName = null;
         this.quickeningBase = null;
         this.quickeningKind = QuickeningKind.BASE;
         this.specializedType = null;
@@ -439,9 +472,8 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public InstructionModel(InstructionModel base, String quickeningName, Signature signature, QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
         this.kind = base.kind;
-        this.name = base.name + "$" + quickeningName;
+        this.instructionName = base.instructionName.withQuickening(quickeningName);
         this.signature = signature;
-        this.quickeningName = quickeningName;
         this.quickeningBase = base;
         this.quickeningKind = quickeningKind;
         this.specializedType = specializedType;
@@ -452,15 +484,32 @@ public final class InstructionModel implements PrettyPrintable {
         this.operation = base.operation;
         this.shortCircuitModel = base.shortCircuitModel;
         for (InstructionImmediate imm : base.immediates) {
-            addImmediate(new InstructionImmediate(
-                            imm.kind(),
-                            imm.name(),
-                            new InstructionImmediateEncoding(imm.kind().width),
-                            imm.dynamic(),
-                            imm.operandIndex()));
-
+            addImmediate(imm.copy());
         }
         base.quickenedInstructions.add(this);
+    }
+
+    /*
+     * Instruction variant constructor. Copies instruction metadata and applies a variant name.
+     */
+    public InstructionModel(InstructionModel base, String variantName) {
+        this.kind = base.kind;
+        this.instructionName = base.instructionName.withVariant(variantName);
+        this.signature = base.signature;
+        this.quickeningBase = null;
+        this.quickeningKind = base.quickeningKind;
+        this.specializedType = base.specializedType;
+        this.checked = base.checked;
+        this.filteredSpecializations = base.filteredSpecializations;
+        this.nodeData = base.nodeData;
+        this.nodeType = base.nodeType;
+        this.operation = base.operation;
+        this.nonNull = base.nonNull;
+        this.shortCircuitModel = base.shortCircuitModel;
+        this.subInstructions = base.subInstructions;
+        for (InstructionImmediate imm : base.immediates) {
+            addImmediate(imm.copy());
+        }
     }
 
     public void finalizeModel() {
@@ -505,7 +554,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (epilogReturn == null) {
             return false;
         }
-        return epilogReturn.operation.instruction == this;
+        return epilogReturn.operation == operation;
     }
 
     public boolean hasBoxingOverloadForType(TypeMirror type) {
@@ -538,7 +587,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (epilogExceptional == null) {
             return false;
         }
-        return epilogExceptional.operation.instruction == this;
+        return epilogExceptional.operation.instruction() == this;
     }
 
     public List<InstructionModel> getFlattenedQuickenedInstructions() {
@@ -554,7 +603,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public String getQuickeningName() {
-        return quickeningName;
+        return instructionName.quickeningName;
     }
 
     public InstructionModel getQuickeningRoot() {
@@ -562,18 +611,6 @@ public final class InstructionModel implements PrettyPrintable {
             return quickeningBase.getQuickeningRoot();
         }
         return this;
-    }
-
-    public String getQualifiedQuickeningName() {
-        InstructionModel current = this;
-        List<String> quickeningNames = new ArrayList<>();
-        while (current != null) {
-            if (current.quickeningName != null) {
-                quickeningNames.add(0, current.quickeningName.replace('#', '_'));
-            }
-            current = current.quickeningBase;
-        }
-        return String.join("$", quickeningNames);
     }
 
     public boolean hasQuickenings() {
@@ -599,7 +636,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     @Override
     public void pp(PrettyPrinter printer) {
-        printer.print("Instruction %s", name);
+        printer.print("Instruction %s", getName());
         printer.field("kind", kind);
         printer.field("byteLength", byteLength);
         printer.field("encoding", prettyPrintEncoding());
@@ -693,7 +730,14 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean dynamic) {
-        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(immediateKind.width), dynamic, OptionalInt.empty()));
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(immediateKind.width), dynamic, OptionalInt.empty(), Optional.empty()));
+        return this;
+    }
+
+    public InstructionModel addFixedImmediate(ImmediateKind immediateKind, String immediateName, Object fixedValue, CodeTree fixedTree) {
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(ImmediateWidth.NONE), false, OptionalInt.empty(), Optional.of(new FixedImmediateValue(
+                        fixedValue,
+                        fixedTree))));
         return this;
     }
 
@@ -703,7 +747,7 @@ public final class InstructionModel implements PrettyPrintable {
         }
         ConstantOperandModel constantOperand = operand.constant();
         addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(constantOperand.kind().width), false,
-                        OptionalInt.of(operand.index())));
+                        OptionalInt.of(operand.index()), Optional.empty()));
         return this;
     }
 
@@ -711,16 +755,15 @@ public final class InstructionModel implements PrettyPrintable {
         if (!operand.isDynamic()) {
             throw new IllegalArgumentException("Operand must be dynamic: " + operand);
         }
-
         addImmediate(new InstructionImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX, "child" + operand.dynamicIndex(), new InstructionImmediateEncoding(ImmediateKind.RELATIVE_BYTECODE_INDEX.width),
-                        false, OptionalInt.of(operand.index())));
+                        false, OptionalInt.of(operand.index()), Optional.empty()));
         return this;
     }
 
     public void addImmediate(InstructionImmediate immediate) {
+        byteLength += immediate.encoding.width.byteSize;
         immediates.add(immediate);
         resolveConstantOperand(immediate).ifPresent(constantOperand -> constantOperandImmediates.put(constantOperand, immediate));
-        byteLength += immediate.kind.width.byteSize;
     }
 
     public Optional<Operand> resolveOperand(InstructionImmediate immediate) {
@@ -767,6 +810,10 @@ public final class InstructionModel implements PrettyPrintable {
         return immediates;
     }
 
+    public List<InstructionImmediate> getEncodedImmediates() {
+        return immediates.stream().filter(InstructionImmediate::isEncoded).toList();
+    }
+
     public List<InstructionImmediate> getImmediates(ImmediateKind immediateKind) {
         return immediates.stream().filter(imm -> imm.kind == immediateKind).toList();
     }
@@ -794,45 +841,15 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public String getName() {
-        return name;
+        return instructionName.instructionName;
     }
 
     public String getInternalName() {
-        String operationName = switch (kind) {
-            case CUSTOM -> {
-                if (!name.startsWith("c.")) {
-                    throw new AssertionError("Unexpected custom operation name: " + name);
-                }
-                yield name.substring(2) + "_";
-            }
-            case CUSTOM_SHORT_CIRCUIT -> {
-                if (!name.startsWith("sc.")) {
-                    throw new AssertionError("Unexpected short-circuit custom operation name: " + name);
-                }
-                yield name.substring(3) + "_";
-            }
-            default -> name;
-        };
-        StringBuilder b = new StringBuilder(operationName);
-        for (int i = 0; i < b.length(); i++) {
-            char c = b.charAt(i);
-            switch (c) {
-                case '.':
-                    if (i + 1 < b.length()) {
-                        b.setCharAt(i + 1, Character.toUpperCase(b.charAt(i + 1)));
-                    }
-                    b.deleteCharAt(i);
-                    break;
-                case '#':
-                    b.setCharAt(i, '$');
-                    break;
-            }
-        }
-        return b.toString();
+        return instructionName.internalName;
     }
 
     public String getConstantName() {
-        return ElementUtils.createConstantName(getInternalName());
+        return instructionName.constantName;
     }
 
     public SpecializationData resolveSingleSpecialization() {
@@ -850,13 +867,13 @@ public final class InstructionModel implements PrettyPrintable {
 
     @Override
     public String toString() {
-        return String.format("Instruction(%s)", name);
+        return String.format("Instruction(%s)", getName());
     }
 
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
         b.append("opcode : short");
-        for (InstructionImmediate imm : immediates) {
+        for (InstructionImmediate imm : getEncodedImmediates()) {
             b.append(", ");
             b.append(imm.name);
             if (!imm.name.equals(imm.kind.shortName)) {
@@ -867,7 +884,7 @@ public final class InstructionModel implements PrettyPrintable {
             b.append(" : ");
             b.append(imm.kind.width);
         }
-        if (immediates.stream().filter((imm) -> imm.kind.width == ImmediateWidth.BYTE).count() % INSTRUCTION_ALIGNMENT == 1) {
+        if (immediates.stream().filter((imm) -> imm.encoding.width() == ImmediateWidth.BYTE).count() % INSTRUCTION_ALIGNMENT == 1) {
             b.append(", padding : byte");
         }
         b.append("]");
@@ -952,12 +969,12 @@ public final class InstructionModel implements PrettyPrintable {
      * Otherwise, we would need to emit padding in the middle of the instruction to ensure short-alignment.
      */
     public void orderImmediates() {
-        immediates.sort(Comparator.comparingInt((InstructionImmediate imm) -> imm.kind().width.byteSize).reversed());
+        immediates.sort(Comparator.comparingInt((InstructionImmediate imm) -> imm.encoding().width().byteSize).reversed());
 
         byteLength = OPCODE_WIDTH;
         for (InstructionImmediate immediate : immediates) {
             immediate.encoding().setOffset(byteLength);
-            byteLength += immediate.kind().width.byteSize;
+            byteLength += immediate.encoding().width().byteSize;
         }
         byteLength += byteLength % INSTRUCTION_ALIGNMENT;
     }
@@ -977,13 +994,13 @@ public final class InstructionModel implements PrettyPrintable {
          */
         if (getInstructionLength() % INSTRUCTION_ALIGNMENT != 0) {
             throw new AssertionError(String.format("All instructions should be short-aligned, but instruction %s has length %s.",
-                            name, getInstructionLength()));
+                            getName(), getInstructionLength()));
         }
 
         for (InstructionImmediate immediate : immediates) {
-            if (immediate.kind.width == ImmediateWidth.SHORT && immediate.offset() % INSTRUCTION_ALIGNMENT != 0) {
+            if (immediate.encoding.width() == ImmediateWidth.SHORT && immediate.offset() % INSTRUCTION_ALIGNMENT != 0) {
                 throw new AssertionError(String.format("Immediate %s of instruction %s should be short-aligned, but it appears at offset %s.",
-                                immediate.name, name, immediate.offset()));
+                                immediate.name, getName(), immediate.offset()));
             }
         }
     }
@@ -1030,6 +1047,10 @@ public final class InstructionModel implements PrettyPrintable {
     public int getStackEffect() {
         if (hasVariableStackEffect()) {
             throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
+        }
+        if (operation != null && operation.kind == OperationKind.CUSTOM_RETURN) {
+            // The specializations are non-void, but the instruction itself is void (it doesn't push a result).
+            return -signature.dynamicOperandCount();
         }
         return (signature.isVoid() ? 0 : 1) - signature.dynamicOperandCount();
     }

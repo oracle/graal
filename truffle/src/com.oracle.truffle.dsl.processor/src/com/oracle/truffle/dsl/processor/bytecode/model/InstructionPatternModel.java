@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,9 +51,10 @@ public record InstructionPatternModel(InstructionModel instruction, String[] imm
         if (instruction.isInstrumentation()) {
             throw new IllegalArgumentException("Instruction %s is an instrumentation instruction. Instrumentation instructions cannot be used in rewrite rules.".formatted(instruction.getName()));
         }
-        if (immediates.length != instruction.immediates.size()) {
+        if (immediates.length != instruction.getEncodedImmediates().size()) {
             throw new IllegalArgumentException(
-                            "Instruction %s declares %d immediate(s) but %d immediate(s) specified in pattern: %s".formatted(instruction.getName(), instruction.immediates.size(), immediates.length,
+                            "Instruction %s declares %d immediate(s) but %d immediate(s) specified in pattern: %s".formatted(instruction.getName(), instruction.getEncodedImmediates().size(),
+                                            immediates.length,
                                             Stream.of(immediates).collect(Collectors.joining(", ", "[", "]"))));
         }
     }

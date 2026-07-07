@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -49,6 +50,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class OperationModel implements PrettyPrintable {
@@ -85,6 +87,7 @@ public class OperationModel implements PrettyPrintable {
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,
         CUSTOM_YIELD,
+        CUSTOM_RETURN,
         CUSTOM_INSTRUMENTATION,
     }
 
@@ -174,7 +177,7 @@ public class OperationModel implements PrettyPrintable {
      */
     public boolean isPrivate;
 
-    public InstructionModel instruction;
+    public final List<InstructionModel> instructions = new ArrayList<>();
     public CustomOperationModel customModel;
 
     // The constant operands parsed from {@code @ConstantOperand} annotations.
@@ -256,12 +259,33 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public OperationModel setInstruction(InstructionModel instruction) {
-        this.instruction = instruction;
+        if (!instructions.isEmpty()) {
+            throw new AssertionError("instruction already set for this operation");
+        }
+        this.instructions.add(instruction);
         if (instruction.operation != null) {
             throw new AssertionError("operation already set");
         }
         instruction.operation = this;
         return this;
+    }
+
+    public boolean hasInstruction() {
+        return !instructions.isEmpty();
+    }
+
+    public InstructionModel instruction() {
+        if (instructions.size() != 1) {
+            throw new AssertionError("Expected exactly one instruction for operation %s, but found %s.".formatted(name, instructions));
+        }
+        return instructions.get(0);
+    }
+
+    public NodeData getNodeData() {
+        if (instructions.isEmpty()) {
+            return null;
+        }
+        return instructions.getFirst().nodeData;
     }
 
     public OperationModel setOperationBeginArguments(OperationArgument... operationBeginArguments) {
@@ -311,7 +335,8 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public boolean isCustom() {
-        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
+        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_RETURN || kind == OperationKind.CUSTOM_SHORT_CIRCUIT ||
+                        kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
     public boolean isCustomVariadic() {

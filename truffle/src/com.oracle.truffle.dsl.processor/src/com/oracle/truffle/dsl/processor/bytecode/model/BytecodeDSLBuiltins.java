@@ -43,8 +43,11 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -56,6 +59,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationA
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 
 /**
@@ -388,17 +392,7 @@ public class BytecodeDSLBuiltins {
         }
 
         if (m.enableTagInstrumentation && m.hasYieldOperation()) {
-            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, "result", Object.class, Object.class));
-            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-
-            for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
-                if (yieldOperation.instruction.signature.dynamicOperandCount() == 0) {
-                    m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
-                    m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-                    break;
-                }
-            }
-
+            configureTagYieldInstructions(m);
             m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
             m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
@@ -424,13 +418,42 @@ public class BytecodeDSLBuiltins {
                 InstructionModel model = m.instruction(InstructionKind.INVALIDATE, "invalidate" + i, m.signature(void.class));
                 for (int j = 0; j < i; j++) {
                     InstructionModel.InstructionImmediate imm = new InstructionModel.InstructionImmediate(ImmediateKind.SHORT, "invalidated" + j, new InstructionModel.InstructionImmediateEncoding(
-                                    ImmediateKind.SHORT.width), false, OptionalInt.empty());
+                                    ImmediateKind.SHORT.width), false, OptionalInt.empty(), Optional.empty());
                     imm.encoding().setOffset(model.getInstructionLength());
                     model.addImmediate(imm);
                 }
                 m.invalidateInstructions[i] = model;
                 model.finalizeModel();
             }
+        }
+    }
+
+    private static void configureTagYieldInstructions(BytecodeDSLModel m) {
+        Set<Integer> yieldResultStackOffsets = new HashSet<>();
+        boolean needsYieldNull = false;
+        if (m.enableYield) {
+            yieldResultStackOffsets.add(m.getYieldResultStackOffset(m.findOperation(OperationKind.YIELD)));
+        }
+        for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
+            if (yieldOperation.instruction().signature.dynamicOperandCount() == 0) {
+                needsYieldNull = true;
+            } else {
+                yieldResultStackOffsets.add(m.getYieldResultStackOffset(yieldOperation));
+            }
+        }
+        if (!yieldResultStackOffsets.isEmpty()) {
+            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(void.class));
+            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            if (yieldResultStackOffsets.size() == 1) {
+                m.tagYieldInstruction.addFixedImmediate(ImmediateKind.SHORT, "result_stack_offset", yieldResultStackOffsets.iterator().next(), CodeTreeBuilder.singleString(String.valueOf(
+                                (int) yieldResultStackOffsets.iterator().next())));
+            } else {
+                m.tagYieldInstruction.addImmediate(ImmediateKind.SHORT, "result_stack_offset");
+            }
+        }
+        if (needsYieldNull) {
+            m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
+            m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
     }
 

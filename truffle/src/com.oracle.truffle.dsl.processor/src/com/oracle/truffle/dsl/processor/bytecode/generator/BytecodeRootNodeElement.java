@@ -96,6 +96,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIlle
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateWidth;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
@@ -314,7 +315,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             dataClasses.add(createCachedDataClass(instr, consts));
         }
         if (model.epilogExceptional != null) {
-            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
+            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction(), consts));
         }
         consts.addElementsTo(this);
 
@@ -1775,7 +1776,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
         Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                        .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+                        .sorted(Comparator.comparing(InstructionModel::getName)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
 
         List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
                         .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
@@ -1988,7 +1989,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             // we share execute methods with return type quickenings.
             return executeMethodName(instruction.quickeningBase, tier);
         }
-        return "execute" + instruction.getQualifiedQuickeningName() + (tier.isUncached() ? "$uncached" : "");
+        return "execute" + instruction.getQuickeningName() + (tier.isUncached() ? "$uncached" : "");
     }
 
     /**
@@ -2219,7 +2220,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             List<InstructionModel> topLevelInstructions = new ArrayList<>();
             List<InstructionModel> partitionableInstructions = new ArrayList<>();
             for (InstructionModel instruction : instructions) {
-                if (instruction.kind != InstructionKind.CUSTOM || instruction.operation.kind == OperationKind.CUSTOM_YIELD) {
+                if (instruction.kind != InstructionKind.CUSTOM || instruction.operation.kind == OperationKind.CUSTOM_YIELD ||
+                                instruction.operation.kind == OperationKind.CUSTOM_RETURN) {
                     topLevelInstructions.add(instruction);
                 } else {
                     partitionableInstructions.add(instruction);
@@ -2394,8 +2396,15 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static CodeTree readImmediateWithOffset(String bc, String bci, InstructionImmediate immediate, int offset) {
+        if (immediate.fixedValue().isPresent()) {
+            return immediate.fixedValue().get().tree();
+        }
+        if (!immediate.isEncoded()) {
+            throw new AssertionError("Tried to read an immediate that is neither fixed nor encoded in the instruction: " + immediate);
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         String accessor = switch (immediate.kind().width) {
+            case NONE -> throw new AssertionError("Non-encoded immediates cannot be read.");
             case BYTE -> "getByte";
             case SHORT -> "getShort";
             case INT -> "getIntUnaligned";
@@ -2437,8 +2446,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static CodeTree writeImmediate(String bc, String bci, CodeTree value, InstructionImmediateEncoding immediate) {
+        if (immediate.width() == ImmediateWidth.NONE) {
+            throw new AssertionError("Non-encoded immediates cannot be written.");
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         String accessor = switch (immediate.width()) {
+            case NONE -> throw new AssertionError("Non-encoded immediates cannot be written.");
             case BYTE -> "putByte";
             case SHORT -> "putShort";
             case INT -> "putInt";
@@ -2877,8 +2890,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return switch (instr.kind) {
             case RETURN, YIELD, TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
             case CUSTOM -> {
-                if (instr.operation.kind == OperationKind.CUSTOM_YIELD) {
-                    // custom yield always needs to set the bci
+                if (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN) {
+                    // custom yield/return always need to set the bci
                     yield true;
                 }
                 CustomOperationModel custom = instr.operation.customModel;

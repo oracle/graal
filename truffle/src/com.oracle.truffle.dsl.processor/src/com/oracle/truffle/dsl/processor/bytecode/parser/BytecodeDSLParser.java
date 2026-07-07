@@ -95,6 +95,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
@@ -518,8 +519,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         for (OperationModel operation : model.getOperations()) {
-            if (operation.instruction != null) {
-                NodeData node = operation.instruction.nodeData;
+            if (operation.hasInstruction()) {
+                NodeData node = operation.getNodeData();
                 if (node != null) {
                     validateUniqueSpecializationNames(node, model);
                 }
@@ -549,7 +550,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "value");
             TypeMirror proxiedType = getTypeMirror(context, mirrorValue);
 
-            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mir, "name");
+            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+            if (!name.isEmpty() && !validateOperationName(model, mir, nameValue, name, false)) {
+                continue;
+            }
 
             if (proxiedType.getKind() != TypeKind.DECLARED) {
                 model.addError(mir, mirrorValue, "Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
@@ -584,7 +589,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
             customOperationDeclared = true;
 
-            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mir, "name");
+            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+            if (!validateOperationName(model, mir, nameValue, name, false)) {
+                continue;
+            }
 
             AnnotationValue operatorValue = ElementUtils.getAnnotationValue(mir, "operator");
             Operator operator = Operator.valueOf(((VariableElement) operatorValue.getValue()).getSimpleName().toString());
@@ -625,14 +634,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (model.localAccessesNeedLocalIndex()) {
             // clearLocal never looks up the tag, so it does not need a local index.
-            model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.loadLocalOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
         }
         if (model.materializedLocalAccessesNeedLocalIndex()) {
-            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.loadLocalMaterializedOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalMaterializedOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
         }
-
         /*
          * Compute optimizations flags. Must happen after all custom operations are parsed.
          */
@@ -670,6 +678,17 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 return;
             }
         }
+
+        List<Integer> returnResultStackOffsets = computeReturnResultStackOffsets(model);
+        if (model.enableTagInstrumentation) {
+            if (returnResultStackOffsets.size() == 1) {
+                model.tagLeaveValueInstruction.addFixedImmediate(ImmediateKind.SHORT, "result_stack_offset", returnResultStackOffsets.get(0), CodeTreeBuilder.singleString(String.valueOf(
+                                returnResultStackOffsets.get(0))));
+            } else {
+                model.tagLeaveValueInstruction.addImmediate(ImmediateKind.SHORT, "result_stack_offset");
+            }
+        }
+        model.configureEpilogReturnInstructions(returnResultStackOffsets);
 
         // parse force quickenings
         List<QuickenDecision> manualQuickenings = parseForceQuickenings(model);
@@ -711,8 +730,18 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         model.finalizeInstructions();
+    }
 
-        return;
+    static boolean validateOperationName(MessageContainer container, AnnotationMirror mirror, AnnotationValue value, String name, boolean proxyable) {
+        if (name.contains("_") || name.contains("$") || !SourceVersion.isIdentifier(name)) {
+            String message = "Operation name must be a valid Java identifier and must not contain '_' or '$'.";
+            if (proxyable) {
+                message += " Specify an explicit operation name using @OperationProxy(name = \"...\").";
+            }
+            container.addError(mirror, value, message);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -803,6 +832,17 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return message;
     }
 
+    private static List<Integer> computeReturnResultStackOffsets(BytecodeDSLModel model) {
+        Set<Integer> returnResultStackOffsets = new HashSet<>();
+        returnResultStackOffsets.add(model.getReturnResultStackOffset(model.findOperation(OperationKind.RETURN)));
+        for (OperationModel customReturnOperation : model.getCustomReturnOperations()) {
+            returnResultStackOffsets.add(model.getReturnResultStackOffset(customReturnOperation));
+        }
+        List<Integer> sortedReturnResultStackOffsets = new ArrayList<>(returnResultStackOffsets);
+        sortedReturnResultStackOffsets.sort(null);
+        return sortedReturnResultStackOffsets;
+    }
+
     private void resolveQuickenings(BytecodeDSLModel model, List<QuickenDecision> manualQuickenings) {
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
@@ -817,7 +857,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     continue;
                 }
 
-                boolean genericReturnBoxingEliminated = model.isBoxingEliminated(operation.instruction.signature.returnType());
+                InstructionModel representativeInstruction = operation.instructions.getFirst();
+                boolean genericReturnBoxingEliminated = model.isBoxingEliminated(representativeInstruction.signature.returnType());
                 /*
                  * First we group specializations by boxing eliminated signature. Every
                  * specialization has at most one boxing signature without implicit casts. With
@@ -825,13 +866,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                  */
                 Map<List<TypeMirror>, List<SpecializationData>> boxingGroups = new LinkedHashMap<>();
                 int signatureCount = 0;
-                for (SpecializationData specialization : operation.instruction.nodeData.getReachableSpecializations()) {
+                for (SpecializationData specialization : representativeInstruction.nodeData.getReachableSpecializations()) {
                     if (specialization.getMethod() == null) {
                         continue;
                     }
 
                     List<TypeMirror> baseSignature = operation.getSpecializationSignature(specialization).dynamicOperandTypes();
-                    List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, operation.instruction.nodeData.getTypeSystem(), baseSignature);
+                    List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, representativeInstruction.nodeData.getTypeSystem(), baseSignature);
 
                     signatureCount += expandedSignatures.size();
 
@@ -873,10 +914,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 break;
                             }
                         }
-                        if (isBoxingEliminatedOverload && operation.instruction.nodeData.getReachableSpecializations().size() > 1) {
+                        if (isBoxingEliminatedOverload && representativeInstruction.nodeData.getReachableSpecializations().size() > 1) {
                             for (List<TypeMirror> signature : expandedSignatures) {
                                 List<TypeMirror> parameterTypes = signature.subList(1, signature.size());
-                                boxingEliminationQuickenings.add(new ResolvedQuickenDecision(operation, List.of(specialization), parameterTypes));
+                                addResolvedQuickenDecisions(boxingEliminationQuickenings, operation, List.of(specialization), parameterTypes);
                             }
                         }
                     }
@@ -899,34 +940,40 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     List<SpecializationData> specializations = boxingGroups.get(boxingGroup);
                     // filter return type
                     List<TypeMirror> parameterTypes = boxingGroup.subList(1, boxingGroup.size());
-                    boxingEliminationQuickenings.add(new ResolvedQuickenDecision(operation, specializations, parameterTypes));
+                    addResolvedQuickenDecisions(boxingEliminationQuickenings, operation, specializations, parameterTypes);
                 }
             }
         }
 
         List<ResolvedQuickenDecision> resolvedQuickenings = Stream.concat(boxingEliminationQuickenings.stream(),
-                        manualQuickenings.stream().map((e) -> e.resolve(model))).//
+                        manualQuickenings.stream().flatMap((e) -> e.resolve(model).stream())).//
                         distinct().//
                         sorted(Comparator.comparingInt(e -> e.specializations().size())).//
                         toList();
 
-        Map<List<SpecializationData>, List<ResolvedQuickenDecision>> decisionsBySpecializations = //
-                        resolvedQuickenings.stream().collect(Collectors.groupingBy((e) -> e.specializations(),
+        record QuickeningGroupKey(InstructionModel instruction, List<SpecializationData> specializations) {
+        }
+        Map<QuickeningGroupKey, List<ResolvedQuickenDecision>> decisionsBySpecializations = //
+                        resolvedQuickenings.stream().collect(Collectors.groupingBy((e) -> new QuickeningGroupKey(e.instruction(), e.specializations()),
                                         LinkedHashMap::new,
                                         Collectors.toList()));
 
         for (var entry : decisionsBySpecializations.entrySet()) {
-            List<SpecializationData> includedSpecializations = entry.getKey();
+            List<SpecializationData> includedSpecializations = entry.getKey().specializations();
             List<ResolvedQuickenDecision> decisions = entry.getValue();
 
             for (ResolvedQuickenDecision quickening : decisions) {
                 if (includedSpecializations.isEmpty()) {
                     throw new AssertionError();
                 }
-                NodeData node = quickening.operation().instruction.nodeData;
+
+                if (quickening.instruction() != entry.getKey().instruction()) {
+                    throw new AssertionError();
+                }
+                NodeData node = quickening.instruction().nodeData;
 
                 String name;
-                if (includedSpecializations.size() == quickening.operation().instruction.nodeData.getSpecializations().size()) {
+                if (includedSpecializations.size() == quickening.instruction().nodeData.getSpecializations().size()) {
                     // all specializations included
                     name = "#";
                 } else {
@@ -954,7 +1001,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 includedSpecializationElements, node);
 
                 // inject custom signatures.
-                InstructionModel baseInstruction = quickening.operation().instruction;
+                InstructionModel baseInstruction = quickening.instruction();
 
                 if (baseInstruction.isYield()) {
                     /*
@@ -1016,6 +1063,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             }
                         }
 
+                        if (instruction.operation.kind == OperationKind.CUSTOM_RETURN || instruction.operation.kind == OperationKind.CUSTOM_YIELD) {
+                            // No return-type boxing elimination for custom returns/yields.
+                            continue;
+                        } else if (instruction.isEpilogReturn() && !hasCustomReturnBoxingEliminatedResult(model)) {
+                            // Unless a custom return can BE its result operand, epilog does not need return-type BE.
+                            continue;
+                        }
+
                         // handle boxing overloads
                         SpecializationData singleSpecialization = instruction.resolveSingleSpecialization();
                         if (singleSpecialization != null) {
@@ -1035,7 +1090,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         }
 
-                        if (model.isBoxingEliminated(instruction.signature.returnType()) && instruction.operation.kind != OperationKind.CUSTOM_YIELD) {
+                        if (model.isBoxingEliminated(instruction.signature.returnType())) {
                             model.quickenInstruction(instruction,
                                             instruction.signature, "unboxed", QuickeningKind.SPECIALIZED_UNBOXED, instruction.signature.returnType(), false);
                         }
@@ -1193,6 +1248,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
     }
 
+    private static void addResolvedQuickenDecisions(List<ResolvedQuickenDecision> decisions, OperationModel operation, List<SpecializationData> specializations, List<TypeMirror> parameterTypes) {
+        for (InstructionModel instruction : operation.instructions) {
+            decisions.add(new ResolvedQuickenDecision(operation, instruction, specializations, parameterTypes));
+        }
+    }
+
     private static void validateQuickening(BytecodeDSLModel model, InstructionModel instruction) throws AssertionError {
         if (instruction.isQuickening()) {
             List<TypeMirror> genericTypes = instruction.getQuickeningRoot().signature.operandTypes();
@@ -1211,6 +1272,17 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
             }
         }
+    }
+
+    private static boolean hasCustomReturnBoxingEliminatedResult(BytecodeDSLModel model) {
+        for (OperationModel customReturn : model.getCustomReturnOperations()) {
+            int resultOperandIndex = customReturn.customModel.getResultOperandIndex();
+            Operand resultOperand = customReturn.instruction().signature.dynamicOperands().get(resultOperandIndex);
+            if (customReturn.instruction().needsChildBciForBoxingElimination(model, resultOperand)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void parseDefaultUncachedThreshold(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, DSLExpressionResolver resolver) {
@@ -1446,7 +1518,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     private AnnotationMirror findOperationAnnotation(BytecodeDSLModel model, TypeElement typeElement) {
         AnnotationMirror foundMirror = null;
         TypeMirror foundType = null;
-        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Yield, types.Prolog, types.EpilogReturn, types.EpilogExceptional)) {
+        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Yield, types.Return, types.Prolog, types.EpilogReturn, types.EpilogExceptional)) {
             AnnotationMirror annotationMirror = ElementUtils.findAnnotationMirror(typeElement, annotationType);
             if (annotationMirror == null) {
                 continue;
@@ -1471,10 +1543,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         List<QuickenDecision> decisions = new ArrayList<>();
 
         for (OperationModel operation : model.getOperations()) {
-            InstructionModel instruction = operation.instruction;
-            if (instruction == null) {
+            if (!operation.hasInstruction()) {
                 continue;
             }
+            InstructionModel instruction = operation.instructions.getFirst();
             NodeData node = instruction.nodeData;
             if (node == null) {
                 continue;

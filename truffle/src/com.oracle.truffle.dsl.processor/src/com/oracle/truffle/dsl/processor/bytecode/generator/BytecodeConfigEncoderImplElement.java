@@ -128,7 +128,7 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
             b.end();
             for (CustomOperationModel customOperation : parent.model.getInstrumentations()) {
                 elseIf = b.startIf(elseIf);
-                b.string("c == ").typeLiteral(customOperation.operation.instruction.nodeType.asType());
+                b.string("c == ").typeLiteral(customOperation.operation.instruction().nodeType.asType());
                 b.end().startBlock();
                 b.statement("encoding |= 0x" + Integer.toHexString(encoding.instrumentationMask(customOperation.operation)));
                 b.end();
