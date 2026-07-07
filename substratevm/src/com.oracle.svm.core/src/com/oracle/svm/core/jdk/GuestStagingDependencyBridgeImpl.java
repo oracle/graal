@@ -32,9 +32,12 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
@@ -133,5 +136,33 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public Log noopLog() {
         return CoreLogSupport.noopLog();
+    }
+
+    @Override
+    public void configureLogFile(String optionPrefix, String logFile) {
+        RuntimeSupport.Hook closeLogFile = FunctionPointerLogHandler.configureLogFile(optionPrefix, logFile);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(closeLogFile);
+    }
+
+    @Override
+    public boolean shouldParseRuntimeOptions() {
+        return SubstrateOptions.ParseRuntimeOptions.getValue() ||
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
+    }
+
+    @Override
+    public boolean legacyJavaOptionMode() {
+        return SubstrateOptions.LegacyJavaOptionMode.getValue();
+    }
+
+    @Override
+    public void initializeSystemProperty(String key, String value) {
+        SystemPropertiesSupport.singleton().initializeProperty(key, value);
+    }
+
+    @Override
+    public void enablePreviewFeatures() {
+        Target_jdk_internal_misc_PreviewFeatures.ENABLED = true;
+        Target_java_lang_runtime_SwitchBootstraps.previewEnabled = true;
     }
 }

@@ -164,4 +164,40 @@ public interface GuestStagingDependencyBridge {
      * (GR-77530).
      */
     Log noopLog();
+
+    /**
+     * Configures the low-level log file and registers its teardown hook.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    void configureLogFile(String optionPrefix, String logFile);
+
+    /**
+     * Returns whether runtime arguments must be parsed in the current isolate.
+     * <p>
+     * Remove this method when isolate startup policy moves to guest/staging.
+     */
+    boolean shouldParseRuntimeOptions();
+
+    /**
+     * Returns whether runtime Java options use the legacy compatibility mode.
+     * <p>
+     * Remove this method when {@code LegacyJavaOptionMode} moves to guest/staging.
+     */
+    boolean legacyJavaOptionMode();
+
+    /**
+     * Initializes a system property parsed from a runtime Java option.
+     * <p>
+     * Remove this method when system-property initialization moves to guest/staging.
+     */
+    void initializeSystemProperty(String key, String value);
+
+    /**
+     * Enables the JDK runtime state selected by {@code --enable-preview}.
+     * <p>
+     * Remove this method when substitutions can move to guest/staging (GR-71844).
+     */
+    void enablePreviewFeatures();
 }

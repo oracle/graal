@@ -33,16 +33,8 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.jdk.Target_java_lang_runtime_SwitchBootstraps;
-import com.oracle.svm.core.jdk.Target_jdk_internal_misc_PreviewFeatures;
-import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.guest.staging.ArgsSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
@@ -168,9 +160,7 @@ public final class RuntimeOptionParserPolicy {
     /// Note that the logic of whether to parse options must be in sync with
     /// [IsolateArgumentParser#shouldParseArguments].
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        boolean parseRuntimeOptions = SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
-        if (!parseRuntimeOptions) {
+        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions()) {
             return initialArgs;
         }
 
@@ -187,7 +177,7 @@ public final class RuntimeOptionParserPolicy {
 
     /** Parses runtime options for a Java main image and returns the application main arguments. */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+        if (GuestStagingDependencyBridge.singleton().legacyJavaOptionMode()) {
             return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
         }
 
@@ -207,8 +197,7 @@ public final class RuntimeOptionParserPolicy {
     /// Configures the low level log file after all runtime options have been parsed.
     private static void configureLogFile(String logFile) {
         if (logFile != null) {
-            RuntimeSupport.Hook closeLogFile = FunctionPointerLogHandler.configureLogFile(LOG_FILE_OPTION_PREFIX, logFile);
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(closeLogFile);
+            GuestStagingDependencyBridge.singleton().configureLogFile(LOG_FILE_OPTION_PREFIX, logFile);
         }
     }
 
@@ -263,7 +252,7 @@ public final class RuntimeOptionParserPolicy {
         RuntimeOptionParser parser = RuntimeOptionParser.singleton();
         OptionParseResult parseResult = parser.parseOption(arg, optionPrefix, booleanOptionFormat, values);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
-            parser.printFlags(parseResult, optionPrefix, CoreLogSupport.logStream());
+            parser.printFlags(parseResult, optionPrefix, GuestStagingDependencyBridge.singleton().logStream());
             System.exit(0);
         }
         if (!parseResult.isValid()) {
@@ -277,7 +266,7 @@ public final class RuntimeOptionParserPolicy {
         OptionKey<?> option = parseResult.getOptionKey();
         OptionDescriptor descriptor = option.getDescriptor();
         if (descriptor != null && descriptor.isDeprecated()) {
-            Log log = CoreLogSupport.log();
+            Log log = GuestStagingDependencyBridge.singleton().log();
             // Checkstyle: Allow raw info or warning printing - begin
             log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
             // Checkstyle: Allow raw info or warning printing - end
@@ -356,7 +345,7 @@ public final class RuntimeOptionParserPolicy {
     private static void initializeProperties(EconomicMap<String, String> properties) {
         MapCursor<String, String> cursor = properties.getEntries();
         while (cursor.advance()) {
-            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue());
+            GuestStagingDependencyBridge.singleton().initializeSystemProperty(cursor.getKey(), cursor.getValue());
         }
     }
 
@@ -367,7 +356,7 @@ public final class RuntimeOptionParserPolicy {
         }
         if (!context.legacyJavaOptionMode && isReservedInternalModuleProperty(arg)) {
             if (!context.warnedInternalModuleProperty) {
-                CoreLogSupport.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
+                GuestStagingDependencyBridge.singleton().log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
                 context.warnedInternalModuleProperty = true;
             }
             return true;
@@ -467,7 +456,7 @@ public final class RuntimeOptionParserPolicy {
 
     /// Emits a HotSpot compatibility warning for options accepted without runtime effect.
     private static void warnIgnoredCompatibilityOption(String arg) {
-        CoreLogSupport.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
+        GuestStagingDependencyBridge.singleton().log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
     }
 
     /// Parses module options that SVM applies to the runtime boot layer into the normalized
@@ -510,8 +499,7 @@ public final class RuntimeOptionParserPolicy {
         if (!arg.equals(ENABLE_PREVIEW_OPTION)) {
             return false;
         }
-        Target_jdk_internal_misc_PreviewFeatures.ENABLED = true;
-        Target_java_lang_runtime_SwitchBootstraps.previewEnabled = true;
+        GuestStagingDependencyBridge.singleton().enablePreviewFeatures();
         return true;
     }
 
@@ -626,7 +614,7 @@ public final class RuntimeOptionParserPolicy {
 
     private static final class ParseContext {
         /// Whether to preserve the Java option handling behavior that existed before GR-74762.
-        final boolean legacyJavaOptionMode = SubstrateOptions.LegacyJavaOptionMode.getValue();
+        final boolean legacyJavaOptionMode = GuestStagingDependencyBridge.singleton().legacyJavaOptionMode();
 
         /// Collects system properties to initialize after recognized options are parsed.
         final EconomicMap<String, String> properties = EconomicMap.create();
