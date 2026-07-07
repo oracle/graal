@@ -24,26 +24,30 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.thread.PosixPlatformThreads;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
         boolean result = lookupStack0(stackBasePtr, stackEndPtr);
         if (!result) {
@@ -53,9 +57,8 @@ final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupp
         return result;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean lookupStack0(WordPointer stackBasePtr, WordPointer stackEndPtr) {
-        WordPointer guardSizePtr = StackValue.get(WordPointer.class);
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
         if (Pthread.pthread_getattr_np(Pthread.pthread_self(), attr) != 0) {
             /*
@@ -65,27 +68,24 @@ final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupp
             return false;
         }
 
-        if (Pthread.pthread_attr_getstack(attr, stackBasePtr, stackEndPtr) != 0) {
+        WordPointer stackAddrPtr = StackValue.get(WordPointer.class);
+        WordPointer stackSizePtr = StackValue.get(WordPointer.class);
+        if (Pthread.pthread_attr_getstack(attr, stackAddrPtr, stackSizePtr) != 0) {
             return false;
         }
 
-        /*
-         * The block of memory returned by pthread_attr_getstack() includes guard pages where
-         * present. We need to retrieve the size of the guard pages in order to trim them off. Note
-         * that these guard pages are not the yellow and red zones of the stack that we designate.
-         */
-        if (Pthread.pthread_attr_getguardsize(attr, guardSizePtr) != 0) {
+        UnsignedWord includedGuardSize = PosixPlatformThreads.computeGuardSizeIncludedInStackSize(attr);
+        if (includedGuardSize == UnsignedUtils.MAX_VALUE) {
             return false;
         }
-        UnsignedWord stackAddr = stackBasePtr.read();
-        UnsignedWord stackSize = stackEndPtr.read();
-        UnsignedWord guardSize = guardSizePtr.read();
 
-        UnsignedWord stackBase = stackAddr.add(stackSize);
-        UnsignedWord stackEnd = stackAddr.add(guardSize);
+        UnsignedWord stackAddr = stackAddrPtr.read();
+        UnsignedWord stackBase = stackAddr.add(stackSizePtr.read());
+        UnsignedWord stackEnd = stackAddr.add(includedGuardSize);
+
+        /* Publish the data. */
         stackBasePtr.write(stackBase);
         stackEndPtr.write(stackEnd);
-
         PosixUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "LinuxStackOverflowSupport: pthread_attr_destroy");
         return true;
     }

@@ -297,7 +297,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
     @Override
     public void updateStackOverflowBoundary() {
-        long threadSize = PlatformThreads.getRequestedStackSize(Thread.currentThread());
+        long threadSize = PlatformThreads.getRequestedJavaStackSize(Thread.currentThread());
         if (threadSize != 0) {
             updateStackOverflowBoundary(Word.unsigned(threadSize));
         }
