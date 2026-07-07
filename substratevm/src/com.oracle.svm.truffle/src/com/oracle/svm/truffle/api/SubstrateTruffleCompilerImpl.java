@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParserPolicy;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
@@ -105,7 +105,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
         // Use name=value boolean format for compatibility with Graal options
         CommonOptionParser.BooleanOptionFormat booleanFormat = CommonOptionParser.BooleanOptionFormat.NAME_VALUE;
         for (String option : options) {
-            RuntimeOptionParserPolicy.parseOptionAtRuntime(option, "", booleanFormat, values, false);
+            RuntimeOptionParser.singleton().parseOptionAtRuntime(option, "", booleanFormat, values, false);
         }
     }
 

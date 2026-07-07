@@ -87,7 +87,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParserPolicy;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
@@ -510,12 +510,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 if (forJavaMainCall) {
                     if (ImageSingletons.contains(JavaMainSupport.class)) {
                         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
-                        javaMainSupport.mainArgs = RuntimeOptionParserPolicy.parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized);
+                        javaMainSupport.mainArgs = RuntimeOptionParser.parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized);
                     } else {
                         throw VMError.shouldNotReachHereAtRuntime();
                     }
                 } else {
-                    String[] remainingArgs = RuntimeOptionParserPolicy.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+                    String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
                     if (!ignoreUnrecognized && remainingArgs.length != 0) {
                         if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
                             Log.logStream().println("Error: Unrecognized option: " + remainingArgs[0]);

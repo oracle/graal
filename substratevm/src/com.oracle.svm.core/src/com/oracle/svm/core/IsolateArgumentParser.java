@@ -57,7 +57,7 @@ import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParserPolicy;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
@@ -351,7 +351,7 @@ public class IsolateArgumentParser {
 
     /**
      * Some runtime options can be set via the {@link CEntryPointCreateIsolateParameters}. Such
-     * values won't be seen by {@link RuntimeOptionParserPolicy#parseAndConsumeAllOptions}, so we need to
+     * values won't be seen by {@link RuntimeOptionParser#parseAndConsumeAllOptions}, so we need to
      * explicitly copy those values to the corresponding {@link RuntimeOptionKey}s so that they have
      * consistent values as well.
      */
@@ -423,7 +423,7 @@ public class IsolateArgumentParser {
     }
 
     /// Note that the logic of whether to parse options must be in sync with
-    /// [RuntimeOptionParserPolicy#parseAndConsumeAllOptions].
+    /// [RuntimeOptionParser#parseAndConsumeAllOptions].
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static boolean shouldParseArguments(IsolateArguments arguments) {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
@@ -437,7 +437,7 @@ public class IsolateArgumentParser {
 
     /**
      * Persists the options in the image heap. Note that the {@link RuntimeOptionKey}s will still
-     * contain the wrong values until {@link RuntimeOptionParserPolicy#parseAndConsumeAllOptions} was
+     * contain the wrong values until {@link RuntimeOptionParser#parseAndConsumeAllOptions} was
      * called.
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
