@@ -283,7 +283,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
                     "com.ibm.icu.impl.ICUResourceBundleReader.CACHE*",
                     "ibm.icu.impl.DayPeriodRules$DayPeriodRulesData*",
                     "com.ibm.icu.util.ULocale.nameCache*",
-                    "com.oracle.svm.core.option.RuntimeOptionsSupportImpl.set(String, Object)"};
+                    "com.oracle.svm.guest.staging.option.RuntimeOptionsSupportImpl.set(String, Object)"};
 
     private final SimpleMatcher suppressTypeMatcher;
     private final SimpleMatcher expandTypeMatcher;
