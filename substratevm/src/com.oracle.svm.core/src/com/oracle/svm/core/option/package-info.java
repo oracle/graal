@@ -49,8 +49,8 @@
  * of a runtime option is {@link com.oracle.svm.guest.staging.option.RuntimeOptionKey#getValue()}.
  * <p>
  * Runtime options can be changed at run time.
- * {@link com.oracle.svm.core.option.RuntimeOptionParser#parse} is a convenient helper to do option
- * parsing at run time.</li>
+ * {@link com.oracle.svm.core.option.RuntimeOptionParserPolicy#parseAndConsumeAllOptions} is a
+ * convenient helper to do option parsing at run time.</li>
  * </ul>
  *
  * Substrate VM re-uses much of the Graal option system for handling. However, Graal itself is

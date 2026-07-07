@@ -46,8 +46,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.RuntimeOptionParserPolicy;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
@@ -141,7 +141,7 @@ public class SubstrateGraalUtils {
                 // Use name=value boolean format for compatibility with Graal options
                 CommonOptionParser.BooleanOptionFormat booleanFormat = CommonOptionParser.BooleanOptionFormat.NAME_VALUE;
                 for (String option : options) {
-                    RuntimeOptionParser.singleton().parseOptionAtRuntime(option, "", booleanFormat, values, false);
+                    RuntimeOptionParserPolicy.parseOptionAtRuntime(option, "", booleanFormat, values, false);
                 }
             }
 
