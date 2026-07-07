@@ -35,6 +35,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -96,6 +99,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
+    public final ResolvedJavaMethod java_lang_Class_getAnnotation = lookupMethod(java_lang_Class, "getAnnotation", Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
@@ -141,6 +145,15 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_util_Objects = lookupType(Objects.class);
     public final ResolvedJavaMethod java_util_Objects_deepEquals = lookupMethod(java_util_Objects, "deepEquals", Object.class, Object.class);
+
+    public final ResolvedJavaType java_util_function_BooleanSupplier = lookupType(BooleanSupplier.class);
+    public final ResolvedJavaMethod java_util_function_BooleanSupplier_getAsBoolean = lookupMethod(java_util_function_BooleanSupplier, "getAsBoolean");
+
+    public final ResolvedJavaType java_util_function_Function = lookupType(Function.class);
+    public final ResolvedJavaMethod java_util_function_Function_apply = lookupMethod(java_util_function_Function, "apply", Object.class);
+
+    public final ResolvedJavaType java_util_function_Predicate = lookupType(Predicate.class);
+    public final ResolvedJavaMethod java_util_function_Predicate_test = lookupMethod(java_util_function_Predicate, "test", Object.class);
 
     public final ResolvedJavaType jdk_internal_foreign_abi_NativeEntryPoint = lookupType("jdk.internal.foreign.abi.NativeEntryPoint");
     public final ResolvedJavaMethod jdk_internal_foreign_abi_NativeEntryPoint_type = lookupMethod(jdk_internal_foreign_abi_NativeEntryPoint, "type");

@@ -359,8 +359,7 @@ public final class GuestAccess implements VMAccess {
     public boolean callBooleanSupplier(ResolvedJavaType supplierType) {
         ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, supplierType);
         JavaConstant supplier = invoke(cons, null);
-        ResolvedJavaMethod getAsBoolean = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, BooleanSupplier.class, "getAsBoolean");
-        return invoke(getAsBoolean, supplier).asBoolean();
+        return invoke(elements.java_util_function_BooleanSupplier_getAsBoolean, supplier).asBoolean();
     }
 
     /**
@@ -373,8 +372,26 @@ public final class GuestAccess implements VMAccess {
     public JavaConstant callFunction(ResolvedJavaType functionType, JavaConstant arg) {
         ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, functionType);
         JavaConstant function = invoke(cons, null);
-        ResolvedJavaMethod apply = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, Function.class, "apply", Object.class);
-        return invoke(apply, function, arg);
+        return invoke(elements.java_util_function_Function_apply, function, arg);
+    }
+
+    /**
+     * Instantiates an instance of {@code predicateType} in the guest and invokes
+     * {@link java.util.function.Predicate#test(Object)} on it.
+     */
+    public boolean callPredicate(ResolvedJavaType predicateType, JavaConstant arg) {
+        ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, predicateType);
+        JavaConstant predicate = invoke(cons, null);
+        return invoke(elements.java_util_function_Predicate_test, predicate, arg).asBoolean();
+    }
+
+    /**
+     * Gets an annotation instance from a guest type.
+     */
+    public JavaConstant getAnnotation(ResolvedJavaType annotatedType, ResolvedJavaType annotationType) {
+        JavaConstant annotatedClass = constantReflection.asJavaClass(annotatedType);
+        JavaConstant annotationClass = constantReflection.asJavaClass(annotationType);
+        return invoke(elements.java_lang_Class_getAnnotation, annotatedClass, annotationClass);
     }
 
     /**

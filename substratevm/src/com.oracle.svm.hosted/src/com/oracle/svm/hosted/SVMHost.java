@@ -1473,6 +1473,26 @@ public class SVMHost extends HostVM {
         return true;
     }
 
+    public static boolean evaluateOnlyWith(List<ResolvedJavaType> onlyWith, String context, ResolvedJavaType originalType) {
+        GuestAccess guestAccess = GuestAccess.get();
+        for (ResolvedJavaType onlyWithType : onlyWith) {
+            boolean onlyWithResult;
+            if (guestAccess.elements.java_util_function_BooleanSupplier.isAssignableFrom(onlyWithType)) {
+                onlyWithResult = guestAccess.callBooleanSupplier(onlyWithType);
+            } else if (guestAccess.elements.java_util_function_Predicate.isAssignableFrom(onlyWithType)) {
+                onlyWithResult = guestAccess.callPredicate(onlyWithType,
+                                guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(originalType)));
+            } else {
+                throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s", context,
+                                BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());
+            }
+            if (!onlyWithResult) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public Comparator<? super ResolvedJavaType> getTypeComparator() {
         return (Comparator<ResolvedJavaType>) (o1, o2) -> {
