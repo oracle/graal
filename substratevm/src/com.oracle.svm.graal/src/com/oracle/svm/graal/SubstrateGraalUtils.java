@@ -46,7 +46,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.option.RuntimeOptionParserPolicy;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParserPolicy;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.graal.isolated.IsolatedGraalUtils;

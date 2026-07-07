@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
-import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
