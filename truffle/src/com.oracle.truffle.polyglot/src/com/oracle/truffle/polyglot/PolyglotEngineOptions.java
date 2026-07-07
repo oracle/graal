@@ -140,8 +140,12 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
+                    "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts", usageSyntax = "true|false")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, help = "" +
+                    "On property accesses, the Static Object Model always performs safety checks, overriding engine.RelaxStaticObjectSafetyChecks and builder-level safety check configuration.", usageSyntax = "true|false")//
+    static final OptionKey<Boolean> ForceStaticObjectSafetyChecks = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.")//

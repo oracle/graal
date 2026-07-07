@@ -383,7 +383,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             createInstruments(instrumentsOptions, deprecatedDescriptors);
         }
 
-        validateSandbox();
+        validateOptions();
 
         printDeprecatedOptionsWarning(deprecatedDescriptors);
     }
@@ -793,7 +793,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             parseAllOptions(instrument.getEngineOptionValues(), instrumentsOptions.get(instrument), newAllowExperimentalOptions, deprecatedDescriptors);
         }
-        validateSandbox();
+        validateOptions();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
 
         RUNTIME.onEnginePatchSuccess(this.runtimeData);
@@ -2565,6 +2565,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         for (String permittedLanguage : permittedLanguages) {
             idToLanguage.get(permittedLanguage).validateSandbox(sandboxPolicy);
+        }
+    }
+
+    private void validateOptions() {
+        validateSandbox();
+        if (engineOptionValues.get(PolyglotEngineOptions.RelaxStaticObjectSafetyChecks) && engineOptionValues.get(PolyglotEngineOptions.ForceStaticObjectSafetyChecks)) {
+            throw PolyglotEngineException.illegalState("Option engine.RelaxStaticObjectSafetyChecks can not be true at the same time as engine.ForceStaticObjectSafetyChecks.");
         }
     }
 

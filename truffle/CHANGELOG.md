@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.3
+* GR-73530: Added `StaticShape.Builder.safetyChecks(boolean)` to let language implementations configure safety checks for individual static shapes. Added `engine.ForceStaticObjectSafetyChecks` to enable safety checks for all static shapes, overriding the builder setting.
+
 ## Version 25.2
 * GR-77583: Bytecode DSL: Added `BytecodeRootNode.interceptIncomingValue(Object)` and `BytecodeRootNode.interceptOutgoingValue(Object)` to convert values exchanged with tag instrumentation.
 * GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.
