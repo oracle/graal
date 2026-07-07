@@ -188,6 +188,18 @@ public class TruffleGraphBuilderPlugins {
         registerMemorySegmentPlugins(plugins, types, canDelayIntrinsification);
         registerByteArraySupportPlugins(plugins, canDelayIntrinsification);
         registerAtomicFieldUpdaterPlugins(plugins, types);
+        registerUnsafePlugins(plugins);
+    }
+
+    private static void registerUnsafePlugins(InvocationPlugins plugins) {
+        /* The JDK warning and deny policy is not needed for trusted Truffle compilations. */
+        Registration r = new Registration(plugins, "sun.misc.Unsafe");
+        r.register(new OptionalInvocationPlugin("beforeMemoryAccess") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return true;
+            }
+        });
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
