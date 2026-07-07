@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1017,7 +1017,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         /*
          * If some code (via graph builder config) requested to not use allocations with exceptions
-         * or the user explicitly we disable it.
+         * or the user explicitly disables it, keep allocation nodes non-throwing.
          */
         boolean userUseAllocWithException = BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers.getValue(graph.getOptions());
         this.disableExplicitAllocationExceptionEdges = !userUseAllocWithException || graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges;
@@ -1327,6 +1327,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     private static final ParserSpeculation UNRESOLVED = new ParserSpeculation("Unresolved");
 
     private static final ParserSpeculation UNRESOLVED_CATCH_TYPE = new ParserSpeculation("UnresolvedCatchType", int.class);
+
+    private static final String OUT_OF_MEMORY_ERROR_TYPE_NAME = "Ljava/lang/OutOfMemoryError;";
 
     /**
      * Returns a speculation object if it's possible to speculate on an unresolved type or field at
@@ -5102,9 +5104,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     /**
-     * Note that we only handle {@link OutOfMemoryError} catch blocks here and no subclasses.
-     * JVMS-6.3 states that virtual machine errors only include OutOfMemoryError for allocation
-     * failures.
+     * Returns whether the current parse position is protected by a handler that can observe an
+     * {@link OutOfMemoryError}. This currently covers only direct {@code OutOfMemoryError} catch
+     * clauses. Broader catch clauses such as {@code Error}, {@code VirtualMachineError}, or
+     * {@code Throwable}, and bytecode-level catch-all/finally entries, are intentionally not used
+     * for automatic allocation OOME edges.
      */
     @Override
     public boolean currentBlockCatchesOOME() {
@@ -5114,17 +5118,43 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (calleeInOOMEBlock) {
             return true;
         }
-        boolean inOOMETry = false;
-        if (currentBlock.exceptionDispatchBlock() != null) {
-            ExceptionDispatchBlock edb = (ExceptionDispatchBlock) currentBlock.exceptionDispatchBlock();
-            ExceptionHandler handler = edb.handler;
-            if (handler != null) {
-                JavaType catchType = handler.getCatchType();
-                // catch type can be null for java.lang.Throwable which catches everything
-                inOOMETry = catchType != null && catchType.getName().equals("Ljava/lang/OutOfMemoryError;");
+        if (currentBlock != null) {
+            BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
+            while (dispatchBlock instanceof ExceptionDispatchBlock edb) {
+                ExceptionHandler handler = edb.handler;
+                if (handler != null && catchTypeIncludesOOME(handler)) {
+                    return true;
+                }
+                dispatchBlock = edb.getSuccessorCount() > 1 ? edb.getSuccessor(1) : null;
             }
         }
-        return inOOMETry;
+        return false;
+    }
+
+    private boolean catchTypeIncludesOOME(ExceptionHandler handler) {
+        JavaType catchType = resolveCatchType(handler);
+        return isDirectOutOfMemoryErrorCatch(catchType);
+    }
+
+    /**
+     * Returns true only for a direct {@code catch (OutOfMemoryError)}. Broader catch clauses and
+     * bytecode catch-all entries are intentionally not used for automatic allocation OOME edges.
+     */
+    public static boolean isDirectOutOfMemoryErrorCatch(JavaType catchType) {
+        return catchType != null && catchType.getName().equals(OUT_OF_MEMORY_ERROR_TYPE_NAME);
+    }
+
+    private JavaType resolveCatchType(ExceptionHandler handler) {
+        JavaType catchType = handler.getCatchType();
+        if (catchType == null && handler.catchTypeCPI() != 0) {
+            /*
+             * Some bytecode providers expose only the catch-type CPI. Resolve just that declared
+             * handler type so the OOME classifier can still distinguish typed catches from
+             * catch-all/finally entries.
+             */
+            catchType = lookupType(handler.catchTypeCPI(), INSTANCEOF);
+        }
+        return catchType;
     }
 
     private void createNewInstance(ResolvedJavaType resolvedType) {

@@ -81,6 +81,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -823,6 +824,16 @@ public class CompileQueue {
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
             return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
+        }
+
+        /**
+         * Allows hosted compilation decoding to repair allocation OOME edges for methods that can
+         * support explicit OOME control flow. For more information, see
+         * {@link OOMEExceptionEdgePolicy}.
+         */
+        @Override
+        protected boolean supportsOOMEExceptionEdgeRepair(ResolvedJavaMethod method, PEMethodScope caller, InvokeData invokeData) {
+            return OOMEExceptionEdgePolicy.supportsOOMEExceptionEdges(method);
         }
 
         @Override

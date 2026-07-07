@@ -616,8 +616,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Determine if the given basic block is inside a {@code try} block of an exception handler
-     * catching {@link OutOfMemoryError} exceptions.
+     * Returns whether allocations appended at the current bytecode position must use explicit OOME
+     * exception edges because the current exception-dispatch chain can observe an
+     * {@link OutOfMemoryError}.
      */
     default boolean currentBlockCatchesOOME() {
         return false;

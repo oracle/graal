@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
@@ -141,6 +142,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
+    protected ExceptionObjectNode createOOMEExceptionObject() {
+        return graph.add(new ExceptionObjectNode(providers.getMetaAccess()));
+    }
+
+    @Override
     protected void cleanupGraph(MethodScope rootMethodScope) {
         GraphUtil.normalizeLoops(graph);
         super.cleanupGraph(rootMethodScope);
@@ -196,9 +202,10 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         try (DebugCloseable a = CanonicalizeFixedNode.start(debug)) {
-            Node canonical = canonicalizeFixedNode(methodScope, loopScope, node);
-            if (canonical != node) {
-                handleCanonicalization(loopScope, nodeOrderId, node, canonical);
+            FixedNode preparedNode = prepareFixedNode(methodScope, loopScope, nodeOrderId, node);
+            Node canonical = canonicalizeFixedNode(methodScope, loopScope, preparedNode);
+            if (canonical != preparedNode) {
+                handleCanonicalization(loopScope, nodeOrderId, preparedNode, canonical);
             }
         }
     }

@@ -148,6 +148,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    protected boolean supportsOOMEExceptionEdgeRepair(ResolvedJavaMethod method, PEMethodScope caller, InvokeData invokeData) {
+        return policy.needsExplicitExceptions();
+    }
+
+    @Override
     protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         if (policy.tryInvocationPlugins()) {
             return super.getInvocationPlugin(targetMethod);

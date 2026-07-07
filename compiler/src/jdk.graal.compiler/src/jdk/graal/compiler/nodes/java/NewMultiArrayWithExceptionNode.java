@@ -34,6 +34,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -46,9 +47,31 @@ public class NewMultiArrayWithExceptionNode extends AllocateWithExceptionNode {
 
     @SuppressWarnings("this-escape")
     public NewMultiArrayWithExceptionNode(ResolvedJavaType type, NodeList<ValueNode> dimensions) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
+        this(type, dimensions, null);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, NodeList<ValueNode> dimensions, FrameState stateBefore) {
+        this(type, dimensions, stateBefore, true);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, NodeList<ValueNode> dimensions, FrameState stateBefore, boolean mustHaveStateAfter) {
+        this(type, dimensions, stateBefore, null, mustHaveStateAfter);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, NodeList<ValueNode> dimensions, FrameState stateBefore, FrameState stateAfter) {
+        this(type, dimensions, stateBefore, stateAfter, true);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, NodeList<ValueNode> dimensions, FrameState stateBefore, FrameState stateAfter, boolean mustHaveStateAfter) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), mustHaveStateAfter);
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
+        this.stateBefore = stateBefore;
+        this.stateAfter = stateAfter;
         assert NumUtil.assertPositiveInt(dimensions.count());
         assert type.isArray();
 
@@ -56,9 +79,31 @@ public class NewMultiArrayWithExceptionNode extends AllocateWithExceptionNode {
 
     @SuppressWarnings("this-escape")
     public NewMultiArrayWithExceptionNode(ResolvedJavaType type, ValueNode[] dimensions) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
+        this(type, dimensions, null);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, ValueNode[] dimensions, FrameState stateBefore) {
+        this(type, dimensions, stateBefore, true);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, ValueNode[] dimensions, FrameState stateBefore, boolean mustHaveStateAfter) {
+        this(type, dimensions, stateBefore, null, mustHaveStateAfter);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, ValueNode[] dimensions, FrameState stateBefore, FrameState stateAfter) {
+        this(type, dimensions, stateBefore, stateAfter, true);
+    }
+
+    @SuppressWarnings("this-escape")
+    public NewMultiArrayWithExceptionNode(ResolvedJavaType type, ValueNode[] dimensions, FrameState stateBefore, FrameState stateAfter, boolean mustHaveStateAfter) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), mustHaveStateAfter);
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
+        this.stateBefore = stateBefore;
+        this.stateAfter = stateAfter;
         assert NumUtil.assertPositiveInt(dimensions.length);
         assert type.isArray();
     }
