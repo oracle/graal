@@ -51,7 +51,7 @@ class PosixLogHandlerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Log.finalizeDefaultLogHandler(new PosixLogHandler());
+        CoreLogSupport.finalizeDefaultLogHandler(new PosixLogHandler());
     }
 }
 

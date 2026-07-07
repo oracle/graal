@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.PrintStream;
+
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
@@ -32,10 +34,12 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -114,5 +118,20 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void runLogManagerShutdownHook() {
         Util_java_lang_Shutdown.runLogManagerShutdownHook();
+    }
+
+    @Override
+    public Log log() {
+        return CoreLogSupport.log();
+    }
+
+    @Override
+    public PrintStream logStream() {
+        return CoreLogSupport.logStream();
+    }
+
+    @Override
+    public Log noopLog() {
+        return CoreLogSupport.noopLog();
     }
 }

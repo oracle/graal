@@ -2134,7 +2134,7 @@ public final class JNIFunctions {
             StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
             LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-            Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
+            Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, message, null);
             if (log != null) {
                 try {
                     log.string("Fatal error reported via JNI: ").string(message).newline();

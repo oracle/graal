@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.guest.staging;
 
+import java.io.PrintStream;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 
 /**
@@ -137,4 +140,28 @@ public interface GuestStagingDependencyBridge {
      * (GR-71844).
      */
     void runLogManagerShutdownHook();
+
+    /**
+     * Returns the active low-level log.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    Log log();
+
+    /**
+     * Returns the active low-level log as a {@link PrintStream}.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    PrintStream logStream();
+
+    /**
+     * Returns the disabled low-level log.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    Log noopLog();
 }

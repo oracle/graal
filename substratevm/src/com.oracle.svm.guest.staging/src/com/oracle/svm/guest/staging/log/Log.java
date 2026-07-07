@@ -22,23 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.log;
+package com.oracle.svm.guest.staging.log;
 
 import java.io.PrintStream;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.shared.Uninterruptible;
-
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.shared.meta.GuestFold;
 
 /**
  * Provides low-level output methods for basic Java data types (strings and numbers). The methods do
@@ -49,7 +44,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * On most platforms, this logs to {@code stderr} by default. However, platform-specific
  * implementations can decide to redirect the output elsewhere, so this implementation cannot be
  * {@link Uninterruptible}. If logging needs to be called for debugging purposes from
- * uninterruptible code, please use {@link Debug#stderr()} instead.
+ * uninterruptible code, please use {@code com.oracle.svm.core.log.Debug.stderr()} instead.
  *
  * <p>
  * The string output methods do not perform platform- or charset-depending conversions. Therefore,
@@ -58,10 +53,10 @@ import jdk.graal.compiler.api.replacements.Fold;
  * can be chained. A typical usage looks like the following:
  *
  * <pre>
- * import static com.oracle.svm.core.log.Log;
+ * import com.oracle.svm.guest.staging.log.Log;
  *
- * void foo(int i, String s) {
- *     Log.log().string("i: ").signed(i).string(" s: ").string(s).newline();
+ * void foo(Log log, int i, String s) {
+ *     log.string("i: ").signed(i).string(" s: ").string(s).newline();
  * }
  * </pre>
  */
@@ -70,45 +65,20 @@ public interface Log {
     int LEFT_ALIGN = 1;
     int RIGHT_ALIGN = 2;
 
-    /**
-     * If {@link ImageSingletons#contains} returns {@code false} for {@code LogHandler.class}, then
-     * this method installs a {@link FunctionPointerLogHandler} that delegates to {@code handler}.
-     */
-    @Platforms(HOSTED_ONLY.class)
-    static void finalizeDefaultLogHandler(LogHandler handler) {
-        if (!ImageSingletons.contains(LogHandler.class)) {
-            ImageSingletons.add(LogHandler.class, new FunctionPointerLogHandler(handler));
-        }
-    }
-
-    /**
-     * Enters a fatal logging context which may redirect or suppress further log output if
-     * {@code logHandler} is a {@link LogHandlerExtension}.
-     *
-     * @return {@code null} if fatal error logging is to be suppressed, otherwise the {@link Log}
-     *         object to be used for fatal error logging
-     */
-    static Log enterFatalContext(LogHandler logHandler, CodePointer callerIP, String msg, Throwable ex) {
-        if (logHandler instanceof LogHandlerExtension ext) {
-            return ext.enterFatalContext(callerIP, msg, ex);
-        }
-        return Log.log();
-    }
-
-    @Fold
+    @GuestFold
     static Log log() {
-        return Loggers.realLog;
+        return GuestStagingDependencyBridge.singleton().log();
     }
 
     /** Returns {@link #log()} wrapped in a {@link PrintStream}. */
-    @Fold
+    @GuestFold
     static PrintStream logStream() {
-        return Loggers.logStream;
+        return GuestStagingDependencyBridge.singleton().logStream();
     }
 
-    @Fold
+    @GuestFold
     static Log noopLog() {
-        return Loggers.noopLog;
+        return GuestStagingDependencyBridge.singleton().noopLog();
     }
 
     /** Returns true if logging is enabled. */

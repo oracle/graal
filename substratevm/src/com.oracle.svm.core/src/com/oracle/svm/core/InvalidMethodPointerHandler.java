@@ -112,7 +112,7 @@ public final class InvalidMethodPointerHandler {
          * cause of the fatal error.
          */
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
+        Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, message, null);
         if (log != null) {
             SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, Word.nullPointer(), true);
             log.string(message).newline();

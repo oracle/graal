@@ -158,7 +158,7 @@ public class VMErrorSubstitutions {
     @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(CodePointer callerIP, String msg, Throwable ex) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, msg, ex);
+        Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, msg, ex);
         if (log != null) {
             try {
                 /*

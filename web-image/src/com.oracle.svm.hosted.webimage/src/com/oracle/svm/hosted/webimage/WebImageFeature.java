@@ -261,7 +261,7 @@ public class WebImageFeature implements InternalFeature {
 
         switch (WebImageOptions.getBackend()) {
             case JS, WASMGC -> Loggers.setRealLog(new NoopLog());
-            case WASM -> Log.finalizeDefaultLogHandler(new WasmLogHandler());
+            case WASM -> CoreLogSupport.finalizeDefaultLogHandler(new WasmLogHandler());
         }
 
         /*

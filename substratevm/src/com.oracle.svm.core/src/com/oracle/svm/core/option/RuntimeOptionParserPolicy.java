@@ -262,7 +262,7 @@ public final class RuntimeOptionParserPolicy {
         RuntimeOptionParser parser = RuntimeOptionParser.singleton();
         OptionParseResult parseResult = parser.parseOption(arg, optionPrefix, booleanOptionFormat, values);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
-            parser.printFlags(parseResult, optionPrefix, Log.logStream());
+            parser.printFlags(parseResult, optionPrefix, CoreLogSupport.logStream());
             System.exit(0);
         }
         if (!parseResult.isValid()) {
@@ -276,7 +276,7 @@ public final class RuntimeOptionParserPolicy {
         OptionKey<?> option = parseResult.getOptionKey();
         OptionDescriptor descriptor = option.getDescriptor();
         if (descriptor != null && descriptor.isDeprecated()) {
-            Log log = Log.log();
+            Log log = CoreLogSupport.log();
             // Checkstyle: Allow raw info or warning printing - begin
             log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
             // Checkstyle: Allow raw info or warning printing - end
@@ -366,7 +366,7 @@ public final class RuntimeOptionParserPolicy {
         }
         if (!context.legacyJavaOptionMode && isReservedInternalModuleProperty(arg)) {
             if (!context.warnedInternalModuleProperty) {
-                Log.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
+                CoreLogSupport.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
                 context.warnedInternalModuleProperty = true;
             }
             return true;

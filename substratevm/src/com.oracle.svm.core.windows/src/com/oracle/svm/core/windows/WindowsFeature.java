@@ -49,6 +49,6 @@ class WindowsFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Log.finalizeDefaultLogHandler(new WindowsLogHandler());
+        CoreLogSupport.finalizeDefaultLogHandler(new WindowsLogHandler());
     }
 }
