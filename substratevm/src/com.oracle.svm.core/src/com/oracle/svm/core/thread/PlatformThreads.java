@@ -63,6 +63,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -359,7 +360,7 @@ public abstract class PlatformThreads {
             return requestedStackSize;
         }
         /* If the user set a thread stack size on the command line, then use that. */
-        stackSize = SubstrateOptions.StackSize.getValue();
+        stackSize = SubstrateGuestOptions.StackSize.getValue();
         if (stackSize != 0) {
             return addStackOverflowGuardZones(stackSize);
         }
