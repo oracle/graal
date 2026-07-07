@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.io.File;
 import java.util.ArrayList;
