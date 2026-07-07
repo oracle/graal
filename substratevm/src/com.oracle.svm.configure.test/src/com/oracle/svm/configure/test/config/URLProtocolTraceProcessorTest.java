@@ -64,6 +64,34 @@ public class URLProtocolTraceProcessorTest {
         assertURLStreamHandlerConstructorRegistered("getURLStreamHandler", JAR_HANDLER);
     }
 
+    @Test
+    public void excludedMethodHandleCallerRegistersAccessedTestMethod() throws Exception {
+        String testClassName = "javasoft.sqe.tests.api.java.util.Spliterator.SpliteratorTestBase";
+        ConfigurationSet configurationSet = new ConfigurationSet();
+        Object processor = newReflectionProcessor();
+
+        processTrace(processor, configurationSet, """
+                        [
+                          {
+                            "tracer": "reflect",
+                            "function": "findMethodHandle",
+                            "class": "%s",
+                            "declaring_class": "%s",
+                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
+                            "result": true,
+                            "args": ["sortedSpliterators", []]
+                          }
+                        ]
+                        """.formatted(testClassName, testClassName));
+
+        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
+        ConfigurationType testType = getConfigurationType(reflectionConfiguration, testClassName);
+        Assert.assertNotNull(testType);
+        ConfigurationMemberInfo methodInfo = getMethodInfo(testType, "sortedSpliterators");
+        Assert.assertEquals("PRESENT", methodInfo.getDeclaration().toString());
+        Assert.assertEquals("ACCESSED", methodInfo.getAccessibility().toString());
+    }
+
     private static void assertURLStreamHandlerConstructorRegistered(String function, String handlerClassName) throws Exception {
         ConfigurationSet configurationSet = new ConfigurationSet();
         Object processor = newReflectionProcessor();
@@ -119,5 +147,10 @@ public class URLProtocolTraceProcessorTest {
     private static ConfigurationMemberInfo getConstructorInfo(ConfigurationType configurationType) {
         ConfigurationMethod constructorMethod = new ConfigurationMethod("<init>", "()V");
         return ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, constructorMethod);
+    }
+
+    private static ConfigurationMemberInfo getMethodInfo(ConfigurationType configurationType, String methodName) {
+        ConfigurationMethod method = new ConfigurationMethod(methodName, "()V");
+        return ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, method);
     }
 }

@@ -212,7 +212,8 @@ public final class AccessAdvisor {
         }
         String qualifiedCaller = callerClass.get();
         assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller)) {
+        if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller) &&
+                        (queriedClass.get() == null || !callerFilter.includes(queriedClass.get()))) {
             logIgnoredEntry("excluded by caller filter", entry);
             return true;
         }
