@@ -31,7 +31,7 @@ import java.util.Optional;
 import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.guest.staging.option.XOptions;
@@ -53,7 +53,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public void set(String optionName, Object value) {
-        assert !(SubstrateUtil.HOSTED && ImageLayerBuildingSupport.buildingImageLayer());
+        assert !(SubstrateUtil.HOSTED && GuestImageLayerBuildingSupport.buildingImageLayer());
         if (XOptions.setOption(optionName)) {
             return;
         }
@@ -75,7 +75,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(String optionName) {
-        assert !(SubstrateUtil.HOSTED && ImageLayerBuildingSupport.buildingImageLayer());
+        assert !(SubstrateUtil.HOSTED && GuestImageLayerBuildingSupport.buildingImageLayer());
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
             throw new RuntimeException("Unknown option: " + optionName);
         }
