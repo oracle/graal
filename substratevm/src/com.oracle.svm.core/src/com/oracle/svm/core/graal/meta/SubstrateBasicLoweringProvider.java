@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +34,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
@@ -40,7 +42,9 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -60,12 +64,16 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.CompressionNode.CompressionOp;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -75,7 +83,12 @@ import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.java.AbstractNewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -90,6 +103,8 @@ import jdk.graal.compiler.replacements.IsArraySnippets;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.replacements.VectorSnippets;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
@@ -103,6 +118,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private RuntimeConfiguration runtimeConfig;
     private final DynamicHubOffsets dynamicHubOffsets;
     private final AbstractObjectStamp hubStamp;
+    private final WordTypes wordTypes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
@@ -115,6 +131,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         hubRefStamp = SubstrateNarrowOopStamp.compressed(hubRefStamp, ReferenceAccess.singleton().getCompressEncoding());
         hubStamp = hubRefStamp;
         dynamicHubOffsets = DynamicHubOffsets.singleton();
+        wordTypes = new SubstrateWordTypes(metaAccess, SubstrateTarget.getWordKind());
     }
 
     @Override
@@ -122,6 +139,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         this.runtimeConfig = runtimeConfig;
         this.isArraySnippets = new IsArraySnippets.Templates(new SubstrateIsArraySnippets(), options, providers);
         initialize(options, Group.NullFactory, providers);
+        providers.getReplacements().registerSnippetTemplateCache(new VectorSnippets.Templates(options, Group.NullFactory, providers, SubstrateTarget.singleton(), vectorArchitecture));
     }
 
     @Override
@@ -144,13 +162,38 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (n instanceof AssertionNode) {
+        if (lowerVectorNode(n, tool)) {
+            return;
+        } else if (n instanceof AssertionNode) {
             lowerAssertionNode((AssertionNode) n);
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
         } else {
             super.lower(n, tool);
         }
+    }
+
+    @Override
+    protected GuardingNode createNegativeArrayLengthGuard(AbstractNewArrayNode newArray, LogicNode condition, LoweringTool tool) {
+        if (!SubstrateUtil.HOSTED) {
+            return tool.createGuard(newArray, condition, jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint, jdk.vm.ci.meta.DeoptimizationAction.None,
+                            jdk.vm.ci.meta.SpeculationLog.NO_SPECULATION, true, null);
+        }
+
+        StructuredGraph graph = newArray.graph();
+        ThrowBytecodeExceptionNode throwBytecodeExceptionNode = graph.add(new ThrowBytecodeExceptionNode(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, Arrays.asList(newArray.length())));
+        throwBytecodeExceptionNode.setStateBefore(newArray.stateBefore());
+        BeginNode success = graph.add(new BeginNode());
+        IfNode ifNode = graph.add(new IfNode(condition, throwBytecodeExceptionNode, success, BranchProbabilityNode.DEOPT_PROFILE));
+        AbstractBeginNode noDeoptSuccessor = ifNode.falseSuccessor();
+        newArray.replaceAtPredecessor(ifNode);
+        success.setNext(newArray);
+        return noDeoptSuccessor;
+    }
+
+    @Override
+    protected void lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
+        super.lowerNewArrayToVector(newArray, tool, wordTypes.asKind(newArray.elementType()));
     }
 
     @Override

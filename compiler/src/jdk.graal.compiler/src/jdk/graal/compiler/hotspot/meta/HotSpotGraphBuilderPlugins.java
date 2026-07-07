@@ -190,6 +190,7 @@ import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -284,6 +285,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerPoly1305Plugin(invocationPlugins);
                 registerIntegerPolynomialPlugins(invocationPlugins);
                 registerDualPivotQuicksortPlugins(invocationPlugins, config, target.arch);
+                VectorIntrinsics.registerPlugins(invocationPlugins, options, false);
 
                 if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
                     VectorAPIIntrinsics.registerPlugins(plugins.getInvocationPlugins());

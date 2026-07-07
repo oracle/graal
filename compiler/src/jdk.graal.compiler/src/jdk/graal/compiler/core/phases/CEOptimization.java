@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
+import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
@@ -54,6 +55,20 @@ import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase.Options;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode;
+import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode.VectorSimplifier;
+import jdk.graal.compiler.vector.nodes.consumer.VectorConsumer;
+import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
+import jdk.graal.compiler.vector.phases.NodeVectorizationPhase;
+import jdk.graal.compiler.vector.phases.OptimizeAddressesInLoopsPhase;
+import jdk.graal.compiler.vector.phases.RemoveEmptyLoopsPhase;
+import jdk.graal.compiler.vector.phases.SimdifyVectorPhase;
+import jdk.graal.compiler.vector.phases.VectorConsumerPhase;
+import jdk.graal.compiler.vector.phases.VectorLoweringPhase;
+import jdk.graal.compiler.vector.phases.VectorMaterializationPhase;
+import jdk.graal.compiler.vector.phases.VectorSimplificationPhase;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -315,6 +330,123 @@ public enum CEOptimization {
      * This phase is enabled by default.
      */
     BoxNodeOptimization(null, BoxNodeOptimizationPhase.class),
+
+    /**
+     * {@link OptimisticAliasingAnalysisPhase} analyzes whether memory operations alias with each
+     * other, i.e., whether dynamic read and write operations access the same underlying heap memory
+     * areas. This information can improve performance by enabling memory optimizations including
+     * loop vectorization. The alias analysis can run in either a speculative or a non-speculative
+     * mode, delivering its benefits to both JIT and AOT compilations.
+     *
+     * This phase is enabled by default if
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization} is
+     * enabled and can be disabled with {@link MidTier.Options#OptimisticAliasingAnalysis}.
+     */
+    AliasAnalysis(MidTier.Options.OptimisticAliasingAnalysis, OptimisticAliasingAnalysisPhase.class),
+
+    /**
+     * {@link OptimizeAddressesInLoopsPhase} tries to prepare loops for vectorization and alias
+     * analysis. It does so by modifying loop induction variables to fit into a predefined pattern.
+     *
+     * This phase is enabled by default if
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization} is
+     * enabled and can be disabled with {@link MidTier.Options#OptimisticAliasingAnalysis}.
+     */
+    LoopAddress(MidTier.Options.OptimisticAliasingAnalysis, OptimizeAddressesInLoopsPhase.class),
+
+    /**
+     * {@link NodeVectorizationPhase} is a vectorization optimization that transforms operations
+     * with an equivalent vectorized representation, like array allocation and initialization
+     * operations, into a vectorized form. This can improve performance as the emitted code for
+     * these forms can utilize CPU SIMD instructions.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    NodeVectorization(VectorIntrinsics.Options.Vectorization, NodeVectorizationPhase.class),
+
+    /**
+     * {@link ConditionalMoveOptimizationPhase} tries to transform {@code if} statements to
+     * conditional moves. This has a positive impact on code patterns where branch prediction is
+     * difficult and can thus improve performance.
+     *
+     * In the community mid tier, this phase is enabled by default if
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization} is
+     * enabled and can be disabled with
+     * {@link jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase.Options#OptConditionalMoves}.
+     */
+    ConditionalMoveTransformation(ConditionalMoveOptimizationPhase.Options.OptConditionalMoves, ConditionalMoveOptimizationPhase.class),
+
+    /**
+     * {@link LoopVectorizationPhase} detects code patterns in loops that can take advantage of
+     * <a href="https://en.wikipedia.org/wiki/SIMD">SIMD</a> (single instruction multiple data)
+     * instructions for increased throughput. Loop vectorization transforms loops into a form that
+     * exploits such operations to perform the computations from multiple independent loop
+     * iterations in parallel. This can greatly improve the performance of the generated code.
+     *
+     * This phase is enabled by default if
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization} is
+     * enabled and can be disabled with
+     * {@link jdk.graal.compiler.vector.phases.LoopVectorizationPhase.Options#VectorizeLoops}.
+     */
+    LoopVectorization(LoopVectorizationPhase.Options.VectorizeLoops, LoopVectorizationPhase.class),
+
+    /**
+     * {@link RemoveEmptyLoopsPhase} tries to remove loops which do nothing apart from modifying
+     * values from outside the loop where the net result of the modification can be determined by
+     * the compiler and applied in one simple operation.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    EmptyLoopRemoval(VectorIntrinsics.Options.Vectorization, RemoveEmptyLoopsPhase.class),
+
+    /**
+     * {@link VectorMaterializationPhase} combines array allocations and operations on arrays in a
+     * vectorized form as produced by {@link NodeVectorizationPhase} and
+     * {@link LoopVectorizationPhase}. It recognizes and eliminates useless array initializations
+     * and operations on temporary arrays.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    VectorMaterialization(VectorIntrinsics.Options.Vectorization, VectorMaterializationPhase.class),
+
+    /**
+     * {@link VectorSimplificationPhase} simplifies the representation of vector operations by
+     * calling nodes' {@link VectorConsumer#simplifyTree(VectorSimplifier)} and
+     * {@link SimplifiableVectorNode#simplify(VectorSimplifier)} methods.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    VectorSimplification(VectorIntrinsics.Options.Vectorization, VectorSimplificationPhase.class),
+
+    /**
+     * {@link VectorLoweringPhase} computes the target specific vector lengths for vector
+     * operations.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    VectorLowering(VectorIntrinsics.Options.Vectorization, VectorLoweringPhase.class),
+
+    /**
+     * {@link VectorConsumerPhase} expands placeholder nodes inserted by
+     * {@link VectorLoweringPhase} to the corresponding vector operations.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    VectorConsumer(VectorIntrinsics.Options.Vectorization, VectorConsumerPhase.class),
+
+    /**
+     * {@link SimdifyVectorPhase} transforms vector operations into SIMD form.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options#Vectorization}.
+     */
+    VectorSIMDIFY(VectorIntrinsics.Options.Vectorization, SimdifyVectorPhase.class),
 
     /**
      * {@link VectorAPIExpansionPhase} lowers Java Vector API (JEP 338) operations to corresponding

@@ -52,6 +52,8 @@ import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
@@ -81,6 +83,10 @@ public class LowTier extends BaseTier<LowTierContext> {
         }
 
         appendPhase(new LowTierLoweringPhase(canonicalizerWithGVN));
+
+        if (VectorIntrinsics.Options.Vectorization.getValue(options)) {
+            appendPhase(new VectorLoweringPhaseSuite(canonicalizerWithGVN));
+        }
 
         appendPhase(new ExpandLogicPhase(canonicalizerWithGVN));
 
