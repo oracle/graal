@@ -429,13 +429,12 @@ public final class Interpreter {
                 throw VMError.shouldNotReachHere(MetadataUtil.fmt("Should not reach interpreter for AOT abstract method %s", method));
             }
         } else {
-            if (method.isNative()) {
-                // GR-73665
-                throw VMError.shouldNotReachHere(MetadataUtil.fmt("Runtime native method linkage is not implemented: %s", method));
-            } else if (!method.isAbstract()) {
-                throw VMError.shouldNotReachHere(MetadataUtil.fmt("Missing bytecode for run-time-loaded method %s", method));
-            } else {
-                throw VMError.shouldNotReachHere(MetadataUtil.fmt("Should not reach interpreter for run-time-loaded abstract method %s", method));
+            if (!method.isNative()) {
+                if (!method.isAbstract()) {
+                    throw VMError.shouldNotReachHere(MetadataUtil.fmt("Missing bytecode for run-time-loaded method %s", method));
+                } else {
+                    throw VMError.shouldNotReachHere(MetadataUtil.fmt("Should not reach interpreter for run-time-loaded abstract method %s", method));
+                }
             }
         }
     }
