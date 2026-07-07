@@ -45,6 +45,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.XOptions;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
