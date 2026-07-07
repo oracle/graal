@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,9 +109,9 @@ final class CounterStateElement extends AbstractElement {
         CodeTreeBuilder b = m.createBuilder();
         b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().end().startBlock();
         b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-        b.statement("counter = ++loopCounter.value");
+        b.statement("loopCounter.value = 0");
         b.end().startElseBlock();
-        b.statement("counter++");
+        b.statement("counter = 0");
         b.end();
         b.end();
         return m;
