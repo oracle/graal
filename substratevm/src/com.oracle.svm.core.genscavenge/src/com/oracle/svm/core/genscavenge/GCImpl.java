@@ -88,7 +88,7 @@ import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;

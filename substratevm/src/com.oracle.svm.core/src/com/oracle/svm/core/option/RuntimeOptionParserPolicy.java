@@ -40,9 +40,10 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.Target_java_lang_runtime_SwitchBootstraps;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_PreviewFeatures;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.XOptions;
@@ -466,7 +467,7 @@ public final class RuntimeOptionParserPolicy {
 
     /// Emits a HotSpot compatibility warning for options accepted without runtime effect.
     private static void warnIgnoredCompatibilityOption(String arg) {
-        Log.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
+        CoreLogSupport.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
     }
 
     /// Parses module options that SVM applies to the runtime boot layer into the normalized

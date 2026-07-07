@@ -45,7 +45,7 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;

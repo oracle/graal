@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.dcmd.ThreadPrintDCmd;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
 import com.oracle.svm.core.thread.JavaThreads;

@@ -60,7 +60,7 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;

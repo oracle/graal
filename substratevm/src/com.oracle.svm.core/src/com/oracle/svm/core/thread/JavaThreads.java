@@ -45,7 +45,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;

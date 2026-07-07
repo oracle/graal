@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 
 import jdk.internal.misc.Signal;
 

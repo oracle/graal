@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 

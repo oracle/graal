@@ -63,7 +63,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.Loggers;
 import com.oracle.svm.core.log.NoopLog;
 import com.oracle.svm.hosted.FeatureImpl;
