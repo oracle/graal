@@ -584,10 +584,10 @@ public class CodeInfoEncoder {
                 entryFlags = encodeExtendedImageEntryFlags(data, entryFlags, currentDefaultFrameInfoIndex, chunkDefaultFrameInfoIndex);
             }
 
-            encodingBuffer.putU1(encodeBasicEntryFlags(entryFlags));
+            encodingBuffer.putU1(encodeFirstByte(entryFlags));
             encodingBuffer.putU1(data.next == null ? CodeInfoDecoder.DELTA_END_OF_TABLE : (data.next.ip - data.ip));
             if (CodeInfoDecoder.isExtendedEntry(entryFlags)) {
-                writeExtendedEntryFlags(encodingBuffer, entryFlags);
+                writeExtendedEntryBasicFlags(encodingBuffer, entryFlags);
             }
 
             writeSizeEncoding(encodingBuffer, data, entryFlags);
@@ -786,7 +786,7 @@ public class CodeInfoEncoder {
      */
     private static int flagsForDeoptFrameInfo(IPData data) {
         if (data.frameData == null) {
-            return CodeInfoDecoder.FI_NO_DEOPT;
+            return CodeInfoDecoder.FI_NO_INFO;
         } else if (TypeConversion.isS4(data.frameData.encodedFrameInfoIndex)) {
             if (data.frameData.frame.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
@@ -802,30 +802,29 @@ public class CodeInfoEncoder {
         }
     }
 
-    private static int encodeBasicEntryFlags(int entryFlags) {
+    private static int encodeFirstByte(int entryFlags) {
         if (!CodeInfoDecoder.isExtendedEntry(entryFlags)) {
             return CodeInfoDecoder.basicEntryFlags(entryFlags);
         }
         return switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
-            case CodeInfoDecoder.EXTENDED_ENTRY_LEGACY -> CodeInfoDecoder.BASIC_FLAGS_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S1 -> CodeInfoDecoder.BASIC_FLAGS_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1;
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S2 -> CodeInfoDecoder.BASIC_FLAGS_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2;
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_DEFAULT -> CodeInfoDecoder.BASIC_FLAGS_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY, CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2;
             default -> throw shouldNotReachHereUnexpectedInput(entryFlags);
         };
     }
 
-    private void writeExtendedEntryFlags(UnsafeArrayTypeWriter writeBuffer, int entryFlags) {
+    private void writeExtendedEntryBasicFlags(UnsafeArrayTypeWriter writeBuffer, int entryFlags) {
         assert useFinalImageCodeInfoEncoding;
         assert CodeInfoDecoder.isExtendedEntry(entryFlags);
         int basicFlags = CodeInfoDecoder.basicEntryFlags(entryFlags);
         switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
-            case CodeInfoDecoder.EXTENDED_ENTRY_LEGACY:
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY:
                 writeBuffer.putU1(basicFlags);
                 break;
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S1:
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S2:
-            case CodeInfoDecoder.EXTENDED_ENTRY_FI_DEFAULT:
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT:
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1:
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2:
                 writeBuffer.putU1(basicFlags & ~CodeInfoDecoder.FI_MASK_IN_PLACE);
                 break;
             default:
@@ -841,18 +840,18 @@ public class CodeInfoEncoder {
          * encoded as a small delta to that same default when the frame infos stay close.
          */
         if (CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEFAULT_INFO_INDEX_S4 && useChunkDefaultFrameInfo) {
-            return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_MASK | CodeInfoDecoder.EXTENDED_ENTRY_FI_DEFAULT;
+            return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT;
         }
         if (CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4 && useChunkDefaultFrameInfo) {
             long delta = data.frameData.encodedFrameInfoIndex - chunkDefaultFrameInfoIndex;
             if (TypeConversion.isS1(delta)) {
-                return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_MASK | CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S1;
+                return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1;
             } else if (TypeConversion.isS2(delta)) {
-                return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_MASK | CodeInfoDecoder.EXTENDED_ENTRY_FI_INFO_ONLY_S2;
+                return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2;
             }
         }
         if (CodeInfoDecoder.isExtendedEntryMarker(CodeInfoDecoder.basicEntryFlags(entryFlags))) {
-            return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_MASK | CodeInfoDecoder.EXTENDED_ENTRY_LEGACY;
+            return entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY;
         }
         return entryFlags;
     }
