@@ -66,6 +66,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -292,7 +293,12 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * class initialization fails.
      */
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
-        ClassLoader libGraalLoader = (ClassLoader) loader.classLoaderSupport.getLibGraalLoader();
+        /*
+         * GR-76456: This converts a guest class-loader constant back to a builder-hosted object.
+         * Terminus must perform class initialization and context-loader handling in the guest
+         * context instead.
+         */
+        ClassLoader libGraalLoader = GuestAccess.get().getSnippetReflection().asObject(ClassLoader.class, loader.classLoaderSupport.getLibGraalLoader());
         ClassLoader cl = clazz.getClassLoader();
         // Graal and JVMCI make use of ServiceLoader which uses the
         // context class loader so it needs to be the libgraal loader.

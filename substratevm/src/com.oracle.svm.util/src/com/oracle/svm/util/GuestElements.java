@@ -99,12 +99,14 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
+    public final ResolvedJavaMethod java_lang_Class_forName = lookupMethod(java_lang_Class, "forName", String.class, boolean.class, ClassLoader.class);
     public final ResolvedJavaMethod java_lang_Class_getAnnotation = lookupMethod(java_lang_Class, "getAnnotation", Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
     public final ResolvedJavaType java_lang_ClassLoader = lookupType(ClassLoader.class);
     public final ResolvedJavaMethod java_lang_ClassLoader_getName = lookupMethod(java_lang_ClassLoader, "getName");
+    public final ResolvedJavaMethod java_lang_ClassLoader_getSystemClassLoader = lookupMethod(java_lang_ClassLoader, "getSystemClassLoader");
 
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
