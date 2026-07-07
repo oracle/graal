@@ -779,7 +779,13 @@ public class StandardGraphBuilderPlugins {
                  */
                 checkedLength = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
             }
-            NewArrayNode newArray = b.add(new NewArrayNode(componentType, checkedLength, false));
+            ValueNode newArray;
+            if (b.currentBlockCatchesOOME()) {
+                newArray = b.addPush(JavaKind.Object, new NewArrayWithExceptionNode(componentType, checkedLength, false));
+                b.pop(JavaKind.Object);
+            } else {
+                newArray = b.add(new NewArrayNode(componentType, checkedLength, false));
+            }
             // For verification purposes
             b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
             return true;

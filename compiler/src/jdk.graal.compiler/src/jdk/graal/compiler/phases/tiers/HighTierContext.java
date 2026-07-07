@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,8 +50,12 @@ public class HighTierContext extends CoreProvidersDelegate {
     }
 
     public PhaseSuite<HighTierContext> getGraphBuilderSuiteForCallee(Invoke invoke) {
+        return getGraphBuilderSuiteForCallee(invoke.isInOOMETry());
+    }
+
+    public PhaseSuite<HighTierContext> getGraphBuilderSuiteForCallee(boolean forceOOMEExceptionEdges) {
         PhaseSuite<HighTierContext> regularGraphBuilder = graphBuilderSuite;
-        if (invoke.isInOOMETry()) {
+        if (forceOOMEExceptionEdges) {
             PhaseSuite<HighTierContext> copied = regularGraphBuilder.copy();
             GraphBuilderPhase originalBuilder = (GraphBuilderPhase) (copied.findPhase(GraphBuilderPhase.class).previous());
             GraphBuilderConfiguration newConfig = originalBuilder.getGraphBuilderConfig().copy().withOOMEExceptionEdges(ExplicitOOMEExceptionEdges.ForceOOMEExceptionEdges);

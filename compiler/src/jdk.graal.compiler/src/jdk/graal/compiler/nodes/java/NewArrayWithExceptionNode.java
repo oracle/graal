@@ -50,8 +50,20 @@ public class NewArrayWithExceptionNode extends AllocateWithExceptionNode {
         this.fillContents = fillContents;
     }
 
+    public NewArrayWithExceptionNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore) {
+        this(elementType, length, fillContents, stateBefore, true);
+    }
+
+    public NewArrayWithExceptionNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore, boolean mustHaveStateAfter) {
+        this(elementType, length, fillContents, stateBefore, null, mustHaveStateAfter);
+    }
+
     public NewArrayWithExceptionNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore, FrameState stateAfter) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(elementType.getArrayClass())));
+        this(elementType, length, fillContents, stateBefore, stateAfter, true);
+    }
+
+    public NewArrayWithExceptionNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore, FrameState stateAfter, boolean mustHaveStateAfter) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(elementType.getArrayClass())), mustHaveStateAfter);
         this.elementType = elementType;
         this.length = length;
         this.fillContents = fillContents;

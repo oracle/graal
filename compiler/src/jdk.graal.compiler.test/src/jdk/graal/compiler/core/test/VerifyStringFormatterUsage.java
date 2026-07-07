@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaKind;
@@ -71,10 +72,10 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
 
     protected void verifyParameters(MetaAccessProvider metaAccess, MethodCallTargetNode callTarget, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType,
                     int startArgIdx) {
-        if (callTarget.targetMethod().isVarArgs() && args.get(args.count() - 1) instanceof NewArrayNode) {
+        if (callTarget.targetMethod().isVarArgs() && isVarArgsArrayAllocation(args.get(args.count() - 1))) {
             // unpack the arguments to the var args
             List<ValueNode> unpacked = new ArrayList<>(args.snapshot());
-            NewArrayNode varArgParameter = (NewArrayNode) unpacked.remove(unpacked.size() - 1);
+            ValueNode varArgParameter = unpacked.remove(unpacked.size() - 1);
             int firstVarArg = unpacked.size();
             for (Node usage : varArgParameter.usages()) {
                 if (usage instanceof StoreIndexedNode) {
@@ -195,7 +196,10 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
         for (int i = argIndex + 1; i < parameterCount; i++) {
             if (t.targetMethod().isVarArgs() && i == parameterCount - 1) {
                 // vararg parameter
-                NewArrayNode varArgParameter = (NewArrayNode) t.arguments().get(i);
+                ValueNode varArgParameter = t.arguments().get(i);
+                if (!isVarArgsArrayAllocation(varArgParameter)) {
+                    throw new VerificationError(t, "Unexpected varargs array node %s.", varArgParameter);
+                }
                 for (Node usage : varArgParameter.usages()) {
                     if (usage instanceof StoreIndexedNode) {
                         StoreIndexedNode si = (StoreIndexedNode) usage;
@@ -234,6 +238,14 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
             }
         }
         verifyPrintFormatCall(formatStringVal, argsBoxed, argTypes, t);
+    }
+
+    /**
+     * The verifier only needs to inspect stores into the synthetic varargs array. In OOME-catching
+     * regions the same source allocation may be represented with an explicit exception edge.
+     */
+    private static boolean isVarArgsArrayAllocation(ValueNode node) {
+        return node instanceof NewArrayNode || node instanceof NewArrayWithExceptionNode;
     }
 
     private static void verifyCorrectFormatString(String formatString, MethodCallTargetNode callee) {

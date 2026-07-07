@@ -79,7 +79,11 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     private boolean isInOOMETry;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
-        super(TYPE, callTarget.returnStamp().getTrustedStamp());
+        this(callTarget, exceptionEdge, bci, callTarget.returnStamp().getTrustedStamp());
+    }
+
+    public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci, Stamp stamp) {
+        super(TYPE, stamp);
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;
         this.callTarget = callTarget;

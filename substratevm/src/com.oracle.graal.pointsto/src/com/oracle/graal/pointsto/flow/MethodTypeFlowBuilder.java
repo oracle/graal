@@ -127,7 +127,9 @@ import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
+import jdk.graal.compiler.nodes.java.DynamicNewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -1549,76 +1551,30 @@ public class MethodTypeFlowBuilder {
                 processCommitAllocation((CommitAllocationNode) n, state);
             } else if (n instanceof NewInstanceNode) {
                 processNewInstance((NewInstanceNode) n, state, true);
+            } else if (n instanceof NewInstanceWithExceptionNode) {
+                processNewInstance((NewInstanceWithExceptionNode) n, state, true);
             } else if (n instanceof DynamicNewInstanceNode) {
                 DynamicNewInstanceNode node = (DynamicNewInstanceNode) n;
-                ValueNode instanceTypeNode = node.getInstanceType();
-
-                TypeFlowBuilder<?> instanceTypeBuilder;
-                AnalysisType instanceType;
-                if (instanceTypeNode instanceof GetClassNode) {
-                    /*
-                     * The dynamic new instance will create a new heap object for each type in the
-                     * type state of the GetClassNode object. Thus, we don't need the type flow of
-                     * the GetClassNode itself, which will give us Class objects, but that of its
-                     * receiver object.
-                     */
-                    GetClassNode getClassNode = (GetClassNode) instanceTypeNode;
-                    ValueNode getClassReceiver = getClassNode.getObject();
-                    instanceType = (AnalysisType) StampTool.typeOrNull(getClassReceiver, bb.getMetaAccess());
-                    instanceTypeBuilder = state.lookup(getClassReceiver);
-                } else {
-                    /*
-                     * Without precise type information the dynamic new instance node has to
-                     * generate a heap object for each instantiated type.
-                     */
-                    instanceType = bb.getObjectType();
-                    TypeFlowBuilder<?> predicate = state.getPredicate();
-                    instanceTypeBuilder = TypeFlowBuilder.create(bb, method, predicate, instanceType, TypeFlow.class,
-                                    () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), AbstractAnalysisEngine.sourcePosition(node), instanceType, predicate));
-                }
-                TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), instanceType);
-                    flowsGraph.addMiscEntryFlow(newInstanceTypeFlow);
-                    return newInstanceTypeFlow;
-                });
-
-                dynamicNewInstanceBuilder.addObserverDependency(instanceTypeBuilder);
-
-                state.add(node, dynamicNewInstanceBuilder);
-
+                processDynamicNewInstance(node, node.getInstanceType(), state);
+            } else if (n instanceof DynamicNewInstanceWithExceptionNode) {
+                DynamicNewInstanceWithExceptionNode node = (DynamicNewInstanceWithExceptionNode) n;
+                processDynamicNewInstance(node, node.getInstanceType(), state);
             } else if (n instanceof NewArrayNode) {
                 processNewArray((NewArrayNode) n, state);
+            } else if (n instanceof NewArrayWithExceptionNode) {
+                processNewArray((NewArrayWithExceptionNode) n, state);
             } else if (n instanceof DynamicNewArrayNode) {
                 DynamicNewArrayNode node = (DynamicNewArrayNode) n;
-
-                /*
-                 * Without precise type information the dynamic new array node has to generate a
-                 * heap object for each instantiated array type.
-                 *
-                 * The node can allocate subclasses of Object[] but also primitive arrays. So there
-                 * is no better type than java.lang.Object that we can use.
-                 */
-                AnalysisType arrayType = bb.getObjectType();
-
-                TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewArrayBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newArrayTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType.getTypeFlow(bb, false), arrayType);
-                    flowsGraph.addMiscEntryFlow(newArrayTypeFlow);
-                    return newArrayTypeFlow;
-                });
-                state.add(node, dynamicNewArrayBuilder);
-
+                processDynamicNewArray(node, state);
+            } else if (n instanceof DynamicNewArrayWithExceptionNode) {
+                DynamicNewArrayWithExceptionNode node = (DynamicNewArrayWithExceptionNode) n;
+                processDynamicNewArray(node, state);
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                assert type.isInstantiated() : type;
-
-                TypeFlowBuilder<NewInstanceTypeFlow> newArrayBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, NewInstanceTypeFlow.class, () -> {
-                    NewInstanceTypeFlow newArray = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, true);
-                    flowsGraph.addMiscEntryFlow(newArray);
-                    return newArray;
-                });
-
-                state.add(node, newArrayBuilder);
+                processNewMultiArray(node, (AnalysisType) node.type(), state);
+            } else if (n instanceof NewMultiArrayWithExceptionNode) {
+                NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
+                processNewMultiArray(node, (AnalysisType) node.type(), state);
 
             } else if (n instanceof LoadFieldNode node) { // value = object.field
                 processLoadField(node, (PointsToAnalysisField) node.field(), node.object(), state);
@@ -2039,7 +1995,16 @@ public class MethodTypeFlowBuilder {
         processNewInstance(node, (AnalysisType) node.instanceClass(), state, insertDefaultFieldValues);
     }
 
+    protected void processNewInstance(NewInstanceWithExceptionNode node, TypeFlowsOfNodes state, boolean insertDefaultFieldValues) {
+        /* Instance fields of a new object are initialized to null state in AnalysisField. */
+        processNewInstance(node, (AnalysisType) node.instanceClass(), state, insertDefaultFieldValues);
+    }
+
     protected void processNewArray(NewArrayNode node, TypeFlowsOfNodes state) {
+        processNewInstance(node, ((AnalysisType) node.elementType()).getArrayClass(), state, false);
+    }
+
+    protected void processNewArray(NewArrayWithExceptionNode node, TypeFlowsOfNodes state) {
         processNewInstance(node, ((AnalysisType) node.elementType()).getArrayClass(), state, false);
     }
 
@@ -2050,6 +2015,69 @@ public class MethodTypeFlowBuilder {
             return newInstance;
         });
         state.add(node, newInstanceBuilder);
+    }
+
+    private void processDynamicNewInstance(ValueNode node, ValueNode instanceTypeNode, TypeFlowsOfNodes state) {
+        TypeFlowBuilder<?> instanceTypeBuilder;
+        AnalysisType instanceType;
+        if (instanceTypeNode instanceof GetClassNode getClassNode) {
+            /*
+             * The dynamic new instance will create a new heap object for each type in the type state
+             * of the GetClassNode object. Thus, we don't need the type flow of the GetClassNode
+             * itself, which will give us Class objects, but that of its receiver object.
+             */
+            ValueNode getClassReceiver = getClassNode.getObject();
+            instanceType = (AnalysisType) StampTool.typeOrNull(getClassReceiver, bb.getMetaAccess());
+            instanceTypeBuilder = state.lookup(getClassReceiver);
+        } else {
+            /*
+             * Without precise type information the dynamic new instance node has to generate a heap
+             * object for each instantiated type.
+             */
+            instanceType = bb.getObjectType();
+            TypeFlowBuilder<?> predicate = state.getPredicate();
+            instanceTypeBuilder = TypeFlowBuilder.create(bb, method, predicate, instanceType, TypeFlow.class,
+                            () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), AbstractAnalysisEngine.sourcePosition(node), instanceType, predicate));
+        }
+        TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
+            DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), instanceType);
+            flowsGraph.addMiscEntryFlow(newInstanceTypeFlow);
+            return newInstanceTypeFlow;
+        });
+
+        dynamicNewInstanceBuilder.addObserverDependency(instanceTypeBuilder);
+
+        state.add(node, dynamicNewInstanceBuilder);
+    }
+
+    private void processDynamicNewArray(ValueNode node, TypeFlowsOfNodes state) {
+        /*
+         * Without precise type information the dynamic new array node has to generate a heap object
+         * for each instantiated array type.
+         *
+         * The node can allocate subclasses of Object[] but also primitive arrays. So there is no
+         * better type than java.lang.Object that we can use.
+         */
+        AnalysisType arrayType = bb.getObjectType();
+
+        TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewArrayBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
+            DynamicNewInstanceTypeFlow newArrayTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType.getTypeFlow(bb, false), arrayType);
+            flowsGraph.addMiscEntryFlow(newArrayTypeFlow);
+            return newArrayTypeFlow;
+        });
+        state.add(node, dynamicNewArrayBuilder);
+    }
+
+    private void processNewMultiArray(ValueNode node, AnalysisType type, TypeFlowsOfNodes state) {
+        assert type.isInstantiated() : type;
+
+        TypeFlowBuilder<NewInstanceTypeFlow> newArrayBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, NewInstanceTypeFlow.class, () -> {
+            NewInstanceTypeFlow newArray = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, true);
+            flowsGraph.addMiscEntryFlow(newArray);
+            return newArray;
+        });
+
+        state.add(node, newArrayBuilder);
     }
 
     protected void processLoadField(ValueNode node, PointsToAnalysisField field, ValueNode object, TypeFlowsOfNodes state) {

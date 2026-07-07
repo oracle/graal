@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -51,10 +52,28 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
     }
 
     public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance) {
-        super(TYPE, StampFactory.objectNonNull());
+        this(clazz, fillContents, originUnsafeAllocateInstance, null);
+    }
+
+    public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance, FrameState stateBefore) {
+        this(clazz, fillContents, originUnsafeAllocateInstance, stateBefore, true);
+    }
+
+    public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance, FrameState stateBefore, boolean mustHaveStateAfter) {
+        this(clazz, fillContents, originUnsafeAllocateInstance, stateBefore, null, mustHaveStateAfter);
+    }
+
+    public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance, FrameState stateBefore, FrameState stateAfter) {
+        this(clazz, fillContents, originUnsafeAllocateInstance, stateBefore, stateAfter, true);
+    }
+
+    public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents, boolean originUnsafeAllocateInstance, FrameState stateBefore, FrameState stateAfter, boolean mustHaveStateAfter) {
+        super(TYPE, StampFactory.objectNonNull(), mustHaveStateAfter);
         this.fillContents = fillContents;
         this.clazz = clazz;
         this.originUnsafeAllocateInstance = originUnsafeAllocateInstance;
+        this.stateBefore = stateBefore;
+        this.stateAfter = stateAfter;
     }
 
     public ValueNode getInstanceType() {
@@ -66,10 +85,15 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
     }
 
     @Override
+    public boolean fillContents() {
+        return fillContents;
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         ResolvedJavaType type = tryConvertToNonDynamic(clazz, tool);
         if (type != null) {
-            return new NewInstanceWithExceptionNode(type, fillContents, stateBefore, stateAfter);
+            return new NewInstanceWithExceptionNode(type, fillContents, stateBefore, stateAfter(), mustHaveStateAfter());
         }
         return this;
     }

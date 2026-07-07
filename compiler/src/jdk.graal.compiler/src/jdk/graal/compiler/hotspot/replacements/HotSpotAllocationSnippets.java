@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -682,7 +682,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             // instanceSize returns a negative number for types which should be slow path allocated
             args.add("size", NumUtil.safeAbs(size));
             args.add("useTLAB", shouldUseTLAB(config, size));
-            args.add("fillContents", FillContent.fromBoolean(true));
+            args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", true /* barrier */);
             args.add("profilingData", getProfilingData(localOptions, "instance", type));
             args.add("withException", true);
@@ -813,7 +813,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
             Arguments args = new Arguments(allocateInstanceDynamic, node.graph(), tool.getLoweringStage());
             args.add("type", node.getInstanceType());
-            args.add("fillContents", FillContent.fromBoolean(true));
+            args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", true/* barriers */);
             args.add("profilingData", getProfilingData(localOptions, "", null));
             args.add("withException", true);
@@ -874,7 +874,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.add("useTLAB", shouldUseTLAB(config));
-            args.add("fillContents", FillContent.fromBoolean(true));
+            args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", true/* barriers */);
             /*
              * We use Kind.Illegal as a marker value instead of null because constant snippet
