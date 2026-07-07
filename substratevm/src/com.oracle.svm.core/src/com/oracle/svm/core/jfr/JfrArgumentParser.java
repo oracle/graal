@@ -30,7 +30,7 @@ import java.io.Serial;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.util.StringUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;

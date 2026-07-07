@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.guest.staging.jdk;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -33,19 +33,15 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.HeapSizeVerifier;
-import com.oracle.svm.core.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Manages VM-level lifecycle hooks for an isolate. These hooks are internal runtime callbacks and
@@ -58,7 +54,6 @@ import jdk.graal.compiler.api.replacements.Fold;
  * <li>Teardown hooks (always executed on isolate teardown, except for abnormal termination)</li>
  * </ol>
  */
-@AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class RuntimeSupport implements VMRuntimeSupport {
 
@@ -73,10 +68,10 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     private final AtomicReference<Hook[]> tearDownHooks = new AtomicReference<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeSupport() {
+    public RuntimeSupport() {
     }
 
-    @Fold
+    @GuestFold
     public static RuntimeSupport getRuntimeSupport() {
         return ImageSingletons.lookup(RuntimeSupport.class);
     }
@@ -103,8 +98,8 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         if (shouldInitialize) {
             RuntimeOptionValidationSupport.singleton().validate();
 
-            IsolateArgumentParser.singleton().verifyOptionValues();
-            HeapSizeVerifier.verifyHeapOptions();
+            GuestStagingDependencyBridge.singleton().verifyIsolateArgumentOptionValues();
+            GuestStagingDependencyBridge.singleton().verifyHeapOptions();
 
             executeHooks(startupHooks);
             VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");
@@ -117,7 +112,8 @@ public final class RuntimeSupport implements VMRuntimeSupport {
      * Adds a VM-level initialization hook. Initialization hooks are executed during isolate
      * initialization, before runtime options are parsed. The executed code should therefore not
      * try to access any runtime options. If it is necessary to access a runtime option, then its
-     * value must be parsed early and accessed via {@link com.oracle.svm.core.IsolateArgumentParser}.
+     * value must be parsed early and accessed via
+     * {@code com.oracle.svm.core.IsolateArgumentParser}.
      */
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
@@ -138,7 +134,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public static void executeTearDownHooks() {
         Hook[] hooks = getRuntimeSupport().tearDownHooks.getAndSet(null);
         if (hooks != null) {
-            boolean firstIsolate = Isolates.isCurrentFirst();
+            boolean firstIsolate = GuestStagingDependencyBridge.singleton().isCurrentFirstIsolate();
             for (Hook hook : hooks) {
                 try {
                     hook.execute(firstIsolate);
@@ -152,7 +148,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
          * Execute the LogManager shutdown hook after all other hooks. This is a workaround for
          * GR-39429, as stderr might be closed afterwards.
          */
-        Util_java_lang_Shutdown.runLogManagerShutdownHook();
+        GuestStagingDependencyBridge.singleton().runLogManagerShutdownHook();
     }
 
     private static void addHook(AtomicReference<Hook[]> hooksReference, Hook newHook) {
@@ -174,7 +170,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     private static void executeHooks(AtomicReference<Hook[]> hooksReference) {
         Hook[] hooks = hooksReference.getAndSet(null);
         if (hooks != null) {
-            boolean firstIsolate = Isolates.isCurrentFirst();
+            boolean firstIsolate = GuestStagingDependencyBridge.singleton().isCurrentFirstIsolate();
             for (Hook hook : hooks) {
                 hook.execute(firstIsolate);
             }
@@ -188,7 +184,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
      */
     @Override
     public void shutdown() {
-        Target_java_lang_Shutdown.shutdown();
+        GuestStagingDependencyBridge.singleton().runJavaShutdownHooks();
     }
 
     private enum InitializationState {

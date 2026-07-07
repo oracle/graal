@@ -26,8 +26,9 @@ package com.oracle.svm.core.option;
 
 import java.util.function.Consumer;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * Notifies the {@link Heap} implementation after the value of the option has changed.

@@ -57,8 +57,15 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Builder/core pattern | Guest/shared adaptation | Notes |
 | --- | --- | --- |
 | `jdk.graal.compiler.api.replacements.Fold` | `com.oracle.svm.shared.meta.GuestFold` | Use for Fold-like constants in runtime/guest-side code without adding a `jdk.graal.compiler` dependency. Folding is performed in the guest context. |
+| `@AutomaticallyRegisteredImageSingleton` on a class moved to guest staging | Manual guest singleton installation | Do not use the annotation for guest/staging classes for now; install the guest singleton manually. GR-76880 tracks evidence for whether automatic registration support is worth implementing, so this guidance might change later. |
 | Builder singleton installed in the guest through `GuestAccess.createCallback(...)` | Shared provider interface plus builder and guest helper classes | Keep the builder-facing helper in its original module when hosted code still uses it. Register the callback under the shared provider key, such as `ImageLayerBuildingSupportProvider`, so guest code can look it up through `ImageSingletons`. |
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
+
+### Preserve Guest Module Encapsulation
+
+Never add an `opens` edge from `SVM_GUEST` or `SVM_GUEST_STAGING` to `org.graalvm.nativeimage.builder`.
+If builder code appears to require reflective access to a guest or guest-staging package, treat that requirement as a boundary-design red flag.
+Keep the operation in the guest context and expose a narrow guest-aware API or bridge instead.
 
 For reviewability, prefer splitting broad moves into one commit for the real code movement and
 non-mechanical adaptations, followed by a second commit for mechanical import and reference
@@ -131,3 +138,4 @@ If existing hosted code uses `Method.invoke(...)` or helper wrappers around core
 - Replace reflective invocation with `GuestAccess.get().invoke(...)`.
 - Replace module-layer queries with JVMCI module-layer APIs.
 - Document and handle cases where JVMCI helpers can return `null` instead of assuming reflection-style success.
+- Confirm that guest and guest-staging packages are not open to the builder; redesign the boundary instead of adding an `opens` edge.
