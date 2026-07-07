@@ -45,7 +45,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.CommonOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
-import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.hosted.FeatureImpl;

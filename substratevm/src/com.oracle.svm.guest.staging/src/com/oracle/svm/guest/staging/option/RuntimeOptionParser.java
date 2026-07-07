@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.io.PrintStream;
 import java.util.Optional;
@@ -33,8 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;

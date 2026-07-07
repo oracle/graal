@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
