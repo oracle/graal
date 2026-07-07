@@ -314,7 +314,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             dataClasses.add(createCachedDataClass(instr, consts));
         }
         if (model.epilogExceptional != null) {
-            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
+            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction(), consts));
         }
         consts.addElementsTo(this);
 

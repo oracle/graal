@@ -518,8 +518,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         for (OperationModel operation : model.getOperations()) {
-            if (operation.instruction != null) {
-                NodeData node = operation.instruction.nodeData;
+            if (operation.hasInstruction()) {
+                NodeData node = operation.instruction().nodeData;
                 if (node != null) {
                     validateUniqueSpecializationNames(node, model);
                 }
@@ -633,12 +633,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (model.localAccessesNeedLocalIndex()) {
             // clearLocal never looks up the tag, so it does not need a local index.
-            model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.loadLocalOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
         }
         if (model.materializedLocalAccessesNeedLocalIndex()) {
-            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.loadLocalMaterializedOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalMaterializedOperation.instruction().addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
         }
 
         /*
@@ -837,7 +837,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     continue;
                 }
 
-                boolean genericReturnBoxingEliminated = model.isBoxingEliminated(operation.instruction.signature.returnType());
+                boolean genericReturnBoxingEliminated = model.isBoxingEliminated(operation.instruction().signature.returnType());
                 /*
                  * First we group specializations by boxing eliminated signature. Every
                  * specialization has at most one boxing signature without implicit casts. With
@@ -845,13 +845,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                  */
                 Map<List<TypeMirror>, List<SpecializationData>> boxingGroups = new LinkedHashMap<>();
                 int signatureCount = 0;
-                for (SpecializationData specialization : operation.instruction.nodeData.getReachableSpecializations()) {
+                for (SpecializationData specialization : operation.instruction().nodeData.getReachableSpecializations()) {
                     if (specialization.getMethod() == null) {
                         continue;
                     }
 
                     List<TypeMirror> baseSignature = operation.getSpecializationSignature(specialization).dynamicOperandTypes();
-                    List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, operation.instruction.nodeData.getTypeSystem(), baseSignature);
+                    List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, operation.instruction().nodeData.getTypeSystem(), baseSignature);
 
                     signatureCount += expandedSignatures.size();
 
@@ -893,7 +893,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 break;
                             }
                         }
-                        if (isBoxingEliminatedOverload && operation.instruction.nodeData.getReachableSpecializations().size() > 1) {
+                        if (isBoxingEliminatedOverload && operation.instruction().nodeData.getReachableSpecializations().size() > 1) {
                             for (List<TypeMirror> signature : expandedSignatures) {
                                 List<TypeMirror> parameterTypes = signature.subList(1, signature.size());
                                 boxingEliminationQuickenings.add(new ResolvedQuickenDecision(operation, List.of(specialization), parameterTypes));
@@ -943,10 +943,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 if (includedSpecializations.isEmpty()) {
                     throw new AssertionError();
                 }
-                NodeData node = quickening.operation().instruction.nodeData;
+                NodeData node = quickening.operation().instruction().nodeData;
 
                 String name;
-                if (includedSpecializations.size() == quickening.operation().instruction.nodeData.getSpecializations().size()) {
+                if (includedSpecializations.size() == quickening.operation().instruction().nodeData.getSpecializations().size()) {
                     // all specializations included
                     name = "#";
                 } else {
@@ -974,7 +974,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 includedSpecializationElements, node);
 
                 // inject custom signatures.
-                InstructionModel baseInstruction = quickening.operation().instruction;
+                InstructionModel baseInstruction = quickening.operation().instruction();
 
                 if (baseInstruction.isYield()) {
                     /*
@@ -1491,10 +1491,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         List<QuickenDecision> decisions = new ArrayList<>();
 
         for (OperationModel operation : model.getOperations()) {
-            InstructionModel instruction = operation.instruction;
-            if (instruction == null) {
+            if (!operation.hasInstruction()) {
                 continue;
             }
+            InstructionModel instruction = operation.instruction();
             NodeData node = instruction.nodeData;
             if (node == null) {
                 continue;

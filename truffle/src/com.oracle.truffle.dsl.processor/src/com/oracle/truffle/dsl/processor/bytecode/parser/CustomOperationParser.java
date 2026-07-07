@@ -366,7 +366,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
         custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
 
-        if (operation.instruction.nodeData == null) {
+        if (operation.instruction().nodeData == null) {
             return;
         }
 
@@ -426,7 +426,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
         }
 
-        for (SpecializationData s : operation.instruction.nodeData.getReachableSpecializations()) {
+        for (SpecializationData s : operation.instruction().nodeData.getReachableSpecializations()) {
             ExecutableElement method = s.getMethod();
             if (method == null) {
                 continue;
@@ -705,14 +705,14 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
 
-        Signature sig = result.operation.instruction.signature;
+        Signature sig = result.operation.instruction().signature;
         if (!returnsBoolean || sig.dynamicOperandCount() != 1 || sig.isVariadic()) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
                             "Specializations for boolean converter %s must only take one dynamic operand and return boolean.", getSimpleName(typeElement));
             return null;
         }
 
-        return result.operation.instruction;
+        return result.operation.instruction();
     }
 
     private String getCustomOperationName(TypeElement typeElement, String explicitName) {

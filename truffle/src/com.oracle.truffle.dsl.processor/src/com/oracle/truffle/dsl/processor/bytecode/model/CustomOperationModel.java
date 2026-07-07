@@ -122,8 +122,8 @@ public class CustomOperationModel extends Template {
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        if (operation.instruction != null && operation.instruction.nodeData != null) {
-            return List.of(operation.instruction.nodeData);
+        if (operation.hasInstruction() && operation.instruction().nodeData != null) {
+            return List.of(operation.instruction().nodeData);
         }
         return List.of();
     }
@@ -141,7 +141,7 @@ public class CustomOperationModel extends Template {
     }
 
     public boolean inferStoreBytecodeIndex() {
-        NodeData node = this.operation.instruction.nodeData;
+        NodeData node = this.operation.instruction().nodeData;
         if (node == null) {
             // not a custom node, so not bytecode index to store
             return false;
@@ -171,7 +171,7 @@ public class CustomOperationModel extends Template {
             if (isStoreBytecodeIndex()) {
                 return true;
             } else {
-                NodeData node = this.operation.instruction.nodeData;
+                NodeData node = this.operation.instruction().nodeData;
                 if (node == null) {
                     return false;
                 }

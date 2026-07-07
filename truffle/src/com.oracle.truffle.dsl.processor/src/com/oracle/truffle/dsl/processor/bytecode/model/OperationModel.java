@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -174,7 +175,7 @@ public class OperationModel implements PrettyPrintable {
      */
     public boolean isPrivate;
 
-    public InstructionModel instruction;
+    public final List<InstructionModel> instructions = new ArrayList<>();
     public CustomOperationModel customModel;
 
     // The constant operands parsed from {@code @ConstantOperand} annotations.
@@ -256,12 +257,26 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public OperationModel setInstruction(InstructionModel instruction) {
-        this.instruction = instruction;
+        if (!instructions.isEmpty()) {
+            throw new AssertionError("instruction already set for this operation");
+        }
+        this.instructions.add(instruction);
         if (instruction.operation != null) {
             throw new AssertionError("operation already set");
         }
         instruction.operation = this;
         return this;
+    }
+
+    public boolean hasInstruction() {
+        return !instructions.isEmpty();
+    }
+
+    public InstructionModel instruction() {
+        if (instructions.size() != 1) {
+            throw new AssertionError("Expected exactly one instruction for operation %s, but found %s.".formatted(name, instructions));
+        }
+        return instructions.get(0);
     }
 
     public OperationModel setOperationBeginArguments(OperationArgument... operationBeginArguments) {

@@ -433,7 +433,7 @@ public class BytecodeDSLBuiltins {
             yieldResultStackOffsets.add(m.getYieldResultStackOffset(m.findOperation(OperationKind.YIELD)));
         }
         for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
-            if (yieldOperation.instruction.signature.dynamicOperandCount() == 0) {
+            if (yieldOperation.instruction().signature.dynamicOperandCount() == 0) {
                 needsYieldNull = true;
             } else {
                 yieldResultStackOffsets.add(m.getYieldResultStackOffset(yieldOperation));

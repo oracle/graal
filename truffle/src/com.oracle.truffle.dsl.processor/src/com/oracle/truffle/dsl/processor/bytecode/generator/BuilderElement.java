@@ -1326,7 +1326,7 @@ final class BuilderElement extends AbstractElement {
         } else if (operation.isCustom()) {
             result.append(" -> ");
             result.append(ElementUtils.getSimpleName(
-                            operation.instruction.signature.returnType()));
+                            operation.instruction().signature.returnType()));
         } else {
             result.append(" -> Object");
         }
@@ -1612,7 +1612,7 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void emitValidateLocalScope(CodeTreeBuilder b, OperationModel operation) {
-        boolean materialized = operation.instruction.kind.isLocalVariableMaterializedAccess();
+        boolean materialized = operation.instruction().kind.isLocalVariableMaterializedAccess();
         emitValidateLocalScope(b, materialized, operation.getOperationBeginArgumentName(0));
     }
 
@@ -2089,7 +2089,7 @@ final class BuilderElement extends AbstractElement {
 
         switch (operation.kind) {
             case CUSTOM_SHORT_CIRCUIT:
-                InstructionModel shortCircuitInstruction = operation.instruction;
+                InstructionModel shortCircuitInstruction = operation.instruction();
                 if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
                     /*
                      * All operands except the last are automatically converted when testing the
@@ -2155,7 +2155,7 @@ final class BuilderElement extends AbstractElement {
                 b.statement("markReachable(", operationStack.read(operation, operationFields.thenReachable), " || ", operationStack.read(operation, operationFields.elseReachable),
                                 ")");
                 if (model.usesBoxingElimination()) {
-                    buildEmitInstruction(b, null, operation.instruction, emitMergeConditionalArguments(operation.instruction));
+                    buildEmitInstruction(b, null, operation.instruction(), emitMergeConditionalArguments(operation.instruction()));
                 }
                 break;
             case TRY_CATCH:
@@ -2224,7 +2224,7 @@ final class BuilderElement extends AbstractElement {
 
                 b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
                 String[] args;
-                InstructionImmediate imm = operation.instruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX);
+                InstructionImmediate imm = operation.instruction().getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX);
                 if (imm == null) {
                     args = new String[]{operationStack.read(operation, operationFields.nodeId)};
                 } else {
@@ -2292,7 +2292,7 @@ final class BuilderElement extends AbstractElement {
                 }
                 break;
             default:
-                if (operation.instruction != null) {
+                if (operation.hasInstruction()) {
                     buildEmitOperationInstruction(b, operation, constantOperandValues);
                 }
                 break;
@@ -2312,7 +2312,7 @@ final class BuilderElement extends AbstractElement {
             b.startIf().string("operation.childCount <= 1").end().startBlock();
             b.lineComment("Single child -> boxing elimination possible");
             b.startStatement().string("nextBci = ");
-            ShortCircuitInstructionModel shortCircuitModel = operation.instruction.shortCircuitModel;
+            ShortCircuitInstructionModel shortCircuitModel = operation.instruction().shortCircuitModel;
             if (shortCircuitModel.returnConvertedBoolean()) {
                 // We emit a boolean converter instruction above. Compute its bci.
                 b.string("state.bci - " + shortCircuitModel.booleanConverterInstruction().getInstructionLength());
@@ -2344,12 +2344,12 @@ final class BuilderElement extends AbstractElement {
              * tag.resume bci if it was emitted, otherwise use the yield bci. Note: a leader bci was
              * already requested at state.bci in buildEmitOperationInstruction, so yieldBci is safe from rewrites.
              */
-            String yieldBci = "state.bci - " + operation.instruction.getInstructionLength();
+            String yieldBci = "state.bci - " + operation.instruction().getInstructionLength();
             emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : " + yieldBci);
         } else {
             String nextBci;
-            if (operation.instruction != null) {
-                nextBci = "state.bci - " + operation.instruction.getInstructionLength();
+            if (operation.hasInstruction()) {
+                nextBci = "state.bci - " + operation.instruction().getInstructionLength();
             } else {
                 nextBci = "-1";
             }
@@ -2654,7 +2654,7 @@ final class BuilderElement extends AbstractElement {
                 }
                 for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
                     String constantOperandValue = emitConstantOperand(b, prologOperation.operationEndArguments[i], prologOperation.constantOperandAfterNames.get(i));
-                    InstructionImmediate immediate = prologOperation.instruction.constantOperandImmediates.get(after.get(i));
+                    InstructionImmediate immediate = prologOperation.instruction().constantOperandImmediates.get(after.get(i));
                     b.statement(BytecodeRootNodeElement.writeImmediate("state.bc", operationStack.read(rootOperation, operationFields.prologBci), constantOperandValue, immediate.encoding()));
                 }
             }
@@ -3162,7 +3162,7 @@ final class BuilderElement extends AbstractElement {
                 b.declaration(type(int.class), "constantPoolIndex", "state.allocateContinuationConstant()");
                 yield new String[]{"constantPoolIndex"};
             }
-            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, constantOperandValues);
+            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction(), customChildBci, constantOperandValues);
             case CUSTOM_SHORT_CIRCUIT -> throw new AssertionError("Tried to emit a short circuit instruction directly. These operations should only be emitted implicitly.");
             default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
         };
@@ -3170,15 +3170,15 @@ final class BuilderElement extends AbstractElement {
         switch (operation.kind) {
             case CUSTOM_YIELD:
             case YIELD:
-                buildEmitInstruction(b, "continuationBci", operation.instruction, args);
+                buildEmitInstruction(b, "continuationBci", operation.instruction(), args);
                 b.startStatement().startCall("state.doEmitContinuation");
-                b.string("constantPoolIndex").string("continuationBci != -1 ? continuationBci + " + operation.instruction.getInstructionLength() + " : -1");
+                b.string("constantPoolIndex").string("continuationBci != -1 ? continuationBci + " + operation.instruction().getInstructionLength() + " : -1");
                 b.string("state.currentStackHeight");
                 b.end(2); // statement + call
                 emitRequestLeaderBci(b, "start of continuation resume block");
                 break;
             default:
-                buildEmitInstruction(b, null, operation.instruction, args);
+                buildEmitInstruction(b, null, operation.instruction(), args);
                 break;
         }
 
@@ -3303,7 +3303,7 @@ final class BuilderElement extends AbstractElement {
         b.startThrow().startCall("state.failState").doubleQuote("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.").end().end();
         b.end();
 
-        buildEmitInstruction(b, null, operation.instruction, "safeCastShort(exceptionStackHeight)");
+        buildEmitInstruction(b, null, operation.instruction(), "safeCastShort(exceptionStackHeight)");
     }
 
     private CodeExecutableElement createValidateRootOperationBegin() {
@@ -3405,8 +3405,8 @@ final class BuilderElement extends AbstractElement {
             case BRANCH -> buildEmitBranch(b, operation);
             case LOAD_EXCEPTION -> buildEmitLoadException(b, operation);
             case CUSTOM_YIELD -> {
-                if (operation.instruction.signature.dynamicOperandCount() != 0) {
-                    throw new AssertionError("expected custom yield to have 0 dynamic operands: " + operation.instruction);
+                if (operation.instruction().signature.dynamicOperandCount() != 0) {
+                    throw new AssertionError("expected custom yield to have 0 dynamic operands: " + operation.instruction());
                 }
 
                 if (model.enableTagInstrumentation) {
@@ -3418,7 +3418,7 @@ final class BuilderElement extends AbstractElement {
                 }
             }
             default -> {
-                if (operation.instruction == null) {
+                if (!operation.hasInstruction()) {
                     throw new AssertionError("operation did not have instruction");
                 }
                 buildEmitOperationInstruction(b, operation, constantOperandValues);
@@ -3435,7 +3435,7 @@ final class BuilderElement extends AbstractElement {
                 break;
         }
 
-        emitCallAfterChild(b, operation, String.valueOf(!operation.isVoid), operation.instruction != null ? "state.bci - " + operation.instruction.getInstructionLength() : "-1");
+        emitCallAfterChild(b, operation, String.valueOf(!operation.isVoid), operation.hasInstruction() ? "state.bci - " + operation.instruction().getInstructionLength() : "-1");
 
         if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
             VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
@@ -3476,8 +3476,7 @@ final class BuilderElement extends AbstractElement {
      * Returns the names of the declared variables for later use in code gen.
      */
     private List<String> emitConstantBeginOperands(CodeTreeBuilder b, OperationModel operation) {
-        InstructionModel instruction = operation.instruction;
-        if (instruction == null) {
+        if (!operation.hasInstruction()) {
             return List.of();
         }
 
@@ -3503,8 +3502,7 @@ final class BuilderElement extends AbstractElement {
      * Returns the names of the declared variables for later use in code gen.
      */
     private Map<ConstantOperandModel, String> emitConstantOperands(CodeTreeBuilder b, OperationModel operation) {
-        InstructionModel instruction = operation.instruction;
-        if (instruction == null) {
+        if (!operation.hasInstruction()) {
             return Map.of();
         }
         List<ConstantOperandModel> before = operation.constantOperands.before();
@@ -3550,7 +3548,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         if (operation.isVariadic) {
-            b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction.signature.dynamicOperandCount() - 1));
+            b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction().signature.dynamicOperandCount() - 1));
 
             b.declaration(type(int.class), "createVariadicBci", operationStack.read(operation, operationFields.createVariadicBci));
             b.startIf().string("createVariadicBci != -1").end().startBlock();
@@ -3687,7 +3685,7 @@ final class BuilderElement extends AbstractElement {
                 b.end();
                 b.statement("break");
             } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                ShortCircuitInstructionModel shortCircuitModel = op.instruction.shortCircuitModel;
+                ShortCircuitInstructionModel shortCircuitModel = op.instruction().shortCircuitModel;
 
                 // Only emit the boolean check between consecutive children.
                 b.startIf().string("childIndex != 0").end().startBlock();
@@ -3701,11 +3699,11 @@ final class BuilderElement extends AbstractElement {
                     if (!shortCircuitModel.producesBoolean()) {
                         buildEmitInstruction(b, null, model.dupInstruction);
                     }
-                    buildEmitBooleanConverterInstruction(b, op.instruction);
+                    buildEmitBooleanConverterInstruction(b, op.instruction());
                 }
 
                 // Emit the boolean check.
-                buildEmitInstruction(b, "shortCircuitBci", op.instruction, emitShortCircuitArguments(op.instruction));
+                buildEmitInstruction(b, "shortCircuitBci", op.instruction(), emitShortCircuitArguments(op.instruction()));
 
                 if (model.usesBoxingElimination()) {
                     b.tree(operationStack.write(op, operationFields.shortCircuitBci, "shortCircuitBci"));
@@ -3722,7 +3720,7 @@ final class BuilderElement extends AbstractElement {
                 b.startAssign("branchFixupBcis").startStaticCall(type(Arrays.class), "copyOf").string("branchFixupBcis").string("branchFixupBcis.length * 2").end().end();
                 b.tree(operationStack.write(op, operationFields.branchFixupBcis, "branchFixupBcis"));
                 b.end();
-                b.statement("branchFixupBcis[numBranchFixupBcis] = shortCircuitBci + " + op.instruction.getImmediate("branch_target").offset());
+                b.statement("branchFixupBcis[numBranchFixupBcis] = shortCircuitBci + " + op.instruction().getImmediate("branch_target").offset());
                 b.tree(operationStack.write(op, operationFields.numBranchFixupBcis, "numBranchFixupBcis + 1"));
 
                 b.end(); // reachable
@@ -3751,7 +3749,7 @@ final class BuilderElement extends AbstractElement {
             } else if (op.isCustomVariadic()) {
                 // Before emitting a variadic instruction, we need to emit instructions
                 // to merge all of the operands on the stack into one array.
-                if (op.instruction.signature.dynamicOperandCount() == 1) {
+                if (op.instruction().signature.dynamicOperandCount() == 1) {
                     // only argument is variadic
                     b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
@@ -3764,12 +3762,12 @@ final class BuilderElement extends AbstractElement {
                     b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
                     b.end();
                 } else {
-                    b.startIf().string("childIndex >= " + (op.instruction.signature.dynamicOperandCount() - 1)).end().startBlock();
+                    b.startIf().string("childIndex >= " + (op.instruction().signature.dynamicOperandCount() - 1)).end().startBlock();
                     b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
                         b.string(op.variadicOffset);
                     }
-                    b.string("childIndex - " + (op.instruction.signature.dynamicOperandCount() - 1));
+                    b.string("childIndex - " + (op.instruction().signature.dynamicOperandCount() - 1));
                     b.end().end();
                     b.startIf().string("createVariadicBci != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
@@ -4088,8 +4086,8 @@ final class BuilderElement extends AbstractElement {
                 case CUSTOM_INSTRUMENTATION:
                     boolean elseIf = false;
 
-                    for (Operand operand : op.instruction.signature.dynamicOperands()) {
-                        if (op.instruction.needsChildBciForBoxingElimination(model, operand)) {
+                    for (Operand operand : op.instruction().signature.dynamicOperands()) {
+                        if (op.instruction().needsChildBciForBoxingElimination(model, operand)) {
                             elseIf = b.startIf(elseIf);
                             b.string("childIndex == " + operand.dynamicIndex()).end().startBlock();
 
@@ -4099,8 +4097,8 @@ final class BuilderElement extends AbstractElement {
                     }
 
                     if (op.isVariadic && model.hasVariadicReturn) {
-                        if (op.instruction.signature.dynamicOperandCount() > 1) {
-                            b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount() - 2).end().startBlock();
+                        if (op.instruction().signature.dynamicOperandCount() > 1) {
+                            b.startIf().string("childIndex > ").string(op.instruction().signature.dynamicOperandCount() - 2).end().startBlock();
                         }
 
                         b.startIf().string("isVariadicReturn(operationCode)").end().startBlock();
@@ -4113,8 +4111,8 @@ final class BuilderElement extends AbstractElement {
                                         "variadicReturnIndices.length * 2").end().end();
                         b.tree(operationStack.write(op, operationFields.variadicReturnIndices, "variadicReturnIndices"));
                         b.end();
-                        if (op.instruction.signature.dynamicOperandCount() > 1) {
-                            b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex - " + (op.instruction.signature.dynamicOperandCount() - 1));
+                        if (op.instruction().signature.dynamicOperandCount() > 1) {
+                            b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex - " + (op.instruction().signature.dynamicOperandCount() - 1));
                         } else {
                             b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex");
                         }
@@ -4122,7 +4120,7 @@ final class BuilderElement extends AbstractElement {
 
                         b.end(); // if isVariadicReturn
 
-                        if (op.instruction.signature.dynamicOperandCount() > 1) {
+                        if (op.instruction().signature.dynamicOperandCount() > 1) {
                             b.end();
                         }
                     }
@@ -4694,7 +4692,7 @@ final class BuilderElement extends AbstractElement {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitEpilogReturnTableEntries");
         ex.addParameter(new CodeVariableElement(type(int.class), "epilogBci"));
         CodeTreeBuilder b = ex.createBuilder();
-        int epilogInstructionLength = model.epilogReturn.operation.instruction.getInstructionLength();
+        int epilogInstructionLength = model.epilogReturn.operation.instruction().getInstructionLength();
 
         // Walk source sections top-to-bottom (emit more specific sections first).
         buildOperationStackWalk(b, lowestOperationIndex, () -> {
@@ -5050,7 +5048,7 @@ final class BuilderElement extends AbstractElement {
                 sourceAndLocalRangeStartBci = "sourceAndLocalRangeStartBci";
                 b.declaration(type(int.class), sourceAndLocalRangeStartBci);
                 b.statement("assert epilogBci != -1");
-                b.startIf().string("epilogBci + " + model.epilogReturn.operation.instruction.getInstructionLength(), " == state.bci").end().startBlock();
+                b.startIf().string("epilogBci + " + model.epilogReturn.operation.instruction().getInstructionLength(), " == state.bci").end().startBlock();
                 b.lineComment("The last instruction was the epilog.");
                 b.lineComment("Reopen source/local tables with epilogBci so the epilog instruction gets precise source/local metadata.");
                 b.startAssign(sourceAndLocalRangeStartBci).string("epilogBci").end();
@@ -7558,8 +7556,8 @@ final class BuilderElement extends AbstractElement {
                     } else {
                         fields.addAll(getConstants(operation.constantOperands.before(), true));
                         if (model.usesBoxingElimination()) {
-                            for (Operand operand : operation.instruction.signature.dynamicOperands()) {
-                                if (operation.instruction.needsChildBciForBoxingElimination(model, operand)) {
+                            for (Operand operand : operation.instruction().signature.dynamicOperands()) {
+                                if (operation.instruction().needsChildBciForBoxingElimination(model, operand)) {
                                     fields.add(getChildBci(operand.dynamicIndex(), true));
                                 }
                             }

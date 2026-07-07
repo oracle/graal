@@ -117,7 +117,7 @@ final class BytecodeNodeElement extends AbstractElement {
             this.add(parent.compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(types.Node), "cachedNodes_")));
             this.add(parent.compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(boolean.class)), "exceptionProfiles_")));
             if (parent.model.epilogExceptional != null) {
-                this.add(parent.child(new CodeVariableElement(Set.of(PRIVATE), BytecodeRootNodeElement.getCachedDataClassType(parent.model.epilogExceptional.operation.instruction),
+                this.add(parent.child(new CodeVariableElement(Set.of(PRIVATE), BytecodeRootNodeElement.getCachedDataClassType(parent.model.epilogExceptional.operation.instruction()),
                                 "epilogExceptionalNode_")));
             }
 
@@ -1530,7 +1530,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
         if (parent.model.epilogExceptional != null) {
             b.startAssign("this.epilogExceptionalNode_").startCall("insert").startNew(
-                            BytecodeRootNodeElement.getCachedDataClassType(parent.model.epilogExceptional.operation.instruction)).end().end().end();
+                            BytecodeRootNodeElement.getCachedDataClassType(parent.model.epilogExceptional.operation.instruction())).end().end().end();
         }
 
         if (parent.model.usesBoxingElimination()) {
@@ -2539,7 +2539,7 @@ final class BytecodeNodeElement extends AbstractElement {
     }
 
     private CodeExecutableElement createDoEpilogExceptional() {
-        InstructionModel instruction = parent.model.epilogExceptional.operation.instruction;
+        InstructionModel instruction = parent.model.epilogExceptional.operation.instruction();
         CodeExecutableElement method = new BytecodeInstructionHandler(this, instruction, null).emit(CodeTreeBuilder.createBuilder());
         method.setSimpleName(CodeNames.of("doEpilogExceptional"));
         method.setReturnType(type(void.class));

@@ -502,7 +502,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (epilogReturn == null) {
             return false;
         }
-        return epilogReturn.operation.instruction == this;
+        return epilogReturn.operation.instruction() == this;
     }
 
     public boolean hasBoxingOverloadForType(TypeMirror type) {
@@ -535,7 +535,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (epilogExceptional == null) {
             return false;
         }
-        return epilogExceptional.operation.instruction == this;
+        return epilogExceptional.operation.instruction() == this;
     }
 
     public List<InstructionModel> getFlattenedQuickenedInstructions() {

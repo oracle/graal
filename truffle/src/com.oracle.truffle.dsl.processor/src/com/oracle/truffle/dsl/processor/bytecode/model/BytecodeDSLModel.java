@@ -648,7 +648,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         // Throwing an exception on illegal load makes load.local side-effecting.
         if (loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
             // load.local x, pop -> _
-            rules.add(rule(delete(p(loadLocalOperation.instruction), p(popInstruction))));
+            rules.add(rule(delete(p(loadLocalOperation.instruction()), p(popInstruction))));
         }
         // clear.local x, clear.local x -> clear.local x
         rules.add(rule(identity(p(clearLocalInstruction, "x")), delete(p(clearLocalInstruction, "x"))));
@@ -684,9 +684,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      * immediate layout differences that can vary between configurations.
      */
     private InstructionPatternModel pStoreLocal(String localBinding) {
-        String[] immediates = new String[storeLocalOperation.instruction.immediates.size()];
+        String[] immediates = new String[storeLocalOperation.instruction().immediates.size()];
         immediates[0] = localBinding;
-        return p(storeLocalOperation.instruction, immediates);
+        return p(storeLocalOperation.instruction(), immediates);
     }
 
     public short getInstructionStartIndex() {
@@ -754,7 +754,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public int getYieldResultStackOffset(OperationModel yieldOperation) {
-        int dynamicOperandCount = yieldOperation.instruction.signature.dynamicOperandCount();
+        int dynamicOperandCount = yieldOperation.instruction().signature.dynamicOperandCount();
         if (dynamicOperandCount == 0) {
             throw new AssertionError("Yield operation has no result operand: " + yieldOperation);
         }
