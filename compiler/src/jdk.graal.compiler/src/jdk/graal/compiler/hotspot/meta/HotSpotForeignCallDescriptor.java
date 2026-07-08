@@ -81,13 +81,24 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
                     String name,
                     Class<?> resultType,
                     Class<?>... argumentTypes) {
+        this(transition, callSideEffect, killedLocations, name, resultType, false, argumentTypes);
+    }
+
+    public HotSpotForeignCallDescriptor(Transition transition,
+                    CallSideEffect callSideEffect,
+                    LocationIdentity[] killedLocations,
+                    String name,
+                    Class<?> resultType,
+                    boolean lazilyResolved,
+                    Class<?>... argumentTypes) {
         super(name,
                         resultType,
                         argumentTypes,
                         callSideEffect,
                         killedLocations,
                         transition == SAFEPOINT,
-                        transition == SAFEPOINT);
+                        transition == SAFEPOINT,
+                        lazilyResolved);
         this.transition = transition;
     }
 
@@ -113,6 +124,7 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
                         ", callSideEffect=" + callSideEffect +
                         ", canDeoptimize=" + canDeoptimize +
                         ", isGuaranteedSafepoint=" + isGuaranteedSafepoint +
+                        ", lazilyResolved=" + lazilyResolved +
                         ", killedLocations=" + Arrays.toString(killedLocations) +
                         ", transition=" + transition +
                         '}';

@@ -67,6 +67,7 @@ public class ForeignCallDescriptor {
     protected final CallSideEffect callSideEffect;
     protected final boolean canDeoptimize;
     protected final boolean isGuaranteedSafepoint;
+    protected final boolean lazilyResolved;
     protected final LocationIdentity[] killedLocations;
 
     public ForeignCallDescriptor(String name,
@@ -76,10 +77,22 @@ public class ForeignCallDescriptor {
                     LocationIdentity[] killedLocations,
                     boolean canDeoptimize,
                     boolean isGuaranteedSafepoint) {
+        this(name, resultType, argumentTypes, callSideEffect, killedLocations, canDeoptimize, isGuaranteedSafepoint, false);
+    }
+
+    public ForeignCallDescriptor(String name,
+                    Class<?> resultType,
+                    Class<?>[] argumentTypes,
+                    CallSideEffect callSideEffect,
+                    LocationIdentity[] killedLocations,
+                    boolean canDeoptimize,
+                    boolean isGuaranteedSafepoint,
+                    boolean lazilyResolved) {
         this.callSideEffect = callSideEffect;
         this.killedLocations = killedLocations;
         this.canDeoptimize = canDeoptimize;
         this.isGuaranteedSafepoint = isGuaranteedSafepoint;
+        this.lazilyResolved = lazilyResolved;
         this.signature = new ForeignCallSignature(name, resultType, argumentTypes);
     }
 
@@ -140,12 +153,20 @@ public class ForeignCallDescriptor {
         return isGuaranteedSafepoint;
     }
 
+    /**
+     * Determines if this descriptor is resolved through the provider's lazy foreign call map.
+     */
+    public boolean isLazilyResolved() {
+        return lazilyResolved;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + "{" + signature +
                         ", callSideEffect=" + callSideEffect +
                         ", canDeoptimize=" + canDeoptimize +
                         ", isGuaranteedSafepoint=" + isGuaranteedSafepoint +
+                        ", lazilyResolved=" + lazilyResolved +
                         ", killedLocations=" + Arrays.toString(killedLocations) +
                         '}';
     }

@@ -42,25 +42,31 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.xmm0;
+import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 
+import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.IntrinsicStubsGen;
-import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexForeignCalls;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -112,5 +118,26 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         link(new AMD64MathStub(LOG10, options, providers, registerStubCall(LOG10.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64MathStub(POW, options, providers, registerStubCall(POW.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64MathStub(CBRT, options, providers, registerStubCall(CBRT.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+    }
+
+    @Override
+    protected CallingConvention getVectorMathLibraryCallingConvention(int vectorLength, JavaKind elementKind, int argumentCount) {
+        AMD64Kind amd64ElementKind = switch (elementKind) {
+            case JavaKind.Float -> AMD64Kind.SINGLE;
+            case JavaKind.Double -> AMD64Kind.DOUBLE;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(elementKind);
+        };
+        AMD64Kind vectorKind = AVXKind.getAVXKind(amd64ElementKind, vectorLength);
+        if (vectorKind.getSizeInBytes() != vectorLength * amd64ElementKind.getSizeInBytes()) {
+            /* We only want to deal with full vectors. */
+            return null;
+        }
+        LIRKind valueKind = LIRKind.value(vectorKind);
+        RegisterValue result = xmm0.asValue(valueKind);
+        return switch (argumentCount) {
+            case 1 -> new CallingConvention(0, result, xmm0.asValue(valueKind));
+            case 2 -> new CallingConvention(0, result, xmm0.asValue(valueKind), xmm1.asValue(valueKind));
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(argumentCount);
+        };
     }
 }

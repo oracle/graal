@@ -53,6 +53,8 @@ import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIFromBitsC
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIIndexPartiallyInUpperRangeNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIIndexVectorNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIInsertNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILibraryBinaryOpNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILibraryUnaryOpNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadMaskedNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMacroNode;
@@ -234,6 +236,30 @@ public class VectorAPIIntrinsics {
                 ValueNode mask = m.isNullConstant() ? m : b.nullCheckedValue(m);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, oprId, vmClass, mClass, eClass, length, b.nullCheckedValue(v1), b.nullCheckedValue(v2), mask, defaultImpl);
                 b.addPush(JavaKind.Object, VectorAPIBinaryOpNode.create(params, b));
+                return true;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("libraryUnaryOp", long.class, Class.class, Class.class, int.class, String.class, vector, unaryOperation) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode address, ValueNode vClass, ValueNode eClass, ValueNode length, ValueNode symbolName,
+                            ValueNode v, ValueNode defaultImpl) {
+                ObjectStamp speciesStamp = VectorAPIUtils.nonNullStampForClassValue(b, vClass);
+                StampPair returnStamp = makeReturnStamp(b, speciesStamp);
+                MacroParams params = MacroParams.of(b, targetMethod, returnStamp, address, vClass, eClass, length, symbolName, b.nullCheckedValue(v), defaultImpl);
+                b.addPush(JavaKind.Object, VectorAPILibraryUnaryOpNode.create(params, b));
+                return true;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("libraryBinaryOp", long.class, Class.class, Class.class, int.class, String.class, vectorPayload, vectorPayload, binaryOperation) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode address, ValueNode vmClass, ValueNode eClass, ValueNode length, ValueNode symbolName,
+                            ValueNode v1, ValueNode v2, ValueNode defaultImpl) {
+                ObjectStamp speciesStamp = VectorAPIUtils.nonNullStampForClassValue(b, vmClass);
+                StampPair returnStamp = makeReturnStamp(b, speciesStamp);
+                MacroParams params = MacroParams.of(b, targetMethod, returnStamp, address, vmClass, eClass, length, symbolName, b.nullCheckedValue(v1), b.nullCheckedValue(v2), defaultImpl);
+                b.addPush(JavaKind.Object, VectorAPILibraryBinaryOpNode.create(params, b));
                 return true;
             }
         });
