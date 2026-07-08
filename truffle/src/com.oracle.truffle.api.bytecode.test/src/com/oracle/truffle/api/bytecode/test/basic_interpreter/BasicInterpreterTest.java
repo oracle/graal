@@ -3614,6 +3614,45 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         b.endConditional();
     }
 
+    @Test
+    public void testNegativeRelativeBytecodeIndexStoreLocal() {
+        // Regression test for mishandling of negative childBci in StoreLocal.
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("negativeRelativeBytecodeIndexStoreLocal", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            // Short-circuit operations with multiple operands pass the short-circuit instruction bci.
+            // TODO GR-77456: replace the nested conditional with a simpler expression once multi-operand short-circuit ops pass -1.
+            b.beginScAnd();
+            b.emitLoadConstant(1L);
+            emitNestedConditionalExpression(b, 0, 16);
+            b.endScAnd();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(1L, node.getCallTarget().call(1L));
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+
+        List<Instruction> storeLocalInstr = node.getBytecodeNode().getInstructionsAsList().stream().filter((i) -> i.getName().equals("store.local$generic")).toList();
+        assertEquals(1, storeLocalInstr.size());
+
+        for (Argument argument : storeLocalInstr.get(0).getArguments()) {
+            if (argument.getKind() == Kind.BYTECODE_INDEX && argument.getName().equals("child0")) {
+                assertEquals(-1, argument.asBytecodeIndex());
+                return;
+            }
+        }
+        fail("Relative child BCI wasn't -1 for the StoreLocal instruction");
+    }
+
     /**
      * Tests that transitioning from uncached to cached correctly adapts cached local tags to the
      * current variables in the frame.

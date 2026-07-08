@@ -2182,10 +2182,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             b.declaration(type(short.class), "newInstruction");
 
-            b.startIf().string("operandIndex != -1").end().startBlock();
-
-            b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
-
+            b.declaration(type(byte.class), "newTag");
             b.startDeclaration(type(byte.class), "oldTag");
             b.startCall(bytecodeNode, "getCachedLocalTagInternal");
             if (materialized) {
@@ -2197,8 +2194,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end(); // call
             b.end(); // declaration
 
+            b.startIf().string("operandIndex != -1").end().startBlock();
+
+            b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
+
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(byte.class), "newTag");
 
             InstructionModel genericInstruction = instruction.findQuickening(QuickeningKind.GENERIC, null, false);
 
@@ -2270,6 +2270,20 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
             b.end(); // else
 
+            parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+
+            b.end(); // end if operandIndex != -1
+
+            // case operandIndex == -1
+            b.startElseBlock();
+            b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
+            b.startStatement().string("newTag = ").staticReference(parent.parent.frameTagsElement.getObject()).end();
+            parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQuickeningName());
+            b.startStatement();
+            BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string(localsFrame).string("slot").string(value.localName()).end();
+            b.end();
+            b.end();
+
             b.startIf().string("newTag != oldTag").end().startBlock();
             b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
             if (materialized) {
@@ -2281,15 +2295,6 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.string("newTag");
             b.end(2);
             b.end(); // if newTag != oldTag
-
-            parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
-
-            b.end(); // end if operandIndex != -1
-
-            // case operandIndex == -1
-            b.startElseBlock();
-            b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
-            b.end();
 
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
@@ -2329,9 +2334,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end(); // else block
 
             parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
-            b.end();
+            b.end(); // if not -1 block
 
-            b.startElseBlock().startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(boxedInstruction)).end();
+            b.startElseBlock();
+            b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(boxedInstruction)).end();
+            parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "BranchFalse$" + boxedInstruction.getQuickeningName());
             b.end();
 
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
