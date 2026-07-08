@@ -69,9 +69,9 @@ import jdk.graal.compiler.options.Option;
  * [s4 frameInfoIndex]
  * </pre>
  *
- * Extended entries (final images only):
+ * Extended entries:
  * <pre>
- * u1 extendedEntryMarker           // 0xFD..0xFF, selects frame info format
+ * u1 extendedEntryMarker           // 0x1F..0x3F, selects extended layout
  * u1 deltaIP
  * u1 basicEntryFlags               // determines field layout (together with marker value)
  * [s1|s2|s4 frameSizeEncoding]
@@ -80,9 +80,9 @@ import jdk.graal.compiler.options.Option;
  * [s4 frameInfoIndex | s1|s2 frameInfoIndexDeltaToChunkDefault | empty (use chunk-default frame info)]
  * </pre>
  *
- * Extended entries are used only in the metadata of final images, i.e., non-layered images, or
- * the last layer of a layered image. Extended entries are marked by special marker values which
- * (in a final image) are never used for basicEntryFlags of a regular entry.
+ * Extended entries are marked by special marker values which are never used for basicEntryFlags of
+ * a regular entry. Certain types of extended entries are used only in the metadata of final images,
+ * i.e., non-layered images, or the last layer of a layered image.
  * <p>
  * The size of the whole entry can be computed from the decoded flags, which allows fast iteration
  * of the table. The deltaIP is the difference of the IP for this entry and the next entry. The
@@ -107,9 +107,14 @@ public final class CodeInfoDecoder {
     static final int EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1 = 1 << EXTENDED_ENTRY_MODE_SHIFT;
     static final int EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2 = 2 << EXTENDED_ENTRY_MODE_SHIFT;
     static final int EXTENDED_ENTRY_MODE_FI_DEFAULT = 3 << EXTENDED_ENTRY_MODE_SHIFT;
-    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY = 0xFD;
-    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 = 0xFE;
-    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2 = 0xFF;
+    /*
+     * Extended entry marker values cannot be used for basicEntryFlags of regular entries.
+     * Use a flag pattern that should be very rare: 4-byte both for frame size and exception offset.
+     */
+    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY = 0x0F;
+    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT = FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY + 0x10;
+    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 = FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT + 0x10;
+    static final int FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2 = FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 + 0x10;
     static final int EXTENDED_ENTRY_BASIC_FLAGS_OFFSET = 2;
 
     public static class Options {
@@ -341,19 +346,20 @@ public final class CodeInfoDecoder {
     static int loadEntryFlags(CodeInfo info, long curOffset) {
         counters().loadEntryFlagsCount.inc();
         int firstByte = NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), curOffset);
-        if (!isExtendedEntryMarker(firstByte) || !CodeInfoAccess.usesFinalImageCodeInfoEncoding(info)) {
+        /*
+         * Special marker values indicate the start of an extended entry of a specific form. These
+         * values must therefore never be used for the basic flags of a regular entry. Extended
+         * entries have a separate field for the basic flags.
+         */
+        if (!isExtendedEntryMarker(firstByte)) {
             return firstByte;
         }
-        /*
-         * Final image code reserves marker values for the first byte of an entry to mark the start
-         * of an extended entry. These values must therefore never be used for the basic flags of a
-         * regular entry. Extended entries have a separate byte for basic flags.
-         */
         int basicEntryFlags = NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), curOffset + EXTENDED_ENTRY_BASIC_FLAGS_OFFSET);
+        assert firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY || CodeInfoAccess.usesFinalImageCodeInfoEncoding(info) //
+                        : "Non-final images are expected to use only legacy extended entries and only when flags collide with extended entry marker values";
         return switch (firstByte) {
-            case FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY -> extractFI(basicEntryFlags) == FI_NO_INFO
-                            ? EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_FI_DEFAULT | withFIDefault(basicEntryFlags)
-                            : EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_LEGACY | basicEntryFlags;
+            case FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY -> EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_LEGACY | basicEntryFlags;
+            case FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT -> EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_FI_DEFAULT | withFIDefault(basicEntryFlags);
             case FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 -> EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1 | withFIInfoOnly(basicEntryFlags);
             case FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2 -> EXTENDED_ENTRY_FLAG | EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2 | withFIInfoOnly(basicEntryFlags);
             default -> throw shouldNotReachHereUnexpectedInput(firstByte);
@@ -713,6 +719,8 @@ public final class CodeInfoDecoder {
             FI_OFFSET[i] = TypeConversion.asU1(RM_OFFSET[i] + RM_MEM_SIZE[extractRM(i)]);
             AFTER_FI_OFFSET[i] = TypeConversion.asU1(FI_OFFSET[i] + FI_MEM_SIZE[extractFI(i)]);
         }
+
+        assert isExtendedEntryMarker((EX_OFFSET_S4 << EX_SHIFT) | (FS_SIZE_S4 << FS_SHIFT)) : "ensure very rare flag combination for extended entry markers";
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -742,7 +750,9 @@ public final class CodeInfoDecoder {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean isExtendedEntryMarker(int firstByte) {
-        return firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY || firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 ||
+        return firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY ||
+                        firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT ||
+                        firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1 ||
                         firstByte == FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2;
     }
 

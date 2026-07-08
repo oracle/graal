@@ -581,7 +581,9 @@ public class CodeInfoEncoder {
             entryFlags = entryFlags | flagsForReferenceMapIndex(data) << CodeInfoDecoder.RM_SHIFT;
             entryFlags = entryFlags | flagsForDeoptFrameInfo(data) << CodeInfoDecoder.FI_SHIFT;
             if (useFinalImageCodeInfoEncoding) {
-                entryFlags = encodeExtendedImageEntryFlags(data, entryFlags, currentDefaultFrameInfoIndex, chunkDefaultFrameInfoIndex);
+                entryFlags = encodeFinalImageExtendedEntryFlags(data, entryFlags, currentDefaultFrameInfoIndex, chunkDefaultFrameInfoIndex);
+            } else if (CodeInfoDecoder.isExtendedEntryMarker(CodeInfoDecoder.basicEntryFlags(entryFlags))) {
+                entryFlags = entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY;
             }
 
             encodingBuffer.putU1(encodeFirstByte(entryFlags));
@@ -807,15 +809,15 @@ public class CodeInfoEncoder {
             return CodeInfoDecoder.basicEntryFlags(entryFlags);
         }
         return switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
-            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY, CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2;
             default -> throw shouldNotReachHereUnexpectedInput(entryFlags);
         };
     }
 
-    private void writeExtendedEntryBasicFlags(UnsafeArrayTypeWriter writeBuffer, int entryFlags) {
-        assert useFinalImageCodeInfoEncoding;
+    private static void writeExtendedEntryBasicFlags(UnsafeArrayTypeWriter writeBuffer, int entryFlags) {
         assert CodeInfoDecoder.isExtendedEntry(entryFlags);
         int basicFlags = CodeInfoDecoder.basicEntryFlags(entryFlags);
         switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
@@ -832,7 +834,7 @@ public class CodeInfoEncoder {
         }
     }
 
-    private int encodeExtendedImageEntryFlags(IPData data, int entryFlags, int currentDefaultFrameInfoIndex, int chunkDefaultFrameInfoIndex) {
+    private int encodeFinalImageExtendedEntryFlags(IPData data, int entryFlags, int currentDefaultFrameInfoIndex, int chunkDefaultFrameInfoIndex) {
         assert useFinalImageCodeInfoEncoding;
         boolean useChunkDefaultFrameInfo = currentDefaultFrameInfoIndex >= 0 && currentDefaultFrameInfoIndex == chunkDefaultFrameInfoIndex;
         /*
