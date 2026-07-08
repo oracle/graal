@@ -213,7 +213,7 @@ public final class AccessAdvisor {
         String qualifiedCaller = callerClass.get();
         assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
         if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller) &&
-                        (queriedClass.get() == null || !callerFilter.includes(queriedClass.get()))) {
+                        !shouldPreserveApplicationMethodHandleLookup(queriedClass, entry)) {
             logIgnoredEntry("excluded by caller filter", entry);
             return true;
         }
@@ -236,6 +236,11 @@ public final class AccessAdvisor {
             }
         }
         return false;
+    }
+
+    private boolean shouldPreserveApplicationMethodHandleLookup(LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
+        return "findMethodHandle".equals(entry.get("function")) && queriedClass.get() != null &&
+                        callerFilter.includes(queriedClass.get());
     }
 
     public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {

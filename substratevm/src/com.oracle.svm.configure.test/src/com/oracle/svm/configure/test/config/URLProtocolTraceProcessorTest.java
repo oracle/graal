@@ -34,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -92,6 +93,29 @@ public class URLProtocolTraceProcessorTest {
         Assert.assertEquals("ACCESSED", methodInfo.getAccessibility().toString());
     }
 
+    @Test
+    public void excludedMethodHandleCallerDoesNotRegisterProxyConstructor() throws Exception {
+        String proxyInterfaceName = "com.example.ProxyInterface";
+        ConfigurationSet configurationSet = new ConfigurationSet();
+        Object processor = newReflectionProcessor();
+
+        processTrace(processor, configurationSet, """
+                        [
+                          {
+                            "tracer": "reflect",
+                            "function": "findConstructorHandle",
+                            "class": { "proxy": ["%s"] },
+                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
+                            "result": true,
+                            "args": [["java.lang.reflect.InvocationHandler"]]
+                          }
+                        ]
+                        """.formatted(proxyInterfaceName));
+
+        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
+        Assert.assertNull(getProxyConfigurationType(reflectionConfiguration, proxyInterfaceName));
+    }
+
     private static void assertURLStreamHandlerConstructorRegistered(String function, String handlerClassName) throws Exception {
         ConfigurationSet configurationSet = new ConfigurationSet();
         Object processor = newReflectionProcessor();
@@ -142,6 +166,11 @@ public class URLProtocolTraceProcessorTest {
     private static ConfigurationType getConfigurationType(TypeConfiguration reflectionConfiguration, String className) {
         return reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
                         NamedConfigurationTypeDescriptor.fromReflectionName(className));
+    }
+
+    private static ConfigurationType getProxyConfigurationType(TypeConfiguration reflectionConfiguration, String interfaceName) {
+        return reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                        ProxyConfigurationTypeDescriptor.fromInterfaceTypeNames(List.of(interfaceName)));
     }
 
     private static ConfigurationMemberInfo getConstructorInfo(ConfigurationType configurationType) {
