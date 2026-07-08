@@ -94,6 +94,30 @@ public class URLProtocolTraceProcessorTest {
     }
 
     @Test
+    public void excludedMethodHandleCallerDoesNotRegisterEnumValuesHelper() throws Exception {
+        String enumClassName = "com.example.TestMode";
+        ConfigurationSet configurationSet = new ConfigurationSet();
+        Object processor = newReflectionProcessor();
+
+        processTrace(processor, configurationSet, """
+                        [
+                          {
+                            "tracer": "reflect",
+                            "function": "findMethodHandle",
+                            "class": "%s",
+                            "declaring_class": "%s",
+                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
+                            "result": true,
+                            "args": ["values", []]
+                          }
+                        ]
+                        """.formatted(enumClassName, enumClassName));
+
+        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
+        Assert.assertNull(getConfigurationType(reflectionConfiguration, enumClassName));
+    }
+
+    @Test
     public void excludedMethodHandleCallerDoesNotRegisterProxyConstructor() throws Exception {
         String proxyInterfaceName = "com.example.ProxyInterface";
         ConfigurationSet configurationSet = new ConfigurationSet();

@@ -26,6 +26,7 @@ package com.oracle.svm.configure.trace;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -240,7 +241,16 @@ public final class AccessAdvisor {
 
     private boolean shouldPreserveApplicationMethodHandleLookup(LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
         return "findMethodHandle".equals(entry.get("function")) && queriedClass.get() != null &&
-                        callerFilter.includes(queriedClass.get());
+                        callerFilter.includes(queriedClass.get()) && !isNoArgumentValuesLookup(entry);
+    }
+
+    private static boolean isNoArgumentValuesLookup(EconomicMap<String, Object> entry) {
+        if (!(entry.get("args") instanceof List<?> args) || args.size() != 2) {
+            return false;
+        }
+        // Enum.valueOf performs an internal values() lookup that should not become application metadata.
+        Object parameterTypes = args.get(1);
+        return "values".equals(args.get(0)) && (parameterTypes == null || parameterTypes instanceof List<?> types && types.isEmpty());
     }
 
     public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {
