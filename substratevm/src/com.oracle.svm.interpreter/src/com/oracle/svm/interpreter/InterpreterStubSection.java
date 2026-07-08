@@ -70,6 +70,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
@@ -249,7 +250,7 @@ public abstract class InterpreterStubSection {
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     @InterpreterEnterStub(InterpreterEnterStub.Kind.EST_OFFSET)
-    public static Pointer enterMethodInterpreterStub(int interpreterMethodESTOffset, Pointer enterData) {
+    public static long enterMethodInterpreterStub(int interpreterMethodESTOffset, Pointer enterData) {
         DebuggerSupport debuggerSupport = ImageSingletons.lookup(DebuggerSupport.class);
 
         InterpreterUniverse interpreterUniverse = debuggerSupport.getUniverseOrNull();
@@ -265,7 +266,7 @@ public abstract class InterpreterStubSection {
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     @InterpreterEnterStub(InterpreterEnterStub.Kind.DIRECT)
-    public static Pointer enterDirectInterpreterStub(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
+    public static long enterDirectInterpreterStub(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
         VMError.guarantee(interpreterMethod != null);
 
         return enterHelper(interpreterMethod, enterData);
@@ -275,7 +276,7 @@ public abstract class InterpreterStubSection {
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     @InterpreterEnterStub(InterpreterEnterStub.Kind.VTABLE)
-    public static Pointer enterVTableInterpreterStub(int vTableIndex, Pointer enterData) {
+    public static long enterVTableInterpreterStub(int vTableIndex, Pointer enterData) {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
 
         /* assuming that this is a virtual method, i.e. has a 'this' argument */
@@ -305,11 +306,13 @@ public abstract class InterpreterStubSection {
      *
      * @param interpreterMethod method that should run in the interpreter.
      * @param enterData pointer to struct that contains ABI arguments.
-     * @return pointer to enterData, used by the low-level caller stub.
+     * @return the raw ABI result. The low-level caller stub copies the result to both the integer
+     *         and floating-point return registers, and the compiled caller reads the register for
+     *         its declared return kind.
      */
     @AlwaysInline("Performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static Pointer enterHelper(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
+    private static long enterHelper(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
 
         PreparedSignature compiledSignature = interpreterMethod.getPreparedSignature();
@@ -357,48 +360,53 @@ public abstract class InterpreterStubSection {
 
         Object retVal = enterInterpreterStub0(interpreterMethod, compiledSignature, enterData, handleCount, handleFrameId);
 
-        switch (compiledSignature.getReturnKind()) {
+        /*
+         * enterData is a pointer into this stub's stack frame. The interpreter can block and cause
+         * a virtual thread to migrate, so enterData must not be accessed after the interpreter
+         * returns. Return the raw result directly instead.
+         */
+        return switch (compiledSignature.getReturnKind()) {
             case Boolean:
                 InterpreterUtil.assertion(retVal instanceof Boolean, "invalid return type");
-                accessHelper.setGpReturn(enterData, ((Boolean) retVal) ? 1 : 0);
-                break;
+                yield ((Boolean) retVal) ? 1 : 0;
             case Byte:
                 InterpreterUtil.assertion(retVal instanceof Byte, "invalid return type");
-                accessHelper.setGpReturn(enterData, ((Byte) retVal).longValue());
-                break;
+                yield ((Byte) retVal).longValue();
             case Short:
                 InterpreterUtil.assertion(retVal instanceof Short, "invalid return type");
-                accessHelper.setGpReturn(enterData, ((Short) retVal).longValue());
-                break;
+                yield ((Short) retVal).longValue();
             case Char:
                 InterpreterUtil.assertion(retVal instanceof Character, "invalid return type");
-                accessHelper.setGpReturn(enterData, ((Character) retVal).charValue());
-                break;
+                yield ((Character) retVal).charValue();
             case Int:
                 InterpreterUtil.assertion(retVal instanceof Integer, "invalid return type");
-                accessHelper.setGpReturn(enterData, ((Integer) retVal).longValue());
-                break;
+                yield ((Integer) retVal).longValue();
             case Long:
                 InterpreterUtil.assertion(retVal instanceof Long, "invalid return type");
-                accessHelper.setGpReturn(enterData, (Long) retVal);
-                break;
+                yield (Long) retVal;
             case Float:
                 InterpreterUtil.assertion(retVal instanceof Float, "invalid return type");
-                accessHelper.setFpReturn(enterData, Float.floatToRawIntBits((float) retVal));
-                break;
+                yield Float.floatToRawIntBits((float) retVal);
             case Double:
                 InterpreterUtil.assertion(retVal instanceof Double, "invalid return type");
-                accessHelper.setFpReturn(enterData, Double.doubleToRawLongBits((double) retVal));
-                break;
+                yield Double.doubleToRawLongBits((double) retVal);
             case Object:
-                accessHelper.setGpReturn(enterData, Word.objectToTrackedPointer(retVal).rawValue());
-                break;
+                /*
+                 * A tracked non-null reference cannot be merged with the primitive results at the
+                 * method-end infopoint. Dropping the tracking is safe because no safepoint is
+                 * possible between this conversion and the ABI handoff. However, the untracked
+                 * conversion maps the compiled null representation to zero, so return the heap
+                 * base which represents null in compiled code.
+                 */
+                if (retVal == null) {
+                    yield KnownIntrinsics.heapBase().rawValue();
+                }
+                yield Word.objectToUntrackedPointer(retVal).rawValue();
             case Void:
-                break;
+                yield 0;
             default:
                 throw VMError.shouldNotReachHereAtRuntime();
-        }
-        return enterData;
+        };
     }
 
     @Uninterruptible(reason = "Switch to interruptible code.", mayBeInlined = true, calleeMustBe = false)
