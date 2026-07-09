@@ -60,6 +60,19 @@ public final class ByteArrayList {
         size++;
     }
 
+    public void addUnsignedInt32(int valueArg) {
+        int value = valueArg;
+        while (true) {
+            int b = value & 0x7f;
+            value >>>= 7;
+            if (value == 0) {
+                add((byte) b);
+                break;
+            }
+            add((byte) (b | 0x80));
+        }
+    }
+
     public void push(byte b) {
         add(b);
     }
