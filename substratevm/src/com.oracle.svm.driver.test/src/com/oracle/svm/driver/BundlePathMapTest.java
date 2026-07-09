@@ -58,6 +58,13 @@ public class BundlePathMapTest {
     }
 
     @Test
+    public void preservesWindowsPathsThatLookLikePortableSyntax() {
+        assertEquals("win-rel/win-rel/target/app.jar", BundlePathMap.toPortableSourcePathText("win-rel\\target\\app.jar", BundlePathMap.PathStyle.Windows));
+        assertEquals("win-rel/win-drive-rel/d/work/app.jar", BundlePathMap.toPortableSourcePathText("win-drive-rel\\d\\work\\app.jar", BundlePathMap.PathStyle.Windows));
+        assertEquals("/win/root/win/d/work/app.jar", BundlePathMap.toPortableSourcePathText("\\win\\d\\work\\app.jar", BundlePathMap.PathStyle.Windows));
+    }
+
+    @Test
     public void parsesPortableMappingsIntoPortableInternalPaths() throws Exception {
         Path tempFile = Files.createTempFile("bundle-paths", ".json");
         try (JsonWriter writer = new JsonWriter(tempFile)) {
@@ -69,6 +76,22 @@ public class BundlePathMapTest {
 
         assertEquals(Path.of("/win/d/work/app.jar"), pathMap.keySet().iterator().next());
         assertEquals(Path.of("input/classes/cp/app.jar"), pathMap.values().iterator().next());
+    }
+
+    @Test
+    public void reprintsPortableMappingsWithoutEncodingAgain() throws Exception {
+        Path tempFile = Files.createTempFile("bundle-paths", ".json");
+        try (JsonWriter writer = new JsonWriter(tempFile)) {
+            BundlePathMap.printPortablePathMapping(
+                            Map.entry(Path.of("win-rel/cp"), Path.of("/win/c/work/cp")),
+                            writer,
+                            BundlePathMap.PathStyle.Windows,
+                            false);
+        }
+
+        assertEquals("{\"src\":{\"style\":\"Windows\",\"text\":\"win-rel/cp\"}," +
+                        "\"dst\":{\"style\":\"Windows\",\"text\":\"/win/c/work/cp\"}}",
+                        Files.readString(tempFile));
     }
 
     @Test
