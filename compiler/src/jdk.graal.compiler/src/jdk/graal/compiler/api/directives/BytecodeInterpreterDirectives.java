@@ -156,6 +156,26 @@ public final class BytecodeInterpreterDirectives {
          * corresponds to the receiver.
          */
         Argument[] arguments();
+
+        /**
+         * Indicates that the annotated method implements a secondary partition of a bytecode
+         * interpreter switch.
+         * <p>
+         * A secondary switch is expected to be inlined into a primary bytecode interpreter switch
+         * during host compilation. Its handler configuration is retained so that handler calls
+         * originating from the inlined secondary switch can be mapped to the primary switch's
+         * handler stubs.
+         * <p>
+         * When compiled as a separate method, however, handler calls in a secondary switch are not
+         * outlined. In particular, a deoptimization target may invoke the separately compiled
+         * secondary switch without first passing through host inlining. Keeping its handler calls
+         * ordinary prevents such execution from entering threaded handler stubs without the
+         * primary switch's exception and state-management paths.
+         *
+         * @return {@code true} if the annotated method is a secondary switch partition whose
+         *         handler calls must not be outlined when the method is compiled separately
+         */
+        boolean secondarySwitch() default false;
     }
 
     /**

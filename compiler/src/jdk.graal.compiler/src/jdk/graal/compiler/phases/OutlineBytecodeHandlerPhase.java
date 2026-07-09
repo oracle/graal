@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases;
 import java.util.Optional;
 import java.util.function.Function;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -85,7 +86,12 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
             return;
         }
         // Outlining only takes place in methods that declare bytecode-handler metadata.
-        if (!BytecodeInterpreterAnnotations.hasBytecodeInterpreterHandlerConfig(enclosingMethod)) {
+        AnnotationValue handlerConfigAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod);
+        if (handlerConfigAnnotation == null) {
+            return;
+        }
+        // Secondary switches are outlined only after they are inlined into the primary switch.
+        if (handlerConfigAnnotation.getBoolean("secondarySwitch")) {
             return;
         }
 
