@@ -52,6 +52,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -94,9 +95,9 @@ import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPo
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
-import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
-import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
+import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -111,6 +112,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -440,9 +442,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnalysisField analysisField = hostedField.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisField);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisField);
+        int installedLayerNumber = Modifier.isStatic(modifiers) && hostedField.hasInstalledLayerNum() ? hostedField.getInstalledLayerNum()
+                        : MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
 
         registerField(declaringType, reflectField, new FieldMetadata(dynamicAccessMetadata, declaringType, name, type, modifiers, trustedFinal, signature, annotations,
-                        typeAnnotations, offset, deletedReason));
+                        typeAnnotations, offset, installedLayerNumber, deletedReason));
     }
 
     @Override
@@ -975,6 +979,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 encodeByteArray(buf, encodeAnnotations(field.annotations));
                 encodeByteArray(buf, encodeTypeAnnotations(field.typeAnnotations));
                 buf.putSV(field.offset);
+                if (Modifier.isStatic(field.modifiers)) {
+                    buf.putSV(field.installedLayerNumber);
+                }
                 encodeOtherString(buf, field.deletedReason);
             }
         }
