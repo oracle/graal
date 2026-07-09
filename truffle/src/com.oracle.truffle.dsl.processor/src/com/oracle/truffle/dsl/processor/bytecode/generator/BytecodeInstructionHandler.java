@@ -2270,6 +2270,18 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
             b.end(); // else
 
+            b.startIf().string("newTag != oldTag").end().startBlock();
+            b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
+            if (materialized) {
+                b.startCall(bytecodeNode, "getLocalTags").end();
+            } else {
+                b.string("localTags");
+            }
+            b.tree(localIndex);
+            b.string("newTag");
+            b.end(2);
+            b.end(); // if newTag != oldTag
+
             parent.parent.emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
 
             b.end(); // end if operandIndex != -1
@@ -2281,7 +2293,6 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string(localsFrame).string("slot").string(value.localName()).end();
-            b.end();
             b.end();
 
             b.startIf().string("newTag != oldTag").end().startBlock();
@@ -2295,6 +2306,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.string("newTag");
             b.end(2);
             b.end(); // if newTag != oldTag
+            b.end(); // end else operandIndex == -1
 
             parent.parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
