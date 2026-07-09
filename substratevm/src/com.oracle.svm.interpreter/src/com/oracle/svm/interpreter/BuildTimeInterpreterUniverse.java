@@ -221,7 +221,7 @@ public final class BuildTimeInterpreterUniverse {
             }
         }
 
-        LineNumberTable lineNumberTable = originalMethod.getLineNumberTable();
+        LineNumberTable lineNumberTable = retainMethodCode ? originalMethod.getLineNumberTable() : null;
         return InterpreterResolvedJavaMethod.createAtBuildTime(
                         analysisMethod,
                         name,

@@ -179,7 +179,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     private final InterpreterResolvedObjectType declaringClass;
     private final InterpreterUnresolvedSignature signature;
 
-    private final LineNumberTable lineNumberTable;
+    private LineNumberTable lineNumberTable;
 
     protected ExceptionHandler[] exceptionHandlers;
 
@@ -396,6 +396,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         PreparedSignature preparedSignature = null;
         return new InterpreterResolvedJavaMethod(originalMethod, nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, preparedSignature, signatureSymbol, code,
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setLineNumberTable(LineNumberTable lineNumberTable) {
+        this.lineNumberTable = lineNumberTable;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
