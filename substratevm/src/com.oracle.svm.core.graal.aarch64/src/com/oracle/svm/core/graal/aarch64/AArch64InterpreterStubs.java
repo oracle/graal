@@ -196,7 +196,6 @@ public class AArch64InterpreterStubs {
         private static void emitInstalledCodeFastPath(AArch64MacroAssembler masm, Register interpreterMethod, boolean compressedInterpreterMethod, Register scratch) {
             Label slowPath = new Label();
 
-            boolean compressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             InterpreterExecutionOffsets executionOffsets = InterpreterExecutionOffsets.singleton();
 
@@ -213,10 +212,10 @@ public class AArch64InterpreterStubs {
             goSlowPathIfNull(masm, scratch, slowPath);
 
             // Load volatile field with acquire semantics.
-            loadObjectObjectFieldAcquire(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), compressedReferences, compressionShift, scratch);
+            loadObjectObjectFieldAcquire(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), true, compressionShift, scratch);
             goSlowPathIfNull(masm, scratch, slowPath);
 
-            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), compressedReferences, compressionShift, scratch);
+            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), true, compressionShift, scratch);
             goSlowPathIfNull(masm, scratch, slowPath);
             // Jump to the entry point of the method.
             masm.jmp(scratch);
@@ -232,7 +231,6 @@ public class AArch64InterpreterStubs {
          */
         private static void emitVTableInstalledCodeFastPath(AArch64MacroAssembler masm, Register receiver, Register vtableIndex, Register scratch1, Register scratch2) {
             ObjectLayout ol = ObjectLayout.singleton();
-            boolean compression = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
 
             DynamicHubOffsets hubOffsets = DynamicHubOffsets.singleton();
@@ -242,18 +240,16 @@ public class AArch64InterpreterStubs {
             loadHub(masm, receiver, scratch1, scratch2);
 
             // Extract the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), compression, compressionShift, scratch2);
+            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), true, compressionShift, scratch2);
             // Extract the interpreter type of the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), compression, compressionShift, scratch2);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), true, compressionShift, scratch2);
             // Extract the vtable holder of the interpreter type.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), compression, compressionShift, scratch2);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), true, compressionShift, scratch2);
             // Extract the vtable.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), compression, compressionShift, scratch2);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), true, compressionShift, scratch2);
 
-            if (compression) {
-                AArch64Move.UncompressPointerOp.emitUncompressCode(masm, scratch1, scratch1, ReferenceAccess.singleton().getCompressEncoding(), true,
-                                ReservedRegisters.singleton().getHeapBaseRegister(), true);
-            }
+            AArch64Move.UncompressPointerOp.emitUncompressCode(masm, scratch1, scratch1, ReferenceAccess.singleton().getCompressEncoding(), true,
+                            ReservedRegisters.singleton().getHeapBaseRegister(), true);
 
             goSlowPathIfIndexOutOfBounds(masm, scratch1, vtableIndex, scratch2, ol.getArrayLengthOffset(), slowPath);
 
@@ -267,7 +263,7 @@ public class AArch64InterpreterStubs {
             masm.ldr(referenceSize * Byte.SIZE, method,
                             AArch64Address.createExtendedRegisterOffsetAddress(referenceSize * Byte.SIZE, scratch1, vtableIndex, true, AArch64Assembler.ExtendType.UXTW));
 
-            emitInstalledCodeFastPath(masm, method, compression, scratch1);
+            emitInstalledCodeFastPath(masm, method, true, scratch1);
             masm.bind(slowPath);
         }
 

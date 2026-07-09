@@ -159,7 +159,6 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AddressRangeCommittedMemoryProvider() {
-        assert SubstrateOptions.SpawnIsolates.getValue();
     }
 
     @Fold

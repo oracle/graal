@@ -71,13 +71,9 @@ def test():
 
     musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
 
-    isolates = os.environ.get('debuginfotest_isolates', 'no') == 'yes'
-
     layered = os.environ.get('debuginfotest_layered', 'no') == 'yes'
 
     arch = os.environ.get('debuginfotest_arch', 'amd64')
-
-    print(f"Testing with isolates {'enabled' if isolates else 'disabled'}!")
 
     # disable prompting to continue output
     execute("set pagination off")
@@ -274,7 +270,7 @@ def test():
 
     # ensure we can reference static fields
     exec_string = execute("print 'java.math.BigDecimal'::BIG_TEN_POWERS_TABLE")
-    rexp = fr"{wildcard_pattern} = \({compressed_pattern if isolates else ''}java.math.BigInteger\[\] \*\) {address_pattern}"
+    rexp = fr"{wildcard_pattern} = \({compressed_pattern}java.math.BigInteger\[\] \*\) {address_pattern}"
 
     checker = Checker("print static field value", rexp)
     checker.check(exec_string, skip_fails=False)
@@ -355,7 +351,7 @@ def test():
     exec_string = execute("ptype 'hello.Hello$NamedGreeter'")
     rexp = [r"type = class hello\.Hello\$NamedGreeter : public hello\.Hello\$Greeter {",
             fr"{spaces_pattern}private:" if major < 15 else None,
-            fr"{spaces_pattern}{compressed_pattern if isolates else ''}java\.lang\.String \*name;",
+            fr"{spaces_pattern}{compressed_pattern}java\.lang\.String \*name;",
             r"",
             fr"{spaces_pattern}public:",
             fr"{spaces_pattern}void NamedGreeter\(java\.lang\.String \*\);",
@@ -404,7 +400,7 @@ def test():
     exec_string = execute("ptype 'java.lang.String[]'")
     rexp = [r"type = class java.lang.String\[\] : public java.lang.Object {",
             fr"{spaces_pattern}int len;",
-            fr"{spaces_pattern}{compressed_pattern if isolates else ''}java\.lang\.String \*data\[0\];",
+            fr"{spaces_pattern}{compressed_pattern}java\.lang\.String \*data\[0\];",
             r"}"]
 
     checker = Checker('ptype String[]', rexp)
@@ -940,8 +936,8 @@ def test():
 
     # check object on heap and static object (must be the same as the field 'clazz')
     for obj in ['dyn.c', "'hello.Hello::staticHolder'.c",
-                f"(('{'_z_.' if isolates else ''}java.lang.Class' *)dyn.o)",
-                f"(('{'_z_.' if isolates else ''}java.lang.Class' *)'hello.Hello::staticHolder'.o)"]:
+                "(('_z_.java.lang.Class' *)dyn.o)",
+                "(('_z_.java.lang.Class' *)'hello.Hello::staticHolder'.o)"]:
         command = f"print *{obj}.name.value"
         exec_string = execute(command)
         rexp = [fr"{wildcard_pattern} = {{",
@@ -957,7 +953,7 @@ def test():
 
         execute(f"print *{obj}")
         exec_string = execute("ptype $")
-        rexp = [r"type = class _z_\.java\.lang\.Class : public java\.lang\.Class {" if isolates else r"type = class java\.lang\.Class : public java\.lang\.Object {"]
+        rexp = [r"type = class _z_\.java\.lang\.Class : public java\.lang\.Class {"]
         checker = Checker(f'ptype {obj}', rexp)
         checker.check(exec_string)
 

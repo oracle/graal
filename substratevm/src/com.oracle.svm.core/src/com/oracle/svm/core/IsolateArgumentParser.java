@@ -409,7 +409,7 @@ public class IsolateArgumentParser {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static boolean shouldParseArguments(IsolateArguments arguments) {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && isCompilationIsolate(arguments);
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && isCompilationIsolate(arguments);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")

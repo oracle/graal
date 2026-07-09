@@ -77,7 +77,6 @@ import com.oracle.svm.core.graal.stackvalue.LateStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -1260,14 +1259,10 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode objectNode) {
                 receiver.get(true);
-                if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                    ValueNode compressedObj = SubstrateCompressionNode.compress(b.getGraph(), objectNode, ImageSingletons.lookup(CompressEncoding.class));
-                    JavaKind compressedIntKind = JavaKind.fromWordSize(ObjectLayout.singleton().getReferenceSize());
-                    ValueNode compressedValue = b.add(WordCastNode.narrowOopToUntrackedWord(compressedObj, compressedIntKind));
-                    b.addPush(JavaKind.Object, ZeroExtendNode.convertUnsigned(compressedValue, SubstrateTarget.getWordStamp(), NodeView.DEFAULT));
-                } else {
-                    b.addPush(JavaKind.Object, WordCastNode.objectToUntrackedPointer(objectNode, SubstrateTarget.getWordKind()));
-                }
+                ValueNode compressedObj = SubstrateCompressionNode.compress(b.getGraph(), objectNode, ImageSingletons.lookup(CompressEncoding.class));
+                JavaKind compressedIntKind = JavaKind.fromWordSize(ObjectLayout.singleton().getReferenceSize());
+                ValueNode compressedValue = b.add(WordCastNode.narrowOopToUntrackedWord(compressedObj, compressedIntKind));
+                b.addPush(JavaKind.Object, ZeroExtendNode.convertUnsigned(compressedValue, SubstrateTarget.getWordStamp(), NodeView.DEFAULT));
                 return true;
             }
         });
@@ -1275,16 +1270,12 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode wordNode) {
                 receiver.get(true);
-                if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                    CompressEncoding encoding = ImageSingletons.lookup(CompressEncoding.class);
-                    JavaKind compressedIntKind = JavaKind.fromWordSize(ObjectLayout.singleton().getReferenceSize());
-                    NarrowOopStamp compressedStamp = (NarrowOopStamp) SubstrateNarrowOopStamp.compressed((AbstractObjectStamp) StampFactory.object(), encoding);
-                    ValueNode narrowNode = b.add(NarrowNode.convertUnsigned(wordNode, StampFactory.forKind(compressedIntKind), NodeView.DEFAULT));
-                    WordCastNode compressedObj = b.add(WordCastNode.wordToNarrowObject(narrowNode, compressedStamp));
-                    b.addPush(JavaKind.Object, SubstrateCompressionNode.uncompress(b.getGraph(), compressedObj, encoding));
-                } else {
-                    b.addPush(JavaKind.Object, WordCastNode.wordToObject(wordNode, SubstrateTarget.getWordKind()));
-                }
+                CompressEncoding encoding = ImageSingletons.lookup(CompressEncoding.class);
+                JavaKind compressedIntKind = JavaKind.fromWordSize(ObjectLayout.singleton().getReferenceSize());
+                NarrowOopStamp compressedStamp = (NarrowOopStamp) SubstrateNarrowOopStamp.compressed((AbstractObjectStamp) StampFactory.object(), encoding);
+                ValueNode narrowNode = b.add(NarrowNode.convertUnsigned(wordNode, StampFactory.forKind(compressedIntKind), NodeView.DEFAULT));
+                WordCastNode compressedObj = b.add(WordCastNode.wordToNarrowObject(narrowNode, compressedStamp));
+                b.addPush(JavaKind.Object, SubstrateCompressionNode.uncompress(b.getGraph(), compressedObj, encoding));
                 return true;
             }
         });

@@ -202,7 +202,6 @@ public class AMD64InterpreterStubs {
         private static void emitInstalledCodeFastPath(AMD64MacroAssembler masm, Register interpreterMethod, boolean compressedInterpreterMethod, Register scratch) {
             Label slowPath = new Label();
 
-            boolean compressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             InterpreterExecutionOffsets executionOffsets = InterpreterExecutionOffsets.singleton();
 
@@ -216,10 +215,10 @@ public class AMD64InterpreterStubs {
             loadObjectObjectField(masm, scratch, interpreterMethod, executionOffsets.getInterpreterResolvedJavaMethodRistrettoMethodOffset(), compressedInterpreterMethod, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
 
-            loadObjectObjectField(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), compressedReferences, compressionShift);
+            loadObjectObjectField(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), true, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
 
-            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), compressedReferences, compressionShift);
+            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), true, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
             // Jump to the entry point of the method.
             masm.jmp(scratch);
@@ -235,7 +234,6 @@ public class AMD64InterpreterStubs {
          */
         private static void emitVTableInstalledCodeFastPath(AMD64MacroAssembler masm, Register receiver, Register vtableIndex, Register scratch1, Register scratch2) {
             ObjectLayout ol = ObjectLayout.singleton();
-            boolean compression = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
 
             DynamicHubOffsets hubOffsets = DynamicHubOffsets.singleton();
@@ -246,17 +244,15 @@ public class AMD64InterpreterStubs {
             loadHub(masm, receiver, scratch1, scratch2);
 
             // Extract the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), true, compressionShift);
             // Extract the interpreter type of the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), true, compressionShift);
             // Extract the vtable holder of the interpreter type.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), true, compressionShift);
             // Extract the vtable.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), true, compressionShift);
 
-            if (compression) {
-                AMD64Move.UncompressPointerOp.emitUncompressWithBaseRegister(masm, scratch1, ReservedRegisters.singleton().getHeapBaseRegister(), compressionShift, true);
-            }
+            AMD64Move.UncompressPointerOp.emitUncompressWithBaseRegister(masm, scratch1, ReservedRegisters.singleton().getHeapBaseRegister(), compressionShift, true);
 
             goSlowPathIfIndexOutOfBounds(masm, scratch1, vtableIndex, scratch2, ol.getArrayLengthOffset(), slowPath);
 
@@ -268,7 +264,7 @@ public class AMD64InterpreterStubs {
             AMD64Assembler.AMD64RMOp.MOV.emit(masm, referenceOperandSize(), method,
                             new AMD64Address(scratch1, vtableIndex, Stride.fromLog2(CodeUtil.log2(ol.getReferenceSize())), ol.getArrayBaseOffset(JavaKind.Object)));
 
-            emitInstalledCodeFastPath(masm, method, compression, scratch1);
+            emitInstalledCodeFastPath(masm, method, true, scratch1);
             masm.bind(slowPath);
         }
 

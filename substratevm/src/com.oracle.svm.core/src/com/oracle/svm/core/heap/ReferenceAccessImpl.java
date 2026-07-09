@@ -33,7 +33,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -98,12 +97,6 @@ public class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     public native Object uncompressReference(UnsignedWord ref);
-
-    @Override
-    @Fold
-    public boolean haveCompressedReferences() {
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
 
     @Override
     @AlwaysInline("Performance")

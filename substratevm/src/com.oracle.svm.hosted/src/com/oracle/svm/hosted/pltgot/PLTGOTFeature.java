@@ -151,7 +151,6 @@ public class PLTGOTFeature implements InternalFeature {
                         "PLT and GOT is currently only supported on Linux, Darwin and Windows.");
         VMError.guarantee(Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.AMD64.class), "PLT and GOT is currently only supported on AArch64 and AMD64.");
         VMError.guarantee(!RuntimeCompilation.isEnabled(), "PLT and GOT is currently not supported with runtime compilation.");
-        VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "PLT and GOT cannot work without isolates.");
         VMError.guarantee("lir".equals(SubstrateOptions.CompilerBackend.getValue()), "PLT and GOT cannot work with a custom compiler backend.");
 
         ImageSingletons.add(PLTGOTConfiguration.class, createConfiguration());

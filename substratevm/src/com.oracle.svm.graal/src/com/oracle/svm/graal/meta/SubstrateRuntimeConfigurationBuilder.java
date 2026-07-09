@@ -103,7 +103,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected SharedCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
-        if (SubstrateOptions.supportCompileInIsolates()) {
+        if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             return new IsolateAwareCodeCacheProvider(SubstrateTarget.singleton(), registerConfig);
         }
         return new SubstrateCodeCacheProvider(SubstrateTarget.singleton(), registerConfig);

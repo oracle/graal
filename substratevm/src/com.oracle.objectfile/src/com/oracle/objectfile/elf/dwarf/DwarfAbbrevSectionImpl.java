@@ -939,16 +939,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeArrayLayoutAbbrev(context, buffer, pos);
         pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
         /*
-         * If address rebasing is required then we need to use compressed layout types supplied with
-         * a suitable data_location attribute and compressed pointer types to ensure that gdb
-         * converts offsets embedded in static or instance fields to raw pointers. Transformed
-         * addresses are typed using pointers to the underlying layout.
-         *
-         * If address rebasing is not required then a data_location attribute on the layout type
-         * will ensure that address tag bits are removed.
-         *
-         * The compressed layout is also used for representing the decode step for dynamic hubs.
-         * I.e. this is also required for builds without isolates
+         * Heap references are offsets from the heap base. Compressed layout types provide a
+         * data_location attribute that converts these offsets to raw pointers and removes address
+         * tag bits, including when decoding dynamic hubs.
          */
         pos = writeCompressedLayoutAbbrev(context, buffer, pos);
 

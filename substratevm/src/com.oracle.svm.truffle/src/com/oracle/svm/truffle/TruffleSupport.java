@@ -100,7 +100,7 @@ public class TruffleSupport {
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
         SubstrateTruffleCompiler compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community", getOptimizedCallTargetInvokeMethod()));
-        if (SubstrateOptions.supportCompileInIsolates()) {
+        if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             compiler = new IsolateAwareTruffleCompiler((SubstrateTruffleCompilerImpl) compiler);
         }
         return compiler;

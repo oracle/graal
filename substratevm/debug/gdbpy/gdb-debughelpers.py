@@ -215,7 +215,6 @@ class SVMUtil:
     # each objfile has its own types, thus this is necessary to compare against the correct types in memory
     # when reloading e.g. a shared library, the addresses of debug info in the relocatable objfile might change
     def __init__(self):
-        self.use_heap_base = try_or_else(lambda: bool(gdb.parse_and_eval('(int)__svm_use_heap_base')), True, gdb.error)
         self.compression_shift = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_compression_shift')), 0, gdb.error)
         self.reserved_bits_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_reserved_bits_mask')), 0, gdb.error)
         self.object_alignment = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_object_alignment')), 0, gdb.error)
@@ -245,7 +244,7 @@ class SVMUtil:
         adr_val = 0
         try:
             if obj.type.code == gdb.TYPE_CODE_PTR:
-                if int(obj) == 0 or (self.use_heap_base and int(obj) == int(self.get_heap_base())):
+                if int(obj) == 0 or int(obj) == int(self.get_heap_base()):
                     # obj is null
                     pass
                 else:
@@ -293,10 +292,9 @@ class SVMUtil:
         num_reserved_bits = int.bit_count(self.reserved_bits_mask)
         num_alignment_bits = int.bit_count(self.object_alignment - 1)
         compressed_oop = obj_adr
-        if self.use_heap_base:
-            compressed_oop -= int(self.get_heap_base())
-            assert compression_shift >= 0
-            compressed_oop = compressed_oop >> compression_shift
+        compressed_oop -= int(self.get_heap_base())
+        assert compression_shift >= 0
+        compressed_oop = compressed_oop >> compression_shift
         if is_hub and num_reserved_bits != 0:
             assert compression_shift >= 0
             compressed_oop = compressed_oop << compression_shift

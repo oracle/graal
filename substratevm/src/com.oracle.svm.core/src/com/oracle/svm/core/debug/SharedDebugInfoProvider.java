@@ -182,7 +182,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     protected final DebugContext debug;
 
-    protected final boolean useHeapBase;
     protected final int compressionShift;
     protected final int referenceSize;
     protected final int pointerSize;
@@ -320,7 +319,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         // Get some information on heap layout and object/object header layout
         ReferenceAccess refs = ReferenceAccess.singleton();
-        this.useHeapBase = refs.haveCompressedReferences() && refs.getCompressEncoding().hasBase();
         this.compressionShift = refs.getCompressionShift();
         SubstrateTarget target = SubstrateTarget.singleton();
         this.pointerSize = target.wordSize;
@@ -355,11 +353,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     protected abstract long getCodeOffset(SharedMethod method);
 
     public abstract long objectOffset(JavaConstant constant);
-
-    @Override
-    public boolean useHeapBase() {
-        return useHeapBase;
-    }
 
     @Override
     public boolean isRuntimeCompilation() {

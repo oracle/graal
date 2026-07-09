@@ -290,12 +290,10 @@ public class HeapVerifier {
 
         assert aChunk.isNonNull() ^ uChunk.isNonNull();
         HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
-        if (HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-            HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
-            if (chunk.notEqual(enclosingHeapChunk)) {
-                Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
-                return false;
-            }
+        HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
+        if (chunk.notEqual(enclosingHeapChunk)) {
+            Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
+            return false;
         }
 
         Pointer chunkStart = HeapChunk.asPointer(chunk);

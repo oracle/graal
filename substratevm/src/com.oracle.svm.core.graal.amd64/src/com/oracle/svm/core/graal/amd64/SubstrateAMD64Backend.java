@@ -56,7 +56,6 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -162,7 +161,6 @@ import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMapBuilder;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
-import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
 import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ReadProcid;
@@ -252,10 +250,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this
-            return false;
-        }
-        if (!AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
-            // same CPU features as hosted
             return false;
         }
         var arch = (AMD64) target.arch;
@@ -413,8 +407,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "Memory access without isolates is not implemented");
-
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             Register computeRegister = asRegister(addressBase);
             AMD64BaseAssembler.OperandSize lastOperandSize = AMD64BaseAssembler.OperandSize.get(addressBase.getPlatformKind());
@@ -867,8 +859,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         @Override
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
@@ -876,27 +867,18 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
         @Override
         public void emitConvertNullToZero(AllocatableValue result, AllocatableValue value) {
-            if (useLinearPointerCompression()) {
-                append(new AMD64Move.ConvertNullToZeroOp(result, value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AMD64Move.ConvertNullToZeroOp(result, value));
         }
 
         @Override
         public void emitConvertZeroToNull(AllocatableValue result, Value value) {
-            if (useLinearPointerCompression()) {
-                append(new AMD64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AMD64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
         }
 
         @Override
@@ -1605,7 +1587,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         protected void emitObjectComparison(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register keyRegister, Register scratchRegister, JavaConstant jc) {
-            if (ReferenceAccess.singleton().haveCompressedReferences() && jc instanceof CompressibleConstant constant && !jc.isNull()) {
+            if (jc instanceof CompressibleConstant constant && !jc.isNull()) {
                 /*
                  * Strategy-switch object keys are uncompressed hub references, so compressed object
                  * constants must be uncompressed before the pointer compare.
@@ -1722,11 +1704,8 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
 
         protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
-            if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
-                return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
-            }
-            return new MoveFromConstOp(dst, constant);
+            RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
+            return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
         }
 
         /*
@@ -2042,7 +2021,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue() : null;
+        RegisterValue nullRegisterValue = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
         AMD64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         BackupSlotProvider backupSlotProvider = new BackupSlotProvider(lirGenRes.getFrameMapBuilder());
         AMD64MoveFactoryBase moveFactory = createMoveFactory(lirGenRes, backupSlotProvider);
@@ -2068,10 +2047,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         return new SubstrateAMD64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
-    protected static boolean useLinearPointerCompression() {
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
-
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
                     EntryPointDecorator entryPointDecorator) {
@@ -2094,7 +2069,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
         FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
         DebugContext debug = lir.getDebug();
-        Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
+        Register uncompressedNullRegister = ReservedRegisters.singleton().getHeapBaseRegister();
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         var sharedCompilationResult = (SharedCompilationResult) compilationResult;

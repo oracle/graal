@@ -61,7 +61,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateMethodRefStamp;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
@@ -580,7 +579,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             LLVMTypeRef referenceMemoryType = getReferenceMemoryType(referenceSize);
             LLVMValueRef loadedBits = builder.buildAlignedLoad(address, referenceMemoryType, referenceSize);
             LLVMValueRef loadedReference = builder.buildIntToPtr(gen.buildIntegerResize(loadedBits, LLVMIRBuilder.integerTypeWidth(builder.wordType())),
-                            builder.objectType(ReferenceAccess.singleton().haveCompressedReferences()));
+                            builder.objectType(true));
             return gen.buildReferenceValue(loadedReference, builder.objectType(false), false);
         }
         return builder.buildLoad(address, builder.objectType(false));

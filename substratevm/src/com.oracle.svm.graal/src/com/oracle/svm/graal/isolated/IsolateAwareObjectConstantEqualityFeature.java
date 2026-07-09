@@ -91,7 +91,7 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
 final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.supportCompileInIsolates();
+        return SubstrateOptions.SupportCompileInIsolates.getValue();
     }
 
     @Override

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -267,10 +265,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             additionalPreOptions.add("noexecstack");
 
             // The linker should fail if DT_TEXTREL is needed, otherwise the image won't work on
-            // SELinux. If SpawnIsolates are disabled, this won't work as dynamic relocations
-            // are needed for heap access.
+            // SELinux.
             additionalPreOptions.add("-z");
-            additionalPreOptions.add(SpawnIsolates.getValue() ? "text" : "notext");
+            additionalPreOptions.add("text");
 
             /*
              * Make the linker aware of the page size used for aligning the native image object file

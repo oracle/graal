@@ -24,21 +24,14 @@
  */
 package com.oracle.svm.core.os;
 
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.impl.Word.nullPointer;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -46,33 +39,6 @@ import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
-    @Uninterruptible(reason = "Still being initialized.")
-    protected static int protectSingleIsolateImageHeap() {
-        assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";
-        Pointer heapBegin = IMAGE_HEAP_BEGIN.get();
-        if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
-        }
-
-        /*
-         * Set strict read-only and read+write permissions for the image heap (the entire image heap
-         * should already be read-only, but the linker/loader can place it in a segment that has the
-         * executable bit set unnecessarily)
-         */
-        UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
-        if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
-            return CEntryPointErrors.PROTECT_HEAP_FAILED;
-        }
-
-        Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
-        UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
-        if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
-            return CEntryPointErrors.PROTECT_HEAP_FAILED;
-        }
-
-        return CEntryPointErrors.NO_ERROR;
-    }
-
     @Override
     public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
         return allocate(nbytes, alignment, true, NmtCategory.Code);

@@ -342,7 +342,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "Memory access without isolates is not implemented");
             try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
                 Register immediateScratch = sc1.getRegister();
                 Register addressScratch = sc2.getRegister();
@@ -734,8 +733,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         @Override
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
@@ -743,27 +741,18 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
         @Override
         public void emitConvertNullToZero(AllocatableValue result, AllocatableValue value) {
-            if (useLinearPointerCompression()) {
-                append(new AArch64Move.ConvertNullToZeroOp(result, value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AArch64Move.ConvertNullToZeroOp(result, value));
         }
 
         @Override
         public void emitConvertZeroToNull(AllocatableValue result, Value value) {
-            if (useLinearPointerCompression()) {
-                append(new AArch64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AArch64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
         }
 
         @Override
@@ -1344,7 +1333,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         @Override
         protected void emitObjectComparison(CompilationResultBuilder crb, AArch64MacroAssembler masm, Value keyValue, Register keyRegister, JavaConstant jc) {
-            if (ReferenceAccess.singleton().haveCompressedReferences() && jc instanceof CompressibleConstant constant && !jc.isNull()) {
+            if (jc instanceof CompressibleConstant constant && !jc.isNull()) {
                 /*
                  * Strategy-switch object keys are uncompressed hub references, so compressed object
                  * constants must be uncompressed before the pointer compare.
@@ -1460,11 +1449,8 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
 
         protected AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
-            if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
-                return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
-            }
-            return new AArch64Move.LoadInlineConstant(constant, dst);
+            RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
+            return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
         }
     }
 
@@ -1562,7 +1548,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
+        Register uncompressedNullRegister = ReservedRegisters.singleton().getHeapBaseRegister();
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister, lir);
         crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
@@ -1692,7 +1678,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
+        RegisterValue nullRegisterValue = ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD));
         AArch64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         AArch64MoveFactory moveFactory = createMoveFactory(lirGenRes);
         if (isVectorizationTarget()) {
@@ -1715,10 +1701,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         assert PreLIRGraphVerifier.createInstance(graph.getOptions()).verify(graph);
         AArch64NodeMatchRules nodeMatchRules = createMatchRules(lirGen);
         return new SubstrateAArch64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
-    }
-
-    protected static boolean useLinearPointerCompression() {
-        return SubstrateOptions.SpawnIsolates.getValue();
     }
 
     @Override

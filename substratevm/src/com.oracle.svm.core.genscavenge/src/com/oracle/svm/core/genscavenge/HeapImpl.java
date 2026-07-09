@@ -44,7 +44,6 @@ import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -83,7 +82,6 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -462,12 +460,7 @@ public final class HeapImpl extends Heap {
         Boolean enabled = SerialGCOptions.ImageHeapCardMarking.getValue();
         if (enabled == Boolean.FALSE || enabled == null && !SerialGCOptions.useRememberedSet()) {
             return false;
-        } else if (enabled == null) {
-            return isImageHeapAligned();
         }
-        UserError.guarantee(isImageHeapAligned(),
-                        "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
-                        SerialGCOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
         return true;
     }
 
@@ -485,7 +478,6 @@ public final class HeapImpl extends Heap {
 
     @Fold
     static int getMetaspaceOffsetInAddressSpace() {
-        assert SubstrateOptions.SpawnIsolates.getValue();
         int result = SerialAndEpsilonGCOptions.getNullRegionSize();
         assert result % HeapParameters.getAlignedHeapChunkAlignment().rawValue() == 0 : "start of metaspace must be aligned";
         return result;
@@ -494,18 +486,9 @@ public final class HeapImpl extends Heap {
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            return 0;
-        }
-
         int result = SerialAndEpsilonGCOptions.getNullRegionSize() + SerialAndEpsilonGCOptions.getReservedMetaspaceSize();
         assert result % getImageHeapAlignment() == 0 : "start of image heap must be aligned";
         return result;
-    }
-
-    @Fold
-    public static boolean isImageHeapAligned() {
-        return SubstrateOptions.SpawnIsolates.getValue();
     }
 
     @Override

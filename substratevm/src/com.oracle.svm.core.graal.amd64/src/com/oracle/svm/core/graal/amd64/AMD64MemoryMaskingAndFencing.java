@@ -121,8 +121,6 @@ public class AMD64MemoryMaskingAndFencing {
             if (optionKey.getValue()) {
                 if (SubstrateOptions.useG1GC()) {
                     throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is not supported when using G1");
-                } else if (!SubstrateOptions.SpawnIsolates.getValue()) {
-                    throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only available when isolate support is enabled.");
                 }
             }
         }
@@ -133,8 +131,6 @@ public class AMD64MemoryMaskingAndFencing {
                 if (runtimeOptionKey.getValue()) {
                     if (SubstrateOptions.useG1GC()) {
                         throw new IllegalArgumentException("Option " + runtimeOptionKey.getName() + " is not supported when using G1");
-                    } else if (!SubstrateOptions.SpawnIsolates.getValue()) {
-                        throw new IllegalArgumentException("Option " + runtimeOptionKey.getName() + " is only available when isolate support is enabled.");
                     } else if (!Platform.includedIn(Platform.AMD64.class)) {
                         throw new IllegalArgumentException("Option " + runtimeOptionKey.getName() + " is only available on AMD64");
                     }
@@ -162,8 +158,6 @@ class AMD64MemoryMaskingAndFencingFeature implements InternalFeature {
              * The mitigation is for runtime compilation only, we don't need to register the phases
              * for host compilation.
              */
-            return;
-        } else if (!SubstrateOptions.SpawnIsolates.getValue()) {
             return;
         } else if (SubstrateOptions.useG1GC()) {
             /*

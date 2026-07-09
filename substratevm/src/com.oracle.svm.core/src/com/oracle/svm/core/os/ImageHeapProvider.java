@@ -32,7 +32,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.shared.Uninterruptible;
@@ -43,13 +42,8 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Provides new instances of the image heap for creating isolates. The same image heap provider
  * implementation can be shared by different garbage collectors.
  *
- * If {@link SubstrateOptions#SpawnIsolates} is disabled, the image heap is loaded and mapped by the
- * operating system instead of an image heap provider (see {@link OSCommittedMemoryProvider}). Note
- * that this mode is deprecated and not covered by the documentation below.
- *
- * If {@link SubstrateOptions#SpawnIsolates} is enabled, a heap base is used and the image heap is
- * explicitly mapped into a contiguous address space. Here is the typical memory layout of the
- * address space at run-time:
+ * The image heap is mapped into a contiguous address space and a dedicated heap base register
+ * points to its base address. Here is the typical memory layout of the address space at run-time:
  *
  * <pre>
  * |----------------------------------------------------------------------------------|

@@ -1481,7 +1481,7 @@ def _helloworld(native_image, javac_command, path, build_only, args, variant=lis
         if actual_output != expected_output:
             raise RuntimeError('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
-def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
+def _debuginfotest(native_image, path, build_only, args):
     sourcepath = mx.project('com.oracle.svm.test.debug').source_dirs()[0]
     # the header file for foreign types resides at the root of the
     # com.oracle.svm.test.debug source tree
@@ -1505,7 +1505,6 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         return native_image(build_args)
 
     env = os.environ.copy()
-    # build with and without Isolates and check both work
     if '--libc=musl' in args:
         env['debuginfotest_musl'] = 'yes'
 
@@ -1521,19 +1520,12 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     if mx.get_os() == 'linux' and not build_only:
         env['debuginfotest_arch'] = mx.get_arch()
 
-    if not with_isolates_only:
-        hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + svm_experimental_options(['-H:-SpawnIsolates']))
-        if mx.get_os() == 'linux' and not build_only:
-            env['debuginfotest_isolates'] = 'no'
-            mx.run(gdb_base_command() + ['-x', testhello_py, hello_binary], env=env)
-
-    hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + svm_experimental_options(['-H:+SpawnIsolates']))
+    hello_binary = build_debug_test('default', 'hello_image', testhello_args)
     if mx.get_os() == 'linux' and not build_only:
-        env['debuginfotest_isolates'] = 'yes'
         mx.run(gdb_base_command() + ['-x', testhello_py, hello_binary], env=env)
 
 
-def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isolates_only, args):
+def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
     sourcepath = mx.project('com.oracle.svm.test.debug').source_dirs()[0]
     cincludepath = sourcepath
 
@@ -1576,7 +1568,6 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isola
 
     # prepare environment
     env = os.environ.copy()
-    env['debuginfotest_isolates'] = 'yes'
     env['debuginfotest_layered'] = 'yes'
 
     # fetch python test file
@@ -1618,7 +1609,7 @@ def testhello_ni_args(cincludepath, sourcepath):
         '-H:DebugInfoSourceSearchPath=' + sourcepath,
     ])
 
-def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
+def _gdbdebughelperstest(native_image, path, args):
 
     # ====== check gdb version ======
     # gdb-debughelperstests are designed for GDB 14 and higher with the GDB Python API enabled
@@ -1667,11 +1658,10 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         'com.oracle.svm.test.debug.helper.ClassLoaderTest'
     ]
 
-    def run_debug_test(image_name: str, testfile: str, source_path: str, with_isolates: bool = True,
-                       build_cinterfacetutorial: bool = False, extra_args: list = None,
+    def run_debug_test(image_name: str, testfile: str, source_path: str, build_cinterfacetutorial: bool = False, extra_args: list = None,
                        skip_build: bool = False) -> int:
         extra_args = [] if extra_args is None else extra_args
-        build_dir = join(path, image_name + ("" if with_isolates else "_no_isolates"))
+        build_dir = join(path, image_name)
 
         if not skip_build:
             # clean / create output directory
@@ -1694,9 +1684,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
             if '--shared' in extra_args:
                 build_args = [arg for arg in build_args if arg not in ['--libc=musl', '--static']]
 
-            if not with_isolates:
-                build_args += svm_experimental_options(['-H:-SpawnIsolates'])
-
             if build_cinterfacetutorial:
                 build_args += ['-o', join(build_dir, 'lib' + image_name)]
             else:
@@ -1717,7 +1704,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                                  'libcinterfacetutorial.lib']
                 mx.run(c_command, cwd=build_dir)
         if mx.get_os() == 'linux':
-            logfile = join(path, pathlib.Path(testfile).stem + ('' if with_isolates else '_no_isolates') + '.log')
+            logfile = join(path, pathlib.Path(testfile).stem + '.log')
             os.environ.update({'gdb_logfile': logfile})
             gdb_command = gdb_logging_command(logfile, join(build_dir, 'gdb-debughelpers.py')) + [
                 '-x', testfile, join(build_dir, image_name)
@@ -1727,9 +1714,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         return 0
 
     status = 0
-    if not with_isolates_only:
-        status |= run_debug_test('prettyPrinterTest', test_pretty_printer_py, test_source_path, False,
-                                 extra_args=test_pretty_printer_args)
     status |= run_debug_test('prettyPrinterTest', test_pretty_printer_py, test_source_path,
                              extra_args=test_pretty_printer_args)
     status |= run_debug_test('prettyPrinterTest', test_settings_py, test_source_path,
@@ -1748,7 +1732,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         mx.abort(status)
 
 
-def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=None):
+def _runtimedebuginfotest(native_image, output_path, args=None):
     """Build and run the runtimedebuginfotest"""
 
     args = [] if args is None else args
@@ -1819,8 +1803,8 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         return mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
     # G1 does not work for the jsvm library
-    # avoid complications with '-H:+ProtectionKeys' which is not compatible with '-H:-SpawnIsolates' and '-H:-UseCompressedReferences'
-    if '--gc=G1' not in args and '-H:-UseCompressedReferences' not in args and '-H:-SpawnIsolates' not in args:
+    # avoid complications with '-H:+ProtectionKeys' which is not compatible with '-H:-UseCompressedReferences'
+    if '--gc=G1' not in args and '-H:-UseCompressedReferences' not in args:
         status |= run_js_test()
         status |= run_js_test(True)
 
@@ -2529,19 +2513,17 @@ def debuginfotest(args, config=None):
     builds a debuginfo Hello native image and tests it with gdb.
     """
     parser = ArgumentParser(prog='mx debuginfotest')
-    all_args = ['--output-path', '--build-only', '--with-isolates-only']
+    all_args = ['--output-path', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
     parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
-    parser.add_argument(all_args[2], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
-    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-            _debuginfotest(native_image, output_path, build_only, with_isolates_only, a), unmask(parsed.image_args),
+            _debuginfotest(native_image, output_path, build_only, a), unmask(parsed.image_args),
         config=config
     )
 
@@ -2553,19 +2535,17 @@ def layereddebuginfotest(args, config=None):
     App Layer: hello.Hello
     """
     parser = ArgumentParser(prog='mx layereddebuginfotest')
-    all_args = ['--output-path', '--skip-base-layer', '--with-isolates-only']
+    all_args = ['--output-path', '--skip-base-layer']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "layereddebuginfotest")])
     parser.add_argument(all_args[1], action='store_true', help='Skip building the base layer if it already exists')
-    parser.add_argument(all_args[2], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
     skip_base_layer = parsed.skip_base_layer
-    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-        _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isolates_only, a), unmask(parsed.image_args),
+        _layereddebuginfotest(native_image, output_path, skip_base_layer, a), unmask(parsed.image_args),
         config=config
     )
 
@@ -2587,17 +2567,15 @@ def gdbdebughelperstest(args, config=None):
     builds and tests gdb-debughelpers.py with multiple native images with debuginfo
     """
     parser = ArgumentParser(prog='mx gdbdebughelperstest')
-    all_args = ['--output-path', '--with-isolates-only']
+    all_args = ['--output-path']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "gdbdebughelperstest")])
-    parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
-    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-            _gdbdebughelperstest(native_image, output_path, with_isolates_only, a), unmask(parsed.image_args),
+            _gdbdebughelperstest(native_image, output_path, a), unmask(parsed.image_args),
         config=config
     )
 
@@ -2608,17 +2586,15 @@ def runtimedebuginfotest(args, config=None):
     runs a native image that compiles code and creates debug info at runtime.
     """
     parser = ArgumentParser(prog='mx runtimedebuginfotest')
-    all_args = ['--output-path', '--with-isolates-only']
+    all_args = ['--output-path']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "runtimedebuginfotest")])
-    parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
-    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-        _runtimedebuginfotest(native_image, output_path, with_isolates_only, a), unmask(parsed.image_args),
+        _runtimedebuginfotest(native_image, output_path, a), unmask(parsed.image_args),
         config=config
     )
 

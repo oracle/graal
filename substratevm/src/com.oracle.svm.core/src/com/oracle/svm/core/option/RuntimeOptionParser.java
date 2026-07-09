@@ -171,7 +171,7 @@ public final class RuntimeOptionParser {
     /// [IsolateArgumentParser#shouldParseArguments].
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         boolean parseRuntimeOptions = SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && IsolateArgumentParser.isCompilationIsolate();
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
         if (!parseRuntimeOptions) {
             return initialArgs;
         }

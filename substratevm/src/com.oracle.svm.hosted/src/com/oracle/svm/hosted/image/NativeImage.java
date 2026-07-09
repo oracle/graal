@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -531,7 +530,7 @@ public abstract class NativeImage extends AbstractImage {
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false, false);
 
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            if (!ImageLayerBuildingSupport.buildingImageLayer() && SpawnIsolates.getValue()) {
+            if (!ImageLayerBuildingSupport.buildingImageLayer()) {
                 if (heapLayout.getReadOnlyRelocatableSize() == 0) {
                     /*
                      * When there isn't a read only relocation section, the value of the relocatable

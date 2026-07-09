@@ -42,8 +42,8 @@ import jdk.graal.compiler.core.common.CompressEncoding;
  * Accessing hub references involves the reserved GC bits, compression shift and object alignment
  * and is defined by {@link SubstrateBasicLoweringProvider#createReadHub}.
  * <p>
- * Regular references just require the heapbase register (for -H:+SpawnIsolates) and compression
- * shift (for -H:+UseCompressedReferences)
+ * Regular references just require the heap-base register and, when compressed references are used,
+ * a compression shift.
  * </p>
  */
 public interface ReferenceAccess {
@@ -83,11 +83,6 @@ public interface ReferenceAccess {
      * Get an object reference from its compressed representation.
      */
     Object uncompressReference(UnsignedWord ref);
-
-    /**
-     * Returns true iff compressed references are available.
-     */
-    boolean haveCompressedReferences();
 
     /**
      * Returns the default compression encoding.

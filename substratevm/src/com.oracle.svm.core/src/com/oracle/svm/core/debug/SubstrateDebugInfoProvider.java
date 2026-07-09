@@ -258,7 +258,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         long classOffset = -1;
         String loaderName = loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
-        long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
+        long compressedTypeSignature = getTypeSignature(INDIRECT_PREFIX + typeName + loaderName);
 
         if (type.isPrimitive()) {
             JavaKind kind = type.getStorageKind();

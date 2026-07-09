@@ -30,7 +30,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.meta.CompressedNullConstant;
@@ -84,7 +83,6 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
     @Override
     public JavaConstant readNarrowObjectConstant(Constant base, long displacement, CompressEncoding encoding) {
-        assert SubstrateOptions.SpawnIsolates.getValue();
         // NOTE: the encoding parameter only applies at image runtime, not for hosted execution
         JavaConstant result = readObjectConstant(base, displacement);
         if (JavaConstant.NULL_POINTER.equals(result)) {

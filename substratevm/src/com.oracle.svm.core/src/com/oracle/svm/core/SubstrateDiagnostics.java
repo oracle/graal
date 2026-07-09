@@ -877,9 +877,8 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
-            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (RuntimeCompilation.isEnabled()) {
-                log.string("Supports isolated compilation: ").bool(SubstrateOptions.supportCompileInIsolates()).newline();
+                log.string("Supports isolated compilation: ").bool(SubstrateOptions.SupportCompileInIsolates.getValue()).newline();
             }
             log.string("Container support: ").bool(Container.isSupported()).newline();
             log.string("Object reference size: ").signed(ObjectLayout.singleton().getReferenceSize()).newline();
