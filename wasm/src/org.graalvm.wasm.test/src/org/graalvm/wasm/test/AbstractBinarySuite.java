@@ -355,8 +355,8 @@ public abstract class AbstractBinarySuite {
                 final byte[] name = names.get(i);
                 final byte[] section = sections.get(i);
                 final int size = 1 + name.length + section.length;
-                b.add((byte) size); // length is patched at the end
-                b.add((byte) name.length);
+                b.addUnsignedInt32(size);
+                b.addUnsignedInt32(name.length);
                 b.addRange(name, 0, name.length);
                 b.addRange(section, 0, section.length);
             }

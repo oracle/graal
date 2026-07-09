@@ -341,23 +341,23 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
 
         // Compile unit DIE. These are the minimal fields DebugTranslator requires before it will
         // parse child functions: language, line-table offset, compilation dir, and a PC range.
-        addUnsignedInt32(data, 1); // abbrev_code: compile unit
-        addUnsignedInt32(data, 2); // DW_AT_language: DW_LANG_C
-        addUnsignedInt32(data, 0); // DW_AT_stmt_list
+        data.addUnsignedInt32(1); // abbrev_code: compile unit
+        data.addUnsignedInt32(2); // DW_AT_language: DW_LANG_C
+        data.addUnsignedInt32(0); // DW_AT_stmt_list
         addString(data, "/"); // DW_AT_comp_dir
         addU32(data, FUNCTION_START_OFFSET); // DW_AT_low_pc
         addU32(data, FUNCTION_END_OFFSET); // DW_AT_high_pc
 
         // Subprogram DIE. The name only needs to be non-null; DECL_FILE selects the attacker path
         // from .debug_line, and the empty FRAME_BASE expression satisfies DebugObjectFactory.
-        addUnsignedInt32(data, 2); // abbrev_code: subprogram
+        data.addUnsignedInt32(2); // abbrev_code: subprogram
         addString(data, functionName); // DW_AT_name
-        addUnsignedInt32(data, 1); // DW_AT_decl_file
+        data.addUnsignedInt32(1); // DW_AT_decl_file
         addU32(data, FUNCTION_START_OFFSET); // DW_AT_low_pc
         addU32(data, FUNCTION_END_OFFSET); // DW_AT_high_pc
-        addUnsignedInt32(data, 0); // DW_AT_frame_base exprloc length
+        data.addUnsignedInt32(0); // DW_AT_frame_base exprloc length
 
-        addUnsignedInt32(data, 0); // null child entry
+        data.addUnsignedInt32(0); // null child entry
         setU32(data, 0, data.size() - 4);
         return data.toArray();
     }
@@ -365,8 +365,8 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
     private static byte[] debugAbbrev() {
         final ByteArrayList data = new ByteArrayList();
         // Abbrev 1 describes the compile unit DIE above and says it has one child DIE.
-        addUnsignedInt32(data, 1); // abbrev_code
-        addUnsignedInt32(data, Tags.COMPILATION_UNIT);
+        data.addUnsignedInt32(1); // abbrev_code
+        data.addUnsignedInt32(Tags.COMPILATION_UNIT);
         data.add((byte) 1); // has_children
         addAttribute(data, Attributes.LANGUAGE, DW_FORM_UDATA);
         addAttribute(data, Attributes.STMT_LIST, DW_FORM_UDATA);
@@ -376,8 +376,8 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
         addAttribute(data, 0, 0); // end attributes
 
         // Abbrev 2 describes the subprogram DIE that GraalWasm turns into a DebugFunction.
-        addUnsignedInt32(data, 2); // abbrev_code
-        addUnsignedInt32(data, Tags.SUBPROGRAM);
+        data.addUnsignedInt32(2); // abbrev_code
+        data.addUnsignedInt32(Tags.SUBPROGRAM);
         data.add((byte) 0); // has_children
         addAttribute(data, Attributes.NAME, DW_FORM_STRING);
         addAttribute(data, Attributes.DECL_FILE, DW_FORM_UDATA);
@@ -386,7 +386,7 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
         addAttribute(data, Attributes.FRAME_BASE, DW_FORM_EXPRLOC);
         addAttribute(data, 0, 0); // end attributes
 
-        addUnsignedInt32(data, 0); // end abbrev table
+        data.addUnsignedInt32(0); // end abbrev table
         return data.toArray();
     }
 
@@ -411,9 +411,9 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
         // One file entry is enough. Since it is absolute, DebugParser stores it directly as the
         // source path that DebugSourceLoader later opens via Env.getPublicTruffleFile.
         addString(data, sourcePath); // file name
-        addUnsignedInt32(data, 0); // directory index
-        addUnsignedInt32(data, 0); // last modification time
-        addUnsignedInt32(data, 0); // file length
+        data.addUnsignedInt32(0); // directory index
+        data.addUnsignedInt32(0); // last modification time
+        data.addUnsignedInt32(0); // file length
         data.add((byte) 0); // file_names terminator
 
         setU32(data, 6, data.size() - headerStart);
@@ -421,12 +421,12 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
         // Minimal line program: associate a line with the first real wasm instruction so statement
         // instrumentation can materialize a SourceSection for the function.
         data.add((byte) Opcodes.EXTENDED_OPCODE);
-        addUnsignedInt32(data, 5); // extended opcode length
+        data.addUnsignedInt32(5); // extended opcode length
         data.add((byte) Opcodes.LNE_SET_ADDRESS);
         addU32(data, FIRST_INSTRUCTION_OFFSET); // address
         data.add((byte) Opcodes.LNS_COPY);
         data.add((byte) Opcodes.EXTENDED_OPCODE);
-        addUnsignedInt32(data, 1); // extended opcode length
+        data.addUnsignedInt32(1); // extended opcode length
         data.add((byte) Opcodes.LNE_END_SEQUENCE);
 
         setU32(data, 0, data.size());
@@ -434,27 +434,14 @@ public class DebugSourceLoadSuite extends AbstractBinarySuite {
     }
 
     private static void addAttribute(ByteArrayList data, int attribute, int form) {
-        addUnsignedInt32(data, attribute);
-        addUnsignedInt32(data, form);
+        data.addUnsignedInt32(attribute);
+        data.addUnsignedInt32(form);
     }
 
     private static void addString(ByteArrayList data, String value) {
         final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         data.addRange(bytes, 0, bytes.length);
         data.add((byte) 0);
-    }
-
-    private static void addUnsignedInt32(ByteArrayList data, int valueArg) {
-        int value = valueArg;
-        while (true) {
-            int b = value & 0x7f;
-            value >>>= 7;
-            if (value == 0) {
-                data.add((byte) b);
-                break;
-            }
-            data.add((byte) (b | 0x80));
-        }
     }
 
     private static void addU16(ByteArrayList data, int value) {
