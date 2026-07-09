@@ -146,7 +146,14 @@ public class TagTest extends AbstractInstructionTest {
 
     @After
     public void tearDown() {
-        context.close();
+        try {
+            if (context != null) {
+                context.close();
+            }
+        } finally {
+            context = null;
+            instrumenter = null;
+        }
     }
 
     public enum EventKind {

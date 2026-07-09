@@ -122,92 +122,94 @@ public class DebuggerThreadsTest extends AbstractDebugTest {
 
     @Test
     public void testContextThreads() throws Exception {
-        Engine engine = Engine.create();
-        final Source source = testSource("STATEMENT()");
-        TestThreadsListener threadsListener = new TestThreadsListener();
-        List<ThreadEvent> events = threadsListener.events;
+        try (Engine engine = Engine.create()) {
+            final Source source = testSource("STATEMENT()");
+            TestThreadsListener threadsListener = new TestThreadsListener();
+            List<ThreadEvent> events = threadsListener.events;
 
-        int numThreads = 10;
-        Thread[] threads = new Thread[numThreads];
-        Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
-        try (DebuggerSession session = debugger.startSession(null)) {
-            session.setThreadsListener(threadsListener, false);
-            for (int i = 0; i < numThreads; i++) {
-                threads[i] = new Thread() {
-                    @Override
-                    public void run() {
-                        try (Context context = Context.newBuilder().engine(engine).build()) {
-                            context.eval(source);
+            int numThreads = 10;
+            Thread[] threads = new Thread[numThreads];
+            Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+            try (DebuggerSession session = debugger.startSession(null)) {
+                session.setThreadsListener(threadsListener, false);
+                for (int i = 0; i < numThreads; i++) {
+                    threads[i] = new Thread() {
+                        @Override
+                        public void run() {
+                            try (Context context = Context.newBuilder().engine(engine).build()) {
+                                context.eval(source);
+                            }
                         }
-                    }
-                };
+                    };
+                }
+                for (int i = 0; i < numThreads; i++) {
+                    threads[i].start();
+                }
+                for (int i = 0; i < numThreads; i++) {
+                    threads[i].join();
+                }
             }
-            for (int i = 0; i < numThreads; i++) {
-                threads[i].start();
-            }
-            for (int i = 0; i < numThreads; i++) {
-                threads[i].join();
-            }
-        }
 
-        assertEquals(2 * numThreads, events.size());
-        List<ThreadEvent> startEvents = new ArrayList<>(numThreads);
-        for (ThreadEvent event : events) {
-            if (event.isNew) {
-                startEvents.add(event);
+            assertEquals(2 * numThreads, events.size());
+            List<ThreadEvent> startEvents = new ArrayList<>(numThreads);
+            for (ThreadEvent event : events) {
+                if (event.isNew) {
+                    startEvents.add(event);
+                }
             }
+            assertEquals(numThreads, startEvents.size());
+            // Verify that we got all threads in the events:
+            Set<Thread> allThreads = new HashSet<>(Arrays.asList(threads));
+            for (int i = 0; i < numThreads; i++) {
+                assertTrue(allThreads.remove(startEvents.get(i).thread));
+            }
+            assertTrue(allThreads.toString(), allThreads.isEmpty());
+            // Verify that we got 'numThreads' number of contexts:
+            Set<DebugContext> distinctContexts = new HashSet<>();
+            for (ThreadEvent event : events) {
+                distinctContexts.add(event.context);
+            }
+            assertEquals(numThreads, distinctContexts.size());
         }
-        assertEquals(numThreads, startEvents.size());
-        // Verify that we got all threads in the events:
-        Set<Thread> allThreads = new HashSet<>(Arrays.asList(threads));
-        for (int i = 0; i < numThreads; i++) {
-            assertTrue(allThreads.remove(startEvents.get(i).thread));
-        }
-        assertTrue(allThreads.toString(), allThreads.isEmpty());
-        // Verify that we got 'numThreads' number of contexts:
-        Set<DebugContext> distinctContexts = new HashSet<>();
-        for (ThreadEvent event : events) {
-            distinctContexts.add(event.context);
-        }
-        assertEquals(numThreads, distinctContexts.size());
     }
 
     @Test
     public void testGetStartedThreads() throws Exception {
-        Engine engine = Engine.create();
-        TestThreadsListener threadsListener = new TestThreadsListener();
-        List<ThreadEvent> events = threadsListener.events;
+        try (Engine engine = Engine.create()) {
+            TestThreadsListener threadsListener = new TestThreadsListener();
+            List<ThreadEvent> events = threadsListener.events;
 
-        Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
-        CountDownLatch latch = new CountDownLatch(1);
-        DebuggerSession[] sessionPtr = new DebuggerSession[1];
-        try (DebuggerSession session = debugger.startSession(new SuspendedCallback() {
-            @Override
-            public void onSuspend(SuspendedEvent event) {
-                latch.countDown();
-                sessionPtr[0].setThreadsListener(threadsListener, true);
-                assertEquals(events.toString(), 2, events.size());
-                assertTrue(events.get(0).isNew);
-                assertNotNull(events.get(0).context);
-                assertTrue(events.get(1).isNew);
-                assertEquals(events.get(0).context, events.get(1).context);
-                assertNotEquals(events.get(0).thread, events.get(1).thread);
+            Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+            CountDownLatch latch = new CountDownLatch(1);
+            DebuggerSession[] sessionPtr = new DebuggerSession[1];
+            try (DebuggerSession session = debugger.startSession(new SuspendedCallback() {
+                @Override
+                public void onSuspend(SuspendedEvent event) {
+                    latch.countDown();
+                    sessionPtr[0].setThreadsListener(threadsListener, true);
+                    assertEquals(events.toString(), 2, events.size());
+                    assertTrue(events.get(0).isNew);
+                    assertNotNull(events.get(0).context);
+                    assertTrue(events.get(1).isNew);
+                    assertEquals(events.get(0).context, events.get(1).context);
+                    assertNotEquals(events.get(0).thread, events.get(1).thread);
+                }
+            })) {
+                session.suspendNextExecution();
+                sessionPtr[0] = session;
+                try (Context context = Context.newBuilder().engine(engine).allowCreateThread(true).build()) {
+                    Source source = testSource("ROOT(DEFINE(f1, EXPRESSION), SPAWN(f1), JOIN())");
+                    context.eval(source);
+                    source = testSource("ROOT(DEFINE(foo, STATEMENT), SPAWN(foo))");
+                    context.eval(source);
+                    latch.await();
+                    context.eval(testSource("JOIN()"));
+                    assertEquals(events.toString(), 3, events.size());
+                    assertFalse(events.get(2).isNew);
+                    assertTrue(events.get(0).thread == events.get(2).thread || events.get(1).thread == events.get(2).thread);
+                }
+                assertEquals(4, events.size());
             }
-        })) {
-            session.suspendNextExecution();
-            sessionPtr[0] = session;
-            try (Context context = Context.newBuilder().engine(engine).allowCreateThread(true).build()) {
-                Source source = testSource("ROOT(DEFINE(f1, EXPRESSION), SPAWN(f1), JOIN())");
-                context.eval(source);
-                source = testSource("ROOT(DEFINE(foo, STATEMENT), SPAWN(foo))");
-                context.eval(source);
-                latch.await();
-                context.eval(testSource("JOIN()"));
-                assertEquals(events.toString(), 3, events.size());
-                assertFalse(events.get(2).isNew);
-                assertTrue(events.get(0).thread == events.get(2).thread || events.get(1).thread == events.get(2).thread);
-            }
-            assertEquals(4, events.size());
         }
     }
 

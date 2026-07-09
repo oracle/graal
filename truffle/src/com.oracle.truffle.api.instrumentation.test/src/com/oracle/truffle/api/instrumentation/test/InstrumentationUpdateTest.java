@@ -94,8 +94,15 @@ public class InstrumentationUpdateTest {
 
     @After
     public void teardown() {
-        context.leave();
-        context.close();
+        try {
+            if (context != null) {
+                context.leave();
+                context.close();
+            }
+        } finally {
+            context = null;
+            run = null;
+        }
     }
 
     /*
