@@ -78,6 +78,7 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
     public void addOrUpdateField(String name, boolean updatedPreserved, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
             fields = ImageHeapMap.createNonLayeredMap(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
+            JNIReflectionDictionary.currentLayer().rescanFieldsField(this);
         }
         JNIAccessibleField existing = fields.get(name);
         if (existing == null) {
@@ -91,6 +92,7 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
     public void addOrUpdateMethod(JNIAccessibleMethodDescriptor descriptor, boolean updatedPreserved, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
             methods = ImageHeapMap.createNonLayeredMap();
+            JNIReflectionDictionary.currentLayer().rescanMethodsField(this);
         }
         JNIAccessibleMethod existing = methods.get(descriptor);
         if (existing == null) {

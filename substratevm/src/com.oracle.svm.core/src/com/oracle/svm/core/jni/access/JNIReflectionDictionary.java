@@ -28,6 +28,7 @@ import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrat
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
@@ -121,6 +122,18 @@ public final class JNIReflectionDictionary {
      */
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
     private EconomicMap<Integer, JNIAccessibleClass> classesByTypeID = null;
+
+    /**
+     * The classes map keyed by typeID need to be rescanned manually because the
+     * {@link JNIReflectionDictionary#classesByTypeID} map is only available after compilation.
+     */
+    @Platforms(HOSTED_ONLY.class) //
+    private Consumer<Object> objectRescanner;
+    @Platforms(HOSTED_ONLY.class) //
+    private Consumer<JNIAccessibleClass> methodsFieldRescanner;
+    @Platforms(HOSTED_ONLY.class) //
+    private Consumer<JNIAccessibleClass> fieldsFieldRescanner;
+
     @Platforms(HOSTED_ONLY.class) //
     private EconomicMap<DynamicHubKey, JNIAccessibleClass> classesByHub = EconomicMap.create();
     private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.createNonLayeredMap();
@@ -190,6 +203,7 @@ public final class JNIReflectionDictionary {
             classesByHub.put(key, instance);
             String name = instance.getJNIName();
             classesByName.put(name, instance);
+            rescanObject(instance);
             return instance;
         } else {
             if (!updatedPreserved) {
@@ -493,5 +507,31 @@ public final class JNIReflectionDictionary {
             }
         }
         return null;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public void setObjectRescanners(Consumer<Object> objectRescanner, Consumer<JNIAccessibleClass> methodsFieldRescanner, Consumer<JNIAccessibleClass> fieldsFieldRescanner) {
+        VMError.guarantee(this.objectRescanner == null && this.methodsFieldRescanner == null && this.fieldsFieldRescanner == null, "Cannot set object rescanners again");
+        this.objectRescanner = objectRescanner;
+        this.methodsFieldRescanner = methodsFieldRescanner;
+        this.fieldsFieldRescanner = fieldsFieldRescanner;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    void rescanObject(Object object) {
+        VMError.guarantee(objectRescanner != null, "Object rescanner is not initialized");
+        objectRescanner.accept(object);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    void rescanMethodsField(JNIAccessibleClass receiver) {
+        VMError.guarantee(methodsFieldRescanner != null, "Methods field rescanner is not initialized");
+        methodsFieldRescanner.accept(receiver);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    void rescanFieldsField(JNIAccessibleClass receiver) {
+        VMError.guarantee(fieldsFieldRescanner != null, "Fields field rescanner is not initialized");
+        fieldsFieldRescanner.accept(receiver);
     }
 }

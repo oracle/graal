@@ -53,6 +53,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -109,6 +110,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -318,6 +321,22 @@ public class JNIAccessFeature implements Feature {
         pendingNativeCallWrappers.clear();
 
         singleton().runtimeSupport.setAnalysisAccess(access);
+
+        ResolvedJavaType jniAccessibleClass = GuestAccess.get().lookupType(JNIAccessibleClass.class);
+        ResolvedJavaField methodsField = JVMCIReflectionUtil.getUniqueDeclaredField(jniAccessibleClass, "methods");
+        ResolvedJavaField fieldsField = JVMCIReflectionUtil.getUniqueDeclaredField(jniAccessibleClass, "fields");
+        /*
+         * The JNIAccessibleClass instances may only be used as values of classesByTypeID, which is
+         * populated after analysis. Therefore, analysis does not see the runtime access path from
+         * those values to their methods and fields maps and does not mark the corresponding fields
+         * as read. Mark them as read up front so that rescanning them when their maps are first
+         * assigned is not ignored.
+         */
+        access.registerAsRead(access.getUniverse().lookup(methodsField), "stores JNI-accessible methods");
+        access.registerAsRead(access.getUniverse().lookup(fieldsField), "stores JNI-accessible fields");
+        JNIReflectionDictionary.currentLayer().setObjectRescanners(object -> access.rescanObject(object, OtherReason.UNKNOWN),
+                        receiver -> access.rescanField(receiver, methodsField, OtherReason.UNKNOWN),
+                        receiver -> access.rescanField(receiver, fieldsField, OtherReason.UNKNOWN));
     }
 
     public void registerNativeCallWrapperReachabilityHandler(AbstractJNINativeCallWrapperMethod wrapper) {
