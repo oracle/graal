@@ -26,7 +26,7 @@ The following language implementations exist already (in alphabetical order):
 * [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly and dynamically-typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 
-\* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
+\* Shipped as part of [GraalVM](https://www.graalvm.org/downloads/).
 
 ## Experiments
 
