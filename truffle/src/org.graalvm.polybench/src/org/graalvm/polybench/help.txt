@@ -88,6 +88,10 @@ using the following options:
        is not set then the staged program will not be executed. This option allows the entire
        pipeline (transpiling and execution) in the same command. You can always execute the staged
        program on your own afterwards.
+
+ During staging, the effective warmup and hot iteration counts are resolved once using the same
+ precedence as the regular launcher: explicit CLI options, then benchmark-provided defaults, then
+ PolyBench defaults.
  
  
 Examples:

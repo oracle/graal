@@ -248,13 +248,7 @@ public class PolyBenchAstBuilder {
             } else {
                 builder.append(new Expr.FunctionCall.LogCall(new Expr.Atom.String("::: Running warmup :::")));
                 builder.append(Decl.Variable.of("warmupIterationsLocal"));
-                builder.append(new Stat.Assign(new Expr.Reference.Ident("warmupIterationsLocal"), new Expr.Atom.Int(Config.DEFAULT_WARMUP)));
-                try (Stat.Block.Builder thenBranchBuilder = new Stat.Block.Builder(null)) {
-                    // Get number of warmup iterations from warmupIterations function
-                    thenBranchBuilder.append(new Stat.Assign(new Expr.Reference.Ident("warmupIterationsLocal"), new Expr.FunctionCall(new Expr.Reference.Ident("warmupIterations"), null)));
-                    thenBranch = thenBranchBuilder.build();
-                }
-                builder.append(new Stat.If(new Expr.FunctionCall(new Expr.Reference.Ident("checkIfFunctionExists"), new Expr[]{new Expr.Atom.String("warmupIterations")}), thenBranch, null));
+                builder.append(new Stat.Assign(new Expr.Reference.Ident("warmupIterationsLocal"), new Expr.Atom.Int(config.warmupIterations)));
                 builder.append(new Expr.FunctionCall(new Expr.Reference.Ident("repeatIterations"), new Expr[]{
                                 new Expr.Atom.String(evalResult.sourceName),
                                 new Expr.Atom.Bool(true),
@@ -267,13 +261,7 @@ public class PolyBenchAstBuilder {
                 builder.append(new Expr.FunctionCall.LogCall(new Expr.StringConcatenation(new Expr[]{new Expr.Atom.String("::: Runn"), new Expr.Atom.String("ing :::")})));
                 builder.append(new Expr.FunctionCall(new Expr.Reference.CompoundReference(new Expr.Reference.Ident("configMetric"), new Expr.Reference.Ident("reset")), null));
                 builder.append(Decl.Variable.of("iterationsLocal"));
-                builder.append(new Stat.Assign(new Expr.Reference.Ident("iterationsLocal"), new Expr.Atom.Int(Config.DEFAULT_ITERATIONS)));
-                try (Stat.Block.Builder thenBranchBuilder = new Stat.Block.Builder(null)) {
-                    // Get number of iterations from iterations function
-                    thenBranchBuilder.append(new Stat.Assign(new Expr.Reference.Ident("iterationsLocal"), new Expr.FunctionCall(new Expr.Reference.Ident("iterations"), null)));
-                    thenBranch = thenBranchBuilder.build();
-                }
-                builder.append(new Stat.If(new Expr.FunctionCall(new Expr.Reference.Ident("checkIfFunctionExists"), new Expr[]{new Expr.Atom.String("iterations")}), thenBranch, null));
+                builder.append(new Stat.Assign(new Expr.Reference.Ident("iterationsLocal"), new Expr.Atom.Int(config.iterations)));
                 builder.append(new Expr.FunctionCall(new Expr.Reference.Ident("repeatIterations"), new Expr[]{
                                 new Expr.Atom.String(evalResult.sourceName),
                                 new Expr.Atom.Bool(false),
