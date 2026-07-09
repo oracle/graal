@@ -3,7 +3,7 @@ layout: docs
 toc_group: metadata
 link_title: Reachability Metadata
 permalink: /reference-manual/native-image/metadata/
-redirect_from: 
+redirect_from:
 - /reference-manual/native-image/dynamic-features/Resources/
 - /reference-manual/native-image/dynamic-features/Reflection/
 - /reference-manual/native-image/dynamic-features/DynamicProxy/
@@ -11,15 +11,15 @@ redirect_from:
 
 # Reachability Metadata
 
-The dynamic language features of the JVM (for example, reflection and resource handling) compute the *dynamically-accessed program elements* such as fields, methods, or resource URLs at run time. 
-On HotSpot this is possible because all class files and resources are available at run time and can be loaded by the runtime. 
+The dynamic language features of the JVM (for example, reflection and resource handling) compute the *dynamically-accessed program elements* such as fields, methods, or resource URLs at run time.
+On HotSpot this is possible because all class files and resources are available at run time and can be loaded by the runtime.
 Availability of all classes and resources, and their loading at run time, comes with an extra overhead in memory and startup time.
 
-To make native binaries small, the `native-image` builder performs [static analysis](NativeImageBasics.md#static-analysis-reachability-and-closed-world-assumption) at build time to determine only the necessary program elements that are needed for the correctness of the application. 
+To make native binaries small, the `native-image` builder performs [static analysis](NativeImageBasics.md#static-analysis-reachability-and-closed-world-assumption) at build time to determine only the necessary program elements that are needed for the correctness of the application.
 Small binaries allow fast application startup and low memory footprint, however they come at a cost: determining dynamically-accessed application elements via static analysis is infeasible as reachability of those elements depends on data that is available *only* at run time.
 
-To ensure inclusion of necessary dynamically-accessed elements into the native binary, the `native-image` builder requires **reachability metadata** (hereinafter referred to as *metadata*). 
-Providing the builder with correct and exhaustive reachability metadata guarantees application correctness and ensures compatibility with third-party libraries at runtime. 
+To ensure inclusion of necessary dynamically-accessed elements into the native binary, the `native-image` builder requires **reachability metadata** (hereinafter referred to as *metadata*).
+Providing the builder with correct and exhaustive reachability metadata guarantees application correctness and ensures compatibility with third-party libraries at runtime.
 
 You can provide reachability metadata to the `native-image` builder using the following methods:
 
@@ -31,11 +31,11 @@ You can provide reachability metadata to the `native-image` builder using the fo
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
 > To enable the new user-friendly reachability-metadata mode for your application, pass the option `--exact-reachability-metadata` at build time. To enable the user-friendly mode only for concrete packages, pass `--exact-reachability-metadata=<comma-separated-list-of-packages>`.
-> 
+>
 > To get an overview of all places in your code where missing registrations occur, without committing to the exact behavior, you can pass `-XX:MissingRegistrationReportingMode=Warn` when starting the application.
 >
 > To detect places where the application accidentally ignores a missing registration error (with `catch (Throwable t)` blocks), pass `-XX:MissingRegistrationReportingMode=Exit` when starting the application. The application will then unconditionally print the error message with the stack trace and exit immediately. This behavior is ideal for running application tests to guarantee all metadata is included.
-> 
+>
 > The user-friendly implementation for reflection will become the default in future releases of GraalVM so the timely adoption is important to avoid project breakage.
 
 ### Table of Contents
@@ -69,7 +69,7 @@ Computing metadata in code can be achieved in two ways:
 
     Here, `Class.forName("Foo")` is evaluated into a constant at build time. When the native binary is built, this value is stored in its [initial heap](NativeImageBasics.md#native-image-heap).
     If the class `Foo` does not exist, the call to `Class#forName` will be transformed into `throw ClassNotFoundException("Foo")`.
-  
+
     The *constant* is defined as:
       * A literal (for example, `"Foo"` or `1`).
       * Access to a static field that is [initialized at build time](ClassInitialization.md).
@@ -95,15 +95,15 @@ Computing metadata in code can be achieved in two ways:
      Class<?>[] params2 = {String.class, int.class};
      Integer.class.getMethod("parseInt", params2);
      ```
- 
+
      Note that Native Image currently aggressively computes constants, and therefore it is not possible to specify exactly what is a constant at build time.
 
-2. By [initializing classes at build time](ClassInitialization.md) and storing dynamically accessed elements into the initial heap of the native executable. 
-   This way of providing metadata is suited for cases when specifying metadata with constants or in JSON is not possible. 
+2. By [initializing classes at build time](ClassInitialization.md) and storing dynamically accessed elements into the initial heap of the native executable.
+   This way of providing metadata is suited for cases when specifying metadata with constants or in JSON is not possible.
    This is necessary in cases when:
    * The user code needs to generate new class bytecode.
    * The user code needs to traverse the classpath to compute the dynamically accessed program elements necessary for the application.
-   
+
    In the following example:
 
     ```java
@@ -166,7 +166,7 @@ A conditional entry is specified by adding a `condition` field to the entry in t
 }
 ```
 
-A metadata entry with a `typeReached` condition is considered available at run time, only when the specified fully-qualified type is _reached_ at run time. 
+A metadata entry with a `typeReached` condition is considered available at run time, only when the specified fully-qualified type is _reached_ at run time.
 Before that, all dynamic accesses to the element represented with the `metadata-entry` will behave as if the `metadata-entry` does not exist.
 This means that those dynamic accesses will throw a missing-registration error.
 
@@ -191,18 +191,18 @@ public class App {
     public static void main(String[] args) {
         // ConditionType not reached => metadata entry not available
         ConditionType.class;
-        // ConditionType not reached (ConditionType.class doesn't start class initialization) => metadata entry not available  
+        // ConditionType not reached (ConditionType.class doesn't start class initialization) => metadata entry not available
         ConditionType.singleton();
         // ConditionType reached (already initialized) => metadata entry available
     }
 }
 ```
 
-A type is also reached, if it is marked as `initialize-at-build-time` or any of its subtypes are marked as `initialize-at-build-time` and they exist on the classpath. 
+A type is also reached, if it is marked as `initialize-at-build-time` or any of its subtypes are marked as `initialize-at-build-time` and they exist on the classpath.
 
 Array types are never marked as reached and as such cannot be used in conditions.
 
-A conditional metadata entry is included into the image when the fully-qualified type is reachable at build time. 
+A conditional metadata entry is included into the image when the fully-qualified type is reachable at build time.
 This entry affects the image size, and it will be available at run time only when the condition is reached at run time.
 
 You can find more examples of the metadata files in the [GraalVM Reachability Metadata repository](https://github.com/oracle/graalvm-reachability-metadata).
@@ -288,14 +288,14 @@ Native Image accepts the following types of reachability metadata:
 - [Java reflection](#reflection) (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods, fields, and their properties at run time.
 - [JNI](#java-native-interface) allows native code to access classes, methods, fields and their properties at run time.
 - [Resources](#resources) allow arbitrary files present on the classpath to be dynamically accessed in the application.
-- [Resource Bundles](#resource-bundles) Java localization support (`java.util.ResourceBundle`) that enables Java code to load L10N resources.  
+- [Resource Bundles](#resource-bundles) Java localization support (`java.util.ResourceBundle`) that enables Java code to load L10N resources.
 - [Serialization](#serialization) enables writing (and reading) Java objects to (and from) streams.
 - (Experimental) [Predefined Classes](#predefined-classes) provide support for dynamically generated classes.
 
 ## Reflection
 
-For all methods in this section Native Image will compute reachability at build time given that all the call arguments are constant. 
-Providing constant arguments in code is a preferred way to provide metadata as it requires no duplication of information in external JSON files.  
+For all methods in this section Native Image will compute reachability at build time given that all the call arguments are constant.
+Providing constant arguments in code is a preferred way to provide metadata as it requires no duplication of information in external JSON files.
 
 Reflection in Java starts with `java.lang.Class` that allows fetching further reflective elements such as methods and fields.
 The class can be fetched reflectively via the following static functions on `java.lang.Class`:
@@ -379,13 +379,13 @@ The following methods on `java.lang.Class` will throw a `MissingRegistrationErro
 * `Field getDeclaredField(String) throws NoSuchFieldException,SecurityException`
 * `Field[] getFields() throws SecurityException`
 * `Field[] getDeclaredFields() throws SecurityException`
-* `RecordComponent[] getRecordComponents()`  
+* `RecordComponent[] getRecordComponents()`
 * `Class[] getPermittedSubclasses()`
 * `Object[] getSigners()`
 * `Class[] getNestMembers()`
 * `Class[] getClasses()`
 * `Class[] getDeclaredClasses() throws SecurityException`
-  
+
 Furthermore, all reflective lookups via `java.lang.invoke.MethodHandles.Lookup` will also require metadata for the type to be present, or they will throw `MissingReflectionRegistrationError`.
 
 Note that for lambda-proxy classes, metadata can not be provided.
@@ -415,7 +415,7 @@ For convenience, you can enable access to groups of methods using the `allDeclar
   "allDeclaredMethods": true,
   "allPublicMethods": true
 }
-``` 
+```
 
 In case the method-invocation metadata is missing, the following methods will throw a `MissingReflectionRegistrationError`:
 
@@ -583,7 +583,7 @@ is not required:
 
 Failing to provide metadata for an element that is dynamically accessed from native code will result in an exception (`MissingJNIRegistrationError`).
 
-> Note that most libraries that use JNI do not handle exceptions properly, so to see which elements are missing `--exact-reachability-metadata` in combination with `-XX:MissingRegistrationReportingMode=Warn` must be used.   
+> Note that most libraries that use JNI do not handle exceptions properly, so to see which elements are missing `--exact-reachability-metadata` in combination with `-XX:MissingRegistrationReportingMode=Warn` must be used.
 
 ## Foreign Function and Memory API
 
@@ -604,6 +604,11 @@ If the necessary metadata is not provided, a `MissingForeignRegistrationError` w
 Java is capable of accessing any resource on the application class path, or the module path for which the requesting code has permission to access.
 Resource metadata instructs the `native-image` builder to include specified resources and resource bundles in the produced binary.
 A consequence of this approach is that some parts of the application that use resources for configuration (such as logging) are effectively configured at build time.
+
+Resources embedded in a native executable are returned as `resource:` URLs instead of `file:` URLs.
+Do not use `URL#getFile()` to obtain a file system path for an embedded resource.
+To read the resource, use `Class#getResourceAsStream()`, `ClassLoader#getResourceAsStream()`, or `URL#openStream()`.
+If an API requires a file system path, copy the resource to a temporary file first.
 
 Native Image will detect calls to `java.lang.Class#getResource` and `java.lang.Class#getResourceAsStream` in which:
 
@@ -673,7 +678,7 @@ For example:
    "resources": [
       {
         "module": "library.module",
-        "glob": "resource-file.txt" 
+        "glob": "resource-file.txt"
       }
    ]
 }
@@ -762,7 +767,7 @@ This is necessary because serialization usually requires reflective accesses to 
 
 ### Serialization Metadata Registration In Code
 
-Native Image detects calls to `ObjectInputFilter.Config#createFilter(String pattern)` and if the `pattern` argument is constant, the exact classes mentioned in the pattern will be registered for serialization. 
+Native Image detects calls to `ObjectInputFilter.Config#createFilter(String pattern)` and if the `pattern` argument is constant, the exact classes mentioned in the pattern will be registered for serialization.
 For example, the following pattern will register the class `pkg.SerializableClass` for serialization:
 
 ```java
@@ -778,7 +783,7 @@ Wildcard patterns do the serialization registration only for lambda-proxy classe
   ObjectInputFilter.Config.createFilter("pkg.LambdaHolder$$Lambda*;")
 ```
 
-Patterns like `"pkg.**"` and `"pkg.Prefix*"` will not perform serialization registration as they are too general and would increase image size significantly. 
+Patterns like `"pkg.**"` and `"pkg.Prefix*"` will not perform serialization registration as they are too general and would increase image size significantly.
 
 For calls to the `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class)` and `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class, )` native image detects calls to these functions when all arguments and the receiver are constant. For example, the following call will register `SerializlableClass` for serialization:
 
@@ -793,7 +798,7 @@ To create a custom constructor for serialization use:
   var newConstructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(BaseClass.class, constructor);
 ```
 
-Proxy classes can only be registered for serialization via the JSON files. 
+Proxy classes can only be registered for serialization via the JSON files.
 
 ### Serialization Metadata in JSON
 
@@ -883,7 +888,7 @@ See below is a sample reachability metadata configuration that you can use in _r
       "methods": [
         {
           "name": "method1",
-          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"] 
+          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
         }
       ],
       "allDeclaredConstructors": true,
