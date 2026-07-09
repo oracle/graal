@@ -1509,7 +1509,7 @@ def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_iso
 
         additional_image_build_args = []
         if 'wasm' in test.expected_ids:
-            additional_image_build_args += ['-H:+UnlockExperimentalVMOptions', '-H:+VectorAPISupport', '--add-modules=jdk.incubator.vector']
+            additional_image_build_args += ['--add-modules=jdk.incubator.vector']
 
         mx.log(f'{datetime.now():%d %b %Y %H:%M:%S} Creating project for test run {test} in version {test.version}')
 
