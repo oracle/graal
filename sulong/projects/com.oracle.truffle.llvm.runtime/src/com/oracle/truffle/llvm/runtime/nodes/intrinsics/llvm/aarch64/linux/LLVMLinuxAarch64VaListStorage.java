@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLV
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -442,6 +443,10 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     overflowAreaArgOffsets[oi] = overflowArea;
                     overflowArea += obj.getSize();
                     overflowArgs[oi++] = arg;
+                } else if (isIVarBit(arg)) {
+                    overflowAreaArgOffsets[oi] = overflowArea;
+                    overflowArea += getIVarBitBytes(arg).length;
+                    overflowArgs[oi++] = arg;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
@@ -473,6 +478,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                        @Cached.Exclusive @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                         @Cached LLVMI32OffsetStoreNode gpOffsetStore,
@@ -499,8 +505,8 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                             vaList.overflowArgAreaBaseNativePtr.increment(vaList.overflowArgArea.getOffset()), vaList.gpSaveAreaNativePtr, vaList.fpSaveAreaNativePtr);
             initNativeAreas(vaList.realArguments, vaList.originalArgs, vaList.expansions, vaList.numberOfExplicitArguments, vaList.gpOffset, vaList.fpOffset,
                             LLVMNativePointer.cast(vaList.gpSaveAreaNativePtr), LLVMNativePointer.cast(vaList.fpSaveAreaNativePtr), LLVMNativePointer.cast(vaList.overflowArgAreaBaseNativePtr),
-                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                            pointerOverflowArgAreaStore, memMove);
+                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                            fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
             vaList.nativized = true;
         }
 
@@ -520,6 +526,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                     @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                    @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     @Cached NativeProfiledMemMoveToNative memMove,
@@ -557,7 +564,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         initNativeAreas(this.realArguments, this.originalArgs, this.expansions, this.numberOfExplicitArguments, this.gpOffset, this.fpOffset, LLVMNativePointer.cast(gpSaveAreaNativePtr),
                         LLVMNativePointer.cast(fpSaveAreaNativePtr), LLVMNativePointer.cast(overflowArgAreaBaseNativePtr), i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore,
-                        pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
+                        pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
@@ -590,6 +597,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                     LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                     LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                    LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                     LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     NativeProfiledMemMoveToNative memMove) {
@@ -627,7 +635,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
                 if (area == VarArgArea.GP_AREA) {
                     if (gp + remainingExpLength * Aarch64BitVarArgs.GP_STEP <= 0) {
-                        storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
+                        storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8OverflowArgAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
                                         Aarch64BitVarArgs.STACK_STEP);
                         gp += Aarch64BitVarArgs.GP_STEP;
                     } else {
@@ -635,7 +643,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                             // update the overflow area at the expansion start only
                             gp = 0;
                             storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                             fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, originalArguments[ei], Aarch64BitVarArgs.STACK_STEP);
 
                             if (originalArguments[ei] instanceof LLVMVarArgCompoundValue) {
@@ -647,7 +655,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     }
                 } else if (area == VarArgArea.FP_AREA) {
                     if (fp + remainingExpLength * Aarch64BitVarArgs.FP_STEP <= 0) {
-                        storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
+                        storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8OverflowArgAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
                                         Aarch64BitVarArgs.STACK_STEP);
                         fp += Aarch64BitVarArgs.FP_STEP;
                     } else {
@@ -655,7 +663,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                             // update the overflow area at the expansion start only
                             fp = 0;
                             storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                             fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, originalArguments[ei], Aarch64BitVarArgs.STACK_STEP);
 
                             if (originalArguments[ei] instanceof LLVMVarArgCompoundValue) {
@@ -667,7 +675,11 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     }
                 } else if (object instanceof LLVMVarArgCompoundValue) {
                     overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
+                } else if (isIVarBit(object)) {
+                    overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
+                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                     fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                 }
             }
@@ -895,6 +907,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                        @Cached.Exclusive @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                         @Shared("overflowAreaStore") @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
@@ -970,6 +983,8 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                 } else if (arg instanceof LLVMVarArgCompoundValue) {
                     LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
                     overflowArea += obj.getSize();
+                } else if (isIVarBit(arg)) {
+                    overflowArea += getIVarBitBytes(arg).length;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
@@ -989,8 +1004,8 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, gpSaveAreaStore, fpSaveAreaStore, nativeVAListPtr, initGPOffset, initFPOffset, overflowArgAreaBaseNativePtr,
                             gpSaveAreaNativePtr, fpSaveAreaNativePtr);
             initNativeAreas(realArguments, originalArgs, expansions, numberOfExplicitArguments, initGPOffset, initFPOffset, gpSaveAreaNativePtr, fpSaveAreaNativePtr, overflowArgAreaBaseNativePtr,
-                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                            pointerOverflowArgAreaStore, memMove);
+                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                            fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
         }
 
         @ExportMessage

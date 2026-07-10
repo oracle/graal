@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLV
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
@@ -254,6 +255,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     @TruffleBoundary
     void toNative(@Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
+                    @Cached LLVMI8OffsetStoreNode i8RegSaveAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                     @Cached NativeProfiledMemMoveToNative memMove,
@@ -283,7 +285,8 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
             final Object object = realArguments[i];
 
-            long size = storeArgument(nativeStackPtr, offset, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Integer.BYTES);
+            long size = storeArgument(nativeStackPtr, offset, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
+                            Integer.BYTES);
             assert size <= Long.BYTES;
             offset += Long.BYTES;
         }
