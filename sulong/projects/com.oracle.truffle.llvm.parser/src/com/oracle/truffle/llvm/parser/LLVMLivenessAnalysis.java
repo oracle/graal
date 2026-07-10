@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -99,6 +99,7 @@ public final class LLVMLivenessAnalysis {
         // collect all stack values
         ArrayList<SSAValue> slots = new ArrayList<>();
         for (FunctionParameter param : functionDefinition.getParameters()) {
+            param.setFrameIdentifier(-1);
             param.setFrameIdentifier(slots.size());
             slots.add(param);
         }
@@ -106,6 +107,7 @@ public final class LLVMLivenessAnalysis {
             for (Instruction instruction : block.getInstructions()) {
                 if (instruction instanceof ValueInstruction) {
                     ValueInstruction value = (ValueInstruction) instruction;
+                    value.setFrameIdentifier(-1);
                     value.setFrameIdentifier(slots.size());
                     slots.add(value);
                 }
