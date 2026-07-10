@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,9 @@ public final class ModuleSupport {
                         "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.code");
         ModuleSupport.addExports(VMAccess.class, "jdk.graal.compiler",
+                        "jdk.graal.compiler.annotation",
                         "jdk.graal.compiler.phases.util");
+        ModuleSupport.addExports(VMAccess.class, "java.base", "sun.reflect.annotation");
     }
 
     private ModuleSupport() {

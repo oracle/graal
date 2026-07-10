@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.List;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -380,6 +381,13 @@ public interface VMAccess {
      * {@link java.lang.reflect.Constructor}</td>
      * <td>The host type must be {@link ResolvedJavaMethod} exactly (e.g.,
      * {@link jdk.vm.ci.meta.JavaMethod} will not work).</td>
+     * </tr>
+     * <tr>
+     * <td>{@link AnnotationValue}</td>
+     * <td>{@link java.lang.annotation.Annotation}</td>
+     * <td>Element values are converted recursively and annotation identity is not preserved through
+     * a round-trip. Defaults, absent required members, and standard deferred failures for malformed
+     * members retain JDK annotation semantics in the receiving context.</td>
      * </tr>
      * </table>
      * <p>

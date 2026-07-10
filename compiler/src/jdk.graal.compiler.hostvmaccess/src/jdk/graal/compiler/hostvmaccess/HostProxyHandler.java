@@ -26,6 +26,7 @@ package jdk.graal.compiler.hostvmaccess;
 
 import static jdk.graal.compiler.hostvmaccess.HostVMAccess.makeAccessible;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -41,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -237,6 +239,9 @@ final class HostProxyHandler implements InvocationHandler {
         if (Executable.class.isAssignableFrom(guestType)) {
             return hostType == ResolvedJavaMethod.class;
         }
+        if (Annotation.class.isAssignableFrom(guestType)) {
+            return hostType == AnnotationValue.class;
+        }
         return false;
     }
 
@@ -268,6 +273,10 @@ final class HostProxyHandler implements InvocationHandler {
                     MethodHandle originalField, // bound SnippetReflectionProvider.originalField
                     MethodHandle originalMethod, // bound SnippetReflectionProvider.originalMethod
                     MethodHandle originalClass, // bound SnippetReflectionProvider.originalClass
+                    // Annotation -> AnnotationValue mapping
+                    MethodHandle annotationAsAnnotationValue,
+                    // AnnotationValue -> Annotation mapping
+                    MethodHandle annotationValueAsAnnotation,
                     // exception mapping
                     MethodHandle filterException) {
     }
@@ -320,6 +329,10 @@ final class HostProxyHandler implements InvocationHandler {
         if (Executable.class.isAssignableFrom(guestType)) {
             return methodHandles.originalMethod;
         }
+        if (Annotation.class.isAssignableFrom(guestType)) {
+            // Bind once while constructing the cached proxy method map; invocations pass only the returned AnnotationValue.
+            return MethodHandles.insertArguments(methodHandles.annotationValueAsAnnotation, 1, guestType);
+        }
         throw new RuntimeException("Should not reach here: " + hostType + " -> " + guestType);
     }
 
@@ -371,6 +384,9 @@ final class HostProxyHandler implements InvocationHandler {
         }
         if (Executable.class.isAssignableFrom(guestType)) {
             return methodHandles.lookupJavaMethod;
+        }
+        if (Annotation.class.isAssignableFrom(guestType)) {
+            return methodHandles.annotationAsAnnotationValue;
         }
         throw new RuntimeException("Should not reach here: " + guestType + " -> " + hostType);
     }
