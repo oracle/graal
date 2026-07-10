@@ -94,17 +94,6 @@ public final class SerialGCOptions {
     @Option(help = "Ignore the maximum heap size while in VM-internal code. Serial GC only.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMInternalCode = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
-    @Option(help = "Determines whether to outline write barrier code to a separate function, " +
-                    "trading reduced image size for (potentially) worse performance. Serial GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<OutlineWriteBarriers> WriteBarrierOutlining = new HostedOptionKey<>(OutlineWriteBarriers.Auto, SerialGCOptions::validateSerialHostedOption);
-
-    public enum OutlineWriteBarriers {
-        Auto,
-        Always,
-        YoungOnly,
-        Never
-    }
-
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
         @Option(help = "Collect old generation by compacting in-place instead of copying. Serial GC only.", type = OptionType.Expert) //
@@ -127,21 +116,6 @@ public final class SerialGCOptions {
             }
         };
 
-        @Option(help = "Determines whether to always (if true) or never (if false) outline write barrier code to a separate function, " +
-                        "trading reduced image size for (potentially) worse performance. Serial GC only.", type = OptionType.Expert, deprecated = true, deprecationMessage = "Please use the option 'WriteBarrierOutlining' instead.") //
-        public static final HostedOptionKey<Boolean> OutlineWriteBarriers = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-                if (newValue == Boolean.TRUE) {
-                    WriteBarrierOutlining.update(values, SerialGCOptions.OutlineWriteBarriers.Always);
-                } else if (newValue == Boolean.FALSE) {
-                    WriteBarrierOutlining.update(values, SerialGCOptions.OutlineWriteBarriers.Never);
-                } else {
-                    WriteBarrierOutlining.update(values, SerialGCOptions.OutlineWriteBarriers.Auto);
-                }
-            }
-        };
     }
 
     private SerialGCOptions() {

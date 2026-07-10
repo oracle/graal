@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
+import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -129,6 +129,10 @@ public class SubstrateGCOptions {
     @Option(help = "Determines when to use thread-local object allocation.")//
     public static final HostedOptionKey<TLABPolicy> TLABUsagePolicy = new HostedOptionKey<>(TLABPolicy.Auto, SubstrateGCOptions::verifyTLABUsagePolicy, DoNotPassToNativeGC);
 
+    @Option(help = "Determines whether to outline write barrier code to a separate function, trading reduced image size for (potentially) worse performance.", type = OptionType.Expert) //
+    public static final HostedOptionKey<OutlineWriteBarriers> WriteBarrierOutlining = new HostedOptionKey<>(OutlineWriteBarriers.Auto, SubstrateGCOptions::verifyWriteBarrierOutlining,
+                    DoNotPassToNativeGC);
+
     @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
 
@@ -139,6 +143,13 @@ public class SubstrateGCOptions {
     private static void verifyTLABUsagePolicy(@SuppressWarnings("unused") HostedOptionKey<?> key) {
         if (!UseTLAB.getValue() && TLABUsagePolicy.getValue() == TLABPolicy.Always) {
             throw UserError.invalidOptionValue(TLABUsagePolicy, TLABPolicy.Always.name(), "This option value can only be used if option '" + UseTLAB.getName() + "' is enabled");
+        }
+    }
+
+    private static void verifyWriteBarrierOutlining(HostedOptionKey<OutlineWriteBarriers> key) {
+        OutlineWriteBarriers value = key.getValue();
+        if (SubstrateOptions.useG1GC() && value == OutlineWriteBarriers.YoungOnly) {
+            throw UserError.invalidOptionValue(key, value.name(), "This option value is not supported with the G1 garbage collector");
         }
     }
 
@@ -176,5 +187,12 @@ public class SubstrateGCOptions {
     public enum TLABPolicy {
         Auto,
         Always;
+    }
+
+    public enum OutlineWriteBarriers {
+        Auto,
+        Always,
+        YoungOnly,
+        Never
     }
 }
