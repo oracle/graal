@@ -37,6 +37,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
@@ -119,7 +120,7 @@ public class ContinuationSupport {
         // copyFrames() may do something interruptible before uninterruptibly copying frames.
         // Code must not rely on remaining uninterruptible until after frames were copied.
         CodePointer enterIP = singleton().copyFrames(storedCont, topSP, preparedData);
-        patchFramePointersInCopiedFrames(storedCont, enterIP, topSP);
+        patchStackAddressesInCopiedFrames(storedCont, enterIP, topSP);
         KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
     }
 
@@ -139,16 +140,11 @@ public class ContinuationSupport {
     }
 
     @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
-    public static void patchFramePointersInCopiedFrames(StoredContinuation continuation, CodePointer ip, Pointer newFramesStart) {
-        if (!SubstrateOptions.PreserveFramePointer.getValue()) {
-            return;
-        }
-
+    public static void patchStackAddressesInCopiedFrames(StoredContinuation continuation, CodePointer ip, Pointer newFramesStart) {
         Pointer originalFramesStart = StoredContinuationAccess.getOriginalCarrierSP(continuation);
         if (newFramesStart.equal(originalFramesStart)) {
             return;
         }
-
         int framesSize = StoredContinuationAccess.getFramesSizeInBytes(continuation);
         Pointer newFramesEnd = newFramesStart.add(framesSize);
 
@@ -158,25 +154,47 @@ public class ContinuationSupport {
         while (JavaStackWalker.advance(walk, thread)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             Pointer callerSP = JavaFrames.getCallerSP(frame);
-            boolean isContEntryFrame = callerSP.equal(newFramesEnd);
-            Pointer framePointerSlot = FrameAccess.singleton().unsafePreservedFramePointerLocation(callerSP);
-            patchFramePointer(originalFramesStart, newFramesStart, newFramesEnd, framePointerSlot, isContEntryFrame);
+
+            if (SubstrateOptions.PreserveFramePointer.getValue()) {
+                Pointer framePointerSlot = FrameAccess.singleton().unsafePreservedFramePointerLocation(callerSP);
+                patchStackAddress(originalFramesStart, newFramesStart, newFramesEnd, framePointerSlot, callerSP, true);
+            }
+            long framePointerSaveAreaOffset = frame.getFramePointerSaveAreaOffset();
+            if (framePointerSaveAreaOffset != CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET) {
+                Pointer saveAreaAddress = frame.getSP().add(Word.unsigned(framePointerSaveAreaOffset));
+                /*
+                 * Without PreserveFramePointer, the save area is used only temporarily to spill
+                 * stack addresses, and contains garbage otherwise. We don't know the current state,
+                 * but overwriting garbage is safe if we don't expect it to be a valid address.
+                 */
+                boolean assertValid = SubstrateOptions.PreserveFramePointer.getValue();
+                patchStackAddress(originalFramesStart, newFramesStart, newFramesEnd, saveAreaAddress, callerSP, assertValid);
+            }
         }
     }
 
     @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
-    private static void patchFramePointer(Pointer originalFramesStart, Pointer newFramesStart, Pointer newFramesEnd, Pointer framePointerSlot, boolean isContEntryFrame) {
-        assert framePointerSlot.aboveOrEqual(newFramesStart) && framePointerSlot.belowThan(newFramesEnd);
+    private static void patchStackAddress(Pointer originalFramesStart, Pointer newFramesStart, Pointer newFramesEnd, Pointer addressSlot, Pointer callerSP, boolean assertValid) {
+        assert addressSlot.aboveOrEqual(newFramesStart);
+        assert addressSlot.belowThan(callerSP);
+        assert callerSP.belowOrEqual(newFramesEnd);
 
-        Pointer address = framePointerSlot.readWord(0);
+        Pointer address = addressSlot.readWord(0);
         Pointer adjustedAddress = newFramesStart.add(address.subtract(originalFramesStart));
 
-        if (isContEntryFrame) {
-            assert adjustedAddress.aboveOrEqual(newFramesEnd);
-        } else {
-            assert adjustedAddress.aboveOrEqual(newFramesStart) && adjustedAddress.belowThan(newFramesEnd);
+        if (assertValid) {
+            boolean callerIsEntryFrame = callerSP.equal(newFramesEnd);
+            if (callerIsEntryFrame) {
+                /*
+                 * The caller is the entry frame, which is not copied. With PreserveFramePointer,
+                 * the save slots in this frame point into it, and so, outside the copied frames.
+                 */
+                assert adjustedAddress.aboveOrEqual(newFramesEnd);
+            } else {
+                assert adjustedAddress.aboveOrEqual(newFramesStart) && adjustedAddress.belowThan(newFramesEnd);
+            }
         }
 
-        framePointerSlot.writeWord(0, adjustedAddress);
+        addressSlot.writeWord(0, adjustedAddress);
     }
 }

@@ -52,6 +52,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -359,6 +360,7 @@ public class CodeInfoEncoder {
         protected int exceptionOffset;
         protected ReferenceMapEncoder.Input referenceMap;
         protected long referenceMapIndex;
+        protected int framePointerSaveAreaOffset = CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
         protected FrameInfoEncoder.FrameData frameData;
         protected FrameInfoEncoder.FrameData defaultFrameData;
         protected IPData next;
@@ -420,6 +422,7 @@ public class CodeInfoEncoder {
         int totalFrameSize = compilation.getTotalFrameSize();
         boolean isEntryPoint = method.isEntryPoint();
         boolean hasCalleeSavedRegisters = method.hasCalleeSavedRegisters();
+        int framePointerSaveAreaOffset = getFramePointerSaveAreaOffset(compilation);
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
@@ -427,6 +430,7 @@ public class CodeInfoEncoder {
         startEntry.defaultFrameData = defaultFrameData;
         startEntry.frameData = defaultFrameData;
         startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
+        startEntry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
@@ -435,6 +439,7 @@ public class CodeInfoEncoder {
             entry.defaultFrameData = defaultFrameData;
             entry.frameData = defaultFrameData;
             entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
+            entry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
@@ -483,6 +488,13 @@ public class CodeInfoEncoder {
 
         ImageSingletons.lookup(Counters.class).methodCount.inc();
         ImageSingletons.lookup(Counters.class).codeSize.add(compilationSize);
+    }
+
+    private static int getFramePointerSaveAreaOffset(CompilationResult compilation) {
+        if (compilation instanceof SharedCompilationResult res && res.hasFramePointerSaveAreaOffset()) {
+            return res.getFramePointerSaveAreaOffset();
+        }
+        return CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
     }
 
     private IPData makeEntry(long ip) {
@@ -559,13 +571,15 @@ public class CodeInfoEncoder {
         long nextIndexIP = 0;
         int currentDefaultFrameInfoIndex = -1;
         int chunkDefaultFrameInfoIndex = -1;
+        int currentFramePointerSaveAreaOffset = CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         for (IPData data = first; data != null; data = data.next) {
             assert data.ip <= nextIndexIP : data;
             if (useFinalImageCodeInfoEncoding && data.defaultFrameData != null) {
                 currentDefaultFrameInfoIndex = TypeConversion.asS4(data.defaultFrameData.encodedFrameInfoIndex);
             }
-            if (data.ip == nextIndexIP) {
+            boolean isIndexEntry = (data.ip == nextIndexIP);
+            if (isIndexEntry) {
                 indexOffsets[nextIndexEntry++] = encodingBuffer.getBytesWritten();
                 if (useFinalImageCodeInfoEncoding) {
                     VMError.guarantee(currentDefaultFrameInfoIndex >= 0, "Image code index entry is missing default frame info");
@@ -580,7 +594,10 @@ public class CodeInfoEncoder {
             entryFlags = entryFlags | flagsForExceptionOffset(data) << CodeInfoDecoder.EX_SHIFT;
             entryFlags = entryFlags | flagsForReferenceMapIndex(data) << CodeInfoDecoder.RM_SHIFT;
             entryFlags = entryFlags | flagsForDeoptFrameInfo(data) << CodeInfoDecoder.FI_SHIFT;
-            if (useFinalImageCodeInfoEncoding) {
+            if (shouldIncludeSavedFramePointerOffset(data, isIndexEntry, currentFramePointerSaveAreaOffset)) { // assumed rare
+                entryFlags = entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY_WITH_FRAME_POINTER_SAVE_AREA_OFFSET;
+                currentFramePointerSaveAreaOffset = data.framePointerSaveAreaOffset;
+            } else if (useFinalImageCodeInfoEncoding) {
                 entryFlags = encodeFinalImageExtendedEntryFlags(data, entryFlags, currentDefaultFrameInfoIndex, chunkDefaultFrameInfoIndex);
             } else if (CodeInfoDecoder.isExtendedEntryMarker(CodeInfoDecoder.basicEntryFlags(entryFlags))) {
                 entryFlags = entryFlags | CodeInfoDecoder.EXTENDED_ENTRY_FLAG | CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY;
@@ -596,6 +613,7 @@ public class CodeInfoEncoder {
             writeExceptionOffset(encodingBuffer, data, entryFlags);
             writeReferenceMapIndex(encodingBuffer, data, entryFlags);
             writeEncodedFrameInfo(encodingBuffer, data, entryFlags, chunkDefaultFrameInfoIndex);
+            writeFramePointerSaveAreaOffset(encodingBuffer, data, entryFlags);
 
             if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && data.frameData != null && data.frameData.frame.isDeoptEntry) {
                 /*
@@ -620,6 +638,22 @@ public class CodeInfoEncoder {
         }
         codeInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()), NmtCategory.Code);
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoEncodings));
+    }
+
+    private static boolean shouldIncludeSavedFramePointerOffset(IPData data, boolean isIndexEntry, int currentFramePointerSaveAreaOffset) {
+        boolean isMethodStart = (data.frameSizeEncoding & CodeInfoDecoder.FRAME_SIZE_METHOD_START) != 0;
+        if (!isMethodStart && !isIndexEntry) {
+            assert data.framePointerSaveAreaOffset == CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
+            return false; // information not present for this IPData
+        }
+        if (isIndexEntry && data.framePointerSaveAreaOffset != CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET) {
+            return true; // index entries need to include the save area when there is one
+        }
+        if (currentFramePointerSaveAreaOffset != data.framePointerSaveAreaOffset) {
+            assert isMethodStart : "save area offset expected to change only at another methods start";
+            return true;
+        }
+        return false;
     }
 
     private static boolean useFinalImageCodeInfoEncoding() {
@@ -810,6 +844,7 @@ public class CodeInfoEncoder {
         }
         return switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY;
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY_WITH_FRAME_POINTER_SAVE_AREA_OFFSET -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_LEGACY_WITH_FRAME_POINTER_SAVE_AREA_OFFSET;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_DEFAULT;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S1 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S1;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_INFO_ONLY_S2 -> CodeInfoDecoder.FIRST_BYTE_MARKER_FOR_EXTENDED_ENTRY_FI_INFO_ONLY_S2;
@@ -822,6 +857,7 @@ public class CodeInfoEncoder {
         int basicFlags = CodeInfoDecoder.basicEntryFlags(entryFlags);
         switch (CodeInfoDecoder.extendedEntryMode(entryFlags)) {
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY:
+            case CodeInfoDecoder.EXTENDED_ENTRY_MODE_LEGACY_WITH_FRAME_POINTER_SAVE_AREA_OFFSET:
                 writeBuffer.putU1(basicFlags);
                 break;
             case CodeInfoDecoder.EXTENDED_ENTRY_MODE_FI_DEFAULT:
@@ -884,6 +920,12 @@ public class CodeInfoEncoder {
                     writeBuffer.putS4(data.frameData.encodedFrameInfoIndex);
                 }
                 break;
+        }
+    }
+
+    private static void writeFramePointerSaveAreaOffset(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
+        if (CodeInfoDecoder.isExtendedWithFramePointerSaveAreaOffset(entryFlags)) {
+            writeBuffer.putS4(data.framePointerSaveAreaOffset);
         }
     }
 
