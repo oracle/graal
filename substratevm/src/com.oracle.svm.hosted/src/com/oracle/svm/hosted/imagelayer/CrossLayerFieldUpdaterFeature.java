@@ -35,13 +35,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.ToIntFunction;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -51,6 +50,7 @@ import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -192,7 +192,8 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         String addReason = "Registered as a required heap constant within the CrossLayerFieldUpdaterFeature";
 
         for (var info : updateInfoMap.values()) {
-            if (patchFilter(info)) {
+            // Primitive values are encoded directly in the patch array and do not need heap entries.
+            if (patchFilter(info) && info.kind.isObject()) {
                 ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
                 heap.addConstant(singletonConstant, false, addReason);
             }
