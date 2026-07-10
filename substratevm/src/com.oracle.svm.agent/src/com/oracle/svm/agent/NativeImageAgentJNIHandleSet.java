@@ -41,6 +41,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassNotFoundException;
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
+    final JNIMethodId javaLangClassIsEnum;
 
     final JNIObjectHandle javaLangReflectMember;
     final JNIMethodId javaLangReflectMemberGetName;
@@ -145,6 +146,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
+        javaLangClassIsEnum = getMethodId(env, javaLangClass, "isEnum", "()Z", false);
 
         javaLangReflectMember = newClassGlobalRef(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);

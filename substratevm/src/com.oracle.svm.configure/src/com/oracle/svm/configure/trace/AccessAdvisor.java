@@ -241,7 +241,11 @@ public final class AccessAdvisor {
 
     private boolean shouldPreserveApplicationMethodHandleLookup(LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
         return "findMethodHandle".equals(entry.get("function")) && queriedClass.get() != null &&
-                        callerFilter.includes(queriedClass.get()) && !isNoArgumentValuesLookup(entry);
+                        callerFilter.includes(queriedClass.get()) && !isEnumValuesLookup(entry);
+    }
+
+    private static boolean isEnumValuesLookup(EconomicMap<String, Object> entry) {
+        return Boolean.TRUE.equals(entry.get("class_is_enum")) && isNoArgumentValuesLookup(entry);
     }
 
     private static boolean isNoArgumentValuesLookup(EconomicMap<String, Object> entry) {

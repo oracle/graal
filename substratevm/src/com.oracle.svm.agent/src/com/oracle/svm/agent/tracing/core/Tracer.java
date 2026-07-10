@@ -102,6 +102,16 @@ public abstract class Tracer {
      * @param args Arguments to the call, which may contain arrays (which can contain more arrays)
      */
     public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, JNIMethodId[] stackTrace, Object... args) {
+        traceCall(tracer, function, clazz, declaringClass, callerClass, result, stackTrace, null, null, args);
+    }
+
+    public void traceCallWithExtraField(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, JNIMethodId[] stackTrace,
+                    String extraFieldName, Object extraFieldValue, Object... args) {
+        traceCall(tracer, function, clazz, declaringClass, callerClass, result, stackTrace, extraFieldName, extraFieldValue, args);
+    }
+
+    private void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, JNIMethodId[] stackTrace,
+                    String extraFieldName, Object extraFieldValue, Object[] args) {
         EconomicMap<String, Object> entry = EconomicMap.create();
         entry.put("tracer", tracer);
         entry.put("function", function);
@@ -122,6 +132,9 @@ public abstract class Tracer {
         }
         if (stackTrace != null) {
             entry.put("stack_trace", stackTrace);
+        }
+        if (extraFieldName != null) {
+            entry.put(extraFieldName, handleSpecialValue(extraFieldValue));
         }
         traceEntry(entry);
     }

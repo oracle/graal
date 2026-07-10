@@ -94,6 +94,35 @@ public class URLProtocolTraceProcessorTest {
     }
 
     @Test
+    public void excludedMethodHandleCallerRegistersNonEnumValuesMethod() throws Exception {
+        String testClassName = "com.example.ValueContainer";
+        ConfigurationSet configurationSet = new ConfigurationSet();
+        Object processor = newReflectionProcessor();
+
+        processTrace(processor, configurationSet, """
+                        [
+                          {
+                            "tracer": "reflect",
+                            "function": "findMethodHandle",
+                            "class": "%s",
+                            "declaring_class": "%s",
+                            "class_is_enum": false,
+                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
+                            "result": true,
+                            "args": ["values", []]
+                          }
+                        ]
+                        """.formatted(testClassName, testClassName));
+
+        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
+        ConfigurationType testType = getConfigurationType(reflectionConfiguration, testClassName);
+        Assert.assertNotNull(testType);
+        ConfigurationMemberInfo methodInfo = getMethodInfo(testType, "values");
+        Assert.assertEquals("PRESENT", methodInfo.getDeclaration().toString());
+        Assert.assertEquals("ACCESSED", methodInfo.getAccessibility().toString());
+    }
+
+    @Test
     public void excludedMethodHandleCallerDoesNotRegisterEnumValuesHelper() throws Exception {
         String enumClassName = "com.example.TestMode";
         ConfigurationSet configurationSet = new ConfigurationSet();
@@ -106,6 +135,7 @@ public class URLProtocolTraceProcessorTest {
                             "function": "findMethodHandle",
                             "class": "%s",
                             "declaring_class": "%s",
+                            "class_is_enum": true,
                             "caller_class": "java.lang.invoke.MethodHandleImpl$1",
                             "result": true,
                             "args": ["values", []]

@@ -185,6 +185,11 @@ final class BreakpointInterceptor {
         traceBreakpoint(env, "reflect", clazz, declaringClass, callerClass, function, result, stackTrace, args);
     }
 
+    private static void traceReflectBreakpointWithExtraField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
+                    JNIMethodId[] stackTrace, String extraFieldName, Object extraFieldValue, Object... args) {
+        traceBreakpointWithExtraField(env, "reflect", clazz, declaringClass, callerClass, function, result, stackTrace, extraFieldName, extraFieldValue, args);
+    }
+
     private static void traceSerializeBreakpoint(JNIEnvironment env, String function, Object result,
                     JNIMethodId[] stackTrace, Object... args) {
         traceBreakpoint(env, "serialization", nullHandle(), nullHandle(), nullHandle(), function, result, stackTrace, args);
@@ -196,15 +201,20 @@ final class BreakpointInterceptor {
 
     private static void traceBreakpoint(JNIEnvironment env, String context, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
                     JNIMethodId[] stackTrace, Object[] args) {
+        traceBreakpointWithExtraField(env, context, clazz, declaringClass, callerClass, function, result, stackTrace, null, null, args);
+    }
+
+    private static void traceBreakpointWithExtraField(JNIEnvironment env, String context, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function,
+                    Object result, JNIMethodId[] stackTrace, String extraFieldName, Object extraFieldValue, Object[] args) {
         if (tracer != null) {
-            tracer.traceCall(context,
-                            function,
-                            getTypeDescriptor(env, clazz),
-                            getTypeDescriptor(env, declaringClass),
-                            getClassNameOr(env, callerClass, null, Tracer.UNKNOWN_VALUE),
-                            result,
-                            stackTrace,
-                            args);
+            Object classDescriptor = getTypeDescriptor(env, clazz);
+            Object declaringClassDescriptor = getTypeDescriptor(env, declaringClass);
+            Object callerClassName = getClassNameOr(env, callerClass, null, Tracer.UNKNOWN_VALUE);
+            if (extraFieldName == null) {
+                tracer.traceCall(context, function, classDescriptor, declaringClassDescriptor, callerClassName, result, stackTrace, args);
+            } else {
+                tracer.traceCallWithExtraField(context, function, classDescriptor, declaringClassDescriptor, callerClassName, result, stackTrace, extraFieldName, extraFieldValue, args);
+            }
             JNIObjectHandle exception = handleException(env, false);
             if (exception.notEqual(nullHandle())) {
                 /*
@@ -1099,12 +1109,27 @@ final class BreakpointInterceptor {
     }
 
     private static boolean methodMethodHandle(JNIEnvironment jni, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, JNIObjectHandle nameHandle,
-                    JNIObjectHandle paramTypesHandle,
-                    JNIMethodId[] stackTrace) {
+                    JNIObjectHandle paramTypesHandle, JNIMethodId[] stackTrace) {
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceReflectBreakpoint(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, name, paramTypes);
+        if (isNoArgumentValuesLookup(name, paramTypes) && isEnumClass(jni, clazz)) {
+            traceReflectBreakpointWithExtraField(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, "class_is_enum", true, name, paramTypes);
+        } else {
+            traceReflectBreakpoint(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, name, paramTypes);
+        }
         return true;
+    }
+
+    private static boolean isNoArgumentValuesLookup(String name, Object paramTypes) {
+        return "values".equals(name) && paramTypes instanceof String[] types && types.length == 0;
+    }
+
+    private static boolean isEnumClass(JNIEnvironment jni, JNIObjectHandle clazz) {
+        if (clazz.equal(nullHandle())) {
+            return false;
+        }
+        boolean isEnum = Support.callBooleanMethod(jni, clazz, agent.handles().javaLangClassIsEnum);
+        return !clearException(jni) && isEnum;
     }
 
     private static boolean findConstructorHandle(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
