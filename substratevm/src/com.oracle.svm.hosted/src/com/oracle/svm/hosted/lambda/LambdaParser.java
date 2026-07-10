@@ -173,6 +173,10 @@ public class LambdaParser {
         }
     }
 
+    public static Class<?> findLambdaClassForCaptureSite(Class<?> capturingClass, String captureSite) {
+        return captureSitesByCapturingClass.computeIfAbsent(capturingClass, LambdaParser::findLambdaCaptureSites).lookupLambdaClass(captureSite);
+    }
+
     private static CaptureSites findLambdaCaptureSites(Class<?> capturingClass) {
         ResolvedJavaType capturingType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(capturingClass);
         try {
@@ -245,6 +249,20 @@ public class LambdaParser {
             }
             VMError.guarantee(captureSite != null, "Could not find capture site for lambda class %s", lambdaClass.getName());
             return captureSite;
+        }
+
+        Class<?> lookupLambdaClass(String captureSite) {
+            BootstrapMethodInvocation bootstrapInvocation = invocationsBySite.get(captureSite);
+            VMError.guarantee(bootstrapInvocation != null, "Persisted bootstrap method invocation cannot be linked in the extension layer: %s", captureSite);
+            bootstrapInvocation.resolve();
+
+            JavaConstant bootstrapConstant = bootstrapInvocation.lookup();
+            VMError.guarantee(bootstrapConstant != null, "Could not resolve bootstrap method for capture site %s", captureSite);
+
+            Class<?> lambdaClass = getLambdaClass(bootstrapConstant);
+            VMError.guarantee(lambdaClass != null && LambdaUtils.isLambdaClass(lambdaClass), "Could not resolve lambda class for capture site %s", captureSite);
+            sitesByLambdaClass.put(lambdaClass, captureSite);
+            return lambdaClass;
         }
     }
 
