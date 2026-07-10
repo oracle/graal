@@ -172,6 +172,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final Object lock = new Object();
 
+    // Guarded by lock.
     private Thread closingThread;
 
     final Object instrumentationHandler;
@@ -1158,8 +1159,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    private void checkContextCreationAllowed() {
+        assert Thread.holdsLock(this.lock);
+        if (closingThread != null || closed) {
+            throw PolyglotEngineException.illegalState("Engine is already closed.");
+        }
+    }
+
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
+
+        checkContextCreationAllowed();
 
         ensureRuntimeInitialized(context);
 
@@ -1384,8 +1394,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     void ensureClosed(boolean force, boolean initiatedByContext) {
+        Thread currentThread = Thread.currentThread();
+        List<PolyglotContextImpl> localContexts;
         synchronized (this.lock) {
-            Thread currentThread = Thread.currentThread();
             boolean interrupted = false;
             if (closingThread == currentThread) {
                 return;
@@ -1403,7 +1414,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (closed) {
                 return;
             }
-            List<PolyglotContextImpl> localContexts = collectAliveContexts();
+            localContexts = collectAliveContexts();
             /*
              * Check ahead of time for open contexts to fail early and avoid closing only some
              * contexts.
@@ -1421,41 +1432,51 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
 
             closingThread = currentThread;
-            try {
-                if (!initiatedByContext) {
-                    /*
-                     * context.cancel and context.closeAndMaybeWait close the engine if it is bound
-                     * to the context, so if we called these methods here, it might lead to
-                     * StackOverflowError.
-                     */
-                    for (PolyglotContextImpl context : localContexts) {
-                        assert !Thread.holdsLock(context);
-                        assert context.parent == null;
-                        if (force) {
-                            context.cancel(false, null);
-                        } else {
-                            context.closeAndMaybeWait(false, null);
-                        }
-                    }
-                }
-
-                contexts.clear();
-            } finally {
-                /*
-                 * RuntimeSupport#onEngineClosing must be called without the closingThread set.
-                 * Otherwise, it will store a running thread into an auxiliary image.
-                 */
-                closingThread = null;
-            }
-
-            if (RUNTIME.onEngineClosing(this.runtimeData)) {
-                getAPIAccess().engineClosed(weakAPI);
-                return;
-            }
-            closingThread = currentThread;
         }
 
         try {
+            if (!initiatedByContext) {
+                /*
+                 * context.cancel and context.closeAndMaybeWait close the engine if it is bound to
+                 * the context, so if we called these methods here, it might lead to
+                 * StackOverflowError.
+                 */
+                for (PolyglotContextImpl context : localContexts) {
+                    assert !Thread.holdsLock(context);
+                    assert context.parent == null;
+                    if (force) {
+                        context.cancel(false, null);
+                    } else {
+                        context.closeAndMaybeWait(false, null);
+                    }
+                }
+            }
+
+            synchronized (this.lock) {
+                contexts.clear();
+                /*
+                 * RuntimeSupport#onEngineClosing is called under the engine lock, so no other
+                 * thread can observe the temporarily cleared closing state. Clearing it allows
+                 * cache implementations to preinitialize a context and ensures that an engine
+                 * persisted in an auxiliary image is usable when restored. The closing thread
+                 * must also be cleared to avoid persisting a running thread.
+                */
+                closingThread = null;
+                final boolean engineStored;
+                try {
+                    engineStored = RUNTIME.onEngineClosing(this.runtimeData);
+                } catch (Throwable t) {
+                    this.lock.notifyAll();
+                    throw t;
+                }
+                if (engineStored) {
+                    this.lock.notifyAll();
+                    getAPIAccess().engineClosed(weakAPI);
+                    return;
+                }
+                closingThread = currentThread;
+            }
+
             // instruments should be shut-down even if they are currently still executed
             // we want to see instrument output if the process is quit while executing.
             for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
@@ -1929,7 +1950,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         try {
             assert sandboxPolicy == contextSandboxPolicy : "Engine and context must have the same SandboxPolicy.";
             synchronized (this.lock) {
-                checkState();
+                checkContextCreationAllowed();
                 if (boundEngine && !contexts.isEmpty()) {
                     throw PolyglotEngineException.illegalArgument("Automatically created engines cannot be used to create more than one context. " +
                                     "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
@@ -2054,7 +2075,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             replayEvents = false;
             if (contextAPI == null) {
                 synchronized (this.lock) {
-                    checkState();
+                    checkContextCreationAllowed();
                     context = new PolyglotContextImpl(this, config);
                     contextAPI = getAPIAccess().newContext(impl.contextDispatch, context, engineAPI, registerInActiveContexts);
                     addContext(context);
