@@ -28,7 +28,6 @@ package com.oracle.objectfile.pecoff.cv;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.ConstantValueEntry;
@@ -56,7 +55,6 @@ final class CVSymbolSubsectionBuilder {
     private final CVSymbolSubsection cvSymbolSubsection;
     private final CVLineRecordBuilder lineRecordBuilder;
 
-    private final String heapName;
     private final short heapRegister;
 
     /**
@@ -69,7 +67,6 @@ final class CVSymbolSubsectionBuilder {
         this.cvDebugInfo = cvDebugInfo;
         this.cvSymbolSubsection = new CVSymbolSubsection(cvDebugInfo);
         this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
-        this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
         /* For isolates, Graal currently uses r14 as the heap base; this code will handle r8-r15. */
         assert AMD64.r8.number <= CVDebugInfo.getHeapbaseRegister() && CVDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
         this.heapRegister = CVRegisterUtil.getCVRegister(CVDebugInfo.getHeapbaseRegister(), CVDebugInfo.POINTER_LENGTH);
@@ -108,20 +105,11 @@ final class CVSymbolSubsectionBuilder {
         /* Define the class itself. */
         addTypeRecords(classEntry);
 
-        /* Add manifested static fields as S_GDATA32 records. */
+        /* Add manifested static fields as register-relative records. */
         classEntry.getFields().stream().filter(CVSymbolSubsectionBuilder::isManifestedStaticField).forEach(f -> {
             int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(f.getValueType());
             String displayName = CVNames.fieldNameToCodeViewName(f);
-            if (cvDebugInfo.useHeapBase()) {
-                /*
-                 * Isolates are enabled. Static member is located at REL32 offset from heap base
-                 * register.
-                 */
-                addSymbolRecord(new CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, displayName, typeIndex, f.getOffset(), heapRegister));
-            } else {
-                /* Isolates are disabled. Static member is located at offset from heap begin. */
-                addSymbolRecord(new CVSymbolSubrecord.CVSymbolGData32Record(cvDebugInfo, heapName, displayName, typeIndex, f.getOffset(), (short) 0));
-            }
+            addSymbolRecord(new CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, displayName, typeIndex, f.getOffset(), heapRegister));
         });
     }
 

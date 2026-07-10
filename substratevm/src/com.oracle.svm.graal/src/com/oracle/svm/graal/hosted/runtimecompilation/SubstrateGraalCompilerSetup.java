@@ -55,7 +55,7 @@ public class SubstrateGraalCompilerSetup {
     protected final SubstrateMetaAccess sMetaAccess;
 
     public SubstrateGraalCompilerSetup() {
-        if (SubstrateOptions.supportCompileInIsolates()) {
+        if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             sMetaAccess = new IsolateAwareMetaAccess();
         } else {
             sMetaAccess = new SubstrateMetaAccess();
@@ -63,7 +63,7 @@ public class SubstrateGraalCompilerSetup {
     }
 
     public SubstrateRuntimeProviders getSubstrateProviders(AnalysisMetaAccess aMetaAccess, WordTypes wordTypes) {
-        if (SubstrateOptions.supportCompileInIsolates()) {
+        if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             assert sMetaAccess instanceof IsolateAwareMetaAccess;
             return new IsolateAwareProviders(aMetaAccess, (IsolateAwareMetaAccess) sMetaAccess);
         } else {

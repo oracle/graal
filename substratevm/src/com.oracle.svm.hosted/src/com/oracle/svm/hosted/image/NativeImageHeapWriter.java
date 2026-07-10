@@ -219,7 +219,7 @@ public final class NativeImageHeapWriter {
         return target.getCodeAddressOffset();
     }
 
-    private final boolean useHeapBase = NativeImageHeap.useHeapBase();
+    private final boolean usesHeapBase = NativeImageHeap.usesHeapBase();
     private final CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
 
     void writeReference(RelocatableBuffer buffer, int index, JavaConstant target, Object reason) {
@@ -228,7 +228,7 @@ public final class NativeImageHeapWriter {
         if (target.isNonNull()) {
             ObjectInfo targetInfo = heap.getConstantInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
-            if (useHeapBase) {
+            if (usesHeapBase) {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getOffset() >>> shift);
             } else {
@@ -309,13 +309,12 @@ public final class NativeImageHeapWriter {
 
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         int hubSize = heap.objectLayout.getHubSize();
-        if (NativeImageHeap.useHeapBase()) {
+        if (usesHeapBase) {
             long targetOffset = hubInfo.getOffset();
             long encoding = objectHeader.encodeHubPointerForImageHeap(obj, targetOffset);
             writeValue(buffer, index, encoding, hubSize);
         } else {
             assert hubSize == referenceSize();
-            // The address of the DynamicHub target will be added by the link editor.
             long encoding = objectHeader.encodeHubPointerForImageHeap(obj, 0L);
             addDirectRelocationWithAddend(buffer, index, hub, encoding);
         }
@@ -323,7 +322,7 @@ public final class NativeImageHeapWriter {
 
     private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, int size, Object target) {
         assert size == 4 || size == 8;
-        assert !NativeImageHeap.spawnIsolates() || isReadOnlyRelocatable(index);
+        assert !usesHeapBase || isReadOnlyRelocatable(index);
         buffer.addRelocationWithoutAddend(index, size == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, target);
         if (sectionOffsetOfARelocatablePointer == -1) {
             sectionOffsetOfARelocatablePointer = index;
@@ -331,7 +330,7 @@ public final class NativeImageHeapWriter {
     }
 
     private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
-        assert !NativeImageHeap.spawnIsolates() || isReadOnlyRelocatable(index);
+        assert !usesHeapBase || isReadOnlyRelocatable(index);
         buffer.addRelocationWithAddend(index, referenceSize() == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, objectHeaderBits, snippetReflection().forObject(target));
         if (sectionOffsetOfARelocatablePointer == -1) {
             sectionOffsetOfARelocatablePointer = index;

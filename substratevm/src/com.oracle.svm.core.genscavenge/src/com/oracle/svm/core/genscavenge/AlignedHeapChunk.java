@@ -40,7 +40,6 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
@@ -152,9 +151,6 @@ public final class AlignedHeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
-        if (!GraalDirectives.inIntrinsic()) {
-            assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used because the image heap is unaligned";
-        }
         return (AlignedHeader) PointerUtils.roundDown(ptr, HeapParameters.getAlignedHeapChunkAlignment());
     }
 

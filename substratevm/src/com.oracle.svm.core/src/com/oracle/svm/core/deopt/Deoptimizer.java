@@ -808,18 +808,11 @@ public final class Deoptimizer {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isNonNullObjectValue(UnsignedWord pointer) {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            /*
-             * KnownIntrinsics.heapBase() can represent null objects, but we cannot convert the heap
-             * base value to an object.
-             */
-            return pointer != Word.nullPointer() && pointer != KnownIntrinsics.heapBase();
-        }
         /*
-         * With spawn isolates option disabled (which is a legacy mode), the heap base may represent
-         * a valid heap object.
+         * KnownIntrinsics.heapBase() can represent null objects, but we cannot convert the heap
+         * base value to an object.
          */
-        return pointer != Word.nullPointer();
+        return pointer != Word.nullPointer() && pointer != KnownIntrinsics.heapBase();
     }
 
     /**

@@ -118,7 +118,6 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -140,7 +139,7 @@ import jdk.internal.misc.Unsafe;
  * later returning to C. This class is the inverse of {@link CFunctionSnippets}.
  *
  * This code transitions thread states, handles when a safepoint is in progress, sets the thread
- * register (if multi-threaded), and sets the heap base register (if enabled).
+ * register (if multi-threaded), and sets the heap base register.
  */
 public final class CEntryPointSnippets extends SubstrateTemplates implements Snippets {
 
@@ -211,11 +210,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCallInitCodeBase(@ConstantNodeParameter ForeignCallDescriptor descriptor);
-
-    @Fold
-    static boolean hasHeapBase() {
-        return ImageSingletons.lookup(CompressEncoding.class).hasBase();
-    }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void setHeapBase(PointerBase heapBase) {

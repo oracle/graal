@@ -247,14 +247,16 @@ public final class NativeImageHeap implements ImageHeap {
         return streamObjects().distinct().count() != getObjectCount();
     }
 
+    /**
+     * Determines how references are represented in the serialized image heap. Normal native
+     * images use a nonzero base and can store heap-base-relative offsets directly. Web Image uses
+     * a zero-base encoding and places its heap at a nonzero address in linear memory, so
+     * {@link NativeImageHeapWriter} must instead emit relocations that Web Image resolves after
+     * choosing the heap address.
+     */
     @Fold
-    static boolean useHeapBase() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
-    }
-
-    @Fold
-    static boolean spawnIsolates() {
-        return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
+    static boolean usesHeapBase() {
+        return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     public void addInitialObjects() {
@@ -559,7 +561,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean immutable = immutableFromParent || isKnownImmutableConstant(constant);
         boolean written = false;
         boolean references = false;
-        boolean relocatable = false; /* always false when !spawnIsolates() */
+        boolean relocatable = false;
         boolean patched = false; /* always false when !layeredBuild */
 
         if (!type.isInstantiated()) {
@@ -669,7 +671,7 @@ public final class NativeImageHeap implements ImageHeap {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
-                                if (spawnIsolates()) {
+                                if (usesHeapBase()) {
                                     fieldRelocatable = isRelocatableConstant(fieldValueConstant);
                                 }
                                 if (fieldValueConstant instanceof ImageHeapRelocatableConstant) {
@@ -883,7 +885,7 @@ public final class NativeImageHeap implements ImageHeap {
         for (int idx = 0; idx < array.length; idx++) {
             Object element = array[idx];
             Object value = aUniverse.replaceObject(element);
-            if (spawnIsolates()) {
+            if (usesHeapBase()) {
                 relocatable = relocatable || isRelocatableValue(value);
             }
             Object elementReason = reasonSupport.arrayAccess(reason, idx);
@@ -902,7 +904,7 @@ public final class NativeImageHeap implements ImageHeap {
         for (int idx = 0; idx < length; idx++) {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
-            if (spawnIsolates()) {
+            if (usesHeapBase()) {
                 relocatable = relocatable || isRelocatableConstant(value);
             }
             if (value instanceof ImageHeapRelocatableConstant) {

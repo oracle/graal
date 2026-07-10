@@ -108,13 +108,11 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
                     TargetDescription target, VectorArchitecture vectorArchitecture) {
-        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, ReferenceAccess.singleton().haveCompressedReferences(), vectorArchitecture);
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, true, vectorArchitecture);
         lowerings = new HashMap<>();
 
         AbstractObjectStamp hubRefStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
-        if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            hubRefStamp = SubstrateNarrowOopStamp.compressed(hubRefStamp, ReferenceAccess.singleton().getCompressEncoding());
-        }
+        hubRefStamp = SubstrateNarrowOopStamp.compressed(hubRefStamp, ReferenceAccess.singleton().getCompressEncoding());
         hubStamp = hubRefStamp;
         dynamicHubOffsets = DynamicHubOffsets.singleton();
     }

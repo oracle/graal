@@ -28,7 +28,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -53,10 +52,7 @@ public final class ImageHeapObjects {
             return Word.nullPointer();
         }
         VMError.guarantee(isInImageHeap(t));
-        UnsignedWord result = Word.objectToUntrackedWord(t);
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            result = result.subtract(KnownIntrinsics.heapBase());
-        }
+        UnsignedWord result = Word.objectToUntrackedWord(t).subtract(KnownIntrinsics.heapBase());
         return (ImageHeapRef<T>) result;
     }
 
@@ -68,10 +64,7 @@ public final class ImageHeapObjects {
         if (ref.equal(Word.nullPointer())) {
             return null;
         }
-        Pointer objectAddress = (Pointer) ref;
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            objectAddress = objectAddress.add(KnownIntrinsics.heapBase());
-        }
+        Pointer objectAddress = ((Pointer) ref).add(KnownIntrinsics.heapBase());
         Object obj = objectAddress.toObject();
         VMError.guarantee(Heap.getHeap().isInImageHeap(obj));
 

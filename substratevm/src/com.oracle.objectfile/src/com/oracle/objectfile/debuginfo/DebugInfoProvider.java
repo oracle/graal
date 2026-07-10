@@ -39,8 +39,6 @@ public interface DebugInfoProvider {
 
     void installDebugInfo();
 
-    boolean useHeapBase();
-
     boolean isRuntimeCompilation();
 
     /**

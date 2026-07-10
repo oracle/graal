@@ -74,9 +74,6 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_PATCHED_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME);
     public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) Word.unsigned(1));
 
-    /* Only used if SpawnIsolates is disabled. */
-    private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
-
     private static boolean startTimesAssigned;
     private static long startTimeNanos;
     private static long initDoneTimeMillis;
@@ -155,7 +152,7 @@ public class Isolates {
     public static int checkIsolate(Isolate isolate) {
         if (isolate.isNull()) {
             return CEntryPointErrors.NULL_ARGUMENT;
-        } else if (SubstrateOptions.SpawnIsolates.getValue() && !PointerUtils.isAMultiple(isolate, Word.signed(Heap.getHeap().getHeapBaseAlignment()))) {
+        } else if (!PointerUtils.isAMultiple(isolate, Word.signed(Heap.getHeap().getHeapBaseAlignment()))) {
             /*
              * The Isolate pointer is currently the same as the heap base, so we can check if the
              * alignment matches the one that is expected for the heap base. This will detect most
@@ -168,12 +165,6 @@ public class Isolates {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, IsolateArguments arguments) {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, Word.zero(), Word.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
-                return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED;
-            }
-        }
-
         WordPointer heapBasePointer = StackValue.get(WordPointer.class);
         int result = CommittedMemoryProvider.get().initialize(heapBasePointer, arguments);
         if (result != CEntryPointErrors.NO_ERROR) {

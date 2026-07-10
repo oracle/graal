@@ -159,10 +159,6 @@ public final class HeapParameters {
             throw UserError.abort("'%s' can only be set if '%s' is enabled.",
                             SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(),
                             RuntimeClassLoading.Options.RuntimeClassLoading.getName());
-        } else if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            throw UserError.abort("'%s' can only be set if '%s' is enabled.",
-                            SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(),
-                            SubstrateOptions.SpawnIsolates.getName());
         } else if (maxMetaspaceSize < 0) {
             throw UserError.abort("The value of '%s' must be greater than or equal to 0.",
                             SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());

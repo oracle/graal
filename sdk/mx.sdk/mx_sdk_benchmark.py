@@ -434,7 +434,7 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['--tool:llvm-backend',
                                                                                           '-H:DeadlockWatchdogInterval=0']
         if vm.gc:
-            base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
+            base_image_build_args += ['--gc=' + vm.gc]
         if vm.native_architecture:
             base_image_build_args += ['-march=native']
         if vm.crema:

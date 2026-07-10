@@ -1013,7 +1013,7 @@ public abstract class VMThreads {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void markThreadAsCrashed() {
-            if (SubstrateOptions.supportCompileInIsolates()) {
+            if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
                 /*
                  * Threads that are used for isolated compilation may be attached to both the main
                  * and a compilation isolate. So, mark it as crashed in both isolates.

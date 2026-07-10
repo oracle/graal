@@ -31,7 +31,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
@@ -42,7 +41,6 @@ import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 
 /**
@@ -76,17 +74,6 @@ public final class JNIObjectHandles {
 
     @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles //
                     = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "JNIObjectHandles.handles");
-
-    @Fold
-    static boolean useImageHeapHandles() {
-        /*
-         * Image heap handles are intended for JNI code that is unaware of isolates. Without isolate
-         * support, this type of handle is not needed. Also, when isolate support is turned off, the
-         * heap is written into the data/rodata sections instead of having a contiguous section,
-         * which would require a different approach.
-         */
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
 
     @SuppressWarnings("unchecked")
     private static ThreadLocalHandles<ObjectHandle> getOrCreateLocals() {
@@ -137,7 +124,7 @@ public final class JNIObjectHandles {
         if (isInLocalRange(handle)) {
             return getExistingLocals().getObject(decodeLocal(handle));
         }
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
+        if (JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getObject(handle);
         }
         return getObjectSlowInterruptibly(handle);
@@ -164,7 +151,7 @@ public final class JNIObjectHandles {
         if (isInLocalRange(handle)) {
             return JNIObjectRefType.Local;
         }
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
+        if (JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getHandleType(handle);
         }
         if (JNIGlobalHandles.isInRange(handle)) {
@@ -178,7 +165,7 @@ public final class JNIObjectHandles {
         if (obj == null) {
             return JNIObjectHandles.nullHandle();
         }
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInImageHeap(obj)) {
+        if (JNIImageHeapHandles.isInImageHeap(obj)) {
             return JNIImageHeapHandles.asLocal(obj);
         }
         ThreadLocalHandles<ObjectHandle> locals = getExistingLocals();
@@ -201,14 +188,14 @@ public final class JNIObjectHandles {
     }
 
     public static JNIObjectHandle newLocalRef(JNIObjectHandle ref) {
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(ref)) {
+        if (JNIImageHeapHandles.isInRange(ref)) {
             return JNIImageHeapHandles.toLocal(ref);
         }
         return encodeLocal(getOrCreateLocals().create(getObject(ref)));
     }
 
     public static void deleteLocalRef(JNIObjectHandle localRef) {
-        if (!useImageHeapHandles() || !JNIImageHeapHandles.isInRange(localRef)) {
+        if (!JNIImageHeapHandles.isInRange(localRef)) {
             getOrCreateLocals().delete(decodeLocal(localRef));
         }
     }
@@ -232,7 +219,7 @@ public final class JNIObjectHandles {
 
     public static JNIObjectHandle newGlobalRef(JNIObjectHandle handle) {
         JNIObjectHandle result = nullHandle();
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
+        if (JNIImageHeapHandles.isInRange(handle)) {
             result = JNIImageHeapHandles.toGlobal(handle);
         } else {
             Object obj = getObject(handle);
@@ -244,14 +231,14 @@ public final class JNIObjectHandles {
     }
 
     public static void deleteGlobalRef(JNIObjectHandle globalRef) {
-        if (!useImageHeapHandles() || !JNIImageHeapHandles.isInRange(globalRef)) {
+        if (!JNIImageHeapHandles.isInRange(globalRef)) {
             JNIGlobalHandles.destroy(globalRef);
         }
     }
 
     public static JNIObjectHandle newWeakGlobalRef(JNIObjectHandle handle) {
         JNIObjectHandle result = nullHandle();
-        if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
+        if (JNIImageHeapHandles.isInRange(handle)) {
             result = JNIImageHeapHandles.toWeakGlobal(handle);
         } else {
             Object obj = getObject(handle);
@@ -263,7 +250,7 @@ public final class JNIObjectHandles {
     }
 
     public static void deleteWeakGlobalRef(JNIObjectHandle weakRef) {
-        if (!useImageHeapHandles() || !JNIImageHeapHandles.isInRange(weakRef)) {
+        if (!JNIImageHeapHandles.isInRange(weakRef)) {
             JNIGlobalHandles.destroyWeak(weakRef);
         }
     }

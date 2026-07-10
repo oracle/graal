@@ -75,10 +75,7 @@ public abstract class ReservedRegisters {
         return threadRegister;
     }
 
-    /**
-     * Returns the register holding the heap base address for compressed pointers, i.e., the current
-     * {@link Isolate}; or null if no heap base register is used.
-     */
+    /** Returns the register holding the heap base address of the current {@link Isolate}. */
     public Register getHeapBaseRegister() {
         return heapBaseRegister;
     }

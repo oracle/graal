@@ -80,7 +80,7 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
 final class DisableSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.supportCompileInIsolates() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton().get());
+        return SubstrateOptions.SupportCompileInIsolates.getValue() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton().get());
     }
 
     @Override

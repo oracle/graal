@@ -111,7 +111,7 @@ public class HostedConfiguration {
     public static void setDefaultIfEmpty() {
         setInstanceIfEmpty(new HostedConfiguration());
         if (!ImageSingletons.contains(CompressEncoding.class)) {
-            CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
+            CompressEncoding compressEncoding = new CompressEncoding(1, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
             if (!ImageSingletons.contains(ObjectLayout.class)) {

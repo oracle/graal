@@ -278,18 +278,6 @@ abstract class CVSymbolSubrecord {
         }
     }
 
-    public static class CVSymbolGData32Record extends CVSymbolData32Record {
-
-        CVSymbolGData32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int typeIndex, int offset, short segment) {
-            super(cvDebugInfo, CVDebugConstants.S_GDATA32, symbolName, displayName, typeIndex, offset, segment);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("S_GDATA32   name=%s(%s) offset=0x%x type=0x%x", symbolName, displayName, offset, typeIndex);
-        }
-    }
-
     @SuppressWarnings("unused")
     public static class CVSymbolLData32Record extends CVSymbolData32Record {
 

@@ -42,8 +42,6 @@ import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-
 /**
  * An UnalignedHeapChunk holds exactly one Object.
  * <p>
@@ -138,9 +136,6 @@ public final class UnalignedHeapChunk {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
-        if (!GraalDirectives.inIntrinsic()) {
-            assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used for the image heap because the image heap is not aligned to the chunk size";
-        }
         Pointer chunkPointer = ptr.subtract(getOffsetForObject(ptr));
         return (UnalignedHeader) chunkPointer;
     }

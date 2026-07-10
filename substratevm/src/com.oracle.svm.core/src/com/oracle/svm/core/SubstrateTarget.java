@@ -76,20 +76,15 @@ public class SubstrateTarget extends TargetDescription {
         return StampFactory.forKind(getWordKind());
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean shouldInlineObjectsInImageCode() {
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
-
     public static boolean shouldInlineObjectsInRuntimeCode() {
-        return SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
+        return RuntimeCodeCache.Options.WriteableCodeCache.getValue();
     }
 
     private final EnumSet<?> runtimeCheckedCPUFeatures;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTarget(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(arch, isMP, stackAlignment, implicitNullCheckLimit, shouldInlineObjectsInImageCode());
+        super(arch, isMP, stackAlignment, implicitNullCheckLimit, true);
         this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
     }
 

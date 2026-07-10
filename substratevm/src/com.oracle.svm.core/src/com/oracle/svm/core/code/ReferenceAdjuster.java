@@ -84,8 +84,7 @@ public interface ReferenceAdjuster {
         } else {
             assert length == ol.getReferenceSize() : "Unsupported reference constant size";
         }
-        boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
-        ReferenceAccess.singleton().writeObjectAt(address, obj, compressed);
+        ReferenceAccess.singleton().writeObjectAt(address, obj, true);
     }
 
     @Fold

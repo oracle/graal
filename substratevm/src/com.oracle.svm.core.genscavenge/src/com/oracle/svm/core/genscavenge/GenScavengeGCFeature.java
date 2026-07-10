@@ -65,7 +65,6 @@ import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 
@@ -214,9 +213,6 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static CommittedMemoryProvider createCommittedMemoryProvider() {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            return new AddressRangeCommittedMemoryProvider();
-        }
-        return new OSCommittedMemoryProvider();
+        return new AddressRangeCommittedMemoryProvider();
     }
 }

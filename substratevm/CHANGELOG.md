@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)
+* (GR-59698) Native Image now always uses isolates. The deprecated `-H:+SpawnIsolates` option remains for compatibility, while `-H:-SpawnIsolates` is no longer supported and reports a build-time error.
 * (GR-70895) Native Image `resource:` URLs now preserve the source root of duplicate resource entries using the path format `resource://<module>@<loader>/<root-id>!/<resource-path>`. This allows directory resource URLs from different class-path roots to be converted to `Path` values and walked independently instead of observing a merged directory view.
 * (GR-76779) Added support for the JFR event `jdk.Shutdown`.
 

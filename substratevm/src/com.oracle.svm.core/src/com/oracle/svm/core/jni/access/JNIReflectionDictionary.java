@@ -42,7 +42,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -377,9 +376,6 @@ public final class JNIReflectionDictionary {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        if (!SubstrateOptions.SpawnIsolates.getValue() && method.equal(Word.zero())) {
-            return null;
-        }
         Pointer p = KnownIntrinsics.heapBase().add((Pointer) method);
         JNIAccessibleMethod jniMethod = p.toObject(JNIAccessibleMethod.class, false);
         VMError.guarantee(jniMethod == null || !jniMethod.isNegative(), "Existing methods can't correspond to a negative query");

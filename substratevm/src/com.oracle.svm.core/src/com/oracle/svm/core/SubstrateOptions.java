@@ -530,10 +530,9 @@ public class SubstrateOptions {
                         ReplacingLocatableMultiOptionValue.DelimitedString newValue) {
 
             if (newValue.contains(GCOptionValue.G1.getValue())) {
-                SubstrateOptions.SpawnIsolates.update(values, true);
                 SubstrateOptions.AllowVMInternalThreads.update(values, true);
                 SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread.update(values, true);
-                SubstrateOptions.ConcealedOptions.SupportCompileInIsolates.update(values, false);
+                SubstrateOptions.SupportCompileInIsolates.update(values, false);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -648,8 +647,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated. Isolate support is always enabled.", deprecated = true, deprecationMessage = "Isolate support is always enabled.") //
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true, optionKey -> {
+        if (!optionKey.getValue()) {
+            throw UserError.invalidOptionValue(optionKey, false, "Isolate support can no longer be disabled.");
+        }
+    });
 
     @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
     public static final HostedOptionKey<Boolean> CheckIsolateThreadAtEntry = new HostedOptionKey<>(false);
@@ -961,7 +964,7 @@ public class SubstrateOptions {
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
-    public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir", SubstrateOptions::validateCompilerBackend) {
+    public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
@@ -980,13 +983,6 @@ public class SubstrateOptions {
             }
         }
     };
-
-    private static void validateCompilerBackend(HostedOptionKey<String> optionKey) {
-        String compilerBackend = optionKey.getValue();
-        if ("llvm".equals(compilerBackend) && !SpawnIsolates.getValue()) {
-            throw UserError.invalidOptionValue(optionKey, compilerBackend, "The LLVM backend requires isolate support. Use -H:+SpawnIsolates or select a different compiler backend.");
-        }
-    }
 
     @Fold
     public static boolean useLLVMBackend() {
@@ -1185,21 +1181,15 @@ public class SubstrateOptions {
         }
     };
 
-    @Fold
-    public static boolean supportCompileInIsolates() {
-        UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
-                        "Option %s must be enabled to support isolated compilations through option %s",
-                        SpawnIsolates.getName(),
-                        ConcealedOptions.SupportCompileInIsolates.getName());
-        return ConcealedOptions.SupportCompileInIsolates.getValue();
-    }
+    @Option(help = "Support runtime compilation in separate isolates (enable at runtime with option CompileInIsolates).") //
+    public static final HostedOptionKey<Boolean> SupportCompileInIsolates = new HostedOptionKey<>(true);
 
     public static boolean shouldCompileInIsolates() {
         /*
-         * If SupportCompileInIsolates is unset, CompileInIsolates becomes unreachable because this
-         * expression is folded, and cannot be used at runtime.
+         * If SupportCompileInIsolates is disabled, CompileInIsolates becomes unreachable because
+         * this expression is folded, and cannot be used at runtime.
          */
-        return supportCompileInIsolates() && ConcealedOptions.CompileInIsolates.getValue();
+        return SupportCompileInIsolates.getValue() && ConcealedOptions.CompileInIsolates.getValue();
     }
 
     @Option(help = "Options that are passed to each compilation isolate. Individual arguments are separated by spaces. Arguments that contain spaces need to be enclosed by single quotes.") //
@@ -1210,17 +1200,6 @@ public class SubstrateOptions {
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
-
-        @Option(help = "Support runtime compilation in separate isolates (enable at runtime with option CompileInIsolates).") //
-        public static final HostedOptionKey<Boolean> SupportCompileInIsolates = new HostedOptionKey<>(null) {
-            @Override
-            public Boolean getValue(OptionValues values) {
-                if (hasBeenSet(values)) {
-                    return super.getValue(values);
-                }
-                return SpawnIsolates.getValue(values);
-            }
-        };
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
@@ -1328,7 +1307,7 @@ public class SubstrateOptions {
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
                 if (newValue) {
-                    SupportCompileInIsolates.update(values, false);
+                    SubstrateOptions.SupportCompileInIsolates.update(values, false);
                 }
             }
         };
@@ -1338,7 +1317,7 @@ public class SubstrateOptions {
                 if (!RuntimeClassLoading.Options.RuntimeClassLoading.getValue()) {
                     throw UserError.abort("Cannot enable Ristretto compilation if RuntimeClassLoading is not enabled.");
                 }
-                if (SupportCompileInIsolates.getValue()) {
+                if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
                     throw UserError.abort("Cannot enable Ristretto compilation if SupportCompileInIsolates is enabled.");
                 }
             }

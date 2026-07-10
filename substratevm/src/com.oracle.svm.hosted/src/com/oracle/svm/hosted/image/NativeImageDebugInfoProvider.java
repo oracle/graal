@@ -660,7 +660,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         LoaderEntry loaderEntry = lookupLoaderEntry(hostedType);
         String loaderName = loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
-        long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
+        long compressedTypeSignature = getTypeSignature(INDIRECT_PREFIX + typeName + loaderName);
 
         if (hostedType.isPrimitive()) {
             JavaKind kind = hostedType.getStorageKind();
