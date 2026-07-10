@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -80,20 +80,25 @@ public final class MDBasicType extends MDType implements MDBaseNode {
         }
     }
 
+    private static final long FLAG_SIZE_IS_METADATA = 0x2;
+
     private static final int ARGINDEX_TAG = 1;
     private static final int ARGINDEX_NAME = 2;
     private static final int ARGINDEX_SIZE = 3;
     private static final int ARGINDEX_ALIGN = 4;
     private static final int ARGINDEX_ENCODING = 5;
+    private static final int ARGINDEX_FLAGS = 6;
 
     public static MDBasicType create38(long[] args, MetadataValueList md) {
-        // [distinct, tag, name, size, align, enc]
+        // [distinct | sizeIsMetadata, tag, name, size, align, enc, flags, ...]
+        final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_TAG];
-        final long size = args[ARGINDEX_SIZE];
+        final long size = getMetadataOrConstant(args[ARGINDEX_SIZE], sizeIsMetadata, md, null);
         final long align = args[ARGINDEX_ALIGN];
         final long encoding = args[ARGINDEX_ENCODING];
+        final long flags = args.length > ARGINDEX_FLAGS ? args[ARGINDEX_FLAGS] : 0;
 
-        final MDBasicType basicType = new MDBasicType(tag, -1L, size, align, -1L, -1L, encoding);
+        final MDBasicType basicType = new MDBasicType(tag, -1L, size, align, -1L, flags, encoding);
         basicType.setName(md.getNullable(args[ARGINDEX_NAME], basicType));
         return basicType;
     }

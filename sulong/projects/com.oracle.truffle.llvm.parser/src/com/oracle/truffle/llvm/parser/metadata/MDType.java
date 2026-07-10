@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.metadata;
+
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public abstract class MDType extends MDName {
 
@@ -81,6 +87,25 @@ public abstract class MDType extends MDName {
 
     public void setFile(MDBaseNode file) {
         this.file = file;
+    }
+
+    static long getMetadataOrConstant(long value, boolean isMetadata, MetadataValueList md, MDBaseNode dependent) {
+        if (!isMetadata) {
+            return value;
+        }
+        if (value == 0) {
+            return 0;
+        }
+        MDBaseNode node = md.getNullable(value, dependent);
+        SymbolImpl symbol = MDValue.getIfInstance(node);
+        if (symbol instanceof IntegerConstant) {
+            return ((IntegerConstant) symbol).getValue();
+        } else if (symbol instanceof BigIntegerConstant) {
+            return ((BigIntegerConstant) symbol).getValue().longValueExact();
+        } else if (symbol instanceof NullConstant) {
+            return 0;
+        }
+        throw new LLVMParserException("Expected integer metadata constant for DIType size or offset");
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -102,6 +102,8 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         }
     }
 
+    private static final long FLAG_SIZE_IS_METADATA = 0x4;
+
     private static final int ARGINDEX_38_TAG = 1;
     private static final int ARGINDEX_38_NAME = 2;
     private static final int ARGINDEX_38_FILE = 3;
@@ -118,11 +120,12 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_38_IDENTIFIER = 15;
 
     public static MDCompositeType create38(long[] args, MetadataValueList md) {
+        final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_38_TAG];
         final long line = args[ARGINDEX_38_LINE];
-        final long size = args[ARGINDEX_38_SIZE];
+        final long size = getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, null);
         final long align = args[ARGINDEX_38_ALIGN];
-        final long offset = args[ARGINDEX_38_OFFSET];
+        final long offset = getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, null);
         final long flags = args[ARGINDEX_38_FLAGS];
         final long lang = args[ARGINDEX_38_RUNTIMELANGUAGE];
 
