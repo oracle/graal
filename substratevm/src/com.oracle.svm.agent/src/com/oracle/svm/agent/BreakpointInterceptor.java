@@ -1113,7 +1113,8 @@ final class BreakpointInterceptor {
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
         if (isNoArgumentValuesLookup(name, paramTypes) && isEnumClass(jni, clazz)) {
-            traceReflectBreakpointWithExtraField(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, "class_is_enum", true, name, paramTypes);
+            traceReflectBreakpointWithExtraField(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, "class_is_enum", true, name,
+                            paramTypes);
         } else {
             traceReflectBreakpoint(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, name, paramTypes);
         }
