@@ -135,6 +135,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMLifetimeEndNode
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMLifetimeStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemCopy;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemMove;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemSetPatternNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemSetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMPrefetchNodeGen;
@@ -1352,6 +1353,17 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    private LLVMExpressionNode createMemsetPatternIntrinsic(FunctionDeclaration declaration, LLVMExpressionNode[] args) {
+        Type patternType = declaration.getType().getArgumentType(1);
+        try {
+            long patternSize = getByteSize(patternType);
+            LLVMStoreNode store = (LLVMStoreNode) createStore(null, null, patternType);
+            return LLVMMemSetPatternNodeGen.create(store, args[1], args[2], args[3], args[4], patternSize);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
+    }
+
     private LLVMExpressionNode createMemcpyIntrinsic(LLVMExpressionNode[] args) {
         return LLVMMemCopy.createIntrinsic(args, createMemMove(), this);
     }
@@ -1533,6 +1545,9 @@ public class BasicNodeFactory implements NodeFactory {
 
         String intrinsicName = declaration.getName();
         try {
+            if (intrinsicName.startsWith("llvm.experimental.memset.pattern.")) {
+                return createMemsetPatternIntrinsic(declaration, args);
+            }
             switch (intrinsicName) {
                 case "llvm.ptrmask.p0.i64":
                     return LLVMPointerMaskNodeGen.create(args[1], args[2]);
