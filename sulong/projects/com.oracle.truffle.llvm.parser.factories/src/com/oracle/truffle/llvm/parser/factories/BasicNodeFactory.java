@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1595,11 +1595,11 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.lifetime.start.p0":
                 case "llvm.lifetime.start.p0i8":
                 case "llvm.lifetime.start":
-                    return LLVMLifetimeStartNodeGen.create(args[1], args[2]);
+                    return LLVMLifetimeStartNodeGen.create(args[args.length - 1]);
                 case "llvm.lifetime.end.p0":
                 case "llvm.lifetime.end.p0i8":
                 case "llvm.lifetime.end":
-                    return LLVMLifetimeEndNodeGen.create(args[1], args[2]);
+                    return LLVMLifetimeEndNodeGen.create(args[args.length - 1]);
                 case "llvm.invariant.start":
                 case "llvm.invariant.start.p0":
                 case "llvm.invariant.start.p0i8":
