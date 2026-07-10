@@ -958,6 +958,21 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    @Fold
+    public static boolean useFramePointerPhase() {
+        Boolean value = ConcealedOptions.UseFramePointerPhase.getValue();
+        if (value != null) {
+            return value;
+        }
+        return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && Platform.includedIn(Platform.AMD64.class);
+    }
+
+    private static void validateUseFramePointerPhase(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.hasBeenSet() && optionKey.getValue() && !Platform.includedIn(Platform.AMD64.class)) {
+            throw UserError.invalidOptionValue(optionKey, true, "FramePointerPhase is supported only on AMD64.");
+        }
+    }
+
     /**
      * Whether frames have a frame pointer slot. Note that the slot might just contain a spilled
      * register value and not a valid frame pointer unless {@link #PreserveFramePointer} is enabled.
@@ -1238,6 +1253,9 @@ public class SubstrateOptions {
                 maxJavaStackTraceDepth = newValue;
             }
         };
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
+        @Option(help = "Enable FramePointerPhase for methods that modify the stack pointer. Enabled by default for Windows on AMD64.")//
+        public static final HostedOptionKey<Boolean> UseFramePointerPhase = new HostedOptionKey<>(null, SubstrateOptions::validateUseFramePointerPhase);
 
         @Option(help = "Use compressed references (32-bit instead of 64-bit references to Java objects).", stability = OptionStability.STABLE) //
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //

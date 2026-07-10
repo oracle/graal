@@ -141,6 +141,10 @@ public class ContinuationSupport {
 
     @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
     public static void patchStackAddressesInCopiedFrames(StoredContinuation continuation, CodePointer ip, Pointer newFramesStart) {
+        if (!SubstrateOptions.PreserveFramePointer.getValue() && !SubstrateOptions.useFramePointerPhase()) {
+            return;
+        }
+
         Pointer originalFramesStart = StoredContinuationAccess.getOriginalCarrierSP(continuation);
         if (newFramesStart.equal(originalFramesStart)) {
             return;
