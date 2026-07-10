@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -109,7 +109,9 @@ public abstract class LLVMForeignCallNode extends RootNode {
 
                         LLVMInteropType interopParameterType = interopFunctionType.getParameter(currentIdx);
 
-                        if (interopParameterType instanceof LLVMInteropType.Value) {
+                        if (interopParameterType == LLVMInteropType.UNKNOWN) {
+                            toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx, ForeignToLLVM.convert(bitcodeParameterType));
+                        } else if (interopParameterType instanceof LLVMInteropType.Value) {
                             toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx, (LLVMInteropType.Value) interopParameterType);
                         } else if (interopParameterType instanceof LLVMInteropType.Structured) {
                             toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx,

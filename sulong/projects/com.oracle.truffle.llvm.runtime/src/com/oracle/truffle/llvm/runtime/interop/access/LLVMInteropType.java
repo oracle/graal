@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -86,6 +86,7 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final LLVMInteropType.Value UNKNOWN = Value.primitive(null, 0);
     public static final LLVMInteropType.Buffer BUFFER = new Buffer();
+    private static final String SYNTHETIC_VTABLE_MEMBER_NAME = "__sulong_vtable";
 
     private final long size;
 
@@ -444,6 +445,7 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private SortedSet<TypeInheritance> superTypes;
+        private StructMember syntheticVTableMember;
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
@@ -451,6 +453,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
+            this.syntheticVTableMember = null;
             this.vtable = null;
             this.virtualMethodsInitialized = false;
             this.superTypes = new TreeSet<>((a, b) -> a.compareTo(b));
@@ -497,6 +500,9 @@ public abstract class LLVMInteropType implements TruffleObject {
          */
         @TruffleBoundary
         public Pair<long[], Struct> getSuperOffsetInformation(String ident) throws UnknownIdentifierException {
+            if (syntheticVTableMember != null && syntheticVTableMember.name.equals(ident)) {
+                return Pair.create(new long[0], this);
+            }
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new long[0], this);
@@ -513,6 +519,9 @@ public abstract class LLVMInteropType implements TruffleObject {
         @Override
         @TruffleBoundary
         protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+            if (syntheticVTableMember != null && syntheticVTableMember.name.equals(ident)) {
+                return Pair.create(new LinkedList<>(), this);
+            }
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
@@ -538,6 +547,9 @@ public abstract class LLVMInteropType implements TruffleObject {
         @Override
         @TruffleBoundary
         public StructMember findMember(String memberName) {
+            if (syntheticVTableMember != null && syntheticVTableMember.name.equals(memberName)) {
+                return syntheticVTableMember;
+            }
             for (StructMember member : members) {
                 if (member.name.equals(memberName)) {
                     return member;
@@ -562,14 +574,19 @@ public abstract class LLVMInteropType implements TruffleObject {
              * virtual method tables are always stored at offset 0 (current class, or recursively of
              * super class at 0)
              */
-            StructMember structMember = findMember(0);
+            StructMember structMember = findVTableMember();
             list.add(structMember.name);
 
             while (structMember.type instanceof LLVMInteropType.Clazz) {
-                structMember = ((Clazz) structMember.type).findMember(0);
+                structMember = ((Clazz) structMember.type).findVTableMember();
                 list.add(structMember.name);
             }
             return list.toArray(new String[0]);
+        }
+
+        private StructMember findVTableMember() {
+            StructMember structMember = findMember(0);
+            return structMember != null ? structMember : syntheticVTableMember;
         }
 
         public Set<Struct> getSuperTypes() {
@@ -1047,8 +1064,32 @@ public abstract class LLVMInteropType implements TruffleObject {
             for (int i = 0; i < ret.methods.length; i++) {
                 ret.methods[i] = convertMethod(type.getMethod(i), ret);
             }
+            if (needsSyntheticVTableMember(type)) {
+                ret.syntheticVTableMember = new StructMember(ret, SYNTHETIC_VTABLE_MEMBER_NAME, 0, ValueKind.POINTER.type.getSize(), ValueKind.POINTER.type, false);
+            }
             ret.buildVTable();
             return ret;
+        }
+
+        private static boolean needsSyntheticVTableMember(LLVMSourceClassLikeType type) {
+            if (!hasVirtualMethod(type)) {
+                return false;
+            }
+            for (int i = 0; i < type.getDynamicElementCount(); i++) {
+                if (type.getDynamicElement(i).getOffset() == 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean hasVirtualMethod(LLVMSourceClassLikeType type) {
+            for (int i = 0; i < type.getMethodCount(); i++) {
+                if (type.getMethod(i).getVirtualIndex() >= 0) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private Function convertFunction(LLVMSourceFunctionType functionType) {
