@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,6 +46,7 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
     public LLVMExpressionNode getInlineAssemblerExpression(NodeFactory nodeFactory, String asmExpression, String asmFlags, LLVMExpressionNode[] args,
                     Type.TypeArrayBuilder argTypes, Type retType) {
         StructureTypeOffsets offsets;
+        String normalizedAsmExpression = normalizeAsmExpression(asmExpression);
 
         try {
             offsets = nodeFactory.getDataLayout().getStructureTypeOffsets(retType);
@@ -55,7 +56,7 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
 
         LLVMInlineAssemblyRootNode assemblyRoot;
         try {
-            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(asmExpression,
+            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(normalizedAsmExpression,
                             new AsmFactory(nodeFactory.getLanguage(), argTypes, asmFlags, retType, offsets.getTypes(), offsets.getOffsets(), nodeFactory));
         } catch (LLVMParserException e) {
             String message = asmExpression + ": " + e.getMessage();
@@ -63,5 +64,55 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
         }
 
         return getCallNodeFromAssemblyRoot(assemblyRoot, args, argTypes);
+    }
+
+    private static String normalizeAsmExpression(String asmExpression) {
+        StringBuilder normalized = null;
+        int start = 0;
+        while (true) {
+            int open = asmExpression.indexOf("$(", start);
+            if (open < 0) {
+                if (normalized == null) {
+                    return asmExpression;
+                }
+                normalized.append(asmExpression, start, asmExpression.length());
+                return normalized.toString();
+            }
+            int close = asmExpression.indexOf(')', open + 2);
+            if (close < 0) {
+                if (normalized == null) {
+                    return asmExpression;
+                }
+                normalized.append(asmExpression, start, asmExpression.length());
+                return normalized.toString();
+            }
+            if (normalized == null) {
+                normalized = new StringBuilder(asmExpression.length());
+            }
+            normalized.append(asmExpression, start, open);
+            appendAttDialectAlternative(normalized, asmExpression, open + 2, close);
+            start = close + 1;
+        }
+    }
+
+    private static void appendAttDialectAlternative(StringBuilder normalized, String asmExpression, int from, int to) {
+        int alternativeEnd = to;
+        for (int i = from; i < to - 1; i++) {
+            if (asmExpression.charAt(i) == '$' && asmExpression.charAt(i + 1) == '|') {
+                alternativeEnd = i;
+                break;
+            }
+        }
+        int i = from;
+        while (i < alternativeEnd) {
+            char c = asmExpression.charAt(i);
+            if (c == '$' && i + 1 < alternativeEnd) {
+                i++;
+                normalized.append(asmExpression.charAt(i));
+            } else {
+                normalized.append(c);
+            }
+            i++;
+        }
     }
 }
