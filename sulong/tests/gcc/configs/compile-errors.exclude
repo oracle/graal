@@ -5837,6 +5837,7 @@ gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv7p.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv8p.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-bitfield2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-cast2.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-cast4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-cast.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-cond1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-cond2.C
