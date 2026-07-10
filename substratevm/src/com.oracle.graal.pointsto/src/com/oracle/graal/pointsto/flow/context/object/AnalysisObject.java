@@ -229,18 +229,21 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(type.getInstanceFields(true).length));
         }
 
-        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length(), "Field %s.%s has invalid position %d.", field.getDeclaringClass().toJavaName(),
+        AtomicReferenceArray<FieldTypeStore> fieldStores = instanceFieldsTypeStore;
+        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < fieldStores.length(), "Field %s.%s has invalid position %d.", field.getDeclaringClass().toJavaName(),
                         field.getName(), field.getPosition());
 
-        FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());
+        FieldTypeStore fieldStore = fieldStores.get(field.getPosition());
         if (fieldStore == null) {
-            fieldStore = bb.analysisPolicy().createFieldTypeStore(bb, this, field, bb.getUniverse());
-            boolean result = instanceFieldsTypeStore.compareAndSet(field.getPosition(), null, fieldStore);
-            if (result) {
-                fieldStore.init(bb);
-                linkFieldFlows(bb, field, fieldStore);
-            } else {
-                fieldStore = instanceFieldsTypeStore.get(field.getPosition());
+            synchronized (fieldStores) {
+                fieldStore = fieldStores.get(field.getPosition());
+                if (fieldStore == null) {
+                    fieldStore = bb.analysisPolicy().createFieldTypeStore(bb, this, field, bb.getUniverse());
+                    fieldStore.init(bb);
+                    linkFieldFlows(bb, field, fieldStore);
+                    // Publish only after the store has all of its defining flow links.
+                    fieldStores.set(field.getPosition(), fieldStore);
+                }
             }
         }
 
