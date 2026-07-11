@@ -99,6 +99,9 @@ final class DefaultBytecodeStackTraceElement implements TruffleObject {
     }
 
     private SourceSection getSourceSectionImpl() {
+        if (!stackTrace.hasBytecodeIndex()) {
+            return null;
+        }
         BytecodeLocation location = BytecodeLocation.get(stackTrace);
         if (location == null) {
             return null;
