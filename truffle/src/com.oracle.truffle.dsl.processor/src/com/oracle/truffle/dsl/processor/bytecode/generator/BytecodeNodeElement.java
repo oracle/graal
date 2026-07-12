@@ -1687,7 +1687,9 @@ final class BytecodeNodeElement extends AbstractElement {
                         filter((i) -> isInstructionReachable(i)).//
                         toList();
 
-        List<List<InstructionModel>> instructionPartitions = BytecodeRootNodeElement.partitionInstructions(instructions);
+        // Tail-call handlers are only used in native-image hosts, which do not have HotSpot's Java
+        // bytecode size limit.
+        List<List<InstructionModel>> instructionPartitions = handlerLayout.isTailCall() ? List.of(instructions) : BytecodeRootNodeElement.partitionInstructions(instructions);
 
         CodeTree op;
         if (instructionPartitions.size() > 1) {
