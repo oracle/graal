@@ -218,6 +218,15 @@ public class ELFObjectFile extends ObjectFile {
         return userDefined;
     }
 
+    public ELFUserDefinedSection newNoteSection(String name, int alignment, ElementImpl impl) {
+        ELFUserDefinedSection note = new ELFUserDefinedSection(this, name, alignment, SectionType.NOTE, impl);
+        assert note.getImpl() == impl;
+        if (impl != null) {
+            impl.setElement(note);
+        }
+        return note;
+    }
+
     @Override
     public ELFProgbitsSection newProgbitsSection(Segment segment, String name, int alignment, boolean writable, boolean executable, ProgbitsSectionImpl impl) {
         EnumSet<ELFSectionFlag> flags = EnumSet.noneOf(ELFSectionFlag.class);

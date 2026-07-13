@@ -34,6 +34,7 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -67,6 +68,7 @@ import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
+import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuilderUtil;
@@ -120,6 +122,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.PLTSupport;
+import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -196,6 +199,7 @@ public abstract class NativeImage extends AbstractImage {
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
+            addELFGNUPropertyNote();
             try {
                 objectFile.write(context, outputFile);
             } catch (InternalError ex) {
@@ -219,6 +223,44 @@ public abstract class NativeImage extends AbstractImage {
                 System.out.printf("PrintImageElementSizes:  size: %15d  name: %s%n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
             }
         }
+    }
+
+    private void addELFGNUPropertyNote() {
+        if (!OS.LINUX.isCurrent() || !(targetDescription.arch instanceof AMD64) || !(objectFile instanceof ELFObjectFile elfObjectFile)) {
+            return;
+        }
+        int x86ISAValue = CPUTypeAMD64.getSelectedFeaturesGNUPropertyValue();
+        if (x86ISAValue == 0) {
+            return;
+        }
+        String sectionName = ".note.gnu.property";
+        if (elfObjectFile.elementForName(sectionName) != null) {
+            return;
+        }
+        elfObjectFile.newNoteSection(sectionName, 4, new BasicProgbitsSectionImpl(createELFGNUPropertyNote(x86ISAValue)) {
+            @Override
+            public boolean isLoadable() {
+                return false;
+            }
+        });
+    }
+
+    private byte[] createELFGNUPropertyNote(int x86ISAValue) {
+        final int ntGNUPropertyType0 = 5;
+        final int gnuPropertyX86ISA1Needed = 0xc0008002;
+
+        byte[] name = "GNU\0".getBytes(StandardCharsets.US_ASCII);
+        ByteBuffer buffer = ByteBuffer.allocate(32).order(objectFile.getByteOrder());
+        buffer.putInt(name.length);
+        buffer.putInt(16);
+        buffer.putInt(ntGNUPropertyType0);
+        buffer.put(name);
+        buffer.putInt(gnuPropertyX86ISA1Needed);
+        buffer.putInt(Integer.BYTES);
+        buffer.putInt(x86ISAValue);
+        buffer.putInt(0);
+        assert !buffer.hasRemaining();
+        return buffer.array();
     }
 
     void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
