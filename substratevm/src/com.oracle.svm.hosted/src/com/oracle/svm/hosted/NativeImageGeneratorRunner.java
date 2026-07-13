@@ -393,6 +393,9 @@ public class NativeImageGeneratorRunner {
          * build-time present on the image classpath and modulepath.
          */
         nativeImageSystemClassLoader.setNativeImageClassLoader(nativeImageClassLoader);
+        if (HostedImageLayerBuildingSupport.isLayeredImageBuild(nativeImageClassLoaderSupport.getParsedHostedOptions())) {
+            nativeImageClassLoaderSupport.preinitializeProxyDynamicModules();
+        }
 
         /*
          * Iterating all classes can already trigger class initialization: We need annotation

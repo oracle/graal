@@ -51,6 +51,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
@@ -138,7 +139,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class, CrossLayerFieldUpdaterFeature.class);
+        return List.of(AccessImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class, CrossLayerFieldUpdaterFeature.class);
     }
 
     @Override
@@ -219,7 +220,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
          */
         int sectionMaxSize = getVariablySizedDataOffset();
 
-        int numSingletonSlots = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap().size();
+        int numSingletonSlots = ImageSingletons.lookup(AccessImageSingletonFeature.class).getLayerSingletonTableSlotCount();
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
         int singletonsTableSize = NumUtil.roundUp(numSingletonSlots * referenceSize, Long.BYTES);
         sectionMaxSize += Long.BYTES + singletonsTableSize;
@@ -286,7 +287,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
         if (numSingletonSlots != 0) {
             assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";
-            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, getFirstSingletonOffset(), 0, false, true, true);
+            objectFile.createDefinedSymbol(AccessImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, getFirstSingletonOffset(), 0, false, true, true);
         }
     }
 
@@ -311,8 +312,10 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
         var config = (FeatureImpl.BeforeImageWriteAccessImpl) access;
 
-        Map<JavaConstant, Integer> singletonToSlotMap = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap();
-        long[] singletonTableInfo = new long[singletonToSlotMap.size()];
+        AccessImageSingletonFeature accessImageSingletonFeature = ImageSingletons.lookup(AccessImageSingletonFeature.class);
+        Map<JavaConstant, Integer> singletonToSlotMap = accessImageSingletonFeature.getConstantToTableSlotMap();
+        long[] singletonTableInfo = new long[accessImageSingletonFeature.getLayerSingletonTableSlotCount()];
+        Arrays.fill(singletonTableInfo, AccessImageSingletonFactory.MISSING_APPLICATION_LAYER_ONLY_SINGLETON_OFFSET);
         int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
         for (var entry : singletonToSlotMap.entrySet()) {
             var objectInfo = config.getImage().getHeap().getConstantInfo(entry.getKey());

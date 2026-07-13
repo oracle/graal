@@ -1026,7 +1026,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof LoadImageSingletonDataImpl data) {
+            if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof ImageSingletonDataImpl data) {
                 data.setApplicationLayerConstant();
             }
         }

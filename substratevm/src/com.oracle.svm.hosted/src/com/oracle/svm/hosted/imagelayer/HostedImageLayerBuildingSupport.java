@@ -350,7 +350,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
 
-        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
+        if (isLayeredImageBuild(hostedOptions)) {
             enableConservativeUnsafeAccess(values);
 
             /*
@@ -408,6 +408,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             return !getLayerUseValue(values).toString().isEmpty();
         }
         return false;
+    }
+
+    public static boolean isLayeredImageBuild(OptionValues values) {
+        return isLayerCreateOptionEnabled(values) || isLayerUseOptionEnabled(values);
     }
 
     /**
