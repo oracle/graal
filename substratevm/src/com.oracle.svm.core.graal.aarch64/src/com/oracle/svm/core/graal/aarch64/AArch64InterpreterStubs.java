@@ -320,13 +320,8 @@ public class AArch64InterpreterStubs {
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
 
-            /* r0 is a pointer to InterpreterEnterData */
-
-            /* Move fp return value into ABI register */
-            masm.fldr(64, v0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r0, offsetAbiFpRet()));
-
-            /* Move gp return value into ABI register */
-            masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r0, offsetAbiGpRet()));
+            /* r0 contains the raw result. Make it available in both ABI return registers. */
+            masm.fmov(64, v0, r0);
 
             super.leave(crb);
         }

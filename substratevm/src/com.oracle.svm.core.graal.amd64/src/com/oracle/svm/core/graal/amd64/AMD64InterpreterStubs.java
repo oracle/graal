@@ -319,13 +319,8 @@ public class AMD64InterpreterStubs {
         public void leave(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
 
-            /* rax is a pointer to InterpreterEnterData */
-
-            /* Move fp return value into ABI register */
-            masm.movq(xmm0, new AMD64Address(rax, offsetAbiFpRet()));
-
-            /* Move gp return value into ABI register */
-            masm.movq(rax, new AMD64Address(rax, offsetAbiGpRet()));
+            /* rax contains the raw result. Make it available in both ABI return registers. */
+            masm.movdq(xmm0, rax);
 
             super.leave(crb);
         }
