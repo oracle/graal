@@ -372,7 +372,14 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startIf().string("frame.isObject(frameIndex)").end().startBlock();
             b.startReturn().string("frame.getObject(frameIndex)").end();
             b.end();
-            b.statement("return null");
+            if (tier.isUncached()) {
+                b.startIf().string("frame.getTag(frameIndex) == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
+                b.statement("return null");
+                b.end();
+                b.statement("return frame.getValue(frameIndex)");
+            } else {
+                b.statement("return null");
+            }
         }
 
         return ex;

@@ -9,8 +9,8 @@
  * data (collectively the "Software"), free of charge and under any and all
  * copyright rights in the Software, and any and all patent rights owned or
  * freely licensable by each licensor hereunder covering either (i) the
- * unmodified Software as contributed by such licensor, or (ii) the Larger
- * Works (as defined below), to deal in both
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
  * (a) the Software, and
  *
@@ -26,9 +26,9 @@
  *
  * This license is subject to the following condition:
  *
- * The above copyright notice and either this complete permission notice or at
- * a minimum a reference to the UPL must be included in all copies or
- * substantial portions of the Software.
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -100,8 +100,7 @@ public class GR77540Test {
         assertEquals(42L, frame.getLocalValue(0));
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class, enableYield = true,
-                    enableBlockScoping = false)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class, enableYield = true, enableBlockScoping = false)
     abstract static class GR77540RootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected GR77540RootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
