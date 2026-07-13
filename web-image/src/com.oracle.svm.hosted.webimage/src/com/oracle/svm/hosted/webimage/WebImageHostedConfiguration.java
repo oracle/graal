@@ -99,6 +99,7 @@ import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Default configuration for Web Image.
@@ -113,7 +114,7 @@ public class WebImageHostedConfiguration extends HostedConfiguration {
             ImageSingletons.add(HostedConfiguration.class, new WebImageHostedConfiguration());
             CompressEncoding compressEncoding = new CompressEncoding(0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
-            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.OBJECT_HEADER);
+            ObjectLayout objectLayout = createObjectLayout(JavaKind.Object, IdentityHashMode.OBJECT_HEADER);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }

@@ -125,9 +125,11 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
     private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError(OUT_OF_METASPACE_MSG);
     private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
-                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
+                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
+                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
     private static final OutOfMemoryError UNALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
-                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
+                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
+                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
 
     /**
      * This mutex is used by the GC and the application. The application may hold this mutex only in
@@ -446,7 +448,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected OutOfMemoryError reportAlignedChunkAllocationFailed(int error) {
+    private static OutOfMemoryError reportAlignedChunkAllocationFailed(int error) {
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
@@ -471,7 +473,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected OutOfMemoryError reportUnalignedChunkAllocationFailed(int error) {
+    private static OutOfMemoryError reportUnalignedChunkAllocationFailed(int error) {
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
