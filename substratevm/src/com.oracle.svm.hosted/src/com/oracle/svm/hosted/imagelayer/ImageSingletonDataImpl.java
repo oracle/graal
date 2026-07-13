@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.util.VMError;
 
@@ -100,7 +101,13 @@ abstract class ImageSingletonDataImpl implements AccessImageSingletonFactory.Ima
 
     @Override
     public final boolean isApplicationLayerConstant() {
-        return applicationLayerConstant;
+        VMError.guarantee(BuildPhaseProvider.isAnalysisStarted(), "The singleton can still be added until the analysis starts.");
+        /*
+         * Application layer singletons are optional, so even if they are looked up in a shared
+         * layer, they might still not be present in the final image. In that case, the lookup
+         * throws at runtime and the singleton cannot be folded.
+         */
+        return applicationLayerConstant && ImageSingletons.contains(slotData.key);
     }
 }
 
