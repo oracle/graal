@@ -88,8 +88,6 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
     private final IntConsumer handlerArityConsumer;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
-    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> threadingExitCache = EconomicMap.create();
-
     public BytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
                     SubstrateBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled, IntConsumer handlerArityConsumer) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
@@ -103,16 +101,6 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         GraalError.guarantee(nextOpcode.getSignature().getReturnType(nextOpcode.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                         "Method annotated with BytecodeInterpreterFetchOpcode must not return void: %s", nextOpcode);
         return nextOpcode;
-    }
-
-    private ResolvedJavaMethod threadingExitMethod(ResolvedJavaMethod enclosingMethod, ResolvedJavaType holder) {
-        if (!threadingExitCache.containsKey(enclosingMethod)) {
-            ResolvedJavaMethod temp = BytecodeInterpreterAnnotations.getUniqueThreadingExitMethod(holder);
-            synchronized (threadingExitCache) {
-                threadingExitCache.putIfAbsent(enclosingMethod, temp);
-            }
-        }
-        return threadingExitCache.get(enclosingMethod);
     }
 
     @Override
@@ -138,7 +126,6 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
         int templatesLength = handlerConfig.getTemplatesLength();
-        ResolvedJavaMethod threadingExit = threadingExitMethod(enclosingMethod, target.getDeclaringClass());
 
         if (handlerArityConsumer != null) {
             handlerArityConsumer.accept(handlerConfig.getStubAbiArgumentInfos().size());
@@ -174,7 +161,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
                         continue;
                     }
                     SubstrateBytecodeHandlerStub defaultHandlerStub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                                    stubNameForTemplate("__stub_defaultHandler", templateIndex, templatesLength), interpreterHolder, handlerConfig, false, null, threadingExit, false, true, null,
+                                    stubNameForTemplate("__stub_defaultHandler", templateIndex, templatesLength), interpreterHolder, handlerConfig, false, null, false, true, null,
                                     templateIndex);
                     AnalysisMethod defaultStubWrapper = universe.lookup(defaultHandlerStub);
                     universe.getBigbang().addRootMethod(defaultStubWrapper, true, "Default bytecode handler stub");
@@ -185,7 +172,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
 
             for (int templateIndex = 0; templateIndex < templatesLength; templateIndex++) {
                 SubstrateBytecodeHandlerStub stub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                                stubNameForTemplate(stubName, templateIndex, templatesLength), interpreterHolder, handlerConfig, threading, nextOpcode, threadingExit, safepoint, false, target,
+                                stubNameForTemplate(stubName, templateIndex, templatesLength), interpreterHolder, handlerConfig, threading, nextOpcode, safepoint, false, target,
                                 templateIndex);
                 AnalysisMethod handlerStubWrapper = universe.lookup(stub);
                 universe.getBigbang().addRootMethod(handlerStubWrapper, true, "Bytecode handler stub " + stubName);

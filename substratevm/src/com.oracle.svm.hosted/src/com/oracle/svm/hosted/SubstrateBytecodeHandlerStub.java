@@ -95,7 +95,6 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     /** True for the default fallback stub that returns to the interpreter dispatch loop. */
     private final boolean isDefault;
     private final ResolvedJavaMethod nextOpcodeMethod;
-    private final ResolvedJavaMethod threadingExitMethod;
     private final int templateIndex;
     /** Declaring type that owns the interpreter. */
     private final ResolvedJavaType interpreterHolder;
@@ -105,15 +104,14 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     private final ResolvedJavaMethod targetMethod;
 
     public SubstrateBytecodeHandlerStub(SubstrateBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
-                    ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, ResolvedJavaMethod threadingExitMethod,
-                    boolean needSafepoint, boolean isDefault, ResolvedJavaMethod targetMethod, int templateIndex) {
+                    ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault,
+                    ResolvedJavaMethod targetMethod, int templateIndex) {
         super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getStubAbiArgumentTypes(),
                         config.getReturnType()), declaringClass.getDeclaredConstructors(false)[0].getConstantPool());
         this.stubHolder = stubHolder;
         this.threading = threading;
         this.isDefault = isDefault;
         this.nextOpcodeMethod = nextOpcodeMethod;
-        this.threadingExitMethod = threadingExitMethod;
         this.templateIndex = templateIndex;
         this.needSafepoint = needSafepoint;
         this.interpreterHolder = interpreterHolder;
@@ -127,9 +125,9 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         if (isDefault) {
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
-            return BytecodeHandlerStubHelper.createEmptyStub(kit, method, 0, config, fallbackReturnRegister, threadingExitMethod, templateIndex);
+            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
         }
-        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, threadingExitMethod,
+        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod,
                         index -> stubHolder.getBytecodeHandlers(interpreterHolder, config, index), config, targetMethod, templateIndex, SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
     }
 

@@ -288,12 +288,10 @@ public class TruffleFeature implements InternalFeature {
         ResolvedJavaType bytecodeInterpreterHandler = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterHandler.class);
         ResolvedJavaType bytecodeInterpreterHandlerConfig = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterHandlerConfig.class);
         ResolvedJavaType bytecodeInterpreterFetchOpcode = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterFetchOpcode.class);
-        ResolvedJavaType bytecodeInterpreterThreadingExit = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterThreadingExit.class);
 
         BytecodeInterpreterAnnotations.registerAnnotationTypes(OriginalClassProvider.getOriginalType(bytecodeInterpreterHandler), OriginalClassProvider.getOriginalType(
                         bytecodeInterpreterHandlerConfig),
-                        OriginalClassProvider.getOriginalType(bytecodeInterpreterFetchOpcode),
-                        OriginalClassProvider.getOriginalType(bytecodeInterpreterThreadingExit));
+                        OriginalClassProvider.getOriginalType(bytecodeInterpreterFetchOpcode));
     }
 
     /*

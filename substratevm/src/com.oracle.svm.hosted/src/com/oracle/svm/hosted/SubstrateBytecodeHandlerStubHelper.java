@@ -26,7 +26,9 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.SubstrateBytecodeHandlerStub.unwrap;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -57,6 +59,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
      * will be persisted in the generated image.
      */
     private final EconomicMap<BytecodeHandlerStubKey, MethodPointer[]> bytecodeHandlers = EconomicMap.create();
+    private final EconomicMap<BytecodeHandlerStubKey, MethodPointer[]> mainDispatchHandlers = EconomicMap.create();
 
     /**
      * Initializes and populates all bytecode-handler tables from the registered stub wrappers.
@@ -111,6 +114,36 @@ public final class SubstrateBytecodeHandlerStubHelper {
                 handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
         }
+
+        for (BytecodeHandlerStubKey key : registeredBytecodeHandlers.getKeys()) {
+            if (key.method() == null) {
+                continue;
+            }
+            BytecodeHandlerStubKey dispatchKey = BytecodeHandlerStubKey.create(key.method(), key.interpreterHolder(), key.handlerConfig());
+            if (mainDispatchHandlers.containsKey(dispatchKey)) {
+                continue;
+            }
+
+            BytecodeHandlerConfig handlerConfig = key.handlerConfig();
+            ResolvedJavaMethod handler = unwrap(key.method());
+            AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
+            GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
+            boolean templateCompatible = annotation.getBoolean("templateCompatible");
+
+            MethodPointer[] dispatchTargets = new MethodPointer[handlerConfig.getTemplatesLength()];
+            for (int templateIndex = 0; templateIndex < dispatchTargets.length; templateIndex++) {
+                ResolvedJavaMethod stubWrapper;
+                if (templateIndex == 0 || templateCompatible) {
+                    stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.create(key.method(), key.interpreterHolder(), handlerConfig, templateIndex));
+                } else {
+                    stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig, templateIndex));
+                }
+                GraalError.guarantee(stubWrapper != null, "No main-dispatch stub registered for %s with config %s and template index %d",
+                                handler.format("%H.%n(%p)"), handlerConfig, templateIndex);
+                dispatchTargets[templateIndex] = new MethodPointer(stubWrapper);
+            }
+            mainDispatchHandlers.put(dispatchKey, dispatchTargets);
+        }
     }
 
     /**
@@ -127,7 +160,20 @@ public final class SubstrateBytecodeHandlerStubHelper {
         return handlers;
     }
 
+    public MethodPointer[] getMainDispatchHandlers(ResolvedJavaMethod targetMethod, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+        MethodPointer[] handlers = mainDispatchHandlers.get(BytecodeHandlerStubKey.create(unwrap(targetMethod), interpreterHolder, handlerConfig));
+        GraalError.guarantee(handlers != null, "Main dispatch bytecode handlers not yet initialized!");
+        return handlers;
+    }
+
     public Iterable<MethodPointer[]> getAllBytecodeHandlers() {
-        return bytecodeHandlers.getValues();
+        List<MethodPointer[]> handlers = new ArrayList<>();
+        for (MethodPointer[] table : bytecodeHandlers.getValues()) {
+            handlers.add(table);
+        }
+        for (MethodPointer[] table : mainDispatchHandlers.getValues()) {
+            handlers.add(table);
+        }
+        return handlers;
     }
 }

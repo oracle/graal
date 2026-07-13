@@ -157,7 +157,6 @@ innr public abstract interface static !annotation BytecodeInterpreterHandler
 innr public abstract interface static !annotation BytecodeInterpreterHandlerConfig
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
-innr public abstract interface static !annotation BytecodeInterpreterThreadingExit
 innr public abstract interface static !annotation InliningCutoff
 innr public abstract interface static !annotation InliningRoot
 meth public static boolean inInterpreterFastPath()
@@ -233,12 +232,6 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
-intf java.lang.annotation.Annotation
-
-CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterThreadingExit
- outer com.oracle.truffle.api.HostCompilerDirectives
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff

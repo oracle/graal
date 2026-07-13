@@ -138,7 +138,7 @@ public final class BytecodeHandlerFeature implements InternalFeature {
     @Override
     public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
         if (hosted && suites.getHighTier() instanceof HighTier) {
-            suites.getHighTier().prependPhase(new SubstrateOutlineBytecodeHandlerPhase(registeredBytecodeHandlers));
+            suites.getHighTier().prependPhase(new SubstrateOutlineBytecodeHandlerPhase(registeredBytecodeHandlers, stubHelper));
         }
     }
 

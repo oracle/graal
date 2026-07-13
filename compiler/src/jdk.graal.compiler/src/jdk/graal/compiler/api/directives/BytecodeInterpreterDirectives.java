@@ -63,9 +63,9 @@ public final class BytecodeInterpreterDirectives {
         /**
          * Indicates whether this handler can be dispatched while a template variable is in a
          * non-zero state. If {@code false}, non-zero template handler tables dispatch this handler's
-         * opcodes to a generated threading-exit stub so that state is normalized before the bytecode
-         * is re-dispatched from the interpreter switch. The default is {@code true}, meaning the
-         * handler is compatible with all template states.
+         * opcodes to a generated fallback stub so control returns to the interpreter switch before
+         * the handler executes. The default is {@code true}, meaning the handler is compatible with
+         * all template states.
          */
         boolean templateCompatible() default true;
 
@@ -239,24 +239,4 @@ public final class BytecodeInterpreterDirectives {
     public @interface BytecodeInterpreterFetchOpcode {
     }
 
-    /**
-     * Annotates an optional callback method that materializes interpreter state before threaded
-     * dispatch exits to the interpreter loop.
-     * <p>
-     * The callback is invoked before control returns to the
-     * {@link BytecodeInterpreterSwitch}-annotated loop from generated threading-exit stubs and
-     * before exceptional exits unwind from generated handler stubs. It is intended for cleanup such
-     * as writing virtualized state back to memory and resetting template state so the interpreter
-     * loop can re-enter through template variant {@code 0}.
-     * <p>
-     * The annotated method must be declared in the same enclosing class as the bytecode handlers,
-     * have the same parameter list as the bytecode handlers, return {@code void}, and must not
-     * throw.
-     *
-     * @since 25.1
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
-    public @interface BytecodeInterpreterThreadingExit {
-    }
 }

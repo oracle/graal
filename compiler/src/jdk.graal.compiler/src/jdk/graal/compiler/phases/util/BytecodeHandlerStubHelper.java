@@ -245,11 +245,11 @@ public final class BytecodeHandlerStubHelper {
     /**
      * Generates a bytecode-handler stub that expands stub ABI inputs back to the Java handler call
      * shape, invokes the original handler, and returns the current stub ABI values. If the handler
-     * throws, the threading-exit callback runs before the optional {@code unwindPathSupplier}
-     * publishes backend-specific pending state and the stub unwinds the same exception.
+     * throws, the optional {@code unwindPathSupplier} publishes backend-specific pending state and
+     * the stub unwinds the same exception.
      */
     public static StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, int bci, boolean threading, ResolvedJavaMethod nextOpcodeMethod,
-                    ResolvedJavaMethod threadingExitMethod, IntFunction<Object> bytecodeHandlerTableSupplier, BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, int templateIndex,
+                    IntFunction<Object> bytecodeHandlerTableSupplier, BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, int templateIndex,
                     UnwindPathSupplier unwindPathSupplier) {
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
@@ -285,18 +285,12 @@ public final class BytecodeHandlerStubHelper {
             ValueNode nextOpcode = createFetchOpcodeInvoke(kit, nextOpcodeMethod, frameStateBuilder, bci, updatedHandlerArguments);
             TemplateSelection template = loadTemplateSelection(handlerConfig, kit, updatedHandlerArguments);
             tailCallTarget = kit.append(new BytecodeHandlerDispatchAddressNode(nextOpcode, template.values(), template.variants(), bytecodeHandlerTableSupplier));
-        } else if (threadingExitMethod != null) {
-            ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
-            invokeThreadingExit(kit, threadingExitMethod, frameStateBuilder, bci, updatedHandlerArguments);
         }
 
         ValueNode[] normalPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, handlerResult);
         kit.append(new ReturnNode(createStubReturn(handlerConfig, kit, handlerResult, tailCallTarget, normalPathStubArguments)));
 
         kit.exceptionPart();
-        if (threadingExitMethod != null) {
-            invokeThreadingExit(kit, threadingExitMethod, frameStateBuilder, bci, handlerArguments);
-        }
         if (unwindPathSupplier != null) {
             ValueNode[] exceptionPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, null);
             unwindPathSupplier.apply(handlerConfig, kit, exceptionPathStubArguments);
@@ -334,12 +328,6 @@ public final class BytecodeHandlerStubHelper {
         return new TemplateSelection(templateValues, templateVariants);
     }
 
-    private static void invokeThreadingExit(GraphKit kit, ResolvedJavaMethod threadingExitMethod, FrameStateBuilder frameStateBuilder, int bci, ValueNode[] updatedHandlerArguments) {
-        GraalError.guarantee(threadingExitMethod.getSignature().getReturnKind() == JavaKind.Void, "Expected BytecodeInterpreterThreadingExit to return void: %s",
-                        threadingExitMethod.format("%H.%n(%p)"));
-        kit.createInvokeWithExceptionAndUnwind(threadingExitMethod, invokeKind(threadingExitMethod), frameStateBuilder, bci, updatedHandlerArguments);
-    }
-
     private record TemplateSelection(ValueNode[] values, int[] variants) {
     }
 
@@ -353,11 +341,6 @@ public final class BytecodeHandlerStubHelper {
      * re-dispatch of the bytecode in the caller.
      */
     public static StructuredGraph createEmptyStub(GraphKit kit, BytecodeHandlerConfig handlerConfig, Register returnRegister) {
-        return createEmptyStub(kit, null, 0, handlerConfig, returnRegister, null, 0);
-    }
-
-    public static StructuredGraph createEmptyStub(GraphKit kit, ResolvedJavaMethod frameOwner, int bci, BytecodeHandlerConfig handlerConfig, Register returnRegister,
-                    ResolvedJavaMethod threadingExitMethod, int templateIndex) {
         StructuredGraph graph = kit.getGraph();
         graph.getGraphState().forceDisableFrameStateVerification();
 
@@ -378,19 +361,9 @@ public final class BytecodeHandlerStubHelper {
             }
         }
 
-        if (threadingExitMethod != null) {
-            GraalError.guarantee(frameOwner != null, "Default handler stubs require a frame owner");
-            FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
-            graph.start().setStateAfter(frameStateBuilder.create(bci, graph.start()));
-            ValueNode[] handlerArguments = createHandlerArguments(handlerConfig, threadingExitMethod, kit, stubParameters, templateIndex);
-            invokeThreadingExit(kit, threadingExitMethod, frameStateBuilder, bci, handlerArguments);
-            ValueNode[] currentStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, returnResult);
-            kit.append(new ReturnNode(createStubReturn(handlerConfig, kit, returnResult, null, currentStubArguments)));
-        } else {
-            MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
-            multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(stubParameters));
-            kit.append(new ReturnNode(multiReturnNode));
-        }
+        MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
+        multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(stubParameters));
+        kit.append(new ReturnNode(multiReturnNode));
         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for default bytecode handler stub");
         return graph;
     }
