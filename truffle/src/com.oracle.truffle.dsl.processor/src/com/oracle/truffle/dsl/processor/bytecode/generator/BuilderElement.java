@@ -4421,7 +4421,7 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        buildEmitInstructionWithStackEffect(b, null, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
+        buildEmitInstructionWithStackEffect(b, null, true, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
 
         b.end().startElseBlock();
 
@@ -4437,7 +4437,7 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-stackCount",
+        buildEmitInstructionWithStackEffect(b, null, true, model.loadVariadicInstruction, "-stackCount",
                         createLoadVariadicArguments("offset + count - stackCount", "(short)(stackCount)", "(short)mergeCount"));
 
         if (model.hasVariadicReturn) {
@@ -4512,7 +4512,7 @@ final class BuilderElement extends AbstractElement {
         b.end();
 
         b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
-        buildEmitInstructionWithStackEffect(b, "createVariadicBci", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
+        buildEmitInstructionWithStackEffect(b, "createVariadicBci", true, model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
                         createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
         b.startReturn().string("createVariadicBci").end();
         b.end().startElseBlock();
@@ -4522,7 +4522,7 @@ final class BuilderElement extends AbstractElement {
         } else {
             offset = "count - VARIADIC_STACK_LIMIT";
         }
-        buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT",
+        buildEmitInstructionWithStackEffect(b, null, true, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT",
                         createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
         b.startReturn().string("-1").end();
         b.end();
@@ -4584,13 +4584,17 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void buildEmitInstruction(CodeTreeBuilder b, String localName, InstructionModel instr, String... arguments) {
-        buildEmitInstructionWithStackEffect(b, localName, instr, String.valueOf(instr.getStackEffect()), arguments);
+        buildEmitInstructionWithStackEffect(b, localName, true, instr, String.valueOf(instr.getStackEffect()), arguments);
     }
 
-    private void buildEmitInstructionWithStackEffect(CodeTreeBuilder b, String localName, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
+    private void buildEmitInstructionWithStackEffect(CodeTreeBuilder b, String localName, boolean declareLocal, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
         CodeExecutableElement doEmitInstruction = rootStackElement.ensureDoEmitInstructionCreated(instr);
         if (localName != null) {
-            b.startDeclaration(type(int.class), localName);
+            if (declareLocal) {
+                b.startDeclaration(type(int.class), localName);
+            } else {
+                b.startAssign(localName);
+            }
         } else {
             b.startStatement();
         }
@@ -5005,10 +5009,10 @@ final class BuilderElement extends AbstractElement {
             if (model.enableTagInstrumentation) {
                 b.startCase().tree(parent.createOperationConstant(model.tagOperation)).end();
                 b.startBlock();
-                b.startIf().string("state.reachable").end().startBlock();
                 if (operationKind == OperationKind.RETURN) {
-                    buildEmitInstruction(b, null, model.tagLeaveValueInstruction, buildTagLeaveArguments(model.tagLeaveValueInstruction, "childBci", "resultStackOffset"));
-                    b.startAssign("childBci").string("state.bci - " + model.tagLeaveValueInstruction.getInstructionLength()).end();
+                    buildEmitInstructionWithStackEffect(b, "childBci", false, model.tagLeaveValueInstruction,
+                                    String.valueOf(model.tagLeaveValueInstruction.getStackEffect()),
+                                    buildTagLeaveArguments(model.tagLeaveValueInstruction, "childBci", "resultStackOffset"));
                 } else {
                     if (operationKind != OperationKind.BRANCH) {
                         throw new AssertionError("unexpected operation kind used for unwind code generation.");
@@ -5024,7 +5028,6 @@ final class BuilderElement extends AbstractElement {
                 b.end();
 
                 b.statement("needsRewind = true");
-                b.end(); // reachable
                 b.statement("break");
                 b.end(); // case tag
             }
@@ -5043,10 +5046,8 @@ final class BuilderElement extends AbstractElement {
                 b.startCase().tree(parent.createOperationConstant(op)).end();
                 b.startBlock();
                 b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
-                b.startIf().string("state.reachable").end().startBlock();
                 emitExtraExceptionTableEntry(b, op);
                 b.statement("needsRewind = true");
-                b.end(); // if reachable
                 b.statement("doEmitFinallyHandler(operation, i)");
                 b.end(); // if in try
                 b.statement("break");
@@ -5056,10 +5057,10 @@ final class BuilderElement extends AbstractElement {
             OperationModel tryCatch = model.findOperation(OperationKind.TRY_CATCH);
             b.startCase().tree(parent.createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
             b.startBlock();
-            b.startIf().string("operation.childCount == 0 /* still in try */ && state.reachable").end().startBlock();
+            b.startIf().string("operation.childCount == 0 /* still in try */").end().startBlock();
             emitExtraExceptionTableEntry(b, tryCatch);
             b.statement("needsRewind = true");
-            b.end(); // if in try and reachable
+            b.end(); // if in try
             b.statement("break");
             b.end(); // case trycatch
 

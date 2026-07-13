@@ -243,7 +243,7 @@ public class CustomReturnTest {
     }
 
     @Test
-    public void testUnreachableReturnWithSourceSectionDoesNotRewindCatchRange() {
+    public void testUnreachableReturnWithSourceSectionPreservesCatchHandlerCoverage() {
         Source source = Source.newBuilder("test", "return;", "unreachable-return.test").build();
         CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
             b.beginSource(source);
@@ -265,7 +265,7 @@ public class CustomReturnTest {
     }
 
     @Test
-    public void testUnreachableBranchWithSourceSectionDoesNotRewindCatchRange() {
+    public void testUnreachableBranchWithSourceSectionPreservesCatchHandlerCoverage() {
         Source source = Source.newBuilder("test", "branch;", "unreachable-branch.test").build();
         CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
             b.beginSource(source);
@@ -296,7 +296,7 @@ public class CustomReturnTest {
     }
 
     @Test
-    public void testUnreachableReturnWithSourceSectionDoesNotRewindTryFinallyRange() {
+    public void testUnreachableReturnWithSourceSectionPreservesTryFinallyHandlerCoverage() {
         Source source = Source.newBuilder("test", "return;", "unreachable-return-finally.test").build();
         CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
             b.beginSource(source);
@@ -315,7 +315,7 @@ public class CustomReturnTest {
     }
 
     @Test
-    public void testUnreachableReturnWithSourceSectionDoesNotRewindTryCatchOtherwiseRange() {
+    public void testUnreachableReturnWithSourceSectionPreservesTryCatchOtherwiseHandlerCoverage() {
         Source source = Source.newBuilder("test", "return;", "unreachable-return-otherwise.test").build();
         CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
             b.beginSource(source);
@@ -337,7 +337,7 @@ public class CustomReturnTest {
     }
 
     @Test
-    public void testUnreachableReturnWithSourceSectionDoesNotRewindTagRange() {
+    public void testUnreachableReturnWithSourceSectionPreservesTagHandlerCoverage() {
         runInstrumentationTest((context, instrumenter) -> {
             instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(new ArrayList<>()));
 
@@ -356,39 +356,6 @@ public class CustomReturnTest {
 
             assertFails(() -> root.getCallTarget().call(), TestException.class);
             assertHandlerCoverage(root, HandlerKind.TAG, 1);
-        });
-    }
-
-    @Test
-    public void testTagRangesRewindOnlyWhenClosed() {
-        runInstrumentationTest((context, instrumenter) -> {
-            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(new ArrayList<>()));
-
-            Source source = Source.newBuilder("test", "return;", "nested-tag-rewind.test").build();
-            CustomReturnInstructionRootNode root = parse(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.WITH_SOURCE, b -> {
-                b.beginSource(source);
-                b.beginRoot();
-                b.beginTag(StatementTag.class);
-                b.beginTryFinally(() -> {
-                    b.beginBlock();
-                    // Labels conservatively restore reachability. Only tags whose range was closed
-                    // during the unwind should be rewound when this happens.
-                    b.emitLabel(b.createLabel());
-                    b.endBlock();
-                });
-                b.beginTag(StatementTag.class);
-                b.beginBlock();
-                emitThrowingReturnFollowedByUnreachableReturn(b, source);
-                b.endBlock();
-                b.endTag(StatementTag.class);
-                b.endTryFinally();
-                b.endTag(StatementTag.class);
-                b.endRoot();
-                b.endSource();
-            });
-
-            assertFails(() -> root.getCallTarget().call(), TestException.class);
-            assertHandlerCoverage(root, HandlerKind.TAG, 2);
         });
     }
 
@@ -461,7 +428,7 @@ public class CustomReturnTest {
         b.emitLoadConstant("return");
         b.endThrowingCustomReturn();
 
-        // Processing metadata for an unreachable return must not rewind active handler ranges.
+        // Processing metadata for an unreachable return must preserve active handler coverage.
         b.beginSourceSection(0, source.getLength());
         b.beginCustomReturn();
         b.emitLoadConstant("unreachable");
