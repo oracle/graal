@@ -372,7 +372,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startIf().string("frame.isObject(frameIndex)").end().startBlock();
             b.startReturn().string("frame.getObject(frameIndex)").end();
             b.end();
-            if (tier.isUncached()) {
+            if (parent.model.usesBoxingElimination() && tier.isUncached()) {
                 b.startIf().string("frame.getTag(frameIndex) == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
                 b.statement("return null");
                 b.end();
