@@ -227,6 +227,15 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             registerPreservedClass(reflection, resources, proxy, always, c);
         });
 
+        if (SubstrateOptions.JNI.getValue()) {
+            RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+            for (Class<?> primitive : new Class<?>[]{boolean.class, byte.class, char.class, short.class, int.class, long.class, float.class, double.class}) {
+                Class<?> arrayType = primitive.arrayType();
+                jni.register(always, true, arrayType);
+                jni.register(always, true, arrayType.arrayType());
+            }
+        }
+
         bb.getHostVM().registerClassReachabilityListener((access, reachedClass) -> {
             if (LambdaUtils.isLambdaClass(reachedClass)) {
                 String capturingClass = LambdaUtils.capturingClass(reachedClass.getName());
@@ -266,9 +275,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         registerType(reflection, c);
 
         /* Register array types for each type up to dimension 2 */
-        Class<?> arrayType = c.arrayType();
-        registerType(reflection, arrayType);
-        registerType(reflection, arrayType.arrayType());
+        registerType(reflection, c.arrayType());
+        registerType(reflection, c.arrayType().arrayType());
 
         /* Register every single-interface proxy */
         // GR-62293 can't register proxies from jdk modules.
@@ -286,6 +294,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         if (SubstrateOptions.JNI.getValue()) {
             final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
             jni.register(always, true, c);
+            jni.register(always, true, c.arrayType());
+            jni.register(always, true, c.arrayType().arrayType());
             try {
                 for (Method declaredMethod : c.getDeclaredMethods()) {
                     jni.register(always, true, declaredMethod);
