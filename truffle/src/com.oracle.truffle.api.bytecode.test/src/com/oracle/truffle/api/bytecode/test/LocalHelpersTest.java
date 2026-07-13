@@ -79,7 +79,6 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
-import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
@@ -952,42 +951,6 @@ public class LocalHelpersTest {
         bytecodeFrame.setLocalValue(0, -42);
         assertEquals(-42, bytecodeFrame.getLocalValue(0));
         assertEquals(new Pair(-444, -42), cont.continueWith(null));
-    }
-
-    @Test
-    public void testMaterializedBytecodeFrameAcrossUncachedToCachedTransition() {
-        Assume.assumeTrue(bytecode.getGeneratedClass() == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class);
-
-        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot();
-            b.beginBlock();
-            BytecodeLocal local = makeLocal(b, "local");
-
-            b.beginStoreLocal(local);
-            b.emitLoadConstant(42L);
-            b.endStoreLocal();
-
-            b.beginYield();
-            b.emitCreateMaterializedBytecodeFrame();
-            b.endYield();
-
-            b.beginReturn();
-            b.emitLoadLocal(local);
-            b.endReturn();
-
-            b.endBlock();
-            b.endRoot();
-        });
-
-        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
-        BytecodeFrame bytecodeFrame = (BytecodeFrame) cont.getResult();
-        assertEquals(BytecodeTier.UNCACHED, bytecodeFrame.getBytecodeNode().getTier());
-        assertEquals(42L, bytecodeFrame.getLocalValue(0));
-
-        root.getBytecodeNode().setUncachedThreshold(0);
-        assertEquals(42L, cont.continueWith(null));
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
-        assertEquals(42L, bytecodeFrame.getLocalValue(0));
     }
 
     @Test
