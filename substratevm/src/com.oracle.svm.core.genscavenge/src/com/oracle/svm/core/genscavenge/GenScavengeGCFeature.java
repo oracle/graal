@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.heap.FillerArray;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
@@ -154,6 +155,9 @@ class GenScavengeGCFeature implements InternalFeature {
             // If building libgraal, set system property showing gc algorithm
             SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
         }
+
+        /* GC needs a custom filler array class. */
+        access.registerAsUnsafeAllocated(FillerArray.class);
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
