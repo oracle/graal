@@ -21,10 +21,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# The license header is stripped from the scripts (everything up to and including
-# the first blank line) so that the reported line numbers stay immune to license
-# changes. The strip runs on the `js` launcher itself (strip-license.js) so it
-# works on a standalone that has no JDK, replacing the former `java CopyStripLicense`.
 > js ../strip-license.js -- agent-location.js > ${TMP_DIR}/agent.js
 > js ../strip-license.js -- agent-fib.js > ${TMP_DIR}/fib.js
 > js ../strip-license.js -- agent-fib.js > ${TMP_DIR}/fibonacci.js

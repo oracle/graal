@@ -35,8 +35,6 @@
 >   echo GRAALVM_MAVEN_REPO_URL must be set by the all tests job
 >   exit 1
 > fi
-> export MAVEN_ARGS="--batch-mode -q -Dmaven.repo.local=${TMP_DIR}/mvn/agentscript-agent-python -Dgraalvm.maven.repository=${GRAALVM_MAVEN_REPO_URL} -Dgraalvm.version=${GRAALVM_VERSION}-SNAPSHOT"
-> export MAVEN_OPTS="${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED"
 > mvn ${MAVEN_ARGS} package dependency:build-classpath -Dmdep.outputFile=${TMP_DIR}/agentscript-agent-python.classpath
 > export AGENT_PYTHON_CP=${TEST_DIR}/target/classes:`cat ${TMP_DIR}/agentscript-agent-python.classpath`
 >[0] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -cp ${AGENT_PYTHON_CP} AgentPythonMain

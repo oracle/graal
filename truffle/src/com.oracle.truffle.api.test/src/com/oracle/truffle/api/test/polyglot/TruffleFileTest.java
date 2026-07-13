@@ -49,7 +49,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -123,6 +122,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileStoreInfo;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -135,33 +135,44 @@ import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
+import com.oracle.truffle.api.test.polyglot.InternalResourceTest.SetResourceRootInIsolate;
+import com.oracle.truffle.api.test.polyglot.InternalResourceTest.TemporaryResourceCacheRoot;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
 
 public class TruffleFileTest {
 
-    private static Path languageHome;
-    private static Path languageHomeFile;
+    private static TemporaryResourceCacheRoot resourceCacheRoot;
+
+    private static Path internalResourceFile;
     private static Path stdLibFile;
-    private static Path nonLanguageHomeFile;
+    private static Path nonInternalResourceFile;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
-        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName()).toRealPath();
-        languageHomeFile = languageHome.resolve("homeFile");
-        Files.write(languageHomeFile, Collections.singleton(languageHomeFile.getFileName().toString()));
-        Path stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
+
+        resourceCacheRoot = new TemporaryResourceCacheRoot(Files.createTempDirectory(TruffleFileTest.class.getSimpleName()).toRealPath(), true);
+        Path internalResourceRoot = TruffleFileTestInternalResource.resolveRoot(resourceCacheRoot.getRoot());
+        Files.createDirectories(internalResourceRoot);
+        internalResourceFile = internalResourceRoot.resolve("homeFile");
+        Files.write(internalResourceFile, Collections.singleton(internalResourceFile.getFileName().toString()));
+        Path stdLib = Files.createDirectory(internalResourceRoot.resolve("stdlib"));
         stdLibFile = stdLib.resolve("stdLibFile");
         Files.write(stdLibFile, Collections.singleton(stdLibFile.getFileName().toString()));
-        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "").toRealPath();
-        Files.write(nonLanguageHomeFile, Collections.singleton(nonLanguageHomeFile.getFileName().toString()));
+        nonInternalResourceFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "").toRealPath();
+        Files.write(nonInternalResourceFile, Collections.singleton(nonInternalResourceFile.getFileName().toString()));
     }
 
     @AfterClass
     public static void tearDownClass() throws Exception {
-        if (languageHome != null) {
-            delete(languageHome);
-            delete(nonLanguageHomeFile);
+        try {
+            if (nonInternalResourceFile != null) {
+                delete(nonInternalResourceFile);
+            }
+        } finally {
+            if (resourceCacheRoot != null) {
+                resourceCacheRoot.close();
+            }
         }
     }
 
@@ -482,15 +493,10 @@ public class TruffleFileTest {
 
     @Test
     @SuppressWarnings("try")
-    public void testRelativePathToLanguageHome() throws Exception {
-        // reflection access
-        Path cwdPath = new File("").toPath().toRealPath();
-        Assume.assumeTrue(cwdPath.getNameCount() > 1);
-        Path langHome = cwdPath.getParent().resolve("home");
-        try (Engine engine = Engine.create();
-                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestRelativePathToLanguageHomeLanguage.class, langHome);
-                        Context ctx = Context.newBuilder().engine(engine).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativePathToLanguageHomeLanguage.class, "");
+    public void testRelativePathToLanguageHome() {
+        try (Engine engine = Engine.create(); Context ctx = Context.newBuilder().engine(engine).build()) {
+            SetResourceRootInIsolate.set(ctx, resourceCacheRoot.getRoot());
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativePathToLanguageHomeLanguage.class, "", internalResourceFile.toString());
         }
     }
 
@@ -499,9 +505,13 @@ public class TruffleFileTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            TruffleFile file = env.getInternalTruffleFile("../home");
+            TruffleFile resourceFile = env.getInternalTruffleFile((String) contextArguments[0]);
+            TruffleFile resourceRoot = resourceFile.getParent();
+            env.setCurrentWorkingDirectory(resourceRoot);
+            String path = String.format("../%s", resourceFile.getName());
+            TruffleFile file = env.getInternalTruffleFile(path);
             file.exists();  // Language home should be accessible
-            file.resolve("file").exists();  // File in language home should be accessible
+            file.resolve(resourceFile.getName()).exists();  // File in language home should be accessible
             return null;
         }
     }
@@ -724,29 +734,13 @@ public class TruffleFileTest {
 
     @Test
     @SuppressWarnings("try")
-    public void testGetTruffleFileInternalAllowedIO() throws Exception {
-        try (Engine engine = Engine.create();
-                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
-                        Context ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.ALL).build()) {
+    public void testGetTruffleFileInternalAllowedIO() {
+        try (Engine engine = Engine.create(); Context ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.ALL).build()) {
+            SetResourceRootInIsolate.set(ctx, resourceCacheRoot.getRoot());
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
-                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            internalResourceFile.toAbsolutePath().toString(), internalResourceFile.toUri().toString(),
                             stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
-        }
-    }
-
-    @Test
-    @SuppressWarnings("try")
-    public void testGetTruffleFileInternalCustomFileSystem() throws Exception {
-        // reflection access
-        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
-        try (Engine engine = Engine.create();
-                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
-                        Context ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
-                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
-                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
+                            nonInternalResourceFile.toAbsolutePath().toString(), nonInternalResourceFile.toUri().toString());
         }
     }
 
@@ -787,14 +781,13 @@ public class TruffleFileTest {
 
     @Test
     @SuppressWarnings("try")
-    public void testGetTruffleFileInternalDeniedIO() throws Exception {
-        try (Engine engine = Engine.create();
-                        AutoCloseable homeScope = LanguageHomeSupport.overrideLanguageHomes(engine, TestGetTruffleFileInternalDeniedIOLanguage.class, languageHome);
-                        Context ctx = Context.newBuilder().engine(engine).build()) {
+    public void testGetTruffleFileInternalDeniedIO() {
+        try (Engine engine = Engine.create(); Context ctx = Context.newBuilder().engine(engine).build()) {
+            SetResourceRootInIsolate.set(ctx, resourceCacheRoot.getRoot());
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
-                            languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            internalResourceFile.toAbsolutePath().toString(), internalResourceFile.toUri().toString(),
                             stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
-                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
+                            nonInternalResourceFile.toAbsolutePath().toString(), nonInternalResourceFile.toUri().toString());
         }
     }
 
@@ -1719,6 +1712,25 @@ public class TruffleFileTest {
         Optional<LogRecord> findRecordByMessage(String regex) {
             Pattern pattern = Pattern.compile(regex);
             return records.stream().filter((r) -> r.getMessage() != null && pattern.matcher(r.getMessage()).matches()).findAny();
+        }
+    }
+
+    @InternalResource.Id(value = TruffleFileTestInternalResource.ID, componentId = ProxyLanguage.ID, optional = true)
+    public static final class TruffleFileTestInternalResource implements InternalResource {
+
+        static final String ID = "truffle-file-test";
+
+        static Path resolveRoot(Path cacheRoot) {
+            return cacheRoot.resolve(ProxyLanguage.ID).resolve(ID);
+        }
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        }
+
+        @Override
+        public String versionHash(Env env) throws IOException {
+            return "42";
         }
     }
 }

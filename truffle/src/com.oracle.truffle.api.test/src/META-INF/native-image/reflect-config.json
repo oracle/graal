@@ -136,15 +136,6 @@
     "allPublicMethods": true
   },
   {
-    "name": "org.graalvm.home.impl.DefaultHomeFinder",
-    "methods": [
-      {
-        "name": "overrideLanguageHomes",
-        "parameterTypes": ["java.util.Map"]
-      }
-    ]
-  },
-  {
     "name": "java.lang.Runnable",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
@@ -172,7 +163,8 @@
   {
     "name": "com.oracle.truffle.polyglot.InternalResourceRoots",
     "methods": [
-      { "name": "getInstance", "parameterTypes": [] }
+      { "name": "getInstance", "parameterTypes": [] },
+      { "name": "setTestCacheRoot", "parameterTypes": ["java.nio.file.Path", "boolean"] }
     ]
   },
   {

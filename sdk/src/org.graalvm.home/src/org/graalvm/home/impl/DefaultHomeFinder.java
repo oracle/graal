@@ -540,26 +540,4 @@ public final class DefaultHomeFinder extends HomeFinder {
         nativeImageTools = tools;
     }
 
-    /**
-     * Overrides the cached language homes with a test-provided mapping.
-     *
-     * <p>
-     * NOTE: this method is called reflectively by unit tests through
-     * {@code com.oracle.truffle.api.test.polyglot.LanguageHomeSupport} to override language homes.
-     *
-     * @param newLanguageHomes language id to home directory mapping to expose to the test
-     * @return a closeable used when leaving the override scope
-     */
-    @SuppressWarnings("unused")
-    private static AutoCloseable overrideLanguageHomes(Map<String, Path> newLanguageHomes) {
-        DefaultHomeFinder finder = (DefaultHomeFinder) HomeFinder.getInstance();
-        Map<String, Path> originalLanguageHomes = new HashMap<>(newLanguageHomes);
-        finder.languageHomes = Collections.unmodifiableMap(newLanguageHomes);
-        return new AutoCloseable() {
-            @Override
-            public void close() {
-                finder.languageHomes = originalLanguageHomes;
-            }
-        };
-    }
 }
