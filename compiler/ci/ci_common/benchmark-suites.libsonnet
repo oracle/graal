@@ -133,7 +133,7 @@
     max_jdk_version:: max_jdk_version,
     forks_batches:: 3,
     bench_forks_per_batch:: 4,
-    forks_timelimit:: "4:30:00"
+    forks_timelimit:: "5:30:00"
   },
 
   barista: self.barista_template(),
