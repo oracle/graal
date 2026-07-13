@@ -31,8 +31,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 public final class ReflectionObjectFactory {
@@ -40,10 +41,17 @@ public final class ReflectionObjectFactory {
 
     public static Field newField(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?> declaringClass, String name, Class<?> type, int modifiers,
                     boolean trustedFinal, String signature, byte[] annotations, int offset, String deletedReason, byte[] typeAnnotations) {
+        return newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset,
+                        MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED, deletedReason, typeAnnotations);
+    }
+
+    public static Field newField(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?> declaringClass, String name, Class<?> type, int modifiers,
+                    boolean trustedFinal, String signature, byte[] annotations, int offset, int installedLayerNumber, String deletedReason, byte[] typeAnnotations) {
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
         field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
+        field.installedLayerNumber = installedLayerNumber;
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;
         accessibleObject.dynamicAccessMetadata = dynamicAccessMetadata;

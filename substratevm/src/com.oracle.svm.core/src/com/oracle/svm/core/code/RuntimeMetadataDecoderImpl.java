@@ -373,6 +373,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      *     byte[]      annotationsEncoding
      *     byte[]      typeAnnotationsEncoding
      *     int         offset
+     *     int         installedLayerNumber (static fields only)
      *     StringIndex deletedReason
      * }
      * </pre>
@@ -458,21 +459,21 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 return new FieldDescriptor(declaringClass, name);
             }
             return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null,
-                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null,
-                            null);
+                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
         }
         boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeOtherString(buf, layerId);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
+        int installedLayerNumber = Modifier.isStatic(modifiers) ? buf.getSVInt() : MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         String deletedReason = decodeOtherString(buf, layerId);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
             modifiers |= NEGATIVE_FLAG_MASK;
         }
 
-        Field reflectField = ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason,
-                        typeAnnotations);
+        Field reflectField = ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, installedLayerNumber,
+                        deletedReason, typeAnnotations);
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
