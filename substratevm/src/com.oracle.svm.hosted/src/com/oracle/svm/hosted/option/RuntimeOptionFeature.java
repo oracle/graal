@@ -90,6 +90,10 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            /*
+             * Do not also register copies in the guest because their state could diverge. GR-77528
+             * tracks moving the sole registration into the guest once that path can be verified.
+             */
             runtimeOptionParser = new RuntimeOptionParser();
             ImageSingletons.add(RuntimeOptionParser.class, runtimeOptionParser);
             ImageSingletons.add(RuntimeOptionsSupport.class, RuntimeOptionValues.createRuntimeOptionsSupport());
