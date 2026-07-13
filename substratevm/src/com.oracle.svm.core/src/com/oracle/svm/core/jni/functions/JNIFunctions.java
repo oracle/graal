@@ -50,13 +50,16 @@ import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -75,13 +78,17 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.Target_jdk_internal_loader_NativeLibraries_RespectsClassLoader;
 import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
 import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
+import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
@@ -114,6 +121,7 @@ import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -136,6 +144,7 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
@@ -213,7 +222,7 @@ public final class JNIFunctions {
             return JNIErrors.JNI_ERR();
         }
         JNIObjectHandles.ensureLocalCapacity(capacity);
-        return 0;
+        return JNIErrors.JNI_OK();
     }
 
     /*
@@ -365,15 +374,15 @@ public final class JNIFunctions {
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
+    @NeverInline("Access of caller frame.")
     static JNIObjectHandle FindClass(JNIEnvironment env, CCharPointer cname) {
-        CharSequence name = Utf8.wrapUtf8CString(cname);
-        if (name == null) {
-            throw new NoClassDefFoundError("Class name is either null or invalid UTF-8 string");
-        }
-
-        Class<?> clazz = JNIReflectionDictionary.getClassObjectByName(name);
-        if (clazz == null) {
-            throw new NoClassDefFoundError(name.toString());
+        Class<?> clazz;
+        // GR-77088: libgraal should also respect classloaders here
+        if (!LibGraalSupport.inLibGraalRuntime() && Support.useClassRegistriesInFindClass()) {
+            Class<?> callerClass = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
+            clazz = Support.findClassInClassRegistries(cname, callerClass);
+        } else {
+            clazz = Support.findClassInReflectionDictionary(cname);
         }
         /* Ensure that native code can't access the uninitialized native state, if any. */
         DynamicHub.fromClass(clazz).ensureInitialized();
@@ -989,11 +998,13 @@ public final class JNIFunctions {
         JNIFieldId fieldId = Word.zero();
         Field obj = JNIObjectHandles.getObject(fieldHandle);
         if (obj != null) {
+            Class<?> clazz = obj.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
-            fieldId = JNIReflectionDictionary.getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
+            fieldId = Support.getCremaFieldID(obj);
             if (fieldId.isNull()) {
-                fieldId = Support.getCremaFieldID(obj);
+                fieldId = JNIReflectionDictionary.getDeclaredFieldID(clazz, obj.getName(), isStatic);
             }
+            assert fieldId.isNull() || DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
         }
         return fieldId;
     }
@@ -1011,11 +1022,13 @@ public final class JNIFunctions {
                 CremaResolvedJavaField cremaField = CremaSupport.singleton().getCremaField(clazz, fieldId, isStatic);
                 if (cremaField != null) {
                     DynamicHub hub = DynamicHub.fromClass(InterpreterSupport.singleton().toClass(cremaField.getDeclaringClass()));
+                    assert hub.isJNIAccessible() : hub.getName();
                     field = RuntimeReflectionMetadata.fromResolvedField(hub, cremaField);
                 }
             } else {
                 String name = JNIReflectionDictionary.getFieldNameByID(clazz, fieldId);
                 if (name != null) {
+                    assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
                     try {
                         field = clazz.getDeclaredField(name);
                     } catch (NoSuchFieldException ignored) {
@@ -1036,9 +1049,11 @@ public final class JNIFunctions {
         JNIMethodId methodId = Word.nullPointer();
         Executable method = JNIObjectHandles.getObject(methodHandle);
         if (method != null) {
+            Class<?> clazz = method.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-            methodId = JNIReflectionDictionary.getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
+            methodId = JNIReflectionDictionary.getDeclaredMethodID(clazz, descriptor, isStatic);
+            assert methodId.isNull() || DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
         }
         return methodId;
     }
@@ -1054,6 +1069,7 @@ public final class JNIFunctions {
         JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
         if (descriptor != null) {
             Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
+            assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
             Class<?>[] parameter = MethodType.fromMethodDescriptorString(descriptor.getSignature(), JNIFunctions.class.getClassLoader()).parameterArray();
             try {
                 result = descriptor.isConstructor() ? clazz.getDeclaredConstructor(parameter) : clazz.getDeclaredMethod(descriptor.getName(), parameter);
@@ -1956,6 +1972,85 @@ public final class JNIFunctions {
 
             // TODO: check field signature also in non-crema case
             return fieldID;
+        }
+
+        private static Class<?> findClassInClassRegistries(CCharPointer cname, Class<?> callerClass) {
+            String name = Utf8.utf8ToString(cname);
+            if (name == null) {
+                throw new NoClassDefFoundError("Class name is either null or invalid UTF-8 string");
+            }
+            if (!ClassNameSupport.isValidJNIName(name)) {
+                throw new NoClassDefFoundError(name);
+            }
+
+            if (MetadataTracer.enabled()) {
+                MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name));
+            }
+
+            Class<?> clazz;
+            try {
+                /*
+                 * Loader-aware lookup must not be governed by reflection metadata. JNI accessibility is
+                 * enforced explicitly after the registry lookup.
+                 */
+                var support = ClassLoadingSupport.singleton();
+                support.startIgnoreReflectionConfigurationScope();
+                try {
+                    clazz = ClassRegistries.forName(ClassNameSupport.jniNameToReflectionName(name), getClassLoader(callerClass));
+                } finally {
+                    support.endIgnoreReflectionConfigurationScope();
+                }
+            } catch (ClassNotFoundException e) {
+                clazz = null;
+            }
+
+            /*
+             * Expected negative queries suppress missing-registration reporting only. Missing classes
+             * and resolved classes without JNI accessibility must still behave as not found.
+             */
+            boolean hubInaccessible = clazz != null && !DynamicHub.fromClass(clazz).isJNIAccessible();
+
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors() &&
+                            (hubInaccessible || (clazz == null && !JNIReflectionDictionary.isNegativeClassLookup(name)))) {
+                MissingJNIRegistrationUtils.reportClassAccess(name);
+            }
+
+            // In case the hub is not accessible we also throw an error.
+            if (clazz == null || hubInaccessible) {
+                throw new NoClassDefFoundError(name);
+            }
+
+            return clazz;
+        }
+
+        private static Class<?> findClassInReflectionDictionary(CCharPointer cname) {
+            CharSequence name = Utf8.wrapUtf8CString(cname);
+            if (name == null) {
+                throw new NoClassDefFoundError("Class name is either null or invalid UTF-8 string");
+            }
+            Class<?> clazz = JNIReflectionDictionary.getClassObjectByName(name);
+            if (clazz == null) {
+                throw new NoClassDefFoundError(name.toString());
+            }
+            assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+            return clazz;
+        }
+
+        private static ClassLoader getClassLoader(Class<?> callerClass) {
+            if (callerClass == null) {
+                return ClassLoader.getSystemClassLoader();
+            }
+            if (ClassRegistries.respectClassLoader() && "jdk.internal.loader.NativeLibraries".equals(callerClass.getName())) {
+                Class<?> fromClass = Target_jdk_internal_loader_NativeLibraries_RespectsClassLoader.getFromClass();
+                if (fromClass != null) {
+                    return fromClass.getClassLoader();
+                }
+            }
+            return callerClass.getClassLoader();
+        }
+
+        public static boolean useClassRegistriesInFindClass() {
+            return ClassRegistries.respectClassLoader();
         }
 
         private static JNIFieldId getCremaFieldID(Field field) {

@@ -266,7 +266,13 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
         }
 
         private JavaConstant getResultValue(JavaConstant resultConstant) {
-            return GuestAccess.get().invoke(VALUE, resultConstant);
+            JavaConstant value = GuestAccess.get().invoke(VALUE, resultConstant);
+            if (aField.getStorageKind().isPrimitive()) {
+                JavaConstant unboxedValue = GuestAccess.get().getProviders().getConstantReflection().unboxPrimitive(value);
+                VMError.guarantee(unboxedValue != null, "Layered field value transformer returned a non-boxed value for primitive field %s", aField);
+                return unboxedValue;
+            }
+            return value;
         }
 
         private boolean getResultUpdatable(JavaConstant resultConstant) {

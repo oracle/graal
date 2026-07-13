@@ -53,6 +53,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -68,6 +69,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
@@ -76,8 +79,10 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.jni.functions.JNIFunctions;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -109,6 +114,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -318,6 +325,22 @@ public class JNIAccessFeature implements Feature {
         pendingNativeCallWrappers.clear();
 
         singleton().runtimeSupport.setAnalysisAccess(access);
+
+        ResolvedJavaType jniAccessibleClass = GuestAccess.get().lookupType(JNIAccessibleClass.class);
+        ResolvedJavaField methodsField = JVMCIReflectionUtil.getUniqueDeclaredField(jniAccessibleClass, "methods");
+        ResolvedJavaField fieldsField = JVMCIReflectionUtil.getUniqueDeclaredField(jniAccessibleClass, "fields");
+        /*
+         * The JNIAccessibleClass instances may only be used as values of classesByTypeID, which is
+         * populated after analysis. Therefore, analysis does not see the runtime access path from
+         * those values to their methods and fields maps and does not mark the corresponding fields
+         * as read. Mark them as read up front so that rescanning them when their maps are first
+         * assigned is not ignored.
+         */
+        access.registerAsRead(access.getUniverse().lookup(methodsField), "stores JNI-accessible methods");
+        access.registerAsRead(access.getUniverse().lookup(fieldsField), "stores JNI-accessible fields");
+        JNIReflectionDictionary.currentLayer().setObjectRescanners(object -> access.rescanObject(object, OtherReason.UNKNOWN),
+                        receiver -> access.rescanField(receiver, methodsField, OtherReason.UNKNOWN),
+                        receiver -> access.rescanField(receiver, fieldsField, OtherReason.UNKNOWN));
     }
 
     public void registerNativeCallWrapperReachabilityHandler(AbstractJNINativeCallWrapperMethod wrapper) {
@@ -455,8 +478,17 @@ public class JNIAccessFeature implements Feature {
         AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
         return JNIReflectionDictionary.currentLayer().addOrUpdateClass(classObj, access.getHostVM().dynamicHub(analysisClass), preserved, _ -> {
             analysisClass.registerAsReachable("is accessed via JNI");
+            registerTypeForRuntimeAccess(classObj, analysisClass, access);
             return new JNIAccessibleClass(classObj, preserved);
         });
+    }
+
+    private static void registerTypeForRuntimeAccess(Class<?> classObj, AnalysisType analysisClass, DuringAnalysisAccessImpl access) {
+        access.getHostVM().dynamicHub(analysisClass).setJNIAccessible();
+        if (PredefinedClassesSupport.isPredefined(classObj) || !JNIFunctions.Support.useClassRegistriesInFindClass()) {
+            return;
+        }
+        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(classObj.getClassLoader()), classObj);
     }
 
     private static void addNegativeClassLookup(String className) {

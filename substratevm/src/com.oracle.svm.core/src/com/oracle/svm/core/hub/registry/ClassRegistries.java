@@ -281,7 +281,7 @@ public final class ClassRegistries implements ParsingContext {
      * this query), and null otherwise.
      */
     private Object checkResult(DynamicHub result, String name) {
-        if (MetadataTracer.enabled()) {
+        if (MetadataTracer.enabled() && shouldFollowReflectionConfiguration()) {
             MetadataTracer.singleton().traceReflectionType(name);
         }
         if (result == null && shouldFollowReflectionConfiguration()) {
