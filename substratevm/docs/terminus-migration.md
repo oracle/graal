@@ -61,6 +61,7 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Builder singleton installed in the guest through `GuestAccess.createCallback(...)` | Shared provider interface plus builder and guest helper classes | Keep the builder-facing helper in its original module when hosted code still uses it. Register the callback under the shared provider key, such as `ImageLayerBuildingSupportProvider`, so guest code can look it up through `ImageSingletons`. |
 | Guest code must call a builder-owned service, such as `UserError.abort(...)` | Shared service interface plus a builder implementation installed in the guest as a host proxy | Register the builder implementation in the builder `ImageSingletons`; for a fully isolated guest, use `GuestAccess.createHostProxy(...)` and `GuestImageSingletonSupport.add(...)` under the shared interface key. Host proxies cannot pass a guest `Object[]` directly to a host `Object[]`; accept it as a `JavaConstant` in the host proxy target and convert it with `GuestAccess.asHostObject(...)`. |
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
+| Builder read of a guest-owned static `RuntimeOptionKey` field | `GuestOptionKey.forField(...)` | Every `getValue()` reads in the guest context, avoiding a stale builder-side copy. |
 
 ### Preserve Guest Module Encapsulation
 
