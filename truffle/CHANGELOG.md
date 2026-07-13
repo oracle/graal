@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 25.2
 * GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.
 * GR-75438: Bytecode DSL: Added `@Return` for user-defined return operations that customize the value returned from a bytecode root node.
+* GR-77108: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig#secondarySwitch()` to prevent handler outlining when a secondary bytecode interpreter switch is compiled separately.
 
 ## Version 25.1
 * GR-76434: Added `engine.DynamicCompilationThresholdsHighLoadSlope` to tune dynamic compilation threshold scaling under high compilation queue load. The default value of `engine.DynamicCompilationThresholdsMinNormalLoad` is now `0`, which disables low-load threshold reduction by default.

@@ -1582,7 +1582,7 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         if (handlerLayout.isTailCall()) {
-            addHandlerConfig(ex);
+            addHandlerConfig(ex, false);
 
             CodeExecutableElement fetchNext = this.add(createInstructionHandler(type(int.class), "nextOpcode"));
             fetchNext.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterFetchOpcode));
@@ -1883,12 +1883,15 @@ final class BytecodeNodeElement extends AbstractElement {
         return;
     }
 
-    private void addHandlerConfig(CodeExecutableElement ex) throws AssertionError {
+    private void addHandlerConfig(CodeExecutableElement ex, boolean secondarySwitch) throws AssertionError {
         CodeAnnotationMirror handlerConfig = new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterHandlerConfig);
 
         // opcode ordering is not yet generated at this point yet, but we can find out what the
         // maximum opcode will be
         handlerConfig.setElementValue("maximumOperationCode", new CodeAnnotationValue(parent.model.getInstructions().size() - 1 + InstructionsElement.OPCODE_START_INDEX));
+        if (secondarySwitch) {
+            handlerConfig.setElementValue("secondarySwitch", new CodeAnnotationValue(true));
+        }
 
         List<CodeAnnotationMirror> arguments = new ArrayList<>();
         // BytecodeNodeElement receiver
@@ -1961,7 +1964,7 @@ final class BytecodeNodeElement extends AbstractElement {
         continueAtMethod.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_EarlyInline));
 
         if (handlerLayout.isTailCall()) {
-            addHandlerConfig(continueAtMethod);
+            addHandlerConfig(continueAtMethod, true);
         }
 
         CodeTreeBuilder b = continueAtMethod.createBuilder();
