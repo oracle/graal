@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,10 +220,14 @@ public final class JNINativeLinkage {
     /// For example, `java.lang.Object.registerNatives()` maps to
     /// `Java_java_lang_Object_registerNatives`.
     public String getShortSymbol() {
+        return getShortSymbol(getDeclaringClassName(), getMethodName());
+    }
+
+    public static String getShortSymbol(String declaringClassName, String methodName) {
         StringBuilder sb = new StringBuilder("Java_");
-        mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
+        mangleName(declaringClassName, 1, declaringClassName.length() - 1, sb);
         sb.append('_');
-        mangleName(getMethodName(), 0, name.length(), sb);
+        mangleName(methodName, 0, methodName.length(), sb);
         return sb.toString();
     }
 
@@ -231,13 +235,17 @@ public final class JNINativeLinkage {
     ///
     /// For example, `pkg.Native.method(int)` maps to `Java_pkg_Native_method__I`.
     public String getLongSymbol() {
-        return getShortSymbol() + "__" + getSignature();
+        return getLongSymbol(getDeclaringClassName(), getMethodName(), getDescriptor());
     }
 
-    private String getSignature() {
-        int closing = getDescriptor().indexOf(')');
-        assert getDescriptor().startsWith("(") && getDescriptor().indexOf(')') == closing && closing != -1;
-        return mangleName(getDescriptor(), 1, closing, new StringBuilder()).toString();
+    public static String getLongSymbol(String declaringClassName, String methodName, String descriptor) {
+        return getShortSymbol(declaringClassName, methodName) + "__" + getSignature(descriptor);
+    }
+
+    private static String getSignature(String descriptor) {
+        int closing = descriptor.indexOf(')');
+        assert descriptor.startsWith("(") && descriptor.indexOf(')') == closing && closing != -1;
+        return mangleName(descriptor, 1, closing, new StringBuilder()).toString();
     }
 
     private static StringBuilder mangleName(String name, int beginIndex, int endIndex, StringBuilder sb) {
