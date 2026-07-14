@@ -43,6 +43,10 @@ local common_json = import "../common.json";
     local _version_build_id = std.split(_parts[1], "+");
     _version_build_id[1]
     ,
+  local get_labsjdk_jvmci_build_id(jdk) =
+    local _parts = std.split(jdk.version, "-");
+    _parts[std.length(_parts) - 1]
+    ,
   local jdks_data = {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 17 }
     for name in ["oraclejdk17"] + variants("labsjdk-ce-17") + variants("labsjdk-ee-17")
@@ -88,6 +92,14 @@ local common_json = import "../common.json";
     # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
     local no_labsjdk = _labsjdk.name != "labsjdk";
     assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    true,
+  # Verify labsjdk-ce-latest and labsjdk-ee-latest JVMCI build numbers match
+  assert
+    local _labsjdk_ce = common_json.jdks["labsjdk-ce-latest"];
+    local _labsjdk_ee = common_json.jdks["labsjdk-ee-latest"];
+    local _ce_jvmci_build_id = get_labsjdk_jvmci_build_id(_labsjdk_ce);
+    local _ee_jvmci_build_id = get_labsjdk_jvmci_build_id(_labsjdk_ee);
+    assert _ce_jvmci_build_id == _ee_jvmci_build_id : "labsjdk-ce-latest and labsjdk-ee-latest JVMCI build numbers differ: %s vs %s" % [_labsjdk_ce.version, _labsjdk_ee.version];
     true,
 
   # The raw jdk data, the same as common_json.jdks + { jdk_version:: }
