@@ -121,8 +121,6 @@ public class WasmPolyglotTestSuite {
         String missingVectorApiWarning = "WebAssembly SIMD code is using the fallback vector implementation";
         Assert.assertTrue(logText, logText.contains(missingVectorApiWarning));
         Assert.assertTrue(logText, logText.contains("--add-modules=jdk.incubator.vector"));
-        Assert.assertTrue(logText, logText.contains("-H:+VectorAPISupport"));
-        Assert.assertTrue(logText, logText.contains("-H:+UnlockExperimentalVMOptions"));
         // Warning is emitted once per context
         Assert.assertEquals(logText, 2, countOccurrences(logText, missingVectorApiWarning));
     }

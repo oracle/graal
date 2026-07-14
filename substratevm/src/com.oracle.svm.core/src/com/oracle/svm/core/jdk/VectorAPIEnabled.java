@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,18 @@ package com.oracle.svm.core.jdk;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 public final class VectorAPIEnabled implements BooleanSupplier {
 
+    private static final String VECTOR_API_MODULE_NAME = "jdk.incubator.vector";
+
+    public static boolean isVectorAPIModulePresent() {
+        return JVMCIReflectionUtil.bootModuleLayer().findModule(VECTOR_API_MODULE_NAME).isPresent();
+    }
+
     public static boolean getValue() {
-        return SubstrateOptions.VectorAPISupport.getValue();
+        return SubstrateOptions.VectorAPISupport.getValue() && !SubstrateOptions.useLLVMBackend() && isVectorAPIModulePresent();
     }
 
     @Override
