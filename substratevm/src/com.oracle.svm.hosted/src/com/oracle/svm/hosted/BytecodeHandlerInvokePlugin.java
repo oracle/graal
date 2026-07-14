@@ -88,6 +88,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
     private final IntConsumer handlerArityConsumer;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
+
     public BytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
                     SubstrateBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled, IntConsumer handlerArityConsumer) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
@@ -128,7 +129,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         int templatesLength = handlerConfig.getTemplatesLength();
 
         if (handlerArityConsumer != null) {
-            handlerArityConsumer.accept(handlerConfig.getStubAbiArgumentInfos().size());
+            handlerArityConsumer.accept(handlerConfig.getPendingStateSlotCount());
         }
         if (!originalMethod) {
             /*

@@ -125,10 +125,11 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         if (isDefault) {
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
-            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
+            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister, templateIndex, SubstrateBytecodeHandlerUnwindPath::writeTemplateStateOnCallee);
         }
         return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod,
-                        index -> stubHolder.getBytecodeHandlers(interpreterHolder, config, index), config, targetMethod, templateIndex, SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
+                        index -> stubHolder.getBytecodeHandlers(interpreterHolder, config, index), config, targetMethod, templateIndex,
+                        SubstrateBytecodeHandlerUnwindPath::writeTemplateStateOnCallee, SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
     }
 
     /**

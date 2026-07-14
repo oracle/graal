@@ -239,7 +239,15 @@ public final class BytecodeHandlerStubHelper {
          * Emits backend-specific unwind handling. {@code exceptionPathStubArguments} contains the
          * current stub ABI values at the throwing handler call site.
          */
-        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathStubArguments);
+        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathStubArguments, ValueNode[] templateValues);
+    }
+
+    /**
+     * Backend-specific hook for publishing template state when a handler chain returns to Java.
+     */
+    @FunctionalInterface
+    public interface TemplateStateSupplier {
+        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] templateValues);
     }
 
     /**
@@ -250,7 +258,7 @@ public final class BytecodeHandlerStubHelper {
      */
     public static StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, int bci, boolean threading, ResolvedJavaMethod nextOpcodeMethod,
                     IntFunction<Object> bytecodeHandlerTableSupplier, BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, int templateIndex,
-                    UnwindPathSupplier unwindPathSupplier) {
+                    TemplateStateSupplier templateStateSupplier, UnwindPathSupplier unwindPathSupplier) {
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
         graph.start().setStateAfter(frameStateBuilder.create(bci, graph.start()));
@@ -276,15 +284,17 @@ public final class BytecodeHandlerStubHelper {
         kit.noExceptionPart();
         kit.append(new ControlFlowAnchorNode());
 
+        ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
+        TemplateSelection template = loadTemplateSelection(handlerConfig, kit, updatedHandlerArguments);
         BytecodeHandlerDispatchAddressNode tailCallTarget = null;
         if (threading) {
             GraalError.guarantee(nextOpcodeMethod != null, "Threaded bytecode handler stubs require a BytecodeInterpreterFetchOpcode method");
             GraalError.guarantee(nextOpcodeMethod.getSignature().getReturnType(nextOpcodeMethod.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                             "BytecodeInterpreterFetchOpcode method must not return void: %s", nextOpcodeMethod);
-            ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
             ValueNode nextOpcode = createFetchOpcodeInvoke(kit, nextOpcodeMethod, frameStateBuilder, bci, updatedHandlerArguments);
-            TemplateSelection template = loadTemplateSelection(handlerConfig, kit, updatedHandlerArguments);
             tailCallTarget = kit.append(new BytecodeHandlerDispatchAddressNode(nextOpcode, template.values(), template.variants(), bytecodeHandlerTableSupplier));
+        } else if (templateStateSupplier != null && template.values().length != 0) {
+            templateStateSupplier.apply(handlerConfig, kit, template.values());
         }
 
         ValueNode[] normalPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, handlerResult);
@@ -293,7 +303,8 @@ public final class BytecodeHandlerStubHelper {
         kit.exceptionPart();
         if (unwindPathSupplier != null) {
             ValueNode[] exceptionPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, null);
-            unwindPathSupplier.apply(handlerConfig, kit, exceptionPathStubArguments);
+            TemplateSelection exceptionTemplate = loadTemplateSelection(handlerConfig, kit, handlerArguments);
+            unwindPathSupplier.apply(handlerConfig, kit, exceptionPathStubArguments, exceptionTemplate.values());
         }
         kit.append(new UnwindNode(kit.exceptionObject()));
         kit.endInvokeWithException();
@@ -340,7 +351,8 @@ public final class BytecodeHandlerStubHelper {
      * additional return results. This stub effectively terminates threading and triggers a
      * re-dispatch of the bytecode in the caller.
      */
-    public static StructuredGraph createEmptyStub(GraphKit kit, BytecodeHandlerConfig handlerConfig, Register returnRegister) {
+    public static StructuredGraph createEmptyStub(GraphKit kit, BytecodeHandlerConfig handlerConfig, Register returnRegister, int templateIndex,
+                    TemplateStateSupplier templateStateSupplier) {
         StructuredGraph graph = kit.getGraph();
         graph.getGraphState().forceDisableFrameStateVerification();
 
@@ -361,10 +373,27 @@ public final class BytecodeHandlerStubHelper {
             }
         }
 
+        if (templateStateSupplier != null && !handlerConfig.getTemplateVariableArguments().isEmpty()) {
+            templateStateSupplier.apply(handlerConfig, kit, templateValuesForIndex(handlerConfig, kit, templateIndex));
+        }
+
         MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
         multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(stubParameters));
         kit.append(new ReturnNode(multiReturnNode));
         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for default bytecode handler stub");
         return graph;
+    }
+
+    private static ValueNode[] templateValuesForIndex(BytecodeHandlerConfig handlerConfig, GraphKit kit, int templateIndex) {
+        List<ArgumentInfo> templateVariables = handlerConfig.getTemplateVariableArguments();
+        ValueNode[] values = new ValueNode[templateVariables.size()];
+        int remainingTemplateIndex = templateIndex;
+        for (int i = 0; i < values.length; i++) {
+            int variants = templateVariables.get(i).templateVariants();
+            values[i] = kit.unique(ConstantNode.forInt(remainingTemplateIndex % variants));
+            remainingTemplateIndex /= variants;
+        }
+        GraalError.guarantee(remainingTemplateIndex == 0, "Invalid template index %d for %d template variants", templateIndex, handlerConfig.getTemplatesLength());
+        return values;
     }
 }

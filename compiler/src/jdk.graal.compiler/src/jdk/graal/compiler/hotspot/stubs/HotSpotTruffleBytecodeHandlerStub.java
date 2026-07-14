@@ -64,7 +64,7 @@ public class HotSpotTruffleBytecodeHandlerStub extends Stub {
         try {
             HotSpotGraphKit kit = new HotSpotGraphKit(debug, callsite.getEnclosingMethod(), providers, providers.getGraphBuilderPlugins(), compilationId, callsite.getStubName(), false, true);
             return BytecodeHandlerStubHelper.createStub(kit, callsite.getEnclosingMethod(), callsite.getBci(), false, null, null, callsite.getHandlerConfig(), callsite.getTargetMethod(),
-                            0, null);
+                            0, null, null);
         } catch (Exception e) {
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }

@@ -43,7 +43,9 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -118,6 +120,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
     protected FixedNode replaceInvoke(HighTierContext context, BytecodeHandlerCallSite callsite, Invoke invoke, ValueNode[] arguments) {
         StructuredGraph graph = invoke.asNode().graph();
         CallTargetNode oldCallTargetNode = invoke.callTarget();
+        ValueNode[] originalArguments = oldCallTargetNode.arguments().toArray(ValueNode.EMPTY_ARRAY);
         ResolvedJavaMethod targetMethod = oldCallTargetNode.targetMethod();
         ResolvedJavaType interpreterHolder = unwrap(callsite.getEnclosingMethod().getDeclaringClass());
         ResolvedJavaMethod analysisStub = lookupStubWrapper(callsite.getTargetMethod(), interpreterHolder, callsite.getHandlerConfig(), 0);
@@ -136,8 +139,16 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
                             signature, hostedStub, callType, CallTargetNode.InvokeKind.Static));
         }
         invoke.asNode().replaceAllInputs(oldCallTargetNode, newCallTargetNode);
+        if (!callsite.getHandlerConfig().getTemplateVariableArguments().isEmpty()) {
+            FixedNode normalSuccessor = invoke instanceof InvokeNode invokeNode ? invokeNode.next() : ((InvokeWithExceptionNode) invoke).next().next();
+            FrameState stateAfter = invoke.stateAfter();
+            GraalError.guarantee(stateAfter != null, "Missing state after handler invoke %s", invoke);
+            SubstrateBytecodeHandlerUnwindPath.readTemplateStateOnCaller(context.getMetaAccess(), callsite.getHandlerConfig(), originalArguments,
+                            normalSuccessor, stateAfter.duplicate(), getFieldMap(context.getMetaAccess()));
+        }
         if (invoke instanceof InvokeWithExceptionNode invokeWithExceptionNode) {
-            SubstrateBytecodeHandlerUnwindPath.readOnCaller(context.getMetaAccess(), callsite.getHandlerConfig(), invokeWithExceptionNode, arguments);
+            SubstrateBytecodeHandlerUnwindPath.readOnCaller(context.getMetaAccess(), callsite.getHandlerConfig(), invokeWithExceptionNode, arguments,
+                            originalArguments, getFieldMap(context.getMetaAccess()));
         }
         return (FixedNode) invoke;
     }

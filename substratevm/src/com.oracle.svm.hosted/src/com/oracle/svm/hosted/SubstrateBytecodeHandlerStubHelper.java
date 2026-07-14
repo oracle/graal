@@ -105,11 +105,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
             ResolvedJavaMethod handler = unwrap(key.method());
             AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
             GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
-            boolean templateCompatible = annotation.getBoolean("templateCompatible");
             for (Integer opcode : annotation.getList("value", Integer.class)) {
-                if (key.templateIndex() != 0 && !templateCompatible) {
-                    continue;
-                }
                 GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
                 handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
@@ -126,18 +122,10 @@ public final class SubstrateBytecodeHandlerStubHelper {
 
             BytecodeHandlerConfig handlerConfig = key.handlerConfig();
             ResolvedJavaMethod handler = unwrap(key.method());
-            AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
-            GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
-            boolean templateCompatible = annotation.getBoolean("templateCompatible");
 
             MethodPointer[] dispatchTargets = new MethodPointer[handlerConfig.getTemplatesLength()];
             for (int templateIndex = 0; templateIndex < dispatchTargets.length; templateIndex++) {
-                ResolvedJavaMethod stubWrapper;
-                if (templateIndex == 0 || templateCompatible) {
-                    stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.create(key.method(), key.interpreterHolder(), handlerConfig, templateIndex));
-                } else {
-                    stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig, templateIndex));
-                }
+                ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.create(key.method(), key.interpreterHolder(), handlerConfig, templateIndex));
                 GraalError.guarantee(stubWrapper != null, "No main-dispatch stub registered for %s with config %s and template index %d",
                                 handler.format("%H.%n(%p)"), handlerConfig, templateIndex);
                 dispatchTargets[templateIndex] = new MethodPointer(stubWrapper);

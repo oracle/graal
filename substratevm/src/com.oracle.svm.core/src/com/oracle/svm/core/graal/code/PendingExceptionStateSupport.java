@@ -90,10 +90,10 @@ public final class PendingExceptionStateSupport implements ThreadListener {
     }
 
     /**
-     * Enables diagnostic poisoning of pending-state slots. When disabled, consumed object slots are
-     * cleared to {@code null} for GC and consumed primitive slots are left unchanged. When enabled,
-     * initially empty and consumed slots contain recognizable sentinel values to expose stale or
-     * duplicate reads.
+     * Enables diagnostic poisoning of pending-state slots. Consumed object slots are always cleared
+     * to {@code null} for GC. When disabled, consumed primitive slots are left unchanged. When
+     * enabled, initially empty slots and consumed primitive slots contain recognizable sentinel
+     * values to expose stale or duplicate reads.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setUseSlotSentinel(boolean useSlotSentinel) {

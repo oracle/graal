@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -118,9 +117,7 @@ public final class BytecodeHandlerCallSite {
 
     /**
      * Constructs the stub ABI argument list at the caller. Expanded arguments are lowered to field
-     * loads from their Java owner objects, except scratch fields which are initialized with a
-     * default value because their Java object field value is intentionally ignored. Non-expanded
-     * arguments are forwarded unchanged.
+     * loads from their Java owner objects; non-expanded arguments are forwarded unchanged.
      */
     public ValueNode[] createCallerArguments(ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
         List<ArgumentInfo> stubAbiArgumentInfos = handlerConfig.getStubAbiArgumentInfos();
@@ -128,14 +125,10 @@ public final class BytecodeHandlerCallSite {
         StructuredGraph graph = insertBefore.graph();
         for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             if (argumentInfo.isExpanded()) {
-                if (argumentInfo.scratch()) {
-                    newArguments.add(ConstantNode.defaultForKind(argumentInfo.type().getJavaKind(), graph));
-                } else {
-                    ValueNode owner = oldArguments[argumentInfo.originalIndex()];
-                    LoadFieldNode load = LoadFieldNode.create(graph.getAssumptions(), owner, fieldMap.apply(argumentInfo.field()));
-                    graph.addBeforeFixed(insertBefore, graph.add(load));
-                    newArguments.add(load);
-                }
+                ValueNode owner = oldArguments[argumentInfo.originalIndex()];
+                LoadFieldNode load = LoadFieldNode.create(graph.getAssumptions(), owner, fieldMap.apply(argumentInfo.field()));
+                graph.addBeforeFixed(insertBefore, graph.add(load));
+                newArguments.add(load);
             } else {
                 newArguments.add(oldArguments[argumentInfo.originalIndex()]);
             }
@@ -159,7 +152,7 @@ public final class BytecodeHandlerCallSite {
         List<ArgumentInfo> stubAbiArgumentInfos = handlerConfig.getStubAbiArgumentInfos();
 
         for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
-            if (argumentInfo.isExpanded() && !argumentInfo.isImmutable() && !argumentInfo.scratch()) {
+            if (argumentInfo.isExpanded() && !argumentInfo.isImmutable()) {
                 ReadArgumentNode fetchReturn = graph.unique(new ReadArgumentNode(newInvoke,
                                 argumentInfo.type().getJavaKind(), argumentInfo.index()));
                 ValueNode owner = oldArguments[argumentInfo.originalIndex()];

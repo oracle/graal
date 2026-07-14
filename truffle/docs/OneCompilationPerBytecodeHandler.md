@@ -264,8 +264,6 @@ The Template feature, used in conjunction with tail call threading, enables the 
     @Argument, // receiver
     @Argument(returnValue = true),
     @Argument(expand = VIRTUAL, fields = {
-        @Field(name = "tos0", scratch = true),
-        @Field(name = "tos1", scratch = true),
         @Field(name = "level", templateVariable = 3)
     }),
     @Argument,
@@ -275,7 +273,7 @@ public int execute(short[] bytecode) {
     ...
 }
 
-public final class IntTosStack {
+public final class IntTos {
     final int[] stack;
     int sp;
     int tos0;
@@ -285,7 +283,7 @@ public final class IntTosStack {
 }
 ```
 
-Only fields with a property need to be listed in `fields`: `tos0` and `tos1` are scratch state, while `level` is the template variable. The other `IntTosStack` fields, such as `sp` and `result`, still participate in `VIRTUAL` expansion. The program model is that the virtual-expanded instance fields are the interpreter state carried from one handler stub to the next. Non-template fields can live in physical registers. The template field is different: it selects the handler variant and is initialized as a constant on entry to that variant. Scratch fields are carried between threaded handler stubs, but they are initialized to their default value when entering from the Java caller and are not written back to the original Java object or pending exception state when threading exits.
+Only fields with a property need to be listed in `fields`, so the example lists only `level`. All other `IntTos` fields participate in `VIRTUAL` expansion as ordinary handler ABI state: they are loaded from the Java object when entering from the interpreter switch, carried between threaded handlers, and written back when control returns to Java. The template field is different: it selects the handler variant and is initialized as a constant on entry to that variant. When a handler chain returns to Java, its current template values are transferred through per-thread state and written back to the Java object without occupying stub ABI argument slots.
 
 The three states are:
 
@@ -300,8 +298,6 @@ Multiple template variables are also supported. The total number of handler vari
 At a threaded dispatch, each template variable value must be a constant or a phi whose inputs recursively resolve to constants. If multiple template variables are non-constant phis at the same dispatch, those phis must be produced by the same merge. Handlers that update different template variables through independent branch merges are rejected. Normalize the template values before dispatch, or update the variables through the same control-flow merge.
 
 Template variables do not occupy stub ABI argument slots. The selected stub variant initializes them as constants on entry, and their value on exit selects the variant of the next threaded handler.
-
-By default, every `@BytecodeInterpreterHandler` is considered compatible with non-zero template states. A handler can opt out with `@BytecodeInterpreterHandler(templateCompatible = false)`. The compiler still creates the handler variants, but non-zero template handler tables leave that handler's opcode entries pointing at the generated fallback stub, so control returns to the Java switch loop before the handler executes.
 
 The following state machine illustrates this top-of-stack cache:
 
@@ -330,7 +326,7 @@ The following state machine illustrates this top-of-stack cache:
 In practice, it is common to encapsulate these state transitions within individual helper methods and force their inlining. For instance, the _template variable_ `level` can be made private and all updates can go through `push`, `pop`, and result helpers:
 
 ```java
-public final class IntTosStack {
+public final class IntTos {
     final int[] stack;
     int sp;
 
@@ -395,13 +391,13 @@ The bytecode handlers can then be written against the logical operand stack. For
 
 ```java
 @BytecodeInterpreterHandler(ICONST_0)
-public long iconst0Handler(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+public long iconst0Handler(long pc, IntTos stack, short[] bytecode, Frame frame) {
     stack.push(0);
     return pc + 1;
 }
 
 @BytecodeInterpreterHandler(IADD)
-public long iaddHandler(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+public long iaddHandler(long pc, IntTos stack, short[] bytecode, Frame frame) {
     int b = stack.pop();
     int a = stack.pop();
     stack.push(a + b);
@@ -409,7 +405,7 @@ public long iaddHandler(long pc, IntTosStack stack, short[] bytecode, Frame fram
 }
 
 @BytecodeInterpreterHandler(value = IRETURN, threading = false)
-public long ireturnHandler(long pc, IntTosStack stack, short[] bytecode, Frame frame) {
+public long ireturnHandler(long pc, IntTos stack, short[] bytecode, Frame frame) {
     stack.result = stack.peek();
     return pc;
 }
@@ -419,6 +415,6 @@ When the compiler generates the variants, the _template variable_ is initialized
 
 The bytecode handler is expected to exit with a constant `level`, or with a supported phi of constants, which is used to determine which variant of the next bytecode handler should execute. Unsupported non-constant template shapes are rejected instead of falling back to dynamic template selection.
 
-When control returns to the Java switch loop, main dispatch also selects the handler variant from the current template-variable values. This means a normal interpreter exit does not need to write scratch state back to the virtual object only to re-enter variant 0. Instead, model exits that consume scratch or template state as ordinary bytecode handlers. In the previous example, `IRETURN` is a non-threaded handler that observes the active TOS state and stores the logical result before returning to Java code.
+When control returns to the Java switch loop, main dispatch selects the handler variant from the current template-variable values and passes the ordinary expanded fields to that variant. In the previous example, `IRETURN` is a non-threaded handler that observes the active TOS state and stores the logical result before returning to Java code.
 
-Tail call threading can still exit before a handler reaches its normal return. For example, an incompatible bytecode can force dispatch through a generated default stub, or a handler can throw. These exits follow the same state model as ordinary Java execution: there is no hidden cleanup callback. State that must be visible to Java code after a normal bytecode exit should be produced by an explicit handler, as shown by `IRETURN`. Scratch fields are not written back to the original Java object or pending exception state.
+A handler exception can still exit tail call threading before normal return. This follows the same state model as ordinary Java execution: there is no hidden cleanup callback. Mutable ordinary fields and template variables are preserved through pending exception state.
