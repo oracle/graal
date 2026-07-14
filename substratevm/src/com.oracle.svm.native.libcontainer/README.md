@@ -49,6 +49,10 @@ To help keeping the `@BasedOnJDKFile` annotations up to date, the
 `mx gate --tags check_libcontainer_annotations` command ensures that the actual files and
 annotations are in sync.
 
+For a full reimport, use the developer skill in
+[`skills/update-libcontainer/SKILL.md`](./skills/update-libcontainer/SKILL.md).
+It supplements the instructions below with the reviewable commit structure and conflict-resolution guidance.
+
 ### Full Reimport
 
 * Remove the C++-namespace from the source code using the
