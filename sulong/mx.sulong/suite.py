@@ -955,6 +955,9 @@ suite = {
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
         "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+        # work around issue with absolute path in debug-prefix-map
+        # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
+        "CMAKE_CXX_COMPILER_LAUNCHER" : "<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
       },
       "ninja_targets" : ["cxx"],
       "ninja_install_targets" : ["install-cxx"],
@@ -1016,6 +1019,7 @@ suite = {
       },
       "buildDependencies" : [
         "sdk:LLVM_ORG_SRC",
+        "SULONG_LIBCXX_COMPILER_WRAPPER",
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "sdk:LLVM_TOOLCHAIN",
       ],
@@ -1914,6 +1918,16 @@ suite = {
       "layout" : {
         "./cmake/" : ["file:cmake/toolchain.cmake"],
       }
+    },
+
+    "SULONG_LIBCXX_COMPILER_WRAPPER" : {
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : False,
+      "license" : "BSD-new",
+      "layout" : {
+        "./" : ["file:projects/com.oracle.truffle.llvm.libraries.bitcode.libcxx.compiler-wrapper/compiler-wrapper.py"],
+      },
     },
 
     "SULONG_NATIVE_HOME" : {
