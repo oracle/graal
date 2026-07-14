@@ -33,8 +33,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI8NodeGen;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -42,12 +44,34 @@ public abstract class CountSetBitsNode {
 
     public static TypedBuiltinFactory getFactory(PrimitiveKind type) {
         switch (type) {
+            case I8:
+                return TypedBuiltinFactory.simple1(CountSetBitsI8NodeGen::create);
+            case I16:
+                return TypedBuiltinFactory.simple1(CountSetBitsI16NodeGen::create);
             case I32:
                 return TypedBuiltinFactory.simple1(CountSetBitsI32NodeGen::create);
             case I64:
                 return TypedBuiltinFactory.simple1(CountSetBitsI64NodeGen::create);
             default:
                 return null;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class CountSetBitsI8Node extends LLVMBuiltin {
+
+        @Specialization
+        protected byte doI8(byte val) {
+            return (byte) Integer.bitCount(Byte.toUnsignedInt(val));
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class CountSetBitsI16Node extends LLVMBuiltin {
+
+        @Specialization
+        protected short doI16(short val) {
+            return (short) Integer.bitCount(Short.toUnsignedInt(val));
         }
     }
 

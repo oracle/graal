@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
 
+import java.math.BigInteger;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
@@ -39,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode.LLVMI1
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMIVarBitStoreNode.LLVMIVarBitOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMArithmetic {
@@ -75,6 +80,66 @@ public abstract class LLVMArithmetic {
         int evalI32(int left, int right, int cin, LLVMPointer addr, LLVMI32StoreNode store);
 
         long evalI64(long left, long right, long cin, LLVMPointer addr, LLVMI64StoreNode store);
+    }
+
+    public enum IVarBitArithmetic {
+        UNSIGNED_ADD(false) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.add(right);
+            }
+        },
+        UNSIGNED_SUB(false) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.subtract(right);
+            }
+        },
+        UNSIGNED_MUL(false) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.multiply(right);
+            }
+        },
+        SIGNED_ADD(true) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.add(right);
+            }
+        },
+        SIGNED_SUB(true) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.subtract(right);
+            }
+        },
+        SIGNED_MUL(true) {
+            @Override
+            BigInteger eval(BigInteger left, BigInteger right) {
+                return left.multiply(right);
+            }
+        };
+
+        private final boolean signed;
+
+        IVarBitArithmetic(boolean signed) {
+            this.signed = signed;
+        }
+
+        abstract BigInteger eval(BigInteger left, BigInteger right);
+
+        @TruffleBoundary
+        boolean eval(LLVMIVarBit left, LLVMIVarBit right, LLVMPointer addr, LLVMIVarBitOffsetStoreNode store) {
+            int bits = left.getBitSize();
+            BigInteger result = eval(left.getDebugValue(signed), right.getDebugValue(signed));
+            BigInteger min = signed ? BigInteger.ONE.shiftLeft(bits - 1).negate() : BigInteger.ZERO;
+            BigInteger max = BigInteger.ONE.shiftLeft(signed ? bits - 1 : bits).subtract(BigInteger.ONE);
+            boolean overflow = result.compareTo(min) < 0 || result.compareTo(max) > 0;
+            BigInteger modulus = BigInteger.ONE.shiftLeft(bits);
+            BigInteger wrappedResult = result.mod(modulus);
+            store.executeWithTarget(addr, 0, LLVMIVarBit.fromBigInteger(bits, wrappedResult));
+            return overflow;
+        }
     }
 
     public static final CarryArithmetic CARRY_ADD = new CarryArithmetic() {
@@ -725,6 +790,29 @@ public abstract class LLVMArithmetic {
         protected Object doIntrinsic(long left, long right, LLVMPointer addr,
                         @Cached LLVMI64StoreNode store) {
             boolean overflow = arithmetic.evalI64(left, right, addr, store);
+            storeI1.executeWithTarget(addr, secondValueOffset, overflow);
+            return addr;
+        }
+    }
+
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
+    @NodeChild(value = "target", type = LLVMExpressionNode.class)
+    public abstract static class LLVMIVarBitArithmeticWithOverflow extends LLVMBuiltin {
+
+        private final long secondValueOffset;
+        private final IVarBitArithmetic arithmetic;
+        @Child private LLVMI1OffsetStoreNode storeI1 = LLVMI1OffsetStoreNode.create();
+
+        public LLVMIVarBitArithmeticWithOverflow(IVarBitArithmetic arithmetic, long secondValueOffset) {
+            this.secondValueOffset = secondValueOffset;
+            this.arithmetic = arithmetic;
+        }
+
+        @Specialization
+        protected Object doIntrinsic(LLVMIVarBit left, LLVMIVarBit right, LLVMPointer addr,
+                        @Cached LLVMIVarBitOffsetStoreNode store) {
+            boolean overflow = arithmetic.eval(left, right, addr, store);
             storeI1.executeWithTarget(addr, secondValueOffset, overflow);
             return addr;
         }

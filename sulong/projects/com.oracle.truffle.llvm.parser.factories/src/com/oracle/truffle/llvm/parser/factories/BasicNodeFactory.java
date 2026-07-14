@@ -148,9 +148,11 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBu
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.VectorBuiltinFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAArch64_NeonNodesFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic.IVarBitArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMIVarBitArithmeticWithOverflowNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceAddNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceAndNodeGen;
@@ -365,6 +367,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1454,6 +1457,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     private static final Pattern TYPED_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.(?<op>[a-z0-9.]+)\\.(?<type>(v(?<vlen>[0-9]+))?(?<ptype>[if][0-9]+))");
+    private static final Pattern VAR_BIT_OVERFLOW_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.(?<signedness>[us])(?<op>add|sub|mul)\\.with\\.overflow\\.i(?<bits>[0-9]+)$");
 
     private static TypedBuiltinFactory getBuiltinFactory(String op, PrimitiveKind kind) {
         switch (op) {
@@ -1547,6 +1551,15 @@ public class BasicNodeFactory implements NodeFactory {
         try {
             if (intrinsicName.startsWith("llvm.experimental.memset.pattern.")) {
                 return createMemsetPatternIntrinsic(declaration, args);
+            }
+            Matcher overflowMatcher = VAR_BIT_OVERFLOW_INTRINSIC_PATTERN.matcher(intrinsicName);
+            if (overflowMatcher.matches()) {
+                int bits = Integer.parseInt(overflowMatcher.group("bits"));
+                if (bits != Byte.SIZE && bits != Short.SIZE && bits != Integer.SIZE && bits != Long.SIZE) {
+                    String signedness = overflowMatcher.group("signedness").equals("s") ? "SIGNED_" : "UNSIGNED_";
+                    IVarBitArithmetic arithmetic = IVarBitArithmetic.valueOf(signedness + overflowMatcher.group("op").toUpperCase(Locale.ROOT));
+                    return LLVMIVarBitArithmeticWithOverflowNodeGen.create(arithmetic, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                }
             }
             switch (intrinsicName) {
                 case "llvm.ptrmask.p0.i64":
