@@ -24,15 +24,24 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeFrame;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -40,13 +49,16 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
@@ -65,6 +77,13 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         return nodes.getNode(0);
     }
 
+    private static TruffleExceptionInterceptingInterpreter parseTruffleExceptionInterceptingNode(
+                    BytecodeParser<TruffleExceptionInterceptingInterpreterGen.Builder> builder) {
+        BytecodeRootNodes<TruffleExceptionInterceptingInterpreter> nodes = TruffleExceptionInterceptingInterpreterGen.create(
+                        BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, builder);
+        return nodes.getNode(0);
+    }
+
     @Test
     public void testTruffleExceptionInterception() {
         ExceptionInterceptingInterpreter root = parseExceptionInterceptingNode(b -> {
@@ -77,6 +96,67 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         });
 
         testObservedFrameOnResume((OptimizedCallTarget) root.getCallTarget(), InterceptKind.TRUFFLE);
+    }
+
+    @Test
+    public void testTruffleExceptionInterceptionFillsStackTrace() {
+        TruffleExceptionInterceptingInterpreter root = parseTruffleExceptionInterceptingNode(b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+            b.beginStoreLocal(local);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.beginTryCatch();
+            b.beginBlock();
+            b.beginYield();
+            b.emitLoadConstant(0L);
+            b.endYield();
+            /*
+             * Keep an operand below the custom yield's operands. Its generated handler must copy
+             * that operand from the virtual wrapper frame to the continuation frame. Exceptions
+             * from that copy merge before interception, so filling in the stack trace must be
+             * allowed to materialize the wrapper frame.
+             */
+            b.beginKeepAlive();
+            b.emitLoadConstant(42L);
+            b.beginThrowStackTraceObservedTruffleException();
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
+            b.emitLoadConstant(3L);
+            b.endThrowStackTraceObservedTruffleException();
+            b.endKeepAlive();
+            b.endBlock();
+            b.beginReturn();
+            b.beginReadException();
+            b.emitLoadException();
+            b.endReadException();
+            b.endReturn();
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        ((ContinuationResult) target.call()).continueWith(null);
+
+        ContinuationResult yielded = (ContinuationResult) target.call();
+        OptimizedCallTarget continuationTarget = (OptimizedCallTarget) yielded.getContinuationCallTarget();
+        continuationTarget.compile(true);
+        assertCompiled(continuationTarget);
+        assertStackTraceObservedOnResume(yielded);
+        assertCompiled(continuationTarget);
+    }
+
+    private static void assertStackTraceObservedOnResume(ContinuationResult yielded) {
+        TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException ex =
+                        (TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException) yielded.continueWith(null);
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(ex);
+        assertEquals(1, stackTrace.size());
+        TruffleStackTraceElement element = stackTrace.get(0);
+        assertSame(yielded.getContinuationCallTarget(), element.getTarget());
+        BytecodeFrame bytecodeFrame = BytecodeFrame.get(element);
+        assertNotNull(bytecodeFrame);
+        assertEquals(1, bytecodeFrame.getLocalCount());
+        assertEquals(42L, bytecodeFrame.getLocalValue(0));
     }
 
     @Test
@@ -214,6 +294,51 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
             @Specialization
             static Object perform() {
                 throw new ObservedControlFlowException();
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, captureFramesForTrace = true)
+    abstract static class TruffleExceptionInterceptingInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
+        protected TruffleExceptionInterceptingInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Override
+        public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) {
+            TruffleStackTrace.fillIn(ex);
+            return ex;
+        }
+
+        @SuppressWarnings("serial")
+        static final class StackTraceObservedTruffleException extends AbstractTruffleException {
+            StackTraceObservedTruffleException(Node location) {
+                super(location);
+            }
+        }
+
+        @Operation
+        static final class ReadException {
+            @Specialization
+            static Object perform(Object ex) {
+                return ex;
+            }
+        }
+
+        @Operation
+        static final class KeepAlive {
+            @Specialization
+            static Object perform(Object first, Object second) {
+                return second;
+            }
+        }
+
+        @Yield(resultOperandIndex = 2)
+        static final class ThrowStackTraceObservedTruffleException {
+            @Specialization
+            @TruffleBoundary(transferToInterpreterOnException = false)
+            static Object perform(Object first, Object second, Object third, @Bind Node node) {
+                throw new StackTraceObservedTruffleException(node);
             }
         }
     }
