@@ -166,6 +166,7 @@ class JVMCIVersionCheckVersion:
 
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
+_jdk_jvmci_edition = None
 
 if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '25':
     mx.abort('Graal requires JDK 25 or later, got ' + str(jdk) +
@@ -188,22 +189,26 @@ def _check_jvmci_version(jdk):
             mx.abort(rc)
         if out.data:
             try:
-                (jdk_version, release_name, jvmci_build) = out.data.split(',')
-                return JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), None if release_name == "null" else release_name, int(jvmci_build))
+                jdk_version, release_name, jvmci_build, edition = out.data.strip().split(',')
+                return JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), None if release_name == "null" else release_name, int(jvmci_build)), edition
             except ValueError:
                 mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
-            return None
+            return None, None
+        return None, None
 
     global _jdk_jvmci_version
-    _jdk_jvmci_version = _capture_jvmci_version()
+    global _jdk_jvmci_edition
+    _jdk_jvmci_version, _jdk_jvmci_edition = _capture_jvmci_version()
     global _jdk_min_jvmci_version
-    _jdk_min_jvmci_version = _capture_jvmci_version(['--min-version'])
+    _jdk_min_jvmci_version, _ = _capture_jvmci_version(['--min-version'])
+    if _jdk_jvmci_edition not in ['ce', 'ee']:
+        mx.abort('Could not parse LabsJDK edition from JVMCIVersionCheck output')
 
 
 def _ensure_jvmci_version_checked(jdk):
     if os.environ.get('JVMCI_VERSION_CHECK', None) == 'ignore':
         return
-    if _jdk_jvmci_version is None or _jdk_min_jvmci_version is None:
+    if _jdk_jvmci_version is None or _jdk_min_jvmci_version is None or _jdk_jvmci_edition is None:
         _check_jvmci_version(jdk)
 
 
@@ -1138,7 +1143,7 @@ def _check_latest_jvmci_version():
     ``common.json`` file and issues a warning if not.
     """
     _ensure_jvmci_version_checked(jdk)
-    jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<release_name>.+))?-b(?P<jvmci_build>\d+)')
+    jvmci_re = re.compile(r'(?P<edition>ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<release_name>.+))?-b(?P<jvmci_build>\d+)')
     common_path = os.path.normpath(join(_suite.dir, '..', 'common.json'))
 
     if _jdk_jvmci_version is None:
@@ -1156,15 +1161,16 @@ def _check_latest_jvmci_version():
                 match = jvmci_re.match(version)
                 if not match:
                     mx.abort(f'Cannot parse version {version}')
-                (jdk_version, release_name, jvmci_build) = match.groups(default=None)
+                (edition, jdk_version, release_name, jvmci_build) = match.groups(default=None)
                 if _jdk_jvmci_version.jvmci_build == 0:
                     # jvmci_build == 0 indicates an OpenJDK version has been specified in JVMCIVersionCheck.java.
                     # The JDK does not know the jvmci_build number that might have been specified in common.json,
                     # as it is only a repackaged JDK. Thus, we reset the jvmci_build because we cannot validate it.
                     jvmci_build = 0
                 current = JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), release_name, int(jvmci_build))
-                if current.jdk_version.feature() == _jdk_jvmci_version.jdk_version.feature():
-                    # only compare the same major versions
+                if current.jdk_version.feature() == _jdk_jvmci_version.jdk_version.feature() and edition == _jdk_jvmci_edition:
+                    # CE and EE can have distinct JDK build versions, but each edition must
+                    # consistently use the same JVMCI version for a given JDK feature.
                     if latest == 'not found':
                         latest = current
                     elif latest != current:
