@@ -200,4 +200,18 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when substitutions can move to guest/staging (GR-71844).
      */
     void enablePreviewFeatures();
+
+    /**
+     * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
+     * <p>
+     * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
+     */
+    void enableTraceClassLoading();
+
+    /**
+     * This method is called at the end of runtime options parsing.
+     * <p>
+     * Remove this method when runtime option parsing fully moves to guest/staging.
+     */
+    void endOfParsing();
 }

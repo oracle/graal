@@ -97,7 +97,6 @@ import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.config.SignatureUtil;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -121,6 +120,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -139,9 +139,11 @@ import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.util.LazyFinalReference;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -1390,6 +1392,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     void setClassLoaderAtRuntime(ClassLoader loader) {
         VMError.guarantee(companion.classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
+        if (RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+            Log.log().string(AbstractRuntimeClassRegistry.traceMessage(getName(), loader, null, "load", "predefine")).newline();
+        }
         companion.classLoader = loader;
     }
 

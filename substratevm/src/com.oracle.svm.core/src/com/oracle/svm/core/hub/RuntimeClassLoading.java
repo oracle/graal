@@ -38,6 +38,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.espresso.classfile.Constants;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.VMError;
@@ -110,6 +111,30 @@ public class RuntimeClassLoading {
 
         @Option(help = "Verification mode for runtime class loading.") //
         public static final HostedOptionKey<VerifyMode> ClassVerification = new HostedOptionKey<>(VerifyMode.REMOTE);
+
+        @Option(help = "Trace runtime class loading events.") //
+        public static final RuntimeOptionKey<Boolean> TraceClassLoading = new RuntimeOptionKey<>(false, Options::validateTraceRuntimeClassLoading);
+
+        @Option(help = "Logs a stack trace when a class is defined. " +
+                        "The logging is applied to all classes whose fully qualified name contains this string. " +
+                        "(\"*\" matches any class.)") //
+        public static final RuntimeOptionKey<String> LogClassLoadingCauseFor = new RuntimeOptionKey<>(null, Options::validateLogClassLoadingCauseFor);
+
+        private static void validateTraceRuntimeClassLoading(RuntimeOptionKey<Boolean> optionKey) {
+            if (optionKey.getValue() && !RuntimeClassLoading.getValue()) {
+                throw UserError.abort("Option '%s' requires runtime class-loading support to be enabled via '%s'.",
+                                optionKey.getName(),
+                                SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+"));
+            }
+        }
+
+        private static void validateLogClassLoadingCauseFor(RuntimeOptionKey<String> optionKey) {
+            if (optionKey.getValue() != null && !RuntimeClassLoading.getValue()) {
+                throw UserError.abort("Option '%s' requires runtime class-loading support to be enabled via '%s'.",
+                                optionKey.getName(),
+                                SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+"));
+            }
+        }
     }
 
     @Fold
@@ -163,20 +188,25 @@ public class RuntimeClassLoading {
     }
 
     public static final class ClassDefinitionInfo {
-        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, false, false, false);
+        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, false, false, false);
 
         // Constructor for regular definition, but with a specified protection domain
         public ClassDefinitionInfo(ProtectionDomain protectionDomain) {
-            this(protectionDomain, null, null, false, false, false);
+            this(protectionDomain, null);
+        }
+
+        // Constructor for regular definition, but with a specified source
+        public ClassDefinitionInfo(ProtectionDomain protectionDomain, String source) {
+            this(protectionDomain, source, null, null, false, false, false);
         }
 
         // Constructor for Hidden class definition.
         public ClassDefinitionInfo(ProtectionDomain protectionDomain, Class<?> dynamicNest, Object classData, boolean isStrongHidden, boolean forceAllowVMAnnotations) {
-            this(protectionDomain, dynamicNest, classData, true, isStrongHidden, forceAllowVMAnnotations);
+            this(protectionDomain, null, dynamicNest, classData, true, isStrongHidden, forceAllowVMAnnotations);
         }
 
         private ClassDefinitionInfo(ProtectionDomain protectionDomain,
-                        Class<?> dynamicNest,
+                        String source, Class<?> dynamicNest,
                         Object classData,
                         boolean isHidden,
                         boolean isStrongHidden,
@@ -186,6 +216,7 @@ public class RuntimeClassLoading {
             assert classData == null || isHidden;
             assert !forceAllowVMAnnotations || isHidden;
             this.protectionDomain = protectionDomain;
+            this.source = source;
             this.dynamicNest = dynamicNest;
             this.classData = classData;
             this.isHidden = isHidden;
@@ -194,6 +225,7 @@ public class RuntimeClassLoading {
         }
 
         public final ProtectionDomain protectionDomain;
+        public final String source;
 
         // Hidden class
         public final Class<?> dynamicNest;
@@ -232,10 +264,11 @@ public class RuntimeClassLoading {
                 return "EMPTY";
             }
             if (!isHidden) {
-                return "ClassDefinitionInfo{protectionDomain=" + protectionDomain + "}";
+                return "ClassDefinitionInfo{protectionDomain=" + protectionDomain + ", source=" + source + "}";
             }
             return "ClassDefinitionInfo{" +
                             "protectionDomain=" + protectionDomain +
+                            ", source=" + source +
                             ", dynamicNest=" + dynamicNest +
                             ", classData=" + classData +
                             ", isHidden=" + isHidden +
