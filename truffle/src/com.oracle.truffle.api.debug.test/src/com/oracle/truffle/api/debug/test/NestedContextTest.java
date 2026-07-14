@@ -105,20 +105,20 @@ public class NestedContextTest extends AbstractDebugTest {
                         "  STATEMENT\n" +
                         ")\n");
 
-        final Context context = Context.create();
-
-        final AtomicInteger suspensionCount = new AtomicInteger(0);
-        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
-        try (DebuggerSession session = debugger.startSession(new SuspendedCallback() {
-            public void onSuspend(SuspendedEvent event) {
-                checkState(event, 3, true, "STATEMENT");
-                // recursive evaluation should not trigger a suspended event
+        try (Context context = Context.create()) {
+            final AtomicInteger suspensionCount = new AtomicInteger(0);
+            Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+            try (DebuggerSession session = debugger.startSession(new SuspendedCallback() {
+                public void onSuspend(SuspendedEvent event) {
+                    checkState(event, 3, true, "STATEMENT");
+                    // recursive evaluation should not trigger a suspended event
+                    context.eval(testSource);
+                    suspensionCount.incrementAndGet();
+                }
+            })) {
+                session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
                 context.eval(testSource);
-                suspensionCount.incrementAndGet();
             }
-        })) {
-            session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
-            context.eval(testSource);
         }
 
     }

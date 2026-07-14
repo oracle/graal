@@ -137,8 +137,14 @@ public class TStringJCodingsDisabledTest {
 
     @AfterClass
     public static void tearDown() {
-        context.leave();
-        context.close();
+        if (context != null) {
+            try {
+                context.leave();
+                context.close();
+            } finally {
+                context = null;
+            }
+        }
     }
 
     @Parameter public TruffleString.FromByteArrayNode node;

@@ -45,6 +45,7 @@ import static org.junit.Assert.assertNotNull;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -77,6 +78,12 @@ public class StringAsInterfaceNFITest {
         ).internal(true).build());
         rawStdLib = load.call();
         stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
+    }
+
+    @AfterClass
+    public static void clearLibraries() {
+        stdlib = null;
+        rawStdLib = null;
     }
 
     @Implementable

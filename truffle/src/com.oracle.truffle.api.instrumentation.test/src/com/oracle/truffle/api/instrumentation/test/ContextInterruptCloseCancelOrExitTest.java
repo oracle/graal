@@ -495,6 +495,7 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
     @After
     public void clearRunOnFinalizeContext() {
         runOnFinalizeContext = null;
+        staticCtx = null;
     }
 
     @TruffleLanguage.Registration(dependentLanguages = InstrumentationTestLanguage.ID)

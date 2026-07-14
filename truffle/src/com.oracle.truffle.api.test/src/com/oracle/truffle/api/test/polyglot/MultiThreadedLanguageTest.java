@@ -699,8 +699,8 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
     volatile AtomicInteger initializeCount;
     volatile AtomicInteger disposeCount;
     volatile AtomicInteger initializeMultiThreadingCount;
-    volatile AtomicReference<ThreadRequest> lastInitializeRequest;
-    volatile AtomicReference<ThreadRequest> lastDisposeRequest;
+    final AtomicReference<ThreadRequest> lastInitializeRequest = new AtomicReference<>();
+    final AtomicReference<ThreadRequest> lastDisposeRequest = new AtomicReference<>();
     private final Map<Object, Set<Thread>> initializedThreadsPerContext = Collections.synchronizedMap(new HashMap<>());
 
     @Before
@@ -743,22 +743,34 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
         initializeCount = new AtomicInteger(0);
         disposeCount = new AtomicInteger(0);
         initializeMultiThreadingCount = new AtomicInteger(0);
-        lastInitializeRequest = new AtomicReference<>(null);
-        lastDisposeRequest = new AtomicReference<>(null);
+        lastInitializeRequest.set(null);
+        lastDisposeRequest.set(null);
         initializedThreadsPerContext.clear();
     }
 
     @After
     public void teardown() {
-        threads.clear();
-        for (ExecutorService executor : executors) {
-            assertTrue(executor.shutdownNow().isEmpty());
-        }
-        executors.clear();
-        for (Entry<Object, Set<Thread>> entry : initializedThreadsPerContext.entrySet()) {
-            if (!entry.getValue().isEmpty()) {
-                throw new AssertionError("Threads initialized but not disposed for context " + entry.getKey() + ": " + entry.getValue());
+        try {
+            threads.clear();
+            for (ExecutorService executor : executors) {
+                assertTrue(executor.shutdownNow().isEmpty());
             }
+            executors.clear();
+            for (Entry<Object, Set<Thread>> entry : initializedThreadsPerContext.entrySet()) {
+                if (!entry.getValue().isEmpty()) {
+                    throw new AssertionError("Threads initialized but not disposed for context " + entry.getKey() + ": " + entry.getValue());
+                }
+            }
+        } finally {
+            initializedThreadsPerContext.clear();
+            lastInitializeRequest.set(null);
+            lastDisposeRequest.set(null);
+            MultiThreadedLanguage.initializeThread = null;
+            MultiThreadedLanguage.disposeThread = null;
+            MultiThreadedLanguage.initializeMultiThreading = null;
+            MultiThreadedLanguage.finalizeContext = null;
+            MultiThreadedLanguage.isThreadAccessAllowed = null;
+            MultiThreadedLanguage.langContext = null;
         }
     }
 

@@ -94,8 +94,14 @@ public class TStringTestBase {
 
     @AfterClass
     public static void tearDown() {
-        context.leave();
-        context.close();
+        if (context != null) {
+            try {
+                context.leave();
+                context.close();
+            } finally {
+                context = null;
+            }
+        }
     }
 
     protected static final boolean COMPACT_STRINGS_ENABLED;
