@@ -1534,7 +1534,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
-    public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(true);
 
     @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
     public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(true, key -> {

@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -118,8 +119,9 @@ public final class WasmContext {
             synchronized (this) {
                 if (!missingVectorApiWarningEmitted) {
                     env.getLogger(Vector128Ops.class).warning(
-                                    "WebAssembly SIMD code is using the fallback vector implementation because the JDK Vector API is not available. For better performance on the JVM, " +
-                                                    "run with --add-modules=jdk.incubator.vector. When building a native image, also pass -H:+UnlockExperimentalVMOptions and -H:+VectorAPISupport.");
+                                    "WebAssembly SIMD code is using the fallback vector implementation because the JDK Vector API is not available. For better performance, " +
+                                                    (ImageInfo.inImageRuntimeCode() ? "rebuild the native image with --add-modules=jdk.incubator.vector."
+                                                                    : "run with --add-modules=jdk.incubator.vector."));
                     missingVectorApiWarningEmitted = true;
                 }
             }
