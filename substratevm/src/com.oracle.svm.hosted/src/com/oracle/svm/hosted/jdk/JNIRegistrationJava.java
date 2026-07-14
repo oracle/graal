@@ -145,14 +145,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
                             method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class),
                             method(a, "sun.net.spi.DefaultProxySelector", "init")));
 
-            if (ClassRegistries.respectClassLoader()) {
-                // GR-76168: frameworks should not be necessary
-                FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-                accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework CoreServices");
-                accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework SystemConfiguration");
-            } else {
-                a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
-            }
+            a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
 
         }
 

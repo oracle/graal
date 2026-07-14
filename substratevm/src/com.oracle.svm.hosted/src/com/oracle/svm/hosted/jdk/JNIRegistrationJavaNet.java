@@ -110,10 +110,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                             method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
         }
 
-        // GR-76168: getSystemProxies should not be necessary
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit,
-                        method(a, "sun.net.spi.DefaultProxySelector", "init"),
-                        method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class));
+                        method(a, "sun.net.spi.DefaultProxySelector", "init"));
 
         if (isWindows()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerResolverConfigurationImplInit0,
