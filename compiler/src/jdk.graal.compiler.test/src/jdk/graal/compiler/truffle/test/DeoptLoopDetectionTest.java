@@ -47,14 +47,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
-import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
-import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -63,7 +55,6 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -197,63 +188,6 @@ public class DeoptLoopDetectionTest {
             target.call(0);
             target.call(1);
         }, 0, 2);
-    }
-
-    @Test
-    public void testBytecodeConditionalIntDoubleMerge() {
-        /*
-         * The conditional result is generic at the bytecode level, but its two operands have
-         * incompatible unboxed representations. The BCI operand stack is held in a
-         * FrameWithoutBoxing, so FrameAccessVerification inserts a RuntimeConstraint deopt at
-         * this merge. Alternating paths must therefore reach the deopt-cycle detector.
-         */
-        MixedNumericBytecodeRoot root = parseMixedNumericBytecodeRoot(b -> {
-            b.beginRoot();
-            b.beginReturn();
-            b.beginConditional();
-            b.emitLoadArgument(0);
-            b.beginIntIdentity();
-            b.emitLoadArgument(1);
-            b.endIntIdentity();
-            b.beginDoubleIdentity();
-            b.emitLoadArgument(2);
-            b.endDoubleIdentity();
-            b.endConditional();
-            b.endReturn();
-            b.endRoot();
-        });
-        assertDeoptLoop(root, "bytecodeConditionalIntDoubleMerge", target -> {
-            target.call(true, 1, 1.5d);
-            target.call(false, 1, 1.5d);
-        }, 0, 2);
-    }
-
-    private static MixedNumericBytecodeRoot parseMixedNumericBytecodeRoot(BytecodeParser<MixedNumericBytecodeRootGen.Builder> builder) {
-        BytecodeRootNodes<MixedNumericBytecodeRoot> roots = MixedNumericBytecodeRootGen.create(null, BytecodeConfig.DEFAULT, builder);
-        return roots.getNode(0);
-    }
-
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, boxingEliminationTypes = {int.class, double.class})
-    abstract static class MixedNumericBytecodeRoot extends DebugBytecodeRootNode implements BytecodeRootNode {
-        protected MixedNumericBytecodeRoot(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
-            super(language, frameDescriptor);
-        }
-
-        @Operation
-        static final class IntIdentity {
-            @Specialization
-            static int doInt(int value) {
-                return value;
-            }
-        }
-
-        @Operation
-        static final class DoubleIdentity {
-            @Specialization
-            static double doDouble(double value) {
-                return value;
-            }
-        }
     }
 
     @Test
@@ -618,10 +552,8 @@ public class DeoptLoopDetectionTest {
 
     private static final int MAX_EXECUTIONS = 1024;
 
-    private void assertDeoptLoop(RootNode root, String name, Consumer<CallTarget> callStrategy, int previousCompilations, int compilationsPerIteration) {
-        if (root instanceof BaseRootNode baseRoot) {
-            baseRoot.name = name;
-        }
+    private void assertDeoptLoop(BaseRootNode root, String name, Consumer<CallTarget> callStrategy, int previousCompilations, int compilationsPerIteration) {
+        root.name = name;
         CallTarget callTarget = root.getCallTarget();
         callTargetFilter.set(callTarget);
         compilationResult.set(null);

@@ -1054,6 +1054,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.end();
                 b.caseDefault();
                 b.startCaseBlock();
+                b.statement("newOperand = undoQuickening(operand)");
                 b.statement("newOtherOperand = undoQuickening(otherOperand)");
                 b.startAssign("newInstruction").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
                 b.statement("break");
@@ -1064,7 +1065,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             }
 
             b.startElseBlock(elseIf);
-            b.statement("newOperand = operand");
+            b.statement("newOperand = undoQuickening(operand)");
             b.statement("newOtherOperand = undoQuickening(otherOperand)");
             b.startAssign("newInstruction").tree(parent.parent.createInstructionConstant(genericInstruction)).end();
             b.end();
