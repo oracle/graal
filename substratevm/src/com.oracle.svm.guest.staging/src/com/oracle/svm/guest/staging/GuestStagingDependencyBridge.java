@@ -50,7 +50,7 @@ public interface GuestStagingDependencyBridge {
      * {@code com.oracle.svm.core.IsolateArgumentParser.singleton().verifyOptionValues()}.
      * <p>
      * Remove this method when {@code com.oracle.svm.core.IsolateArgumentParser} moves to
-     * guest/staging.
+     * guest/staging (GR-77356).
      */
     void verifyIsolateArgumentOptionValues();
 
@@ -88,7 +88,7 @@ public interface GuestStagingDependencyBridge {
      * Verifies and records an updated minimum heap size.
      * <p>
      * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging.
+     * guest/staging (GR-77356).
      */
     void minHeapSizeOptionValueChanged(long newValue);
 
@@ -96,7 +96,7 @@ public interface GuestStagingDependencyBridge {
      * Verifies and records an updated maximum heap size.
      * <p>
      * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging.
+     * guest/staging (GR-77356).
      */
     void maxHeapSizeOptionValueChanged(long newValue);
 
@@ -104,7 +104,7 @@ public interface GuestStagingDependencyBridge {
      * Verifies and records an updated maximum young-generation size.
      * <p>
      * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging.
+     * guest/staging (GR-77356).
      */
     void maxNewSizeOptionValueChanged(long newValue);
 
