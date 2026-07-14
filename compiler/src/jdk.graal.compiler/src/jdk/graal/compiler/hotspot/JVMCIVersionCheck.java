@@ -449,7 +449,7 @@ public final class JVMCIVersionCheck {
             Version v = Version.parse(vmVersion);
             if (v != null) {
                 if (format != null) {
-                    System.out.println(v.stripLTS().printFormat(format));
+                    printVersion(v, format, props);
                 }
                 try {
                     if (v.isLessThan(minVersion)) {
@@ -464,6 +464,15 @@ public final class JVMCIVersionCheck {
             }
             return String.format("The VM does not support the minimum JVMCI API version required by Graal.%n" +
                             "Cannot read JVMCI version from java.vm.version property: %s.", vmVersion);
+        }
+    }
+
+    private static void printVersion(Version version, PrintFormat format, Map<String, String> props) {
+        String value = version.stripLTS().printFormat(format);
+        if (format == PrintFormat.TUPLE) {
+            System.out.printf("%s,%s%n", value, isOracleJDK(props) ? "ee" : "ce");
+        } else {
+            System.out.println(value);
         }
     }
 
@@ -493,7 +502,7 @@ public final class JVMCIVersionCheck {
             if (v == null) {
                 System.out.printf("No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
             } else {
-                System.out.println(v.printFormat(format));
+                printVersion(v, format, props);
             }
         } else {
             check(props, true, format);
