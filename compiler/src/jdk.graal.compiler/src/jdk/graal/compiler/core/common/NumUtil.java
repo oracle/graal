@@ -451,7 +451,13 @@ public class NumUtil {
      * Determines if the absolute value of {@code l} overflows.
      */
     public static boolean absOverflows(long l, int bits) {
-        if (bits == 32) {
+        if (bits == 8) {
+            final byte b = (byte) l;
+            return b == Byte.MIN_VALUE;
+        } else if (bits == 16) {
+            final short s = (short) l;
+            return s == Short.MIN_VALUE;
+        } else if (bits == 32) {
             final int i = (int) l;
             return i == Integer.MIN_VALUE;
         } else if (bits == 64) {
@@ -478,7 +484,19 @@ public class NumUtil {
      * overflow.
      */
     public static long safeAbs(long l, int bits) throws ArithmeticException {
-        if (bits == 32) {
+        if (bits == 8) {
+            final byte b = (byte) l;
+            if (b == Byte.MIN_VALUE) {
+                throw new ArithmeticException("integer overflow");
+            }
+            return Math.absExact(b);
+        } else if (bits == 16) {
+            final short s = (short) l;
+            if (s == Short.MIN_VALUE) {
+                throw new ArithmeticException("integer overflow");
+            }
+            return Math.absExact(s);
+        } else if (bits == 32) {
             final int i = (int) l;
             return Math.absExact(i);
         } else if (bits == 64) {
