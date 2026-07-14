@@ -49,6 +49,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -126,6 +127,10 @@ public final class BytecodeHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
+        if (Options.BytecodeHandlerSlotSentinel.getValue()) {
+            accessImpl.registerAsRoot(ReflectionUtil.lookupMethod(PendingExceptionStateSupport.class, "poisonObjectSlot", Object[].class, int.class), false,
+                            "Object-slot sentinel support, registered in " + BytecodeHandlerFeature.class);
+        }
         BytecodeInterpreterAnnotations.registerCompilerDirectives(accessImpl.getMetaAccess(), OriginalClassProvider::getOriginalType);
     }
 

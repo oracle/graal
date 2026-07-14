@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 
@@ -34,22 +35,27 @@ import com.oracle.svm.core.graal.code.PendingExceptionStateHolder;
 import com.oracle.svm.core.graal.code.PendingExceptionStateSupport;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -130,6 +136,7 @@ final class SubstrateBytecodeHandlerUnwindPath {
 
     private static final Field OBJECT_SLOTS_FIELD = ReflectionUtil.lookupField(PendingExceptionStateHolder.class, "objectSlots");
     private static final Field PRIMITIVE_SLOTS_FIELD = ReflectionUtil.lookupField(PendingExceptionStateHolder.class, "primitiveSlots");
+    private static final Method POISON_OBJECT_SLOT_METHOD = ReflectionUtil.lookupMethod(PendingExceptionStateSupport.class, "poisonObjectSlot", Object[].class, int.class);
 
     private record PendingStateRead(ValueNode value, FixedWithNextNode last) {
     }
@@ -547,14 +554,11 @@ final class SubstrateBytecodeHandlerUnwindPath {
                         true));
         graph.addAfterFixed(insertAfter, read);
         /*
-         * Object pending-state slots are thread-local roots. Clear consumed references so they do not
-         * keep object graphs live until a later exception overwrites this slot.
+         * Object pending-state slots are thread-local roots. Replace consumed references with the
+         * debug sentinel or null so they do not keep object graphs live until a later exception
+         * overwrites this slot.
          */
-        JavaWriteNode clear = graph.add(createClearObjectSlotWrite(graph, slotAddress));
-        graph.addAfterFixed(read, clear);
-        if (stateAfter != null) {
-            clear.setStateAfter(stateAfter);
-        }
+        FixedWithNextNode clear = appendClearObjectSlotWrite(metaAccess, graph, read, objectSlots, slotIndex, slotAddress, stateAfter);
         return new PendingStateRead(read, clear);
     }
 
@@ -608,19 +612,40 @@ final class SubstrateBytecodeHandlerUnwindPath {
         long objectArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Object);
         int objectArrayIndexScale = metaAccess.getArrayIndexScale(JavaKind.Object);
         AddressNode slotAddress = elementAddress(graph, objectSlots, objectArrayBaseOffset + (long) slotIndex * objectArrayIndexScale);
-        JavaWriteNode clear = graph.add(createClearObjectSlotWrite(graph, slotAddress));
-        graph.addAfterFixed(last, clear);
+        appendClearObjectSlotWrite(metaAccess, graph, last, objectSlots, slotIndex, slotAddress, null);
     }
 
-    private static JavaWriteNode createClearObjectSlotWrite(StructuredGraph graph, AddressNode slotAddress) {
-        return new JavaWriteNode(JavaKind.Object,
+    private static FixedWithNextNode appendClearObjectSlotWrite(MetaAccessProvider metaAccess, StructuredGraph graph, FixedWithNextNode insertAfter,
+                    ValueNode objectSlots, int slotIndex, AddressNode slotAddress, FrameState stateAfter) {
+        if (useSlotDebugSentinel()) {
+            ResolvedJavaMethod poisonMethod = metaAccess.lookupJavaMethod(POISON_OBJECT_SLOT_METHOD);
+            SubstrateMethodCallTargetNode callTarget = graph.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, poisonMethod,
+                            new ValueNode[]{objectSlots, ConstantNode.forInt(slotIndex, graph)}, StampPair.createSingle(StampFactory.forVoid())));
+            FrameState callState = stateAfter;
+            if (callState == null) {
+                FrameState lastFrameState = GraphUtil.findLastFrameState(insertAfter);
+                callState = lastFrameState == null ? null : lastFrameState.duplicateWithVirtualState();
+            }
+            GraalError.guarantee(callState != null, "Missing frame state for object-slot sentinel write");
+            InvokeNode poison = graph.add(new InvokeNode(callTarget, callState.bci));
+            graph.addAfterFixed(insertAfter, poison);
+            poison.setStateAfter(callState);
+            poison.setStateDuring(callState.duplicateWithVirtualState());
+            return poison;
+        }
+        JavaWriteNode clear = graph.add(new JavaWriteNode(JavaKind.Object,
                         slotAddress,
                         NamedLocationIdentity.getArrayLocation(JavaKind.Object),
                         ConstantNode.defaultForKind(JavaKind.Object, graph),
                         BarrierType.ARRAY,
                         true,
                         true,
-                        MemoryOrderMode.PLAIN);
+                        MemoryOrderMode.PLAIN));
+        graph.addAfterFixed(insertAfter, clear);
+        if (stateAfter != null) {
+            clear.setStateAfter(stateAfter);
+        }
+        return clear;
     }
 
     private static FixedWithNextNode appendPrimitiveSlotDebugWrite(StructuredGraph graph, FixedWithNextNode insertAfter,

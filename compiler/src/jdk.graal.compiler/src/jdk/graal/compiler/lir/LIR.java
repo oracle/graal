@@ -292,16 +292,10 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
     /**
-     * Multi-result operations may be followed by moves that materialize additional defined values
-     * before the block end. Those moves are still part of the operation's normal successor value
-     * setup, so the verifier allows them to extend the usual exception-edge distance.
+     * Custom calling conventions may materialize additional return values with moves after the
+     * call. Those moves are still part of the operation's normal successor value setup, so the
+     * verifier allows them to extend the usual exception-edge distance.
      */
-    private static boolean hasMultipleDefs(LIRInstruction op) {
-        int[] defCount = {0};
-        op.visitEachOutput((instruction, value, mode, flags) -> defCount[0]++);
-        return defCount[0] > 1;
-    }
-
     private static boolean hasOnlyTrailingMoves(ArrayList<LIRInstruction> ops, int exceptionEdgeIndex, int lastIndex) {
         for (int i = exceptionEdgeIndex + 1; i < lastIndex; i++) {
             if (!ops.get(i).isMoveOp()) {
@@ -327,8 +321,7 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
                 assert opWithExceptionEdge == null : "multiple ops with an exception edge not allowed";
                 opWithExceptionEdge = op;
                 int distanceFromEnd = lastIndex - index;
-                assert distanceFromEnd <= MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END ||
-                                (hasMultipleDefs(op) && hasOnlyTrailingMoves(ops, index, lastIndex)) : distanceFromEnd;
+                assert distanceFromEnd <= MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END || hasOnlyTrailingMoves(ops, index, lastIndex) : distanceFromEnd;
             }
             index++;
         }
