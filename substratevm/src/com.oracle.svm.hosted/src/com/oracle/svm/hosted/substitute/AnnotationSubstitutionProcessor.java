@@ -285,6 +285,27 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return deleteAnnotations.containsKey(OriginalClassProvider.getOriginalType(type));
     }
 
+    /**
+     * Returns the original types explicitly marked with a class-level {@link Delete}.
+     */
+    public List<ResolvedJavaType> getDeletedTypes() {
+        return deleteAnnotations.keySet().stream()
+                        .filter(ResolvedJavaType.class::isInstance)
+                        .map(ResolvedJavaType.class::cast)
+                        .toList();
+    }
+
+    /**
+     * Returns methods recorded as deleted. For an explicit method-level {@link Delete}, this includes
+     * both the original target method and the annotated deletion declaration.
+     */
+    public List<ResolvedJavaMethod> getDeletedMethods() {
+        return deleteAnnotations.keySet().stream()
+                        .filter(ResolvedJavaMethod.class::isInstance)
+                        .map(ResolvedJavaMethod.class::cast)
+                        .toList();
+    }
+
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
         assert !isDeleted(field) : "Field " + field.format("%H.%n") + "is deleted.";
         return Optional.ofNullable(fieldSubstitutions.get(field));

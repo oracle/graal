@@ -95,6 +95,7 @@ public class VerifyJavaTypeGetNameUsage extends VerifyPhase<CoreProviders> {
                     "com.oracle.svm.hosted.image.NativeImageCodeCache",
                     "com.oracle.svm.hosted.image.NativeImageDebugInfoProvider",
                     "com.oracle.svm.hosted.image.NativeImageHeap",
+                    "com.oracle.svm.hosted.jni.JNILibraryLoadFeature",
                     "com.oracle.svm.hosted.jni.JNINativeCallWrapperMethod",
                     "com.oracle.svm.hosted.meta.HostedInstanceClass",
                     "com.oracle.svm.hosted.meta.HostedType",
