@@ -66,11 +66,15 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
+import com.oracle.truffle.api.bytecode.ExceptionHandler;
+import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.Return;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -80,6 +84,7 @@ import com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErrorLanguage
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -89,6 +94,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
 public class CustomReturnTest {
@@ -237,6 +243,123 @@ public class CustomReturnTest {
     }
 
     @Test
+    public void testUnreachableReturnWithSourceSectionPreservesCatchHandlerCoverage() {
+        Source source = Source.newBuilder("test", "return;", "unreachable-return.test").build();
+        CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginTryCatch();
+            b.beginBlock();
+            emitThrowingReturnFollowedByUnreachableReturn(b, source);
+            b.endBlock();
+            b.beginCustomReturn();
+            b.emitLoadConstant("caught");
+            b.endCustomReturn();
+            b.endTryCatch();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals("custom:caught", root.getCallTarget().call());
+        assertHandlerCoverage(root, HandlerKind.CUSTOM, 1);
+    }
+
+    @Test
+    public void testUnreachableBranchWithSourceSectionPreservesCatchHandlerCoverage() {
+        Source source = Source.newBuilder("test", "branch;", "unreachable-branch.test").build();
+        CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginBlock();
+            BytecodeLabel target = b.createLabel();
+            b.beginTryCatch();
+            b.beginBlock();
+            b.beginThrowingCustomReturn();
+            b.emitLoadConstant("return");
+            b.endThrowingCustomReturn();
+            b.beginSourceSection(0, source.getLength());
+            b.emitBranch(target);
+            b.endSourceSection();
+            b.endBlock();
+            b.beginCustomReturn();
+            b.emitLoadConstant("caught");
+            b.endCustomReturn();
+            b.endTryCatch();
+            b.emitLabel(target);
+            b.endBlock();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals("custom:caught", root.getCallTarget().call());
+        assertHandlerCoverage(root, HandlerKind.CUSTOM, 1);
+    }
+
+    @Test
+    public void testUnreachableReturnWithSourceSectionPreservesTryFinallyHandlerCoverage() {
+        Source source = Source.newBuilder("test", "return;", "unreachable-return-finally.test").build();
+        CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginTryFinally(() -> b.emitLoadConstant("finally"));
+            b.beginBlock();
+            emitThrowingReturnFollowedByUnreachableReturn(b, source);
+            b.endBlock();
+            b.endTryFinally();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertFails(() -> root.getCallTarget().call(), TestException.class);
+        assertHandlerCoverage(root, HandlerKind.CUSTOM, 1);
+    }
+
+    @Test
+    public void testUnreachableReturnWithSourceSectionPreservesTryCatchOtherwiseHandlerCoverage() {
+        Source source = Source.newBuilder("test", "return;", "unreachable-return-otherwise.test").build();
+        CustomReturnInstructionRootNode root = parse(BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginTryCatchOtherwise(() -> b.emitLoadConstant("otherwise"));
+            b.beginBlock();
+            emitThrowingReturnFollowedByUnreachableReturn(b, source);
+            b.endBlock();
+            b.beginCustomReturn();
+            b.emitLoadConstant("caught");
+            b.endCustomReturn();
+            b.endTryCatchOtherwise();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals("custom:caught", root.getCallTarget().call());
+        assertHandlerCoverage(root, HandlerKind.CUSTOM, 1);
+    }
+
+    @Test
+    public void testUnreachableReturnWithSourceSectionPreservesTagHandlerCoverage() {
+        runInstrumentationTest((context, instrumenter) -> {
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(new ArrayList<>()));
+
+            Source source = Source.newBuilder("test", "return;", "unreachable-return-tag.test").build();
+            CustomReturnInstructionRootNode root = parse(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.WITH_SOURCE, b -> {
+                b.beginSource(source);
+                b.beginRoot();
+                b.beginTag(StatementTag.class);
+                b.beginBlock();
+                emitThrowingReturnFollowedByUnreachableReturn(b, source);
+                b.endBlock();
+                b.endTag(StatementTag.class);
+                b.endRoot();
+                b.endSource();
+            });
+
+            assertFails(() -> root.getCallTarget().call(), TestException.class);
+            assertHandlerCoverage(root, HandlerKind.TAG, 1);
+        });
+    }
+
+    @Test
     public void testTagLeaveHasResultStackOffsetImmediate() {
         InstructionDescriptor tagLeave = getInstructionDescriptor(CustomReturnInstructionRootNodeGen.BYTECODE.getInstructionDescriptors(), "tag.leave");
         assertTrue(tagLeave.getArgumentDescriptors().stream().anyMatch(argument -> argument.getName().equals("result_stack_offset") && argument.getLength() != 0));
@@ -299,19 +422,61 @@ public class CustomReturnTest {
         });
     }
 
+    private static void emitThrowingReturnFollowedByUnreachableReturn(CustomReturnInstructionRootNodeGen.Builder b, Source source) {
+        // The return instruction itself can throw and must remain covered by active handlers.
+        b.beginThrowingCustomReturn();
+        b.emitLoadConstant("return");
+        b.endThrowingCustomReturn();
+
+        // Processing metadata for an unreachable return must preserve active handler coverage.
+        b.beginSourceSection(0, source.getLength());
+        b.beginCustomReturn();
+        b.emitLoadConstant("unreachable");
+        b.endCustomReturn();
+        b.endSourceSection();
+    }
+
+    private static void assertHandlerCoverage(CustomReturnInstructionRootNode root, HandlerKind handlerKind, int expectedCount) {
+        int throwingReturnBci = -1;
+        for (Instruction instruction : root.getBytecodeNode().getInstructions()) {
+            if (instruction.getName().equals("c.ThrowingCustomReturn")) {
+                throwingReturnBci = instruction.getBytecodeIndex();
+                break;
+            }
+        }
+        assertTrue("Throwing custom return not found.\n" + root.getBytecodeNode().dump(), throwingReturnBci != -1);
+
+        int coveredCount = 0;
+        for (ExceptionHandler handler : root.getBytecodeNode().getExceptionHandlers()) {
+            if (handler.getKind() == handlerKind && handler.getStartBytecodeIndex() <= throwingReturnBci && throwingReturnBci < handler.getEndBytecodeIndex()) {
+                coveredCount++;
+            }
+        }
+        assertEquals(root.getBytecodeNode().dump(), expectedCount, coveredCount);
+    }
+
     private CustomReturnInstructionRootNode parse(BytecodeParser<CustomReturnInstructionRootNodeGen.Builder> parser) {
-        return parse(null, parser);
+        return parse(null, BytecodeConfig.DEFAULT, parser);
+    }
+
+    private CustomReturnInstructionRootNode parse(BytecodeConfig config, BytecodeParser<CustomReturnInstructionRootNodeGen.Builder> parser) {
+        return parse(null, config, parser);
     }
 
     private CustomReturnInstructionRootNode parse(BytecodeDSLTestLanguage language, BytecodeParser<CustomReturnInstructionRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<CustomReturnInstructionRootNode> nodes = CustomReturnInstructionRootNodeGen.create(language, BytecodeConfig.DEFAULT, parser);
+        return parse(language, BytecodeConfig.DEFAULT, parser);
+    }
+
+    private CustomReturnInstructionRootNode parse(BytecodeDSLTestLanguage language, BytecodeConfig config, BytecodeParser<CustomReturnInstructionRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<CustomReturnInstructionRootNode> nodes = CustomReturnInstructionRootNodeGen.create(language, config, parser);
         if (serialize) {
-            nodes = doRoundTrip(language, nodes);
+            nodes = doRoundTrip(language, config, nodes);
         }
         return nodes.getNode(0);
     }
 
-    private static BytecodeRootNodes<CustomReturnInstructionRootNode> doRoundTrip(BytecodeDSLTestLanguage language, BytecodeRootNodes<CustomReturnInstructionRootNode> nodes) {
+    private static BytecodeRootNodes<CustomReturnInstructionRootNode> doRoundTrip(BytecodeDSLTestLanguage language, BytecodeConfig config,
+                    BytecodeRootNodes<CustomReturnInstructionRootNode> nodes) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
             nodes.serialize(new DataOutputStream(output), SERIALIZER);
@@ -321,7 +486,7 @@ public class CustomReturnTest {
 
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         try {
-            return CustomReturnInstructionRootNodeGen.deserialize(language, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+            return CustomReturnInstructionRootNodeGen.deserialize(language, config, input, DESERIALIZER);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
@@ -369,6 +534,14 @@ public class CustomReturnTest {
             } else if (object instanceof String s) {
                 buffer.writeByte(1);
                 buffer.writeUTF(s);
+            } else if (object instanceof Source source) {
+                buffer.writeByte(2);
+                buffer.writeUTF(source.getLanguage());
+                buffer.writeUTF(source.getName());
+                buffer.writeBoolean(source.hasCharacters());
+                if (source.hasCharacters()) {
+                    buffer.writeUTF(source.getCharacters().toString());
+                }
             } else {
                 throw new AssertionError("Serializer does not handle object " + object);
             }
@@ -380,6 +553,14 @@ public class CustomReturnTest {
             return switch (buffer.readByte()) {
                 case 0 -> buffer.readInt();
                 case 1 -> buffer.readUTF();
+                case 2 -> {
+                    String language = buffer.readUTF();
+                    String name = buffer.readUTF();
+                    boolean hasCharacters = buffer.readBoolean();
+                    CharSequence characters = hasCharacters ? buffer.readUTF() : "";
+                    CharSequence content = hasCharacters ? characters : Source.CONTENT_NONE;
+                    yield Source.newBuilder(language, characters, name).content(content).build();
+                }
                 default -> throw new AssertionError("Deserializer does not handle object code.");
             };
         }
@@ -436,6 +617,21 @@ public class CustomReturnTest {
             public static Object doObject(Object value) {
                 return value;
             }
+        }
+
+        @Return
+        public static final class ThrowingCustomReturn {
+            @Specialization
+            public static Object doThrow(String message) {
+                throw new TestException(message);
+            }
+        }
+    }
+
+    @SuppressWarnings("serial")
+    static final class TestException extends AbstractTruffleException {
+        TestException(String message) {
+            super(message);
         }
     }
 
