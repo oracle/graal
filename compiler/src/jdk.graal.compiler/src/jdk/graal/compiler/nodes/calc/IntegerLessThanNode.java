@@ -320,7 +320,14 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {
-        if (!thisNegated) {
+        if (other instanceof IntegerBelowNode integerBelowNode) {
+            TriState result = thisNegated
+                            ? tryProveNotLessThanImpliesNotBelow(integerBelowNode)
+                            : tryProveLessThanImpliesBelow(integerBelowNode);
+            if (result.isKnown()) {
+                return result;
+            }
+        } else if (!thisNegated) {
             if (other instanceof IntegerLessThanNode) {
                 ValueNode otherX = ((IntegerLessThanNode) other).getX();
                 ValueNode otherY = ((IntegerLessThanNode) other).getY();
@@ -341,5 +348,31 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             }
         }
         return super.implies(thisNegated, other);
+    }
+
+    /**
+     * Proves {@code !(x < y) => !(x |<| y)} when {@code 0 <= y}.
+     * <p>
+     * This is the contrapositive of {@code 0 <= y && x |<| y => x < y}.
+     */
+    private TriState tryProveNotLessThanImpliesNotBelow(IntegerBelowNode other) {
+        IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
+        if (yStamp.isPositive() && sameValue(getX(), other.getX()) && sameValue(getY(), other.getY())) {
+            return TriState.FALSE;
+        }
+        return TriState.UNKNOWN;
+    }
+
+    /**
+     * Proves {@code x < y => x |<| y} when {@code 0 <= x}.
+     * <p>
+     * {@code 0 <= x} and {@code x < y} imply {@code 0 <= y}, so signed and unsigned ordering agree.
+     */
+    private TriState tryProveLessThanImpliesBelow(IntegerBelowNode other) {
+        IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
+        if (xStamp.isPositive() && sameValue(getX(), other.getX()) && sameValue(getY(), other.getY())) {
+            return TriState.TRUE;
+        }
+        return TriState.UNKNOWN;
     }
 }
