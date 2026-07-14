@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,17 +42,21 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -163,6 +167,158 @@ public final class InstrumentSystemThreadTest extends AbstractInstrumentationTes
             context = null;
         } finally {
             assertFails(() -> ctx.close(), PolyglotException.class);
+        }
+    }
+
+    @Test
+    public void testEngineCloseWaitingForContextCleanup() throws InterruptedException {
+        Engine testEngine = Engine.create();
+        Context ctx = Context.newBuilder().engine(testEngine).allowAllAccess(true).build();
+        BlockingContextClosedInstrument instrument = new BlockingContextClosedInstrument();
+        setupEnv(ctx, null, instrument);
+        context.leave();
+        enterContext = false;
+
+        AtomicReference<Throwable> cancelFailure = new AtomicReference<>();
+        Thread cancelThread = instrument.createSystemThread(() -> ctx.close(true));
+        cancelThread.setUncaughtExceptionHandler((t, e) -> cancelFailure.set(e));
+        cancelThread.start();
+        try {
+            Assert.assertTrue("Context cleanup did not reach the context-closed notification.", instrument.contextClosed.await(10, TimeUnit.SECONDS));
+            cancelThread.join(TimeUnit.SECONDS.toMillis(10));
+            Assert.assertFalse("The system thread initiating cancellation did not finish.", cancelThread.isAlive());
+            Assert.assertNull(cancelFailure.get());
+
+            AtomicReference<Throwable> closeFailure = new AtomicReference<>();
+            CountDownLatch closeFinished = new CountDownLatch(1);
+            Thread engineCloseThread = new Thread(() -> {
+                try {
+                    testEngine.close();
+                } catch (Throwable t) {
+                    closeFailure.set(t);
+                } finally {
+                    closeFinished.countDown();
+                }
+            });
+            engineCloseThread.setDaemon(true);
+            engineCloseThread.start();
+            waitUntilWaitingForCleanup(engineCloseThread);
+            instrument.continueContextClosed.countDown();
+            Assert.assertTrue("Engine close did not finish.", closeFinished.await(10, TimeUnit.SECONDS));
+            Assert.assertNull(closeFailure.get());
+            context = null;
+        } finally {
+            instrument.continueContextClosed.countDown();
+        }
+    }
+
+    @Test
+    public void testContextCreationDuringEngineClose() throws InterruptedException {
+        Engine testEngine = Engine.create();
+        Context ctx = Context.newBuilder().engine(testEngine).allowAllAccess(true).build();
+        BlockingDisposeInstrument instrument = new BlockingDisposeInstrument();
+        setupEnv(ctx, null, instrument);
+        context.leave();
+        enterContext = false;
+        ctx.close();
+        context = null;
+
+        AtomicReference<Throwable> closeFailure = new AtomicReference<>();
+        CountDownLatch closeFinished = new CountDownLatch(1);
+        Thread engineCloseThread = new Thread(() -> {
+            try {
+                testEngine.close();
+            } catch (Throwable t) {
+                closeFailure.set(t);
+            } finally {
+                closeFinished.countDown();
+            }
+        });
+        engineCloseThread.setDaemon(true);
+        engineCloseThread.start();
+        try {
+            Assert.assertTrue("Instrument disposal did not start.", instrument.disposing.await(10, TimeUnit.SECONDS));
+            assertFails(() -> Context.newBuilder().engine(testEngine).build(), IllegalStateException.class, "Engine is already closed.");
+        } finally {
+            instrument.continueDisposal.countDown();
+        }
+        Assert.assertTrue("Engine close did not finish.", closeFinished.await(10, TimeUnit.SECONDS));
+        Assert.assertNull(closeFailure.get());
+    }
+
+    private static void waitUntilWaitingForCleanup(Thread thread) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (System.nanoTime() < deadline) {
+            for (StackTraceElement element : thread.getStackTrace()) {
+                if (element.getClassName().equals("com.oracle.truffle.polyglot.PolyglotContextImpl") && element.getMethodName().equals("finishCleanup")) {
+                    return;
+                }
+            }
+            Thread.sleep(1);
+        }
+        Assert.fail("Engine close did not wait for context cleanup.");
+    }
+
+    private static final class BlockingContextClosedInstrument extends ProxyInstrument implements ContextsListener {
+
+        private volatile TruffleInstrument.Env env;
+        private final CountDownLatch contextClosed = new CountDownLatch(1);
+        private final CountDownLatch continueContextClosed = new CountDownLatch(1);
+
+        @Override
+        protected void onCreate(TruffleInstrument.Env newEnv) {
+            env = newEnv;
+            newEnv.getInstrumenter().attachContextsListener(this, false);
+        }
+
+        Thread createSystemThread(Runnable runnable) {
+            return env.createSystemThread(runnable);
+        }
+
+        @Override
+        public void onContextCreated(TruffleContext ctx) {
+        }
+
+        @Override
+        public void onLanguageContextCreated(TruffleContext ctx, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextInitialized(TruffleContext ctx, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextFinalized(TruffleContext ctx, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextDisposed(TruffleContext ctx, LanguageInfo language) {
+        }
+
+        @Override
+        public void onContextClosed(TruffleContext ctx) {
+            contextClosed.countDown();
+            try {
+                continueContextClosed.await();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+        }
+    }
+
+    private static final class BlockingDisposeInstrument extends ProxyInstrument {
+
+        private final CountDownLatch disposing = new CountDownLatch(1);
+        private final CountDownLatch continueDisposal = new CountDownLatch(1);
+
+        @Override
+        protected void onDispose(TruffleInstrument.Env env) {
+            disposing.countDown();
+            try {
+                continueDisposal.await();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
         }
     }
 
