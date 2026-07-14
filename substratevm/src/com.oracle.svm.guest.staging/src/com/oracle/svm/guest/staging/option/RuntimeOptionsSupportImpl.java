@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,10 +32,6 @@ import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
-import com.oracle.svm.guest.staging.option.XOptions;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -47,7 +43,6 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 
-@AutomaticallyRegisteredImageSingleton(RuntimeOptionsSupport.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
