@@ -48,16 +48,13 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.libc.BionicLibC;
-import com.oracle.svm.core.c.libc.GLibC;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.guest.staging.config.SubstrateGuestLibC;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_cond_t;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_mutex_t;
@@ -150,10 +147,10 @@ public final class PosixPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord computeGuardSizeIncludedInStackSize(pthread_attr_t attr) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            if (LibCBase.targetLibCIs(MuslLibC.class)) {
+            if (SubstrateGuestLibC.isMusl()) {
                 /* pthread_attr_getstack() already excludes the guard size correctly. */
                 return Word.zero();
-            } else if (LibCBase.targetLibCIs(GLibC.class) || LibCBase.targetLibCIs(BionicLibC.class)) {
+            } else if (SubstrateGuestLibC.isGLibC() || SubstrateGuestLibC.isBionic()) {
                 /* pthread_attr_getstack() includes the guard size, so determine and subtract the guard size. */
                 WordPointer guardSizePtr = StackValue.get(WordPointer.class);
                 if (Pthread.pthread_attr_getguardsize(attr, guardSizePtr) != 0) {
