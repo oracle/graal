@@ -45,6 +45,8 @@ import jdk.graal.compiler.phases.common.LazyValue;
 public final class AccessAdvisor {
     // Checkstyle: allow System.err (agent class)
 
+    private static final String JDK_METHOD_HANDLE_HELPER_CALLER = "java.lang.invoke.MethodHandleImpl$1";
+
     /**
      * {@link java.lang.reflect.Proxy} generated classes can be put in arbitrary packages depending
      * on the visibility and module of the interfaces they implement, so we can only match against
@@ -213,8 +215,12 @@ public final class AccessAdvisor {
         }
         String qualifiedCaller = callerClass.get();
         assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
+        if (isEnumValuesLookup(entry)) {
+            logIgnoredEntry("enum values helper", entry);
+            return true;
+        }
         if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller) &&
-                        !shouldPreserveApplicationMethodHandleLookup(queriedClass, entry)) {
+                        !shouldPreserveApplicationMethodHandleLookup(qualifiedCaller, queriedClass, entry)) {
             logIgnoredEntry("excluded by caller filter", entry);
             return true;
         }
@@ -239,8 +245,10 @@ public final class AccessAdvisor {
         return false;
     }
 
-    private boolean shouldPreserveApplicationMethodHandleLookup(LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
+    private boolean shouldPreserveApplicationMethodHandleLookup(String qualifiedCaller, LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
+        // Preserve only the evidenced JDK helper frame; custom caller-filter exclusions still win.
         return "findMethodHandle".equals(entry.get("function")) && queriedClass.get() != null &&
+                        JDK_METHOD_HANDLE_HELPER_CALLER.equals(qualifiedCaller) &&
                         callerFilter.includes(queriedClass.get()) && !isEnumValuesLookup(entry);
     }
 

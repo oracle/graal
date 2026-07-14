@@ -801,6 +801,8 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
+            '--add-exports=org.graalvm.nativeimage.configure/com.oracle.svm.configure.filters=ALL-UNNAMED',
+            '--add-exports=org.graalvm.nativeimage.configure/com.oracle.svm.configure.trace=ALL-UNNAMED',
             '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
             '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
@@ -3388,7 +3390,9 @@ def native_unittest(args):
     # Decide whether to include the SVM test feature injections based on the selectors provided.
     # If no selectors were provided, native-unittest will default to SVM tests, so include features.
     def _is_svm_selector(a: str) -> bool:
-        return a.startswith('com.oracle.svm.test')
+        return a.startswith(('com.oracle.svm.configure.test',
+                             'com.oracle.svm.graal.test',
+                             'com.oracle.svm.test'))
     include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
     computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
     # Merge computed build args into an existing --build-args block if present, otherwise append.

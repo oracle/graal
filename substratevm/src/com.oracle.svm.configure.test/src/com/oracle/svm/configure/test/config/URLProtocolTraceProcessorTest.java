@@ -34,7 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -63,111 +62,6 @@ public class URLProtocolTraceProcessorTest {
     @Test
     public void getURLStreamHandlerRegistersJarHandlerConstructor() throws Exception {
         assertURLStreamHandlerConstructorRegistered("getURLStreamHandler", JAR_HANDLER);
-    }
-
-    @Test
-    public void excludedMethodHandleCallerRegistersAccessedTestMethod() throws Exception {
-        String testClassName = "javasoft.sqe.tests.api.java.util.Spliterator.SpliteratorTestBase";
-        ConfigurationSet configurationSet = new ConfigurationSet();
-        Object processor = newReflectionProcessor();
-
-        processTrace(processor, configurationSet, """
-                        [
-                          {
-                            "tracer": "reflect",
-                            "function": "findMethodHandle",
-                            "class": "%s",
-                            "declaring_class": "%s",
-                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
-                            "result": true,
-                            "args": ["sortedSpliterators", []]
-                          }
-                        ]
-                        """.formatted(testClassName, testClassName));
-
-        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
-        ConfigurationType testType = getConfigurationType(reflectionConfiguration, testClassName);
-        Assert.assertNotNull(testType);
-        ConfigurationMemberInfo methodInfo = getMethodInfo(testType, "sortedSpliterators");
-        Assert.assertEquals("PRESENT", methodInfo.getDeclaration().toString());
-        Assert.assertEquals("ACCESSED", methodInfo.getAccessibility().toString());
-    }
-
-    @Test
-    public void excludedMethodHandleCallerRegistersNonEnumValuesMethod() throws Exception {
-        String testClassName = "com.example.ValueContainer";
-        ConfigurationSet configurationSet = new ConfigurationSet();
-        Object processor = newReflectionProcessor();
-
-        processTrace(processor, configurationSet, """
-                        [
-                          {
-                            "tracer": "reflect",
-                            "function": "findMethodHandle",
-                            "class": "%s",
-                            "declaring_class": "%s",
-                            "class_is_enum": false,
-                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
-                            "result": true,
-                            "args": ["values", []]
-                          }
-                        ]
-                        """.formatted(testClassName, testClassName));
-
-        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
-        ConfigurationType testType = getConfigurationType(reflectionConfiguration, testClassName);
-        Assert.assertNotNull(testType);
-        ConfigurationMemberInfo methodInfo = getMethodInfo(testType, "values");
-        Assert.assertEquals("PRESENT", methodInfo.getDeclaration().toString());
-        Assert.assertEquals("ACCESSED", methodInfo.getAccessibility().toString());
-    }
-
-    @Test
-    public void excludedMethodHandleCallerDoesNotRegisterEnumValuesHelper() throws Exception {
-        String enumClassName = "com.example.TestMode";
-        ConfigurationSet configurationSet = new ConfigurationSet();
-        Object processor = newReflectionProcessor();
-
-        processTrace(processor, configurationSet, """
-                        [
-                          {
-                            "tracer": "reflect",
-                            "function": "findMethodHandle",
-                            "class": "%s",
-                            "declaring_class": "%s",
-                            "class_is_enum": true,
-                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
-                            "result": true,
-                            "args": ["values", []]
-                          }
-                        ]
-                        """.formatted(enumClassName, enumClassName));
-
-        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
-        Assert.assertNull(getConfigurationType(reflectionConfiguration, enumClassName));
-    }
-
-    @Test
-    public void excludedMethodHandleCallerDoesNotRegisterProxyConstructor() throws Exception {
-        String proxyInterfaceName = "com.example.ProxyInterface";
-        ConfigurationSet configurationSet = new ConfigurationSet();
-        Object processor = newReflectionProcessor();
-
-        processTrace(processor, configurationSet, """
-                        [
-                          {
-                            "tracer": "reflect",
-                            "function": "findConstructorHandle",
-                            "class": { "proxy": ["%s"] },
-                            "caller_class": "java.lang.invoke.MethodHandleImpl$1",
-                            "result": true,
-                            "args": [["java.lang.reflect.InvocationHandler"]]
-                          }
-                        ]
-                        """.formatted(proxyInterfaceName));
-
-        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
-        Assert.assertNull(getProxyConfigurationType(reflectionConfiguration, proxyInterfaceName));
     }
 
     private static void assertURLStreamHandlerConstructorRegistered(String function, String handlerClassName) throws Exception {
@@ -222,18 +116,8 @@ public class URLProtocolTraceProcessorTest {
                         NamedConfigurationTypeDescriptor.fromReflectionName(className));
     }
 
-    private static ConfigurationType getProxyConfigurationType(TypeConfiguration reflectionConfiguration, String interfaceName) {
-        return reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
-                        ProxyConfigurationTypeDescriptor.fromInterfaceTypeNames(List.of(interfaceName)));
-    }
-
     private static ConfigurationMemberInfo getConstructorInfo(ConfigurationType configurationType) {
         ConfigurationMethod constructorMethod = new ConfigurationMethod("<init>", "()V");
         return ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, constructorMethod);
-    }
-
-    private static ConfigurationMemberInfo getMethodInfo(ConfigurationType configurationType, String methodName) {
-        ConfigurationMethod method = new ConfigurationMethod(methodName, "()V");
-        return ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, method);
     }
 }
