@@ -155,6 +155,25 @@ public class ErrorTests {
         }
     }
 
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class InterceptionWithoutTagInstrumentation extends RootNode implements BytecodeRootNode {
+        protected InterceptionWithoutTagInstrumentation(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectError("interceptIncomingValue can only be overridden when tag instrumentation is enabled. Enable tag instrumentation or remove this override.")
+        @Override
+        public Object interceptIncomingValue(Object value) {
+            return value;
+        }
+
+        @ExpectError("interceptOutgoingValue can only be overridden when tag instrumentation is enabled. Enable tag instrumentation or remove this override.")
+        @Override
+        public Object interceptOutgoingValue(Object value) {
+            return value;
+        }
+    }
+
     @ExpectError("Error parsing expression%")
     @GenerateBytecode(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true, defaultUncachedThreshold = "-1")
     public abstract static class BadUncachedThreshold extends RootNode implements BytecodeRootNode {

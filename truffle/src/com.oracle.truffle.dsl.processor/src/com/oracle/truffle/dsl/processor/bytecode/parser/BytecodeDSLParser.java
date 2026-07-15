@@ -384,9 +384,22 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         // Extract hook implementations.
         model.interceptControlFlowException = ElementUtils.findMethod(typeElement, "interceptControlFlowException");
+        model.interceptIncomingValue = ElementUtils.findMethod(typeElement, "interceptIncomingValue");
         model.interceptInternalException = ElementUtils.findMethod(typeElement, "interceptInternalException");
+        model.interceptOutgoingValue = ElementUtils.findMethod(typeElement, "interceptOutgoingValue");
         model.interceptTruffleException = ElementUtils.findMethod(typeElement, "interceptTruffleException");
         model.traceTransition = ElementUtils.findMethod(typeElement, "traceTransition");
+
+        if (!model.enableTagInstrumentation) {
+            if (model.interceptIncomingValue != null) {
+                model.addError(model.interceptIncomingValue,
+                                "interceptIncomingValue can only be overridden when tag instrumentation is enabled. Enable tag instrumentation or remove this override.");
+            }
+            if (model.interceptOutgoingValue != null) {
+                model.addError(model.interceptOutgoingValue,
+                                "interceptOutgoingValue can only be overridden when tag instrumentation is enabled. Enable tag instrumentation or remove this override.");
+            }
+        }
 
         checkRootNodeOverrides(typeElement, model);
         if (model.hasErrors()) {

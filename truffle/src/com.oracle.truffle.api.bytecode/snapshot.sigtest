@@ -221,6 +221,8 @@ meth public com.oracle.truffle.api.source.Source getSource()
 meth public com.oracle.truffle.api.source.SourceSection ensureSourceSection()
 meth public com.oracle.truffle.api.source.SourceSection ensureSourceSectionWithContent()
 meth public java.lang.Object interceptControlFlowException(com.oracle.truffle.api.nodes.ControlFlowException,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.bytecode.BytecodeNode,int) throws java.lang.Throwable
+meth public java.lang.Object interceptIncomingValue(java.lang.Object)
+meth public java.lang.Object interceptOutgoingValue(java.lang.Object)
 meth public java.lang.String dump()
 meth public java.lang.Throwable interceptInternalException(java.lang.Throwable,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.bytecode.BytecodeNode,int)
 meth public void traceTransition(com.oracle.truffle.api.bytecode.BytecodeTransition,com.oracle.truffle.api.frame.Frame)
