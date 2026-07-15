@@ -229,7 +229,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         return EnumSet.noneOf(AArch64.CPUFeature.class);
     }
 
-    static boolean isSupported(Architecture arch, Stride stride, ArrayIndexOfVariant variant) {
+    public static boolean isSupported(Architecture arch, Stride stride, ArrayIndexOfVariant variant) {
         return arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64(stride, variant)) ||
                         arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
     }
