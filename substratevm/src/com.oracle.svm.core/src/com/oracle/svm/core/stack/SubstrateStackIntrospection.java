@@ -441,10 +441,18 @@ class SubstrateInspectedFrame implements InspectedFrame {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (liveFrame.deoptimizedFrame != null) {
             VirtualFrame liveVirtualFrame = lookupVirtualFrame(liveFrame.deoptimizedFrame);
-            if (virtualFrame == null || liveVirtualFrame != virtualFrame) {
+            /*
+             * A regular frame handle records the source IP, while a handle captured after
+             * deoptimization records the deoptimization stub IP and is matched by VirtualFrame
+             * identity instead.
+             */
+            if (liveVirtualFrame == null ||
+                            (virtualFrame == null && !liveFrame.deoptimizedFrame.getSourcePC().equal(ip)) ||
+                            (virtualFrame != null && liveVirtualFrame != virtualFrame)) {
                 throw new IllegalStateException("Stack frame changed");
             }
             verifyLiveFrameInfo(liveVirtualFrame.getFrameInfo());
+            virtualFrame = liveVirtualFrame;
         } else {
             if (liveFrame.codeInfo == null || liveFrame.codeInfo.getFrameInfo() == null) {
                 throw new IllegalStateException("Stack frame not found");
