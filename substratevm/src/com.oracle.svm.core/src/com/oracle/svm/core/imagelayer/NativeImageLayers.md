@@ -67,7 +67,7 @@ Native Image Layers are currently supported on:
 | Operating system | Architectures |
 | --- | --- |
 | Linux | AMD64, AArch64 |
-| macOS/Darwin | AMD64, AArch64 |
+| macOS/Darwin | AArch64 |
 | Windows | AMD64 |
 
 Layer archives are platform-dependent. A layer built for one operating system, architecture, GraalVM version, JDK, and
