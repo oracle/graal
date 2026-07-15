@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKinds;
@@ -60,6 +61,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
@@ -142,7 +145,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple1(LLVMRintNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMRintNodeGen::create, (vectorSize, arg) -> LLVMVectorUnaryNodeGen.create(vectorSize, LLVMRintNodeGen.create(null), arg));
             case X86_FP80:
                 return TypedBuiltinFactory.simple((args) -> LLVMLongDoubleNode.createUnary("rint", args[1], LongDoubleKinds.FP80));
             case F128:
@@ -405,8 +408,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMRint extends LLVMBuiltin {
+    public abstract static class LLVMRint extends LLVMUnaryNode {
+
+        protected LLVMRint() {
+            super(UnaryOperation.NEG);
+        }
 
         @Specialization
         protected float doIntrinsic(float value) {
