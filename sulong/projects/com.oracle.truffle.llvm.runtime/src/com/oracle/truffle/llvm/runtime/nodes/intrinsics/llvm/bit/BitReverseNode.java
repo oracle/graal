@@ -34,16 +34,33 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI1NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI64NodeGen;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 
 public abstract class BitReverseNode {
 
     public static TypedBuiltinFactory getFactory(PrimitiveKind type) {
-        if (type == PrimitiveKind.I32) {
-            return TypedBuiltinFactory.simple1(BitReverseI32NodeGen::create);
+        switch (type) {
+            case I1:
+                return TypedBuiltinFactory.simple1(BitReverseI1NodeGen::create);
+            case I32:
+                return TypedBuiltinFactory.simple1(BitReverseI32NodeGen::create);
+            case I64:
+                return TypedBuiltinFactory.simple1(BitReverseI64NodeGen::create);
+            default:
+                return null;
         }
-        return null;
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseI1Node extends LLVMBuiltin {
+
+        @Specialization
+        protected boolean doI1(boolean value) {
+            return value;
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -52,6 +69,15 @@ public abstract class BitReverseNode {
         @Specialization
         protected int doI32(int value) {
             return Integer.reverse(value);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseI64Node extends LLVMBuiltin {
+
+        @Specialization
+        protected long doI64(long value) {
+            return Long.reverse(value);
         }
     }
 }
