@@ -45,8 +45,12 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
     private final List<AnnotationValue> injectedAnnotations;
 
     public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
+        this(original, AnnotationUtil.asAnnotationValue(injectedAnnotation));
+    }
+
+    public AnnotatedField(ResolvedJavaField original, AnnotationValue injectedAnnotation) {
         this.original = original;
-        this.injectedAnnotations = List.of(AnnotationUtil.asAnnotationValue(injectedAnnotation));
+        this.injectedAnnotations = List.of(injectedAnnotation);
     }
 
     @Override

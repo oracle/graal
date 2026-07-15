@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -108,7 +109,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_ClassLoader = lookupType(ClassLoader.class);
     public final ResolvedJavaMethod java_lang_ClassLoader_getName = lookupMethod(java_lang_ClassLoader, "getName");
+    public final ResolvedJavaMethod java_lang_ClassLoader_getPlatformClassLoader = lookupMethod(java_lang_ClassLoader, "getPlatformClassLoader");
     public final ResolvedJavaMethod java_lang_ClassLoader_getSystemClassLoader = lookupMethod(java_lang_ClassLoader, "getSystemClassLoader");
+
+    public final ResolvedJavaType java_lang_ClassNotFoundException = lookupType(ClassNotFoundException.class);
 
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
@@ -169,6 +173,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType jdk_internal_foreign_abi_VMStorage = lookupType("jdk.internal.foreign.abi.VMStorage");
 
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.shared.Uninterruptible");
+    public final ResolvedJavaType Delete = lookupType(Delete.class);
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");

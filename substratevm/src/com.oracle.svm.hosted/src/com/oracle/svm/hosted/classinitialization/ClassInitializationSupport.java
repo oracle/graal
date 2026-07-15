@@ -460,6 +460,18 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
+    public void forceInitializeHosted(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
+        /*
+         * GR-76456: This converts a guest JVMCI type back to a builder-hosted Class. Terminus must
+         * perform class initialization in the guest context instead.
+         */
+        forceInitializeHosted(OriginalClassProvider.getJavaClass(type), reason, allowInitializationErrors);
+    }
+
+    /**
+     * Initializes the class during image building, and reports an error if the user requested to
+     * delay initialization to runtime.
+     */
     public void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors) {
         if (clazz == null) {
             return;
