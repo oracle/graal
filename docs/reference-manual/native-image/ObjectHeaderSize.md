@@ -10,12 +10,12 @@ permalink: /reference-manual/native-image/optimizations-and-performance/ObjectHe
 The object header is part of every object in memory, storing metadata about the object, and its size varies depending on the JVM implementation, and specific JVM options such as compressed references.
 The size of the object header directly affects the memory footprint of a Java application, particularly if a lot of small objects are allocated.
 
-In Oracle GraalVM Native Image, the object header is 4 bytes by default, which is smaller than when running on HotSpot.
+In GraalVM Native Image, the object header is 4 bytes by default, which is smaller than when running on HotSpot.
 
 For example, in a 64-bit HotSpot VM with compressed references, an instance of `java.lang.Object` consumes 16 bytes (12-byte header plus 4-byte padding).
-Using Oracle GraalVM Native Image, the same object consumes only 8 bytes, offering significant memory savings.
+Using GraalVM Native Image, the same object consumes only 8 bytes, offering significant memory savings.
 However, in case of Native Image, the object size heavily depends on the used garbage collector (GC), the allocated instance type, and the state of compressed references.
-Compressed references use 32-bit instead of 64-bit, and are enabled by default in Oracle GraalVM.
+Compressed references use 32-bit instead of 64-bit, and are enabled by default in GraalVM.
 
 To observe the memory usage differences, consider this example application that measures thread-allocated bytes using the [ThreadMXBean API](https://docs.oracle.com/en/java/javase/25/docs/api/java.management/java/lang/management/ThreadMXBean.html):
 ```java

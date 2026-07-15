@@ -228,7 +228,7 @@ We recommend always comparing Epsilon GC against the default GC (Serial GC) to d
 
 By default, a native image will set its maximum Java heap size to 80% of the physical memory when using Serial or Epsilon GC, and to 25% when using G1 GC.
 For example, on a machine with 16GB of RAM, the maximum heap size will be set to 12.8GB with Serial or Epsilon GC.
-However, if you run on Oracle GraalVM with compressed references support enabled, the maximum Java heap cannot be larger than 32GB.
+However, with compressed references, which are enabled by default, the maximum Java heap cannot be larger than 32GB.
 This information can be found in the output for each build.
 
 To override the default behavior, you can explicitly set the maximum heap size.
