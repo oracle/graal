@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMIVarBitStoreNode.LLVMIVarBitOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMArithmetic {
@@ -717,12 +719,11 @@ public abstract class LLVMArithmetic {
         }
     }
 
-    @NodeChild(value = "left", type = LLVMExpressionNode.class)
-    @NodeChild(value = "right", type = LLVMExpressionNode.class)
-    public abstract static class LLVMSimpleArithmeticPrimitive extends LLVMBuiltin {
+    public abstract static class LLVMSimpleArithmeticPrimitive extends LLVMArithmeticNode {
         private final SaturatingArithmetic arithmetic;
 
         public LLVMSimpleArithmeticPrimitive(SaturatingArithmetic arithmetic) {
+            super(ArithmeticOperation.SUB);
             this.arithmetic = arithmetic;
         }
 

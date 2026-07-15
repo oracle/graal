@@ -1738,6 +1738,8 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.ssub.sat.i32":
                 case "llvm.ssub.sat.i64":
                     return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, args[1], args[2]);
+                case "llvm.ssub.sat.v8i16":
+                    return LLVMVectorArithmeticNodeGen.create(8, LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, null, null), args[1], args[2]);
                 case "llvm.uadd.with.overflow.i8":
                 case "llvm.uadd.with.overflow.i16":
                 case "llvm.uadd.with.overflow.i32":
