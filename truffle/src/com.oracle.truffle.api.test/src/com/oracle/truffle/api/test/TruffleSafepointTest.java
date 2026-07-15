@@ -978,6 +978,58 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         semaphore.release();
     }
 
+    @Test
+    public void testBlockedSameThreadLocalActionPerformException() {
+        Semaphore submitActions = new Semaphore(0);
+        Semaphore enterBlocked = new Semaphore(0);
+        Semaphore blocked = new Semaphore(0);
+        RuntimeException actionException = new RuntimeException("action exception");
+        AtomicBoolean firstAttempt = new AtomicBoolean(true);
+        List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
+
+        class ThrowingThreadLocalAction extends ThreadLocalAction {
+            ThrowingThreadLocalAction() {
+                super(true, false);
+            }
+
+            @Override
+            protected void perform(Access access) {
+                throw actionException;
+            }
+        }
+
+        Future<?> first = null;
+        Future<?> second = null;
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            if (!firstAttempt.compareAndSet(true, false)) {
+                return true;
+            }
+            submitActions.release();
+            acquire(enterBlocked);
+            TruffleSafepoint.setBlockedThreadInterruptible(node, Semaphore::acquire, blocked);
+            return true;
+        }, exceptions::add)) {
+            try {
+                acquire(submitActions);
+                first = setup.env.submitThreadLocal(null, new ThrowingThreadLocalAction());
+                second = setup.env.submitThreadLocal(null, new ThrowingThreadLocalAction());
+
+                enterBlocked.release();
+                setup.stopAndAwait();
+
+                assertEquals(1, exceptions.size());
+                assertSame(actionException, exceptions.get(0));
+            } finally {
+                if (first != null) {
+                    first.cancel(true);
+                }
+                if (second != null) {
+                    second.cancel(true);
+                }
+            }
+        }
+    }
+
     private static Semaphore[] createSemaphores(int count, int permits) {
         Semaphore[] semaphores = new Semaphore[count];
         for (int i = 0; i < semaphores.length; i++) {
