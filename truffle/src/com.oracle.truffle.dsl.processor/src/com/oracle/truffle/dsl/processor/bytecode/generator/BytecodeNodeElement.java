@@ -2478,12 +2478,12 @@ final class BytecodeNodeElement extends AbstractElement {
 
         if (parent.model.interceptTruffleException != null) {
             if (mayWrapLocalFrame()) {
-                b.declaration(types.FrameWithoutBoxing, localFrame(), "frame");
                 startIfHasSeparateLocalFrame(b, false, true);
-                b.startAssign(localFrame()).tree(readContinuationFrame("frame", types.FrameWithoutBoxing)).end();
+                b.startReturn().startCall("root", parent.model.interceptTruffleException).string("ex").tree(readContinuationFrame("frame", types.FrameWithoutBoxing)).string("this").string(
+                                parent.castBytecodeIndexToInt("bci")).end(2);
                 b.end();
             }
-            b.startReturn().startCall("root", parent.model.interceptTruffleException).string("ex").string(localFrame()).string("this").string(parent.castBytecodeIndexToInt("bci")).end(2);
+            b.startReturn().startCall("root", parent.model.interceptTruffleException).string("ex").string("frame").string("this").string(parent.castBytecodeIndexToInt("bci")).end(2);
         }
 
         return method;

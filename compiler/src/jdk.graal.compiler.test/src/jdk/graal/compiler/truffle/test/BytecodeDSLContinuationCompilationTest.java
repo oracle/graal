@@ -99,7 +99,9 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
     }
 
     @Test
-    public void testTruffleExceptionInterceptionFillsStackTrace() {
+    public void testGR77555() {
+        // This is a regression test for a compilation failure. Generated code for resolveThrowable
+        // had a control flow split+merge that caused the compiler to treat the frame as escaped.
         TruffleExceptionInterceptingInterpreter root = parseTruffleExceptionInterceptingNode(b -> {
             b.beginRoot();
             BytecodeLocal local = b.createLocal();
@@ -112,24 +114,17 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
             b.emitLoadConstant(0L);
             b.endYield();
             /*
-             * Keep an operand below the custom yield's operands. Its generated handler must copy
-             * that operand from the virtual wrapper frame to the continuation frame. Exceptions
-             * from that copy merge before interception, so filling in the stack trace must be
-             * allowed to materialize the wrapper frame.
+             * Keep an operand below the custom yield. The handler copies the operands from the
+             * virtual frame into the materialized frame before the custom yield. Something about
+             * this shape prevents PEA from detecting that the virtual frame does not escape.
              */
             b.beginKeepAlive();
-            b.emitLoadConstant(42L);
-            b.beginThrowStackTraceObservedTruffleException();
-            b.emitLoadConstant(1L);
-            b.emitLoadConstant(2L);
-            b.emitLoadConstant(3L);
-            b.endThrowStackTraceObservedTruffleException();
+            b.emitLoadConstant(123L);
+            b.emitThrowStackTraceObservedTruffleException();
             b.endKeepAlive();
             b.endBlock();
             b.beginReturn();
-            b.beginReadException();
             b.emitLoadException();
-            b.endReadException();
             b.endReturn();
             b.endTryCatch();
             b.endRoot();
@@ -147,8 +142,7 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
     }
 
     private static void assertStackTraceObservedOnResume(ContinuationResult yielded) {
-        TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException ex =
-                        (TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException) yielded.continueWith(null);
+        TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException ex = (TruffleExceptionInterceptingInterpreter.StackTraceObservedTruffleException) yielded.continueWith(null);
         List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(ex);
         assertEquals(1, stackTrace.size());
         TruffleStackTraceElement element = stackTrace.get(0);
@@ -298,6 +292,12 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         }
     }
 
+    private enum InterceptKind {
+        TRUFFLE,
+        INTERNAL,
+        CONTROL_FLOW
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, captureFramesForTrace = true)
     abstract static class TruffleExceptionInterceptingInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
         protected TruffleExceptionInterceptingInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -318,14 +318,6 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         }
 
         @Operation
-        static final class ReadException {
-            @Specialization
-            static Object perform(Object ex) {
-                return ex;
-            }
-        }
-
-        @Operation
         static final class KeepAlive {
             @Specialization
             static Object perform(Object first, Object second) {
@@ -333,19 +325,13 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
             }
         }
 
-        @Yield(resultOperandIndex = 2)
+        @Yield
         static final class ThrowStackTraceObservedTruffleException {
             @Specialization
             @TruffleBoundary(transferToInterpreterOnException = false)
-            static Object perform(Object first, Object second, Object third, @Bind Node node) {
+            static Object perform(@Bind Node node) {
                 throw new StackTraceObservedTruffleException(node);
             }
         }
-    }
-
-    private enum InterceptKind {
-        TRUFFLE,
-        INTERNAL,
-        CONTROL_FLOW
     }
 }
