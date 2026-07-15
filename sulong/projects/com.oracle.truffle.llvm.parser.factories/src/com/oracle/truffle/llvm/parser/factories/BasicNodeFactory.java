@@ -1614,10 +1614,26 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.fmuladd.f128":
                     LLVMExpressionNode mulNodeF128 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.F128, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.F128, mulNodeF128, args[3]);
+                case "llvm.fmuladd.v2f32":
+                    VectorType typeVec2f32 = new VectorType(PrimitiveType.FLOAT, 2);
+                    LLVMExpressionNode vecMulNodeFloat2 = createArithmeticOp(ArithmeticOperation.MUL, typeVec2f32, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec2f32, vecMulNodeFloat2, args[3]);
+                case "llvm.fmuladd.v4f32":
+                    VectorType typeVec4f32 = new VectorType(PrimitiveType.FLOAT, 4);
+                    LLVMExpressionNode vecMulNodeFloat4 = createArithmeticOp(ArithmeticOperation.MUL, typeVec4f32, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec4f32, vecMulNodeFloat4, args[3]);
                 case "llvm.fmuladd.v2f64":
                     VectorType typeVec2f64 = new VectorType(PrimitiveType.DOUBLE, 2);
-                    LLVMExpressionNode vecMulNodeDouble = createArithmeticOp(ArithmeticOperation.MUL, typeVec2f64, args[1], args[2]);
-                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec2f64, vecMulNodeDouble, args[3]);
+                    LLVMExpressionNode vecMulNodeDouble2 = createArithmeticOp(ArithmeticOperation.MUL, typeVec2f64, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec2f64, vecMulNodeDouble2, args[3]);
+                case "llvm.fmuladd.v4f64":
+                    VectorType typeVec4f64 = new VectorType(PrimitiveType.DOUBLE, 4);
+                    LLVMExpressionNode vecMulNodeDouble4 = createArithmeticOp(ArithmeticOperation.MUL, typeVec4f64, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec4f64, vecMulNodeDouble4, args[3]);
+                case "llvm.fmuladd.v8f64":
+                    VectorType typeVec8f64 = new VectorType(PrimitiveType.DOUBLE, 8);
+                    LLVMExpressionNode vecMulNodeDouble8 = createArithmeticOp(ArithmeticOperation.MUL, typeVec8f64, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec8f64, vecMulNodeDouble8, args[3]);
                 case "llvm.returnaddress":
                     return LLVMReturnAddressNodeGen.create(args[1]);
                 case "llvm.lifetime.start.p0":
