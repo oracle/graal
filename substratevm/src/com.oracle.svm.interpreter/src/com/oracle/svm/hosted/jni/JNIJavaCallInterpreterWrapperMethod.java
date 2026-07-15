@@ -40,6 +40,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.interpreter.InterpreterStubSection;
@@ -154,7 +155,7 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
             };
         }
         String interpreterStubName = interpreterStubNamePrefix + (nonVirtual ? "NonVirtual" : "Virtual");
-        ResolvedJavaMethod targetMethod = kit.findMethod(InterpreterStubSection.class, interpreterStubName, JNIObjectHandle.class, JNIObjectHandle.class, Pointer.class);
+        ResolvedJavaMethod targetMethod = kit.findMethod(InterpreterStubSection.class, interpreterStubName, JNIObjectHandle.class, JNIMethodId.class, Pointer.class);
         StampPair returnStamp = StampPair.createSingle(StampFactory.forKind(JavaKind.Long));
         CallTargetNode callTarget = kit.createMethodCallTarget(InvokeKind.Static, targetMethod, new ValueNode[]{receiverOrClassHandle, methodId, payload}, returnStamp, kit.bci());
 

@@ -41,7 +41,6 @@ import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
-import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -153,9 +152,6 @@ public interface CremaSupport {
     /** Gets the static storage base encoded by a runtime-loaded static JNI field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive);
-
-    /** Gets the runtime-loaded executable encoded by {@code methodId}. */
-    Executable getCremaMethodExecutable(JNIMethodId methodId);
 
     /** Gets a method declared by runtime-loaded {@code clazz} with {@code name}, {@code signature}. */
     ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature);

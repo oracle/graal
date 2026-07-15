@@ -34,6 +34,13 @@ import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.shared.Uninterruptible;
 
+/**
+ * Encodes JNI field IDs for runtime-loaded Crema classes.
+ *
+ * Instance field IDs store the field offset directly, while static field IDs store a pointer to a
+ * metaspace node that keeps the declaring hub and offset together. The high bit tags both forms as
+ * Crema IDs and distinguishes them from IDs created for image-build-time classes.
+ */
 public final class CremaJNIFieldIds {
     /** Marks a field id as using the Crema runtime-loaded field-id encoding. */
     private static final long TAG_MASK = 0x8000_0000_0000_0000L;
@@ -61,7 +68,7 @@ public final class CremaJNIFieldIds {
      */
     public static JNIFieldId forStaticField(CremaJNIStaticFieldId id) {
         JNIFieldId result = Word.pointer(Word.objectToUntrackedPointer(id).rawValue() | TAG_MASK);
-        assert isCremaFieldId(result);
+        assert canBeCremaStaticFieldId(result);
         return result;
     }
 
@@ -69,6 +76,12 @@ public final class CremaJNIFieldIds {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isCremaFieldId(JNIFieldId fieldId) {
         return (fieldId.rawValue() & TAG_MASK) != 0;
+    }
+
+    /** Returns whether the field id uses the runtime-loaded Crema static field-id encoding. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean canBeCremaStaticFieldId(JNIFieldId fieldId) {
+        return isCremaFieldId(fieldId) && Metaspace.singleton().isInAddressSpace(Word.pointer(fieldId.rawValue() & PAYLOAD_MASK));
     }
 
     /** Returns the offset payload of a tagged instance field id. */
@@ -81,14 +94,14 @@ public final class CremaJNIFieldIds {
     /** Returns the static field offset stored in a tagged static field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int getStaticFieldOffset(JNIFieldId fieldId) {
-        assert isCremaFieldId(fieldId);
+        assert canBeCremaStaticFieldId(fieldId);
         return asStaticFieldId(fieldId).getOffset();
     }
 
     /** Returns the declaring class hub stored in a tagged static field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static DynamicHub getStaticFieldHolder(JNIFieldId fieldId) {
-        assert isCremaFieldId(fieldId);
+        assert canBeCremaStaticFieldId(fieldId);
         return asStaticFieldId(fieldId).getHolder();
     }
 
@@ -99,6 +112,7 @@ public final class CremaJNIFieldIds {
         return (CremaJNIStaticFieldId) pointer.toObject();
     }
 
+    /** Metaspace node containing the information needed to resolve a static Crema field id. */
     public static final class CremaJNIStaticFieldId {
         /** Stores the declaring class hub for a static field id. */
         private DynamicHub holder;
@@ -106,14 +120,14 @@ public final class CremaJNIFieldIds {
         /** Stores the static field offset within the holder's static storage. */
         private int offset;
 
-        /** Stores the next static field id node in the holder's linked list. */
-        private CremaJNIStaticFieldId next;
+        private CremaJNIStaticFieldId() {
+        }
 
-        public static CremaJNIStaticFieldId allocate(DynamicHub holder, int offset, CremaJNIStaticFieldId next) {
-            CremaJNIStaticFieldId result = Metaspace.singleton().allocateCremaJNIStaticFieldId();
+        /** Allocates and initializes a static field-id node in metaspace. */
+        public static CremaJNIStaticFieldId allocate(DynamicHub holder, int offset) {
+            CremaJNIStaticFieldId result = Metaspace.singleton().allocateObject(CremaJNIStaticFieldId.class);
             result.holder = holder;
             result.offset = offset;
-            result.next = next;
             return result;
         }
 
@@ -125,18 +139,6 @@ public final class CremaJNIFieldIds {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int getOffset() {
             return offset;
-        }
-
-        /** Finds an existing static field id node for the requested offset in this holder's list. */
-        public CremaJNIStaticFieldId findStaticFieldId(int searchOffset) {
-            CremaJNIStaticFieldId current = this;
-            while (current != null) {
-                if (current.offset == searchOffset) {
-                    return current;
-                }
-                current = current.next;
-            }
-            return null;
         }
     }
 }

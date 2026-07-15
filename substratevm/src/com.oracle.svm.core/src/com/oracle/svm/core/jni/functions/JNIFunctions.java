@@ -74,6 +74,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
@@ -1041,13 +1042,11 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
-        if (RuntimeClassLoading.isSupported()) {
-            Executable result = CremaSupport.singleton().getCremaMethodExecutable(methodId);
-            if (result != null) {
-                Class<?> clazz = result.getDeclaringClass();
-                assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
-                return JNIObjectHandles.createLocal(result);
-            }
+        if (RuntimeClassLoading.isSupported() && CremaJNIMethodIds.isCremaMethodId(methodId)) {
+            Executable result = RuntimeReflectionMetadata.fromResolvedMethod(CremaJNIMethodIds.getMethod(methodId));
+            Class<?> clazz = result.getDeclaringClass();
+            assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+            return JNIObjectHandles.createLocal(result);
         }
 
         Executable result = null;
@@ -1913,6 +1912,7 @@ public final class JNIFunctions {
                 if (resolvedJavaMethod instanceof CremaResolvedJavaMethod cremaResolvedJavaMethod) {
                     if (resolvedJavaMethod.isStatic() == isStatic) {
                         methodID = cremaResolvedJavaMethod.getOrCreateJNIMethodId();
+                        assert CremaJNIMethodIds.isCremaMethodId(methodID);
                     } else {
                         methodFoundWithOppositeStaticKind = true;
                     }
@@ -1930,6 +1930,7 @@ public final class JNIFunctions {
             if (lookupInDictionary) {
                 assert methodID.isNull();
                 methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic);
+                assert methodID.isNull() || !CremaJNIMethodIds.isCremaMethodId(methodID);
                 if (methodID.isNull()) {
                     methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic).isNonNull();
                 }

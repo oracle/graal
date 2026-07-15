@@ -30,12 +30,19 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
+import com.oracle.svm.core.hub.crema.CremaJNIMethodIds.CremaJNIMethodId;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.util.SubstrateUtil;
+
+import jdk.internal.vm.annotation.Stable;
 
 /**
  * A class registry is the VM-internal part of a {@link java.lang.ClassLoader}. It maps class names
@@ -52,6 +59,8 @@ public abstract class AbstractClassRegistry {
      * also be used to implement parallel class loading (GR-62338).
      */
     protected final ConcurrentHashMap<Symbol<Type>, Object> runtimeClasses;
+
+    @Stable private CremaJNIIdMaps cremaJNIIdMaps;
 
     AbstractClassRegistry(ConcurrentHashMap<Symbol<Type>, Object> runtimeClasses) {
         if (SubstrateUtil.HOSTED) {
@@ -99,6 +108,34 @@ public abstract class AbstractClassRegistry {
     public abstract ClassLoader getClassLoader();
 
     public abstract Class<?> loadClass(Symbol<Type> name) throws ClassNotFoundException;
+
+    public final CremaJNIMethodId getOrCreateCremaJNIMethodId(CremaResolvedJavaMethod method) {
+        return getOrCreateCremaJNIIdMaps().methodIds.computeIfAbsent(method, CremaJNIMethodId::allocate);
+    }
+
+    public final CremaJNIStaticFieldId getOrCreateCremaJNIStaticFieldId(CremaResolvedJavaField field, DynamicHub holder, int offset) {
+        assert field.isStatic();
+        return getOrCreateCremaJNIIdMaps().staticFieldIds.computeIfAbsent(field, _ -> CremaJNIStaticFieldId.allocate(holder, offset));
+    }
+
+    private CremaJNIIdMaps getOrCreateCremaJNIIdMaps() {
+        CremaJNIIdMaps result = cremaJNIIdMaps;
+        if (result == null) {
+            synchronized (this) {
+                result = cremaJNIIdMaps;
+                if (result == null) {
+                    result = new CremaJNIIdMaps();
+                    cremaJNIIdMaps = result;
+                }
+            }
+        }
+        return result;
+    }
+
+    private static final class CremaJNIIdMaps {
+        private final ConcurrentHashMap<CremaResolvedJavaMethod, CremaJNIMethodId> methodIds = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<CremaResolvedJavaField, CremaJNIStaticFieldId> staticFieldIds = new ConcurrentHashMap<>();
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public final void addAOTType(Class<?> cls) {

@@ -32,13 +32,12 @@ import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
+import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -72,7 +71,6 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * A runtime-loaded, classfile-backed specialization of {@link InterpreterResolvedObjectType}.
  */
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, FilteredAttributedElement {
-    private static final Object JNI_FIELD_ID_CREATION_LOCK = new Object();
     private static final Set<Symbol<Name>> RETAINED_ATTRIBUTES = Set.of(
                     BootstrapMethodsAttribute.NAME,
                     RecordAttribute.NAME,
@@ -94,8 +92,6 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     // GR-70720: The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
     private InterpreterResolvedObjectType host;
 
-    private CremaJNIStaticFieldId jniStaticFieldIds;
-
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
                     InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType,
@@ -114,16 +110,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         return primitives ? primitiveStatics : referenceStatics;
     }
 
-    public JNIFieldId jniStaticFieldIdFor(int offset) {
-        CremaJNIStaticFieldId probe;
-        synchronized (JNI_FIELD_ID_CREATION_LOCK) {
-            probe = jniStaticFieldIds == null ? null : jniStaticFieldIds.findStaticFieldId(offset);
-            if (probe == null) {
-                probe = CremaJNIStaticFieldId.allocate(DynamicHub.fromClass(getJavaClass()), offset, jniStaticFieldIds);
-                jniStaticFieldIds = probe;
-            }
-        }
-        return CremaJNIFieldIds.forStaticField(probe);
+    public AbstractClassRegistry classRegistry() {
+        return ClassRegistries.runtimeLastLayer().getRegistry(getJavaClass().getClassLoader());
     }
 
     public BootstrapMethodsAttribute getBootstrapMethodsAttribute() {

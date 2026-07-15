@@ -45,7 +45,6 @@ import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
@@ -134,8 +133,8 @@ public class MetaspaceImpl implements Metaspace {
     }
 
     @Override
-    public CremaJNIStaticFieldId allocateCremaJNIStaticFieldId() {
-        return allocator.allocateCremaJNIStaticFieldId();
+    public <T> T allocateObject(Class<T> clazz) {
+        return allocator.allocateObject(clazz);
     }
 
     @Override

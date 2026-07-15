@@ -45,6 +45,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jni.CallVariant;
@@ -119,6 +120,7 @@ public class CremaFeature implements InternalFeature {
             accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
 
             access.registerAsInHeap(CremaJNIFieldIds.CremaJNIStaticFieldId.class);
+            access.registerAsInHeap(CremaJNIMethodIds.CremaJNIMethodId.class);
 
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             enterCremaJNIMethodVarargsVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VARARGS, false, unpublished);

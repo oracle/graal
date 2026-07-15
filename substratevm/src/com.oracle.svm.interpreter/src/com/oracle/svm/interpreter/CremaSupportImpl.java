@@ -98,7 +98,6 @@ import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -108,11 +107,7 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
-import com.oracle.svm.core.jni.headers.JNIMethodId;
-import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
@@ -1615,18 +1610,6 @@ public class CremaSupportImpl implements CremaSupport {
         }
         if (resolvedField instanceof CremaResolvedJavaField cremaField) {
             return cremaField;
-        }
-        return null;
-    }
-
-    @Override
-    public Executable getCremaMethodExecutable(JNIMethodId methodId) {
-        if (JNIObjectHandles.getHandleType((JNIObjectHandle) methodId) != JNIObjectRefType.WeakGlobal) {
-            return null;
-        }
-        Object object = JNIObjectHandles.getObject((JNIObjectHandle) methodId);
-        if (object instanceof CremaResolvedJavaMethod method) {
-            return RuntimeReflectionMetadata.fromResolvedMethod(method);
         }
         return null;
     }
