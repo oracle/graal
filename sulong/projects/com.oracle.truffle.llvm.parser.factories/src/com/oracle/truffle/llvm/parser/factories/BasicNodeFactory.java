@@ -163,6 +163,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorRed
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceXorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode;
@@ -1461,6 +1462,8 @@ public class BasicNodeFactory implements NodeFactory {
 
     private static TypedBuiltinFactory getBuiltinFactory(String op, PrimitiveKind kind) {
         switch (op) {
+            case "bitreverse":
+                return BitReverseNode.getFactory(kind);
             case "bswap":
                 return LLVMByteSwap.getFactory(kind);
             case "ctpop":
