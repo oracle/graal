@@ -490,6 +490,17 @@ public class UninterruptibleUtils {
             return (int) v;
         }
 
+        /** Determines if a given {@code long} value is the range of unsigned int values. */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isUInt(long x) {
+            return (x & 0xffffffffL) == x;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int safeToUInt(long v) {
+            assert isUInt(v);
+            return (int) v;
+        }
     }
 
     public static class Byte {
