@@ -1536,6 +1536,14 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         return type(Throwable.class);
     }
 
+    private void emitOutgoingValue(CodeTreeBuilder b, String value) {
+        if (model().interceptOutgoingValue == null) {
+            b.string(value);
+        } else {
+            b.startCall("getRoot()", model().interceptOutgoingValue).string(value).end();
+        }
+    }
+
     private TypeMirror emitTagLeave(CodeTreeBuilder b, ExecutionMode mode) {
         Operand valueOperand = instruction.signature.singleDynamicOperand();
         if (mode.isFastPath()) {
@@ -1545,7 +1553,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
             b.startStatement().startCall("tagNode.findProbe().onReturnValue");
             b.string(parent.localFrame());
-            b.string(valueOperand.localName());
+            emitOutgoingValue(b, valueOperand.localName());
             b.end().end();
         } else { // slow-path
 
@@ -1607,7 +1615,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
             b.startStatement().startCall("tagNode.findProbe().onReturnValue");
             b.string(parent.localFrame());
-            b.string(valueOperand.localName());
+            emitOutgoingValue(b, valueOperand.localName());
             b.end(2);
         }
         return null;
@@ -1638,7 +1646,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         b.startStatement().startCall("tagNode.findProbe().onYield");
         b.string(parent.localFrame());
-        b.string("result_");
+        emitOutgoingValue(b, "result_");
         b.end(2);
         return null;
     }

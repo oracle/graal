@@ -2244,6 +2244,10 @@ final class BytecodeNodeElement extends AbstractElement {
                     TypeMirror targetType = entry.getKey();
                     b.startCaseBlock();
 
+                    if (parent.model.interceptIncomingValue != null) {
+                        b.startStatement().string("result = ").startCall("root", parent.model.interceptIncomingValue).string("result").end(2);
+                    }
+
                     CodeExecutableElement expectMethod = null;
                     if (!ElementUtils.isObject(targetType)) {
                         expectMethod = parent.lookupExpectMethod(parent.parserType, targetType);

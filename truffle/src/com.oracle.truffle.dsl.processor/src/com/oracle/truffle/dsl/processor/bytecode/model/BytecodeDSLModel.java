@@ -185,7 +185,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement interceptControlFlowException;
+    public ExecutableElement interceptIncomingValue;
     public ExecutableElement interceptInternalException;
+    public ExecutableElement interceptOutgoingValue;
     public ExecutableElement interceptTruffleException;
     public ExecutableElement traceTransition;
 
