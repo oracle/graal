@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,26 +286,47 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
                 return TriState.get(!result.toBoolean());
             }
         }
-        if (!thisNegated) {
-            if (other instanceof IntegerLessThanNode) {
-                IntegerLessThanNode integerLessThanNode = (IntegerLessThanNode) other;
-                IntegerStamp stampL = (IntegerStamp) this.getY().stamp(NodeView.DEFAULT);
-                // if L >= 0:
-                if (stampL.isPositive()) { // L >= 0
-                    if (this.getX() == integerLessThanNode.getX()) {
-                        // x |<| L implies x < L
-                        if (this.getY() == integerLessThanNode.getY()) {
-                            return TriState.TRUE;
-                        }
-                        // x |<| L implies !(x < 0)
-                        if (integerLessThanNode.getY().isConstant() &&
-                                        IntegerStamp.OPS.getAdd().isNeutral(integerLessThanNode.getY().asConstant())) {
-                            return TriState.FALSE;
-                        }
-                    }
-                }
+        if (other instanceof IntegerLessThanNode integerLessThanNode) {
+            TriState result = thisNegated
+                            ? tryProveNotBelowImpliesNotLessThan(integerLessThanNode)
+                            : tryProveBelowImplications(integerLessThanNode);
+            if (result.isKnown()) {
+                return result;
             }
         }
         return super.implies(thisNegated, other);
+    }
+
+    /**
+     * Proves implications from {@code x |<| y} when {@code 0 <= y}.
+     * <p>
+     * {@code 0 <= y && x |<| y} implies {@code 0 <= x}, so signed and unsigned ordering agree.
+     * Therefore, {@code x < y} and {@code !(x < 0)}.
+     */
+    private TriState tryProveBelowImplications(IntegerLessThanNode other) {
+        IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
+        if (!yStamp.isPositive() || !sameValue(getX(), other.getX())) {
+            return TriState.UNKNOWN;
+        }
+        if (sameValue(getY(), other.getY())) {
+            return TriState.TRUE;
+        }
+        if (other.getY().isConstant() && IntegerStamp.OPS.getAdd().isNeutral(other.getY().asConstant())) {
+            return TriState.FALSE;
+        }
+        return TriState.UNKNOWN;
+    }
+
+    /**
+     * Proves {@code !(x |<| y) => !(x < y)} when {@code 0 <= x}.
+     * <p>
+     * This is the contrapositive of {@code 0 <= x && x < y => x |<| y}.
+     */
+    private TriState tryProveNotBelowImpliesNotLessThan(IntegerLessThanNode other) {
+        IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
+        if (xStamp.isPositive() && sameValue(getX(), other.getX()) && sameValue(getY(), other.getY())) {
+            return TriState.FALSE;
+        }
+        return TriState.UNKNOWN;
     }
 }

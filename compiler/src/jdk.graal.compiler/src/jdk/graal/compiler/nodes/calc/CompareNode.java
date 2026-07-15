@@ -466,7 +466,10 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         return TriState.UNKNOWN;
     }
 
-    private static boolean sameValue(ValueNode v1, ValueNode v2) {
+    /**
+     * Checks whether the values are identical, equal constants, or Pi aliases of the same value.
+     */
+    protected static boolean sameValue(ValueNode v1, ValueNode v2) {
         if (v1 == v2) {
             return true;
         }
