@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMMaxnumVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen;
@@ -173,7 +174,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple1(LLVMFloorNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMFloorNodeGen::create, (vectorSize, arg) -> LLVMVectorUnaryNodeGen.create(vectorSize, LLVMFloorNodeGen.create(null), arg));
             case X86_FP80:
                 return TypedBuiltinFactory.simple((args) -> LLVMLongDoubleNode.createUnary("floor", args[1], LongDoubleKinds.FP80));
             case F128:
@@ -263,7 +264,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple2(LLVMMaxnumNodeGen::create);
+                return TypedBuiltinFactory.vector2(LLVMMaxnumNodeGen::create, LLVMMaxnumVectorNodeGen::create);
             default:
                 return null;
         }
@@ -439,8 +440,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloor extends LLVMBuiltin {
+    public abstract static class LLVMFloor extends LLVMUnaryNode {
+
+        protected LLVMFloor() {
+            super(UnaryOperation.NEG);
+        }
 
         @Specialization
         protected float doIntrinsic(float value) {
@@ -593,25 +597,68 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected float doIntrinsic(float value1, float value2) {
-            if (Float.isNaN(value1)) {
-                return value2;
-            }
-            if (Float.isNaN(value2)) {
-                return value1;
-            }
-            return Math.max(value1, value2);
+            return maxnum(value1, value2);
         }
 
         @Specialization
         protected double doIntrinsic(double value1, double value2) {
-            if (Double.isNaN(value1)) {
-                return value2;
-            }
-            if (Double.isNaN(value2)) {
-                return value1;
-            }
-            return Math.max(value1, value2);
+            return maxnum(value1, value2);
         }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMMaxnumVector extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        protected LLVMMaxnumVector(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doFloatVector(LLVMFloatVector value1, LLVMFloatVector value2) {
+            assert value1.getLength() == vectorLength;
+            assert value2.getLength() == vectorLength;
+            float[] result = new float[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = maxnum(value1.getValue(i), value2.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMDoubleVector doDoubleVector(LLVMDoubleVector value1, LLVMDoubleVector value2) {
+            assert value1.getLength() == vectorLength;
+            assert value2.getLength() == vectorLength;
+            double[] result = new double[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = maxnum(value1.getValue(i), value2.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
+        }
+    }
+
+    private static float maxnum(float value1, float value2) {
+        if (Float.isNaN(value1)) {
+            return value2;
+        }
+        if (Float.isNaN(value2)) {
+            return value1;
+        }
+        return Math.max(value1, value2);
+    }
+
+    private static double maxnum(double value1, double value2) {
+        if (Double.isNaN(value1)) {
+            return value2;
+        }
+        if (Double.isNaN(value2)) {
+            return value1;
+        }
+        return Math.max(value1, value2);
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
