@@ -39,8 +39,10 @@ import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.NumUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -58,7 +60,8 @@ import jdk.graal.compiler.api.replacements.Fold;
  * <ul>
  * <li>New location:<br>
  * Provides the new address of the sequence of objects after compaction. This address can be outside
- * of the current chunk.</li>
+ * of the current chunk. With compressed references, it is stored as an unsigned offset from the
+ * heap base.</li>
  * <li>Size:<br>
  * The number of live object bytes that the sequence consists of.</li>
  * <li>Next sequence offset:<br>
@@ -87,9 +90,9 @@ public final class ObjectMoveInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setNewAddress(Pointer objSeqStart, Pointer newAddress) {
         if (useCompressedLayout()) {
-            long offset = newAddress.subtract(objSeqStart).rawValue();
+            long offset = newAddress.subtract(KnownIntrinsics.heapBase()).rawValue();
             offset /= ObjectLayout.singleton().getAlignment();
-            objSeqStart.writeInt(-8, (int) offset);
+            objSeqStart.writeInt(-8, NumUtil.safeToUInt(offset));
         } else {
             objSeqStart.writeWord(-16, newAddress);
         }
@@ -99,9 +102,9 @@ public final class ObjectMoveInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Pointer getNewAddress(Pointer objSeqStart) {
         if (useCompressedLayout()) {
-            long offset = objSeqStart.readInt(-8);
+            long offset = objSeqStart.readInt(-8) & 0xffff_ffffL;
             offset *= ObjectLayout.singleton().getAlignment();
-            return objSeqStart.add(Word.signed(offset));
+            return KnownIntrinsics.heapBase().add(Word.unsigned(offset));
         } else {
             return objSeqStart.readWord(-16);
         }
