@@ -31,11 +31,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -72,6 +74,11 @@ public final class PolyglotIsolateGuestFeature implements Feature {
                                         "To resolve this, either remove the %s from the --features command line option or ensure the truffle.jar is added to the module-path " +
                                         "by including the language or tool maven artifact as a dependency.",
                         PolyglotIsolateGuestFeature.class.getSimpleName(), PolyglotIsolateGuestFeature.class.getName());
+        UserError.guarantee(SubstrateOptions.ParseRuntimeOptions.getValue(),
+                        "The %s feature requires runtime option parsing. The 'engine.IsolateOption', 'engine.MaxIsolateMemory' and 'engine.UntrustedCodeMitigation' options " +
+                                        "are applied as isolate creation arguments, which cannot be parsed when runtime option parsing is disabled. " +
+                                        "To resolve this, remove the %s option from the native image build arguments.",
+                        PolyglotIsolateGuestFeature.class.getSimpleName(), SubstrateOptionsParser.commandArgument(SubstrateOptions.ParseRuntimeOptions, "-"));
         // Fix symbol name clashes in the native-to-native mode with external library using the API
         // function prefix.
         ImageSingletons.add(PolyglotIsolateTearDownSupport.class, new PolyglotIsolateTearDownSupport(SubstrateGuestOptions.APIFunctionPrefix.getValue()));
