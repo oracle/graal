@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -96,6 +96,28 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
 
         @Specialization
+        @ExplodeLoop
+        protected LLVMI16Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength();
+            final short[] vector = new short[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                vector[i] = (short) from.getValue(i);
+            }
+            return LLVMI16Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI16Vector doDoubleVector(LLVMDoubleVector from) {
+            assert from.getLength() == getVectorLength();
+            final short[] vector = new short[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                vector[i] = (short) from.getValue(i);
+            }
+            return LLVMI16Vector.create(vector);
+        }
+
+        @Specialization
         protected LLVMI16Vector doI16Vector(LLVMI16Vector from) {
             assert from.getLength() == getVectorLength();
             return from;
@@ -133,6 +155,30 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             final int[] vector = new int[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I16_MASK;
+            }
+            return LLVMI32Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                float value = from.getValue(i);
+                vector[i] = value < Integer.MAX_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+            }
+            return LLVMI32Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doDoubleVector(LLVMDoubleVector from) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                double value = from.getValue(i);
+                vector[i] = value < Integer.MAX_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
             }
             return LLVMI32Vector.create(vector);
         }
