@@ -3,7 +3,7 @@ suite = {
     "name": "web-image",
     "versionConflictResolution": "latest",
     "version": "1.0",
-    "release": False,
+    "release": True,
     "groupId": "org.graalvm.webimage",
     "imports": {
         "suites": [
