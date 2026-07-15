@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -43,13 +43,13 @@ import jdk.graal.compiler.api.replacements.Fold;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class SamplerStatistics {
 
-    private final UninterruptibleUtils.AtomicLong missedSamples;
-    private final UninterruptibleUtils.AtomicLong unparseableSamples;
+    private final UninterruptibleAtomicUtils.AtomicLong missedSamples;
+    private final UninterruptibleAtomicUtils.AtomicLong unparseableSamples;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SamplerStatistics() {
-        this.missedSamples = new UninterruptibleUtils.AtomicLong(0);
-        this.unparseableSamples = new UninterruptibleUtils.AtomicLong(0);
+        this.missedSamples = new UninterruptibleAtomicUtils.AtomicLong(0);
+        this.unparseableSamples = new UninterruptibleAtomicUtils.AtomicLong(0);
     }
 
     @Fold

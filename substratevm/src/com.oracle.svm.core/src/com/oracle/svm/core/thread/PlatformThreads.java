@@ -72,7 +72,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -129,14 +129,14 @@ public abstract class PlatformThreads {
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /** The number of running non-daemon threads. */
-    private static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(0);
+    private static final UninterruptibleAtomicUtils.AtomicInteger nonDaemonThreads = new UninterruptibleAtomicUtils.AtomicInteger(0);
 
     /**
      * Tracks the number of threads that have been started, but are not yet executing Java code. For
      * a small window of time, threads are still accounted for in this count while they are already
      * attached. We use this counter to avoid missing threads during tear-down.
      */
-    private final UninterruptibleUtils.AtomicInteger unattachedStartedThreads = new UninterruptibleUtils.AtomicInteger(0);
+    private final UninterruptibleAtomicUtils.AtomicInteger unattachedStartedThreads = new UninterruptibleAtomicUtils.AtomicInteger(0);
 
     /** The default group for new Threads that are attached without an explicit group. */
     final ThreadGroup mainGroup;

@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.AbstractMXBean;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 
 import org.graalvm.word.impl.Word;
 import sun.management.Util;
@@ -49,7 +49,7 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
 
     private final String name;
     private final String[] managerNames;
-    protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
+    protected final UninterruptibleAtomicUtils.AtomicUnsigned peakUsage = new UninterruptibleAtomicUtils.AtomicUnsigned();
 
     private UnsignedWord initialValue = UNDEFINED;
 

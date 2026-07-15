@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -39,8 +39,8 @@ import com.oracle.svm.shared.Uninterruptible;
  * @see ChunksAccounting
  */
 public final class HeapAccounting {
-    private final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
-    private final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
+    private final UninterruptibleAtomicUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleAtomicUtils.AtomicUnsigned();
+    private final UninterruptibleAtomicUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleAtomicUtils.AtomicUnsigned();
 
     private final HeapSizes beforeGc = new HeapSizes();
 

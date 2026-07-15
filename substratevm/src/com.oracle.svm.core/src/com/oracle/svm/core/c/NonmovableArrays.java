@@ -47,7 +47,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -79,7 +79,7 @@ public final class NonmovableArrays {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
-    private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
+    private static final UninterruptibleAtomicUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleAtomicUtils.AtomicLong(0);
 
     private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate nonmovable array");
     private static final NegativeArraySizeException NEGATIVE_ARRAY_SIZE_EXCEPTION = new NegativeArraySizeException();
