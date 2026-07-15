@@ -244,6 +244,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     private AnalysisMetaAccess metaAccess;
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
+    private final EconomicSet<Class<?>> registeredExportLibraryClasses = EconomicSet.create();
+    private final Set<Class<?>> pendingExportLibraryReceiverClasses = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
     private Field uncachedDispatchField;
@@ -776,6 +778,13 @@ public final class TruffleBaseFeature implements InternalFeature {
             initializeTruffleLibrariesAtBuildTime(access, type);
             initializeDynamicObjectLayouts(type);
         }
+        /* Resolve reachable export subclasses once they are known to be instantiated. */
+        for (Class<?> receiverClass : pendingExportLibraryReceiverClasses) {
+            AnalysisType type = access.getMetaAccess().lookupJavaType(receiverClass);
+            if (type.isInstantiated() && pendingExportLibraryReceiverClasses.remove(receiverClass)) {
+                initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+            }
+        }
         access.rescanRoot(layoutInfoMapField);
         access.rescanRoot(layoutMapField);
         access.rescanRoot(libraryFactoryCacheField);
@@ -949,10 +958,38 @@ public final class TruffleBaseFeature implements InternalFeature {
             access.rescanField(factory, uncachedDispatchField);
         }
         if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
-            /* Eagerly resolve receiver type. */
-            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
-                            Collections.singleton(Class.class), type.getJavaClass());
+            Class<?> receiverClass = type.getJavaClass();
+            if (registeredExportLibraryClasses.add(receiverClass)) {
+                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                if (hasExplicitReceiverExport(type)) {
+                    /*
+                     * Exports with an explicit receiver can be used as dynamic dispatch targets
+                     * without the export class being instantiated.
+                     */
+                    initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                }
+            }
         }
+    }
+
+    private static boolean hasExplicitReceiverExport(AnalysisType type) {
+        for (ExportLibrary export : AnnotationUtil.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
+            if (export.receiverType() != Void.class) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
+        if (!Modifier.isAbstract(receiverClass.getModifiers())) {
+            pendingExportLibraryReceiverClasses.add(receiverClass);
+        }
+    }
+
+    private static void initializeTruffleLibraryReceiverAtBuildTime(Class<?> receiverClass) {
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
+                        Collections.singleton(Class.class), receiverClass);
     }
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
