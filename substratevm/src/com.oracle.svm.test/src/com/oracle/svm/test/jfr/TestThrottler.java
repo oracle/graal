@@ -38,7 +38,7 @@ import java.util.function.IntSupplier;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottler;

@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.TargetClass;
 

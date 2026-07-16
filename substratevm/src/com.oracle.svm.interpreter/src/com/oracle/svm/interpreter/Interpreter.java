@@ -275,7 +275,7 @@ import java.lang.invoke.MethodType;
 import java.util.Objects;
 
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;

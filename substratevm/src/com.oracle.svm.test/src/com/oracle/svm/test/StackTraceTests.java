@@ -30,7 +30,7 @@ import static org.junit.Assert.assertSame;
 import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 

@@ -27,7 +27,7 @@ package com.oracle.svm.webimage.functionintrinsics;
 
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;

@@ -31,7 +31,7 @@ import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
 import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 
 /**
  * Tests the implementation of the JavaScript {@code Proxy} handler and its traps that is used for
