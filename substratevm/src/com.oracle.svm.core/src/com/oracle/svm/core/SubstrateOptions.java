@@ -1472,6 +1472,12 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = """
+                    On Darwin, run the Java main entry point on a dedicated platform thread and park the process main thread in a CoreFoundation CFRunLoop.
+
+                    Uses the OpenJDK libjli / Graal launcher ParkEventLoop pattern. Required for headed AWT/Swing so AppKit/Metal work posted to the main thread can complete. Default false; experimental.""", type = Expert)//
+    public static final HostedOptionKey<Boolean> DarwinParkMainInCFRunLoop = new HostedOptionKey<>(false);
+
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
