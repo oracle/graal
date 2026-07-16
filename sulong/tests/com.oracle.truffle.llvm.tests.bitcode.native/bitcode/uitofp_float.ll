@@ -129,6 +129,7 @@ define i32 @main() #0 {
   tail call void @testI64Scalar(i64 0)
   tail call void @testI64Scalar(i64 1)
   tail call void @testI64Scalar(i64 -1)
+  tail call void @testI64Scalar(i64 -549755813889)
   %5 = tail call i32 @puts(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str.13, i64 0, i64 0))
   tail call void @testI8Vector(i8 zeroext 0)
   tail call void @testI8Vector(i8 zeroext 1)
@@ -145,6 +146,7 @@ define i32 @main() #0 {
   tail call void @testI64Vector(i64 0)
   tail call void @testI64Vector(i64 1)
   tail call void @testI64Vector(i64 -1)
+  tail call void @testI64Vector(i64 -549755813889)
   ret i32 0
 }
 
