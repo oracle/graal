@@ -35,7 +35,7 @@ import org.junit.Test;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;

@@ -34,7 +34,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 

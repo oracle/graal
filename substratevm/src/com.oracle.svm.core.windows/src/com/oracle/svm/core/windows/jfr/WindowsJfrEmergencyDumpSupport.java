@@ -42,7 +42,7 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.FileAPI.BY_HANDLE_FILE_INFORMATION;
 import com.oracle.svm.core.windows.headers.FileAPI.WIN32_FIND_DATAW;

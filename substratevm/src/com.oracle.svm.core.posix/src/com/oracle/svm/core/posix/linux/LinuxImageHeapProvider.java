@@ -44,7 +44,7 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HE
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
-import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
+import static com.oracle.svm.shared.util.UnsignedUtils.roundUp;
 import static org.graalvm.word.impl.Word.signed;
 import static org.graalvm.word.impl.Word.unsigned;
 
@@ -77,7 +77,7 @@ import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;

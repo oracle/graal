@@ -61,7 +61,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;

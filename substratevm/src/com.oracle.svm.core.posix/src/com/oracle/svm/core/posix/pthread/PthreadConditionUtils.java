@@ -36,7 +36,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.Word;

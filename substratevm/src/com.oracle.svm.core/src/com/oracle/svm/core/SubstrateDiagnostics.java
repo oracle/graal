@@ -95,7 +95,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;

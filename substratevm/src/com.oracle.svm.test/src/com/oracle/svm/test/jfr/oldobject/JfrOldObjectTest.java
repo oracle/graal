@@ -45,7 +45,7 @@ import org.junit.rules.TestName;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.test.jfr.JfrRecordingTest;
 
 import jdk.jfr.Recording;

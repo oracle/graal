@@ -54,7 +54,7 @@ import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;

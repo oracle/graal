@@ -28,7 +28,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /** A port of HotSpot's SerialGC size policy. */
 final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {

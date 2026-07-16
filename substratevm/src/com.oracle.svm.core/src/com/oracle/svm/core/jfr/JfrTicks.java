@@ -25,7 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 
 /**

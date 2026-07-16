@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L219-L233")
 public class VMUptimeDmd extends AbstractDCmd {

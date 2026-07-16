@@ -87,7 +87,7 @@ import java.util.regex.Pattern;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 /**
  * <p>

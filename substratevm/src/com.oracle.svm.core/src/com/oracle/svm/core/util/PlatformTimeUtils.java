@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**

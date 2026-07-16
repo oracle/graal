@@ -31,7 +31,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 /**
  * Each event that allows throttling should have its own throttler instance. Multiple threads may

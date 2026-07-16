@@ -34,7 +34,7 @@ import com.oracle.svm.core.headers.LibM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.utils.JfrRandom;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.internal.misc.Unsafe;
 

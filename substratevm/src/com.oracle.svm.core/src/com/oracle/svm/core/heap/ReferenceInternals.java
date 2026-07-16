@@ -41,7 +41,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;

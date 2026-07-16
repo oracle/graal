@@ -35,7 +35,7 @@ import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;

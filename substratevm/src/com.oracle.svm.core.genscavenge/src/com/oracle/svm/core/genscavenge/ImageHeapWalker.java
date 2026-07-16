@@ -41,7 +41,7 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> ALIGNED_READ_ONLY_WALKER = new AlignedReadOnlyMemoryWalkerAccess();
