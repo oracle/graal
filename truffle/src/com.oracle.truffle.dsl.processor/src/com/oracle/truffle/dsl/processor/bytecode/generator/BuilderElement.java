@@ -1331,7 +1331,7 @@ final class BuilderElement extends AbstractElement {
         } else if (operation.isCustom()) {
             result.append(" -> ");
             result.append(ElementUtils.getSimpleName(
-                            operation.instruction().signature.returnType()));
+                            operation.instructions.getFirst().signature.returnType()));
         } else {
             result.append(" -> Object");
         }
@@ -2382,7 +2382,7 @@ final class BuilderElement extends AbstractElement {
         } else {
             String nextBci;
             if (operation.hasInstruction()) {
-                nextBci = "state.bci - " + operation.instruction().getInstructionLength();
+                nextBci = "state.bci - " + operation.instructions.getFirst().getInstructionLength();
             } else {
                 nextBci = "-1";
             }
@@ -3643,11 +3643,6 @@ final class BuilderElement extends AbstractElement {
                         } else {
                             yield encodeRelativeBytecodeIndexArgument(customChildBci);
                         }
-                    } else if (operation.isTransparent) {
-                        if (instruction.resolveDynamicOperandIndex(immediate).orElse(-1) != 0) {
-                            throw new AssertionError("Unexpected transparent child.");
-                        }
-                        yield encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci));
                     }
 
                     Operand operand = instruction.resolveOperand(immediate).orElseThrow(
@@ -4140,7 +4135,7 @@ final class BuilderElement extends AbstractElement {
                 case CUSTOM_INSTRUMENTATION:
                     boolean elseIf = false;
 
-                    for (Operand operand : op.instruction().signature.dynamicOperands()) {
+                    for (Operand operand : op.instructions.getFirst().signature.dynamicOperands()) {
                         if (needsChildBciOperationField(op, operand)) {
                             elseIf = b.startIf(elseIf);
                             b.string("childIndex == " + operand.dynamicIndex()).end().startBlock();
@@ -4826,7 +4821,7 @@ final class BuilderElement extends AbstractElement {
         if (!model.usesBoxingElimination()) {
             return false;
         }
-        if (operation.instruction().needsChildBciForBoxingElimination(model, operand)) {
+        if (operation.instructions.getFirst().needsChildBciForBoxingElimination(model, operand)) {
             return true;
         }
 
@@ -7768,26 +7763,19 @@ final class BuilderElement extends AbstractElement {
                     fields.add(reachable); // init
                     break;
                 case CUSTOM, CUSTOM_YIELD, CUSTOM_RETURN, CUSTOM_INSTRUMENTATION:
-                    if (operation.isTransparent()) {
-                        fields.add(producedValue);
-                        if (model.usesBoxingElimination()) {
-                            fields.add(childBci);
-                        }
-                    } else {
-                        fields.addAll(getConstants(operation.constantOperands.before(), true));
-                        if (model.usesBoxingElimination()) {
-                            for (Operand operand : operation.instruction().signature.dynamicOperands()) {
-                                if (needsChildBciOperationField(operation, operand)) {
-                                    fields.add(getChildBci(operand.dynamicIndex(), true));
-                                }
+                    fields.addAll(getConstants(operation.constantOperands.before(), true));
+                    if (model.usesBoxingElimination()) {
+                        for (Operand operand : operation.instructions.getFirst().signature.dynamicOperands()) {
+                            if (needsChildBciOperationField(operation, operand)) {
+                                fields.add(getChildBci(operand.dynamicIndex(), true));
                             }
                         }
-                        if (operation.isVariadic) {
-                            fields.add(createVariadicBci);
-                            if (model.hasVariadicReturn) {
-                                fields.add(variadicReturnIndices);
-                                fields.add(numVariadicReturnIndices);
-                            }
+                    }
+                    if (operation.isVariadic) {
+                        fields.add(createVariadicBci);
+                        if (model.hasVariadicReturn) {
+                            fields.add(variadicReturnIndices);
+                            fields.add(numVariadicReturnIndices);
                         }
                     }
                     break;

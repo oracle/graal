@@ -341,7 +341,7 @@ public class OperationModel implements PrettyPrintable {
 
     public boolean isCustomVariadic() {
         return switch (kind) {
-            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> isVariadic && !isTransparent;
+            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> isVariadic;
             default -> false;
         };
     }
