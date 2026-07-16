@@ -445,7 +445,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public void recordActivity() {
-        DeadlockWatchdog.singleton().recordActivity();
+        loader.watchdog.recordActivity();
     }
 
     @Override
