@@ -26,8 +26,10 @@
 
 package com.oracle.svm.core.monitor;
 
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -44,6 +46,8 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -62,10 +66,10 @@ import jdk.internal.misc.Unsafe;
  */
 @BasedOnJDKClass(ReentrantLock.class)
 @BasedOnJDKClass(value = ReentrantLock.class, innerClass = "Sync")
-public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
-    protected long latestJfrTid;
-    protected String latestJfrVThreadName;
-    protected long latestJfrVThreadEpochId;
+public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
+    private long latestJfrTid;
+    private String latestJfrVThreadName;
+    private long latestJfrVThreadEpochId;
 
     public JavaMonitor() {
     }
@@ -80,7 +84,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
         setJfrOwner();
     }
 
-    protected void setJfrOwner() {
+    public void setJfrOwner() {
         if (!HasJfrSupport.get()) {
             return;
         }
@@ -89,7 +93,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     }
 
     /** Captures the JFR metadata of the monitor owner for a later contention event. */
-    protected void setJfrOwner(Thread thread) {
+    private void setJfrOwner(Thread thread) {
         if (!HasJfrSupport.get()) {
             return;
         }
@@ -108,11 +112,11 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
         release(1);
     }
 
-    public boolean isHeldByCurrentThread() {
+    boolean isHeldByCurrentThread() {
         return isHeldExclusively();
     }
 
-    protected JavaMonitorConditionObject getOrCreateCondition(boolean createIfNotExisting) {
+    JavaMonitorConditionObject getOrCreateCondition(boolean createIfNotExisting) {
         JavaMonitorConditionObject existingCondition = condition;
         if (existingCondition != null || !createIfNotExisting) {
             return existingCondition;
@@ -125,7 +129,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void relockObject() {
+    void relockObject() {
         /*
          * This code runs just before we are returning to the actual deoptimized frame. This means
          * that the thread either must already hold the lock (if recursive locking is eliminated),
@@ -168,7 +172,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
      * {@code volatile} semantics. This also enables us to leave this field's value at 1 on release
      * so that the next thread acquiring the lock does not need to immediately write it.
      */
-    protected int acquisitions = 1;
+    private int acquisitions = 1;
 
     /** {@inheritDoc} */
     @Override
@@ -193,7 +197,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     }
 
     // see ReentrantLock.Sync.tryLock()
-    protected boolean tryLock() {
+    private boolean tryLock() {
         long current = getCurrentThreadIdentity();
         long c = getState();
         if (c == 0) {
@@ -210,7 +214,8 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             acquisitions = r;
             return true;
         }
-        return false;
+        // Try one round of spinning before thread state changes, JFR events, etc.
+        return trySpinAcquire(1, 1) == SPIN_SUCCESS;
     }
 
     // see ReentrantLock.Sync.tryRelease()
@@ -253,11 +258,85 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
      * between {@link IsolateThread}s, so we must use the unique ids assigned to {@link Thread}s.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static long getCurrentThreadIdentity() {
+    static long getCurrentThreadIdentity() {
         return JavaThreads.getCurrentThreadId();
     }
 
-    protected static long getThreadIdentity(Thread thread) {
+    private static long getThreadIdentity(Thread thread) {
         return JavaThreads.getThreadId(thread);
+    }
+
+    public boolean tryFastMonitorEnter() {
+        long current = getCurrentThreadIdentity();
+        long c = getState();
+        if (probability(FREQUENT_PROBABILITY, c == 0)) {
+            if (probability(FREQUENT_PROBABILITY, compareAndSetState(0, current))) {
+                if (GraalDirectives.inIntrinsic()) {
+                    ReplacementsUtil.dynamicAssert(acquisitions == 1, "acquisitions must have been reset to 1 on last exit");
+                } else {
+                    assert acquisitions == 1;
+                }
+                return true;
+            }
+        } else if (probability(NOT_LIKELY_PROBABILITY, c == current)) {
+            // Note: protected by monitor and not required to be observable, no ordering needed
+            int r = acquisitions + 1;
+            if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, r < 0)) {
+                return false; // overflow: throw in slow-path
+            }
+            acquisitions = r;
+            return true;
+        }
+        return false; // retry in slow-path where we might have to enqueue
+    }
+
+    /** @return one of the constants of {@link FastMonitorExitStatus}. */
+    public int tryFastBalancedMonitorExit() {
+        // Note that JNI forbids exiting a monitor acquired with monitorenter and breaking balancing
+        ReplacementsUtil.dynamicAssert(getState() == getCurrentThreadIdentity(), "compiler must enforce balanced monitor use");
+
+        boolean free = (acquisitions == 1);
+        if (probability(FREQUENT_PROBABILITY, free)) {
+            setState(0);
+        } else {
+            // Note: protected by monitor and not required to be observable, no ordering needed
+            acquisitions--;
+        }
+
+        if (free && hasReleaseSuccessor()) {
+            return FastMonitorExitStatus.MUST_SIGNAL_SUCCESSOR;
+        }
+        return FastMonitorExitStatus.SUCCESS;
+    }
+
+    /**
+     * Result of a {@link #tryFastBalancedMonitorExit} call. This is not a Java enum so that inlined
+     * fast paths do not need heap address computations.
+     */
+    public interface FastMonitorExitStatus {
+        /** Fast exit failed, invoke {@link #monitorExit} instead. */
+        int USE_SLOW_PATH = -1;
+
+        /** Fast exit succeeded. */
+        int SUCCESS = 0;
+
+        /** Fast exit succeeded, but must invoke {@link #signalReleaseSuccessor()} separately. */
+        int MUST_SIGNAL_SUCCESSOR = 1;
+    }
+
+    /**
+     * Creates a new {@link JavaMonitor} that is locked by the provided thread. This requires
+     * patching of internal state.
+     */
+    public static JavaMonitor createLocked(Thread ownerThread, int acquisitions) {
+        assert ownerThread != null;
+        assert acquisitions > 0;
+
+        long thread = getThreadIdentity(ownerThread);
+        JavaMonitor monitor = new JavaMonitor();
+        monitor.setState(thread);
+        monitor.acquisitions = acquisitions;
+        monitor.setJfrOwner(ownerThread);
+        return monitor;
     }
 }
