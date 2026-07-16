@@ -1277,6 +1277,56 @@ public class TruffleFileTest {
         }
     }
 
+    @Test
+    public void testCompositeFileSystemCreateSymbolicLinkRelativeTargetEscape() throws Exception {
+        Path tmp = Files.createTempDirectory("truffle-file-test");
+        try {
+            Path allowed = tmp.resolve("allowed").toAbsolutePath();
+            Files.createDirectories(allowed);
+            Path cwd = allowed.resolve("cwd").toAbsolutePath();
+            Files.createDirectories(cwd);
+            Path denied = tmp.resolve("denied").toAbsolutePath();
+            Files.writeString(denied, "denied");
+
+            FileSystem noIO = FileSystem.newDenyIOFileSystem();
+            FileSystem fullIO = FileSystem.newDefaultFileSystem();
+            FileSystem.Selector fullIOPredicate = new FileSystem.Selector(fullIO) {
+                @Override
+                public boolean test(Path path) {
+                    return path.startsWith(allowed);
+                }
+            };
+            FileSystem compositeFs = FileSystem.newCompositeFileSystem(noIO, fullIOPredicate);
+            compositeFs.setCurrentWorkingDirectory(cwd);
+
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(compositeFs).build();
+            try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
+                assertFails(
+                                () -> AbstractExecutableTestLanguage.evalTestLanguage(
+                                                context, TestCompositeFileSystemCreateSymbolicLinkRelativeTargetEscape.class, "", allowed.toString()),
+                                PolyglotException.class,
+                                (e) -> Assert.assertTrue(e.getMessage().contains("Cross file system linking is not supported.")));
+                assertFalse(Files.exists(allowed.resolve("link")));
+            }
+        } finally {
+            delete(tmp);
+        }
+    }
+
+    @Registration
+    static final class TestCompositeFileSystemCreateSymbolicLinkRelativeTargetEscape extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile allowed = env.getPublicTruffleFile((String) contextArguments[0]);
+            TruffleFile link = allowed.resolve("link");
+            TruffleFile target = env.getPublicTruffleFile("..").resolve("denied");
+            link.createSymbolicLink(target);
+            return null;
+        }
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
