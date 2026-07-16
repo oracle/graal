@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKin
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen;
@@ -287,7 +288,7 @@ public abstract class LLVMCMathsIntrinsics {
             case I16:
             case I32:
             case I64:
-                return TypedBuiltinFactory.simple1(LLVMAbsNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMAbsNodeGen::create, LLVMAbsVectorNodeGen::create);
             default:
                 return null;
         }
@@ -510,6 +511,60 @@ public abstract class LLVMCMathsIntrinsics {
                 // valid pointers are always positive
                 return value;
             }
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMAbsVectorNode extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        LLVMAbsVectorNode(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI8Vector doVector(LLVMI8Vector value) {
+            assert value.getLength() == vectorLength;
+            byte[] result = new byte[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (byte) Math.abs(value.getValue(i));
+            }
+            return LLVMI8Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI16Vector doVector(LLVMI16Vector value) {
+            assert value.getLength() == vectorLength;
+            short[] result = new short[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (short) Math.abs(value.getValue(i));
+            }
+            return LLVMI16Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doVector(LLVMI32Vector value) {
+            assert value.getLength() == vectorLength;
+            int[] result = new int[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMI32Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doVector(LLVMI64Vector value) {
+            assert value.getLength() == vectorLength;
+            long[] result = new long[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMI64Vector.create(result);
         }
     }
 

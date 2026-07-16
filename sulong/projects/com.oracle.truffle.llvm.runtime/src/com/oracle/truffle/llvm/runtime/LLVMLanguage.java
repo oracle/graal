@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -291,6 +291,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
+        int roundingMode = 1;
         LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
         List<LLVMUserException> exceptionStack = new ArrayList<>();
@@ -343,6 +344,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public void removeThreadLocalStorage() {
             localStorage = LLVMNativePointer.createNull();
+        }
+
+        public int getRoundingMode() {
+            return roundingMode;
+        }
+
+        public void setRoundingMode(int roundingMode) {
+            this.roundingMode = roundingMode;
         }
 
         public LLVMStack getLLVMStack() {

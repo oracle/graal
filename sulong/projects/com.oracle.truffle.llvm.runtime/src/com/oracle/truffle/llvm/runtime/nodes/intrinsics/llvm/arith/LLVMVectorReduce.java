@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -42,6 +44,63 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMVectorReduce {
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFAddNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(float start, LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = start;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result += value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(double start, LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = start;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result += value.getValue(i);
+            }
+            return result;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFMaxNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = Float.NEGATIVE_INFINITY;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result = Math.max(result, value.getValue(i));
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = Double.NEGATIVE_INFINITY;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result = Math.max(result, value.getValue(i));
+            }
+            return result;
+        }
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "vectorLength", type = int.class)

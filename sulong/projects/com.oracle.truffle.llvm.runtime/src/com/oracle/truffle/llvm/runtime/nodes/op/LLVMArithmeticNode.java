@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -395,6 +395,55 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMFPArithmeticOp fpOp() {
             return (LLVMFPArithmeticOp) op;
         }
+
+        int getRoundingMode() {
+            return getLanguage().contextThreadLocal.get().getRoundingMode();
+        }
+
+        static float adjustRounding(float nearest, double exact, int roundingMode) {
+            if (roundingMode == 1 || !Float.isFinite(nearest) || !Double.isFinite(exact) || nearest == exact) {
+                return nearest;
+            }
+            boolean exactIsGreater = exact > nearest;
+            switch (roundingMode) {
+                case 0:
+                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
+                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                    }
+                    return nearest;
+                case 2:
+                    return exactIsGreater ? Math.nextUp(nearest) : nearest;
+                case 3:
+                    return exactIsGreater ? nearest : Math.nextDown(nearest);
+                default:
+                    return nearest;
+            }
+        }
+
+        static double adjustRounding(double nearest, double error, int roundingMode) {
+            if (roundingMode == 1 || !Double.isFinite(nearest) || error == 0 || Double.isNaN(error)) {
+                return nearest;
+            }
+            boolean exactIsGreater = error > 0;
+            switch (roundingMode) {
+                case 0:
+                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
+                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                    }
+                    return nearest;
+                case 2:
+                    return exactIsGreater ? Math.nextUp(nearest) : nearest;
+                case 3:
+                    return exactIsGreater ? nearest : Math.nextDown(nearest);
+                default:
+                    return nearest;
+            }
+        }
+
+        static double addError(double left, double right, double result) {
+            double rightVirtual = result - left;
+            return (left - (result - rightVirtual)) + (right - rightVirtual);
+        }
     }
 
     public abstract static class LLVMFloatArithmeticNode extends LLVMFloatingArithmeticNode {
@@ -405,7 +454,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization
         float doFloat(float left, float right) {
-            return fpOp().doFloat(left, right);
+            float result = fpOp().doFloat(left, right);
+            if (fpOp() == ADD) {
+                return adjustRounding(result, (double) left + right, getRoundingMode());
+            } else if (fpOp() == SUB) {
+                return adjustRounding(result, (double) left - right, getRoundingMode());
+            }
+            return result;
         }
     }
 
@@ -417,7 +472,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization
         double doDouble(double left, double right) {
-            return fpOp().doDouble(left, right);
+            double result = fpOp().doDouble(left, right);
+            if (fpOp() == ADD) {
+                return adjustRounding(result, addError(left, right, result), getRoundingMode());
+            } else if (fpOp() == SUB) {
+                return adjustRounding(result, addError(left, -right, result), getRoundingMode());
+            }
+            return result;
         }
     }
 
