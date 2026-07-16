@@ -50,7 +50,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
@@ -72,6 +71,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
@@ -277,14 +277,13 @@ public class JavaMainWrapper {
     private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
         try {
             Isolate isolate = createMainIsolate(argc, argv);
-            long javaStackSize = PlatformThreads.singleton().getMainThreadRunnerJavaStackSize();
-            PlatformThreads.singleton().releaseMainThreadFromCurrent();
+            long javaStackSize = getJavaStackSize();
             WordPointer threadExitStatus = StackValue.get(WordPointer.class);
             /*
              * The launcher blocks in a no-transition OS join, so detach it before the runner can
              * request VM operations.
              */
-            VMThreads.singleton().detachCurrentThread();
+            detachCurrentThread();
             int exitCode = startAndJoinMainRunner(isolate, javaStackSize, threadExitStatus);
 
             runShutdownOnInitialThread(isolate);
@@ -292,6 +291,20 @@ public class JavaMainWrapper {
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static long getJavaStackSize() {
+        long javaStackSize = PlatformThreads.singleton().getMainThreadRunnerJavaStackSize();
+        PlatformThreads.singleton().releaseMainThreadFromCurrent();
+        return javaStackSize;
+    }
+
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static void detachCurrentThread() {
+        VMThreads.singleton().detachCurrentThread();
     }
 
     /**

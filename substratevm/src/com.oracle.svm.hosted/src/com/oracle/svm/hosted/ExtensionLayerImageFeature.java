@@ -29,23 +29,27 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.InitialLayerFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This feature contains some configs currently necessary to build an extension layer. We'll need
@@ -97,7 +101,17 @@ final class ExtensionLayerImageFeature implements InternalFeature {
         SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
         EconomicMap<AnalysisType, Object> superCoreTypes = EconomicMap.create();
 
+        EconomicSet<ResolvedJavaType> extensionLayerCoreTypes = EconomicSet.create();
+        /*
+         * This type is meant to be only accessed in the application layer if the application needs
+         * a main routine, so it should not be checked here.
+         */
+        extensionLayerCoreTypes.add(GuestAccess.get().lookupType("com.oracle.svm.core.JavaRunMainRoutinePointerHolder"));
+
         for (var type : universe.getTypes()) {
+            if (extensionLayerCoreTypes.contains(type.getWrapped())) {
+                continue;
+            }
             /*
              * These checks allow to ensure that core types can be treated as closed (see
              * PointsToAnalysis.isClosed(AnalysisType)).
