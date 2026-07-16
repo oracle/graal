@@ -249,6 +249,9 @@ public final class AccessAdvisor {
         }
     }
 
+    private static final JNICallDescriptor WINDOWS_LAUNCHER_BOOLEAN_PROPERTY_LOOKUP = new JNICallDescriptor("GetStaticMethodID", "java.lang.Boolean", "getBoolean",
+                    "(Ljava/lang/String;)Z", false);
+
     private static final JNICallDescriptor[] JNI_STARTUP_SEQUENCE = new JNICallDescriptor[]{
                     new JNICallDescriptor("GetStaticMethodID", "sun.launcher.LauncherHelper", "getApplicationClass", "()Ljava/lang/Class;", true),
                     new JNICallDescriptor("GetMethodID", "java.lang.Class", "getCanonicalName", "()Ljava/lang/String;", false),
@@ -290,6 +293,11 @@ public final class AccessAdvisor {
             if ("sun.launcher.LauncherHelper".equals(queriedClass.get())) {
                 // Ignore mismatched calls from sun.launcher.LauncherHelper.
                 logIgnoredEntry("calls from sun.launcher.LauncherHelper are ignored", entry);
+                return true;
+            }
+            if (WINDOWS_LAUNCHER_BOOLEAN_PROPERTY_LOOKUP.matches(jniFunction, queriedClass.get(), name.get(), signature.get())) {
+                // The Windows launcher may query a boolean system property before Java main starts.
+                logIgnoredEntry("calls to java.lang.Boolean.getBoolean during launcher startup are ignored", entry);
                 return true;
             }
 

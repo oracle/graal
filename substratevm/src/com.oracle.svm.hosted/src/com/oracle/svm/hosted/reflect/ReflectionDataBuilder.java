@@ -737,24 +737,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void checkFieldType(ResolvedJavaField field) {
+        ResolvedJavaField resolvedField = field;
         if (field instanceof AnalysisField analysisField) {
-            field = analysisField.getWrapped();
+            resolvedField = analysisField.getWrapped();
         }
-        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(field.getDeclaringClass());
-        field.getType().resolve(accessingClass);
+        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(resolvedField.getDeclaringClass());
+        resolvedField.getType().resolve(accessingClass);
     }
 
     private void checkMethodSignature(ResolvedJavaMethod method) {
+        ResolvedJavaMethod resolvedMethod = method;
         if (method instanceof AnalysisMethod analysisMethod) {
             classAccess.getExceptionTypes(analysisMethod);
-            method = analysisMethod.getWrapped();
+            resolvedMethod = analysisMethod.getWrapped();
         }
-        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(method.getDeclaringClass());
-        for (JavaType parameterType : method.getSignature().toParameterTypes(null)) {
+        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(resolvedMethod.getDeclaringClass());
+        for (JavaType parameterType : resolvedMethod.getSignature().toParameterTypes(null)) {
             parameterType.resolve(accessingClass);
         }
-        if (!method.isConstructor()) {
-            method.getSignature().getReturnType(accessingClass).resolve(accessingClass);
+        if (!resolvedMethod.isConstructor()) {
+            resolvedMethod.getSignature().getReturnType(accessingClass).resolve(accessingClass);
         }
     }
 

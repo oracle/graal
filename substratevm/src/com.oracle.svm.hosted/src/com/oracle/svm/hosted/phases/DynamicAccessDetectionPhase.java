@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.CodeSource;
 
 import org.graalvm.collections.EconomicSet;
@@ -139,7 +140,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             if (entryPathSource != null) {
                 URL entryPathURL = entryPathSource.getLocation();
                 if (entryPathURL != null) {
-                    String classPathEntry = entryPathURL.toURI().getPath();
+                    String classPathEntry = Path.of(entryPathURL.toURI()).toString();
                     if (classPathEntry.endsWith(File.separator)) {
                         classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
                     }
