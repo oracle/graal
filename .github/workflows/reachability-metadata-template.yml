@@ -46,6 +46,10 @@ on:
       NATIVE_IMAGE_OPTIONS:
         required: false
         type: string
+      LAYERED_TESTS:
+        required: false
+        type: string
+        default: none
 
 env:
   REACHABILITY_METADATA_PATH: ${{ github.workspace }}/graalvm-reachability-metadata
@@ -125,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [build-graalvm, populate-matrix]
+    if: inputs.LAYERED_TESTS == 'none'
     strategy:
         fail-fast: false
         matrix:
@@ -151,3 +156,107 @@ jobs:
       - name: "Run '${{ matrix.coordinates }}' tests${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}"
         run: |
           ./gradlew test -Pcoordinates=${{ matrix.coordinates }} -PskipJacoco=true
+
+  build-base-layer:
+    name: Build layered base
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [build-graalvm, populate-matrix]
+    if: inputs.LAYERED_TESTS == 'shared' && needs.populate-matrix.result == 'success'
+    steps:
+      - name: Checkout oracle/graalvm-reachability-metadata
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: oracle/graalvm-reachability-metadata
+          ref: master
+          path: ${{ env.REACHABILITY_METADATA_PATH }}
+      - name: Download GraalVM
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-graalvm.outputs.artifact-name }}
+      - name: Extract GraalVM build and use it as JAVA_HOME
+        run: |
+          tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+          echo "JAVA_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
+      - name: Build Native Image base layer
+        working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
+        run: |
+          export GVM_TCK_BASE_LAYER_DIR="${RUNNER_TEMP}/native-base-layer"
+          ./gradlew buildBaseLayer --stacktrace
+      - name: Upload Native Image base layer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reachability-metadata-base-layer
+          path: ${{ runner.temp }}/native-base-layer
+
+  test-layered-metadata:
+    name: Layered metadata tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    needs: [build-graalvm, build-base-layer, populate-matrix]
+    if: >-
+      always() && inputs.LAYERED_TESTS != 'none' &&
+      needs.populate-matrix.result == 'success' &&
+      (inputs.LAYERED_TESTS != 'shared' || needs.build-base-layer.result == 'success')
+    steps:
+      - name: Checkout oracle/graalvm-reachability-metadata
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: oracle/graalvm-reachability-metadata
+          ref: master
+          path: ${{ env.REACHABILITY_METADATA_PATH }}
+      - name: Download GraalVM
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-graalvm.outputs.artifact-name }}
+      - name: Download Native Image base layer
+        if: inputs.LAYERED_TESTS == 'shared'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: reachability-metadata-base-layer
+          path: ${{ runner.temp }}/native-base-layer
+      - name: Extract GraalVM build and use it as JAVA_HOME
+        run: |
+          tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+          echo "JAVA_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
+          if [[ "${{ inputs.LAYERED_TESTS }}" == "shared" ]]; then
+            echo "GVM_TCK_BASE_LAYER_DIR=${RUNNER_TEMP}/native-base-layer" >> ${GITHUB_ENV}
+          else
+            echo "GVM_TCK_DEDICATED_LAYER_ROOT=${RUNNER_TEMP}/native-image-dedicated-layers" >> ${GITHUB_ENV}
+          fi
+      - name: Pull allowed docker images
+        working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
+        env:
+          COORDINATES: ${{ toJson(fromJson(needs.populate-matrix.outputs.matrix).coordinates) }}
+        run: |
+          for coordinate in $(jq -r '.[]' <<< "${COORDINATES}"); do
+            ./gradlew pullAllowedDockerImages -Pcoordinates="${coordinate}"
+          done
+      - name: Disable docker networking
+        working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
+        run: bash ./.github/workflows/scripts/disable-docker.sh
+      - name: Run layered tests
+        working-directory: ${{ env.REACHABILITY_METADATA_PATH }}
+        env:
+          COORDINATES: ${{ toJson(fromJson(needs.populate-matrix.outputs.matrix).coordinates) }}
+        run: |
+          if [[ "${{ inputs.LAYERED_TESTS }}" == "dedicated" ]]; then
+            task=testDedicatedLayer
+            extra_options=(-Ptck.layered.deleteDedicatedLayerAfterTest=true)
+          else
+            task=testSharedLayer
+            extra_options=(-Ptck.excludedCoordinatesFile=tests/tck-build-logic/src/main/resources/layered-test-exclusions.txt)
+          fi
+          result=0
+          for coordinate in $(jq -r '.[]' <<< "${COORDINATES}"); do
+            if ./gradlew "${task}" \
+              -Pcoordinates="${coordinate}" \
+              "${extra_options[@]}" \
+              -PskipJacoco=true \
+              --stacktrace; then
+              continue
+            fi
+            result=1
+            echo "Layered test failed: ${coordinate}"
+          done
+          exit "${result}"
