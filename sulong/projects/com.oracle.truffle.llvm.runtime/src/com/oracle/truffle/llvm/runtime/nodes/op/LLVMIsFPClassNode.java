@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -109,7 +109,7 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
         }
 
         private static boolean isSubnormal(float f) {
-            return (Float.floatToIntBits(f) & FPClassBits.F32_EXP_MASK) == 0;
+            return (Float.floatToRawIntBits(f) & FPClassBits.F32_EXP_MASK) == 0;
         }
 
         @Specialization
@@ -123,8 +123,8 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
              */
             boolean ret = false;
             ret |= checkCondition(op, test, FPClassBits.QNAN | FPClassBits.SNAN, Float::isNaN);
-            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> Float.isNaN(f) && (Float.floatToIntBits(f) & FPClassBits.F32_SNAN_MASK) == 0);
-            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> Float.isNaN(f) && (Float.floatToIntBits(f) & FPClassBits.F32_SNAN_MASK) != 0);
+            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> Float.isNaN(f) && (Float.floatToRawIntBits(f) & FPClassBits.F32_SNAN_MASK) != 0);
+            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> Float.isNaN(f) && (Float.floatToRawIntBits(f) & FPClassBits.F32_SNAN_MASK) == 0);
 
             ret |= checkCondition(op, test, FPClassBits.NINF | FPClassBits.NNORM | FPClassBits.NSUBN, f -> f < 0.0f);
             ret |= checkCondition(op, test, FPClassBits.PINF | FPClassBits.PNORM | FPClassBits.PSUBN, f -> f > 0.0f);
@@ -137,8 +137,8 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
             ret |= checkCondition(op, test, FPClassBits.NINF, f -> f == Float.NEGATIVE_INFINITY);
             ret |= checkCondition(op, test, FPClassBits.NNORM, f -> f < 0 && Float.isFinite(f) && !isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.NSUBN, f -> f < 0 && Float.isFinite(f) && isSubnormal(f));
-            ret |= checkCondition(op, test, FPClassBits.NZERO, f -> Float.floatToIntBits(f) == 0x8000_0000);
-            ret |= checkCondition(op, test, FPClassBits.PZERO, f -> Float.floatToIntBits(f) == 0);
+            ret |= checkCondition(op, test, FPClassBits.NZERO, f -> Float.floatToRawIntBits(f) == 0x8000_0000);
+            ret |= checkCondition(op, test, FPClassBits.PZERO, f -> Float.floatToRawIntBits(f) == 0);
             ret |= checkCondition(op, test, FPClassBits.PSUBN, f -> f > 0 && Float.isFinite(f) && isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PNORM, f -> f > 0 && Float.isFinite(f) && !isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PINF, f -> f == Float.POSITIVE_INFINITY);
@@ -161,7 +161,7 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
         }
 
         private static boolean isSubnormal(double f) {
-            return (Double.doubleToLongBits(f) & FPClassBits.F64_EXP_MASK) == 0L;
+            return (Double.doubleToRawLongBits(f) & FPClassBits.F64_EXP_MASK) == 0L;
         }
 
         @Specialization
@@ -175,8 +175,8 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
              */
             boolean ret = false;
             ret |= checkCondition(op, test, FPClassBits.QNAN | FPClassBits.SNAN, Double::isNaN);
-            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> Double.isNaN(f) && (Double.doubleToLongBits(f) & FPClassBits.F64_SNAN_MASK) == 0);
-            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> Double.isNaN(f) && (Double.doubleToLongBits(f) & FPClassBits.F64_SNAN_MASK) != 0);
+            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> Double.isNaN(f) && (Double.doubleToRawLongBits(f) & FPClassBits.F64_SNAN_MASK) != 0);
+            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> Double.isNaN(f) && (Double.doubleToRawLongBits(f) & FPClassBits.F64_SNAN_MASK) == 0);
 
             ret |= checkCondition(op, test, FPClassBits.NINF | FPClassBits.NNORM | FPClassBits.NSUBN, f -> f < 0.0f);
             ret |= checkCondition(op, test, FPClassBits.PINF | FPClassBits.PNORM | FPClassBits.PSUBN, f -> f > 0.0f);
@@ -189,8 +189,8 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
             ret |= checkCondition(op, test, FPClassBits.NINF, f -> f == Double.NEGATIVE_INFINITY);
             ret |= checkCondition(op, test, FPClassBits.NNORM, f -> f < 0 && Double.isFinite(f) && !isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.NSUBN, f -> f < 0 && Double.isFinite(f) && isSubnormal(f));
-            ret |= checkCondition(op, test, FPClassBits.NZERO, f -> Double.doubleToLongBits(f) == 0x8000_0000);
-            ret |= checkCondition(op, test, FPClassBits.PZERO, f -> Double.doubleToLongBits(f) == 0);
+            ret |= checkCondition(op, test, FPClassBits.NZERO, f -> Double.doubleToRawLongBits(f) == 0x8000_0000_0000_0000L);
+            ret |= checkCondition(op, test, FPClassBits.PZERO, f -> Double.doubleToRawLongBits(f) == 0);
             ret |= checkCondition(op, test, FPClassBits.PSUBN, f -> f > 0 && Double.isFinite(f) && isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PNORM, f -> f > 0 && Double.isFinite(f) && !isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PINF, f -> f == Double.POSITIVE_INFINITY);
@@ -230,14 +230,14 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
             ret |= checkCondition(op, test, FPClassBits.NINF | FPClassBits.NNORM | FPClassBits.NSUBN, f -> f.getSign());
             ret |= checkCondition(op, test, FPClassBits.PINF | FPClassBits.PNORM | FPClassBits.PSUBN, f -> !f.getSign());
 
-            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> f.isSNaN());
-            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> f.isQNaN());
+            ret |= checkCondition(op, test, FPClassBits.QNAN, f -> f.isQNaN());
+            ret |= checkCondition(op, test, FPClassBits.SNAN, f -> f.isSNaN());
             ret |= checkCondition(op, test, FPClassBits.NINF, f -> f.isNegativeInfinity());
             ret |= checkCondition(op, test, FPClassBits.NNORM, f -> f.getSign() && !f.isNaN() && !f.isNegativeInfinity() && !isSubnormal(f));
-            ret |= checkCondition(op, test, FPClassBits.NSUBN, f -> f.getSign() && !f.isNaN() && !f.isNegativeInfinity() && isSubnormal(f));
+            ret |= checkCondition(op, test, FPClassBits.NSUBN, f -> f.getSign() && !f.isNaN() && !f.isNegativeInfinity() && !f.isNegativeZero() && isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.NZERO, f -> f.isNegativeZero());
             ret |= checkCondition(op, test, FPClassBits.PZERO, f -> f.isPositiveZero());
-            ret |= checkCondition(op, test, FPClassBits.PSUBN, f -> !f.getSign() && !f.isNaN() && !f.isPositiveInfinity() && isSubnormal(f));
+            ret |= checkCondition(op, test, FPClassBits.PSUBN, f -> !f.getSign() && !f.isNaN() && !f.isPositiveInfinity() && !f.isPositiveZero() && isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PNORM, f -> !f.getSign() && !f.isNaN() && !f.isPositiveInfinity() && !isSubnormal(f));
             ret |= checkCondition(op, test, FPClassBits.PINF, f -> f.isPositiveInfinity());
 

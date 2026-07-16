@@ -723,7 +723,12 @@ public class LLVMVaListStorage implements TruffleObject {
                 return I32_ARG_TYPE;
             } else if (arg instanceof LLVMVarArgCompoundValue) {
                 LLVMVarArgCompoundValue compVal = (LLVMVarArgCompoundValue) arg;
-                return LLVMInteropType.ValueKind.I64.type.toArray(compVal.getSize() / 8);
+                long size = compVal.getSize();
+                if (size % Long.BYTES == 0) {
+                    return LLVMInteropType.ValueKind.I64.type.toArray(size / Long.BYTES);
+                } else {
+                    return LLVMInteropType.ValueKind.I8.type.toArray(size);
+                }
             } else if (arg instanceof LLVM80BitFloat) {
                 return F80_ARG_TYPE;
             } else if (isIVarBit(arg)) {

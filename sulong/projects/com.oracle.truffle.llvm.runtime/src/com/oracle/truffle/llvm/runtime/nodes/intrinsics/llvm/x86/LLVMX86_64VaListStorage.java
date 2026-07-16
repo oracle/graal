@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
@@ -425,9 +426,32 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     private static int getGpAreaSize(Object arg) {
         if (isIVarBit(arg)) {
-            return getIVarBitBytes(arg).length;
+            int size = getIVarBitBytes(arg).length;
+            return (size + X86_64BitVarArgs.GP_STEP - 1) & -X86_64BitVarArgs.GP_STEP;
         }
         return X86_64BitVarArgs.GP_STEP;
+    }
+
+    private static long alignOverflowArea(long offset, Object arg) {
+        int alignment = X86_64BitVarArgs.STACK_STEP;
+        if (arg instanceof LLVM80BitFloat || arg instanceof LLVMVarArgCompoundValue && ((LLVMVarArgCompoundValue) arg).getAlignment() > X86_64BitVarArgs.STACK_STEP) {
+            alignment = 2 * X86_64BitVarArgs.STACK_STEP;
+        }
+        return (offset + alignment - 1) & -alignment;
+    }
+
+    private static long getOverflowAreaSize(Object arg) {
+        long size;
+        if (arg instanceof LLVM80BitFloat) {
+            size = 16;
+        } else if (arg instanceof LLVMVarArgCompoundValue) {
+            size = ((LLVMVarArgCompoundValue) arg).getSize();
+        } else if (isIVarBit(arg)) {
+            size = getIVarBitBytes(arg).length;
+        } else {
+            size = X86_64BitVarArgs.STACK_STEP;
+        }
+        return (size + X86_64BitVarArgs.STACK_STEP - 1) & -X86_64BitVarArgs.STACK_STEP;
     }
 
     @ExportMessage
@@ -472,21 +496,14 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     fpIdx[(fp - X86_64BitVarArgs.GP_LIMIT) / X86_64BitVarArgs.FP_STEP] = i;
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else if (area != VarArgArea.OVERFLOW_AREA) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
                     overflowAreaArgOffsets[oi] = overflowArea;
-                    overflowArea += X86_64BitVarArgs.STACK_STEP;
+                    overflowArea += getOverflowAreaSize(arg);
                     overflowArgs[oi++] = arg;
-                } else if (arg instanceof LLVM80BitFloat) {
+                } else if (arg instanceof LLVM80BitFloat || arg instanceof LLVMVarArgCompoundValue || isIVarBit(arg)) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
                     overflowAreaArgOffsets[oi] = overflowArea;
-                    overflowArea += 16;
-                    overflowArgs[oi++] = arg;
-                } else if (arg instanceof LLVMVarArgCompoundValue) {
-                    overflowAreaArgOffsets[oi] = overflowArea;
-                    LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
-                    overflowArea += obj.getSize();
-                    overflowArgs[oi++] = arg;
-                } else if (isIVarBit(arg)) {
-                    overflowAreaArgOffsets[oi] = overflowArea;
-                    overflowArea += getIVarBitBytes(arg).length;
+                    overflowArea += getOverflowAreaSize(arg);
                     overflowArgs[oi++] = arg;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -786,9 +803,11 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                                     i8OverflowArgAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, X86_64BitVarArgs.STACK_STEP);
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else {
-                    overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
+                    overflowOffset = alignOverflowArea(overflowOffset, object);
+                    storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
                                     i64OverflowArgAreaStore, i32OverflowArgAreaStore,
                                     i8OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, X86_64BitVarArgs.STACK_STEP);
+                    overflowOffset += getOverflowAreaSize(object);
                 }
             }
         }
@@ -871,14 +890,9 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                 } else if (area == VarArgArea.FP_AREA && fp < X86_64BitVarArgs.FP_LIMIT) {
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else if (area != VarArgArea.OVERFLOW_AREA) {
-                    overflowArea += X86_64BitVarArgs.STACK_STEP;
-                } else if (arg instanceof LLVM80BitFloat) {
-                    overflowArea += 16;
-                } else if (arg instanceof LLVMVarArgCompoundValue) {
-                    LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
-                    overflowArea += obj.getSize();
-                } else if (isIVarBit(arg)) {
-                    overflowArea += getIVarBitBytes(arg).length;
+                    overflowArea = alignOverflowArea(overflowArea, arg) + getOverflowAreaSize(arg);
+                } else if (arg instanceof LLVM80BitFloat || arg instanceof LLVMVarArgCompoundValue || isIVarBit(arg)) {
+                    overflowArea = alignOverflowArea(overflowArea, arg) + getOverflowAreaSize(arg);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
@@ -1037,7 +1051,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
         @ExportMessage
         public Object getNativeType() {
-            return getVarArgType(getCurrentArg());
+            return LLVMInteropType.ValueKind.I8.type.toArray(overflowAreaSize);
         }
 
     }

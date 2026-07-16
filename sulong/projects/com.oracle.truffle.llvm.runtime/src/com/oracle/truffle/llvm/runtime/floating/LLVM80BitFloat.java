@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -325,13 +325,14 @@ public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
 
     public boolean isQNaN() {
         // Checkstyle: stop magic number name check
+        if (getExponent() != 0 && !getBit(63, getFraction())) {
+            return true; // Handle pseudo-NaNs, pseudo-infinities, and unnormals as quiet NaNs
+        }
         if (getExponent() == EXPONENT_MASK) {
             if (getBit(63, getFraction())) {
                 if (getBit(62, getFraction())) {
                     return true;
                 }
-            } else {
-                return true; // Handle Pseudo NaN as quiet NaN
             }
         }
         // Checkstyle: resume magic number name check
