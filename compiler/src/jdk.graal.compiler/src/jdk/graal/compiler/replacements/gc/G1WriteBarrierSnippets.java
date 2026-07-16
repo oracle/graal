@@ -244,7 +244,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_LOAD, GC_CARD_LOCATION);
                     byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
-                        log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned((int) cardByte).rawValue());
+                        log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                         cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                         counters.g1ExecutedPostWriteBarrierCounter.inc();
 

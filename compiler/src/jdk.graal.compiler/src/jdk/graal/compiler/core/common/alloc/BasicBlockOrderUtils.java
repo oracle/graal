@@ -51,7 +51,7 @@ public final class BasicBlockOrderUtils {
      * Initializes the priority queue used for the work list of blocks and adds the start block.
      */
     protected static <T extends BasicBlock<T>> PriorityQueue<T> initializeWorklist(T startBlock, BitSet visitedBlocks) {
-        PriorityQueue<T> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator<>());
+        PriorityQueue<T> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator<T>());
         result.add(startBlock);
         visitedBlocks.set(startBlock.getId());
         return result;
