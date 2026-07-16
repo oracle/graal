@@ -115,6 +115,7 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -499,7 +500,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (usedProviders.contains(p)) {
             return false;
         }
-        if (substitutionProcessor.isDeleted(p.getClass())) {
+        if (substitutionProcessor.isDeleted(GuestAccess.get().lookupType(p.getClass()))) {
             return true;
         }
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
