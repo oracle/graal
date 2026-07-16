@@ -1602,12 +1602,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
     }
 
-    protected static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
-
+    private class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
         private final SharedMethod method;
-        protected final LIRKindTool lirKindTool;
+        private final LIRKindTool lirKindTool;
 
-        protected SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool) {
+        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool) {
             super(backupSlotProvider);
             this.method = method;
             this.lirKindTool = lirKindTool;
@@ -1703,7 +1702,24 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return ReservedRegisters.singleton().getCodeBaseRegister();
         }
 
-        protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
+        @Override
+        public boolean canInlineConstant(Constant c) {
+            if (SubstrateOptions.useCompressedReferences()) {
+                if (CompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                    return true;
+                } else if (c instanceof CompressibleConstant) {
+                    return ((CompressibleConstant) c).isCompressed();
+                }
+            }
+            return super.canInlineConstant(c);
+        }
+
+        private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
+            ConstantReflectionProvider constantReflection = getProviders().getConstantReflection();
+            if (!constant.isCompressed() && AMD64ImageHeapAddressOptimizationPhase.canOptimize(constant, constantReflection)) {
+                return new LoadUncompressedImageHeapConstantOp(dst, constant);
+            }
+
             RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
             return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
         }
@@ -1947,10 +1963,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         return factory;
     }
 
-    protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool implements AMD64SimdLIRKindTool {
+    private static final class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool implements AMD64SimdLIRKindTool {
         @Override
         public LIRKind getNarrowOopKind() {
-            return LIRKind.compressedReference(AMD64Kind.QWORD);
+            PlatformKind kind = SubstrateOptions.useCompressedReferences() ? AMD64Kind.DWORD : AMD64Kind.QWORD;
+            return LIRKind.compressedReference(kind);
         }
 
         @Override

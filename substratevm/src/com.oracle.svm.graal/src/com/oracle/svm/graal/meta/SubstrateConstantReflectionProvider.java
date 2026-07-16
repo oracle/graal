@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.graal.meta;
 
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
+
+import java.lang.reflect.Array;
 import java.util.Objects;
 
 import org.graalvm.word.SignedWord;
@@ -31,12 +34,13 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -45,6 +49,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -54,6 +59,68 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     public SubstrateConstantReflectionProvider(SubstrateMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
         assert SubstrateUtil.HOSTED || SubstrateOptions.useRistretto();
+    }
+
+    @Override
+    public boolean canRepresentAsImageHeapOffset(JavaConstant constant) {
+        return getImageHeapOffset(constant) != 0;
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        if (x == y) {
+            return true;
+        } else if (x instanceof SubstrateObjectConstant) {
+            return y instanceof SubstrateObjectConstant && ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
+        } else {
+            return x.equals(y);
+        }
+    }
+
+    @Override
+    public Integer readArrayLength(JavaConstant array) {
+        if (array.getJavaKind() != JavaKind.Object || array.isNull() || !SubstrateObjectConstant.asObject(array).getClass().isArray()) {
+            return null;
+        }
+        return Array.getLength(SubstrateObjectConstant.asObject(array));
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return null;
+        }
+
+        Object a = SubstrateObjectConstant.asObject(array);
+
+        if (!a.getClass().isArray() || index < 0 || index >= Array.getLength(a)) {
+            return null;
+        }
+
+        if (a instanceof Object[]) {
+            Object element = ((Object[]) a)[index];
+            return SubstrateObjectConstant.forObject(element);
+        } else {
+            return JavaConstant.forBoxedPrimitive(Array.get(a, index));
+        }
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        if (!source.getJavaKind().isObject()) {
+            return null;
+        }
+        return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        return SubstrateObjectConstant.forObject(value);
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

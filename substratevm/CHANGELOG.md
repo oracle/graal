@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)
+* (GR-77358) Introduced compressed (32-bit) references, enabled by default. This generally improves memory usage and performance, but limits heap memory to 32 GB. Disable with `-H:-UseCompressedReferences`.
 * (GR-59698) Native Image now always uses isolates. The deprecated `-H:+SpawnIsolates` option remains for compatibility, while `-H:-SpawnIsolates` is no longer supported and reports a build-time error.
 * (GR-76718) Removed the deprecated `-H:OutlineWriteBarriers` option. Use `-H:WriteBarrierOutlining=<value>` instead.
 * (GR-73735) Enable Java Vector API support by default when the `jdk.incubator.vector` module is part of the boot module layer. Use `-H:-VectorAPISupport` as an explicit opt-out if needed.

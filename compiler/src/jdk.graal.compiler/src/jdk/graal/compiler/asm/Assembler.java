@@ -117,7 +117,16 @@ public abstract class Assembler<T extends Enum<T>> {
 
     public void setCodePatchingAnnotationConsumer(Consumer<CodeAnnotation> codeAnnotationConsumer) {
         assert this.codePatchingAnnotationConsumer == null : "overwriting existing value";
-        this.codePatchingAnnotationConsumer = codeAnnotationConsumer;
+        this.codePatchingAnnotationConsumer = annotation -> {
+            if (isRecordingCodeSnippet()) {
+                /*
+                 * Code patching annotations contain positions into the emitted code. The code
+                 * snippet replay mechanism cannot relocate these architecture-specific positions.
+                 */
+                abortRecordingCodeSnippet();
+            }
+            codeAnnotationConsumer.accept(annotation);
+        };
     }
 
     /**
