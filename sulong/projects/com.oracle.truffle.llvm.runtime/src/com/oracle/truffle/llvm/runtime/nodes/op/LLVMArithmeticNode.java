@@ -397,7 +397,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         int getRoundingMode() {
-            return getLanguage().contextThreadLocal.get().getRoundingMode();
+            return getLanguage().getRoundingMode();
         }
 
         static float adjustRounding(float nearest, double exact, int roundingMode) {
@@ -455,10 +455,12 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         float doFloat(float left, float right) {
             float result = fpOp().doFloat(left, right);
-            if (fpOp() == ADD) {
-                return adjustRounding(result, (double) left + right, getRoundingMode());
-            } else if (fpOp() == SUB) {
-                return adjustRounding(result, (double) left - right, getRoundingMode());
+            if (!getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                if (fpOp() == ADD) {
+                    return adjustRounding(result, (double) left + right, getRoundingMode());
+                } else if (fpOp() == SUB) {
+                    return adjustRounding(result, (double) left - right, getRoundingMode());
+                }
             }
             return result;
         }
@@ -473,10 +475,12 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         double doDouble(double left, double right) {
             double result = fpOp().doDouble(left, right);
-            if (fpOp() == ADD) {
-                return adjustRounding(result, addError(left, right, result), getRoundingMode());
-            } else if (fpOp() == SUB) {
-                return adjustRounding(result, addError(left, -right, result), getRoundingMode());
+            if (!getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                if (fpOp() == ADD) {
+                    return adjustRounding(result, addError(left, right, result), getRoundingMode());
+                } else if (fpOp() == SUB) {
+                    return adjustRounding(result, addError(left, -right, result), getRoundingMode());
+                }
             }
             return result;
         }

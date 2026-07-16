@@ -50,7 +50,7 @@ public abstract class LLVMAdditionalIntrinsics {
 
         @Specialization
         protected Object doSet(int roundingMode) {
-            getLanguage().contextThreadLocal.get().setRoundingMode(roundingMode);
+            getLanguage().setRoundingMode(roundingMode);
             return null;
         }
     }
@@ -59,7 +59,7 @@ public abstract class LLVMAdditionalIntrinsics {
 
         @Specialization
         protected int doGet() {
-            return getLanguage().contextThreadLocal.get().getRoundingMode();
+            return getLanguage().getRoundingMode();
         }
     }
 

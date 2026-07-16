@@ -115,6 +115,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
+    public static final int DEFAULT_ROUNDING_MODE = 1;
 
     @CompilationFinal public boolean singleContext = true;
 
@@ -224,6 +225,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final LLDBSupport lldbSupport = new LLDBSupport();
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
+    private final Assumption defaultRoundingModeAssumption = Truffle.getRuntime().createAssumption("default rounding mode");
 
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
@@ -247,6 +249,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
          * proper class loader by the time compilation starts.
          */
         noCommonHandleAssumption.isValid();
+        defaultRoundingModeAssumption.isValid();
 
     }
 
@@ -291,7 +294,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
-        int roundingMode = 1;
+        int roundingMode = DEFAULT_ROUNDING_MODE;
         LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
         List<LLVMUserException> exceptionStack = new ArrayList<>();
@@ -468,6 +471,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public Assumption getNoDerefHandleAssumption() {
         return noDerefHandleAssumption;
+    }
+
+    /**
+     * This assumption remains valid until a non-default floating-point rounding mode is selected.
+     */
+    public Assumption getDefaultRoundingModeAssumption() {
+        return defaultRoundingModeAssumption;
+    }
+
+    public void setRoundingMode(int roundingMode) {
+        if (roundingMode != DEFAULT_ROUNDING_MODE) {
+            defaultRoundingModeAssumption.invalidate();
+        }
+        contextThreadLocal.get().setRoundingMode(roundingMode);
+    }
+
+    public int getRoundingMode() {
+        return contextThreadLocal.get().getRoundingMode();
     }
 
     public final String getLLVMLanguageHome() {
