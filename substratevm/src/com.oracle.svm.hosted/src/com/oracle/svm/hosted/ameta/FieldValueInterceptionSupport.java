@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -115,7 +116,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     /**
-     * Returns a {@link FieldValueTransformer} if one was already registered for the field. In
+     * Returns a {@link JVMCIFieldValueTransformer} if one was already registered for the field. In
      * contrast to most other methods of this class, invoking this method does not prevent a future
      * registration of a field value transformer for that field.
      */
@@ -134,34 +135,51 @@ public final class FieldValueInterceptionSupport {
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
     public void registerLegacyFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        registerLegacyFieldValueTransformer(GuestAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+        ResolvedJavaField oField = GuestAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField);
+        JVMCIFieldValueTransformer result;
+        if (transformer instanceof JVMCIFieldValueTransformer jvmciFieldValueTransformer) {
+            result = jvmciFieldValueTransformer;
+        } else {
+            result = WrappedFieldValueTransformer.create(GuestAccess.get().getSnippetReflection().forObject(transformer));
+        }
+        registerFieldValueTransformer(oField, result);
     }
 
     /**
      * Wraps a {@link FieldValueTransformer} in an {@link JVMCIFieldValueTransformer}.
      */
     public static final class WrappedFieldValueTransformer implements JVMCIFieldValueTransformer {
-        private final FieldValueTransformer fieldValueTransformer;
+        private final JavaConstant fieldValueTransformer;
 
-        public static JVMCIFieldValueTransformer create(FieldValueTransformer fieldValueTransformer) {
-            if (fieldValueTransformer instanceof JVMCIFieldValueTransformer jvmciFieldValueTransformer) {
-                return jvmciFieldValueTransformer;
-            }
+        public static JVMCIFieldValueTransformer create(JavaConstant fieldValueTransformer) {
             return new WrappedFieldValueTransformer(fieldValueTransformer);
         }
 
-        private WrappedFieldValueTransformer(FieldValueTransformer fieldValueTransformer) {
-            this.fieldValueTransformer = fieldValueTransformer;
+        private WrappedFieldValueTransformer(JavaConstant fieldValueTransformer) {
+            this.fieldValueTransformer = Objects.requireNonNull(fieldValueTransformer);
         }
 
         @Override
         public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-            return FieldValueTransformerWithAvailability.transformAndConvert(fieldValueTransformer, receiver, originalValue);
+            GuestAccess access = GuestAccess.get();
+            JavaConstant result = access.invoke(access.elements.FieldValueTransformer_transform, fieldValueTransformer, asGuestObject(receiver), asGuestObject(originalValue));
+            if (!result.isNull() && access.lookupType(JavaConstantWrapper.class).equals(access.getProviders().getMetaAccess().lookupJavaType(result))) {
+                return access.getSnippetReflection().asObject(JavaConstantWrapper.class, result).constant();
+            }
+            return result;
+        }
+
+        private static JavaConstant asGuestObject(JavaConstant value) {
+            if (value == null || value.isNull()) {
+                return JavaConstant.NULL_POINTER;
+            }
+            return value.getJavaKind().isPrimitive() ? GuestAccess.get().boxPrimitive(value) : value;
         }
 
         @Override
         public boolean isAvailable() {
-            return fieldValueTransformer.isAvailable();
+            GuestAccess access = GuestAccess.get();
+            return access.invoke(access.elements.FieldValueTransformer_isAvailable, fieldValueTransformer).asBoolean();
         }
 
         @Override
@@ -171,22 +189,21 @@ public final class FieldValueInterceptionSupport {
             }
 
             WrappedFieldValueTransformer that = (WrappedFieldValueTransformer) o;
-            return Objects.equals(fieldValueTransformer, that.fieldValueTransformer);
+            GuestAccess access = GuestAccess.get();
+            return access.invoke(access.elements.java_lang_Object_equals, fieldValueTransformer, that.fieldValueTransformer).asBoolean();
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(fieldValueTransformer);
+            GuestAccess access = GuestAccess.get();
+            return access.invoke(access.elements.java_lang_Object_hashCode, fieldValueTransformer).asInt();
         }
 
         @Override
         public String toString() {
-            return "Wrapped[" + fieldValueTransformer + ']';
+            GuestAccess access = GuestAccess.get();
+            return "Wrapped[" + access.asHostString(access.invoke(access.elements.java_lang_Object_toString, fieldValueTransformer)) + ']';
         }
-    }
-
-    public void registerLegacyFieldValueTransformer(ResolvedJavaField oField, FieldValueTransformer transformer) {
-        registerFieldValueTransformer(oField, WrappedFieldValueTransformer.create(transformer));
     }
 
     /**

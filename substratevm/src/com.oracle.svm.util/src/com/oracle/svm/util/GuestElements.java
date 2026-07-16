@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 
@@ -111,6 +112,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
+    public final ResolvedJavaMethod java_lang_Object_equals = lookupMethod(java_lang_Object, "equals", Object.class);
+    public final ResolvedJavaMethod java_lang_Object_hashCode = lookupMethod(java_lang_Object, "hashCode");
     public final ResolvedJavaMethod java_lang_Object_toString = lookupMethod(java_lang_Object, "toString");
 
     public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
@@ -169,6 +172,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+
+    public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
+    public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
+    public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);
