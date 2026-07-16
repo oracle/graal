@@ -469,7 +469,7 @@ public abstract class LLVMArithmetic {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Byte.SIZE - 1))) != 0;
             if (overflow) {
-                return ((left > 0) ^ (right < 0)) ? Byte.MAX_VALUE : Byte.MIN_VALUE;
+                return left >= 0 ? Byte.MAX_VALUE : Byte.MIN_VALUE;
             } else {
                 return (byte) res;
             }
@@ -480,7 +480,7 @@ public abstract class LLVMArithmetic {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Short.SIZE - 1))) != 0;
             if (overflow) {
-                return ((left > 0) ^ (right < 0)) ? Short.MAX_VALUE : Short.MIN_VALUE;
+                return left >= 0 ? Short.MAX_VALUE : Short.MIN_VALUE;
             } else {
                 return (short) res;
             }
@@ -498,7 +498,7 @@ public abstract class LLVMArithmetic {
                 overflow = true;
             }
             if (overflow) {
-                return ((left > 0) ^ (right < 0)) ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+                return left >= 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
             } else {
                 return res;
             }
@@ -516,7 +516,7 @@ public abstract class LLVMArithmetic {
                 overflow = true;
             }
             if (overflow) {
-                return ((left > 0) ^ (right < 0)) ? Long.MAX_VALUE : Long.MIN_VALUE;
+                return left >= 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
             } else {
                 return res;
             }
