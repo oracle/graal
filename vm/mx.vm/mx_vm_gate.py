@@ -1120,6 +1120,7 @@ def _polyglot_isolate_native_unittest(isolate_mode, truffle_runtime_options=None
         *extra_vm_arguments_isolate_library,
         *isolate_mode_vm_options,
         *truffle_runtime_options,
+        '-Dpolyglot.engine.WarnMethodScoping=false'
     ]
     mx_truffle.native_truffle_unittest(args)
 

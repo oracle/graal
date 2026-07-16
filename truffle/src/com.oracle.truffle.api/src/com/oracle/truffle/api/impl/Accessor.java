@@ -874,6 +874,8 @@ public abstract class Accessor {
 
         public abstract OptionKey<OptionMap<String>> getIsolateOptionOption();
 
+        public abstract OptionKey<Boolean> getWarnMethodScopingOption();
+
         public abstract boolean isIsolateMemoryProtection(OptionValues optionValues);
 
         public abstract boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy);
@@ -881,6 +883,8 @@ public abstract class Accessor {
         public abstract void collectNativeImagePresetOptions();
 
         public abstract Source getSourceReceiver(org.graalvm.polyglot.Source source);
+
+        public abstract TruffleLogger getEngineLogger(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {

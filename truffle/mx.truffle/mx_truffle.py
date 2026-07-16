@@ -359,6 +359,8 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = [*vmArgs, "-Dpolyglot.engine.WarnVirtualThreadSupport=false"]
+        # Disable MethodScoping warning
+        vmArgs = [*vmArgs, "-Dpolyglot.engine.WarnMethodScoping=false"]
         append_unittest_image_build_time_options(vmArgs)
         enable_truffle_native_access(vmArgs)
         enable_sun_misc_unsafe(vmArgs)
