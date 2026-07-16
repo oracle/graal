@@ -1453,17 +1453,7 @@ public class ResourceLimitsTest extends AbstractPolyglotTest {
 
     static void assertTimeUnitOption(String optionName, boolean isMaxCPUTime) {
         // valid values
-        try {
-            newContextBuilder().option(optionName, "0ms").build().close();
-        } catch (PolyglotException pe) {
-            if (!isMaxCPUTime || TruffleTestAssumptions.isWeakEncapsulation() || !pe.isResourceExhausted() || !pe.getMessage().startsWith("Maximum CPU time limit of 0ms exceeded.")) {
-                /*
-                 * Isolated context enters the preinitialized context to replay events, and so it
-                 * consumes some CPU time which may lead to exceeding the very low CPU time limit.
-                 */
-                throw pe;
-            }
-        }
+        newContextBuilder().option(optionName, "0ms").build().close();
         try {
             newContextBuilder().option(optionName, "1ms").build().close();
         } catch (PolyglotException pe) {
@@ -1529,8 +1519,16 @@ public class ResourceLimitsTest extends AbstractPolyglotTest {
         assertFails(() -> newContextBuilder().option(optionName, "42.1ms").build(), IllegalArgumentException.class);
         assertFails(() -> newEngineBuilder().option(optionName, "42.1ms").build(), IllegalArgumentException.class);
         // long overflow
-        assertFails(() -> newContextBuilder().option(optionName, BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.valueOf(1)) + "ms").build(), IllegalArgumentException.class);
-        assertFails(() -> newEngineBuilder().option(optionName, BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.valueOf(1)) + "ms").build(), IllegalArgumentException.class);
+        String tooLargeDuration = "9223372036854776s";
+        String expectedMessage = "Invalid duration '" + tooLargeDuration +
+                        "' specified. The duration exceeds Long.MAX_VALUE milliseconds, which is already roughly 292 million years.";
+        assertFails(() -> newContextBuilder().option(optionName, tooLargeDuration).build(), IllegalArgumentException.class, expectedMessage);
+        assertFails(() -> newEngineBuilder().option(optionName, tooLargeDuration).build(), IllegalArgumentException.class, expectedMessage);
+        String tooLargeMillis = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE) + "ms";
+        expectedMessage = "Invalid duration '" + tooLargeMillis +
+                        "' specified. The duration exceeds Long.MAX_VALUE milliseconds, which is already roughly 292 million years.";
+        assertFails(() -> newContextBuilder().option(optionName, tooLargeMillis).build(), IllegalArgumentException.class, expectedMessage);
+        assertFails(() -> newEngineBuilder().option(optionName, tooLargeMillis).build(), IllegalArgumentException.class, expectedMessage);
     }
 
     @Test
