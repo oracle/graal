@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatEqualsNode;
 import jdk.graal.compiler.nodes.calc.FloatLessThanNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
@@ -126,6 +127,36 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     public static boolean floatCompare(float a, float b) {
         return a < b;
+    }
+
+    /**
+     * Tests {@code x < 5 => x < 6} and {@code x < 5 => !(x < 6)}.
+     */
+    @Test
+    public void testIntegerComparisonImpliedNegatedConsequent() {
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext()).build();
+        ValueNode x = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(JavaKind.Int))));
+        LogicNode lessThanFive = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x, ConstantNode.forInt(5), NodeView.DEFAULT));
+        LogicNode lessThanSix = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x, ConstantNode.forInt(6), NodeView.DEFAULT));
+        LogicNode notLessThanSix = graph.addOrUniqueWithInputs(LogicNegationNode.create(lessThanSix));
+
+        assertTrue(lessThanFive.implies(false, lessThanSix).isTrue());
+        assertTrue(lessThanFive.implies(false, notLessThanSix).isFalse());
+    }
+
+    /**
+     * Tests {@code x |<| 5 => x < 5} and {@code x |<| 5 => !(x < 5)}.
+     */
+    @Test
+    public void testUnsignedComparisonImpliedNegatedConsequent() {
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext()).build();
+        ValueNode x = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(JavaKind.Int))));
+        LogicNode belowFive = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x, ConstantNode.forInt(5), NodeView.DEFAULT));
+        LogicNode lessThanFive = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x, ConstantNode.forInt(5), NodeView.DEFAULT));
+        LogicNode notLessThanFive = graph.addOrUniqueWithInputs(LogicNegationNode.create(lessThanFive));
+
+        assertTrue(belowFive.implies(false, lessThanFive).isTrue());
+        assertTrue(belowFive.implies(false, notLessThanFive).isFalse());
     }
 
     @Test

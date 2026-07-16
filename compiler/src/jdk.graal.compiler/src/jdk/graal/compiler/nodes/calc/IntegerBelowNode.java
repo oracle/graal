@@ -279,13 +279,6 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {
-        if (other instanceof LogicNegationNode) {
-            // Unwrap negations.
-            TriState result = implies(thisNegated, ((LogicNegationNode) other).getValue());
-            if (result.isKnown()) {
-                return TriState.get(!result.toBoolean());
-            }
-        }
         if (other instanceof IntegerLessThanNode integerLessThanNode) {
             TriState result = thisNegated
                             ? tryProveNotBelowImpliesNotLessThan(integerLessThanNode)

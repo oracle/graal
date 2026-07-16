@@ -89,6 +89,11 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
      * <li>If negate(this, thisNegated) => !other, returns {@link TriState#FALSE}</li>
      * </ul>
      *
+     * Overrides must not unwrap a {@link LogicNegationNode} consequent. They should delegate to
+     * this method when their specialized proofs return {@link TriState#UNKNOWN}, so that this
+     * method unwraps the consequent, redispatches the implication proof, and flips the result.
+     * Nested negations are handled recursively.
+     *
      * @param thisNegated whether this condition should be considered as false.
      * @param other the other condition.
      */
