@@ -70,8 +70,10 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.Return;
@@ -92,6 +94,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -419,6 +422,13 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         assertQuickenings(root, 5, 2);
         assertEquals(42, root.getCallTarget().call(42));
         assertQuickenings(root, 5, 2); // no change
+    }
+
+    @Test
+    public void testDuplicateQuickeningForEpilogVariants() {
+        List<String> instructionNames = DuplicateQuickeningEpilogRootNodeGen.BYTECODE.getInstructionDescriptors().stream().map(InstructionDescriptor::getName).toList();
+        assertTrue(instructionNames.contains("c.StoreReturnValue_offset1$Object"));
+        assertTrue(instructionNames.contains("c.StoreReturnValue_offset2$Object"));
     }
 
     @Test
@@ -1061,6 +1071,44 @@ public class PrologEpilogTest extends AbstractInstructionTest {
             }
         }
         return false;
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, boxingEliminationTypes = {int.class})
+abstract class DuplicateQuickeningEpilogRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+    protected DuplicateQuickeningEpilogRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @EpilogReturn
+    static final class StoreReturnValue {
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        static int doInt(@SuppressWarnings("unused") Object value) throws UnexpectedResultException {
+            throw new UnexpectedResultException(value);
+        }
+
+        @ForceQuickening
+        @Specialization(replaces = "doInt")
+        static Object doObject(Object value) {
+            return value;
+        }
+    }
+
+    @Return(resultOperandIndex = 0)
+    static final class FirstOperandReturn {
+        @Specialization
+        static Object doReturn(Object value, @SuppressWarnings("unused") Object ignored) {
+            return value;
+        }
+    }
+
+    @Return(resultOperandIndex = 1)
+    static final class SecondOperandReturn {
+        @Specialization
+        static Object doReturn(@SuppressWarnings("unused") Object ignored, Object value) {
+            return value;
+        }
     }
 }
 
