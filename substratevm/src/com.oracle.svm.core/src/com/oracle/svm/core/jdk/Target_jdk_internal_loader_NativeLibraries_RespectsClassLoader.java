@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +42,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.internal.loader.NativeLibrary;
 
@@ -116,28 +114,5 @@ final class NewLoadedLibraryNamesComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
         return ConcurrentHashMap.<String> newKeySet();
-    }
-}
-
-@Substitute
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "LibraryPaths", onlyWith = ClassRegistries.RespectsClassLoader.class)
-final class Target_jdk_internal_loader_NativeLibraries_LibraryPaths {
-    // Checkstyle: stop
-    @Substitute static String[] USER_PATHS;
-    @Substitute static String[] SYS_PATHS;
-    // Checkstyle: resume
-
-    static {
-        if (!SubstrateUtil.HOSTED) {
-            USER_PATHS = Target_jdk_internal_loader_ClassLoaderHelper.parsePath(Target_jdk_internal_util_StaticProperty.javaLibraryPath());
-            String[] sysPath = Target_jdk_internal_loader_ClassLoaderHelper.parsePath(Target_jdk_internal_util_StaticProperty.sunBootLibraryPath());
-            // TODO GR-76139
-            String imageDirectory = NativeLibraries.getImageDirectory();
-            if (imageDirectory != null) {
-                sysPath = Arrays.copyOf(sysPath, sysPath.length + 1);
-                sysPath[sysPath.length - 1] = imageDirectory;
-            }
-            SYS_PATHS = sysPath;
-        }
     }
 }
