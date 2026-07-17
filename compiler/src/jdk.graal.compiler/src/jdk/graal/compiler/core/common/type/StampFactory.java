@@ -170,8 +170,9 @@ public class StampFactory {
      * empty stamp if the unsigned lower bound is larger than the unsigned upper bound. If the sign
      * of lower and upper bound differs after sign extension to the specified length ({@code bits}),
      * this method returns an unrestricted stamp with respect to the bounds. {@code mayBeSet} or
-     * {@code mustBeSet} can restrict the bounds nevertheless. Take the following example when
-     * inverting a zero extended 32bit stamp to the 8bit stamp before extension:
+     * {@code mustBeSet} can restrict the bounds nevertheless. A non-zero unsigned lower bound is
+     * preserved through the zero-exclusion flag. Take the following example when inverting a zero
+     * extended 32bit stamp to the 8bit stamp before extension:
      *
      * </p>
      * 32bit stamp [0, 192] 00...00 xxxxxxx0
@@ -200,7 +201,7 @@ public class StampFactory {
             upperBound = CodeUtil.maxValue(bits);
         }
         long mask = CodeUtil.mask(bits);
-        return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet & mask, mayBeSet & mask);
+        return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet & mask, mayBeSet & mask, unsignedLowerBound == 0);
     }
 
     public static FloatStamp forFloat(JavaKind kind, double lowerBound, double upperBound, boolean nonNaN) {

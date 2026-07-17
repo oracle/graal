@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -31,9 +34,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase {
@@ -307,6 +307,67 @@ public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase
     @Test
     public void test14() {
         testConditionalElimination("testSnippet14", "referenceSnippet14");
+    }
+
+    /**
+     * Checks {@code !(a |<| zeroExtend(b))}.
+     */
+    public static void referenceSnippet15(long a, int b) {
+        if (Long.compareUnsigned(a, Integer.toUnsignedLong(b)) >= 0) {
+            sink1 = 0;
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    /**
+     * Checks {@code !(a |<| zeroExtend(b)) || b == 0}.
+     */
+    public static void testSnippet15(long a, int b) {
+        if (Long.compareUnsigned(a, Integer.toUnsignedLong(b)) >= 0 || b == 0) {
+            sink1 = 0;
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    /**
+     * Tests that {@code a |<| zeroExtend(b)} implies {@code zeroExtend(b) != 0}, and therefore
+     * {@code b != 0}.
+     */
+    @Test
+    public void test15() {
+        testConditionalElimination("testSnippet15", "referenceSnippet15");
+    }
+
+    /**
+     * Checks {@code !(a |<| b)}.
+     */
+    public static void referenceSnippet16(int a, int b) {
+        if (Integer.compareUnsigned(a, b) >= 0) {
+            sink1 = 0;
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    /**
+     * Checks {@code !(a |<| b) || b == 0}.
+     */
+    public static void testSnippet16(int a, int b) {
+        if (Integer.compareUnsigned(a, b) >= 0 || b == 0) {
+            sink1 = 0;
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    /**
+     * Tests that {@code a |<| b} implies {@code b != 0}.
+     */
+    @Test
+    public void test16() {
+        testConditionalElimination("testSnippet16", "referenceSnippet16");
     }
 
     @Override

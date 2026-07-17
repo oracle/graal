@@ -33,7 +33,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
@@ -41,6 +44,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.test.GraphTest;
@@ -49,10 +53,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -776,6 +776,17 @@ public class IntegerStampTest extends GraphTest {
         assertCanBeZero(stampWithZero);
         IntegerStamp union = (IntegerStamp) stampWithZero.meet(stampWithoutZero);
         assertCanBeZero(union);
+    }
+
+    /**
+     * Tests that an unsigned range crossing the sign boundary preserves its zero hole.
+     */
+    @Test
+    public void testCanBeZero14() {
+        IntegerStamp stamp = StampFactory.forUnsignedInteger(32, 1, CodeUtil.mask(32));
+        assertNeverZero(stamp);
+        Assert.assertTrue(stamp.contains(1));
+        Assert.assertTrue(stamp.contains(-1));
     }
 
     /**
