@@ -194,7 +194,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         for (var info : updateInfoMap.values()) {
             // Primitive values are encoded directly in the patch array and do not need heap entries.
             if (patchFilter(info) && info.kind.isObject()) {
-                ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
+                JavaConstant singletonConstant = hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
                 heap.addConstant(singletonConstant, false, addReason);
             }
         }
@@ -326,7 +326,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
                 case Long -> buffer.putLong(value.updatedValue.asLong());
                 case Object -> {
                     int encodedValue;
-                    if (value.updatedValue == null) {
+                    if (value.updatedValue == null || value.updatedValue.equals(JavaConstant.NULL_POINTER)) {
                         encodedValue = 0;
                     } else {
                         var newValue = (ImageHeapConstant) heap.aUniverse.getHeapScanner().getImageHeapConstant(value.updatedValue);
