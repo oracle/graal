@@ -28,6 +28,7 @@ import static jdk.graal.compiler.util.Digest.DigestBuilder;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
@@ -1580,6 +1581,8 @@ public final class NativeImageClassLoaderSupport {
          */
         private final EconomicMap<URI, List<String>> mpDigests = EconomicMap.create();
 
+        private static final int FILE_DIGEST_BUFFER_SIZE = 64 * 1024;
+
         private PathDigests(List<Path> imagecp, List<Path> imagemp) {
             imagecp.stream()
                             .map(Path::toUri)
@@ -1599,30 +1602,57 @@ public final class NativeImageClassLoaderSupport {
          * @param digests where to record the digest
          */
         private static void storePathFileDigest(URI container, String resource, boolean isJar, EconomicMap<URI, List<String>> digests) {
-            byte[] fileContent;
+            DigestBuilder db = new DigestBuilder();
             try {
                 if (isJar) {
                     try (JarFile jarFile = new JarFile(new File(container), true, ZipFile.OPEN_READ, JarFile.runtimeVersion())) {
                         JarEntry jarEntry = jarFile.getJarEntry(resource);
-                        fileContent = jarFile.getInputStream(jarEntry).readAllBytes();
+                        try (InputStream input = jarFile.getInputStream(jarEntry)) {
+                            updateDigest(db, input);
+                        }
                     }
                 } else {
                     Path resourcePath = Path.of(container).resolve(resource);
                     if (!resourcePath.toFile().isFile()) {
                         return;
                     }
-                    fileContent = Files.readAllBytes(resourcePath);
+                    try (InputStream input = Files.newInputStream(resourcePath)) {
+                        updateDigest(db, input);
+                    }
                 }
             } catch (IOException e) {
                 throw UserError.abort("Image builder cannot read file: " + resource);
             }
 
-            DigestBuilder db = new DigestBuilder();
-            db.update(fileContent);
             db.update(resource.getBytes(StandardCharsets.UTF_8));
             List<String> containerDigests = digests.get(container);
             synchronized (containerDigests) {
                 containerDigests.add(new String(db.digest(), StandardCharsets.UTF_8));
+            }
+        }
+
+        /**
+         * Updates the digest without materializing the whole resource in one byte array. The buffer
+         * is filled before each update so the digest does not depend on arbitrary short-read
+         * boundaries from the input stream. This avoids overflowing {@link Integer#MAX_VALUE} for
+         * path digest inputs larger than a single Java byte array can represent.
+         */
+        private static void updateDigest(DigestBuilder db, InputStream input) throws IOException {
+            byte[] buffer = new byte[FILE_DIGEST_BUFFER_SIZE];
+            int buffered = 0;
+            int bytesRead;
+            while ((bytesRead = input.read(buffer, buffered, buffer.length - buffered)) != -1) {
+                if (bytesRead == 0) {
+                    continue;
+                }
+                buffered += bytesRead;
+                if (buffered == buffer.length) {
+                    db.update(buffer);
+                    buffered = 0;
+                }
+            }
+            if (buffered > 0) {
+                db.update(Arrays.copyOf(buffer, buffered));
             }
         }
 
