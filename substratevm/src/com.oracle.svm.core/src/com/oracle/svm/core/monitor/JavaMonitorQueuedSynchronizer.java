@@ -70,7 +70,7 @@ import jdk.internal.misc.Unsafe;
  */
 @BasedOnJDKClass(AbstractQueuedLongSynchronizer.class)
 public abstract class JavaMonitorQueuedSynchronizer {
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25%2B37/src/hotspot/share/runtime/objectMonitor.cpp#L2259-L2265") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2259-L2265") //
     private static final int PRE_SPIN = 10;
     private static final int SPIN_LIMIT = 5000;
     private static final int SPIN_POVERTY = 1000;
@@ -306,7 +306,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
      * mechanism, clearing {@code Node.status} for the head of the queue to indicate ongoing
      * attempts to acquire.
      */
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25%2B37/src/hotspot/share/runtime/objectMonitor.cpp#L2310-L2445")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2310-L2445")
     protected int trySpinAcquire(int spins, long arg) {
         assert spins > 0;
         final int abort = 0; // return value to stop spinning
@@ -346,7 +346,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         return abort;
     }
 
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25%2B37/src/hotspot/share/runtime/objectMonitor.cpp#L2294-L2308")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2294-L2308")
     private boolean shortFixedSpin(long arg, int spinCount, boolean adapt) {
         for (int ctr = 0; ctr < spinCount; ctr++) {
             if (probability(NOT_FREQUENT_PROBABILITY, tryAcquire(arg))) {
@@ -360,7 +360,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         return false;
     }
 
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25%2B37/src/hotspot/share/runtime/objectMonitor.cpp#L2267-L2277")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2267-L2277")
     private void adjustSpinDurationUp() {
         int x = U.getIntOpaque(this, SPIN_DURATION);
         if (x < SPIN_LIMIT) {
@@ -371,7 +371,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25%2B37/src/hotspot/share/runtime/objectMonitor.cpp#L2279-L2292")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2279-L2292")
     private void adjustSpinDurationDown() {
         int x = U.getIntOpaque(this, SPIN_DURATION);
         if (x > 0) {

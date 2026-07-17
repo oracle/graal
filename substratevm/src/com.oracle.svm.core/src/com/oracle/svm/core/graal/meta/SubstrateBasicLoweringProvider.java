@@ -273,7 +273,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     private static void lowerAssertionNode(AssertionNode n) {
-        // we discard the assertion if it was not handled by any other lowering
+        // GR-77807: silently discards any runtime-checked assertions (dynamicAssert).
         n.graph().removeFixed(n);
     }
 
