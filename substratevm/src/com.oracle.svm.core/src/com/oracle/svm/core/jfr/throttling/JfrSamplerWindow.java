@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.jfr.JfrTicks;
 
 /**
@@ -38,8 +38,8 @@ import com.oracle.svm.core.jfr.JfrTicks;
  */
 class JfrSamplerWindow {
     private final JfrSamplerParams params = new JfrSamplerParams();
-    private final UninterruptibleUtils.AtomicLong endTicks = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong measuredPopulationSize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong endTicks = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong measuredPopulationSize = new UninterruptibleAtomicUtils.AtomicLong(0);
 
     private long samplingInterval;
     private long projectedPopulationSize;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.isolated;
 
-import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;

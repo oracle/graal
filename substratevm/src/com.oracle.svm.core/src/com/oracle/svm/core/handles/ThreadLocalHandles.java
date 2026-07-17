@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

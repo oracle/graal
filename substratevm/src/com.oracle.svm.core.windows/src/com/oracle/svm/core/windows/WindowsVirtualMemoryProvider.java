@@ -46,7 +46,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.core.windows.WindowsUtils.CFunctionPointerPointer;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;

@@ -37,7 +37,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;

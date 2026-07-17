@@ -45,7 +45,7 @@ import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.linux.LinuxLibCHelper;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;

@@ -42,7 +42,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.shared.AlwaysInline;
@@ -54,12 +54,12 @@ import jdk.graal.compiler.replacements.AllocationSnippets;
 class MetaspaceObjectAllocator {
     private final ChunkedMetaspaceMemory memory;
 
-    private final UninterruptibleUtils.AtomicLong dynamicHubSize = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong dynamicHubCount = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong byteArraySize = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong byteArrayCount = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong intArraySize = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong intArrayCount = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong dynamicHubSize = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong dynamicHubCount = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong byteArraySize = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong byteArrayCount = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong intArraySize = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong intArrayCount = new UninterruptibleAtomicUtils.AtomicLong(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     MetaspaceObjectAllocator(ChunkedMetaspaceMemory memory) {
@@ -121,7 +121,7 @@ class MetaspaceObjectAllocator {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private Object allocateArrayLikeObject(DynamicHub hub, int arrayLength, UninterruptibleUtils.AtomicLong counter) {
+    private Object allocateArrayLikeObject(DynamicHub hub, int arrayLength, UninterruptibleAtomicUtils.AtomicLong counter) {
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), arrayLength);
 
         Pointer ptr = memory.allocate(size);

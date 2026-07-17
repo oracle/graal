@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.shared.util;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.word.impl.Word;
 
 public class TimeUtils {
@@ -172,8 +171,8 @@ public class TimeUtils {
     public static long multiplyOrMaxValue(long x, long y) {
         /* Not using Math.multiplyExact because it allocates. */
         long r = x * y;
-        long ax = UninterruptibleUtils.Math.abs(x);
-        long ay = UninterruptibleUtils.Math.abs(y);
+        long ax = abs(x);
+        long ay = abs(y);
         if (((ax | ay) >>> 31 != 0)) {
             // Some bits greater than 2^31 that might cause overflow
             // Check the result using the divide operator
@@ -184,6 +183,12 @@ public class TimeUtils {
             }
         }
         return r;
+    }
+
+    /** Returns the absolute value with the same overflow behavior as {@link Math#abs(long)}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long abs(long value) {
+        return value < 0 ? -value : value;
     }
 
     /**

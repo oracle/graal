@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.shared.c.libc;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * Every thus annotated method is never to be inlined by the compiler.
- *
- * This annotation exists primarily for annotating methods that <b>must never</b> be inlined for
- * semantic reasons. Typically, this is to ensure that a separate activation frame is always used
- * for a call to the method.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-public @interface NeverInline {
-    /**
-     * In some cases, we don't have proper exception edges on the compiler level at the moment (see
-     * GR-24649).
-     */
-    String CALLER_CATCHES_IMPLICIT_EXCEPTIONS = "Ensure that all exceptions can be caught, including implicit exceptions.";
-
-    /**
-     * Documents the reason why the annotated code must not be inlined.
-     */
-    String value();
+/** Identifies the target Linux C library without carrying any builder-specific behavior. */
+@Platforms(Platform.LINUX.class)
+public enum LibCKind {
+    /** GNU C Library. */
+    GLIBC,
+    /** musl libc. */
+    MUSL,
+    /** Android Bionic libc. */
+    BIONIC,
+    /** No target C library is selected. */
+    NONE
 }

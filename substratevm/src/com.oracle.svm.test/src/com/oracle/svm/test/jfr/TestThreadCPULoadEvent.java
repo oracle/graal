@@ -40,7 +40,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;

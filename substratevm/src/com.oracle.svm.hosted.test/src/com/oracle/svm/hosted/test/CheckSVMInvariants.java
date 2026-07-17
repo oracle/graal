@@ -31,7 +31,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.core.test.CheckGraalInvariants;
 import jdk.graal.compiler.core.test.CheckGraalInvariants.InvariantsTool;

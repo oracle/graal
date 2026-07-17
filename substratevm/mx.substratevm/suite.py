@@ -588,6 +588,8 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.graal.riscv64",
+                # GR-73521: Remove once PosixPlatformThreads moves to guest-owned code.
+                "SVM_GUEST_STAGING",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1466,6 +1468,9 @@ suite = {
                 "SVM_SHARED",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc",
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",

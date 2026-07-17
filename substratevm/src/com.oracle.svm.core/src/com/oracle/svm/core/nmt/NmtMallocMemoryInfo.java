@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils.AtomicLong;
 
 class NmtMallocMemoryInfo {
     private final AtomicLong count = new AtomicLong(0);

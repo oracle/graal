@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.foreign;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public final class SubstrateMappedMemoryUtils {

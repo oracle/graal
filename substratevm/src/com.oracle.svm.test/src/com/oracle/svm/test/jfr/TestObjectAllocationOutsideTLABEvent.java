@@ -31,7 +31,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.jfr.JfrEvent;
 

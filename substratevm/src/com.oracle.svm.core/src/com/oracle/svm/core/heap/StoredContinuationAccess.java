@@ -58,7 +58,7 @@ import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;

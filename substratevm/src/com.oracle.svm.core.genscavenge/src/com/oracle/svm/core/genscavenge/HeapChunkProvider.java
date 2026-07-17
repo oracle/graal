@@ -37,12 +37,12 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
@@ -58,7 +58,7 @@ final class HeapChunkProvider {
      * The head of the linked list of unused aligned chunks. Chunks are chained using
      * {@link HeapChunk#getNext}.
      */
-    private final UninterruptibleUtils.AtomicPointer<AlignedHeader> unusedAlignedChunks = new UninterruptibleUtils.AtomicPointer<>();
+    private final UninterruptibleAtomicUtils.AtomicPointer<AlignedHeader> unusedAlignedChunks = new UninterruptibleAtomicUtils.AtomicPointer<>();
 
     /**
      * The number of chunks in the {@link #unusedAlignedChunks} list.

@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.NeverStrengthenGraphWithConstants;
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
 import com.oracle.svm.core.SkipStackOverflowCheck;

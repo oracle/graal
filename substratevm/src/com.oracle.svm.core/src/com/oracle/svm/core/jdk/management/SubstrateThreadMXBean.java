@@ -36,8 +36,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils.AtomicInteger;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;

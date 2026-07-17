@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.util.concurrent.locks.Condition;
@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;

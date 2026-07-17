@@ -26,7 +26,7 @@ package com.oracle.svm.jdwp.resident.impl;
 
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;

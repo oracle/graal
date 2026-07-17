@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.c.type.CUnsigned;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.shared.Uninterruptible;

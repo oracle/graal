@@ -130,7 +130,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.c.libc.BionicLibC;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
@@ -174,6 +177,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.JavaMainSupport;
+import com.oracle.svm.guest.staging.config.SubstrateGuestLibC;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
@@ -273,6 +277,7 @@ import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
+import com.oracle.svm.shared.c.libc.LibCKind;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -1104,6 +1109,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 DynamicAccessSupport.setRegistrationSealed();
                 setDefaultLibCIfMissing();
+                if (Platform.includedIn(Platform.LINUX.class)) {
+                    setupGuestLibC();
+                }
                 MainEntryPoint accessMainEntryPoint = access.getMainEntryPoint();
                 if (accessMainEntryPoint != null) {
                     setAndVerifyMainEntryPoint(accessMainEntryPoint, entryPoints);
@@ -1372,6 +1380,27 @@ public class NativeImageGenerator {
         JavaConstant guestTargetDescription = access.invoke(ctor, null, wordKind, wordSize, byteOrder);
 
         GuestImageSingletonSupport.add(SubstrateGuestTarget.class, guestTargetDescription);
+    }
+
+    /**
+     * Installs the guest-owned target Linux libc identity derived from the authoritative builder
+     * selection. Only the enum name crosses the context boundary; the enum value and singleton are
+     * created in the guest context. The singleton is used only while folding guest queries during
+     * image building; the folded boolean constants are what remain in runtime code.
+     */
+    @Platforms(Platform.LINUX.class)
+    private static void setupGuestLibC() {
+        GuestAccess access = GuestAccess.get();
+        LibCKind kind = switch (LibCBase.singleton()) {
+            case GLibC _ -> LibCKind.GLIBC;
+            case MuslLibC _ -> LibCKind.MUSL;
+            case BionicLibC _ -> LibCKind.BIONIC;
+            case NoLibC _ -> LibCKind.NONE;
+            case LibCBase libC -> throw VMError.shouldNotReachHere("Unknown target libc implementation: " + libC.getClass().getName());
+        };
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestLibC.class, String.class);
+        JavaConstant guestLibC = access.invoke(ctor, null, access.asGuestString(kind.name()));
+        GuestImageSingletonSupport.add(SubstrateGuestLibC.class, guestLibC);
     }
 
     /**

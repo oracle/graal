@@ -32,7 +32,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.log.StringBuilderLog;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.guest.staging.ArgsSupport;
