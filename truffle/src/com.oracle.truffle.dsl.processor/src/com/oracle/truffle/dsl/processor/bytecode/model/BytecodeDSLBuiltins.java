@@ -312,10 +312,10 @@ public class BytecodeDSLBuiltins {
                         """;
 
         List<OperationArgument> sourceSectionArguments = new ArrayList<>();
-        sourceSectionArguments.add(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "tag", "a tag indicating the kind of source section"));
         for (int i = 0; i < SourceSectionKind.MAX_ATTRIBUTES; i++) {
             sourceSectionArguments.add(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "attr" + (i + 1), "data attribute " + (i + 1) + " of the source section"));
         }
+        sourceSectionArguments.add(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "tag", "a tag indicating the kind of source section"));
 
         m.sourceSectionPrefixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionPrefix",
                         sourceSectionDoc, "SourceSectionPrefix") //

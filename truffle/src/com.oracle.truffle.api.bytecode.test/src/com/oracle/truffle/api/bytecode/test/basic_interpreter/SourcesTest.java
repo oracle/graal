@@ -61,6 +61,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -155,6 +156,98 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         assertSourceInformationTree(bytecode, est("return 1", est("1")));
 
+    }
+
+    @Test
+    public void testSourceCoalescingAfterEarlyExits() {
+        // This is a regression test. We would not coalesce two consecutive sections
+        // when they used suffix sections because we could not determine that they
+        // had the same attributes. We can support this behaviour by storing a unique
+        // id on each suffix section before it is patched.
+        Source source = Source.newBuilder("test", "return", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("sourceCoalescingAfterEarlyExits", b -> {
+            b.beginRoot();
+            b.beginSource(source);
+            beginSourceSection(b, 0, 6);
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.emitLabel(b.createLabel()); // force reachability
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+            b.endBlock();
+            endSourceSection(b, 0, 6);
+            b.endSource();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<SourceInformation> sourceInformation = bytecode.getSourceInformation();
+        assertEquals(1, sourceInformation.size());
+
+        SourceInformation info = sourceInformation.get(0);
+        assertEquals(0, info.getStartBytecodeIndex());
+        assertEquals(bytecode.getInstructionsAsList().getLast().getNextBytecodeIndex(), info.getEndBytecodeIndex());
+        assertSourceSection(info.getSourceSection(), source, 0, 6);
+        assertSourceInformationTree(bytecode, est("return"));
+    }
+
+    @Test
+    public void testNestedSourceSectionsWithSameSourceDoNotCoalesce() {
+        // This is a regression test for source section coalescing.
+        // We should not coalesce entries with the same source attributes
+        // if they come from separate SourceSection operations, otherwise
+        // we break the nesting relationship between source sections.
+        Source source = Source.newBuilder("test", "same result", "test.test").build();
+        BasicInterpreter node = parseNode("nestedSourceSectionsWithSameSourceDoNotCoalesce", b -> {
+            b.beginSource(source);
+            b.beginRoot();
+
+            beginSourceSection(b, 0, 4);
+            b.emitVoidOperation();
+            // afterChild should emit an entry covering void 1 with the outer section
+            b.beginBlock();
+            beginSourceSection(b, 0, 4);
+            b.emitVoidOperation();
+            // afterChild should emit an entry covering void 2 with the inner section
+            endSourceSection(b, 0, 4);
+            b.emitVoidOperation();
+            b.endBlock();
+            // afterChild should emit an entry covering void 2 and 3 with the outer section
+            endSourceSection(b, 0, 4);
+
+            b.emitLoadConstant(42L);
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals(42L, node.getCallTarget().call());
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+
+        assertSourceInformationTree(bytecode,
+                        est(null,
+                                        est("same"),
+                                        est("same", est("same"))));
+
+        List<SourceInformation> sourceInformation = bytecode.getSourceInformation();
+        assertEquals(3, sourceInformation.size());
+
+        SourceInformation outerPrefix = sourceInformation.get(0);
+        SourceInformation nested = sourceInformation.get(1);
+        SourceInformation outerRest = sourceInformation.get(2);
+        assertEquals(outerPrefix.getEndBytecodeIndex(), nested.getStartBytecodeIndex());
+        assertEquals(nested.getStartBytecodeIndex(), outerRest.getStartBytecodeIndex());
+        assertTrue(nested.getEndBytecodeIndex() < outerRest.getEndBytecodeIndex());
+        assertSourceSection(outerPrefix.getSourceSection(), source, 0, 4);
+        assertSourceSection(nested.getSourceSection(), source, 0, 4);
+        assertSourceSection(outerRest.getSourceSection(), source, 0, 4);
     }
 
     @Test

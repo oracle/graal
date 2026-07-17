@@ -3133,11 +3133,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginSourceSection(7, 5);
             b.beginAdd();
 
-            // intentional duplicate source section
-            b.beginSourceSection(7, 1);
             b.beginSourceSection(7, 1);
             b.emitLoadConstant(1L);
-            b.endSourceSection();
             b.endSourceSection();
 
             b.beginSourceSection(11, 1);
@@ -3199,8 +3196,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginSourceSection(7, 11);
             b.beginAdd();
 
-            // intentional duplicate source section
-            b.beginSourceSection(7, 7);
             b.beginSourceSection(7, 7);
             b.beginAdd();
 
@@ -3213,7 +3208,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endSourceSection();
 
             b.endAdd();
-            b.endSourceSection();
             b.endSourceSection();
 
             b.beginSourceSection(17, 1);
