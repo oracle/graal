@@ -2304,6 +2304,22 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, 123, 4.56f);
     }
 
+    @Test
+    public void testDuplicateObjectQuickeningName() {
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginDuplicateObjectQuickeningName();
+            b.emitLoadArgument(0);
+            b.endDuplicateObjectQuickeningName();
+            b.endReturn();
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals(42, node.getCallTarget().call(42));
+        assertEquals("42", node.getCallTarget().call("42"));
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
@@ -2787,6 +2803,25 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             @Specialization
             public static Object doFloatInt(float x, int y) {
                 return x + y;
+            }
+        }
+
+        @Operation
+        static final class DuplicateObjectQuickeningName {
+            /*
+             * Regression test: the manual quickening for doObject and the boxing-elimination
+             * quickening for doInt both normalize the dynamic operand to Object. The processor must
+             * de-duplicate them before creating instructions.
+             */
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            static int doInt(@SuppressWarnings("unused") Object value) throws UnexpectedResultException {
+                throw new UnexpectedResultException(value);
+            }
+
+            @ForceQuickening
+            @Specialization(replaces = "doInt")
+            static Object doObject(Object value) {
+                return value;
             }
         }
     }

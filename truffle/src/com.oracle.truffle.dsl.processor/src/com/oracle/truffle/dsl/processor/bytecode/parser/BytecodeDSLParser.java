@@ -960,9 +960,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         List<ResolvedQuickenDecision> resolvedQuickenings = Stream.concat(boxingEliminationQuickenings.stream(),
                         manualQuickenings.stream().flatMap((e) -> e.resolve(model).stream())).//
-                        distinct().//
                         sorted(Comparator.comparingInt(e -> e.specializations().size())).//
                         toList();
+        resolvedQuickenings = distinctResolvedQuickenings(model, resolvedQuickenings);
 
         record QuickeningGroupKey(InstructionModel instruction, List<SpecializationData> specializations) {
         }
@@ -1265,6 +1265,25 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         for (InstructionModel instruction : operation.instructions) {
             decisions.add(new ResolvedQuickenDecision(operation, instruction, specializations, parameterTypes));
         }
+    }
+
+    private record ResolvedQuickeningKey(InstructionModel instruction, List<SpecializationData> specializations, List<String> normalizedTypeIds) {
+    }
+
+    private static List<ResolvedQuickenDecision> distinctResolvedQuickenings(BytecodeDSLModel model, List<ResolvedQuickenDecision> decisions) {
+        Map<ResolvedQuickeningKey, ResolvedQuickenDecision> distinct = new LinkedHashMap<>();
+        for (ResolvedQuickenDecision decision : decisions) {
+            List<TypeMirror> genericTypes = decision.instruction().signature.dynamicOperandTypes();
+            List<String> normalizedTypeIds = new ArrayList<>(decision.types().size());
+            for (int i = 0; i < decision.types().size(); i++) {
+                TypeMirror type = decision.types().get(i);
+                TypeMirror normalizedType = model.isBoxingEliminated(type) ? type : genericTypes.get(i);
+                normalizedTypeIds.add(ElementUtils.getUniqueIdentifier(normalizedType));
+            }
+            ResolvedQuickeningKey key = new ResolvedQuickeningKey(decision.instruction(), decision.specializations(), normalizedTypeIds);
+            distinct.putIfAbsent(key, decision);
+        }
+        return List.copyOf(distinct.values());
     }
 
     private static void validateQuickening(BytecodeDSLModel model, InstructionModel instruction) throws AssertionError {
