@@ -46,7 +46,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
  * {@code substratevm/src/com.oracle.svm.native.libcontainer/README.md}.
  */
 @CContext(ContainerLibraryDirectives.class)
-@CLibrary(value = "svm_container", requireStatic = true, dependsOn = "m")
+@CLibrary(value = "svm_container", requireStatic = true)
 // The following annotations are for files in `src/hotspot`, which are copied from the JDK
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/native/include/jni.h")
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/unix/native/include/jni_md.h")
