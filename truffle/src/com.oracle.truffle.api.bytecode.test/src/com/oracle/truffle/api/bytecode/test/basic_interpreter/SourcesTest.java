@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -59,6 +60,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.SourceInformation;
@@ -248,6 +250,179 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertSourceSection(outerPrefix.getSourceSection(), source, 0, 4);
         assertSourceSection(nested.getSourceSection(), source, 0, 4);
         assertSourceSection(outerRest.getSourceSection(), source, 0, 4);
+    }
+
+    @Test
+    public void testSourceSectionDoesNotSequenceChildren() {
+        Source source = Source.newBuilder("test", "1 + 2", "test.test").build();
+        BytecodeParser<BasicInterpreterBuilder> parser = b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginAdd();
+            beginSourceSection(b, 0, 5);
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
+            endSourceSection(b, 0, 5);
+            b.endAdd();
+            b.endRoot();
+            b.endSource();
+        };
+
+        BasicInterpreter node = parseNode("sourceSectionDoesNotSequenceChildren", parser);
+        assertEquals(3L, node.getCallTarget().call());
+
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals(3L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testSourceSectionExcludesBeforeChildInstructions() {
+        Source source = Source.newBuilder("test", "1+3; 2", "test.test").build();
+        BasicInterpreter node = parseNode("sourceSectionExcludesBeforeChildInstructions", b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginBlock();
+            beginSourceSection(b, 0, source.getLength());
+            b.beginAdd();
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(3L);
+            b.endAdd();
+            b.emitLoadConstant(2L);
+            endSourceSection(b, 0, source.getLength());
+            b.endBlock();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals(2L, node.getCallTarget().call());
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals(2L, node.getCallTarget().call());
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertNull(findInstruction(instructions, "pop").getLocation().getSourceLocation());
+        for (Instruction instruction : findInstructions(instructions, "load.constant")) {
+            assertInstructionSourceSection(instruction, source, 0, source.getLength());
+        }
+    }
+
+    @Test
+    public void testSourceSectionExcludesShortCircuitConverters() {
+        Source source = Source.newBuilder("test", "first second third", "test.test").build();
+        BasicInterpreter node = parseNode("sourceSectionExcludesShortCircuitConverters", b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginReturn();
+            b.beginScAnd();
+            beginSourceSection(b, 0, 5);
+            b.emitLoadConstant(1L);
+            endSourceSection(b, 0, 5);
+            beginSourceSection(b, 6, 6);
+            b.emitLoadConstant(true);
+            endSourceSection(b, 6, 6);
+            beginSourceSection(b, 13, 5);
+            b.emitLoadConstant("test");
+            endSourceSection(b, 13, 5);
+            b.endScAnd();
+            b.endReturn();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals("test", node.getCallTarget().call());
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals("test", node.getCallTarget().call());
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        List<Instruction> constants = findInstructions(instructions, "load.constant");
+        assertEquals(3, constants.size());
+        assertInstructionSourceSection(constants.get(0), source, 0, 5);
+        assertInstructionSourceSection(constants.get(1), source, 6, 6);
+        assertInstructionSourceSection(constants.get(2), source, 13, 5);
+
+        List<Instruction> converters = findInstructions(instructions, "c.ToBoolean");
+        assertFalse("Expected a short-circuit boolean converter.", converters.isEmpty());
+        for (Instruction converter : converters) {
+            assertNull(converter.getLocation().getSourceLocation());
+        }
+    }
+
+    @Test
+    public void testSourceSectionExcludesAfterChildInstructions() {
+        Source source = Source.newBuilder("test", "cond then else", "test.test").build();
+        BasicInterpreter node = parseNode("sourceSectionExcludesAfterChildInstructions", b -> {
+            b.beginSource(source);
+            b.beginRoot();
+            b.beginConditional();
+            beginSourceSection(b, 0, 4);
+            b.emitLoadArgument(0);
+            endSourceSection(b, 0, 4);
+            beginSourceSection(b, 5, 4);
+            b.emitLoadConstant(1L);
+            endSourceSection(b, 5, 4);
+            beginSourceSection(b, 10, 4);
+            b.emitLoadConstant(2L);
+            endSourceSection(b, 10, 4);
+            b.endConditional();
+            b.endRoot();
+            b.endSource();
+        });
+
+        assertEquals(1L, node.getCallTarget().call(true));
+        assertEquals(2L, node.getCallTarget().call(false));
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals(1L, node.getCallTarget().call(true));
+        assertEquals(2L, node.getCallTarget().call(false));
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertNull(findInstruction(instructions, "branch.false").getLocation().getSourceLocation());
+        assertNull(findInstruction(instructions, "branch").getLocation().getSourceLocation());
+    }
+
+    @Test
+    public void testNestedSourceSectionsPreserveParentAttribution() {
+        Source source = Source.newBuilder("test", "outer inner cond then else", "test.test").build();
+        BasicInterpreter node = parseNode("nestedSourceSectionsPreserveParentAttribution", b -> {
+            b.beginSource(source);
+            beginSourceSection(b, 0, source.getLength());
+            beginSourceSection(b, 6, 20);
+            b.beginRoot();
+            b.beginConditional();
+            beginSourceSection(b, 12, 4);
+            b.emitLoadArgument(0);
+            endSourceSection(b, 12, 4);
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
+            b.endConditional();
+            b.endRoot();
+            endSourceSection(b, 6, 20);
+            endSourceSection(b, 0, source.getLength());
+            b.endSource();
+        });
+
+        assertEquals(1L, node.getCallTarget().call(true));
+        assertEquals(2L, node.getCallTarget().call(false));
+        node.getRootNodes().ensureSourceInformation();
+        assertEquals(1L, node.getCallTarget().call(true));
+        assertEquals(2L, node.getCallTarget().call(false));
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertInstructionSourceSection(findInstruction(instructions, "load.argument"), source, 12, 4);
+        assertInstructionSourceSection(findInstruction(instructions, "branch.false"), source, 6, 20);
+    }
+
+    private static Instruction findInstruction(List<Instruction> instructions, String name) {
+        List<Instruction> matches = findInstructions(instructions, name);
+        assertEquals("Expected exactly one " + name + " instruction.", 1, matches.size());
+        return matches.get(0);
+    }
+
+    private static List<Instruction> findInstructions(List<Instruction> instructions, String name) {
+        return instructions.stream().filter((instruction) -> instructionNameMatches(instruction, name)).toList();
+    }
+
+    private static boolean instructionNameMatches(Instruction instruction, String name) {
+        String actualName = instruction.getName();
+        return actualName.equals(name) || actualName.startsWith(name + "$");
     }
 
     @Test

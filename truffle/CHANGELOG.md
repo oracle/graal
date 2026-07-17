@@ -5,14 +5,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 25.3
 * GR-57730: Improved descriptive `toString()` output for Polyglot API objects and builders.
 * GR-73530: Added `StaticShape.Builder.safetyChecks(boolean)` to let language implementations configure safety checks for individual static shapes. Added `engine.ForceStaticObjectSafetyChecks` to enable safety checks for all static shapes, overriding the builder setting.
+* GR-54730: Setting `sandbox.MaxCPUTime` to a zero duration now disables the CPU time limit instead of enforcing a zero-duration limit.
+* GR-77584: Bytecode DSL: `Source` and `SourceSection` are now metadata-only operations that do not affect the operation tree shape. The previous semantics, which treated source operations like regular sequencing operations, were unsound and could cause inconsistent behaviour between reparses.
+* GR-77584: Bytecode DSL: Improved generation of source section table entries. Entries covering empty bytecode ranges are no longer emitted, and entries covering consecutive ranges are only combined when they come from the same `SourceSection` operation.
 
 ## Version 25.2
 * GR-77583: Bytecode DSL: Added `BytecodeRootNode.interceptIncomingValue(Object)` and `BytecodeRootNode.interceptOutgoingValue(Object)` to convert values exchanged with tag instrumentation.
 * GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.
 * GR-75438: Bytecode DSL: Added `@Return` for user-defined return operations that customize the value returned from a bytecode root node.
 * GR-77108: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig#secondarySwitch()` to prevent handler outlining when a secondary bytecode interpreter switch is compiled separately.
-## Version 25.3.4
-* GR-54730: Setting `sandbox.MaxCPUTime` to a zero duration now disables the CPU time limit instead of enforcing a zero-duration limit.
 
 ## Version 25.1
 * GR-76434: Added `engine.DynamicCompilationThresholdsHighLoadSlope` to tune dynamic compilation threshold scaling under high compilation queue load. The default value of `engine.DynamicCompilationThresholdsMinNormalLoad` is now `0`, which disables low-load threshold reduction by default.
