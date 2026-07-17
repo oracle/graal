@@ -1681,7 +1681,7 @@ final class BuilderElement extends AbstractElement {
             b.tree(operationStack.write(rootOperation, operationFields.frameOffset, "state.numLocals"));
         }
 
-        if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
+        if (needsGranularRootOperations()) {
             if (model.enableRootTagging) {
                 buildBegin(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootTag).getSimpleName().toString());
             }
@@ -1710,9 +1710,7 @@ final class BuilderElement extends AbstractElement {
             }
         }
 
-        if (needsRootBlock()) {
-            buildBegin(b, model.blockOperation);
-        }
+        buildBegin(b, model.blockOperation);
 
         return ex;
     }
@@ -1723,8 +1721,9 @@ final class BuilderElement extends AbstractElement {
         b.end(2);
     }
 
-    private boolean needsRootBlock() {
-        return model.enableRootTagging || model.enableRootBodyTagging || model.epilogExceptional != null || model.epilogReturn != null;
+    private boolean needsGranularRootOperations() {
+        // Prolog/epilog emission, if necessary, needs to be interleaved with tag emission.
+        return model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null;
     }
 
     private VariableElement getAllRootTagConstants() {
@@ -2653,19 +2652,12 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        if (needsRootBlock()) {
-            emitCastOperationData(b, model.blockOperation, "state.operationSp - 1", "blockOperation");
-            b.startIf().string("!", operationStack.read(model.blockOperation, "blockOperation", operationFields.producedValue)).end().startBlock();
-            buildEmit(b, model.loadNullOperation);
-            b.end();
-            buildEnd(b, model.blockOperation);
-            emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
-        } else {
-            emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
-            b.startIf().string("!", operationStack.read(model.blockOperation, operationFields.producedValue)).end().startBlock();
-            buildEmit(b, model.loadNullOperation);
-            b.end();
-        }
+        emitCastOperationData(b, model.blockOperation, "state.operationSp - 1", "blockOperation");
+        b.startIf().string("!", operationStack.read(model.blockOperation, "blockOperation", operationFields.producedValue)).end().startBlock();
+        buildEmit(b, model.loadNullOperation);
+        b.end();
+        buildEnd(b, model.blockOperation);
+        emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
 
         b.startIf().string("!state.operationStack[state.rootOperationSp].validateDeclaredLabels()").end().startBlock();
         b.startThrow().startCall("state.failState");
@@ -2673,7 +2665,7 @@ final class BuilderElement extends AbstractElement {
         b.end(2); // throw, call
         b.end();
 
-        if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
+        if (needsGranularRootOperations()) {
             if (model.prolog != null) {
                 // Patch the end constants.
                 OperationModel prologOperation = model.prolog.operation;
@@ -3912,7 +3904,9 @@ final class BuilderElement extends AbstractElement {
                 return;
             }
 
-            if (op.requiresStackBalancing()) {
+            // Tag supports void/non-void operand; root implicitly guarantees a result.
+            if (op.kind != OperationKind.TAG && op.kind != OperationKind.ROOT) {
+                // Check non-void children are value-producing and pop any results of void children.
                 List<Integer> valueChildren = new ArrayList<>();
                 List<Integer> nonValueChildren = new ArrayList<>();
                 for (int i = 0; i < op.dynamicOperands.length; i++) {
@@ -7622,10 +7616,6 @@ final class BuilderElement extends AbstractElement {
             switch (operation.kind) {
                 case ROOT:
                     fields.add(index); // init
-                    fields.add(producedValue);
-                    if (model.usesBoxingElimination()) {
-                        fields.add(childBci);
-                    }
                     fields.add(reachable);
                     if (model.prolog != null && model.prolog.operation.operationEndArguments.length != 0) {
                         fields.add(prologBci);
@@ -7786,14 +7776,6 @@ final class BuilderElement extends AbstractElement {
                     }
                     fields.add(branchFixupBcis);
                     fields.add(numBranchFixupBcis);
-                    break;
-                default:
-                    if (operation.isTransparent()) {
-                        fields.add(producedValue);
-                        if (model.usesBoxingElimination()) {
-                            fields.add(childBci);
-                        }
-                    }
                     break;
             }
             return fields;

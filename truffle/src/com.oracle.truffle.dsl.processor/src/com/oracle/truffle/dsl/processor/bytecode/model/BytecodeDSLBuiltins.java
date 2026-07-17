@@ -100,8 +100,7 @@ public class BytecodeDSLBuiltins {
                         .setVariadic(true, 0) //
                         .setDynamicOperands(transparentOperationChild());
         m.rootOperation = m.operation(OperationKind.ROOT, "Root", rootOperationJavadoc(m)) //
-                        .setTransparent(true) //
-                        .setVariadic(true, 0) //
+                        // root is not transparent, but user-facing child is variadic
                         .setDynamicOperands(transparentOperationChild());
         m.ifThenOperation = m.operation(OperationKind.IF_THEN, "IfThen", """
                         IfThen implements an if-then statement. It evaluates {@code condition}, which must produce a boolean. If the value is {@code true}, it executes {@code thens}.

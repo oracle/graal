@@ -350,10 +350,6 @@ public class OperationModel implements PrettyPrintable {
         return kind != OperationKind.SOURCE && kind != OperationKind.SOURCE_SECTION;
     }
 
-    public boolean requiresStackBalancing() {
-        return kind != OperationKind.TAG;
-    }
-
     public String getConstantName() {
         return name.toUpperCase();
     }
