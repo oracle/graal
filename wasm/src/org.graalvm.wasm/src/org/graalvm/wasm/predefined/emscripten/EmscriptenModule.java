@@ -80,7 +80,7 @@ public class EmscriptenModule extends BuiltinModule {
         defineGlobal(module, "_memory_base", I32_TYPE, Mutability.CONSTANT, 0);
         defineGlobal(module, "DYNAMICTOP_PTR", I32_TYPE, Mutability.CONSTANT, 0);
         defineGlobal(module, "DYNAMIC_BASE", I32_TYPE, Mutability.CONSTANT, 0);
-        defineTable(context, module, "table", 0, -1, WasmType.FUNCREF_TYPE);
+        defineTable(context, module, "table", 0, -1, false, WasmType.FUNCREF_TYPE);
         return module;
     }
 }

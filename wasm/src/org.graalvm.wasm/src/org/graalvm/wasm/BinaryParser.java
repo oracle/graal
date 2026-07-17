@@ -89,6 +89,7 @@ import static org.graalvm.wasm.constants.Bytecode.REF_TEST;
 import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 
 import java.nio.ByteBuffer;
@@ -102,18 +103,14 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import org.graalvm.wasm.vector.Vector128;
-import org.graalvm.wasm.vector.Vector128Ops;
-import org.graalvm.wasm.vector.Vector128Shape;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
 import org.graalvm.wasm.constants.ExportIdentifier;
-import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
-import org.graalvm.wasm.constants.LimitsPrefix;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.constants.NameSection;
 import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -129,6 +126,9 @@ import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ExceptionHandler;
 import org.graalvm.wasm.parser.validation.ParserState;
 import org.graalvm.wasm.parser.validation.ValidationErrors;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
+import org.graalvm.wasm.vector.Vector128Shape;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -528,9 +528,10 @@ public class BinaryParser extends BinaryStreamParser {
                     if (!bulkMemoryAndRefTypes) {
                         assertIntEqual(elemType, FUNCREF_TYPE, Failure.UNSPECIFIED_MALFORMED, "Invalid element type for table import");
                     }
-                    readTableLimits(multiResult);
+                    readTableLimits(longMultiResult, booleanMultiResult);
                     final int tableIndex = module.tableCount();
-                    module.symbolTable().importTable(moduleName, memberName, tableIndex, multiResult[0], multiResult[1], elemType, bulkMemoryAndRefTypes);
+                    module.symbolTable().importTable(moduleName, memberName, tableIndex, longMultiResult[0], longMultiResult[1], booleanMultiResult[0], elemType,
+                                    bulkMemoryAndRefTypes);
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
@@ -588,19 +589,20 @@ public class BinaryParser extends BinaryStreamParser {
                 Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
                 offset += 2;
                 elemType = readRefType();
-                readTableLimits(multiResult);
+                readTableLimits(longMultiResult, booleanMultiResult);
                 ConstantExpression<Object> initExpression = readConstantExpression(elemType, endOffset);
                 initValue = initExpression.constantValue();
                 // Drop the initializer bytecode if we can eval the initializer during parsing
                 initBytecode = initValue == null ? initExpression.bytecode() : null;
             } else {
                 elemType = readRefType();
-                readTableLimits(multiResult);
+                readTableLimits(longMultiResult, booleanMultiResult);
                 initValue = null;
                 initBytecode = null;
                 Assert.assertTrue(WasmType.isNullable(elemType), "uninitialized table of non-nullable element type", Failure.TYPE_MISMATCH);
             }
-            module.symbolTable().declareTable(tableIndex, multiResult[0], multiResult[1], elemType, initBytecode, initValue, bulkMemoryAndRefTypes);
+            module.symbolTable().declareTable(tableIndex, longMultiResult[0], longMultiResult[1], booleanMultiResult[0], elemType, initBytecode, initValue,
+                            bulkMemoryAndRefTypes);
         }
     }
 
@@ -914,7 +916,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int expectedFunctionTypeIndex = readFunctionTypeIndex();
                     final int tableIndex = readTableIndex();
                     // Pop the function index to call
-                    state.popChecked(I32_TYPE);
+                    state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                     Assert.assertTrue(module.matchesType(FUNCREF_TYPE, module.tableElementType(tableIndex)), Failure.TYPE_MISMATCH);
 
                     // Pop parameters
@@ -1137,7 +1139,7 @@ public class BinaryParser extends BinaryStreamParser {
                     checkBulkMemoryAndRefTypesSupport(opcode);
                     final int index = readTableIndex();
                     final int elementType = module.tableElementType(index);
-                    state.popChecked(I32_TYPE);
+                    state.popChecked(module.tableHasIndexType64(index) ? I64_TYPE : I32_TYPE);
                     state.push(elementType);
                     state.addMiscFlag();
                     state.addInstruction(Bytecode.TABLE_GET, index);
@@ -1148,7 +1150,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int index = readTableIndex();
                     final int elementType = module.tableElementType(index);
                     state.popChecked(elementType);
-                    state.popChecked(I32_TYPE);
+                    state.popChecked(module.tableHasIndexType64(index) ? I64_TYPE : I32_TYPE);
                     state.addMiscFlag();
                     state.addInstruction(Bytecode.TABLE_SET, index);
                     break;
@@ -1791,7 +1793,7 @@ public class BinaryParser extends BinaryStreamParser {
                         module.checkElemType(elementIndex, elementType);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
+                        state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.TABLE_INIT, elementIndex, tableIndex);
                         break;
@@ -1810,16 +1812,17 @@ public class BinaryParser extends BinaryStreamParser {
                         final int sourceTableIndex = readTableIndex();
                         final int sourceElementType = module.tableElementType(sourceTableIndex);
                         Assert.assertTrue(module.matchesType(destinationElementType, sourceElementType), Failure.TYPE_MISMATCH);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
+                        final int lengthType = module.tableHasIndexType64(destinationTableIndex) && module.tableHasIndexType64(sourceTableIndex) ? I64_TYPE : I32_TYPE;
+                        state.popChecked(lengthType);
+                        state.popChecked(module.tableHasIndexType64(sourceTableIndex) ? I64_TYPE : I32_TYPE);
+                        state.popChecked(module.tableHasIndexType64(destinationTableIndex) ? I64_TYPE : I32_TYPE);
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.TABLE_COPY, sourceTableIndex, destinationTableIndex);
                         break;
                     case Instructions.TABLE_SIZE: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int tableIndex = readTableIndex();
-                        state.push(I32_TYPE);
+                        state.push(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.TABLE_SIZE, tableIndex);
                         break;
@@ -1828,9 +1831,9 @@ public class BinaryParser extends BinaryStreamParser {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int tableIndex = readTableIndex();
                         final int elementType = module.tableElementType(tableIndex);
-                        state.popChecked(I32_TYPE);
+                        state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.popChecked(elementType);
-                        state.push(I32_TYPE);
+                        state.push(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.TABLE_GROW, tableIndex);
                         break;
@@ -1839,9 +1842,9 @@ public class BinaryParser extends BinaryStreamParser {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int tableIndex = readTableIndex();
                         final int elementType = module.tableElementType(tableIndex);
-                        state.popChecked(I32_TYPE);
+                        state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.popChecked(elementType);
-                        state.popChecked(I32_TYPE);
+                        state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.TABLE_FILL, tableIndex);
                         break;
@@ -3405,7 +3408,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             int mode;
-            final int currentOffsetAddress;
+            final long currentOffsetAddress;
             final byte[] currentOffsetBytecode;
             final Object[] elements;
             final int tableIndex;
@@ -3422,9 +3425,16 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         tableIndex = 0;
                     }
-                    ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
-                    currentOffsetAddress = offsetExpression.constantValue();
-                    currentOffsetBytecode = offsetExpression.bytecode();
+                    assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
+                    if (module.tableHasIndexType64(tableIndex)) {
+                        ConstantExpression<Long> offsetExpression = readLongOffsetExpression(endOffset);
+                        currentOffsetAddress = offsetExpression.constantValue();
+                        currentOffsetBytecode = offsetExpression.bytecode();
+                    } else {
+                        ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                        currentOffsetAddress = offsetExpression.constantValue();
+                        currentOffsetBytecode = offsetExpression.bytecode();
+                    }
                 } else {
                     mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
                     tableIndex = 0;
@@ -3450,9 +3460,15 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 tableIndex = readTableIndex();
-                ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
-                currentOffsetAddress = offsetExpression.constantValue();
-                currentOffsetBytecode = offsetExpression.bytecode();
+                if (module.tableHasIndexType64(tableIndex)) {
+                    ConstantExpression<Long> offsetExpression = readLongOffsetExpression(endOffset);
+                    currentOffsetAddress = offsetExpression.constantValue();
+                    currentOffsetBytecode = offsetExpression.bytecode();
+                } else {
+                    ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                    currentOffsetAddress = offsetExpression.constantValue();
+                    currentOffsetBytecode = offsetExpression.bytecode();
+                }
                 elemType = FUNCREF_TYPE;
                 elements = readFunctionIndices(elemType);
             }
@@ -4058,9 +4074,20 @@ public class BinaryParser extends BinaryStreamParser {
         };
     }
 
-    private void readTableLimits(int[] out) {
-        readLimits(out, MAX_TABLE_DECLARATION_SIZE);
-        assertUnsignedIntLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+    private void readTableLimits(long[] longOut, boolean[] boolOut) {
+        readLongLimits(longOut, boolOut, MAX_TABLE_DECLARATION_SIZE, MAX_TABLE_64_DECLARATION_SIZE);
+        final boolean is64Bit = boolOut[0];
+        assertTrue(!boolOut[1], Failure.MALFORMED_LIMITS_FLAGS);
+        if (is64Bit) {
+            assertTrue(memory64, "64-bit indexed table used without setting --wasm.Memory64", Failure.MALFORMED_LIMITS_FLAGS);
+            assertUnsignedLongLessOrEqual(longOut[0], MAX_TABLE_64_DECLARATION_SIZE, Failure.MALFORMED_LIMITS_FLAGS);
+            assertUnsignedLongLessOrEqual(longOut[1], MAX_TABLE_64_DECLARATION_SIZE, Failure.MALFORMED_LIMITS_FLAGS);
+            assertUnsignedLongLessOrEqual(longOut[0], longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+        } else {
+            assertUnsignedIntLessOrEqual((int) longOut[0], MAX_TABLE_DECLARATION_SIZE, Failure.MALFORMED_LIMITS_FLAGS);
+            assertUnsignedIntLessOrEqual((int) longOut[1], MAX_TABLE_DECLARATION_SIZE, Failure.MALFORMED_LIMITS_FLAGS);
+            assertUnsignedIntLessOrEqual((int) longOut[0], (int) longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+        }
     }
 
     private void readMemoryLimits(long[] longOut, boolean[] boolOut) {
@@ -4075,24 +4102,6 @@ public class BinaryParser extends BinaryStreamParser {
             assertUnsignedIntLessOrEqual((int) longOut[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
             assertUnsignedIntLessOrEqual((int) longOut[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
             assertUnsignedIntLessOrEqual((int) longOut[0], (int) longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
-        }
-    }
-
-    private void readLimits(int[] out, int max) {
-        final byte limitsPrefix = readLimitsPrefix();
-        switch (limitsPrefix) {
-            case LimitsPrefix.NO_MAX: {
-                out[0] = readUnsignedInt32();
-                out[1] = max;
-                break;
-            }
-            case LimitsPrefix.WITH_MAX: {
-                out[0] = readUnsignedInt32();
-                out[1] = readUnsignedInt32();
-                break;
-            }
-            default:
-                fail(Failure.MALFORMED_LIMITS_FLAGS, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
         }
     }
 

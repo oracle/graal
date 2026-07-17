@@ -44,6 +44,7 @@ package org.graalvm.wasm.parser.bytecode;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 
 import java.util.ArrayList;
@@ -159,7 +160,7 @@ public abstract class BytecodeParser {
                         effectiveOffset += 2;
                         break;
                     case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
-                        value = rawPeekI32(bytecode, effectiveOffset);
+                        value = rawPeekU32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
                     case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
@@ -294,54 +295,41 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final byte[] offsetBytecode;
-                switch (flags & BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_UNDEFINED:
-                        offsetBytecode = null;
+                final long value;
+                switch (flags & BytecodeBitEncoding.ELEM_SEG_VALUE_MASK) {
+                    case BytecodeBitEncoding.ELEM_SEG_VALUE_UNDEFINED:
+                        value = -1;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8: {
-                        int offsetBytecodeLength = rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_VALUE_U8:
+                        value = rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
-                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
-                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    }
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16: {
-                        int offsetBytecodeLength = rawPeekU16(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_VALUE_U16:
+                        value = rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
-                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
-                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    }
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32: {
-                        int offsetBytecodeLength = rawPeekI32(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_VALUE_U32:
+                        value = rawPeekU32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
-                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
-                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    }
+                    case BytecodeBitEncoding.ELEM_SEG_VALUE_I64:
+                        value = rawPeekI64(bytecode, effectiveOffset);
+                        effectiveOffset += 8;
+                        break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetAddress;
-                switch (flags & BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        offsetAddress = -1;
-                        break;
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U8:
-                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U16:
-                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_I32:
-                        offsetAddress = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
+                final byte[] offsetBytecode;
+                final long offsetAddress;
+                if ((flags & BytecodeBitEncoding.ELEM_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.ELEM_SEG_BYTECODE &&
+                                ((flags & BytecodeBitEncoding.ELEM_SEG_VALUE_MASK) != BytecodeBitEncoding.ELEM_SEG_VALUE_UNDEFINED)) {
+                    int offsetBytecodeLength = (int) value;
+                    offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                    effectiveOffset += offsetBytecodeLength;
+                    offsetAddress = -1;
+                } else {
+                    offsetBytecode = null;
+                    offsetAddress = value;
                 }
                 linker.immediatelyResolveElemSegment(store, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
             } else if (elemMode == SegmentMode.PASSIVE) {
