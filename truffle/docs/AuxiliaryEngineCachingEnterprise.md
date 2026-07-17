@@ -124,10 +124,12 @@ By default, all started compilations in the compile queue will be completed and 
 Whether a function root is AOT compilable is determined by the language.
 A language supports AOT by implementing `RootNode.prepareForAOT()`.
 
-An update policy can be specified if both load and store operations are set using the `--engine.UpdatePolicy=<policy>` option.
+An update policy can be specified if both load and store operations are set using the `--engine.CacheUpdate=<policy>` option.
 Available policies are:
 
 * `always` Always persist.
+* `newcode` Store if a persisted root was added or removed, a compilation successfully installed code, or the number of persisted roots with valid installed code changed.
+  This includes reoptimization, invalidation, and removal of installed code, but excludes failed or cancelled compilation attempts.
 * `newsource` Store if new source was loaded that was not contained in the previously loaded image.
 * `newroot` Store if a new root was loaded and not contained in the previously loaded image.
 * `never` Never persist.
