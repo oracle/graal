@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
+import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -75,6 +76,8 @@ public class ContextSensitiveMultiTypeState extends MultiTypeStateWithBitSet {
             for (int i = 0; i < objects.length; i++) {
                 result[i] = objects[i].getTypeId();
             }
+            /* Ensure array element initializations are published before publishing the array. */
+            VarHandle.storeStoreFence();
             this.objectTypeIds = result;
         }
         return objectTypeIds;
