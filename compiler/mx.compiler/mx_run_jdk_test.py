@@ -34,7 +34,6 @@ import mx
 import mx_sdk_vm_impl
 
 _suite = mx.suite('compiler')
-_HOTSPOT_OPTION_COMPATIBILITY_ENV = 'CREMA_HOTSPOT_OPTION_COMPATIBILITY'
 _JTREG_TEST = re.compile(r'(?<![\w$])@test\b')
 _JTREG_RUN = re.compile(r'(?<![\w$])@run\b')
 
@@ -335,11 +334,11 @@ def run_jdk_test(args):
         f'TEST={test_selection}',
         f'JDK_UNDER_TEST={graalvm_home}',
         f'CONF_NAME={parsed_args.conf_name}',
-        f'JTREG=OPTIONS=-e:{_HOTSPOT_OPTION_COMPATIBILITY_ENV}',
     ]
     if parsed_args.test_image_dir:
         test_command.append(f'TEST_IMAGE_DIR={parsed_args.test_image_dir}')
-    java_options = []
+    # Enable the HotSpot compatibility options only for the JDK test harness invocation.
+    java_options = ["-DCREMA_HOTSPOT_OPTION_COMPATIBILITY=true"]
     if parsed_args.vm:
         # Accept both "server" and "-server" while keeping the make value explicit.
         java_options.append(parsed_args.vm if parsed_args.vm.startswith('-') else f'-{parsed_args.vm}')
@@ -351,7 +350,4 @@ def run_jdk_test(args):
     if java_options:
         # Use jtreg Java options so -svm is applied to @run actions but not to tool VMs such as javac for @build.
         test_command.insert(3, f"TEST_OPTS=JAVA_OPTIONS={' '.join(java_options)}")
-    test_env = os.environ.copy()
-    # Enable the jtreg compatibility options only for the JDK test harness invocation.
-    test_env[_HOTSPOT_OPTION_COMPATIBILITY_ENV] = 'true'
-    _run_verbose(test_command, cwd=labs_openjdk, env=test_env, nonZeroIsFatal=True)
+    _run_verbose(test_command, cwd=labs_openjdk, nonZeroIsFatal=True)

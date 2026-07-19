@@ -122,7 +122,7 @@ public final class RuntimeOptionParser {
     private static final String AGENT_PATH_OPTION_PREFIX = "-agentpath:";
     private static final String LOG_FILE_OPTION = "LogFile";
     private static final String LOG_FILE_OPTION_PREFIX = NORMAL_OPTION_PREFIX + LOG_FILE_OPTION + "=";
-    private static final String HOTSPOT_OPTION_COMPATIBILITY_ENV = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
+    private static final String HOTSPOT_OPTION_COMPATIBILITY_NAME = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
     private static final String RESERVED_INTERNAL_MODULE_PROPERTY_WARNING = "Ignoring system property options whose names match '-Djdk.module.*', which is reserved for internal use.";
 
     private static final Set<String> SYSTEM_ASSERTION_OPTIONS = Set.of(
@@ -457,7 +457,7 @@ public final class RuntimeOptionParser {
 
     /// Consumes compatibility options commonly passed by jtreg and the JDK test harness.
     private static String[] consumeCompatibilityOptions(String[] inArgs) {
-        if (!Boolean.parseBoolean(System.getenv(HOTSPOT_OPTION_COMPATIBILITY_ENV))) {
+        if (!Boolean.getBoolean(HOTSPOT_OPTION_COMPATIBILITY_NAME)) {
             return inArgs;
         }
         List<String> remainingArgs = new ArrayList<>();
