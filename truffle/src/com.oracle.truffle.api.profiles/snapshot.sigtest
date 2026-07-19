@@ -34,17 +34,12 @@ CLSS public com.oracle.truffle.api.profiles.ConditionProfile
 meth public boolean profile(boolean)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile create()
-meth public static com.oracle.truffle.api.profiles.ConditionProfile createBinaryProfile()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public static com.oracle.truffle.api.profiles.ConditionProfile createCountingProfile()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.ConditionProfile getUncached()
 meth public static com.oracle.truffle.api.profiles.InlinedConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public void disable()
 meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
 hfds DISABLED,wasFalse,wasTrue
-hcls Counting,Disabled
 
 CLSS public final com.oracle.truffle.api.profiles.CountingConditionProfile
 meth public boolean profile(boolean)
@@ -256,8 +251,6 @@ meth public boolean inject(boolean)
 meth public boolean profile(boolean)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile create()
-meth public static com.oracle.truffle.api.profiles.LoopConditionProfile createCountingProfile()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile getUncached()
 meth public void disable()
 meth public void profileCounted(long)
