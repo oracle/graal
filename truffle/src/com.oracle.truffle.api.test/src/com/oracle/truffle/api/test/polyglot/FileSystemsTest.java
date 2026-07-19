@@ -49,7 +49,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -95,10 +94,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.InternalResourceTest.SetResourceRootInIsolate;
+import com.oracle.truffle.api.test.polyglot.InternalResourceTest.TemporaryResourceCacheRoot;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.home.Version;
 import org.graalvm.polyglot.Context;
@@ -109,7 +109,6 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -150,8 +149,8 @@ public class FileSystemsTest {
     private static final String CUSTOM_FS_DEPRECATED = "Custom file system - Deprecated";
     private static final String FULL_IO = "Full IO";
     private static final String NO_IO = "No IO";
-    private static final String NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE = "No IO under language home - public file";
-    private static final String NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE = "No IO under language home - internal file";
+    private static final String NO_IO_INTERNAL_RESOURCE_PUBLIC_FILE = "No IO - Internal Resource - public file";
+    private static final String NO_IO_INTERNAL_RESOURCE_INTERNAL_FILE = "No IO - Internal Resource - internal file";
     private static final String READ_ONLY = "Read Only";
     private static final String CONDITIONAL_IO_READ_WRITE_PART = "Conditional IO - read/write part";
     private static final String CONDITIONAL_IO_READ_ONLY_PART = "Conditional IO - read only part";
@@ -167,6 +166,7 @@ public class FileSystemsTest {
     private static final String COMPOSITE_FILE_SYSTEM_FALLBACK = "Composite file system read only fallback";
     private static final String DENY_IO = "Deny IO file system";
 
+    private static TemporaryResourceCacheRoot resourcesCacheRoot;
     private static final Map<String, Configuration> cfgs = new HashMap<>();
 
     private static final Version OSX_10_13 = Version.create(10, 13);
@@ -180,8 +180,8 @@ public class FileSystemsTest {
                         CUSTOM_FS_DEPRECATED,
                         FULL_IO,
                         NO_IO,
-                        NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
-                        NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
+                        NO_IO_INTERNAL_RESOURCE_PUBLIC_FILE,
+                        NO_IO_INTERNAL_RESOURCE_INTERNAL_FILE,
                         READ_ONLY,
                         CONDITIONAL_IO_READ_WRITE_PART,
                         CONDITIONAL_IO_READ_ONLY_PART,
@@ -199,8 +199,13 @@ public class FileSystemsTest {
     }
 
     @BeforeClass
-    public static void createConfigurations() throws IOException, ReflectiveOperationException {
+    @SuppressWarnings("try")
+    public static void createConfigurations() throws Exception {
         assert cfgs.isEmpty();
+
+        // Setup internal resource root
+        resourcesCacheRoot = new TemporaryResourceCacheRoot(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), true);
+
         final FileSystem fullIO = FileSystem.newDefaultFileSystem();
         createDeprecatedConfigurations(fullIO);
 
@@ -220,24 +225,22 @@ public class FileSystemsTest {
         cfgs.put(NO_IO, new Configuration(NO_IO, ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, true, false, false, false));
 
         // No IO under language home - public file
+        privateDir = createContent(InternalResourcePublicFile.resolveRoot(resourcesCacheRoot.getRoot()), fullIO);
         Engine engine = Engine.create();
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
-                        fullIO);
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
         ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
+        SetResourceRootInIsolate.set(ctx, resourcesCacheRoot.getRoot());
         setCwd(ctx, privateDir);
-        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
-                        new Configuration(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, ctx, privateDir, privateDir, fullIO, true, false, false, false, false, false, true, engine));
+        cfgs.put(NO_IO_INTERNAL_RESOURCE_PUBLIC_FILE,
+                        new Configuration(NO_IO_INTERNAL_RESOURCE_PUBLIC_FILE, ctx, privateDir, privateDir, fullIO, true, false, false, false, false, false, true, engine));
 
         // No IO under language home - internal file
+        privateDir = createContent(InternalResourcePrivateFile.resolveRoot(resourcesCacheRoot.getRoot()), fullIO);
         engine = Engine.create();
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
-                        fullIO);
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
         ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
+        SetResourceRootInIsolate.set(ctx, resourcesCacheRoot.getRoot());
         setCwd(ctx, privateDir);
-        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
-                        new Configuration(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, false, false, engine));
+        cfgs.put(NO_IO_INTERNAL_RESOURCE_INTERNAL_FILE,
+                        new Configuration(NO_IO_INTERNAL_RESOURCE_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, false, false, engine));
 
         // Read Only
         IOAccess ioAccess;
@@ -299,19 +302,19 @@ public class FileSystemsTest {
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES, new Configuration(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES, ctx, memDir, fileSystem, false, true, true, true));
 
         // Memory filesystem with deprecated internal resource access - in language home
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
+        privateDir = createContent(InternalResourceAPIDeprecated.resolveRoot(resourcesCacheRoot.getRoot()), fullIO);
         engine = Engine.create();
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
         fileSystem = createDeprecatedInternalResourcesFileSystem(new MemoryFileSystem());
         fileSystem.setCurrentWorkingDirectory(privateDir);
         ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
         ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
+        SetResourceRootInIsolate.set(ctx, resourcesCacheRoot.getRoot());
         setCwd(ctx, privateDir);
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE,
                         new Configuration(MEMORY_FILE_SYSTEM_WITH_DEPRECATED_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true, true, true, true,
                                         engine));
 
-        // Memory filesystem with read-only internal resources - outside language home
+        // Memory filesystem with read-only internal resources - outside internal resource
         fileSystem = FileSystem.allowInternalResources(new MemoryFileSystem());
         memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
         fileSystem.setCurrentWorkingDirectory(memDir);
@@ -320,14 +323,14 @@ public class FileSystemsTest {
         ctx = Context.newBuilder().allowIO(ioAccess).build();
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES, new Configuration(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES, ctx, memDir, fileSystem, false, true, true, true));
 
-        // Memory filesystem with read-only internal resources - in language home
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
+        // Memory filesystem with read-only internal resources - in internal resource
+        privateDir = createContent(InternalResourceAPI.resolveRoot(resourcesCacheRoot.getRoot()), fullIO);
         engine = Engine.create();
-        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
         fileSystem = FileSystem.allowInternalResources(new MemoryFileSystem());
         fileSystem.setCurrentWorkingDirectory(privateDir);
         ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
         ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
+        SetResourceRootInIsolate.set(ctx, resourcesCacheRoot.getRoot());
         setCwd(ctx, privateDir);
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE,
                         new Configuration(MEMORY_FILE_SYSTEM_WITH_INTERNAL_RESOURCES_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, false, true, false, true, true, false, true, engine));
@@ -413,20 +416,21 @@ public class FileSystemsTest {
 
     @AfterClass
     public static void tearDownClass() throws IOException {
-        for (Map.Entry<String, Configuration> cfgEntry : cfgs.entrySet()) {
-            cfgEntry.getValue().close();
+        try {
+            for (Map.Entry<String, Configuration> cfgEntry : cfgs.entrySet()) {
+                cfgEntry.getValue().close();
+            }
+            cfgs.clear();
+        } finally {
+            if (resourcesCacheRoot != null) {
+                resourcesCacheRoot.close();
+            }
         }
-        cfgs.clear();
     }
 
     public FileSystemsTest(final String cfgName) {
         this.cfg = cfgs.get(cfgName);
         Assume.assumeNotNull(this.cfg);
-    }
-
-    @Before
-    public void setUp() {
-        resetLanguageHomes();
     }
 
     @Test
@@ -3114,8 +3118,12 @@ public class FileSystemsTest {
     }
 
     private static boolean isDirectory(final Path path, final FileSystem fs) throws IOException {
-        final Map<String, Object> attrs = fs.readAttributes(path, "isDirectory", LinkOption.NOFOLLOW_LINKS);
-        return (Boolean) attrs.get("isDirectory");
+        try {
+            final Map<String, Object> attrs = fs.readAttributes(path, "isDirectory", LinkOption.NOFOLLOW_LINKS);
+            return (Boolean) attrs.get("isDirectory");
+        } catch (NoSuchFileException nsf) {
+            return false;
+        }
     }
 
     private static void deleteRecursively(Path path, final FileSystem fs) throws IOException {
@@ -3130,17 +3138,6 @@ public class FileSystemsTest {
         try {
             fs.delete(path);
         } catch (NoSuchFileException notFound) {
-        }
-    }
-
-    private static void resetLanguageHomes() {
-        try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, FileSystemsTest.class.getClassLoader());
-            final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-            ReflectionUtils.setAccessible(reset, true);
-            reset.invoke(null);
-        } catch (ReflectiveOperationException re) {
-            throw new RuntimeException(re);
         }
     }
 
@@ -3163,34 +3160,6 @@ public class FileSystemsTest {
             String currentWorkingDirectory = (String) contextArguments[0];
             env.setCurrentWorkingDirectory(env.getInternalTruffleFile(currentWorkingDirectory));
             return null;
-        }
-    }
-
-    static void markAsLanguageHome(Engine engine, Class<? extends TruffleLanguage<?>> language, Path languageHome) {
-        try (Context ctx = Context.newBuilder().engine(engine).build()) {
-            String id = TestUtils.getDefaultLanguageId(language);
-            String home = languageHome.toString();
-            // Set language home in isolate
-            AbstractExecutableTestLanguage.evalTestLanguage(ctx, MarkAsLanguageHomeLanguage.class, "", id, home);
-            // Set language home in host
-            MarkAsLanguageHomeLanguage.markAsLanguageHome(id, home);
-        }
-    }
-
-    @Registration
-    public static final class MarkAsLanguageHomeLanguage extends AbstractExecutableTestLanguage {
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            String languageId = (String) contextArguments[0];
-            String languageHome = (String) contextArguments[1];
-            markAsLanguageHome(languageId, languageHome);
-            return null;
-        }
-
-        static void markAsLanguageHome(String languageId, String languageHome) {
-            System.setProperty("org.graalvm.language." + languageId + ".home", languageHome);
-            resetLanguageHomes();
         }
     }
 
@@ -3700,6 +3669,82 @@ public class FileSystemsTest {
             public String toString() {
                 return file.toString();
             }
+        }
+    }
+
+    @InternalResource.Id(value = InternalResourcePublicFile.ID, componentId = ProxyLanguage.ID, optional = true)
+    public static final class InternalResourcePublicFile implements InternalResource {
+
+        static final String ID = "resource-public";
+
+        static Path resolveRoot(Path cacheRoot) {
+            return cacheRoot.resolve(ProxyLanguage.ID).resolve(ID);
+        }
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        }
+
+        @Override
+        public String versionHash(Env env) throws IOException {
+            return "";
+        }
+    }
+
+    @InternalResource.Id(value = InternalResourcePrivateFile.ID, componentId = ProxyLanguage.ID, optional = true)
+    public static final class InternalResourcePrivateFile implements InternalResource {
+
+        static final String ID = "resource-private";
+
+        static Path resolveRoot(Path cacheRoot) {
+            return cacheRoot.resolve(ProxyLanguage.ID).resolve(ID);
+        }
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        }
+
+        @Override
+        public String versionHash(Env env) throws IOException {
+            return "";
+        }
+    }
+
+    @InternalResource.Id(value = InternalResourceAPIDeprecated.ID, componentId = ProxyLanguage.ID, optional = true)
+    public static final class InternalResourceAPIDeprecated implements InternalResource {
+
+        static final String ID = "resource-api-deprecated";
+
+        static Path resolveRoot(Path cacheRoot) {
+            return cacheRoot.resolve(ProxyLanguage.ID).resolve(ID);
+        }
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        }
+
+        @Override
+        public String versionHash(Env env) throws IOException {
+            return "";
+        }
+    }
+
+    @InternalResource.Id(value = InternalResourceAPI.ID, componentId = ProxyLanguage.ID, optional = true)
+    public static final class InternalResourceAPI implements InternalResource {
+
+        static final String ID = "resource-api";
+
+        static Path resolveRoot(Path cacheRoot) {
+            return cacheRoot.resolve(ProxyLanguage.ID).resolve(ID);
+        }
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        }
+
+        @Override
+        public String versionHash(Env env) throws IOException {
+            return "";
         }
     }
 }

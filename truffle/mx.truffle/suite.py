@@ -1284,19 +1284,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.graalvm.locator": {
-      "subDir": "src",
-      "sourceDirs": ["src"],
-      "dependencies": [
-        "truffle:TRUFFLE_API",
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "license": "GPLv2-CPE",
-      "jacoco" : "exclude",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "org.graalvm.shadowed.com.ibm.icu" : {
       # shaded ICU4J + ICU4J-CHARSET
       "subDir" : "src",
@@ -2008,7 +1995,6 @@ suite = {
           "com.oracle.truffle.runtime.hotspot to jdk.graal.compiler",
         ],
         "uses" : [
-          "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.jfr.EventFactory.Provider",
           "com.oracle.truffle.runtime.FloodControlHandler",
@@ -2106,7 +2092,6 @@ suite = {
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
           "java.nio.file.spi.FileTypeDetector",
-          "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
           "com.oracle.truffle.api.provider.InternalResourceProvider",
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
@@ -2704,25 +2689,6 @@ suite = {
       "layout" : {
         "native-image.properties" : "file:mx.truffle/language-xz.properties",
       },
-      "maven" : False,
-      "graalCompilerSourceEdition": "ignore",
-    },
-
-    "LOCATOR": {
-      "subDir": "src",
-      "moduleInfo" : {
-        "name" : "org.graalvm.locator",
-        "exports" : [
-          "com.oracle.graalvm.locator to jdk.graal.compiler.management",
-        ],
-        "requires": [
-          "org.graalvm.polyglot",
-        ],
-      },
-      "dependencies": ["com.oracle.graalvm.locator"],
-      "distDependencies": [
-        "truffle:TRUFFLE_API",
-      ],
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
     },

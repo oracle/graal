@@ -163,7 +163,8 @@
   {
     "name": "com.oracle.truffle.polyglot.InternalResourceRoots",
     "methods": [
-      { "name": "getInstance", "parameterTypes": [] }
+      { "name": "getInstance", "parameterTypes": [] },
+      { "name": "setTestCacheRoot", "parameterTypes": ["java.nio.file.Path", "boolean"] }
     ]
   },
   {

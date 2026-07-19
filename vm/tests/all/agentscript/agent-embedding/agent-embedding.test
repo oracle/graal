@@ -1,0 +1,80 @@
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+# Embedding replacement for the former tests/all/agentscript/agent-embedding.test.
+# Embedding/EmbeddingDoubled/EmbeddingMoreContexts are plain polyglot embedders.
+# EmbeddingRegisterSymbols relies on the EmbRegisterSymbolInstrument Truffle
+# instrument, which is compiled (via the Truffle DSL processor) into target/classes
+# and discovered from the application class path instead of the legacy
+# -Dtruffle.class.path.append / --module-path mechanisms exercised previously.
+> if [ -z "${GRAALVM_VERSION}" ]
+>   echo GRAALVM_VERSION must be set by the all tests job
+>   exit 1
+> fi
+> if [ -z "${GRAALVM_MAVEN_REPO_URL}" -a -n "${GRAALVM_MAVEN_REPO}" ]
+>   export GRAALVM_MAVEN_REPO_URL=file://${GRAALVM_MAVEN_REPO}
+> fi
+> if [ -z "${GRAALVM_MAVEN_REPO_URL}" ]
+>   echo GRAALVM_MAVEN_REPO_URL must be set by the all tests job
+>   exit 1
+> fi
+> mvn ${MAVEN_ARGS} package dependency:build-classpath -Dmdep.outputFile=${TMP_DIR}/agentscript-agent-embedding.classpath
+> export EMBEDDING_CP=${TEST_DIR}/target/classes:`cat ${TMP_DIR}/agentscript-agent-embedding.classpath`
+>[0] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -ea -cp ${EMBEDDING_CP} Embedding
+Everything is OK!
+>[0] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -ea -cp ${EMBEDDING_CP} EmbeddingDoubled
+Everything is OK!
+>[0] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -ea -cp ${EMBEDDING_CP} EmbeddingMoreContexts 2
+calling fib with 11
+result is 89
+calling fib with 12
+result is 144
+OK 2 times!
+>[1] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -ea -cp ${EMBEDDING_CP} EmbeddingRegisterSymbols primitives
+
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
+>[1] ${JAVA_HOME}/bin/java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=ALL-UNNAMED -ea -cp ${EMBEDDING_CP} EmbeddingRegisterSymbols object
+
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
