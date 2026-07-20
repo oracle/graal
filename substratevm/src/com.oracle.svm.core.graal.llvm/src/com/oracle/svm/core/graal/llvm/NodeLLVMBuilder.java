@@ -223,10 +223,12 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             if (gen.isEntryPoint()) {
                 /*
-                 * In entry points, we want to restore the heap base register on return. For
-                 * example, in Isolate creation, this allows the current thread to get back its heap
-                 * base instead of the new thread's one.
+                 * Entry points can change the thread and heap base registers in a separate
+                 * prologue method. Make the changes visible to LLVM so that it restores the
+                 * caller's register values on return. For example, after creating an isolate, this
+                 * lets the current thread get back its original thread and heap base values.
                  */
+                gen.clobberRegister(ReservedRegisters.singleton().getThreadRegister().name);
                 gen.clobberRegister(ReservedRegisters.singleton().getHeapBaseRegister().name);
             }
 
