@@ -971,6 +971,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerService(DuringAnalysisAccess a, Service service) {
+        if (FutureDefaultsOptions.explicitSecurityProviderRegistration() && !isProviderRegisteredForReflection(service.getProvider().getClass())) {
+            trace("Skipped service %s because provider %s was not registered for reflection.", asString(service), service.getProvider().getClass().getName());
+            return;
+        }
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable _ = trace(service)) {
