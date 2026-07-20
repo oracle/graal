@@ -29,8 +29,6 @@ supr com.oracle.truffle.api.interop.InteropException
 CLSS public abstract com.oracle.truffle.api.interop.InteropException
 meth public final java.lang.Throwable fillInStackTrace()
 meth public final java.lang.Throwable getCause()
-meth public final java.lang.Throwable initCause(java.lang.Throwable)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.2")
 supr java.lang.Exception
 hfds serialVersionUID
 
