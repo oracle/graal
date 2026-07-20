@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -60,10 +59,9 @@ import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -907,7 +905,7 @@ class ABIs {
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64CallArranger.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
     static final class LinuxAArch64 extends ARM64 {
 
         @Override
