@@ -26,7 +26,6 @@ package com.oracle.svm.configure.trace;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -44,8 +43,6 @@ import jdk.graal.compiler.phases.common.LazyValue;
  */
 public final class AccessAdvisor {
     // Checkstyle: allow System.err (agent class)
-
-    private static final String JDK_METHOD_HANDLE_HELPER_CALLER = "java.lang.invoke.MethodHandleImpl$1";
 
     /**
      * {@link java.lang.reflect.Proxy} generated classes can be put in arbitrary packages depending
@@ -215,12 +212,7 @@ public final class AccessAdvisor {
         }
         String qualifiedCaller = callerClass.get();
         assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        if (isEnumValuesLookup(entry)) {
-            logIgnoredEntry("enum values helper", entry);
-            return true;
-        }
-        if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller) &&
-                        !shouldPreserveApplicationMethodHandleLookup(qualifiedCaller, queriedClass, entry)) {
+        if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller)) {
             logIgnoredEntry("excluded by caller filter", entry);
             return true;
         }
@@ -243,26 +235,6 @@ public final class AccessAdvisor {
             }
         }
         return false;
-    }
-
-    private boolean shouldPreserveApplicationMethodHandleLookup(String qualifiedCaller, LazyValue<String> queriedClass, EconomicMap<String, Object> entry) {
-        // Preserve only the evidenced JDK helper frame; custom caller-filter exclusions still win.
-        return "findMethodHandle".equals(entry.get("function")) && queriedClass.get() != null &&
-                        JDK_METHOD_HANDLE_HELPER_CALLER.equals(qualifiedCaller) &&
-                        callerFilter.includes(queriedClass.get()) && !isEnumValuesLookup(entry);
-    }
-
-    private static boolean isEnumValuesLookup(EconomicMap<String, Object> entry) {
-        return Boolean.TRUE.equals(entry.get("class_is_enum")) && isNoArgumentValuesLookup(entry);
-    }
-
-    private static boolean isNoArgumentValuesLookup(EconomicMap<String, Object> entry) {
-        if (!(entry.get("args") instanceof List<?> args) || args.size() != 2) {
-            return false;
-        }
-        // Enum.valueOf performs an internal values() lookup that should not become application metadata.
-        Object parameterTypes = args.get(1);
-        return "values".equals(args.get(0)) && (parameterTypes == null || parameterTypes instanceof List<?> types && types.isEmpty());
     }
 
     public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {
