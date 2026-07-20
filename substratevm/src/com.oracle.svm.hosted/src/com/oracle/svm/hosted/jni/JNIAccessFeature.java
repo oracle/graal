@@ -433,12 +433,10 @@ public class JNIAccessFeature implements Feature {
             return;
         }
 
-        /* Remove observed registrations individually so concurrent additions remain pending. */
         for (var registration : newClasses) {
-            if (newClasses.remove(registration)) {
-                addClass(registration.element(), registration.preserved(), access);
-            }
+            addClass(registration.element(), registration.preserved(), access);
         }
+        newClasses.clear();
 
         for (String className : newNegativeClassLookups) {
             if (newNegativeClassLookups.remove(className)) {
@@ -447,10 +445,9 @@ public class JNIAccessFeature implements Feature {
         }
 
         for (var registration : newMethods) {
-            if (newMethods.remove(registration)) {
-                addMethod(registration.element(), registration.preserved(), access);
-            }
+            addMethod(registration.element(), registration.preserved(), access);
         }
+        newMethods.clear();
 
         for (NegativeMethodLookup lookup : newNegativeMethodLookups) {
             if (newNegativeMethodLookups.remove(lookup)) {
@@ -459,10 +456,9 @@ public class JNIAccessFeature implements Feature {
         }
 
         newFields.forEach((registration, writable) -> {
-            if (newFields.remove(registration, writable)) {
-                addField(registration.element(), registration.preserved(), writable, access);
-            }
+            addField(registration.element(), registration.preserved(), writable, access);
         });
+        newFields.clear();
 
         for (NegativeFieldLookup lookup : newNegativeFieldLookups) {
             if (newNegativeFieldLookups.remove(lookup)) {
