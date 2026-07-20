@@ -1,0 +1,88 @@
+From 82c9ee246e58200ab2cd9a42acbec5525b62b5b0 Mon Sep 17 00:00:00 2001
+From: Nick Hutchinson <nshutchinson@gmail.com>
+Date: Wed, 14 Jan 2026 19:18:30 +0000
+Subject: [PATCH 3/4] [compiler-rt][rtsan] Fix build failures when building
+ against in-tree libc++ (#175638)
+
+When building compiler-rt against an in-tree libc++, intermittent build
+failures could occur: some rtsan sources referenced c++ stdlib includes
+(i.e. `#include <new>`), but there was no CMake dependency enforcing
+that the libc++ headers were copied into place before the rtsan sources
+were built.
+
+https://github.com/llvm/llvm-project/issues/127764#issue-2862550745
+proposed adding the dependency on the `cxx-headers` target to resolve
+the issue. But my understanding is that compiler-rt sanitizer runtimes
+aren't expected to bring in C++ stdlib includes in the first place --
+`SANITIZER_COMMON_CFLAGS`, used by the other sanitizer runtimes,
+contains `-nostdinc++`.
+
+Rtsan only included `<new>` to get support for placement new.
+`sanitizer_common/sanitizer_placement_new.h` can provide this without
+the need for C++ stdlib headers.
+
+Move from `COMPILER_RT_COMMON_CFLAGS`/`COMPILER_RT_CXX_CFLAGS` to
+`SANITIZER_COMMON_CFLAGS`, and from `COMPILER_RT_COMMON_LINK_FLAGS` to
+`SANITIZER_COMMON_LINK_FLAGS` to be consistent with the other
+sanitizers.
+
+Fixes #127764.
+
+(cherry picked from commit 46de3200388c300ee871f5b4941dff0d97ba9480)
+---
+ compiler-rt/lib/rtsan/CMakeLists.txt         | 5 ++---
+ compiler-rt/lib/rtsan/rtsan_context.cpp      | 2 +-
+ compiler-rt/lib/rtsan/rtsan_suppressions.cpp | 3 +--
+ 3 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/compiler-rt/lib/rtsan/CMakeLists.txt b/compiler-rt/lib/rtsan/CMakeLists.txt
+index a4413d9992b6..a74dccc9be29 100644
+--- a/compiler-rt/lib/rtsan/CMakeLists.txt
++++ b/compiler-rt/lib/rtsan/CMakeLists.txt
+@@ -28,10 +28,9 @@ set(RTSAN_HEADERS
+ set(RTSAN_DEPS)
+ 
+ set(RTSAN_CFLAGS
+-  ${COMPILER_RT_COMMON_CFLAGS}
+-  ${COMPILER_RT_CXX_CFLAGS}
++  ${SANITIZER_COMMON_CFLAGS}
+   -DSANITIZER_COMMON_NO_REDEFINE_BUILTINS)
+-set(RTSAN_LINK_FLAGS ${COMPILER_RT_COMMON_LINK_FLAGS})
++set(RTSAN_LINK_FLAGS ${SANITIZER_COMMON_LINK_FLAGS})
+ set(RTSAN_DYNAMIC_LIBS
+   ${COMPILER_RT_UNWINDER_LINK_LIBS}
+   ${SANITIZER_CXX_ABI_LIBRARIES}
+diff --git a/compiler-rt/lib/rtsan/rtsan_context.cpp b/compiler-rt/lib/rtsan/rtsan_context.cpp
+index 536d62e81e2f..0903d14b9e07 100644
+--- a/compiler-rt/lib/rtsan/rtsan_context.cpp
++++ b/compiler-rt/lib/rtsan/rtsan_context.cpp
+@@ -12,8 +12,8 @@
+ #include "rtsan/rtsan.h"
+ 
+ #include "sanitizer_common/sanitizer_allocator_internal.h"
++#include "sanitizer_common/sanitizer_placement_new.h"
+ 
+-#include <new>
+ #include <pthread.h>
+ 
+ using namespace __sanitizer;
+diff --git a/compiler-rt/lib/rtsan/rtsan_suppressions.cpp b/compiler-rt/lib/rtsan/rtsan_suppressions.cpp
+index 2bcfbeed4195..789d8b23a32f 100644
+--- a/compiler-rt/lib/rtsan/rtsan_suppressions.cpp
++++ b/compiler-rt/lib/rtsan/rtsan_suppressions.cpp
+@@ -16,11 +16,10 @@
+ 
+ #include "sanitizer_common/sanitizer_common.h"
+ #include "sanitizer_common/sanitizer_internal_defs.h"
++#include "sanitizer_common/sanitizer_placement_new.h"
+ #include "sanitizer_common/sanitizer_suppressions.h"
+ #include "sanitizer_common/sanitizer_symbolizer.h"
+ 
+-#include <new>
+-
+ using namespace __sanitizer;
+ using namespace __rtsan;
+ 
+-- 
+2.52.0
+
