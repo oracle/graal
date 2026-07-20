@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -855,34 +855,6 @@ public abstract class TruffleInstrument {
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
-        }
-
-        /**
-         * Returns a {@link TruffleFile} for given path. This must be called on a context thread
-         * only.
-         *
-         * @param path the absolute or relative path to create {@link TruffleFile} for
-         * @return {@link TruffleFile}
-         * @since 19.0
-         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, String)}.
-         */
-        @Deprecated
-        public TruffleFile getTruffleFile(String path) {
-            return getTruffleFile(null, path);
-        }
-
-        /**
-         * Returns a {@link TruffleFile} for given {@link URI}. This must be called on a context
-         * thread only.
-         *
-         * @param uri the {@link URI} to create {@link TruffleFile} for
-         * @return {@link TruffleFile}
-         * @since 19.0
-         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, URI)}.
-         */
-        @Deprecated
-        public TruffleFile getTruffleFile(URI uri) {
-            return getTruffleFile(null, uri);
         }
 
         /**

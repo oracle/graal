@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -318,45 +318,6 @@ public final class EventContext {
     @SuppressWarnings("static-method")
     public ThreadDeath createUnwind(Object info, EventBinding<?> unwindBinding) {
         return new UnwindException(info, unwindBinding);
-    }
-
-    /**
-     * Creates a runtime exception that when thrown is observable to the guest language application.
-     * Be aware that errors propagated to the guest application may significantly alter the behavior
-     * of the guest application influencing other instruments which may limit them ability of them
-     * to be composed. If not wrapped using this method any exception caused by an execution event
-     * instrumentation is printed to the {@link TruffleInstrument.Env#out() error stream}.
-     * <p>
-     * Propagating runtime errors is supported in the following events:
-     * <ul>
-     * <li>{@link ExecutionEventNode#onEnter(VirtualFrame) onEnter}
-     * <li>{@link ExecutionEventNode#onInputValue(VirtualFrame, EventContext, int, Object)
-     * onInputValue}
-     * <li>{@link ExecutionEventNode#onReturnExceptional(VirtualFrame, Throwable)
-     * onReturnExceptional}
-     * <li>{@link ExecutionEventNode#onReturnValue(VirtualFrame, Object) onReturnValue}
-     * <li>{@link ExecutionEventNode#onUnwind(VirtualFrame, Object) onUnwind}
-     * <li>{@link ExecutionEventNode#onDispose(VirtualFrame) onDispose}
-     * </ul>
-     * Errors may not be propagated in {@link ExecutionEventNodeFactory#create(EventContext)} as
-     * this may lead to unstable ASTs.
-     * <p>
-     * If an error is propagated all other installed execution event listeners will continue to be
-     * notified. If multiple listeners propagate errors then the first error will be propagated and
-     * later errors will be attached to the first as {@link Exception#addSuppressed(Throwable)
-     * suppressed} exception. The notification order relates to the order the bindings were
-     * installed.
-     * <p>
-     *
-     * @param e the exception to propagate.
-     * @deprecated No substitute. Runtime exceptions can now be thrown directly and will be
-     *             observable by the guest language application.
-     * @since 20.0
-     */
-    @Deprecated(since = "21.3")
-    @SuppressWarnings("static-method")
-    public RuntimeException createError(RuntimeException e) {
-        return e;
     }
 
     /** @since 0.12 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2599,25 +2599,18 @@ final class InstrumentationHandler {
             return InstrumentationHandler.this.attachFactory(this, nearestFilter, baseFilter, null, factory);
         }
 
-        @SuppressWarnings("deprecation")
         @Override
-        public <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter filter, SourceSectionFilter inputFilter, T listener) {
+        <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListenerImpl(SourceSectionFilter filter, T listener) {
             verifyFilter(null, filter);
-            return InstrumentationHandler.this.attachListener(this, filter, inputFilter, listener);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources) {
-            verifySourceOnly(filter);
-            verifyFilter(null, filter);
-            return InstrumentationHandler.this.attachSourceListener(this, filter, listener, includeExistingSources);
+            return InstrumentationHandler.this.attachListener(this, filter, null, listener);
         }
 
         @Override
         public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean notifyLoaded) {
             SourceSectionFilter sectionsFilter = SourceSectionFilter.newBuilder().sourceFilter(filter).build();
-            return attachLoadSourceListener(sectionsFilter, listener, notifyLoaded);
+            verifySourceOnly(sectionsFilter);
+            verifyFilter(null, sectionsFilter);
+            return InstrumentationHandler.this.attachSourceListener(this, sectionsFilter, listener, notifyLoaded);
         }
 
         @Override

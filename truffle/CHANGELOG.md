@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 25.4
+* GR-77721: Removed instrumentation APIs deprecated in 23.0 or earlier.
 * GR-77721: Removed core Truffle APIs deprecated in 23.0 or earlier.
 * GR-77721: Removed profile factory methods deprecated in 23.0.
 * GR-79122: Added host interoperability for `java.time.OffsetDateTime` and `java.time.OffsetTime`.
