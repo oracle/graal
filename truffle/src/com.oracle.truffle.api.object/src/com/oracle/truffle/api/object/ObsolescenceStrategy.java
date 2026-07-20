@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -218,10 +218,6 @@ abstract class ObsolescenceStrategy {
         }
     }
 
-    static Shape defineProperty(Shape shape, Object key, Object value, int flags) {
-        return defineProperty(shape, key, value, flags, Flags.DEFAULT);
-    }
-
     static Shape defineProperty(Shape shape, Object key, Object value, int flags, int putFlags) {
         Shape oldShape = shape;
         if (!oldShape.isValid()) {
@@ -252,7 +248,7 @@ abstract class ObsolescenceStrategy {
         AddPropertyTransition addTransition;
         if (Flags.isConstant(putFlags)) {
             Location location = createLocationForValue(oldShape, value, putFlags);
-            property = Property.create(key, location, propertyFlags);
+            property = new Property(key, location, propertyFlags);
             addTransition = new AddPropertyTransition(property, location);
         } else {
             property = null;
@@ -268,7 +264,7 @@ abstract class ObsolescenceStrategy {
 
         if (property == null) {
             Location location = createLocationForValue(oldShape, value, putFlags);
-            property = Property.create(key, location, propertyFlags);
+            property = new Property(key, location, propertyFlags);
             addTransition = newAddPropertyTransition(property);
         }
 
@@ -302,7 +298,7 @@ abstract class ObsolescenceStrategy {
     private static Shape definePropertyChangeFlags(Shape oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
         assert existing.getFlags() != propertyFlags;
         if (existing.getLocation().canStore(value)) {
-            Property newProperty = Property.create(existing.getKey(), existing.getLocation(), propertyFlags);
+            Property newProperty = new Property(existing.getKey(), existing.getLocation(), propertyFlags);
             return replaceProperty(oldShape, existing, newProperty);
         } else {
             return generalizePropertyWithFlags(oldShape, existing, value, propertyFlags, putFlags);
@@ -540,12 +536,12 @@ abstract class ObsolescenceStrategy {
         if (oldShape.isShared() || oldProperty.getLocation().isValue()) {
             assert !oldProperty.getLocation().canStore(value);
             Location newLocation = oldShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
-            Property newProperty = Property.create(oldProperty.getKey(), newLocation, propertyFlags);
+            Property newProperty = new Property(oldProperty.getKey(), newLocation, propertyFlags);
             return replaceProperty(oldShape, oldProperty, newProperty);
         } else {
             Shape generalizedShape = generalizeHelper(oldProperty, value, oldShape, putFlags);
             Property generalizedProperty = generalizedShape.getProperty(oldProperty.getKey());
-            Property propertyWithFlags = Property.create(oldProperty.getKey(), generalizedProperty.getLocation(), propertyFlags);
+            Property propertyWithFlags = new Property(oldProperty.getKey(), generalizedProperty.getLocation(), propertyFlags);
             return replaceProperty(generalizedShape, generalizedProperty, propertyWithFlags);
         }
     }
@@ -843,7 +839,7 @@ abstract class ObsolescenceStrategy {
                 if (owningShape.isValid()) {
                     Shape oldParentShape = owningShape.getParent();
                     Location newLocation = oldParentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
-                    Property newProperty = Property.create(oldProperty.getKey(), newLocation, oldProperty.getFlags());
+                    Property newProperty = new Property(oldProperty.getKey(), newLocation, oldProperty.getFlags());
                     return obsoleteAndMakeShapeWithProperty(oldProperty, oldShape, owningShape, newProperty);
                 } else {
                     Shape newShape = rebuildObsoleteShape(oldShape, owningShape);
@@ -902,9 +898,8 @@ abstract class ObsolescenceStrategy {
     }
 
     private static Shape generalizeHelperWithShape(Property oldProperty, Object value, Shape oldShapeBefore, Shape oldShapeAfter, int putFlags) {
-        assert !(oldProperty.getLocation().isDeclared());
         Location newLocation = oldShapeBefore.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
-        Property newProperty = Property.create(oldProperty.getKey(), newLocation, oldProperty.getFlags());
+        Property newProperty = new Property(oldProperty.getKey(), newLocation, oldProperty.getFlags());
         synchronized (oldShapeBefore.getMutex()) {
             final Shape newShapeAfter = oldShapeBefore.addProperty(newProperty);
             assert oldShapeAfter != newShapeAfter;

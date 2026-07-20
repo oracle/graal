@@ -116,22 +116,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         return index >= 0;
     }
 
-    /** @since 0.8 or earlier */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw IncompatibleLocationException.instance();
-    }
-
-    /** @since 0.8 or earlier */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    protected static FinalLocationException finalLocation() throws FinalLocationException {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw FinalLocationException.instance();
-    }
-
     /**
      * Get object value as object at this location in store.
      *
@@ -364,28 +348,8 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         try {
             set(store, value, checkShape(store, shape), false);
         } catch (UncheckedIncompatibleLocationException e) {
-            throw incompatibleLocation();
-        }
-    }
-
-    /**
-     * Set object value at this location in store and update shape.
-     *
-     * @param oldShape the shape before the transition
-     * @param newShape new shape after the transition
-     * @throws IncompatibleLocationException if value is of non-assignable type
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "22.2")
-    @SuppressWarnings({"unused", "deprecation"})
-    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
-        if (canStore(value)) {
-            boolean guard = checkShape(store, oldShape);
-            DynamicObjectSupport.grow(store, oldShape, newShape);
-            setSafe(store, value, guard, true);
-            DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
-        } else {
-            throw incompatibleLocation();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw IncompatibleLocationException.instance();
         }
     }
 
@@ -582,18 +546,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      */
     static boolean checkShape(DynamicObject store, Shape shape) {
         return store.getShape() == shape;
-    }
-
-    /**
-     * Returns {@code true} if the location can be set to the value.
-     *
-     * @param value the value in question
-     * @since 0.8 or earlier
-     * @deprecated Equivalent to {@link #canStore(Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public boolean canSet(Object value) {
-        return canStore(value);
     }
 
     /**
@@ -823,17 +775,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     static RuntimeException incompatibleLocationException() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw UncheckedIncompatibleLocationException.instance();
-    }
-
-    /**
-     * Returns {@code true} if this is a declared value location.
-     *
-     * @since 0.18
-     * @deprecated No longer needed. Declared locations can only be created with deprecated APIs.
-     */
-    @Deprecated(since = "22.2")
-    public boolean isDeclared() {
-        return false;
     }
 
     /**

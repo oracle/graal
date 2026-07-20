@@ -1010,7 +1010,7 @@ public abstract class DynamicObject implements TruffleObject {
             Property[] properties = from.getShape().getPropertyArray();
             for (int i = 0; i < properties.length; i++) {
                 Property property = properties[i];
-                Object value = property.get(from, false);
+                Object value = property.getLocation().get(from, false);
                 PutNode.getUncached().executeWithFlags(to, property.getKey(), value, property.getFlags());
             }
         }

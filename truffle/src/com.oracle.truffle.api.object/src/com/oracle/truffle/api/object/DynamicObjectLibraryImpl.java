@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1494,18 +1494,14 @@ abstract class DynamicObjectLibraryImpl {
             }
 
             Location location = property.getLocation();
-            if (!location.isDeclared() && !location.canStore(value)) {
+            if (!location.canStore(value)) {
                 // generalize
                 assert oldShape == object.getShape();
                 Shape newShape = ObsolescenceStrategy.definePropertyGeneralize(oldShape, property, value, putFlags);
                 assert newShape != oldShape;
                 return newShape;
-            } else if (location.isDeclared()) {
-                // redefine declared
-                return ObsolescenceStrategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
             } else {
                 // set existing
-                assert location.canStore(value);
                 return oldShape;
             }
         }
