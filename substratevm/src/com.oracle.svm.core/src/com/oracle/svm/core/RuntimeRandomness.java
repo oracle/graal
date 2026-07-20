@@ -29,12 +29,15 @@ import java.util.random.RandomGenerator;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.shared.Uninterruptible;
+
 /**
  * Interface for a singleton that provides a runtime instance of a random number generator (and thus
  * ensures the generator is properly seeded). Implementing classes must use
  * {@link RuntimeRandomness} as the {@link ImageSingletons} registry key.
  */
 public interface RuntimeRandomness {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static RuntimeRandomness instance() {
         return ImageSingletons.lookup(RuntimeRandomness.class);
     }
@@ -51,4 +54,10 @@ public interface RuntimeRandomness {
      * already, it will be initialized.
      */
     RandomGenerator getRandom();
+
+    /**
+     * Return a runtime-initialized random number generator that does not block or acquire Java
+     * monitors. This generator is suitable for VM operations. It is not cryptographically secure.
+     */
+    RandomGenerator getNonBlockingRandom();
 }

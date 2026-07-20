@@ -45,7 +45,7 @@ public class RuntimeRandomnessFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (!ImageSingletons.contains(RuntimeRandomness.class)) {
-            ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
+            ImageSingletons.add(RuntimeRandomness.class, new RuntimeRandomnessSupport());
         }
     }
 }
