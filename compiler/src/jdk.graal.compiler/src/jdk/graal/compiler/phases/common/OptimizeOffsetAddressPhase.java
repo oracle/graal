@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -189,7 +189,7 @@ public class OptimizeOffsetAddressPhase extends PostRunCanonicalizationPhase<Cor
                 if (initStamp.isPositive()) {
                     int cstAsInt = cst.asJavaConstant().asInt();
 
-                    if (countedLoopInfo.counterNeverOverflows() &&
+                    if (countedLoopInfo.ivCanNeverOverflow(inductionVariable) &&
                                     inductionVariable.isConstantInit() &&
                                     inductionVariable.isConstantStride() &&
                                     inductionVariable.isConstantExtremum()) {
@@ -208,7 +208,10 @@ public class OptimizeOffsetAddressPhase extends PostRunCanonicalizationPhase<Cor
                             }
                         }
                     }
-                    if (countedLoopInfo.getLimitCheckedIV() == inductionVariable &&
+                    // An unsigned upward loop with a positive limit can only enter the body while
+                    // its limit-checked IV is positive.
+                    if ((!countedLoopInfo.isUnsignedCheck() || ((IntegerStamp) countedLoopInfo.getTripCountLimit().stamp(NodeView.DEFAULT)).isPositive()) &&
+                                    countedLoopInfo.getLimitCheckedIV() == inductionVariable &&
                                     inductionVariable.direction() == InductionVariable.Direction.Up &&
                                     (countedLoopInfo.getOverFlowGuard() != null || countedLoopInfo.counterNeverOverflows())) {
                         replace(zeroExtendNode, phi, cstAsInt);
