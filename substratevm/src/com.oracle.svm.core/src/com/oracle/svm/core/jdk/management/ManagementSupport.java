@@ -61,7 +61,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;

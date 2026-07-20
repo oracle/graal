@@ -36,7 +36,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.guest.staging.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.shared.util.TimeUtils;

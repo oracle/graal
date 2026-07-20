@@ -34,7 +34,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.guest.staging.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;

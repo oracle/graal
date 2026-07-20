@@ -39,7 +39,7 @@ import com.oracle.svm.core.jfr.JfrStackWalker;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;

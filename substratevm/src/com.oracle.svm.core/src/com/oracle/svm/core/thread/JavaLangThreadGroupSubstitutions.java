@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.jfr.JfrThreadRepository;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 @TargetClass(ThreadGroup.class)

@@ -25,7 +25,7 @@
 package com.oracle.svm.interpreter;
 
 import com.oracle.svm.core.handles.ThreadLocalHandles;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 
 class ThreadListenerThreadLocalHandlesAllocator implements ThreadListener {
     @Override

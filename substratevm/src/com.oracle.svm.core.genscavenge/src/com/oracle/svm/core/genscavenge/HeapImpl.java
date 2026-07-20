@@ -76,7 +76,7 @@ import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadStatus;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
