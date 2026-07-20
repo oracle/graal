@@ -712,8 +712,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         Method getInstance = ReflectionUtil.lookupMethod(gssManager, "getInstance");
         // The GSS facade uses Provider services but does not follow the JCA getInstance convention.
-        // \u00a7FS-001-jca-security-provider-inclusion.1
-        access.registerReachabilityHandler(a -> registerServices(a, getInstance, GSS_API_MECHANISM_SERVICE), gssManager);
+        access.registerReachabilityHandler(a -> registerServices(a, getInstance, GSS_API_MECHANISM_SERVICE), getInstance);
     }
 
     private void initializeServiceRegistrationData() {
