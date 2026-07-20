@@ -45,7 +45,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -94,6 +93,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -767,6 +767,14 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
+        if (interpreterMethod.isNative() && interpreterMethod instanceof CremaResolvedJavaMethod) {
+            try {
+                return Interpreter.JNIDowncallRoot.execute(interpreterMethod, args);
+            } catch (Throwable t) {
+                throw uncheckedThrow(t);
+            }
+        }
+
         return call(interpreterMethod, args, true);
     }
 
@@ -1185,5 +1193,10 @@ public abstract class InterpreterStubSection {
     @Uninterruptible(reason = "No JIT compiled code found, so it is safe to switch to interruptible code.", calleeMustBe = false)
     private static Object callInterpreterInterruptibly(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
         return Interpreter.execute(interpreterMethod, args);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
+        throw (T) t;
     }
 }
