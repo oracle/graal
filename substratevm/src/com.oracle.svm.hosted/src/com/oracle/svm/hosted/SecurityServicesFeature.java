@@ -68,6 +68,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -253,6 +254,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> candidateProviderClasses = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> includedProviderClasses = ConcurrentHashMap.newKeySet();
+    private final AtomicBoolean candidateProviderClassesChanged = new AtomicBoolean();
 
     private Field verificationResultsField;
     private Field providerListField;
@@ -397,13 +399,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         initializeServiceRegistrationData();
-        access.registerSubtypeReachabilityHandler((analysisAccess, providerClass) -> {
-            if (candidateProviderClasses.add(providerClass)) {
-                // Process candidates reported after this feature's current pass.
-                // \u00a7FS-001-jca-security-provider-inclusion.5
-                analysisAccess.requireAnalysisIteration();
-            }
-        }, Provider.class);
+        access.registerSubtypeReachabilityHandler((_, providerClass) -> addCandidateProviderClass(providerClass), Provider.class);
         registerServiceProviderCandidates(access);
         registerManuallyConfiguredProvidersForReflection(access);
         if (Options.EnableSecurityServicesFeature.getValue()) {
@@ -730,11 +726,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 for (String provider : providers) {
                     Class<?> providerClass = access.findClassByName(provider);
                     if (providerClass != null) {
-                        candidateProviderClasses.add(providerClass);
+                        addCandidateProviderClass(providerClass);
                     }
                 }
             }
         });
+    }
+
+    private void addCandidateProviderClass(Class<?> providerClass) {
+        if (candidateProviderClasses.add(providerClass)) {
+            candidateProviderClassesChanged.set(true);
+        }
     }
 
     private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
@@ -1117,6 +1119,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        boolean newProviderCandidate = candidateProviderClassesChanged.getAndSet(false);
         boolean includedProvider = false;
         for (Class<?> providerClass : candidateProviderClasses) {
             if (!includedProviderClasses.contains(providerClass) && isProviderRegisteredForReflection(providerClass)) {
@@ -1125,7 +1128,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 includedProvider = true;
             }
         }
-        if (includedProvider) {
+        if (includedProvider || newProviderCandidate) {
+            // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }
         access.rescanRoot(oidTableField, scanReason);
