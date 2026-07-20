@@ -156,7 +156,7 @@ public class SecurityServiceTest {
         }
     }
 
-    /** Verifies service-driven GSS provider inclusion. \u00a7FS-001-jca-security-provider-inclusion.1 */
+    /** Verifies service-driven GSS provider inclusion. */
     @Test
     public void testGSSProviderServiceRegistration() throws Exception {
         Oid kerberosV5 = new Oid("1.2.840.113554.1.2.2");

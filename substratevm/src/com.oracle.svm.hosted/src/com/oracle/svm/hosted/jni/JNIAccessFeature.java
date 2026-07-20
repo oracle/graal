@@ -434,7 +434,6 @@ public class JNIAccessFeature implements Feature {
         }
 
         /* Remove observed registrations individually so concurrent additions remain pending. */
-        // \u00a7FS-001-jca-security-provider-inclusion.5
         for (var registration : newClasses) {
             if (newClasses.remove(registration)) {
                 addClass(registration.element(), registration.preserved(), access);
