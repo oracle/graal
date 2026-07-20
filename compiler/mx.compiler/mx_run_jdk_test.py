@@ -55,13 +55,9 @@ class _JavaOptionAction(Action):
         setattr(namespace, self.dest, options)
 
 
-def _command_line(command):
-    return ' '.join(map(shlex.quote, command))
-
-
 def _run_verbose(command, cwd=None, **kwargs):
     location = cwd if cwd else os.getcwd()
-    mx.log(f"Running in {location}: {_command_line(command)}")
+    mx.log(f"Running in {location}: {mx.list_to_cmd_line(command)}")
     return mx.run(command, cwd=cwd, **kwargs)
 
 
@@ -111,7 +107,7 @@ def _check_labsjdk_jvmci_tag(labs_openjdk):
     tag_commit = _git_commit(labs_openjdk, f'refs/tags/{expected_tag}')
     if not tag_commit:
         fetch_command = ['git', '-C', labs_openjdk, 'fetch', '--tags']
-        fetch_command_line = ' '.join(map(shlex.quote, fetch_command))
+        fetch_command_line = mx.list_to_cmd_line(fetch_command)
         mx.warn(f"{labs_openjdk} is not checked out at expected JVMCI tag {expected_tag}. The tag is not available in the repo. To fetch missing tags, run: {fetch_command_line}")
         return
 
@@ -119,7 +115,7 @@ def _check_labsjdk_jvmci_tag(labs_openjdk):
         return
 
     reset_command = ['git', '-C', labs_openjdk, 'reset', '--hard', expected_tag]
-    reset_command_line = ' '.join(map(shlex.quote, reset_command))
+    reset_command_line = mx.list_to_cmd_line(reset_command)
     warning = f"{labs_openjdk} is not checked out at expected JVMCI tag {expected_tag}."
     if mx.is_interactive():
         mx.warn(warning)
@@ -173,7 +169,7 @@ def _check_labsjdk_configuration(labs_openjdk, conf_name):
     jib_server = mx.get_env("JIB_SERVER")
     if jib_server:
         init_command = ['bash', 'bin/jib.sh', 'configure', '--', f'--with-conf-name={conf_name}']
-        mx.log(f"""Initialize the JDK configuration by changing to {labs_openjdk} and running `{' '.join(map(shlex.quote, init_command))}`.""")
+        mx.log(f"""Initialize the JDK configuration by changing to {labs_openjdk} and running `{mx.list_to_cmd_line(init_command)}`.""")
         mx.log(f"JIB_SERVER is set to {jib_server}")
         prompt = "Run the JIB configure command now"
     else:
@@ -181,7 +177,7 @@ def _check_labsjdk_configuration(labs_openjdk, conf_name):
         if not jtreg:
             mx.abort("Could not find a jtreg executable for configuring labs-openjdk. Update PATH to include jtreg or set JTREG_HOME so that JTREG_HOME/bin contains jtreg, then try again.")
         init_command = ['bash', 'configure', f'--with-conf-name={conf_name}', f'--with-jtreg={jtreg}']
-        mx.log(f"""Initialize the JDK configuration by changing to {labs_openjdk} and running `{' '.join(map(shlex.quote, init_command))}`. If this fails due to missing dependencies, consult {join(labs_openjdk, 'doc', 'building.md')}.""")
+        mx.log(f"""Initialize the JDK configuration by changing to {labs_openjdk} and running `{mx.list_to_cmd_line(init_command)}`. If this fails due to missing dependencies, consult {join(labs_openjdk, 'doc', 'building.md')}.""")
         prompt = "Run the configure command now"
 
     if mx.is_interactive():
