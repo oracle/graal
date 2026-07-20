@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,42 +103,6 @@ public abstract class DebugValue {
      * @since 0.17
      */
     public abstract void set(DebugValue value) throws DebugException;
-
-    /**
-     * Sets a primitive value. Strings and boxed Java primitive types are considered primitive.
-     * Throws an {@link IllegalStateException} if the value is not writable and
-     * {@link IllegalArgumentException} if the value is not primitive.
-     *
-     * @param primitiveValue a primitive value to set
-     * @throws DebugException when guest language code throws an exception
-     * @since 19.0
-     * @deprecated in 21.2. Use {@link #set(DebugValue)
-     *             set}({@link #getSession()}{@link DebuggerSession#createPrimitiveValue(Object, Languageinfo)
-     *             .createPrimitiveValue(primitiveValue, null)}) instead.
-     */
-    @Deprecated(since = "21.2")
-    public abstract void set(Object primitiveValue) throws DebugException;
-
-    /**
-     * Converts the debug value into a Java type. Class conversions which are always supported:
-     * <ul>
-     * <li>{@link String}.class converts the value to its language specific string representation.
-     * </li>
-     * <li>{@link Number}.class converts the value to a Number representation, if any.</li>
-     * <li>{@link Boolean}.class converts the value to a Boolean representation, if any.</li>
-     * </ul>
-     * No optional conversions are currently available. If a conversion is not supported then an
-     * {@link UnsupportedOperationException} is thrown. If the value is not {@link #isReadable()
-     * readable} then an {@link IllegalStateException} is thrown.
-     *
-     * @param clazz the type to convert to
-     * @return the converted Java type, or <code>null</code> when the conversion was not possible.
-     * @throws DebugException when guest language code throws an exception
-     * @since 0.17
-     * @deprecated Use {@link #toDisplayString()} instead.
-     */
-    @Deprecated(since = "20.1")
-    public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
      * Returns the name of this value as it is referred to from its origin. If this value is
@@ -1960,42 +1924,6 @@ public abstract class DebugValue {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
-        public final <T> T as(Class<T> clazz) throws DebugException {
-            if (!isReadable()) {
-                throw new IllegalStateException("Value is not readable");
-            }
-
-            try {
-                if (clazz == String.class) {
-                    Object val = get();
-                    Object stringValue;
-                    if (INTEROP.isMetaObject(val)) {
-                        stringValue = INTEROP.getMetaQualifiedName(val);
-                    } else {
-                        stringValue = INTEROP.toDisplayString(getLanguageView());
-                    }
-                    return clazz.cast(INTEROP.asString(stringValue));
-                } else if (clazz == Number.class || clazz == Boolean.class) {
-                    return convertToPrimitive(clazz);
-                }
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-            throw new UnsupportedOperationException();
-        }
-
-        private <T> T convertToPrimitive(Class<T> clazz) {
-            Object val = get();
-            if (clazz.isInstance(val)) {
-                return clazz.cast(val);
-            }
-            return clazz.cast(Debugger.ACCESSOR.hostSupport().convertPrimitiveLossLess(val, clazz));
-        }
-
-        @Override
         public final DebuggerSession getSession() {
             return session;
         }
@@ -2024,12 +1952,6 @@ public abstract class DebugValue {
 
         @Override
         public void set(DebugValue expression) {
-            throw DebugException.create(getSession(), "Can not modify read-only value.");
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public void set(Object primitiveValue) {
             throw DebugException.create(getSession(), "Can not modify read-only value.");
         }
 
@@ -2195,19 +2117,6 @@ public abstract class DebugValue {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
-        public void set(Object primitiveValue) {
-            checkValid();
-            checkPrimitive(primitiveValue);
-            try {
-                INTEROP.writeMember(object, member, primitiveValue);
-                resetCachedValue();
-            } catch (Throwable ex) {
-                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-        }
-
-        @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
             return new ObjectMemberValue(session, language, scope, object, member);
         }
@@ -2311,19 +2220,6 @@ public abstract class DebugValue {
                 resetCachedValue();
             } catch (ThreadDeath td) {
                 throw td;
-            } catch (Throwable ex) {
-                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public void set(Object primitiveValue) {
-            checkValid();
-            checkPrimitive(primitiveValue);
-            try {
-                INTEROP.writeArrayElement(array, index, primitiveValue);
-                resetCachedValue();
             } catch (Throwable ex) {
                 throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
@@ -2578,13 +2474,6 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             Object newValue = value.get();
             setNewValue(newValue);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public void set(Object primitiveValue) {
-            checkPrimitive(primitiveValue);
-            setNewValue(primitiveValue);
         }
 
         private void setNewValue(Object newValue) {
