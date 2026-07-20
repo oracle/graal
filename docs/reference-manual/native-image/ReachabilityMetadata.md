@@ -819,9 +819,9 @@ For proxy classes:
   "reflection": [
     {
       "type": {
-        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"],
-        "serializable": true
-      }
+        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"]
+      },
+      "serializable": true
     }
   ]
 }
