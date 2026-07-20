@@ -18,7 +18,25 @@ By default the `native-image` builder uses static analysis to discover which of 
 The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
 Then a custom reflection configuration file or feature can be used to register the security services required by a specific application.
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
-In this case, register the provider classes for reflection, for example with reachability metadata collected by the Tracing Agent.
+In this case, register the provider class and its nullary constructor for reflection in _reachability-metadata.json_, for example:
+
+```json
+{
+  "reflection": [
+    {
+      "type": "com.example.security.CustomProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+Alternatively, collect the metadata by running your application on the JVM with the [Tracing Agent](AutomaticMetadataCollection.md).
 
 ## Security Services Automatic Registration
 
@@ -32,6 +50,8 @@ It does so by registering reachability handlers for each of the `getInstance()` 
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
 Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
 The builder includes such a provider and all of its services only when the provider class is registered for reflection, either by type access, its declared nullary constructor, or its static `provider()` method.
+To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=explicit-security-provider-registration`.
+With this future default, a factory does not make an unregistered provider or its services available.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
