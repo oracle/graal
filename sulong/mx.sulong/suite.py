@@ -955,9 +955,6 @@ suite = {
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
         "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
-        # work around issue with absolute path in debug-prefix-map
-        # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
-        "CMAKE_CXX_COMPILER_LAUNCHER" : "<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
       },
       "ninja_targets" : ["cxx"],
       "ninja_install_targets" : ["install-cxx"],
@@ -972,6 +969,9 @@ suite = {
             "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            # work around issue with absolute path in debug-prefix-map
+            # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
+            "CMAKE_CXX_COMPILER_LAUNCHER" : "<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
           },
         },
         "linux-musl" : {
@@ -985,6 +985,9 @@ suite = {
             "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            # work around issue with absolute path in debug-prefix-map
+            # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
+            "CMAKE_CXX_COMPILER_LAUNCHER" : "<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
           },
         },
         "darwin" : {
@@ -998,6 +1001,9 @@ suite = {
             "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
             "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            # work around issue with absolute path in debug-prefix-map
+            # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
+            "CMAKE_CXX_COMPILER_LAUNCHER" : "<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
           },
         },
         "windows" : {
@@ -1014,6 +1020,10 @@ suite = {
             "CMAKE_C_FLAGS" : "/MD -flto -DNDEBUG -O1",
             "CMAKE_CXX_FLAGS" : "/MD -flto -DNDEBUG -O1",
             "CMAKE_SHARED_LINKER_FLAGS" : "/debug",
+            # work around issue with absolute path in debug-prefix-map
+            # https://github.com/llvm/llvm-project/pull/143004#issuecomment-3125013603
+            # Windows cannot execute the Python launcher script directly.
+            "CMAKE_CXX_COMPILER_LAUNCHER" : "python3.exe;<path:SULONG_LIBCXX_COMPILER_WRAPPER>/compiler-wrapper.py",
           }
         },
       },
