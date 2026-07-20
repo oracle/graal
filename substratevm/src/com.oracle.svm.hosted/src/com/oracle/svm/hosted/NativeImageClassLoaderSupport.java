@@ -1558,6 +1558,31 @@ public final class NativeImageClassLoaderSupport {
     }
 
     /**
+     * Updates the digest without materializing the whole resource in one byte array. The buffer is
+     * filled before each update so the digest does not depend on arbitrary short-read boundaries
+     * from the input stream. This avoids overflowing {@link Integer#MAX_VALUE} for path digest
+     * inputs larger than a single Java byte array can represent.
+     */
+    static void updatePathDigest(DigestBuilder db, InputStream input) throws IOException {
+        byte[] buffer = new byte[PathDigests.FILE_DIGEST_BUFFER_SIZE];
+        int buffered = 0;
+        int bytesRead;
+        while ((bytesRead = input.read(buffer, buffered, buffer.length - buffered)) != -1) {
+            if (bytesRead == 0) {
+                continue;
+            }
+            buffered += bytesRead;
+            if (buffered == buffer.length) {
+                db.update(buffer);
+                buffered = 0;
+            }
+        }
+        if (buffered > 0) {
+            db.update(Arrays.copyOf(buffer, buffered));
+        }
+    }
+
+    /**
      * Stores a collection of individual class/resource file digests that is updated during class
      * loading. In particular, {@code PathDigests} objects store and update two
      * {@link EconomicMap}s, one for class-path entries and the other for module-path entries. Each
@@ -1608,7 +1633,7 @@ public final class NativeImageClassLoaderSupport {
                     try (JarFile jarFile = new JarFile(new File(container), true, ZipFile.OPEN_READ, JarFile.runtimeVersion())) {
                         JarEntry jarEntry = jarFile.getJarEntry(resource);
                         try (InputStream input = jarFile.getInputStream(jarEntry)) {
-                            updateDigest(db, input);
+                            updatePathDigest(db, input);
                         }
                     }
                 } else {
@@ -1617,7 +1642,7 @@ public final class NativeImageClassLoaderSupport {
                         return;
                     }
                     try (InputStream input = Files.newInputStream(resourcePath)) {
-                        updateDigest(db, input);
+                        updatePathDigest(db, input);
                     }
                 }
             } catch (IOException e) {
@@ -1628,31 +1653,6 @@ public final class NativeImageClassLoaderSupport {
             List<String> containerDigests = digests.get(container);
             synchronized (containerDigests) {
                 containerDigests.add(new String(db.digest(), StandardCharsets.UTF_8));
-            }
-        }
-
-        /**
-         * Updates the digest without materializing the whole resource in one byte array. The buffer
-         * is filled before each update so the digest does not depend on arbitrary short-read
-         * boundaries from the input stream. This avoids overflowing {@link Integer#MAX_VALUE} for
-         * path digest inputs larger than a single Java byte array can represent.
-         */
-        private static void updateDigest(DigestBuilder db, InputStream input) throws IOException {
-            byte[] buffer = new byte[FILE_DIGEST_BUFFER_SIZE];
-            int buffered = 0;
-            int bytesRead;
-            while ((bytesRead = input.read(buffer, buffered, buffer.length - buffered)) != -1) {
-                if (bytesRead == 0) {
-                    continue;
-                }
-                buffered += bytesRead;
-                if (buffered == buffer.length) {
-                    db.update(buffer);
-                    buffered = 0;
-                }
-            }
-            if (buffered > 0) {
-                db.update(Arrays.copyOf(buffer, buffered));
             }
         }
 
