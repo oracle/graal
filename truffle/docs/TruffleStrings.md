@@ -69,7 +69,7 @@ Query string properties:
   Get coarse information about the string's content, without taking 16/32-bit based encodings into account.
 * [CodeRangeEquals](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodeRangeEqualsNode.html):
   Check whether a string's code range equals the given code range.
-* [isCompatibleTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-):
+* [isCompatibleToUncached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleToUncached-com.oracle.truffle.api.strings.TruffleString.Encoding-):
   Check if a string is compatible to / can be viewed in a given encoding.
 * [isManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isManaged--):
   Check if a string is not backed by a native pointer.
@@ -330,7 +330,7 @@ This disables re-using string objects when switching encodings, and makes encodi
 whereas operations working on two strings will still allow byte-equivalent re-interpretations.
 
 All `TruffleString` operations with more than one string parameter require the strings to be in an encoding compatible with the result encoding.
-So either the strings need to be in the same encoding, or the caller must ensure that both Strings are [compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-) with the resulting encoding.
+So either the strings need to be in the same encoding, or the caller must ensure that both Strings are [compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleToUncached-com.oracle.truffle.api.strings.TruffleString.Encoding-) with the resulting encoding.
 This enable callers which already know the `SwitchEncodingNodes` would be noops to just skip them for footprint reasons.
 
 ```java
