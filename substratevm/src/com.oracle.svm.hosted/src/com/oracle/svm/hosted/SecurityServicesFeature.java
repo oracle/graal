@@ -394,7 +394,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         initializeServiceRegistrationData();
-        access.registerSubtypeReachabilityHandler((_, providerClass) -> candidateProviderClasses.add(providerClass), Provider.class);
+        access.registerSubtypeReachabilityHandler((analysisAccess, providerClass) -> {
+            if (candidateProviderClasses.add(providerClass)) {
+                // Process candidates reported after this feature's current pass.
+                // \u00a7FS-001-jca-security-provider-inclusion.5
+                analysisAccess.requireAnalysisIteration();
+            }
+        }, Provider.class);
         registerServiceProviderCandidates(access);
         registerManuallyConfiguredProvidersForReflection(access);
         if (Options.EnableSecurityServicesFeature.getValue()) {
