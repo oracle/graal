@@ -415,6 +415,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                     return exactIsGreater ? Math.nextUp(nearest) : nearest;
                 case 3:
                     return exactIsGreater ? nearest : Math.nextDown(nearest);
+                case 4:
+                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
+                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                    }
+                    return nearest;
                 default:
                     return nearest;
             }
@@ -435,6 +440,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                     return exactIsGreater ? Math.nextUp(nearest) : nearest;
                 case 3:
                     return exactIsGreater ? nearest : Math.nextDown(nearest);
+                case 4:
+                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
+                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                    }
+                    return nearest;
                 default:
                     return nearest;
             }
