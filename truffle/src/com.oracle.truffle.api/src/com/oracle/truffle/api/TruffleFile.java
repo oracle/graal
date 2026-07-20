@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1614,22 +1614,6 @@ public final class TruffleFile {
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
-    }
-
-    /**
-     * Returns the {@link TruffleFile file} MIME type.
-     *
-     * @return the MIME type or {@code null} if the MIME type is not recognized
-     * @throws IOException in case of IO error
-     * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 19.0
-     * @deprecated use {@link #detectMimeType()}
-     */
-    @TruffleBoundary
-    @Deprecated(since = "20.2")
-    @SuppressWarnings("unused")
-    public String getMimeType() throws IOException {
-        return detectMimeType(null);
     }
 
     /**

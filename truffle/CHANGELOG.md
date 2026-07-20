@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 25.4
+* GR-77721: Removed core Truffle APIs deprecated in 23.0 or earlier.
 * GR-77721: Removed profile factory methods deprecated in 23.0.
 * GR-79122: Added host interoperability for `java.time.OffsetDateTime` and `java.time.OffsetTime`.
 * GR-61178: Bytecode DSL: Added support for `StackValue`s, handles to temporary stack operands. Languages can use `BindStackValue` to obtain a `StackValue` and then access the current operand value with `LoadStackValue` and `StoreStackValue`. Stack values are useful for supporting common subexpressions/temporary values without using locals.

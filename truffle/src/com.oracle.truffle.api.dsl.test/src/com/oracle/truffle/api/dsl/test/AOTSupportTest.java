@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -819,6 +819,8 @@ public class AOTSupportTest extends AbstractPolyglotTest {
     @Registration(id = LANGUAGE_ID, name = LANGUAGE_ID)
     public static class TestLanguage extends TruffleLanguage<Env> {
 
+        private static final LanguageReference<TestLanguage> REFERENCE = LanguageReference.create(TestLanguage.class);
+
         Object value = 42;
 
         @Override
@@ -831,7 +833,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         }
 
         public static TestLanguage getCurrentLanguage() {
-            return getCurrentLanguage(TestLanguage.class);
+            return REFERENCE.get(null);
         }
 
     }

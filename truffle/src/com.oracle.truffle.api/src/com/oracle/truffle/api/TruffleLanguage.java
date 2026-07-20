@@ -1643,36 +1643,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * @since 0.27
-     * @deprecated in 21.3, use static final context references instead. See
-     *             {@link ContextReference} for the new intended usage.
-     */
-    @Deprecated(since = "21.3")
-    protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
-        try {
-            return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
-        } catch (Throwable t) {
-            CompilerDirectives.transferToInterpreter();
-            throw Env.engineToLanguageException(t);
-        }
-    }
-
-    /**
-     * @since 0.27
-     * @deprecated in 21.3, use static final context references instead. See
-     *             {@link LanguageReference} for the new intended usage.
-     */
-    @Deprecated(since = "21.3")
-    protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-        try {
-            return ENGINE.getCurrentContext(languageClass);
-        } catch (Throwable t) {
-            CompilerDirectives.transferToInterpreter();
-            throw Env.engineToLanguageException(t);
-        }
-    }
-
-    /**
      * Creates a new context local reference for this Truffle language.
      *
      * Starting with JDK 21, using this method leads to a this-escape warning. Use
@@ -2047,22 +2017,6 @@ public abstract class TruffleLanguage<C> {
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
-        }
-
-        /**
-         * Returns a new context builder useful to create inner context instances.
-         *
-         * @see TruffleContext for details on language inner contexts.
-         * @since 0.27
-         *
-         * @deprecated use {@link #newInnerContextBuilder(String...)} instead. Note that the
-         *             replacement method configures the context differently by default. To restore
-         *             the old behavior: <code>newInnerContextBuilder()
-         *                   .initializeCreatorContext(true).inheritAllAccess(true).build() </code>
-         */
-        @Deprecated
-        public TruffleContext.Builder newContextBuilder() {
-            return newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true);
         }
 
         /**
@@ -2468,17 +2422,6 @@ public abstract class TruffleLanguage<C> {
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
-        }
-
-        /**
-         * Returns {@code true} if access to files is allowed, else {@code false}.
-         *
-         * @since 22.3
-         * @deprecated since 23.0; replaced by {@link #isFileIOAllowed()}.
-         */
-        @Deprecated(since = "23.0")
-        public boolean isIOAllowed() {
-            return isFileIOAllowed();
         }
 
         /**
@@ -3479,30 +3422,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 20.3.0
-         * @deprecated since 22.1; replaced by {@link #createHostAdapter(Object[])}.
-         */
-        @Deprecated(since = "22.1")
-        @TruffleBoundary
-        public Object createHostAdapterClass(Class<?>[] types) {
-            Objects.requireNonNull(types, "types");
-            return createHostAdapterClassLegacyImpl(types, null);
-        }
-
-        /**
-         * @since 20.3.0
-         * @deprecated since 22.1; replaced by
-         *             {@link #createHostAdapterWithClassOverrides(Object[], Object)}.
-         */
-        @Deprecated(since = "22.1")
-        @TruffleBoundary
-        public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
-            Objects.requireNonNull(types, "types");
-            Objects.requireNonNull(classOverrides, "classOverrides");
-            return createHostAdapterClassLegacyImpl(types, classOverrides);
-        }
-
-        /**
          * Creates a Java host adapter class that can be
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate instantiated} with
          * a guest object (as the last argument) in order to create adapter instances of the
@@ -3960,16 +3879,6 @@ public abstract class TruffleLanguage<C> {
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
-        }
-
-        private Object createHostAdapterClassLegacyImpl(Class<?>[] types, Object classOverrides) {
-            checkDisposed();
-            Object[] hostTypes = new Object[types.length];
-            for (int i = 0; i < types.length; i++) {
-                Class<?> type = types[i];
-                hostTypes[i] = asHostSymbol(type);
-            }
-            return createHostAdapterClassImpl(hostTypes, classOverrides);
         }
 
         private Object createHostAdapterClassImpl(Object[] types, Object classOverrides) {

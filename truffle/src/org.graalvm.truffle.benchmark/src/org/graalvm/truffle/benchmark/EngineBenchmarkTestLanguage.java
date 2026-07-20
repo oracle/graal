@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,19 +73,17 @@ public class EngineBenchmarkTestLanguage extends TruffleLanguage<EngineBenchmark
         return true;
     }
 
-    @SuppressWarnings("deprecation")
     public static Env getCurrentEnv() {
-        return getCurrentContext(EngineBenchmarkTestLanguage.class).env;
+        return BenchmarkContext.get(null).env;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Object result;
         if (request.getSource().getName().equals(EngineBenchmark.CONTEXT_LOOKUP)) {
             result = new BenchmarkObjectLookup(Integer.parseInt(request.getSource().getCharacters().toString()));
         } else {
-            result = getCurrentContext(EngineBenchmarkTestLanguage.class).object;
+            result = BenchmarkContext.get(null).object;
         }
         return RootNode.createConstantNode(result).getCallTarget();
     }
