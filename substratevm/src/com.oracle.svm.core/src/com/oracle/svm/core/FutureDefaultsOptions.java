@@ -89,8 +89,9 @@ public class FutureDefaultsOptions {
     private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
     private static final String EXACT_REFLECTION = "exact-reflection";
     public static final String EXPLICIT_FEATURE_SINGLETON_REGISTRATION = "explicit-feature-singleton-registration";
+    private static final String EXPLICIT_SECURITY_PROVIDER_REGISTRATION = "explicit-security-provider-registration";
     private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, EXACT_REFLECTION, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS,
-                    RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
+                    RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION, EXPLICIT_SECURITY_PROVIDER_REGISTRATION);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
@@ -271,5 +272,12 @@ public class FutureDefaultsOptions {
      */
     public static boolean explicitFeatureSingletonRegistration() {
         return getFutureDefaults().contains(EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean explicitSecurityProviderRegistration() {
+        return getFutureDefaults().contains(EXPLICIT_SECURITY_PROVIDER_REGISTRATION);
     }
 }
