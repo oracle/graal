@@ -44,7 +44,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
@@ -84,13 +83,11 @@ import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -105,16 +102,19 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
-import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -581,12 +581,17 @@ public final class GCImpl implements GC {
 
             boolean compacting = completeCollection && SerialGCOptions.useCompactingOldGen();
             if (compacting) {
-                /*
-                 * Sweep and compact the entire heap. This already adjusts all pointers in the
-                 * reference objects that we process below, so we can (and need to) do it first.
-                 */
-                var old = (CompactingOldGeneration) HeapImpl.getHeapImpl().getOldGeneration();
-                old.sweepAndCompact(timers, chunkReleaser);
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    /*
+                     * Sweep and compact the entire heap. This already adjusts all pointers in the
+                     * reference objects that we process below, so we can (and need to) do it first.
+                     */
+                    var old = (CompactingOldGeneration) HeapImpl.getHeapImpl().getOldGeneration();
+                    old.sweepAndCompact(timers, chunkReleaser);
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Compact", startTicks);
+                }
             }
 
             Timer referenceObjectsTimer = timers.referenceObjects.start();
@@ -603,12 +608,17 @@ public final class GCImpl implements GC {
             }
 
             if (!compacting) {
-                /*
-                 * Sweep and promote chunks containing pinned objects. This does not adjust pointers
-                 * to them in reference objects elsewhere, so we must process those first above so
-                 * that we can observe moved and dead objects before they are swept here.
-                 */
-                sweepAndPromotePinnedChunks();
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    /*
+                     * Sweep and promote chunks containing pinned objects. This does not adjust pointers
+                     * to them in reference objects elsewhere, so we must process those first above so
+                     * that we can observe moved and dead objects before they are swept here.
+                     */
+                    sweepAndPromotePinnedChunks();
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Promote Pinned Chunks", startTicks);
+                }
             }
 
             if (RuntimeCompilation.isEnabled()) {
