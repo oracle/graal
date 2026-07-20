@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import java.util.Set;
+
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -34,17 +36,25 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
-import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
+import com.oracle.svm.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField implements CremaResolvedJavaField, AttributedElement {
+public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField implements CremaResolvedJavaField, FilteredAttributedElement {
     public static final CremaResolvedJavaFieldImpl[] EMPTY_ARRAY = new CremaResolvedJavaFieldImpl[0];
-    // GR-70288: Only keep a subset of the parsed attributes.
+
+    private static final Set<Symbol<Name>> RETAINED_ATTRIBUTES = Set.of(
+                    SignatureAttribute.NAME,
+                    ConstantValueAttribute.NAME,
+                    // Raw attributes
+                    ParserSymbols.ParserNames.RuntimeVisibleAnnotations,
+                    ParserSymbols.ParserNames.RuntimeVisibleTypeAnnotations);
     private final Attribute[] attributes;
 
     CremaResolvedJavaFieldImpl(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
@@ -55,7 +65,7 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
                         /*- constantValue */ null,
                         /*- isWordStorage */ false);
         this.layerNum = NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID);
-        this.attributes = f.getAttributes();
+        this.attributes = filterAttributes(f.getAttributes());
     }
 
     public static CremaResolvedJavaFieldImpl createAtRuntime(InterpreterResolvedObjectType declaringClass, ParserField f, int offset) {
@@ -130,6 +140,11 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
             return CremaJNIFieldIds.forInstanceField(getOffset());
         }
         return ((CremaResolvedObjectType) getDeclaringClass()).jniStaticFieldIdFor(getOffset());
+    }
+
+    @Override
+    public Set<Symbol<Name>> getRetainedAttributes() {
+        return RETAINED_ATTRIBUTES;
     }
 
     @Override
