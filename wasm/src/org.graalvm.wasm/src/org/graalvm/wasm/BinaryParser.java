@@ -4109,15 +4109,15 @@ public class BinaryParser extends BinaryStreamParser {
         final byte limitsPrefix = readLimitsPrefix();
         switch (limitsPrefix) {
             case 0x00: {
-                longOut[0] = readUnsignedInt32();
-                longOut[1] = max32Bit;
+                longOut[0] = Integer.toUnsignedLong(readUnsignedInt32());
+                longOut[1] = Integer.toUnsignedLong(max32Bit);
                 boolOut[0] = false; // not 64-bit
                 boolOut[1] = false; // not shared
                 break;
             }
             case 0x01: {
-                longOut[0] = readUnsignedInt32();
-                longOut[1] = readUnsignedInt32();
+                longOut[0] = Integer.toUnsignedLong(readUnsignedInt32());
+                longOut[1] = Integer.toUnsignedLong(readUnsignedInt32());
                 boolOut[0] = false;
                 boolOut[1] = false;
                 break;
@@ -4147,8 +4147,8 @@ public class BinaryParser extends BinaryStreamParser {
                             break;
                         }
                         case 0x03: {
-                            longOut[0] = readUnsignedInt32();
-                            longOut[1] = readUnsignedInt32();
+                            longOut[0] = Integer.toUnsignedLong(readUnsignedInt32());
+                            longOut[1] = Integer.toUnsignedLong(readUnsignedInt32());
                             boolOut[0] = false;
                             boolOut[1] = true;
                             break;
