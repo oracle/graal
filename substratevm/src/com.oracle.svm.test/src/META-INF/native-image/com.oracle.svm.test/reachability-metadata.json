@@ -11,6 +11,15 @@
     },
     {
       "type": "com.oracle.svm.test.services.SecurityServiceTest$TypeMetadataProvider"
+    },
+    {
+      "type": "com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     }
   ]
 }
