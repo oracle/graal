@@ -3304,6 +3304,13 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
         }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, (Register) null, dst, src, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(immOp);
+            asm.emitModRM(r, src);
+            asm.emitByte(imm8);
+        }
     }
 
     public static final class VexShiftImmOp extends VexOp implements VexRRIOp {
@@ -6814,6 +6821,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void xorq(Register dst, AMD64Address src) {
         AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void xorq(AMD64Address dst, Register src) {
+        AMD64BinaryArithmetic.XOR.mrOp.emit(this, OperandSize.QWORD, dst, src);
     }
 
     // Mask register related instructions

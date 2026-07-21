@@ -154,6 +154,8 @@ import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolynomialAssignPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolynomialP256MontgomeryMultPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import jdk.graal.compiler.replacements.nodes.AESNode;
@@ -210,6 +212,7 @@ public class SubstrateGraphBuilderPlugins {
             registerAESPlugins(plugins);
             registerArraysSupportPlugins(plugins);
             registerPoly1305Plugin(plugins);
+            registerIntegerPolynomialPlugins(plugins);
         }
     }
 
@@ -1291,6 +1294,14 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerPoly1305Plugin(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
         r.register(new Poly1305ProcessBlocksPlugin());
+    }
+
+    private static void registerIntegerPolynomialPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256");
+        r.register(new IntegerPolynomialP256MontgomeryMultPlugin());
+
+        r = new Registration(plugins, "sun.security.util.math.intpoly.IntegerPolynomial");
+        r.register(new IntegerPolynomialAssignPlugin());
     }
 
     public static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {

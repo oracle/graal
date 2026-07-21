@@ -112,7 +112,7 @@ public final class ElectronicCodeBookAESNode extends MemoryKillStubIntrinsicNode
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX, AVX2, AES, AVX512F, AVX512DQ, AVX512VL, AVX512BW, AVX512_VAES);
+        return EnumSet.of(AES, AVX, AVX2, AVX512F, AVX512DQ, AVX512BW, AVX512VL, AVX512_VAES);
     }
 
     @SuppressWarnings("unlikely-arg-type")

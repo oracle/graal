@@ -77,6 +77,8 @@ import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroForeignCalls;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
@@ -141,6 +143,11 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(GaloisCounterModeAESNode.STUB, GaloisCounterModeAESNode.minFeaturesAMD64(), GaloisCounterModeAESNode.maxFeaturesAMD64()),
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
                         new StubDescriptor(IndexOfZeroForeignCalls.STUBS, IndexOfZeroNode.minFeaturesAMD64(), RUNTIME_CHECKED_CPU_FEATURES_AMD64),
+                        // Match the SVM plugin predicate and generated stub feature set.
+                        new StubDescriptor(IntegerPolynomialAssignNode.STUB, IntegerPolynomialAssignNode.maxFeaturesAMD64(),
+                                        IntegerPolynomialAssignNode.maxFeaturesAMD64()),
+                        new StubDescriptor(IntegerPolynomialP256MontgomeryMultNode.STUB, IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64(),
+                                        IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64()),
                         new StubDescriptor(Kyber12To16Node.STUB, KyberNode.minFeaturesAMD64(), KYBER_CPU_FEATURES_AMD64),
                         new StubDescriptor(KyberAddPoly2Node.STUB, KyberNode.minFeaturesAMD64(), KYBER_CPU_FEATURES_AMD64),
                         new StubDescriptor(KyberAddPoly3Node.STUB, KyberNode.minFeaturesAMD64(), KYBER_CPU_FEATURES_AMD64),

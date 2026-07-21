@@ -78,7 +78,7 @@ public final class CRC32UpdateBytesNode extends PureFunctionStubIntrinsicNode {
     }
 
     public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
-        return EnumSet.of(AVX, AVX2, CLMUL, AVX512F, AVX512DQ, AVX512BW, AVX512VL, AVX512_VPCLMULQDQ);
+        return EnumSet.of(CLMUL, AVX, AVX2, AVX512F, AVX512DQ, AVX512BW, AVX512VL, AVX512_VPCLMULQDQ);
     }
 
     @SuppressWarnings("unlikely-arg-type")
