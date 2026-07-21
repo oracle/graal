@@ -43,3 +43,8 @@ Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx ga
 ## Project Terminus
 
 - [Project Terminus](project-terminus.md): overview and design direction for self-hosting Native Image.
+
+## Security Providers
+
+- [JCA Security Provider Inclusion](functional-spec/security-providers.md): required provider inclusion and run-time behavior.
+- [Security Provider Architecture](architecture/security-providers.md): provider inclusion, verification, and metadata tracing.
