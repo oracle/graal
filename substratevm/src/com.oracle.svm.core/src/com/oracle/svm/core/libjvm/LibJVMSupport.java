@@ -23,18 +23,27 @@
  * questions.
  */
 
-package com.oracle.svm.libjvm.buildtime;
+package com.oracle.svm.core.libjvm;
+
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.libjvm.LibJVMSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-public final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
+public final class LibJVMSupport {
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(LibJVMSupport.class, new LibJVMSupport());
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class Enabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ImageSingletons.contains(LibJVMSupport.class);
+        }
     }
 }

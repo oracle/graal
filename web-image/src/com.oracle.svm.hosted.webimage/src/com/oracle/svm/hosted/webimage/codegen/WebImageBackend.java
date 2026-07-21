@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.webimage.codegen;
 
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackend.CremaJNITrampolineData;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -67,7 +68,7 @@ public class WebImageBackend extends SubstrateBackend {
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg,
-                    int methodObjEntryPointOffset) {
+                    int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         throw VMError.shouldNotReachHereAtRuntime();
     }
 

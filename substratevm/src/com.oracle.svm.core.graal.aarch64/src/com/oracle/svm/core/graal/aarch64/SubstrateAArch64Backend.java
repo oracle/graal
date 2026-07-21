@@ -37,6 +37,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -81,6 +82,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -1710,12 +1712,20 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new SubstrateAArch64MacroAssembler(getTarget());
+        PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
+        asm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(result));
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
+            if (cremaData != null) {
+                try (ScratchRegister enterDataScratch = asm.getScratchRegister()) {
+                    Register enterDataRegister = enterDataScratch.getRegister();
+                    emitCremaJNITrampoline(asm, result, methodIdArg, scratchRegister, enterDataRegister, cremaData);
+                }
+            }
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
             /*
              * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
@@ -1733,6 +1743,74 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
         return result;
+    }
+
+    private void emitCremaJNITrampoline(AArch64MacroAssembler asm, CompilationResult result, RegisterValue methodIdArg, Register scratchRegister, Register enterDataRegister,
+                    CremaJNITrampolineData cremaData) {
+        ResolvedJavaMethod wrapperMethod = cremaData.wrapperMethod();
+        boolean needsEnterData = cremaData.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN_AARCH64.class);
+        boolean needsCallerStackPointer = cremaData.callVariant() == CallVariant.VARARGS && Platform.includedIn(Platform.DARWIN_AARCH64.class);
+        Label imageHeapMethodId = new Label();
+        // Negative method IDs encode CremaResolvedJavaMethod instances.
+        asm.tbz(methodIdArg.getRegister(), 63, imageHeapMethodId);
+        CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
+        AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
+        assert ValueUtil.isRegister(payloadArgument);
+        Register payloadRegister = asRegister(payloadArgument);
+        if (needsEnterData) {
+            emitCremaJNITrampolineEnterData(asm, scratchRegister, enterDataRegister, payloadRegister);
+        } else if (needsCallerStackPointer) {
+            /*
+             * AArch64 keeps the return address in lr instead of pushing it. This runs before the
+             * frame record below is created, so sp is still the JNI caller's stack-argument base.
+             */
+            asm.mov(64, payloadRegister, sp);
+        }
+        asm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * getTarget().wordSize));
+        asm.mov(64, fp, sp);
+        int before = asm.position();
+        asm.bl();
+        int after = asm.position();
+        var call = result.recordCall(before, after - before, wrapperMethod, null, true);
+        asm.postCallNop(call);
+        asm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * getTarget().wordSize));
+        if (needsEnterData) {
+            asm.add(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
+        }
+        /*
+         * The wrapper uses a uniform word-sized return type, so floating-point results arrive as raw
+         * bits in the general-purpose return register. Mirror those bits into the ABI floating-point
+         * return register without affecting integer or reference results.
+         */
+        asm.fmov(64, AArch64.v0, AArch64.r0);
+        asm.ret(lr);
+        asm.bind(imageHeapMethodId);
+    }
+
+    private void emitCremaJNITrampolineEnterData(AArch64MacroAssembler asm, Register originalSp, Register enterData, Register payloadArgument) {
+        /* The return address is in lr, so the entry sp can be recorded without an adjustment. */
+        asm.mov(64, originalSp, sp);
+        asm.sub(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
+        asm.mov(64, enterData, sp);
+
+        SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) getCodeCache().getRegisterConfig();
+        List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+        List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+        asm.str(64, originalSp, createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiSpReg()));
+        for (int i = 0; i < gps.size(); i++) {
+            asm.str(64, gps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiGpArg(i)));
+        }
+
+        for (int i = 0; i < fps.size(); i++) {
+            asm.fstr(64, fps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiFpArg(i)));
+        }
+
+        asm.mov(64, payloadArgument, enterData);
+    }
+
+    private static AArch64Address createEnterDataAddress(Register enterData, int offset) {
+        return AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, enterData, offset);
     }
 
     @Override

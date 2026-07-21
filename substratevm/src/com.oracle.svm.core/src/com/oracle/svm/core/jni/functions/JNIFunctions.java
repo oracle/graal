@@ -119,7 +119,6 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -149,6 +148,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -1000,7 +1000,9 @@ public final class JNIFunctions {
         if (obj != null) {
             Class<?> clazz = obj.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
-            fieldId = Support.getCremaFieldID(obj);
+            if (RuntimeClassLoading.isSupported() && CremaSupport.singleton().toJVMCI(obj) instanceof CremaResolvedJavaField cremaField) {
+                fieldId = cremaField.getOrCreateJNIFieldId();
+            }
             if (fieldId.isNull()) {
                 fieldId = JNIReflectionDictionary.getDeclaredFieldID(clazz, obj.getName(), isStatic);
             }
@@ -1052,7 +1054,12 @@ public final class JNIFunctions {
             Class<?> clazz = method.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-            methodId = JNIReflectionDictionary.getDeclaredMethodID(clazz, descriptor, isStatic);
+            if (RuntimeClassLoading.isSupported() && CremaSupport.singleton().toJVMCI(method) instanceof CremaResolvedJavaMethod cremaMethod) {
+                methodId = cremaMethod.getOrCreateJNIMethodId();
+            }
+            if (methodId.isNull()) {
+                methodId = JNIReflectionDictionary.getDeclaredMethodID(clazz, descriptor, isStatic);
+            }
             assert methodId.isNull() || DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
         }
         return methodId;
@@ -1064,6 +1071,15 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
+        if (RuntimeClassLoading.isSupported()) {
+            Executable result = CremaSupport.singleton().getCremaMethodExecutable(methodId);
+            if (result != null) {
+                Class<?> clazz = result.getDeclaringClass();
+                assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+                return JNIObjectHandles.createLocal(result);
+            }
+        }
+
         Executable result = null;
         JNIAccessibleMethod jniMethod = JNIReflectionDictionary.getMethodByID(methodId);
         JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
@@ -1076,8 +1092,8 @@ public final class JNIFunctions {
             } catch (NoSuchMethodException e) {
                 /*
                  * The method might have been registered for JNI access but not for reflection. When
-                 * missing registration errors are not thrown, this results in a
-                 * NoSuchMethodException, which means we have to return null.
+                 * missing registration errors are not thrown, this results in a NoSuchMethodException,
+                 * which means we have to return null.
                  */
             }
         }
@@ -1911,14 +1927,40 @@ public final class JNIFunctions {
 
         private static JNIMethodId getMethodID(Class<?> origClazz, CharSequence name, CharSequence signature, boolean isStatic) {
 
-            // Workaround for GR-71358
-            Class<?> clazz = LibJVMMainMethodWrappers.patchMethodHolderClass(origClazz);
+            JNIMethodId methodID = Word.nullPointer();
+            ResolvedJavaMethod resolvedJavaMethod = null;
+            boolean methodFoundWithOppositeStaticKind = false;
+            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && DynamicHub.fromClass(origClazz).isRuntimeLoaded();
+            if (runtimeLoaded) {
+                resolvedJavaMethod = CremaSupport.singleton().lookupMethodForRuntimeClass(origClazz, name.toString(), signature.toString());
+                if (resolvedJavaMethod instanceof CremaResolvedJavaMethod cremaResolvedJavaMethod) {
+                    if (resolvedJavaMethod.isStatic() == isStatic) {
+                        methodID = cremaResolvedJavaMethod.getOrCreateJNIMethodId();
+                    } else {
+                        methodFoundWithOppositeStaticKind = true;
+                    }
+                }
+            }
 
-            JNIMethodId methodID = JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic);
+            /*
+             * A method resolved in a runtime-loaded class can be inherited from an AOT class. An AOT
+             * method gets its jmethodID from the JNI dictionary if it was registered during the image
+             * build. If no method was found for a runtime-loaded class, a dictionary lookup cannot
+             * find it because the class was not known during the image build.
+             */
+            boolean lookupInDictionary = !runtimeLoaded ||
+                            (resolvedJavaMethod != null && !(resolvedJavaMethod instanceof CremaResolvedJavaMethod));
+            if (lookupInDictionary) {
+                assert methodID.isNull();
+                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic);
+                if (methodID.isNull()) {
+                    methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic).isNonNull();
+                }
+            }
+
             if (methodID.isNull()) {
-                String message = clazz.getName() + "." + name + signature;
-                JNIMethodId candidate = JNIReflectionDictionary.getMethodID(clazz, name, signature, !isStatic);
-                if (candidate.isNonNull()) {
+                String message = origClazz.getName() + "." + name + signature;
+                if (methodFoundWithOppositeStaticKind) {
                     if (isStatic) {
                         message += " (found matching non-static method that would be returned by GetMethodID)";
                     } else {
@@ -2051,15 +2093,6 @@ public final class JNIFunctions {
 
         public static boolean useClassRegistriesInFindClass() {
             return ClassRegistries.respectClassLoader();
-        }
-
-        private static JNIFieldId getCremaFieldID(Field field) {
-            if (RuntimeClassLoading.isSupported()) {
-                if (CremaSupport.singleton().toJVMCI(field) instanceof CremaResolvedJavaField resolvedField) {
-                    return resolvedField.getOrCreateJNIFieldId();
-                }
-            }
-            return Word.nullPointer();
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

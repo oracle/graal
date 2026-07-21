@@ -262,7 +262,7 @@ public class InterpreterFeature implements InternalFeature {
         int intrinsicMethodSlot = findLocalSlotByName("method", intrinsicVariableTable.getLocalsAt(0)); // parameter
         int intrinsicFrameSlot = findLocalSlotByName("frame", intrinsicVariableTable.getLocalsAt(0)); // parameter
 
-        AnalysisMethod interpreterJNIDowncallRoot = (AnalysisMethod) getLeaveInterpreterJNIMethod(metaAccess);
+        AnalysisMethod interpreterJNIDowncallRoot = (AnalysisMethod) getJNIDowncallMethod(metaAccess);
         assert interpreterJNIDowncallRoot.hasNeverInlineDirective();
         LocalVariableTable interpreterJNIDowncallVariableTable = interpreterJNIDowncallRoot.getLocalVariableTable();
         int interpreterJNIDowncallMethodSlot = findLocalSlotByName("seedMethod", interpreterJNIDowncallVariableTable.getLocalsAt(0)); // parameter
@@ -343,7 +343,7 @@ public class InterpreterFeature implements InternalFeature {
                         InterpreterFrame.class, InterpreterResolvedJavaMethod.class, SignaturePolymorphicIntrinsic.class, boolean.class);
     }
 
-    private static ResolvedJavaMethod getLeaveInterpreterJNIMethod(MetaAccessProvider metaAccess) {
+    private static ResolvedJavaMethod getJNIDowncallMethod(MetaAccessProvider metaAccess) {
         ResolvedJavaType jniDowncallRootType = metaAccess.lookupJavaType(Interpreter.JNIDowncallRoot.class);
         return JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, jniDowncallRootType, "execute", InterpreterResolvedJavaMethod.class, Object[].class);
     }

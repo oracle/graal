@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_4;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTarget;
 
@@ -61,4 +62,7 @@ public final class VaListInitializationNode extends FixedWithNextNode implements
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
+
+    @NodeIntrinsic
+    public static native Pointer vaListInitialization(Pointer vaList);
 }

@@ -93,6 +93,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -2157,12 +2158,16 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
-
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         CompilationResult result = new CompilationResult(identifier);
-        AMD64Assembler asm = createAssembler(HostedOptionValues.singleton().get());
+        AMD64MacroAssembler asm = createAssembler(HostedOptionValues.singleton().get());
+        PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
+        asm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(result));
         if (SubstrateControlFlowIntegrity.enabled()) {
             asm.endbranch();
+        }
+        if (cremaData != null) {
+            emitCremaJNITrampoline(asm, result, methodIdArg, cremaData);
         }
         asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
         /*
@@ -2185,6 +2190,117 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(FrameAccess.returnAddressSize());
         return result;
+    }
+
+    private void emitCremaJNITrampoline(AMD64MacroAssembler asm, CompilationResult result, RegisterValue methodIdArg, CremaJNITrampolineData cremaData) {
+        ResolvedJavaMethod wrapperMethod = cremaData.wrapperMethod();
+        boolean needsEnterData = cremaData.callVariant() == CallVariant.VARARGS;
+        Label imageHeapMethodId = new Label();
+        // Negative method IDs encode CremaResolvedJavaMethod instances.
+        asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
+        asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, imageHeapMethodId);
+        CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
+        AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
+        /*
+         * Prepare the outgoing native ABI frame for calling the JNIJavaCallInterpreterWrapperMethod.
+         * The calling convention describes the ABI-specific argument area, including Windows shadow
+         * space and stack-passed payload arguments. If the wrapper needs captured register data, the
+         * trampoline appends that data after the outgoing argument area.
+         */
+        int frameSize = cremaJNITrampolineFrameSize(needsEnterData, wrapperCallingConvention);
+        if (frameSize != 0) {
+            asm.subq(rsp, frameSize);
+        }
+        if (needsEnterData) {
+            emitCremaJNITrampolineEnterData(asm, wrapperCallingConvention, payloadArgument, frameSize);
+        } else if (ValueUtil.isStackSlot(payloadArgument)) {
+            emitCremaJNITrampolineCopyStackArgument(asm, ValueUtil.asStackSlot(payloadArgument), frameSize);
+        }
+        asm.call((before, after) -> {
+            var call = result.recordCall(before, after - before, wrapperMethod, null, true);
+            asm.postCallNop(call);
+        }, wrapperMethod);
+        if (frameSize != 0) {
+            asm.addq(rsp, frameSize);
+        }
+        /*
+         * The wrapper uses a uniform word-sized return type, so floating-point results arrive as raw
+         * bits in the general-purpose return register. Mirror those bits into the ABI floating-point
+         * return register without affecting integer or reference results.
+         */
+        asm.movdq(AMD64.xmm0, rax);
+        asm.ret(0);
+        asm.bind(imageHeapMethodId);
+    }
+
+    /**
+     * Returns the temporary frame size used by the Crema JNI trampoline. The frame contains the
+     * outgoing native ABI argument area described by {@code wrapperCallingConvention} and, if needed,
+     * the captured {@link AMD64InterpreterStubs.InterpreterDataAMD64}, rounded up so the frame size is
+     * aligned in the same way as {@link AMD64FrameMap} aligns normal frames.
+     */
+    private static int cremaJNITrampolineFrameSize(boolean cremaJNIMethodWrapperNeedsEnterData, CallingConvention wrapperCallingConvention) {
+        int frameSize = wrapperCallingConvention.getStackSize();
+        if (cremaJNIMethodWrapperNeedsEnterData) {
+            frameSize += AMD64InterpreterStubs.sizeOfInterpreterData();
+        }
+        return alignCremaJNITrampolineFrameSize(frameSize);
+    }
+
+    private static int alignCremaJNITrampolineFrameSize(int frameSize) {
+        /*
+         * The call instruction pushes the return address. Include that slot when aligning the
+         * wrapper's entry stack, but exclude it from the space allocated explicitly here.
+         */
+        return NumUtil.roundUp(frameSize + FrameAccess.returnAddressSize(), SubstrateTarget.singleton().stackAlignment) - FrameAccess.returnAddressSize();
+    }
+
+    private static void emitCremaJNITrampolineCopyStackArgument(AMD64Assembler asm, StackSlot payloadArgument, int frameSize) {
+        int payloadOffset = payloadArgument.getRawOffset();
+        /*
+         * At trampoline entry, stack arguments follow the return address pushed by the caller.
+         * Undo the temporary frame allocation and skip that return address to read the incoming
+         * argument, then copy it to the wrapper's outgoing stack slot.
+         */
+        asm.movq(AMD64.r10, new AMD64Address(rsp, frameSize + FrameAccess.returnAddressSize() + payloadOffset));
+        asm.movq(new AMD64Address(rsp, payloadOffset), AMD64.r10);
+    }
+
+    private void emitCremaJNITrampolineEnterData(AMD64Assembler asm, CallingConvention wrapperCallingConvention, AllocatableValue payloadArgument, int frameSize) {
+        Register originalSp = AMD64.r11;
+        Register enterData = AMD64.r10;
+        /*
+         * Recover rsp at trampoline entry after the temporary frame allocation. It should point at the
+         * return address pushed by the caller; AMD64 interpreter argument decoding accounts for
+         * that slot when accessing stack arguments.
+         */
+        asm.leaq(originalSp, new AMD64Address(rsp, frameSize));
+        /*
+         * The captured register data lies above the outgoing native argument area, including any
+         * Windows shadow space and stack-passed wrapper arguments.
+         */
+        asm.leaq(enterData, new AMD64Address(rsp, wrapperCallingConvention.getStackSize()));
+
+        SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) getCodeCache().getRegisterConfig();
+        List<Register> ngps = registerConfig.getNativeGeneralParameterRegs();
+        List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+        asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiSpReg()), originalSp);
+        /* Save fp argument registers */
+        for (int i = 0; i < fps.size(); i++) {
+            asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiFpArg(i)), fps.get(i));
+        }
+
+        /* Save gp argument registers */
+        for (int i = 0; i < ngps.size(); i++) {
+            asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiGp(i)), ngps.get(i));
+        }
+
+        if (isRegister(payloadArgument)) {
+            asm.movq(asRegister(payloadArgument), enterData);
+        } else {
+            asm.movq(new AMD64Address(rsp, ValueUtil.asStackSlot(payloadArgument).getRawOffset()), enterData);
+        }
     }
 
     /**

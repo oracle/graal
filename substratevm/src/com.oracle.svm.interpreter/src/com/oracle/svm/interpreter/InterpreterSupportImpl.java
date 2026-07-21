@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -147,7 +148,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
-    public PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
+    public PreparedSignature prepareJNIDowncallSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
         ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
 
@@ -196,6 +197,79 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
          * never throw the implicit NPE as checked by getJavaClass().
          */
         return ((InterpreterResolvedJavaType) resolvedJavaType).getJavaClass();
+    }
+
+    @Override
+    public PreparedSignature prepareJNIUpcallVarargsSignature(Signature signature, ResolvedJavaType accessingClass, boolean nonVirtual) {
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+
+        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
+
+        int parameterCount = signature.getParameterCount(false);
+        int startIndex = (nonVirtual ? 4 : 3);
+        JavaType[] parameterTypes = new JavaType[parameterCount + startIndex];
+        int[] argumentTypes = new int[parameterTypes.length];
+        parameterTypes[0] = wordType;
+        parameterTypes[1] = wordType;
+        parameterTypes[2] = wordType;
+        if (nonVirtual) {
+            parameterTypes[3] = wordType;
+        }
+        for (int i = 0; i < parameterCount; i++) {
+            parameterTypes[i + startIndex] = toJNIVarargsParameterType(signature, accessingClass, i, wordType);
+        }
+
+        JavaType returnType = signature.getReturnType(accessingClass);
+        if (returnType.getJavaKind() == JavaKind.Object) {
+            // handle
+            returnType = wordType;
+        }
+
+        CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(SubstrateCallingConventionKind.Native.toType(true), returnType, parameterTypes,
+                        stubSection.valueKindFactory);
+        int gpRegisterIndex = 0;
+        int fpRegisterIndex = 0;
+        for (int i = 0; i < argumentTypes.length; i++) {
+            JavaKind argKind = i < startIndex ? stubSection.target.wordJavaKind : toJNIVarargsParameterKind(signature.getParameterKind(i - startIndex), stubSection.target.wordJavaKind);
+            int value;
+            boolean isRegister = true;
+            if (callingConvention.getArgument(i) instanceof StackSlot stackSlot) {
+                value = stackSlot.getOffset(0);
+                isRegister = false;
+            } else if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && Platform.includedIn(Platform.AMD64.class)) {
+                value = i;
+            } else if (argKind == JavaKind.Float || argKind == JavaKind.Double) {
+                value = fpRegisterIndex++;
+            } else {
+                value = gpRegisterIndex++;
+            }
+            argumentTypes[i] = PreparedSignature.encodeArgumentType(argKind, value, isRegister);
+        }
+        return preparedJNISignature(signature.getReturnKind(), argumentTypes, callingConvention.getStackSize());
+    }
+
+    private static JavaType toJNIVarargsParameterType(Signature signature, ResolvedJavaType accessingClass, int index, ResolvedJavaType wordType) {
+        JavaKind kind = signature.getParameterKind(index);
+        if (kind == JavaKind.Object) {
+            // handle
+            return wordType;
+        } else if (kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char) {
+            // C varargs promote sub-words to int (C99, 6.5.2.2-6)
+            return DynamicHub.fromClass(int.class).getInterpreterType();
+        } else if (kind == JavaKind.Float) {
+            // C varargs promote float to double (C99, 6.5.2.2-6)
+            return DynamicHub.fromClass(double.class).getInterpreterType();
+        }
+        return signature.getParameterType(index, accessingClass);
+    }
+
+    private static JavaKind toJNIVarargsParameterKind(JavaKind kind, JavaKind wordKind) {
+        return switch (kind) {
+            case Boolean, Byte, Short, Char -> JavaKind.Int;
+            case Float -> JavaKind.Double;
+            case Object -> wordKind;
+            default -> kind;
+        };
     }
 
     @Override

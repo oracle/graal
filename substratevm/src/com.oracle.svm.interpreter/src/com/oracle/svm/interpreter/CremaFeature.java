@@ -31,7 +31,6 @@ import static com.oracle.svm.interpreter.InterpreterFeature.assertionsEnabled;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,10 +44,14 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.jni.JNIJavaCallInterpreterWrapperMethod;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -77,6 +80,12 @@ public class CremaFeature implements InternalFeature {
 
     private AnalysisMethod enterVTableInterpreterStub;
     private AnalysisMethod enterDirectInterpreterStub;
+    private AnalysisMethod enterCremaJNIMethodVarargsVirtualWrapper;
+    private AnalysisMethod enterCremaJNIMethodArrayVirtualWrapper;
+    private AnalysisMethod enterCremaJNIMethodVaListVirtualWrapper;
+    private AnalysisMethod enterCremaJNIMethodVarargsNonVirtualWrapper;
+    private AnalysisMethod enterCremaJNIMethodArrayNonVirtualWrapper;
+    private AnalysisMethod enterCremaJNIMethodVaListNonVirtualWrapper;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -110,9 +119,26 @@ public class CremaFeature implements InternalFeature {
             accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
 
             access.registerAsInHeap(CremaJNIFieldIds.CremaJNIStaticFieldId.class);
+
+            CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
+            enterCremaJNIMethodVarargsVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VARARGS, false, unpublished);
+            enterCremaJNIMethodArrayVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.ARRAY, false, unpublished);
+            enterCremaJNIMethodVaListVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VA_LIST, false, unpublished);
+            enterCremaJNIMethodVarargsNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VARARGS, true, unpublished);
+            enterCremaJNIMethodArrayNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.ARRAY, true, unpublished);
+            enterCremaJNIMethodVaListNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VA_LIST, true, unpublished);
         } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    private static AnalysisMethod registerCremaJNIMethodWrapper(FeatureImpl.BeforeAnalysisAccessImpl access, CallVariant callVariant, boolean nonVirtual, CEntryPointData entryPointData) {
+        JNIJavaCallInterpreterWrapperMethod wrapper = new JNIJavaCallInterpreterWrapperMethod(callVariant, nonVirtual, access.getUniverse().getOriginalMetaAccess(), access.getBigBang()
+                        .getWordTypes());
+        AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
+        access.getBigBang().addRootMethod(analysisWrapper, true, "Registered in " + CremaFeature.class);
+        analysisWrapper.registerAsNativeEntryPoint(entryPointData);
+        return analysisWrapper;
     }
 
     @Override
@@ -155,6 +181,12 @@ public class CremaFeature implements InternalFeature {
 
         accessImpl.registerAsImmutable(CremaSupport.singleton());
         CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(new MethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
+        CremaSupport.singleton().setCremaJNIMethodCallWrapperEntryPoints(new MethodPointer(hUniverse.lookup(enterCremaJNIMethodVarargsVirtualWrapper)),
+                        new MethodPointer(hUniverse.lookup(enterCremaJNIMethodArrayVirtualWrapper)),
+                        new MethodPointer(hUniverse.lookup(enterCremaJNIMethodVaListVirtualWrapper)),
+                        new MethodPointer(hUniverse.lookup(enterCremaJNIMethodVarargsNonVirtualWrapper)),
+                        new MethodPointer(hUniverse.lookup(enterCremaJNIMethodArrayNonVirtualWrapper)),
+                        new MethodPointer(hUniverse.lookup(enterCremaJNIMethodVaListNonVirtualWrapper)));
     }
 
     @Override

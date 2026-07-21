@@ -29,17 +29,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackend.CremaJNITrampolineData;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -123,7 +130,14 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             int threadIsolateOffset = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(VMThreads.IsolateTL);
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
-            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers));
+            CremaJNITrampolineData cremaData = null;
+            if (RuntimeClassLoading.isSupported()) {
+                CallVariant variant = JNIJavaCallTrampolineHolder.getVariant(getName());
+                CFunctionPointer cremaMethodWrapperEntryPoint = CremaSupport.singleton().getCremaJNIMethodCallWrapperEntryPoint(variant, nonVirtual);
+                ResolvedJavaMethod wrapperMethod = ((MethodPointer) cremaMethodWrapperEntryPoint).getMethod();
+                cremaData = new CremaJNITrampolineData(wrapperMethod, variant);
+            }
+            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers), cremaData);
         };
     }
 
