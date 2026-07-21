@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.SubstrateOptions.OptimizationLevel.O2;
+import static com.oracle.svm.core.SubstrateOptions.OptimizationLevel.O3;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
@@ -58,7 +60,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -80,6 +81,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -98,6 +100,10 @@ import jdk.vm.ci.code.CodeUtil;
 
 public class SubstrateOptions {
 
+    @Option(help = "Enable use of priority inlining during AOT compilation.")//
+    public static final HostedOptionKey<Boolean> AOTPriorityInline = new HostedOptionKey<>(true);
+    @Option(help = "Perform method-based checks during inlining.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> UseMethodChecks = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
@@ -321,6 +327,7 @@ public class SubstrateOptions {
             if (newLevel == OptimizationLevel.SIZE) {
                 configureOptimizeForCodeSize(values, true, true);
             }
+            SubstrateOptions.AOTPriorityInline.update(values, newLevel.isOneOf(O2, O3));
 
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
@@ -376,6 +383,11 @@ public class SubstrateOptions {
          * Every dead code elimination should be non-optional
          */
         disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+
+        /*
+         * Disable AOT Inlining
+         */
+        disable(SubstrateOptions.AOTPriorityInline, values);
     }
 
     /**

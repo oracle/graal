@@ -2,7 +2,12 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
-## GraalVM 25.3 (Internal Version 25.3.4)
+## GraalVM 25.3 (Internal Version 25.3.4.1)
+* (GR-77137) Add new priority inlining algorithm that does extensive analysis of the call graph when making
+  inlining decisions (see `PriorityInliningPhase` for details). It is now the default inliner. To use the old
+  inliner now requires setting the `UsePriorityInlining` option to false (e.g. `-Djdk.graal.UsePriorityInlining=false`).
+  Also added `MethodDuplicationPhase`, which duplicates selected control-flow paths within a method to expose further
+  optimization opportunities.
 * (GR-28213): Added the loop vectorization optimization for certain loops doing arithmetic over arrays. The computation
   is transformed into a SIMD (single instruction, multiple data) form that uses the target CPU's vector instructions to
   compute multiple values in parallel. In JIT-compiled code this can improve performance of suitable loops by a factor

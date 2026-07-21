@@ -336,6 +336,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             if (SubstrateOptions.imageLayerEnabledHandler != null) {
                 SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
             }
+
+            /*
+             * In a shared layer we do not want to perform aggressive inlining.
+             */
+            SubstrateOptions.AOTPriorityInline.update(values, false);
+
             if (SubstrateOptions.imageLayerCreateEnabledHandler != null) {
                 SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
             }

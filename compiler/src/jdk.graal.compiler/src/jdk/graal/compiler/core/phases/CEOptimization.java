@@ -51,9 +51,10 @@ import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
+import jdk.graal.compiler.phases.common.inlining.InliningPhase;
+import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase.Options;
-import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode.VectorSimplifier;
@@ -98,11 +99,12 @@ public enum CEOptimization {
      */
     Canonicalization(null, CanonicalizerPhase.class),
 
-    /**
-     * {@link InliningPhase} is Graal CE's implementation of a traditional inlining algorithm.
-     *
-     * This phase is enabled by default and can be disabled with {@link HighTier.Options#Inline}.
-     */
+    /// [PriorityInliningPhase] explores the call tree in priority order and is the default
+    /// inlining algorithm.
+    PriorityInlining(PriorityInliningPhase.Options.UsePriorityInlining, PriorityInliningPhase.class),
+
+    /// [InliningPhase] is a less aggressive inlining algorithm used when priority
+    /// inlining is disabled. Inlining as a whole can be disabled with [HighTier.Options#Inline].
     Inlining(HighTier.Options.Inline, InliningPhase.class),
 
     /**

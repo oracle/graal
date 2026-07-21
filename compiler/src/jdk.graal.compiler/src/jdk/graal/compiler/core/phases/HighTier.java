@@ -47,6 +47,7 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
+import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
@@ -69,8 +70,16 @@ public class HighTier extends BaseTier<HighTierContext> {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
+        boolean boxNodeIdentityPhaseAdded = false;
         if (Options.Inline.getValue(options)) {
-            appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer, options));
+            boolean usePriorityInlining = PriorityInliningPhase.Options.UsePriorityInlining.getValue(options);
+            if (usePriorityInlining) {
+                appendPhase(new BoxNodeIdentityPhase());
+                appendPhase(new PriorityInliningPhase(canonicalizer, options));
+                boxNodeIdentityPhaseAdded = true;
+            } else {
+                appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer, options));
+            }
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
 
@@ -104,7 +113,9 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         // Must precede all phases that otherwise ignore the identity of boxes (e.g.
         // PartialEscapePhase and BoxNodeOptimizationPhase).
-        appendPhase(new BoxNodeIdentityPhase());
+        if (!boxNodeIdentityPhaseAdded) {
+            appendPhase(new BoxNodeIdentityPhase());
+        }
 
         if (GraalOptions.PartialEscapeAnalysis.getValue(options)) {
             appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));

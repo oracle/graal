@@ -33,6 +33,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.hotspot.lir.HotSpotZapRegistersPhase;
 import jdk.graal.compiler.hotspot.lir.VerifyMaxRegisterSizePhase;
+import jdk.graal.compiler.hotspot.phases.HotSpotDefaultInliningProvider;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.SuitesProviderBase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
@@ -47,8 +48,10 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
+import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantPreBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.DefaultConstantBlindingPhase;
@@ -80,6 +83,10 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     @Override
     public Suites createSuites(OptionValues options, Architecture arch) {
         Suites suites = defaultSuitesCreator.createSuites(options, arch);
+
+        // Replace the default priority inliner with one that is `-Xcomp` aware.
+        suites.getHighTier().replacePhase(PriorityInliningPhase.class, new PriorityInliningPhase(CanonicalizerPhase.create(), options, new HotSpotDefaultInliningProvider(config)));
+
         if (runtime.getTarget().implicitNullCheckLimit > 0 && !runtime.getCompilerConfigurationName().equalsIgnoreCase("economy")) {
             ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(AddressLoweringPhase.class);
             assert position != null : "There should be an " + AddressLoweringPhase.class.getName() + " in low tier.";
