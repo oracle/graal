@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
@@ -61,6 +62,32 @@ public class MulNodeTest {
         SubNode sub = (SubNode) result;
         assertLeftShift(sub.getX(), x, 63);
         Assert.assertSame(x, sub.getY());
+    }
+
+    @Test
+    public void canonicalConstantDecomposesTwoBitMultiplier() {
+        IntegerStamp stamp = IntegerStamp.create(Integer.SIZE);
+        ParameterNode x = new ParameterNode(0, StampPair.createSingle(stamp));
+
+        ValueNode result = MulNode.canonical(stamp, x, 6, NodeView.DEFAULT);
+
+        Assert.assertTrue(result instanceof AddNode);
+        AddNode add = (AddNode) result;
+        assertLeftShift(add.getX(), x, 2);
+        assertLeftShift(add.getY(), x, 1);
+    }
+
+    @Test
+    public void canonicalConstantDecomposesMultiplierWithSeveralBits() {
+        IntegerStamp stamp = IntegerStamp.create(Integer.SIZE);
+        ParameterNode x = new ParameterNode(0, StampPair.createSingle(stamp));
+
+        ValueNode result = MulNode.canonical(stamp, x, 14, NodeView.DEFAULT);
+
+        Assert.assertTrue(result instanceof SubNode);
+        SubNode sub = (SubNode) result;
+        assertLeftShift(sub.getX(), x, 4);
+        assertLeftShift(sub.getY(), x, 1);
     }
 
     private static void assertLeftShift(ValueNode node, ValueNode input, int shiftAmount) {
