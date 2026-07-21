@@ -282,11 +282,8 @@ final class Target_javax_crypto_JceSecurity {
         } else if (o != null) {
             return (Exception) o;
         }
-        /*
-         * A provider without a verification result was not included by reflection metadata.
-         * Trigger the regular Class.forName missing-registration path so diagnostics and metadata
-         * tracing handle this like any other missing reflection access.
-         */
+        /* §AR-security-providers.3: Probe the missing type through the ordinary reflection path;
+         * report an inconsistent success. */
         SecurityProvidersSupport.reportMissingProviderRegistration(p.getClass());
         throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + p.getClass().getName());
     }
