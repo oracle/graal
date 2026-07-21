@@ -1,5 +1,5 @@
 /* 
-* Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+* Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 *
 * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,11 @@ function initializeInsight(insight, require) {
             });
         }
     });
-    srv.listen(9999, () => console.log("Admin ready at 9999"));
+    srv.listen(0, () => {
+        const port = srv.address().port;
+        process.env.GRAALVM_INSIGHT_ADMIN_PORT = String(port);
+        console.log(`Admin ready at ${port}`);
+    });
 }
 
 
