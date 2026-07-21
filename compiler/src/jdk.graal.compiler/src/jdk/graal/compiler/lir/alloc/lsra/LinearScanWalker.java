@@ -58,7 +58,7 @@ class LinearScanWalker extends IntervalWalker {
     private static final CountingTimerKey spillCollectInactiveAny = countingTimer("spillCollectInactiveAny");
     private static final CountingTimerKey spillCollectActiveAny = countingTimer("spillCollectActiveAny");
     private static final CountingTimerKey spillExcludeActiveFixed = countingTimer("spillExcludeActiveFixed");
-    private static final CountingTimerKey spillExcludeThreadedBlock = countingTimer("spillExcludeThreadedBlock");
+    private static final CountingTimerKey spillExcludeFastPathBlock = countingTimer("spillExcludeFastPathBlock");
     private static final CountingTimerKey spillBlockInactiveFixed = countingTimer("spillBlockInactiveFixed");
     private static final CountingTimerKey freeCollectInactiveAny = countingTimer("freeCollectInactiveAny");
     private static final CountingTimerKey freeCollectInactiveFixed = countingTimer("freeCollectInactiveFixed");
@@ -297,15 +297,15 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     /*
-     * Excludes all active intervals defined or used in the current block marked as a threaded
-     * switch candidate. These intervals are already in registers, so excluding them prevents
-     * unnecessary spilling within the current block.
+     * Excludes all active intervals defined or used in the current fast path block. These intervals
+     * are already in registers, so excluding them prevents unnecessary spilling within the current
+     * block.
      */
     @SuppressWarnings("try")
-    void spillExcludeIntervalsDefinedOrUsedAtCurrentThreadedBlock() {
-        try (DebugCloseable t = allocator.start(spillExcludeThreadedBlock)) {
+    void spillExcludeIntervalsDefinedOrUsedAtCurrentFastPathBlock() {
+        try (DebugCloseable t = allocator.start(spillExcludeFastPathBlock)) {
             var block = allocator.blockForId(currentPosition);
-            if (block.mayEmitThreadedCode()) {
+            if (block.isFastPathBlock()) {
                 Interval interval = activeLists.get(RegisterBinding.Any);
                 while (!interval.isEndMarker()) {
                     if (allocator.blockForId(interval.from() - 1) == block) {
@@ -1008,7 +1008,7 @@ class LinearScanWalker extends IntervalWalker {
                 if (registerPriority == RegisterPriority.LiveAtLoopEnd) {
                     // try to avoid registers used/defined in the current block in the first
                     // iteration
-                    spillExcludeIntervalsDefinedOrUsedAtCurrentThreadedBlock();
+                    spillExcludeIntervalsDefinedOrUsedAtCurrentFastPathBlock();
                 }
                 // spillBlockUnhandledFixed(cur);
                 assert unhandledLists.get(RegisterBinding.Fixed).isEndMarker() : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";

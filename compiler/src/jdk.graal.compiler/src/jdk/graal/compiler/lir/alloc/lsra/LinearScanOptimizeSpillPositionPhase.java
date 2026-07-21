@@ -83,7 +83,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             return;
         }
         BasicBlock<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
-        if (defBlock.mayEmitThreadedCode()) {
+        if (defBlock.isFastPathBlock()) {
             // TODO (GR-69742): Generalize this optimization to handle generic cases based on split
             // block frequencies
             interval.setSpillState(SpillState.NoOptimization);

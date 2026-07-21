@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -82,6 +81,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     private LocationSet killLocationsBetweenThisAndDominator;
 
     private boolean canUseBlockAsSpillTarget = true;
+    private boolean fastPathBlock;
 
     HIRBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
         super(cfg);
@@ -102,6 +102,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     public void resetDominators() {
         super.resetDominators();
         postdominator = INVALID_BLOCK_ID;
+        fastPathBlock = false;
     }
 
     public AbstractBeginNode getBeginNode() {
@@ -133,9 +134,12 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     }
 
     @Override
-    public boolean mayEmitThreadedCode() {
-        return (getBeginNode() instanceof LoopBeginNode loopBeginNode && loopBeginNode.mayEmitThreadedCode()) ||
-                        (getEndNode() instanceof IntegerSwitchNode integerSwitchNode && integerSwitchNode.mayEmitThreadedCode());
+    public boolean isFastPathBlock() {
+        return fastPathBlock;
+    }
+
+    void markFastPathBlock() {
+        fastPathBlock = true;
     }
 
     @Override
