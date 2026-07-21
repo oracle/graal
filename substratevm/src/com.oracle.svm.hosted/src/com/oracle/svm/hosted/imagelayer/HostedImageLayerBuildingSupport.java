@@ -42,10 +42,9 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.AARCH64;
-import org.graalvm.nativeimage.Platform.AMD64;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.DARWIN_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
 import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -54,10 +53,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -415,11 +414,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     /**
-     * Currently layered images are supported on Linux AMD64/AArch64, Darwin AMD64/AArch64, and
+     * Currently layered images are supported on Linux AMD64/AArch64, Darwin AArch64, and
      * Windows AMD64.
      */
     private static boolean supportedPlatform(Platform platform) {
-        return ((platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64)) || platform instanceof WINDOWS_AMD64;
+        return platform instanceof LINUX_AMD64 || platform instanceof LINUX_AARCH64 || platform instanceof DARWIN_AARCH64 || platform instanceof WINDOWS_AMD64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
