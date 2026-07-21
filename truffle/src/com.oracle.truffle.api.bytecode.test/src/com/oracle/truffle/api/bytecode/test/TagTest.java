@@ -2544,6 +2544,95 @@ public class TagTest extends AbstractInstructionTest {
                         });
     }
 
+    /**
+     * GR-76894: Ordinary instructions after an unconditional return must consume logical BCI
+     * space even when they are physically omitted, so locations remain stable after tag
+     * materialization makes them physically reachable.
+     */
+    @Test
+    public void testEndTagReachabilityBciRemapping() {
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginBlock();
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+            for (int i = 0; i < 100; i++) {
+                b.emitNop();
+            }
+            b.endBlock();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitLoadConstant(2);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+        Instruction oldFinalReturn = oldInstructions.get(oldInstructions.size() - 1);
+        assertEquals("return", oldFinalReturn.getName());
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build());
+
+        assertEquals("return", oldFinalReturn.getLocation().update().getInstruction().getName());
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+    }
+
+    /**
+     * Nested tags and control-flow transitions can change physical reachability without changing
+     * the logical BCI space consumed by ordinary emitter calls.
+     */
+    @Test
+    public void testNestedEndTagReachabilityBciRemapping() {
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.beginBlock();
+            b.beginTag(StatementTag.class);
+            b.beginBlock();
+            b.beginTag(ExpressionTag.class);
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            b.endTag(ExpressionTag.class);
+            b.emitNop();
+            b.endBlock();
+            b.endTag(StatementTag.class);
+            for (int i = 0; i < 10; i++) {
+                b.emitNop();
+            }
+            b.endBlock();
+            b.beginBlock();
+            b.emitNop();
+            b.endBlock();
+            b.endIfThenElse();
+            b.beginReturn();
+            b.emitLoadConstant(2);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+        Instruction oldFinalReturn = oldInstructions.get(oldInstructions.size() - 1);
+        assertEquals("return", oldFinalReturn.getName());
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build());
+
+        assertEquals("return", oldFinalReturn.getLocation().update().getInstruction().getName());
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+    }
+
     @Test
     public void testOnStackTestInOperation() {
         AtomicReference<List<Event>> events0 = new AtomicReference<>();

@@ -1208,8 +1208,8 @@ final class BytecodeNodeElement extends AbstractElement {
             b.statement("handlers__ = handlers_");
             b.statement("numNodes__ = numNodes_");
             b.statement("locals__ = locals_");
-            if (parent.model.enableInstructionRewriting) {
-                b.statement("rewrittenBciDeltas__ = rewrittenBciDeltas_");
+            if (parent.model.enableInstructionRewriting || parent.model.enableTagInstrumentation) {
+                b.statement("stableBciDeltas__ = stableBciDeltas_");
             }
             b.statement("configEncoding__ = configEncoding_");
 
@@ -1226,8 +1226,8 @@ final class BytecodeNodeElement extends AbstractElement {
         b.statement("handlers__ = this.handlers");
         b.statement("numNodes__ = this.numNodes");
         b.statement("locals__ = this.locals");
-        if (parent.model.enableInstructionRewriting) {
-            b.statement("rewrittenBciDeltas__ = this.rewrittenBciDeltas");
+        if (parent.model.enableInstructionRewriting || parent.model.enableTagInstrumentation) {
+            b.statement("stableBciDeltas__ = this.stableBciDeltas");
         }
         b.statement("configEncoding__ = configEncoding_");
 
