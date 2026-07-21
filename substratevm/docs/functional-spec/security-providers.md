@@ -38,7 +38,8 @@ A direct lookup that attempts to load the omitted provider follows the missing-r
 ## 3. Programmatically Supplied Providers
 
 An application can construct a provider and pass it directly to a JCA factory or add it with `Security.addProvider(Provider)`.
-The provider's class still requires the metadata listed in section 1 before JCE can verify and use its services.
+Although the application constructs the provider directly at run time, its class still requires the metadata listed in section 1.
+The metadata tells Native Image to include the provider's services, verify the provider at build time, and retain the verification result for run-time instances.
 
 If the metadata is present, provider-name lookups and factory calls using either the provider object or its name can use the provider's services.
 If it is absent and exact reachability metadata checking is enabled, the first operation that requires JCE verification reports `MissingReflectionRegistrationError` for the provider type.
