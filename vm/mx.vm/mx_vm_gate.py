@@ -1531,6 +1531,7 @@ def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_iso
         mx.log(f'{datetime.now():%d %b %Y %H:%M:%S} Testing project {project_path}. To reproduce use: ')
 
         polyglot_args = [f'-Dpolyglot.{option}' for option in polyglot_options]
+        polyglot_args.append("-Dpolyglotimpl.TraceInternalResources=true")
         if use_default_truffle_runtime:
             polyglot_args.append('-Dtruffle.UseFallbackRuntime=true')
         polyglot_args = ' '.join(polyglot_args)

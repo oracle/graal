@@ -292,8 +292,11 @@ final class InternalResourceCache {
                 // instead of FileAlreadyExistsException. We need to check if this is the case.
                 if (Files.isDirectory(target)) {
                     unlink(tmpDir);
+                } else {
+                    throw fsException;
                 }
             }
+            verifyResourceRoot(target);
         } else {
             if (InternalResourceRoots.isTraceInternalResourceEvents()) {
                 InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
