@@ -35,6 +35,7 @@ import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.LookupSwitch;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
+import com.oracle.svm.shared.NeverInline;
 
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.internal.misc.Unsafe;
@@ -369,6 +370,7 @@ public final class MethodProfile {
         throw new IllegalArgumentException("No OSR backedge profile for " + method + "@" + targetBCI);
     }
 
+    @NeverInline("Keep branch profiling machinery out of bytecode-handler stubs")
     public void profileBranch(int bci, boolean taken) {
         if (taken) {
             getAtBCI(bci, BranchProfile.class).incrementTakenCounter();

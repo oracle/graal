@@ -79,6 +79,7 @@ import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -876,6 +877,15 @@ public abstract class NativeImageCodeCache {
         }
 
         @Override
+        protected int computeSourceMethodFlags(ResolvedJavaMethod method, boolean isHidden, boolean isLambdaFormCompiled) {
+            return FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden, isLambdaFormCompiled, isInterpreterBytecodeHandlerStub(method));
+        }
+
+        private static boolean isInterpreterBytecodeHandlerStub(ResolvedJavaMethod method) {
+            return InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method);
+        }
+
+        @Override
         protected boolean storeDeoptTargetMethod() {
             return false;
         }
@@ -898,20 +908,22 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
-            if (isDeoptEntry || ((HostedMethod) method).compilationInfo.canDeoptForTesting()) {
+            if (isDeoptEntry || ((HostedMethod) method).compilationInfo.canDeoptForTesting() || isInterpreterBytecodeHandlerStub(method)) {
                 /*
-                 * Need to restore locals from deoptimization source.
+                 * Need to restore locals from deoptimization source, or preserve the threaded
+                 * handler arguments used by stack walking.
                  */
                 return true;
             }
 
             BytecodeFrame topFrame = infopoint.debugInfo.frame();
             for (BytecodeFrame frame = topFrame; frame != null; frame = frame.caller()) {
-                if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(frame.getMethod())) {
+                if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(frame.getMethod()) || isInterpreterBytecodeHandlerStub(frame.getMethod())) {
                     /*
                      * Somewhere in the inlining hierarchy is a method for which frame information
-                     * was explicitly requested. For simplicity, we output frame information for all
-                     * methods in the inlining chain.
+                     * was explicitly requested, or a threaded handler stub whose inlined Java
+                     * handler owns the BCI needed during stack walking. For simplicity, we output
+                     * frame information for all methods in the inlining chain.
                      *
                      * We require frame information, for example, for frames that must be visible to
                      * SubstrateStackIntrospection.

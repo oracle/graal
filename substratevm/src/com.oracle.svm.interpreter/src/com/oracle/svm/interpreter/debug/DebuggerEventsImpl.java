@@ -91,6 +91,11 @@ public final class DebuggerEventsImpl implements DebuggerEvents {
     }
 
     @Override
+    public boolean supportsEvents() {
+        return true;
+    }
+
+    @Override
     @SuppressFBWarnings(value = "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD", justification = "Intentional.")
     public void setEventHandler(EventHandler eventHandler) {
         DebuggerEventsImpl.eventHandler = eventHandler;

@@ -121,6 +121,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         /**
          * Returns the type of the value, describing how to access the value.
          */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public ValueType getType() {
             return type;
         }

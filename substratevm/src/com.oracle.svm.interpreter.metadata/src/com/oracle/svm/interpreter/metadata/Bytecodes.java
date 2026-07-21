@@ -42,6 +42,8 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.Flags.TYPE_PROFILED;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import jdk.internal.vm.annotation.Stable;
+
 /**
  * Definitions of the standard Java bytecodes defined by
  * <a href= "http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html"> Java
@@ -376,13 +378,13 @@ public class Bytecodes {
      * An array that maps from a bytecode value to the length in bytes for the corresponding
      * instruction.
      */
-    private static final int[] lengthArray = new int[256];
+    @Stable private static final int[] lengthArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the number of slots pushed on the stack by the
      * corresponding instruction.
      */
-    private static final int[] stackEffectArray = new int[256];
+    @Stable private static final int[] stackEffectArray = new int[256];
 
     // Checkstyle: stop
     // @formatter:off

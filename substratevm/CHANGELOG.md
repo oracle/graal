@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.3 (Internal Version 25.3.4)
+* (GR-72095) Refactored the Native Image runtime bytecode interpreter to enable tail-call threading among outlined bytecode handlers, significantly improving interpreter performance.
 * (GR-77670) Chunk up digest generation for Native Image Layers, to allow for large layer files to be checked. This makes older layer files potentially incompabile with layers created after this change.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)

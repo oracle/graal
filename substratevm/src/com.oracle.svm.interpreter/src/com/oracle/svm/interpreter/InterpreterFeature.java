@@ -57,6 +57,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.hosted.BytecodeHandlerFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -174,7 +175,7 @@ public class InterpreterFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(DebuggerEventsFeature.class);
+        return Arrays.asList(DebuggerEventsFeature.class, BytecodeHandlerFeature.class);
     }
 
     @Override
@@ -292,7 +293,6 @@ public class InterpreterFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
-
         accessImpl.registerAsImmutable(InterpreterSupport.singleton());
     }
 

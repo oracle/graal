@@ -55,6 +55,7 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
@@ -127,6 +128,29 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         }
         return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
                         SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
+    }
+
+    /**
+     * Returns whether {@code method} is the Java handler invoked by this generated stub. The
+     * target and callee can be represented by different hosted or analysis wrappers, so direct
+     * identity is preferred and comparison of their original Java methods is used as a fallback.
+     * Default stubs have no Java handler target and always return false.
+     */
+    public boolean isTargetMethod(ResolvedJavaMethod method) {
+        if (targetMethod == null) {
+            return false;
+        }
+        if (targetMethod.equals(method)) {
+            return true;
+        }
+        ResolvedJavaMethod originalTargetMethod = OriginalMethodProvider.getOriginalMethod(targetMethod);
+        ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
+        return originalTargetMethod != null && originalTargetMethod.equals(originalMethod);
+    }
+
+    /** Returns whether this is the fallback stub that returns to the interpreter dispatch loop. */
+    public boolean isDefaultStub() {
+        return isDefault;
     }
 
     /**

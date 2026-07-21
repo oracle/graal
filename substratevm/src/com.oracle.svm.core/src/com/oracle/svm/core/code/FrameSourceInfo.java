@@ -172,10 +172,20 @@ public abstract class FrameSourceInfo {
     public static final class MethodFlags {
         private static final int HIDDEN_METHOD_FLAG = 0x8000;
         private static final int LAMBDA_FORM_COMPILED_METHOD_FLAG = 0x4000;
+        private static final int BYTECODE_HANDLER_STUB_METHOD_FLAG = 0x2000;
 
-        static final int EXTRA_FLAGS_BITS = 2;
-        static final int EXTRA_FLAGS_POS = 16 - EXTRA_FLAGS_BITS;
-        static final int EXTRA_FLAGS_MASK = ((1 << EXTRA_FLAGS_BITS) - 1) << EXTRA_FLAGS_POS;
+        static final int EXTRA_FLAGS_MASK = HIDDEN_METHOD_FLAG | LAMBDA_FORM_COMPILED_METHOD_FLAG | BYTECODE_HANDLER_STUB_METHOD_FLAG;
+        /*
+         * Extend the occupied flag span to the next power of two so that slots do not cross byte
+         * boundaries. Align the flags with the most significant end of each slot, as they are in
+         * the full 16-bit value. For example, the current mask 0xE000 occupies three bits and is
+         * stored in a four-bit compact slot: 0xE000 >> 12 = 0xE. The least significant slot bit is
+         * padding. This does not make that bit available for another internal flag: when full method
+         * modifiers are encoded, 0x1000 is the Java synthetic modifier and only the three bits in
+         * EXTRA_FLAGS_MASK are available.
+         */
+        static final int EXTRA_FLAGS_BITS = computeExtraFlagsBits(EXTRA_FLAGS_MASK);
+        static final int EXTRA_FLAGS_POS = Short.SIZE - EXTRA_FLAGS_BITS;
         static {
             /*
              * check constants in a method to be able to supress warnings about "always true"
@@ -187,29 +197,52 @@ public abstract class FrameSourceInfo {
         private MethodFlags() {
         }
 
+        /**
+         * Returns the smallest power-of-two slot that contains the complete span of {@code mask}.
+         * Compact method flags use such slots so that no entry crosses a byte boundary. The span,
+         * rather than the number of set bits, accounts for method-modifier bits between internal
+         * flags that cannot be used by this encoding.
+         */
+        private static int computeExtraFlagsBits(int mask) {
+            int occupiedBits = Integer.SIZE - Integer.numberOfLeadingZeros(mask) - Integer.numberOfTrailingZeros(mask);
+            return Integer.highestOneBit(2 * occupiedBits - 1);
+        }
+
         @SuppressWarnings("all")
         private static void checkConstants() {
+            assert EXTRA_FLAGS_MASK != 0 : "At least one extra method flag is required";
             assert (HIDDEN_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "HIDDEN_METHOD_FLAG collides with specified method modifier";
             assert (LAMBDA_FORM_COMPILED_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "LAMBDA_FORM_COMPILED_METHOD_FLAG collides with specified method modifier";
+            assert (BYTECODE_HANDLER_STUB_METHOD_FLAG & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == 0 : "BYTECODE_HANDLER_STUB_METHOD_FLAG collides with specified method modifier";
             assert (CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS &
                             Constants.JVM_RECOGNIZED_METHOD_MODIFIERS) == CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS : "INVALID_METHOD_MODIFIERS should only used specified method modifiers to avoid collitions with internal method flags";
             assert (EXTRA_FLAGS_MASK & HIDDEN_METHOD_FLAG) == HIDDEN_METHOD_FLAG : "HIDDEN_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
             assert (EXTRA_FLAGS_MASK & LAMBDA_FORM_COMPILED_METHOD_FLAG) == LAMBDA_FORM_COMPILED_METHOD_FLAG : "LAMBDA_FORM_COMPILED_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
+            assert (EXTRA_FLAGS_MASK & BYTECODE_HANDLER_STUB_METHOD_FLAG) == BYTECODE_HANDLER_STUB_METHOD_FLAG : "BYTECODE_HANDLER_STUB_METHOD_FLAG is not covered by EXTRA_FLAGS_MASK";
             /*
-             * This property is used by extra flag encoding/decoding in the case where full
-             * modifiers are not serialized. See `CodeInfoDecoder.getMethodFlags` &
+             * These properties are used by extra flag encoding/decoding when full modifiers are
+             * not serialized. See `CodeInfoDecoder.getMethodFlags` and
              * `CodeInfoEncoder.Encoders.encodeMethodTable`.
              */
-            assert Byte.SIZE % EXTRA_FLAGS_BITS == 0 : "The number of extra flag bit doesn't align at byte boundaries.";
+            assert EXTRA_FLAGS_BITS <= Byte.SIZE : "Extra method flags do not fit into one byte";
+            assert Byte.SIZE % EXTRA_FLAGS_BITS == 0 : "The extra flag slot size must divide a byte";
+            assert (EXTRA_FLAGS_MASK >>> EXTRA_FLAGS_POS) < (1 << EXTRA_FLAGS_BITS) : "Extra method flags do not fit into their compact slot";
         }
 
         public static int computeSourceMethodFlags(int modifiers, boolean isHidden, boolean isLambdaFormCompiled) {
+            return computeSourceMethodFlags(modifiers, isHidden, isLambdaFormCompiled, false);
+        }
+
+        public static int computeSourceMethodFlags(int modifiers, boolean isHidden, boolean isLambdaFormCompiled, boolean isBytecodeHandlerStub) {
             int flags = modifiers;
             if (isHidden) {
                 flags |= HIDDEN_METHOD_FLAG;
             }
             if (isLambdaFormCompiled) {
                 flags |= LAMBDA_FORM_COMPILED_METHOD_FLAG;
+            }
+            if (isBytecodeHandlerStub) {
+                flags |= BYTECODE_HANDLER_STUB_METHOD_FLAG;
             }
             return flags;
         }
@@ -221,6 +254,11 @@ public abstract class FrameSourceInfo {
 
         public static boolean isLambdaFormCompiled(int flags) {
             return (flags & LAMBDA_FORM_COMPILED_METHOD_FLAG) != 0;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isBytecodeHandlerStub(int flags) {
+            return (flags & BYTECODE_HANDLER_STUB_METHOD_FLAG) != 0;
         }
 
         /**

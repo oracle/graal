@@ -50,6 +50,11 @@ final class DummyDebuggerEventsImpl implements DebuggerEvents {
     }
 
     @Override
+    public boolean supportsEvents() {
+        return false;
+    }
+
+    @Override
     public void setEventHandler(EventHandler eventHandler) {
         throw VMError.intentionallyUnimplemented();
     }

@@ -32,6 +32,8 @@ import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
+import jdk.vm.ci.code.BytecodeFrame;
+
 /// Stores JVM locals and operand stack slots for one interpreted frame.
 ///
 /// Each logical JVM slot has parallel primitive and reference storage:
@@ -53,6 +55,13 @@ public final class InterpreterFrame {
     private int lockCount;
     private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
     private boolean hiddenFromStackWalking;
+    /**
+     * BCI reported while delivering a debugger event. Threaded dispatch delivers the event while
+     * the enclosing bytecode handler still carries the preceding BCI, so stack walking uses this
+     * value as a temporary override. The value is {@link BytecodeFrame#UNKNOWN_BCI} outside the
+     * event callback.
+     */
+    private int debuggerEventBCI;
 
     private static final Object[] EMPTY = new Object[0];
 
@@ -63,6 +72,7 @@ public final class InterpreterFrame {
         this.lockCount = 0;
         this.locks = EMPTY;
         this.hiddenFromStackWalking = false;
+        this.debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
     }
 
     static InterpreterFrame create(int slotCount, Object... arguments) {
@@ -71,6 +81,20 @@ public final class InterpreterFrame {
 
     Object[] getArguments() {
         return arguments;
+    }
+
+    void publishDebuggerEventBCI(int bci) {
+        assert debuggerEventBCI == BytecodeFrame.UNKNOWN_BCI;
+        debuggerEventBCI = bci;
+    }
+
+    void clearDebuggerEventBCI() {
+        debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    int getDebuggerEventBCI() {
+        return debuggerEventBCI;
     }
 
     int getIntStatic(int slot) {
