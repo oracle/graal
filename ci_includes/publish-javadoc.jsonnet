@@ -29,16 +29,8 @@
       ["cd", ".."],
       ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/graalvm-website.git"]],
       ["cd", "graalvm-website"],
-      # dev-only
-      ["rm", "-rf", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
-      ["git", "status" ],
-      ["unzip", "-o", "-d", "sdk", "$GRAAL_REPO/sdk/javadoc.zip"],
-      ["unzip", "-o", "-d", "truffle", "$GRAAL_REPO/truffle/javadoc.zip"],
-      ["unzip", "-o", "-d", "tools", "$GRAAL_REPO/tools/javadoc.zip"],
-      ["unzip", "-o", "-d", "graphio", "$GRAAL_REPO/compiler/graphio-javadoc.zip"],
-      ["git", "add", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
       # dev or release
-      ["set-export", "GRAAL_VERSION", "dev"],
+      ["set-export", "GRAAL_VERSION", "25.2"],
       ["rm", "-rf", "$GRAAL_VERSION/javadoc"],
       ["mkdir", "-p", "$GRAAL_VERSION/javadoc"],
       ["unzip", "-o", "-d", "$GRAAL_VERSION/javadoc/tmp", "$GRAAL_REPO/sdk/javadoc.zip"],
@@ -60,8 +52,7 @@
   },
 
   local all_builds = [
-    # Should be `ondemand` in release breanches
-    common.daily + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
+    common.on_demand + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(all_builds, std.thisFile),
