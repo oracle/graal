@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM 25.3 (Internal Version 25.3.4)
+* (GR-77670) Chunk up digest generation for Native Image Layers, to allow for large layer files to be checked. This makes older layer files potentially incompabile with layers created after this change.
+
 ## GraalVM 25.2 (Internal Version 25.2.4)
 * (GR-77358) Introduced compressed (32-bit) references, enabled by default. This generally improves memory usage and performance, but limits heap memory to 32 GB. Disable with `-H:-UseCompressedReferences`.
 * (GR-59698) Native Image now always uses isolates. The deprecated `-H:+SpawnIsolates` option remains for compatibility, while `-H:-SpawnIsolates` is no longer supported and reports a build-time error.
