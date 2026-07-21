@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot.test;
 import static jdk.graal.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocatedBytes;
 import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -169,8 +168,8 @@ public class LibGraalCompilationDriver {
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
-                    long encodedThrowableBufferAddress,
-                    int encodedThrowableBufferSize,
+                    long compilationFailureBufferAddress,
+                    int compilationFailureBufferSize,
                     long timeAndMemBufferAddress,
                     long profileLoadAddress);
 
@@ -294,13 +293,28 @@ public class LibGraalCompilationDriver {
         }
 
         /**
-         * Manages native memory for receiving a {@linkplain Throwable#printStackTrace() stack
-         * trace} from libgraal serialized via {@link ByteArrayOutputStream} to a byte array.
+         * Manages native memory for receiving failure information from libgraal. The buffer has the
+         * following format:
+         *
+         * <pre>
+         * struct {
+         *     int   retry;
+         *     int   stackTraceLength;
+         *     byte  stackTrace[stackTraceLength]; // Bytes from a stack trace printed to a ByteArrayOutputStream.
+         * }
+         * </pre>
          */
-        public static class StackTraceBuffer extends NativeBuffer {
+        public static class CompilationFailureBuffer extends NativeBuffer {
+            /** Offset of the flag indicating whether the failed compilation should be retried. */
+            private static final int RETRY_OFFSET = 0;
+            /** Offset of the stack trace length in bytes. */
+            private static final int STACK_TRACE_LENGTH_OFFSET = Integer.BYTES;
+            /** Offset of the first byte of the serialized stack trace. */
+            private static final int STACK_TRACE_OFFSET = 2 * Integer.BYTES;
+
             final int capacity;
 
-            StackTraceBuffer(int capacity) {
+            CompilationFailureBuffer(int capacity) {
                 this.capacity = capacity;
             }
 
@@ -317,19 +331,25 @@ public class LibGraalCompilationDriver {
 
             public String readToString() {
                 long address = getAddress();
-                int size = UNSAFE.getInt(address);
+                int size = UNSAFE.getInt(address + STACK_TRACE_LENGTH_OFFSET);
                 byte[] data = new byte[size];
-                UNSAFE.copyMemory(null, address + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, size);
+                UNSAFE.copyMemory(null, address + STACK_TRACE_OFFSET, data, ARRAY_BYTE_BASE_OFFSET, size);
                 return new String(data).trim();
             }
 
             public boolean hasBeenWritten() {
                 GraalError.guarantee(getAddress() != 0, "Must have allocated native buffer already to use this API");
-                int size = UNSAFE.getInt(getAddress());
+                int size = UNSAFE.getInt(getAddress() + STACK_TRACE_LENGTH_OFFSET);
                 GraalError.guarantee(size >= 0, "Size cannot be negative but is %s", size);
                 return size > 0;
             }
 
+            /**
+             * @return whether a failed compilation should be retried
+             */
+            public boolean shouldRetry() {
+                return UNSAFE.getInt(getAddress() + RETRY_OFFSET) != 0;
+            }
         }
 
         /**
@@ -398,19 +418,19 @@ public class LibGraalCompilationDriver {
 
         }
 
-        private final List<StackTraceBuffer> stackTraceBuffers = new ArrayList<>();
+        private final List<CompilationFailureBuffer> compilationFailureBuffers = new ArrayList<>();
 
         /**
-         * Gets a stack trace buffer for the current thread.
+         * Gets a compilation failure buffer for the current thread.
          */
-        public StackTraceBuffer getStackTraceBuffer() {
-            return stackTraceBuffer.get();
+        public CompilationFailureBuffer getCompilationFailureBuffer() {
+            return compilationFailureBuffer.get();
         }
 
-        private final ThreadLocal<StackTraceBuffer> stackTraceBuffer = ThreadLocal.withInitial(() -> {
-            StackTraceBuffer buffer = new StackTraceBuffer(10_000);
-            synchronized (stackTraceBuffers) {
-                stackTraceBuffers.add(buffer);
+        private final ThreadLocal<CompilationFailureBuffer> compilationFailureBuffer = ThreadLocal.withInitial(() -> {
+            CompilationFailureBuffer buffer = new CompilationFailureBuffer(10_000);
+            synchronized (compilationFailureBuffers) {
+                compilationFailureBuffers.add(buffer);
             }
             return buffer;
         });
@@ -418,7 +438,7 @@ public class LibGraalCompilationDriver {
         private final List<MemoryAndTimeMeasurementsBuffer> memTimeBuffers = new ArrayList<>();
 
         /**
-         * Gets a stack trace buffer for the current thread.
+         * Gets a memory and time measurements buffer for the current thread.
          */
         public MemoryAndTimeMeasurementsBuffer getMemoryAndTimeBuffer() {
             return memTimeBuffer.get();
@@ -447,11 +467,11 @@ public class LibGraalCompilationDriver {
                 }
                 optionsBuffers.clear();
             }
-            synchronized (stackTraceBuffers) {
-                for (StackTraceBuffer buffer : stackTraceBuffers) {
+            synchronized (compilationFailureBuffers) {
+                for (CompilationFailureBuffer buffer : compilationFailureBuffers) {
                     buffer.free();
                 }
-                stackTraceBuffers.clear();
+                compilationFailureBuffers.clear();
             }
             synchronized (memTimeBuffers) {
                 for (MemoryAndTimeMeasurementsBuffer buffer : memTimeBuffers) {
@@ -561,7 +581,7 @@ public class LibGraalCompilationDriver {
         long methodHandle = LibGraal.translate(method);
         long isolateThread = LibGraalScope.getIsolateThread();
 
-        LibGraalParams.StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
+        LibGraalParams.CompilationFailureBuffer failureBuffer = libgraal.getCompilationFailureBuffer();
         LibGraalParams.OptionsBuffer options = libgraal.getOptions();
         LibGraalParams.MemoryAndTimeMeasurementsBuffer memTimeBuffer = libgraal.getMemoryAndTimeBuffer();
 
@@ -576,8 +596,8 @@ public class LibGraalCompilationDriver {
                             options.getAddress(),
                             options.length(),
                             options.getHash(),
-                            stackTraceBuffer.getAddress(),
-                            stackTraceBuffer.length(),
+                            failureBuffer.getAddress(),
+                            failureBuffer.length(),
                             memTimeBuffer.getAddress(),
                             profileBuffer == null ? 0 : profileBuffer.getAddress());
 
@@ -590,8 +610,8 @@ public class LibGraalCompilationDriver {
                  * exception (handled or not), only if the exception buffer was written the
                  * exception was not handled already on the libgraal side.
                  */
-                if (stackTraceBuffer.hasBeenWritten()) {
-                    String stackTrace = stackTraceBuffer.readToString();
+                if (failureBuffer.hasBeenWritten()) {
+                    String stackTrace = failureBuffer.readToString();
                     TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
                     TTY.println(stackTrace);
                 }
