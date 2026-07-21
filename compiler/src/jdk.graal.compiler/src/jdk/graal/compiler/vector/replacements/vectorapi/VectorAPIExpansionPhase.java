@@ -479,7 +479,15 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             /* Check for unsupported usages of vector values outside the connected component. */
             if (!isSink && component.canExpand && !isNullConstant && !isUnboxInput) {
                 for (Node usage : node.usages()) {
-                    if (unionFind.find(usage) == representative) {
+                    if (node instanceof ValueNode value && shouldBox(value, usage, context)) {
+                        /*
+                         * Some usages are scalar fallbacks around an expandable component. Box
+                         * them before checking the component representative. A fallback usage may
+                         * also be connected to the component through its result.
+                         */
+                        component.boxes.add(value);
+                        continue;
+                    } else if (unionFind.find(usage) == representative) {
                         /*
                          * The usage is in the same connected component, so it will be expanded to
                          * SIMD code iff this node is expanded.
@@ -499,11 +507,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                             component.canExpand = false;
                             break;
                         }
-                        continue;
-                    } else if (node instanceof ValueNode value && shouldBox(value, usage, context)) {
-                        // Manually box the vector node to disconnect the unexpected usage from the
-                        // ConnectedComponent
-                        component.boxes.add(value);
                         continue;
                     } else {
                         /*
@@ -767,6 +770,15 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
              * payload field. Box the value so these payload reads don't block SIMD expansion.
              */
             return loadField.field().getName().equals("payload") && VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
+        } else if (use instanceof VectorAPILoadMaskedNode loadMasked && loadMasked.getMask() == value) {
+            /*
+             * A scalar fallback masked load consumes a mask object. If the mask is a phi that is
+             * expanded as part of a SIMD component, provide an object value at this scalar use.
+             */
+            return value instanceof ValuePhiNode &&
+                            loadMasked.vectorStamp() != null &&
+                            shouldUseScalarMaskedFallback(loadMasked, VectorAPIUtils.vectorArchitecture(providers), providers) &&
+                            VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
         } else if (use instanceof VectorAPIStoreMaskedNode storeMasked) {
             /*
              * If a masked store must stay scalar, keep the store as a fallback call and box the
