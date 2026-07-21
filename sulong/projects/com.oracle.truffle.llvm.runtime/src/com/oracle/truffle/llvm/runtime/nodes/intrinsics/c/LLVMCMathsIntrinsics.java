@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
@@ -418,12 +419,36 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected float doIntrinsic(float value) {
-            return (float) Math.rint(value);
+            switch (getLanguage().getRoundingMode()) {
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
+                    return (float) Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
+                    return (float) Math.floor(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
+                    return value >= 0 ? (float) Math.floor(value) : (float) Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY:
+                    float nearest = (float) Math.rint(value);
+                    return Math.abs(value - nearest) == 0.5f ? Math.copySign((float) Math.ceil(Math.abs(value)), value) : nearest;
+                default:
+                    return (float) Math.rint(value);
+            }
         }
 
         @Specialization
         protected double doIntrinsic(double value) {
-            return Math.rint(value);
+            switch (getLanguage().getRoundingMode()) {
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
+                    return Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
+                    return Math.floor(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
+                    return value >= 0 ? Math.floor(value) : Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY:
+                    double nearest = Math.rint(value);
+                    return Math.abs(value - nearest) == 0.5 ? Math.copySign(Math.ceil(Math.abs(value)), value) : nearest;
+                default:
+                    return Math.rint(value);
+            }
         }
     }
 

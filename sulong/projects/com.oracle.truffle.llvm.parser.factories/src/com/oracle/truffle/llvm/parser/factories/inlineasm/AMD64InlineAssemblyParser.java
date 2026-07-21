@@ -78,7 +78,7 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
                 normalized.append(asmExpression, start, asmExpression.length());
                 return normalized.toString();
             }
-            int close = asmExpression.indexOf(')', open + 2);
+            int close = asmExpression.indexOf("$)", open + 2);
             if (close < 0) {
                 if (normalized == null) {
                     return asmExpression;
@@ -91,7 +91,7 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
             }
             normalized.append(asmExpression, start, open);
             appendAttDialectAlternative(normalized, asmExpression, open + 2, close);
-            start = close + 1;
+            start = close + 2;
         }
     }
 
@@ -106,12 +106,10 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
         int i = from;
         while (i < alternativeEnd) {
             char c = asmExpression.charAt(i);
-            if (c == '$' && i + 1 < alternativeEnd) {
+            if (c == '$' && i + 1 < alternativeEnd && asmExpression.charAt(i + 1) == '$') {
                 i++;
-                normalized.append(asmExpression.charAt(i));
-            } else {
-                normalized.append(c);
             }
+            normalized.append(c);
             i++;
         }
     }

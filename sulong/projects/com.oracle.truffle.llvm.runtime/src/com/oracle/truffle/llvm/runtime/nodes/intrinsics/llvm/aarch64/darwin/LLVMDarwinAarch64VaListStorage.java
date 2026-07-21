@@ -43,6 +43,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
@@ -68,6 +69,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 3)
@@ -98,10 +100,17 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             if (offset < 0) {
                 return -1;
             }
-
-            long argIndex = offset / Long.BYTES + numOfExpArgs;
-            long argOffset = offset % Long.BYTES;
-            return argIndex + (argOffset << Integer.SIZE);
+            long currentOffset = 0;
+            for (int argIndex = numOfExpArgs; argIndex < args.length; argIndex++) {
+                Object arg = args[argIndex];
+                currentOffset = alignStackArgument(currentOffset, arg);
+                long size = getStackArgumentSize(arg);
+                if (offset < currentOffset + size) {
+                    return argIndex + ((offset - currentOffset) << Integer.SIZE);
+                }
+                currentOffset += size;
+            }
+            return -1;
         }
     }
 
@@ -117,11 +126,8 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         long stackSize = 0;
         for (int i = numberOfExplicitArguments; i < self.realArguments.length; i++) {
             Object o = self.realArguments[i];
-            if (o instanceof LLVMVarArgCompoundValue) {
-                stackSize += alignUp(((LLVMVarArgCompoundValue) o).getSize());
-            } else {
-                stackSize += Long.BYTES;
-            }
+            stackSize = alignStackArgument(stackSize, o);
+            stackSize += getStackArgumentSize(o);
         }
         self.vaListStackPtr = stackAllocationNode.executeWithTarget(stackSize, frame);
         self.nativized = false;
@@ -131,6 +137,28 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     private static long alignUp(long address) {
         long mask = (8 - 1); // 64bit
         return ((address + mask) & ~mask);
+    }
+
+    private static long alignStackArgument(long offset, Object arg) {
+        return isIVarBit(arg) && getIVarBitBytes(arg).length == 16 ? (offset + 15) & -16L : offset;
+    }
+
+    private static long alignStackArgument(long offset, Type type) {
+        return type instanceof VariableBitWidthType && ((VariableBitWidthType) type).getBitSize() == 128 ? (offset + 15) & -16L : offset;
+    }
+
+    private static long getStackArgumentSize(Object arg) {
+        if (isIVarBit(arg)) {
+            return getIVarBitBytes(arg).length;
+        }
+        return arg instanceof LLVMVarArgCompoundValue ? alignUp(((LLVMVarArgCompoundValue) arg).getSize()) : Long.BYTES;
+    }
+
+    private static long getStackArgumentSize(Type type) {
+        if (type instanceof VariableBitWidthType) {
+            return (((VariableBitWidthType) type).getBitSize() + Byte.SIZE - 1) / Byte.SIZE;
+        }
+        return Long.BYTES;
     }
 
     // NativeTypeLibrary library
@@ -285,10 +313,11 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
             final Object object = realArguments[i];
 
+            offset = alignStackArgument(offset, object);
             long size = storeArgument(nativeStackPtr, offset, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
                             Integer.BYTES);
-            assert size <= Long.BYTES;
-            offset += Long.BYTES;
+            assert size <= getStackArgumentSize(object);
+            offset += getStackArgumentSize(object);
         }
     }
 
@@ -312,33 +341,42 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     Object shift(Type type, @SuppressWarnings("unused") Frame frame,
                     @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib) {
 
+        long offset = alignStackArgument(consumedBytes, type);
         try {
             if (type instanceof PrimitiveType) {
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case DOUBLE:
-                        return readLib.readDouble(this, consumedBytes);
+                        return readLib.readDouble(this, offset);
                     case FLOAT:
-                        return readLib.readFloat(this, consumedBytes);
+                        return readLib.readFloat(this, offset);
                     case I1:
-                        return readLib.readI8(this, consumedBytes) != 0;
+                        return readLib.readI8(this, offset) != 0;
                     case I16:
-                        return readLib.readI16(this, consumedBytes);
+                        return readLib.readI16(this, offset);
                     case I32:
-                        return readLib.readI32(this, consumedBytes);
+                        return readLib.readI32(this, offset);
                     case I64:
-                        return readLib.readGenericI64(this, consumedBytes);
+                        return readLib.readGenericI64(this, offset);
                     case I8:
-                        return readLib.readI8(this, consumedBytes);
+                        return readLib.readI8(this, offset);
                     default:
                         throw CompilerDirectives.shouldNotReachHere("not implemented");
                 }
             } else if (type instanceof PointerType) {
-                return readLib.readPointer(this, consumedBytes);
+                return readLib.readPointer(this, offset);
+            } else if (type instanceof VariableBitWidthType) {
+                int bitWidth = (int) ((VariableBitWidthType) type).getBitSize();
+                byte[] bytes = new byte[(bitWidth + Byte.SIZE - 1) / Byte.SIZE];
+                long currentOffset = offset;
+                for (int i = bytes.length - 1; i >= 0; i--) {
+                    bytes[i] = readLib.readI8(this, currentOffset++);
+                }
+                return LLVMIVarBit.create(bitWidth, bytes, bitWidth, false);
             } else {
                 throw CompilerDirectives.shouldNotReachHere("not implemented");
             }
         } finally {
-            consumedBytes += Long.BYTES;
+            consumedBytes = (int) (offset + getStackArgumentSize(type));
         }
     }
 

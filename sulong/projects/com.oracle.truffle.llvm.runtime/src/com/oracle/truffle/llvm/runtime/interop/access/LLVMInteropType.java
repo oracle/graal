@@ -585,8 +585,20 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         private StructMember findVTableMember() {
-            StructMember structMember = findMember(0);
-            return structMember != null ? structMember : syntheticVTableMember;
+            if (syntheticVTableMember != null) {
+                return syntheticVTableMember;
+            }
+            for (StructMember member : members) {
+                if (member.startOffset == 0 && !member.isInheritanceMember) {
+                    return member;
+                }
+            }
+            for (StructMember member : members) {
+                if (member.startOffset == 0 && member.type instanceof Clazz && ((Clazz) member.type).hasVirtualMethods()) {
+                    return member;
+                }
+            }
+            return null;
         }
 
         public Set<Struct> getSuperTypes() {
@@ -1076,16 +1088,34 @@ public abstract class LLVMInteropType implements TruffleObject {
                 return false;
             }
             for (int i = 0; i < type.getDynamicElementCount(); i++) {
-                if (type.getDynamicElement(i).getOffset() == 0) {
+                LLVMSourceMemberType member = type.getDynamicElement(i);
+                if (member.getOffset() == 0 && providesVTablePath(member)) {
                     return false;
                 }
             }
             return true;
         }
 
+        private static boolean providesVTablePath(LLVMSourceMemberType member) {
+            if (!(member instanceof LLVMSourceInheritanceType)) {
+                // An explicitly described vptr is an ordinary offset-zero member.
+                return true;
+            }
+            LLVMSourceInheritanceType inheritance = (LLVMSourceInheritanceType) member;
+            LLVMSourceType inheritedType = member.getElementType().getActualType();
+            return !inheritance.isVirtual() && inheritedType instanceof LLVMSourceClassLikeType && hasVirtualMethod((LLVMSourceClassLikeType) inheritedType);
+        }
+
         private static boolean hasVirtualMethod(LLVMSourceClassLikeType type) {
             for (int i = 0; i < type.getMethodCount(); i++) {
                 if (type.getMethod(i).getVirtualIndex() >= 0) {
+                    return true;
+                }
+            }
+            for (int i = 0; i < type.getDynamicElementCount(); i++) {
+                LLVMSourceMemberType member = type.getDynamicElement(i);
+                LLVMSourceType inheritedType = member.getElementType().getActualType();
+                if (member instanceof LLVMSourceInheritanceType && inheritedType instanceof LLVMSourceClassLikeType && hasVirtualMethod((LLVMSourceClassLikeType) inheritedType)) {
                     return true;
                 }
             }

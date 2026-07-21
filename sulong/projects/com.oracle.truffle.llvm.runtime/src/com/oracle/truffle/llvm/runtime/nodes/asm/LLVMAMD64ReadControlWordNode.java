@@ -30,21 +30,24 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ReadControlWordNode extends LLVMExpressionNode {
 
     @Specialization
     protected short doRead() {
+        // Return the architectural default for the unsupported fields and synthesize RC from the
+        // rounding state maintained by Sulong.
         int roundingControl;
         switch (getLanguage().getRoundingMode()) {
-            case 2: // round downward
+            case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
                 roundingControl = 1;
                 break;
-            case 3: // round upward
+            case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
                 roundingControl = 2;
                 break;
-            case 4: // round toward zero
+            case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
                 roundingControl = 3;
                 break;
             default: // round to nearest

@@ -227,8 +227,8 @@ public abstract class LLVMIsFPClassNode extends LLVMExpressionNode {
              */
             boolean ret = false;
 
-            ret |= checkCondition(op, test, FPClassBits.NINF | FPClassBits.NNORM | FPClassBits.NSUBN, f -> f.getSign());
-            ret |= checkCondition(op, test, FPClassBits.PINF | FPClassBits.PNORM | FPClassBits.PSUBN, f -> !f.getSign());
+            ret |= checkCondition(op, test, FPClassBits.NINF | FPClassBits.NNORM | FPClassBits.NSUBN, f -> f.getSign() && !f.isNaN());
+            ret |= checkCondition(op, test, FPClassBits.PINF | FPClassBits.PNORM | FPClassBits.PSUBN, f -> !f.getSign() && !f.isNaN());
 
             ret |= checkCondition(op, test, FPClassBits.QNAN, f -> f.isQNaN());
             ret |= checkCondition(op, test, FPClassBits.SNAN, f -> f.isSNaN());

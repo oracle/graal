@@ -182,14 +182,7 @@ public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
     private static LLVM80BitFloat fromLong(long val, boolean sign) {
         int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
         int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
-        long fractionMask;
-        if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
-            fractionMask = 0xffffffff;
-        } else {
-            fractionMask = (1L << leadingOnePosition + 1) - 1;
-        }
-        long maskedFractionValue = val & fractionMask;
-        long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
+        long fraction = val << (Long.SIZE - leadingOnePosition);
         return LLVM80BitFloat.fromRawValues(sign, exponent, fraction);
     }
 

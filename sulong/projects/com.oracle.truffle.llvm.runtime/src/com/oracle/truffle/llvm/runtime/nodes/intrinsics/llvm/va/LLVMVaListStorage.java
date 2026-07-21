@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -247,6 +248,11 @@ public class LLVMVaListStorage implements TruffleObject {
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw CompilerDirectives.shouldNotReachHere(String.valueOf(value));
+    }
+
+    protected static int getAlignmentOffset(LLVMPointer pointer, int alignment) {
+        long address = LLVMNativePointer.isInstance(pointer) ? LLVMNativePointer.cast(pointer).asNative() : LLVMManagedPointer.cast(pointer).getOffset();
+        return (int) (-address & (alignment - 1));
     }
 
     public static long storeArgument(LLVMNativePointer ptr, long offset, NativeProfiledMemMoveToNative memmove, LLVMI64OffsetStoreNode storeI64Node, LLVMI32OffsetStoreNode storeI32Node,
@@ -1419,6 +1425,14 @@ public class LLVMVaListStorage implements TruffleObject {
                 }
             } else if (type instanceof PointerType) {
                 return loadPointer.executeWithTargetGeneric(areaPtr, offsetInArea);
+            } else if (type instanceof VariableBitWidthType) {
+                int bitWidth = (int) ((VariableBitWidthType) type).getBitSize();
+                byte[] bytes = new byte[(bitWidth + Byte.SIZE - 1) / Byte.SIZE];
+                long offset = offsetInArea;
+                for (int i = bytes.length - 1; i >= 0; i--) {
+                    bytes[i] = loadI8.executeWithTarget(areaPtr, offset++);
+                }
+                return LLVMIVarBit.create(bitWidth, bytes, bitWidth, false);
             } else {
                 throw CompilerDirectives.shouldNotReachHere("not implemented");
             }

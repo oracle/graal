@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.op;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleFloatingPoint;
@@ -96,6 +98,12 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         abstract float doFloat(float left, float right);
 
         abstract double doDouble(double left, double right);
+
+        @TruffleBoundary
+        abstract float correctRounding(float left, float right, float result, int roundingMode);
+
+        @TruffleBoundary
+        abstract double correctRounding(double left, double right, double result, int roundingMode);
 
         abstract LLVMLongDoubleNode createFP80Node();
 
@@ -400,59 +408,93 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return getLanguage().getRoundingMode();
         }
 
-        static float adjustRounding(float nearest, double exact, int roundingMode) {
-            if (roundingMode == 1 || !Float.isFinite(nearest) || !Double.isFinite(exact) || nearest == exact) {
+        public static float adjustRounding(float nearest, double exact, int roundingMode) {
+            if (roundingMode == LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_TO_EVEN || Double.isNaN(exact)) {
+                return nearest;
+            }
+            if (roundingMode == LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY) {
+                if (nearest == exact || !Double.isFinite(exact)) {
+                    return nearest;
+                }
+                float adjacent = exact > nearest ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                double midpoint = ((double) nearest + adjacent) / 2;
+                return exact == midpoint && Math.abs(adjacent) > Math.abs(nearest) ? adjacent : nearest;
+            }
+            if (nearest == exact || !Double.isFinite(exact)) {
                 return nearest;
             }
             boolean exactIsGreater = exact > nearest;
             switch (roundingMode) {
-                case 0:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
                     if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
                         return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
                     }
                     return nearest;
-                case 2:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
                     return exactIsGreater ? Math.nextUp(nearest) : nearest;
-                case 3:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
                     return exactIsGreater ? nearest : Math.nextDown(nearest);
-                case 4:
-                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
-                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
-                    }
-                    return nearest;
                 default:
                     return nearest;
             }
         }
 
-        static double adjustRounding(double nearest, double error, int roundingMode) {
-            if (roundingMode == 1 || !Double.isFinite(nearest) || error == 0 || Double.isNaN(error)) {
+        public static double adjustRounding(double nearest, double error, int roundingMode) {
+            if (roundingMode == LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_TO_EVEN || Double.isNaN(error)) {
+                return nearest;
+            }
+            if (roundingMode == LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY) {
+                if (error == 0 || !Double.isFinite(nearest)) {
+                    return nearest;
+                }
+                double adjacent = error > 0 ? Math.nextUp(nearest) : Math.nextDown(nearest);
+                double distance = Math.abs(adjacent - nearest);
+                return Math.abs(error) == distance / 2 && Math.abs(adjacent) > Math.abs(nearest) ? adjacent : nearest;
+            }
+            if (error == 0) {
                 return nearest;
             }
             boolean exactIsGreater = error > 0;
             switch (roundingMode) {
-                case 0:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
                     if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
                         return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
                     }
                     return nearest;
-                case 2:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
                     return exactIsGreater ? Math.nextUp(nearest) : nearest;
-                case 3:
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
                     return exactIsGreater ? nearest : Math.nextDown(nearest);
-                case 4:
-                    if ((nearest > 0 && !exactIsGreater) || (nearest < 0 && exactIsGreater)) {
-                        return exactIsGreater ? Math.nextUp(nearest) : Math.nextDown(nearest);
-                    }
-                    return nearest;
                 default:
                     return nearest;
             }
         }
 
-        static double addError(double left, double right, double result) {
+        public static double addError(double left, double right, double result) {
             double rightVirtual = result - left;
             return (left - (result - rightVirtual)) + (right - rightVirtual);
+        }
+
+        public static float exactZero(float result, int roundingMode) {
+            return result == 0 && roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE ? -0.0f : result;
+        }
+
+        public static double exactZero(double result, int roundingMode) {
+            return result == 0 && roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE ? -0.0d : result;
+        }
+
+        static double divisionError(double left, double right, double result) {
+            double remainder = Math.fma(-result, right, left);
+            return Math.copySign(Math.abs(remainder), remainder * right);
+        }
+
+        public static double adjustOverflow(double result, int roundingMode) {
+            if (result == Double.POSITIVE_INFINITY && (roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE || roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO)) {
+                return Double.MAX_VALUE;
+            } else if (result == Double.NEGATIVE_INFINITY && (roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE || roundingMode == LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO)) {
+                return -Double.MAX_VALUE;
+            }
+            return result;
         }
     }
 
@@ -466,11 +508,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         float doFloat(float left, float right) {
             float result = fpOp().doFloat(left, right);
             if (!getLanguage().getDefaultRoundingModeAssumption().isValid()) {
-                if (fpOp() == ADD) {
-                    return adjustRounding(result, (double) left + right, getRoundingMode());
-                } else if (fpOp() == SUB) {
-                    return adjustRounding(result, (double) left - right, getRoundingMode());
-                }
+                return fpOp().correctRounding(left, right, result, getRoundingMode());
             }
             return result;
         }
@@ -486,11 +524,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         double doDouble(double left, double right) {
             double result = fpOp().doDouble(left, right);
             if (!getLanguage().getDefaultRoundingModeAssumption().isValid()) {
-                if (fpOp() == ADD) {
-                    return adjustRounding(result, addError(left, right, result), getRoundingMode());
-                } else if (fpOp() == SUB) {
-                    return adjustRounding(result, addError(left, -right, result), getRoundingMode());
-                }
+                return fpOp().correctRounding(left, right, result, getRoundingMode());
             }
             return result;
         }
@@ -591,6 +625,23 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
+        float correctRounding(float left, float right, float result, int roundingMode) {
+            double exact = (double) left + right;
+            return exact == 0 ? LLVMFloatingArithmeticNode.exactZero(result, roundingMode) : LLVMFloatingArithmeticNode.adjustRounding(result, exact, roundingMode);
+        }
+
+        @Override
+        @TruffleBoundary
+        double correctRounding(double left, double right, double result, int roundingMode) {
+            if (left == -right) {
+                return LLVMFloatingArithmeticNode.exactZero(result, roundingMode);
+            }
+            return Double.isInfinite(result) && Double.isFinite(left) && Double.isFinite(right) ? LLVMFloatingArithmeticNode.adjustOverflow(result, roundingMode)
+                            : LLVMFloatingArithmeticNode.adjustRounding(result, LLVMFloatingArithmeticNode.addError(left, right, result), roundingMode);
+        }
+
+        @Override
         LLVMLongDoubleNode createFP80Node() {
             return LLVMLongDoubleNode.createAddNode(LongDoubleKinds.FP80);
         }
@@ -687,6 +738,26 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
+        float correctRounding(float left, float right, float result, int roundingMode) {
+            return LLVMFloatingArithmeticNode.adjustRounding(result, (double) left * right, roundingMode);
+        }
+
+        @Override
+        @TruffleBoundary
+        double correctRounding(double left, double right, double result, int roundingMode) {
+            if (!Double.isFinite(left) || !Double.isFinite(right)) {
+                return result;
+            }
+            double error = Math.fma(left, right, -result);
+            if (error == 0 && result == 0 && left != 0 && right != 0 && roundingMode != LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_TO_EVEN &&
+                            roundingMode != LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY) {
+                error = Math.copySign(Double.MIN_VALUE, left * right);
+            }
+            return Double.isInfinite(result) ? LLVMFloatingArithmeticNode.adjustOverflow(result, roundingMode) : LLVMFloatingArithmeticNode.adjustRounding(result, error, roundingMode);
+        }
+
+        @Override
         LLVMLongDoubleNode createFP80Node() {
             return LLVMLongDoubleNode.createMulNode(LongDoubleKinds.FP80);
         }
@@ -772,6 +843,23 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
+        float correctRounding(float left, float right, float result, int roundingMode) {
+            double exact = (double) left - right;
+            return exact == 0 ? LLVMFloatingArithmeticNode.exactZero(result, roundingMode) : LLVMFloatingArithmeticNode.adjustRounding(result, exact, roundingMode);
+        }
+
+        @Override
+        @TruffleBoundary
+        double correctRounding(double left, double right, double result, int roundingMode) {
+            if (left == right) {
+                return LLVMFloatingArithmeticNode.exactZero(result, roundingMode);
+            }
+            return Double.isInfinite(result) && Double.isFinite(left) && Double.isFinite(right) ? LLVMFloatingArithmeticNode.adjustOverflow(result, roundingMode)
+                            : LLVMFloatingArithmeticNode.adjustRounding(result, LLVMFloatingArithmeticNode.addError(left, -right, result), roundingMode);
+        }
+
+        @Override
         LLVMLongDoubleNode createFP80Node() {
             return LLVMLongDoubleNode.createSubNode(LongDoubleKinds.FP80);
         }
@@ -822,6 +910,25 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         double doDouble(double left, double right) {
             return left / right;
+        }
+
+        @Override
+        @TruffleBoundary
+        float correctRounding(float left, float right, float result, int roundingMode) {
+            if (!Float.isFinite(left) || !Float.isFinite(right) || right == 0) {
+                return result;
+            }
+            return LLVMFloatingArithmeticNode.adjustRounding(result, (double) left / right, roundingMode);
+        }
+
+        @Override
+        @TruffleBoundary
+        double correctRounding(double left, double right, double result, int roundingMode) {
+            if (!Double.isFinite(left) || !Double.isFinite(right) || right == 0) {
+                return result;
+            }
+            return Double.isInfinite(result) ? LLVMFloatingArithmeticNode.adjustOverflow(result, roundingMode)
+                            : LLVMFloatingArithmeticNode.adjustRounding(result, LLVMFloatingArithmeticNode.divisionError(left, right, result), roundingMode);
         }
 
         @Override
@@ -908,6 +1015,18 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         double doDouble(double left, double right) {
             return left % right;
+        }
+
+        @Override
+        @TruffleBoundary
+        float correctRounding(@SuppressWarnings("unused") float left, @SuppressWarnings("unused") float right, float result, @SuppressWarnings("unused") int roundingMode) {
+            return result;
+        }
+
+        @Override
+        @TruffleBoundary
+        double correctRounding(@SuppressWarnings("unused") double left, @SuppressWarnings("unused") double right, double result, @SuppressWarnings("unused") int roundingMode) {
+            return result;
         }
 
         @Override

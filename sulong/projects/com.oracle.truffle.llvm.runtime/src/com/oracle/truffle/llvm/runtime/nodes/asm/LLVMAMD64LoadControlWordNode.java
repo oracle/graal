@@ -40,6 +40,8 @@ public abstract class LLVMAMD64LoadControlWordNode extends LLVMStatementNode {
 
     @Specialization
     protected void doLoad(short controlWord) {
+        // Sulong models the x87 rounding-control field only. Precision, exception masks, and the
+        // remaining x87 control state have no corresponding guest state.
         int roundingControl = (Short.toUnsignedInt(controlWord) >>> 10) & 3;
         int roundingMode;
         switch (roundingControl) {
@@ -47,13 +49,13 @@ public abstract class LLVMAMD64LoadControlWordNode extends LLVMStatementNode {
                 roundingMode = LLVMLanguage.DEFAULT_ROUNDING_MODE;
                 break;
             case 1:
-                roundingMode = 2; // round downward
+                roundingMode = LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE;
                 break;
             case 2:
-                roundingMode = 3; // round upward
+                roundingMode = LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE;
                 break;
             case 3:
-                roundingMode = 4; // round toward zero
+                roundingMode = LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO;
                 break;
             default:
                 throw new AssertionError();

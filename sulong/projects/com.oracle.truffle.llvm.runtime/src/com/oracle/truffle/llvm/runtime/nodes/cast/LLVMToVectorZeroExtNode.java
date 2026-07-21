@@ -101,7 +101,8 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             assert from.getLength() == getVectorLength();
             final short[] vector = new short[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = (short) from.getValue(i);
+                float value = from.getValue(i);
+                vector[i] = value < -(float) Short.MIN_VALUE ? (short) value : (short) ((short) (value + Short.MIN_VALUE) - Short.MIN_VALUE);
             }
             return LLVMI16Vector.create(vector);
         }
@@ -112,7 +113,8 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             assert from.getLength() == getVectorLength();
             final short[] vector = new short[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = (short) from.getValue(i);
+                double value = from.getValue(i);
+                vector[i] = value < -(double) Short.MIN_VALUE ? (short) value : (short) ((short) (value + Short.MIN_VALUE) - Short.MIN_VALUE);
             }
             return LLVMI16Vector.create(vector);
         }
@@ -166,7 +168,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             final int[] vector = new int[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
                 float value = from.getValue(i);
-                vector[i] = value < Integer.MAX_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+                vector[i] = value < -(float) Integer.MIN_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
             }
             return LLVMI32Vector.create(vector);
         }
@@ -178,7 +180,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             final int[] vector = new int[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
                 double value = from.getValue(i);
-                vector[i] = value < Integer.MAX_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+                vector[i] = value < -(double) Integer.MIN_VALUE ? (int) value : (int) (value + Integer.MIN_VALUE) - Integer.MIN_VALUE;
             }
             return LLVMI32Vector.create(vector);
         }

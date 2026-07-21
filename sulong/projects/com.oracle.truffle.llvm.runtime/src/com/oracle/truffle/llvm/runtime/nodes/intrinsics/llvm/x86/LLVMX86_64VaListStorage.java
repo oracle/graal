@@ -417,7 +417,10 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         int usedGpArea = 0;
         for (int i = 0; i < numberOfExplicitArguments && usedGpArea < X86_64BitVarArgs.GP_LIMIT; i++) {
             if (getVarArgArea(realArguments[i]) == VarArgArea.GP_AREA) {
-                usedGpArea += getGpAreaSize(realArguments[i]);
+                int argumentSize = getGpAreaSize(realArguments[i]);
+                if (usedGpArea + argumentSize <= X86_64BitVarArgs.GP_LIMIT) {
+                    usedGpArea += argumentSize;
+                }
             }
         }
 
@@ -434,7 +437,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     private static long alignOverflowArea(long offset, Object arg) {
         int alignment = X86_64BitVarArgs.STACK_STEP;
-        if (arg instanceof LLVM80BitFloat || arg instanceof LLVMVarArgCompoundValue && ((LLVMVarArgCompoundValue) arg).getAlignment() > X86_64BitVarArgs.STACK_STEP) {
+        if (arg instanceof LLVM80BitFloat || arg instanceof LLVMVarArgCompoundValue && ((LLVMVarArgCompoundValue) arg).getAlignment() > X86_64BitVarArgs.STACK_STEP ||
+                        isIVarBit(arg) && getIVarBitBytes(arg).length > X86_64BitVarArgs.STACK_STEP) {
             alignment = 2 * X86_64BitVarArgs.STACK_STEP;
         }
         return (offset + alignment - 1) & -alignment;
@@ -657,8 +661,9 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         switch (varArgArea) {
             case GP_AREA:
                 regSaveOffs = X86_64BitVarArgs.GP_OFFSET;
-                regSaveStep = X86_64BitVarArgs.GP_STEP;
-                regSaveLimit = X86_64BitVarArgs.GP_LIMIT;
+                regSaveStep = getGpAreaSize(type);
+                // An i128 must fit entirely in the remaining two GP save slots.
+                regSaveLimit = X86_64BitVarArgs.GP_LIMIT - regSaveStep + X86_64BitVarArgs.GP_STEP;
                 break;
 
             case FP_AREA:
@@ -690,12 +695,30 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
         // overflow area
         if (isNativizedProfile.profile(isNativized())) {
-            return loadFromArea.execute(vaListStackPtr, X86_64BitVarArgs.OVERFLOW_ARG_AREA, 0, 8, type);
+            int offset = 0;
+            int step = X86_64BitVarArgs.STACK_STEP;
+            if (type instanceof com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) {
+                step = getGpAreaSize(type);
+                if (step > X86_64BitVarArgs.STACK_STEP) {
+                    LLVMPointer overflowArea = readLib.readPointer(this, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
+                    offset = getAlignmentOffset(overflowArea, 2 * X86_64BitVarArgs.STACK_STEP);
+                    step += offset;
+                }
+            }
+            return loadFromArea.execute(vaListStackPtr, X86_64BitVarArgs.OVERFLOW_ARG_AREA, offset, step, type);
         } else {
             Object currentArg = this.overflowArgArea.getCurrentArg();
             this.overflowArgArea.shift(1);
             return currentArg;
         }
+    }
+
+    private static int getGpAreaSize(Type type) {
+        if (type instanceof com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) {
+            int bytes = (int) ((((com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) type).getBitSize() + Byte.SIZE - 1) / Byte.SIZE);
+            return (bytes + X86_64BitVarArgs.GP_STEP - 1) & -X86_64BitVarArgs.GP_STEP;
+        }
+        return X86_64BitVarArgs.GP_STEP;
     }
 
     @SuppressWarnings("static-method")

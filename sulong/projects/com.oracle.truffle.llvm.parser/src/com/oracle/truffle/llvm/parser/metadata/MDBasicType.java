@@ -93,12 +93,12 @@ public final class MDBasicType extends MDType implements MDBaseNode {
         // [distinct | sizeIsMetadata, tag, name, size, align, enc, flags, ...]
         final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_TAG];
-        final long size = getMetadataOrConstant(args[ARGINDEX_SIZE], sizeIsMetadata, md, null);
         final long align = args[ARGINDEX_ALIGN];
         final long encoding = args[ARGINDEX_ENCODING];
         final long flags = args.length > ARGINDEX_FLAGS ? args[ARGINDEX_FLAGS] : 0;
 
-        final MDBasicType basicType = new MDBasicType(tag, -1L, size, align, -1L, flags, encoding);
+        final MDBasicType basicType = new MDBasicType(tag, -1L, 0, align, -1L, flags, encoding);
+        basicType.setSize(getMetadataOrConstant(args[ARGINDEX_SIZE], sizeIsMetadata, md, basicType::setSize));
         basicType.setName(md.getNullable(args[ARGINDEX_NAME], basicType));
         return basicType;
     }

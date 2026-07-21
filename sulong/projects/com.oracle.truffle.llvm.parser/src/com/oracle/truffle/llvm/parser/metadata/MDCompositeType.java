@@ -123,13 +123,13 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_38_TAG];
         final long line = args[ARGINDEX_38_LINE];
-        final long size = getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, null);
         final long align = args[ARGINDEX_38_ALIGN];
-        final long offset = getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, null);
         final long flags = args[ARGINDEX_38_FLAGS];
         final long lang = args[ARGINDEX_38_RUNTIMELANGUAGE];
 
-        final MDCompositeType compositeType = new MDCompositeType(tag, line, size, align, offset, flags, lang);
+        final MDCompositeType compositeType = new MDCompositeType(tag, line, 0, align, 0, flags, lang);
+        compositeType.setSize(getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, compositeType::setSize));
+        compositeType.setOffset(getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, compositeType::setOffset));
 
         compositeType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], compositeType);
         compositeType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], compositeType);

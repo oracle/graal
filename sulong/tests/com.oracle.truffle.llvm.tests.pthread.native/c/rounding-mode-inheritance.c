@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
+ * Copyright (c) 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStackFactory.LLVMAllocaInstructionNodeGen;
-import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+/* Verify that pthread_create inherits the creator's floating-point rounding mode. */
+#include <pthread.h>
+#include <stdint.h>
 
-public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
+extern void llvm_set_rounding(int mode) __asm__("llvm.set.rounding");
+extern int llvm_get_rounding(void) __asm__("llvm.get.rounding");
 
-    @Child private LLVMAllocaInstruction allocation;
+static void *read_rounding_mode(void *unused) {
+    (void) unused;
+    return (void *) (intptr_t) llvm_get_rounding();
+}
 
-    public LLVMNativeVarargsAreaStackAllocationNode() {
-        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 16, null);
+int main(void) {
+    pthread_t thread;
+    void *result;
+
+    llvm_set_rounding(2);
+    if (pthread_create(&thread, NULL, read_rounding_mode, NULL) != 0) {
+        return 1;
     }
-
-    @Specialization
-    protected LLVMPointer alloc(VirtualFrame frame, long size) {
-        return allocation.executeWithTarget(frame, size);
+    llvm_set_rounding(3);
+    if (pthread_join(thread, &result) != 0) {
+        return 1;
     }
+    return (intptr_t) result == 2 ? 0 : 1;
 }

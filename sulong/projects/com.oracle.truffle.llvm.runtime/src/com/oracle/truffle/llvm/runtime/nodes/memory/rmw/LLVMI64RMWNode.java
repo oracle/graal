@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
@@ -49,6 +50,13 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value) {
             return getLanguage().getLLVMMemory().getAndSetI64(this, address, value);
+        }
+
+        @Specialization
+        protected LLVMPointer doOp(LLVMNativePointer address, LLVMPointer value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            long oldValue = getLanguage().getLLVMMemory().getAndSetI64(this, address, toNative.executeWithTarget(value).asNative());
+            return LLVMNativePointer.create(oldValue);
         }
 
         @Specialization

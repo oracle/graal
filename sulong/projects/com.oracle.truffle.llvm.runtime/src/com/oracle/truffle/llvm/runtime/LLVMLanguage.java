@@ -115,7 +115,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    public static final int DEFAULT_ROUNDING_MODE = 1;
+    public static final int ROUNDING_MODE_TOWARD_ZERO = 0;
+    public static final int ROUNDING_MODE_NEAREST_TIES_TO_EVEN = 1;
+    public static final int ROUNDING_MODE_TOWARD_POSITIVE = 2;
+    public static final int ROUNDING_MODE_TOWARD_NEGATIVE = 3;
+    public static final int ROUNDING_MODE_NEAREST_TIES_AWAY = 4;
+    public static final int DEFAULT_ROUNDING_MODE = ROUNDING_MODE_NEAREST_TIES_TO_EVEN;
 
     @CompilationFinal public boolean singleContext = true;
 

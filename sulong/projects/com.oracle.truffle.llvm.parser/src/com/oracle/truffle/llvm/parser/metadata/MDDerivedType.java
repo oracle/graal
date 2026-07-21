@@ -97,12 +97,12 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_38_TAG];
         final long line = args[ARGINDEX_38_LINE];
-        final long size = getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, null);
         final long align = args[ARGINDEX_38_ALIGN];
-        final long offset = getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, null);
         final long flags = args[ARGINDEX_38_FLAGS];
 
-        final MDDerivedType derivedType = new MDDerivedType(tag, line, size, align, offset, flags);
+        final MDDerivedType derivedType = new MDDerivedType(tag, line, 0, align, 0, flags);
+        derivedType.setSize(getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, derivedType::setSize));
+        derivedType.setOffset(getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, derivedType::setOffset));
 
         derivedType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], derivedType);
         derivedType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], derivedType);

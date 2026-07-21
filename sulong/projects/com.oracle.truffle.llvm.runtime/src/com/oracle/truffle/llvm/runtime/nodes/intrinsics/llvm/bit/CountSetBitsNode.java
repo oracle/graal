@@ -76,7 +76,12 @@ public abstract class CountSetBitsNode {
         @Specialization
         protected LLVMIVarBit doIVar(LLVMIVarBit value) {
             int count = 0;
-            for (byte b : value.getBytes()) {
+            byte[] bytes = value.getBytes();
+            for (int i = 0; i < bytes.length; i++) {
+                byte b = bytes[i];
+                if (i == 0 && value.getBitSize() % Byte.SIZE != 0) {
+                    b &= (byte) (0xFF >>> (Byte.SIZE - value.getBitSize() % Byte.SIZE));
+                }
                 count += Integer.bitCount(Byte.toUnsignedInt(b));
             }
             return LLVMIVarBit.createZeroExt(getBitWidth(), count);

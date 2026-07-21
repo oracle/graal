@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
+ * Copyright (c) 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory;
+package com.oracle.truffle.llvm.tests.internal;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStackFactory.LLVMAllocaInstructionNodeGen;
-import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import static org.junit.Assert.assertEquals;
 
-public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
+import org.junit.Test;
 
-    @Child private LLVMAllocaInstruction allocation;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMFloatingArithmeticNode;
 
-    public LLVMNativeVarargsAreaStackAllocationNode() {
-        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 16, null);
-    }
+public class RoundingModeTest {
 
-    @Specialization
-    protected LLVMPointer alloc(VirtualFrame frame, long size) {
-        return allocation.executeWithTarget(frame, size);
+    @Test
+    public void nearestTiesAwayRoundsHalfwayValuesAwayFromZero() {
+        float floatNearest = 1.0f;
+        double floatHalfway = 1.0 + Math.scalb(1.0, -24);
+        assertEquals(Math.nextUp(floatNearest), LLVMFloatingArithmeticNode.adjustRounding(floatNearest, floatHalfway, LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY), 0.0f);
+
+        double doubleNearest = 1.0;
+        double doubleHalfUlp = Math.scalb(1.0, -53);
+        assertEquals(Math.nextUp(doubleNearest), LLVMFloatingArithmeticNode.adjustRounding(doubleNearest, doubleHalfUlp, LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY), 0.0);
     }
 }

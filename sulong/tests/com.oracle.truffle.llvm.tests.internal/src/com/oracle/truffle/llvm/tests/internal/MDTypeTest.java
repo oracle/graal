@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
+ * Copyright (c) 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory;
+package com.oracle.truffle.llvm.tests.internal;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStackFactory.LLVMAllocaInstructionNodeGen;
-import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import static org.junit.Assert.assertEquals;
 
-public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
+import org.junit.Test;
 
-    @Child private LLVMAllocaInstruction allocation;
+import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-    public LLVMNativeVarargsAreaStackAllocationNode() {
-        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 16, null);
-    }
+public class MDTypeTest {
 
-    @Specialization
-    protected LLVMPointer alloc(VirtualFrame frame, long size) {
-        return allocation.executeWithTarget(frame, size);
+    @Test
+    public void forwardReferencedSizeIsUpdatedWhenMetadataIsParsed() {
+        MetadataValueList metadata = new MetadataValueList();
+        // sizeIsMetadata, tag, name, size metadata reference, align, encoding, flags
+        MDBasicType type = MDBasicType.create38(new long[]{2, 0, 0, 1, 0, 0, 0}, metadata);
+
+        assertEquals(0, type.getSize());
+        metadata.add(MDValue.create(new IntegerConstant(PrimitiveType.I64, 64)));
+        assertEquals(64, type.getSize());
     }
 }

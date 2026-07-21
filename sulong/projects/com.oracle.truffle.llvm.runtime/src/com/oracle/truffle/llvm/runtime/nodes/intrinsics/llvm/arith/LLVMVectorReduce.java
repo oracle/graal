@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMFloatingArithmeticNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -56,8 +57,18 @@ public abstract class LLVMVectorReduce {
         protected float doVector(float start, LLVMFloatVector value) {
             assert value.getLength() == getVectorLength();
             float result = start;
-            for (int i = 0; i < getVectorLength(); i++) {
-                result += value.getValue(i);
+            if (getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                for (int i = 0; i < getVectorLength(); i++) {
+                    result += value.getValue(i);
+                }
+            } else {
+                int roundingMode = getLanguage().getRoundingMode();
+                for (int i = 0; i < getVectorLength(); i++) {
+                    float right = value.getValue(i);
+                    float nearest = result + right;
+                    double exact = (double) result + right;
+                    result = exact == 0 ? LLVMFloatingArithmeticNode.exactZero(nearest, roundingMode) : LLVMFloatingArithmeticNode.adjustRounding(nearest, exact, roundingMode);
+                }
             }
             return result;
         }
@@ -67,8 +78,23 @@ public abstract class LLVMVectorReduce {
         protected double doVector(double start, LLVMDoubleVector value) {
             assert value.getLength() == getVectorLength();
             double result = start;
-            for (int i = 0; i < getVectorLength(); i++) {
-                result += value.getValue(i);
+            if (getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                for (int i = 0; i < getVectorLength(); i++) {
+                    result += value.getValue(i);
+                }
+            } else {
+                int roundingMode = getLanguage().getRoundingMode();
+                for (int i = 0; i < getVectorLength(); i++) {
+                    double right = value.getValue(i);
+                    double nearest = result + right;
+                    if (result == -right) {
+                        result = LLVMFloatingArithmeticNode.exactZero(nearest, roundingMode);
+                    } else if (Double.isInfinite(nearest) && Double.isFinite(result) && Double.isFinite(right)) {
+                        result = LLVMFloatingArithmeticNode.adjustOverflow(nearest, roundingMode);
+                    } else {
+                        result = LLVMFloatingArithmeticNode.adjustRounding(nearest, LLVMFloatingArithmeticNode.addError(result, right, nearest), roundingMode);
+                    }
+                }
             }
             return result;
         }
@@ -83,9 +109,12 @@ public abstract class LLVMVectorReduce {
         @ExplodeLoop
         protected float doVector(LLVMFloatVector value) {
             assert value.getLength() == getVectorLength();
-            float result = Float.NEGATIVE_INFINITY;
-            for (int i = 0; i < getVectorLength(); i++) {
-                result = Math.max(result, value.getValue(i));
+            float result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                float element = value.getValue(i);
+                if (!Float.isNaN(element)) {
+                    result = Float.isNaN(result) ? element : Math.max(result, element);
+                }
             }
             return result;
         }
@@ -94,9 +123,12 @@ public abstract class LLVMVectorReduce {
         @ExplodeLoop
         protected double doVector(LLVMDoubleVector value) {
             assert value.getLength() == getVectorLength();
-            double result = Double.NEGATIVE_INFINITY;
-            for (int i = 0; i < getVectorLength(); i++) {
-                result = Math.max(result, value.getValue(i));
+            double result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                double element = value.getValue(i);
+                if (!Double.isNaN(element)) {
+                    result = Double.isNaN(result) ? element : Math.max(result, element);
+                }
             }
             return result;
         }
