@@ -69,7 +69,7 @@ import sun.security.util.Debug;
  * factory-method registration. It instantiates accepted candidates through the declared nullary
  * constructor or static {@code provider()} method, then registers their service implementation
  * classes. The service-driven path calls the same service-registration machinery independently.
- * These mechanisms implement §FS-security-providers and §FS-security-providers.1.
+ * These mechanisms implement §FS-security-providers.2 and §FS-security-providers.3.
  *
  * During analysis, the feature obtains each included provider's JCE verification result and stores
  * it in this image singleton, keyed by provider class name and provider name. The feature removes
@@ -95,7 +95,7 @@ import sun.security.util.Debug;
  * an opaque, non-initializing {@code Class.forName} lookup using the provider's class loader. The
  * opaque name prevents image-build analysis from removing the probe. The lookup enters the regular
  * missing-reflection-registration machinery required by
- * §FS-security-providers.3. A successful lookup without a verification result is
+ * §FS-security-providers.5.3. A successful lookup without a verification result is
  * an internal invariant violation.
  *
  * ## 4. Run-Time Provider Construction
