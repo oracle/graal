@@ -110,7 +110,7 @@ While loading the file in such an application may render a graph, it likely will
 
 [Oracle Developer Studio](https://www.oracle.com/technetwork/server-storage/developerstudio/overview/index.html) includes a
 [Performance Analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
-Developer Studio can be [downloaded from OTN](https://www.oracle.com/technetwork/server-storage/developerstudio/downloads/index.html) and the current version at time of writing (12.6) provides a perpetual no-cost license for production use and the development of commercial applications.
+Developer Studio can be [downloaded from Oracle](https://www.oracle.com/tools/developerstudio/downloads/developer-studio-jsp.html) and the current version at time of writing (12.6) provides a perpetual no-cost license for production use and the development of commercial applications.
 
 Using the Developer Studio Performance Analyser is straightforward. Include the path to the Developer Studio binaries in your `PATH` and then prefix your normal command-line with `collect`.
 For example:

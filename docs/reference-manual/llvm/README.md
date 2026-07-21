@@ -24,11 +24,6 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
       * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-linux-aarch64.tar.gz)
       * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-macos-aarch64.tar.gz)
       * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-windows-amd64.zip)
-   - JVM standalone
-      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.1.3-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.1.3-linux-aarch64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.1.3-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-25.1.3-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -42,7 +37,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     tar -xzf <archive>.tar.gz
     ```
 
-3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalVM LLVM runtime is active:
+3. Check the version to see that the GraalVM LLVM runtime is active:
     ```shell
     ./path/to/bin/lli --version
     ```

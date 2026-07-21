@@ -67,7 +67,7 @@ The following minimum versions are required for Native Image compilation:
 
 ### Install Visual Studio Build Tools and Windows SDK
 
-1. Download the Visual Studio Build Tools 2022 or later (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
+1. Download the Visual Studio Build Tools 2022 or later (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/vs/older-downloads/){:target="_blank"}.
 
 2. Start the installation by opening the file you downloaded, and then click **Continue**:
 
