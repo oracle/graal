@@ -53,10 +53,65 @@ import jdk.graal.compiler.api.replacements.Fold;
 import sun.security.util.Debug;
 
 /**
- * The class that holds various build-time and run-time structures necessary for security providers
- * (see the <a href=
- * "../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
- * JCA Security Services documentation</a> for details).
+ * AR-security-providers: Security Provider Architecture
+ *
+ * This class holds the build-time and run-time structures for JCA security-provider inclusion,
+ * verification, and metadata tracing. The required behavior is specified separately by
+ * §FS-security-providers.
+ * See the <a href="../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
+ * JCA Security Services documentation</a> for the user-facing configuration model.
+ *
+ * ## 1. Build-Time Inclusion and Verification
+ *
+ * {@code SecurityServicesFeature} coordinates two analysis inputs: subtype reachability discovers
+ * candidate {@link Provider} classes, and JCA factory reachability discovers used service types.
+ * For a provider candidate, the feature queries the reflection registry for type, constructor, or
+ * factory-method registration. It instantiates accepted candidates through the declared nullary
+ * constructor or static {@code provider()} method, then registers their service implementation
+ * classes. The service-driven path calls the same service-registration machinery independently.
+ * These mechanisms implement §FS-security-providers and §FS-security-providers.1.
+ *
+ * During analysis, the feature obtains each included provider's JCE verification result and stores
+ * it in this image singleton, keyed by provider class name and provider name. The feature removes
+ * those entries from the JDK's object-keyed cache so build-time provider instances do not remain
+ * reachable in the image heap.
+ *
+ * ## 2. Run-Time Verification-Result Lookup
+ *
+ * The {@code javax.crypto.JceSecurity} substitutions consult the maps in this singleton when the
+ * JDK verification cache has no entry. {@link Boolean#TRUE} encodes successful verification; an
+ * exception object encodes the original verification failure. This lets run-time JCE checks reuse
+ * the build-time result without retaining the provider instance or repeating JAR verification.
+ *
+ * ## 3. Type and Constructor Tracing
+ *
+ * The metadata tracer represents provider loading as two distinct accesses: a dynamic
+ * {@link Class#forName(String)} lookup records the type, and constructor access records how the
+ * provider is instantiated. Because the JCE lookup already has a provider instance,
+ * {@link #traceProviderLookup(Provider)} emits the constructor access directly instead of creating
+ * another provider. This is the native-image counterpart of the Tracing Agent's provider event.
+ *
+ * On a verification-result cache miss, {@link #reportMissingProviderRegistration(Class)} performs
+ * an opaque, non-initializing {@code Class.forName} lookup using the provider's class loader. The
+ * opaque name prevents image-build analysis from removing the probe. The lookup enters the regular
+ * missing-reflection-registration machinery required by
+ * §FS-security-providers.3. A successful lookup without a verification result is
+ * an internal invariant violation.
+ *
+ * ## 4. Run-Time Provider Construction
+ *
+ * With run-time provider initialization, the {@code ProviderConfig} substitutions ask this class
+ * to construct included JDK providers directly. Other configured providers follow the JDK's
+ * reflective loading path. The substitutions preserve the JDK's provider-list state, recursion
+ * guard, and retry counter, while the verification maps remain independent of provider creation.
+ *
+ * ## 5. Concurrent Analysis Registration
+ *
+ * Provider subtype callbacks add candidates to a concurrent set and mark it changed. A serialized
+ * security-services analysis pass consumes new candidates and requests another analysis iteration
+ * when processing registers new reflection or JNI metadata. The callbacks do not request analysis
+ * iterations themselves, so concurrent discovery cannot race with iteration scheduling or lose
+ * registrations pending for a later iteration.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class SecurityProvidersSupport {
@@ -154,6 +209,7 @@ public final class SecurityProvidersSupport {
         };
     }
 
+    /** §AR-security-providers.3: Cache misses probe type access for standard diagnostics. */
     public static void reportMissingProviderRegistration(Class<?> providerClass) {
         try {
             Class.forName(GraalDirectives.opaque(providerClass.getName()), false, providerClass.getClassLoader());
@@ -163,6 +219,7 @@ public final class SecurityProvidersSupport {
         throw VMError.shouldNotReachHere("A security provider without a verification result was registered for reflection: " + providerClass.getName());
     }
 
+    /** §AR-security-providers.3: Existing providers trace constructor access directly. */
     public static Provider traceProviderLookup(Provider provider) {
         if (provider == null) {
             return null;
