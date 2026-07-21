@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -459,7 +459,15 @@ final class PolyglotContextConfig {
         if (values == null) {
             values = instrument.getEngineOptionValues();
         }
-        return values.copy();
+        return values;
+    }
+
+    OptionValuesImpl getInstrumentOptionValuesIfExists(PolyglotInstrument instrument) {
+        OptionValuesImpl values = optionsById.get(instrument.getId());
+        if (values == null) {
+            values = instrument.getOptionValuesIfExists();
+        }
+        return values;
     }
 
     Set<PolyglotLanguage> getConfiguredLanguages() {

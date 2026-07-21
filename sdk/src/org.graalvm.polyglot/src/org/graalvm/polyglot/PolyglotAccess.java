@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.polyglot.Engine.ToStringSupport;
 
 /**
  * Represents an access policy for polyglot builtins in the guest languages.
@@ -216,6 +217,22 @@ public final class PolyglotAccess {
     public static final PolyglotAccess ALL = new PolyglotAccess(true, null, null);
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 25.3
+     */
+    @Override
+    public String toString() {
+        if (this == NONE) {
+            return "PolyglotAccess.NONE";
+        } else if (this == ALL) {
+            return "PolyglotAccess.ALL";
+        } else {
+            return "PolyglotAccess[allAccess=" + allAccess + ", evalAccess=" + getEvalAccess() + ", bindingsAccess=" + getBindingsAccess() + "]";
+        }
+    }
+
+    /**
      * Creates a new custom polyglot access configuration builder. A polyglot access builder starts
      * with no access rights.
      *
@@ -377,6 +394,30 @@ public final class PolyglotAccess {
                 bindingsAccess.remove(language);
             }
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("PolyglotAccess.newBuilder()");
+            if (evalAccess != null) {
+                MapCursor<String, EconomicSet<String>> cursor = evalAccess.getEntries();
+                while (cursor.advance()) {
+                    for (String target : cursor.getValue()) {
+                        ToStringSupport.appendCall(b, "allowEval", ToStringSupport.quote(cursor.getKey()), ToStringSupport.quote(target));
+                    }
+                }
+            }
+            if (bindingsAccess != null) {
+                for (String language : bindingsAccess) {
+                    ToStringSupport.appendCall(b, "allowBindingsAccess", ToStringSupport.quote(language));
+                }
+            }
+            return b.toString();
         }
 
         /**

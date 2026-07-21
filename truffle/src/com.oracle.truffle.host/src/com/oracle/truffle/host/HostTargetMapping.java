@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,27 @@ final class HostTargetMapping implements Comparable<HostTargetMapping> {
 
     public int compareTo(HostTargetMapping o) {
         return Integer.compare(hostPriority, o.hostPriority);
+    }
+
+    @Override
+    public String toString() {
+        return "HostTargetMapping[sourceType=" + sourceType.getTypeName() + ", targetType=" + targetType.getTypeName() + ", accepts=" + (accepts == null ? "null" : "<predicate>") +
+                        ", converter=<function>, precedence=" +
+                        getPrecedence() + "]";
+    }
+
+    private TargetMappingPrecedence getPrecedence() {
+        if (hostPriority == HostToTypeNode.HIGHEST) {
+            return TargetMappingPrecedence.HIGHEST;
+        } else if (hostPriority == HostToTypeNode.STRICT) {
+            return TargetMappingPrecedence.HIGH;
+        } else if (hostPriority == HostToTypeNode.LOOSE) {
+            return TargetMappingPrecedence.LOW;
+        } else if (hostPriority == HostToTypeNode.LOWEST) {
+            return TargetMappingPrecedence.LOWEST;
+        } else {
+            throw new AssertionError("invalid host priority");
+        }
     }
 
 }

@@ -106,6 +106,56 @@ abstract class ForeignEngineDispatch extends AbstractEngineDispatch {
     public abstract @ByRemoteReference(ForeignOptionDescriptors.class) OptionDescriptors getOptions(Object receiver);
 
     @Override
+    public final String toString(Object receiver, int identityHash, String isolateDescription) {
+        ForeignEngine foreignEngine = (ForeignEngine) receiver;
+        Peer peer = foreignEngine.getPeer();
+        synchronized (foreignEngine) {
+            if (!foreignEngine.isClosed()) {
+                Isolate<?> isolate = peer.getIsolate();
+                try {
+                    IsolateThread isolateThread = isolate.tryEnter();
+                    if (isolateThread != null) {
+                        try {
+                            return toStringImpl(receiver, identityHash, formatIsolate(peer, false));
+                        } finally {
+                            isolateThread.leave();
+                        }
+                    }
+                } catch (IsolateDeathException isolateDeath) {
+                    // Fall through and return unavailable.
+                }
+            }
+            return unavailableToString("Engine", identityHash, peer);
+        }
+    }
+
+    @ReceiverMethod("toString")
+    @IsolateDeathHandler(IsolateDeathHandlerSupport.KeepIsolateDeathException.class)
+    abstract String toStringImpl(Object receiver, int identityHash, String isolate);
+
+    static String unavailableToString(String type, int identityHash, Peer peer) {
+        return type + "[id=" + Integer.toHexString(identityHash) + ", isolate=" + formatIsolate(peer, true) + "]";
+    }
+
+    static String formatIsolate(Peer peer, boolean unavailable) {
+        Isolate<?> isolate = peer.getIsolate();
+        StringBuilder b = new StringBuilder();
+        if (peer instanceof ProcessPeer) {
+            b.append("EXTERNAL[pid=");
+            b.append(isolate.getIsolateId());
+        } else {
+            b.append("INTERNAL[id=0x");
+            b.append(Long.toHexString(isolate.getIsolateId()));
+        }
+        if (unavailable) {
+            b.append(", state=");
+            b.append(isolate.isDisposed() ? "DISPOSED" : "CLOSING");
+        }
+        b.append("]");
+        return b.toString();
+    }
+
+    @Override
     public final void close(Object receiver, @Null Object apiObject, boolean cancelIfExecuting) {
         ForeignEngine foreignEngine = (ForeignEngine) receiver;
         Isolate<?> isolate = foreignEngine.getPeer().getIsolate();

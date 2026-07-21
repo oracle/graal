@@ -784,7 +784,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Builder.allowEnvironmentAccess(EnvironmentAccess) is set to INHERIT, but must be set to EnvironmentAccess.NONE.");
+                assertSandboxPolicyException(iae, "Builder.allowEnvironmentAccess(EnvironmentAccess) is set to EnvironmentAccess.INHERIT, but must be set to EnvironmentAccess.NONE.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
