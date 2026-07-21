@@ -322,6 +322,8 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
 
         rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
 
+        rci.initializeAtRunTime("jdk.internal.org.jline.terminal.impl.ffm", "Contains multiple classes with static fields referencing native memory segments");
+
         /* Ensure "enhanced exception messages" are initialized (JDK 25+26, JDK-8348986). */
         var exceptionsClass = GuestAccess.get().lookupType("jdk.internal.util.Exceptions");
         var exceptionsSetup = JVMCIReflectionUtil.getUniqueDeclaredMethod(exceptionsClass, "setup");
