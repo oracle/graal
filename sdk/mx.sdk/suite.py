@@ -41,7 +41,7 @@
 suite = {
   "mxversion": "7.83.0",
   "name" : "sdk",
-  "version" : "25.2.4",
+  "version" : "25.3.4",
   "release_from" : "tag:vm",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
