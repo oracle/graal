@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.APP_LAYER_ONLY_TRAIT;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -100,7 +99,7 @@ import jdk.graal.compiler.options.OptionsContainer;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
+public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport implements AutoCloseable {
 
     private static String layerCreatePossibleOptions() {
         return "[" + IncludeOptionsSupport.possibleExtendedOptions() + "]";
@@ -112,7 +111,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
     private final ImageClassLoader imageClassLoader;
     private final SharedLayerSnapshotData.Loader snapshot;
-    private final List<FileChannel> graphsChannels;
     private final WriteLayerArchiveSupport writeLayerArchiveSupport;
     private final LoadLayerArchiveSupport loadLayerArchiveSupport;
     /**
@@ -132,13 +130,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private static final String DIGEST_IGNORE = "digest-ignore";
 
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
-                    SharedLayerSnapshotData.Loader snapshot, List<FileChannel> graphsChannels,
+                    SharedLayerSnapshotData.Loader snapshot,
                     boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
                     WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
         this.imageClassLoader = imageClassLoader;
         this.snapshot = snapshot;
-        this.graphsChannels = graphsChannels;
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
         this.singletonTraitInjector = singletonTraitInjector;
@@ -202,8 +199,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return snapshot;
     }
 
-    public FileChannel getGraphsChannel() {
-        return graphsChannels.getFirst();
+    @Override
+    public void close() {
+        if (loader != null) {
+            loader.close();
+        }
     }
 
     public Class<?> lookupClass(boolean optional, String className) {
@@ -458,7 +458,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
         SharedLayerSnapshotData.Loader snapshot = null;
-        List<FileChannel> graphs = List.of();
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values.get());
             boolean enableLogging = LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredArchiving.getValue(values.get());
@@ -466,12 +465,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             boolean strict = LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue(values.get());
             boolean verbose = LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerificationVerbose.getValue(values.get());
             loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict, verbose);
-            try {
-                graphs = List.of(FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath()));
-            } catch (IOException e) {
-                throw AnalysisError.shouldNotReachHere("Error during image layer snapshot graphs loading " + loadLayerArchiveSupport.getSnapshotGraphsPath(), e);
-            }
-
             SharedLayerSnapshotFormat sharedLayerSnapshotFormat = new CapnProtoSharedLayerSnapshotFormat();
             try {
                 snapshot = sharedLayerSnapshotFormat.load(loadLayerArchiveSupport.getSnapshotPath());
@@ -492,7 +485,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             };
         }
 
-        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, graphs, buildingImageLayer,
+        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, buildingImageLayer,
                         buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport, singletonTraitInjector);
 
         if (buildingExtensionLayer) {
