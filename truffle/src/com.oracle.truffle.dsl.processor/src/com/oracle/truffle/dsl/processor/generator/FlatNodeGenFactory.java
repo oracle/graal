@@ -5006,16 +5006,6 @@ public class FlatNodeGenFactory {
                 setCacheInitialized(frameState, specialization, cache, true);
             }
 
-            // need to ensure that we update the implicit cast specializations on duplicates
-            if (updateImplicitCast != null) {
-                builder.startElseBlock();
-                stateTransaction = new StateTransaction();
-                builder.tree(createUpdateImplicitCastState(builder, frameState, stateTransaction, specialization));
-                builder.tree(multiState.createSet(frameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
-                builder.tree(multiState.persistTransaction(innerFrameState, stateTransaction));
-                builder.end();
-            }
-
             builder.startIf();
             if (useDuplicateFlag) {
                 builder.string(duplicateFoundName);
@@ -5023,6 +5013,36 @@ public class FlatNodeGenFactory {
                 builder.string(createSpecializationLocalName(specialization), " != null");
             }
             builder.end().startBlock();
+
+            /*
+             * Specialization data is published separately from the node state. A racy state write
+             * can erase activation after publication. Previously, generated duplicate reuse was:
+             *
+             * if (s0_ != null) {
+             *     return doCached(...);
+             * }
+             *
+             * Restore the activation state before reuse, generating:
+             *
+             * if (s0_ != null) {
+             *     int state_0_previous = state_0;
+             *     state_0 |= SPECIALIZATION_ACTIVE;
+             *     if (state_0_previous != state_0) {
+             *         persist(state_0);
+             *     }
+             *     return doCached(...);
+             * }
+             *
+             * Implicit-cast state updates use the same conditional transaction.
+             */
+            stateTransaction = new StateTransaction();
+            CodeTreeBuilder stateUpdates = builder.create();
+            CodeTree duplicateImplicitCastUpdate = createUpdateImplicitCastState(stateUpdates, frameState, stateTransaction, specialization);
+            if (duplicateImplicitCastUpdate != null) {
+                stateUpdates.tree(duplicateImplicitCastUpdate);
+            }
+            stateUpdates.tree(multiState.createSet(frameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
+            builder.tree(multiState.persistTransactionIfChanged(frameState, stateTransaction, stateUpdates.build()));
 
             builder.tree(createCallSpecialization(builder, frameState, executeAndSpecializeType, specialization));
             builder.end();
@@ -6212,14 +6232,14 @@ public class FlatNodeGenFactory {
             triples.addAll(initializeCasts(innerFrameState, group, guard.getExpression(), mode));
             IfTriple.materialize(builder, triples, true);
 
-            builder.startStatement();
-            builder.tree(stateRef.reference).string(" = ");
-            builder.tree(stateRef.bitSet.createSetExpression(stateRef.reference, query, true));
-            builder.end();
-
-            innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization(), false));
-
             if (useSpecializationClass(specialization)) {
+                builder.startStatement();
+                builder.tree(stateRef.reference).string(" = ");
+                builder.tree(stateRef.bitSet.createSetExpression(stateRef.reference, query, true));
+                builder.end();
+
+                innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization(), false));
+
                 CodeTreeBuilder b;
                 if (needsDuplicationCheck(specialization)) {
                     b = builder.create();
@@ -6255,6 +6275,12 @@ public class FlatNodeGenFactory {
                 b.end();
 
                 innerTriples.add(new IfTriple(null, null, b.build()));
+            } else {
+                /*
+                 * Node-level guard state is not published with a specialization class. Persist it
+                 * before evaluating the guard so every subsequent slow-path exit can use it.
+                 */
+                builder.tree(stateRef.bitSet.createSet(innerFrameState, query, true, true));
             }
 
             IfTriple.materialize(builder, innerTriples, true);
