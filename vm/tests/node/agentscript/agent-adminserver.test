@@ -22,10 +22,10 @@
 # questions.
 #
 >[5] node --insight=agent-adminserver.js agent-ping.js
-Admin ready at 9999
+Admin ready at [0-9]+
 Ping 1
 Ping 2
-Attaching
+Attaching to [0-9]+
 observing ping at 2
 Ping 3
 observing ping at 3

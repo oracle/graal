@@ -1,5 +1,5 @@
 /* 
-* Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+* Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 *
 * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,9 @@
 * questions.
 */
 
+const portWaitRetryDelay = 200;
+const portWaitTimeout = 10_000;
+
 var counter = 0;
 
 function ping() {
@@ -35,13 +38,21 @@ function ping() {
 }
 setTimeout(ping, 500);
 
-function applyGraalVMInsightScriptViaCurlAnytimeLater() {
+function applyGraalVMInsightScriptViaCurlAnytimeLater(deadline = Date.now() + portWaitTimeout) {
+    const port = process.env.GRAALVM_INSIGHT_ADMIN_PORT;
+    if (!port) {
+        if (deadline < Date.now()) {
+            throw new Error('Timed out waiting for the admin server port');
+        }
+        setTimeout(applyGraalVMInsightScriptViaCurlAnytimeLater, portWaitRetryDelay, deadline);
+        return;
+    }
     const script = 'insight.on("enter", (ctx, frame) => {' +
             '  console.log("observing ping at " + frame.counter);' +
             '  if (frame.counter >= 5) process.exit(5);' +
             '}';
-    const cmd = `curl --data '${script}, { roots: true, rootNameFilter: (n) => n === "ping" });' -X POST http://localhost:9999/`;
-    console.log('Attaching');
+    const cmd = `curl --data '${script}, { roots: true, rootNameFilter: (n) => n === "ping" });' -X POST http://localhost:${port}/`;
+    console.log(`Attaching to ${port}`);
     const { exec } = require('child_process');
     exec(cmd, {}, ping);
 }
