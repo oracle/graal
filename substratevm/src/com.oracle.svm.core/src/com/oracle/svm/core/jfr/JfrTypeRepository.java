@@ -815,12 +815,12 @@ public class JfrTypeRepository implements JfrRepository {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int getIdHash(long value) {
-        return UninterruptibleUtils.Long.hashCode(value);
+        return com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Long.hashCode(value);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int getObjectHash(Object object) {
-        return object == null ? 0 : UninterruptibleUtils.Long.hashCode(Word.objectToUntrackedPointer(object).rawValue());
+        return object == null ? 0 : com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Long.hashCode(Word.objectToUntrackedPointer(object).rawValue());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -829,7 +829,7 @@ public class JfrTypeRepository implements JfrRepository {
         for (int i = 0; length.aboveThan(i); i++) {
             sum += buffer.readByte(i);
         }
-        return 31 * UninterruptibleUtils.Long.hashCode(sum) + getIdHash(moduleId);
+        return 31 * com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Long.hashCode(sum) + getIdHash(moduleId);
     }
 
     private static final class PackageKey {

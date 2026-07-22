@@ -33,7 +33,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.stack.StackOverflowCheck;
