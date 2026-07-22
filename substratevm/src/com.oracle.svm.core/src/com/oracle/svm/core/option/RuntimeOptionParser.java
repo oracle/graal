@@ -47,6 +47,7 @@ import com.oracle.svm.core.jdk.Target_java_lang_runtime_SwitchBootstraps;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_PreviewFeatures;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
@@ -220,6 +221,25 @@ public final class RuntimeOptionParser {
         }
         configureLogFile(context.logFile);
         return args;
+    }
+
+    /** Parses runtime options for a Java main image and returns the application main arguments. */
+    public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
+        if (SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+            return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+        }
+
+        int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
+        if (separatorIndex == -1) {
+            return parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized);
+        }
+
+        String[] remainingArgs = parseAndConsumeAllOptions(Arrays.copyOf(initialArgs, separatorIndex), ignoreUnrecognized);
+        if (!ignoreUnrecognized && remainingArgs.length != 0) {
+            throw new IllegalArgumentException("Unrecognized option: " + remainingArgs[0]);
+        }
+
+        return Arrays.copyOfRange(initialArgs, separatorIndex + 1, initialArgs.length);
     }
 
     /// Configures the low level log file after all runtime options have been parsed.

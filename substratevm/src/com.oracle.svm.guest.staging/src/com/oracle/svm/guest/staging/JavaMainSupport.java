@@ -166,6 +166,11 @@ public class JavaMainSupport {
     public List<String> getInputArguments() {
         String[] initialArgs = ArgsSupport.singleton().getInitialArgs();
         if (initialArgs != null) {
+            int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
+            if (separatorIndex != -1 && mainArgs != null && isSuffixAfterSeparator(initialArgs, separatorIndex, mainArgs)) {
+                return Collections.unmodifiableList(Arrays.asList(Arrays.copyOf(initialArgs, separatorIndex)));
+            }
+
             List<String> inputArgs = new ArrayList<>(Arrays.asList(initialArgs));
 
             if (mainArgs != null) {
@@ -174,5 +179,17 @@ public class JavaMainSupport {
             return Collections.unmodifiableList(inputArgs);
         }
         return Collections.emptyList();
+    }
+
+    private static boolean isSuffixAfterSeparator(String[] initialArgs, int separatorIndex, String[] mainArgs) {
+        if (mainArgs.length != initialArgs.length - separatorIndex - 1) {
+            return false;
+        }
+        for (int i = 0; i < mainArgs.length; i++) {
+            if (!mainArgs[i].equals(initialArgs[separatorIndex + 1 + i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
