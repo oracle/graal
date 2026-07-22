@@ -2388,6 +2388,21 @@ lib_jvm_preserved_modules = [
     'jdk.charsets',
 ]
 
+lib_jvm_build_args = svm_experimental_options(['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
+                                              ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages])
+if mx.is_linux():
+    lib_jvm_build_args += [
+        '-H:NativeLinkerOption=-Wl,-soname=libjvm.so'
+    ]
+elif mx.is_darwin():
+    lib_jvm_build_args += [
+        '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvm.dylib',
+        '-H:NativeLinkerOption=-Wl,-rpath,@loader_path/.',
+        '-H:NativeLinkerOption=-Wl,-rpath,@loader_path/..',
+        '-H:NativeLinkerOption=-Wl,-current_version,1.0.0',
+        '-H:NativeLinkerOption=-Wl,-compatibility_version,1.0.0',
+    ]
+
 # Keep libjvm -H:Preserve selectors with the image builder metadata instead of
 # native-image.properties so they use the same origin path as explicit builder arguments.
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -2407,8 +2422,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             use_modules='image',
             destination='<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
-            build_args=svm_experimental_options(['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
-                                                ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
+            build_args=lib_jvm_build_args,
             headers=False,
             home_finder=False,
         ),
