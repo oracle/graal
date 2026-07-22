@@ -34,7 +34,6 @@ import org.graalvm.word.impl.Word;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
@@ -45,6 +44,11 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -77,28 +81,28 @@ public class DigestBaseSnippets implements Snippets {
             Object md5obj = PiNode.piCast(realReceiver, md5type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(md5obj, HotSpotReplacementsUtil.getFieldOffset(md5type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
-            return HotSpotBackend.md5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
+            return MD5MultiBlockNode.md5ImplCompressMB(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA1Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha1type, realReceiver)) {
             Object sha1obj = PiNode.piCast(realReceiver, sha1type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha1obj, HotSpotReplacementsUtil.getFieldOffset(sha1type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
-            return HotSpotBackend.shaImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
+            return SHA1MultiBlockNode.sha1ImplCompressMB(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA256Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha256type, realReceiver)) {
             Object sha256obj = PiNode.piCast(realReceiver, sha256type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha256obj, HotSpotReplacementsUtil.getFieldOffset(sha256type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
-            return HotSpotBackend.sha2ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
+            return SHA256MultiBlockNode.sha256ImplCompressMB(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA512Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha512type, realReceiver)) {
             Object sha512obj = PiNode.piCast(realReceiver, sha512type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha512obj, HotSpotReplacementsUtil.getFieldOffset(sha512type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Long)));
-            return HotSpotBackend.sha5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
+            return SHA512MultiBlockNode.sha512ImplCompressMB(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA3Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha3type, realReceiver)) {
             Object sha3obj = PiNode.piCast(realReceiver, sha3type, false, true, SnippetAnchorNode.anchor());
             int blockSize = RawLoadNode.loadInt(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "blockSize"), JavaKind.Int, LocationIdentity.any());
             Object state = RawLoadNode.load(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Long)));
-            return HotSpotBackend.sha3ImplCompressMBStub(bufAddr, stateAddr, blockSize, ofs, limit);
+            return SHA3MultiBlockNode.sha3ImplCompressMB(bufAddr, stateAddr, blockSize, ofs, limit);
         } else {
             return FallbackInvokeWithExceptionNode.fallbackFunctionCallInt();
         }

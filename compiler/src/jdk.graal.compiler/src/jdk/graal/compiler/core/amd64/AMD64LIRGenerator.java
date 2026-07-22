@@ -1364,28 +1364,102 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @SuppressWarnings("unchecked")
     @Override
     public void emitSha1ImplCompress(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state) {
-        append(new AMD64SHA1Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, asAllocatable(buf), asAllocatable(state)));
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        append(new AMD64SHA1Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rBuf, rState));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitSha1ImplCompressMB(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state, Value ofs, Value limit) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rResult = AMD64.rax.asValue(resultKind);
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rOfs = AMD64.rdx.asValue(ofs.getValueKind());
+        RegisterValue rLimit = AMD64.rcx.asValue(limit.getValueKind());
+
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rOfs, ofs);
+        emitMove(rLimit, limit);
+
+        append(new AMD64SHA1Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rBuf, rState, rOfs, rLimit, rResult, true));
+        Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void emitSha256ImplCompress(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state) {
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
         if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.SHA)) {
-            append(new AMD64SHA256Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, asAllocatable(buf), asAllocatable(state)));
+            append(new AMD64SHA256Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rBuf, rState));
         } else {
-            RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
-            RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
-
-            emitMove(rBuf, buf);
-            emitMove(rState, state);
-
             append(new AMD64SHA256AVX2Op(rBuf, rState));
         }
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitSha256ImplCompressMB(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state, Value ofs, Value limit) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rResult = AMD64.rax.asValue(resultKind);
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rOfs = AMD64.rdx.asValue(ofs.getValueKind());
+        RegisterValue rLimit = AMD64.rcx.asValue(limit.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rOfs, ofs);
+        emitMove(rLimit, limit);
+        if (supports(target(), (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, CPUFeature.SHA)) {
+            append(new AMD64SHA256Op(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rBuf, rState, rOfs, rLimit, rResult, true));
+        } else {
+            append(new AMD64SHA256AVX2Op(rBuf, rState, rOfs, rLimit, rResult, true));
+        }
+        Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
+    }
+
     @Override
     public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
-        append(new AMD64SHA3Op(asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rBlockSize = AMD64.rdx.asValue(blockSize.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rBlockSize, blockSize);
+        append(new AMD64SHA3Op(rBuf, rState, rBlockSize));
+    }
+
+    @Override
+    public Variable emitSha3ImplCompressMB(Value buf, Value state, Value blockSize, Value ofs, Value limit) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rResult = AMD64.rax.asValue(resultKind);
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rBlockSize = AMD64.rdx.asValue(blockSize.getValueKind());
+        RegisterValue rOfs = AMD64.rcx.asValue(ofs.getValueKind());
+        RegisterValue rLimit = AMD64.r8.asValue(limit.getValueKind());
+
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rBlockSize, blockSize);
+        emitMove(rOfs, ofs);
+        emitMove(rLimit, limit);
+
+        append(new AMD64SHA3Op(rBuf, rState, rBlockSize, rOfs, rLimit, rResult, true));
+        Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
     }
 
     @Override
@@ -1415,8 +1489,50 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitSha512ImplCompressMB(Value buf, Value state, Value ofs, Value limit) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rResult = AMD64.rax.asValue(resultKind);
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rOfs = AMD64.rdx.asValue(ofs.getValueKind());
+        RegisterValue rLimit = AMD64.rcx.asValue(limit.getValueKind());
+
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rOfs, ofs);
+        emitMove(rLimit, limit);
+
+        append(new AMD64SHA512Op(rBuf, rState, rOfs, rLimit, rResult, true));
+        Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
     public void emitMD5ImplCompress(Value buf, Value state) {
-        append(new AMD64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        append(new AMD64MD5Op(rBuf, rState));
+    }
+
+    @Override
+    public Variable emitMD5ImplCompressMB(Value buf, Value state, Value ofs, Value limit) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rResult = AMD64.rax.asValue(resultKind);
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+        RegisterValue rOfs = AMD64.rdx.asValue(ofs.getValueKind());
+        RegisterValue rLimit = AMD64.rcx.asValue(limit.getValueKind());
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+        emitMove(rOfs, ofs);
+        emitMove(rLimit, limit);
+        append(new AMD64MD5Op(rBuf, rState, rOfs, rLimit, rResult, true));
+        Variable result = newVariable(resultKind);
+        emitMove(result, rResult);
+        return result;
     }
 
     @Override

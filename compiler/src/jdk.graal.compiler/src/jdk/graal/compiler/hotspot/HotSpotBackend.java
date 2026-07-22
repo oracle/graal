@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
@@ -49,11 +48,8 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
@@ -73,7 +69,6 @@ import jdk.graal.compiler.lir.ValueConsumer;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.UnwindNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
 import jdk.vm.ci.code.CallingConvention;
@@ -123,56 +118,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     void.class, Object.class, Word.class);
 
     private final HotSpotGraalRuntimeProvider runtime;
-
-    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "md5ImplCompress", int.class, Word.class,
-                    Object.class, int.class, int.class);
-
-    public static int md5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
-        return md5ImplCompressMBStub(HotSpotBackend.MD5_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int md5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
-
-    public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "shaImplCompressMB", int.class, Word.class,
-                    Object.class, int.class, int.class);
-
-    public static int shaImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
-        return shaImplCompressMBStub(HotSpotBackend.SHA_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int shaImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
-
-    public static final HotSpotForeignCallDescriptor SHA2_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha2ImplCompressMB", int.class, Word.class,
-                    Object.class, int.class, int.class);
-
-    public static int sha2ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
-        return sha2ImplCompressMBStub(HotSpotBackend.SHA2_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int sha2ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
-
-    public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha5ImplCompressMB", int.class, Word.class,
-                    Object.class, int.class, int.class);
-
-    public static int sha5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
-        return sha5ImplCompressMBStub(HotSpotBackend.SHA5_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int sha5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
-
-    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha3ImplCompressMB", int.class, Word.class,
-                    Object.class, int.class, int.class, int.class);
-
-    public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int blockSize, int ofs, int limit) {
-        return sha3ImplCompressMBStub(HotSpotBackend.SHA3_IMPL_COMPRESS_MB, bufAddr, stateAddr, blockSize, ofs, limit);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int blockSize, int ofs, int limit);
 
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 

@@ -117,8 +117,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/5cc14e537ce7c6df41d44230ae5512703af1c0a0/src/hotspot/cpu/x86/stubGenerator_x86_64_poly_mont.cpp#L26-L639",
-          sha1 = "7f96f5dc7cd9e1f7e4490a4d75634ca59903df91")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/0b8bc780f976dab23ec798018fef0b674e885b0c/src/hotspot/cpu/x86/stubGenerator_x86_64_poly_mont.cpp#L26-L639",
+          sha1 = "29bf46272e2dbc367e69a3faaceba8bfe89ea196")
 // @formatter:on
 public final class AMD64IntegerPolynomialP256MontgomeryMultOp extends AMD64LIRInstruction {
 

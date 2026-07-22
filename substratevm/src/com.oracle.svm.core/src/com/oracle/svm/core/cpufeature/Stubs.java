@@ -80,10 +80,15 @@ import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.vm.ci.aarch64.AArch64;
@@ -191,20 +196,35 @@ public final class Stubs {
             if (MD5Node.class.equals(klass)) {
                 return BASELINE_CPU_FEATURES_AMD64;
             }
+            if (MD5MultiBlockNode.class.equals(klass)) {
+                return BASELINE_CPU_FEATURES_AMD64;
+            }
             if (Poly1305ProcessBlocksNode.class.equals(klass)) {
                 return Poly1305ProcessBlocksNode.maxFeaturesAMD64();
             }
             if (SHA1Node.class.equals(klass)) {
                 return SHA1Node.minFeaturesAMD64();
             }
+            if (SHA1MultiBlockNode.class.equals(klass)) {
+                return SHA1MultiBlockNode.minFeaturesAMD64();
+            }
             if (SHA256Node.class.equals(klass)) {
                 return SHA256Node.minFeaturesAMD64();
+            }
+            if (SHA256MultiBlockNode.class.equals(klass)) {
+                return SHA256MultiBlockNode.minFeaturesAMD64();
             }
             if (SHA3Node.class.equals(klass)) {
                 return SHA3Node.minFeaturesAMD64();
             }
+            if (SHA3MultiBlockNode.class.equals(klass)) {
+                return SHA3MultiBlockNode.minFeaturesAMD64();
+            }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAMD64();
+            }
+            if (SHA512MultiBlockNode.class.equals(klass)) {
+                return SHA512MultiBlockNode.minFeaturesAMD64();
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
@@ -245,14 +265,26 @@ public final class Stubs {
             if (SHA1Node.class.equals(klass)) {
                 return SHA1Node.minFeaturesAARCH64();
             }
+            if (SHA1MultiBlockNode.class.equals(klass)) {
+                return SHA1MultiBlockNode.minFeaturesAARCH64();
+            }
             if (SHA256Node.class.equals(klass)) {
                 return SHA256Node.minFeaturesAARCH64();
+            }
+            if (SHA256MultiBlockNode.class.equals(klass)) {
+                return SHA256MultiBlockNode.minFeaturesAARCH64();
             }
             if (SHA3Node.class.equals(klass)) {
                 return SHA3Node.minFeaturesAARCH64();
             }
+            if (SHA3MultiBlockNode.class.equals(klass)) {
+                return SHA3MultiBlockNode.minFeaturesAARCH64();
+            }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAARCH64();
+            }
+            if (SHA512MultiBlockNode.class.equals(klass)) {
+                return SHA512MultiBlockNode.minFeaturesAARCH64();
             }
             return EMPTY_CPU_FEATURES_AARCH64;
         }
