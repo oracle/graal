@@ -141,6 +141,7 @@ import jdk.graal.compiler.lir.amd64.AMD64DilithiumAlmostNttOp;
 import jdk.graal.compiler.lir.amd64.AMD64DilithiumDecomposePolyOp;
 import jdk.graal.compiler.lir.amd64.AMD64DilithiumMontMulByConstantOp;
 import jdk.graal.compiler.lir.amd64.AMD64DilithiumNttMultOp;
+import jdk.graal.compiler.lir.amd64.AMD64DoubleKeccakOp;
 import jdk.graal.compiler.lir.amd64.AMD64ElectronicCodeBookAESDecryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64ElectronicCodeBookAESEncryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64EncodeArrayOp;
@@ -1385,6 +1386,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
         append(new AMD64SHA3Op(asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
+    }
+
+    @Override
+    public Variable emitDoubleKeccak(Value state0, Value state1) {
+        RegisterValue rState0 = AMD64.rdi.asValue(state0.getValueKind());
+        RegisterValue rState1 = AMD64.rsi.asValue(state1.getValueKind());
+        RegisterValue rResult = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+
+        emitMove(rState0, state0);
+        emitMove(rState1, state1);
+
+        append(new AMD64DoubleKeccakOp(rState0, rState1, rResult));
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(result, rResult);
+        return result;
     }
 
     @Override

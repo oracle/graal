@@ -505,8 +505,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
     public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address");
 
-    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address");
-
     public final long stubArraySort = getFieldValue("StubRoutines::_array_sort", Long.class, "address");
     public final long stubArrayPartition = getFieldValue("StubRoutines::_array_partition", Long.class, "address");
 

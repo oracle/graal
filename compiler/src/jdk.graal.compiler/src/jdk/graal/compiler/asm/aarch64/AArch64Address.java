@@ -349,8 +349,11 @@ public final class AArch64Address extends AbstractAddress {
         int eByteSize = eSize.bytes();
         switch (instruction) {
             case LD1R:
+            case LD1:
+            case ST1:
                 return eByteSize;
             case LD4R:
+            case LD4:
             case ST4:
                 return eByteSize * 4;
             case ST1_MULTIPLE_1R:

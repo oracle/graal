@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot.meta;
 
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
@@ -1091,28 +1090,6 @@ public class HotSpotGraphBuilderPlugins {
             });
         }
 
-        r = new Registration(plugins, "sun.security.provider.SHA3Parallel");
-        r.register(new ConditionalInvocationPlugin("doubleKeccak", long[].class, long[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode lanes0, ValueNode lanes1) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullLanes0 = b.nullCheckedValue(lanes0);
-                    ValueNode nonNullLanes1 = b.nullCheckedValue(lanes1);
-
-                    ValueNode lanes0Start = helper.arrayStart(nonNullLanes0, JavaKind.Long);
-                    ValueNode lanes1Start = helper.arrayStart(nonNullLanes1, JavaKind.Long);
-
-                    ForeignCallNode call = new ForeignCallNode(DOUBLE_KECCAK, lanes0Start, lanes1Start);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDoubleKeccak != 0L;
-            }
-        });
     }
 
     private static void registerPoly1305Plugin(InvocationPlugins plugins) {
