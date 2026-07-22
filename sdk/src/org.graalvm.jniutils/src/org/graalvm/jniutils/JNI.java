@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -690,6 +690,9 @@ public final class JNI {
     public interface GetArrayLength extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JArray array);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        int callNoTransition(JNIEnv env, JArray array);
     }
 
     public interface GetBooleanArrayElements extends CFunctionPointer {
@@ -743,6 +746,9 @@ public final class JNI {
     public interface GetObjectArrayElement extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObjectArray array, int index);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JObject callNoTransition(JNIEnv env, JObjectArray array, int index);
     }
 
     public interface GetObjectClass extends CFunctionPointer {
@@ -776,6 +782,9 @@ public final class JNI {
     public interface GetStringUTFChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         CCharPointer call(JNIEnv env, JString string, JValue isCopy);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        CCharPointer callNoTransition(JNIEnv env, JString string, JValue isCopy);
     }
 
     public interface GetStringUTFLength extends CFunctionPointer {
@@ -997,6 +1006,9 @@ public final class JNI {
     public interface ReleaseStringUTFChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JString string, CCharPointer chars);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        void callNoTransition(JNIEnv env, JString string, CCharPointer chars);
     }
 
     public interface SetObjectArrayElement extends CFunctionPointer {

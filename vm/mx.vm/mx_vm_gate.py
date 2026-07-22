@@ -1004,9 +1004,12 @@ def _build_polyglot_isolate_library(target_folder, dist_names, native_image_opti
     image_build_options = list(native_image_options) if native_image_options else []
     optional_mpk_opts = ['-H:+ProtectionKeys'] if mx_sdk_vm_ng.is_enterprise() else []
     image_build_options += [
-        '-ea', '-esa',
+        '-ea',
+        '-esa',
         '--features=com.oracle.svm.truffle.PolyglotIsolateGuestFeature',
-        '-H:APIFunctionPrefix=truffle_isolate_', '-o', os.path.join(target_folder, 'truffle_isolate_test_lib')
+        '-H:APIFunctionPrefix=truffle_isolate_',
+        *mx_sdk_vm_impl.svm_experimental_options(['-H:-InitializeVM']),
+        '-o', os.path.join(target_folder, 'truffle_isolate_test_lib')
     ] + optional_mpk_opts
 
     return build_tests_image(
