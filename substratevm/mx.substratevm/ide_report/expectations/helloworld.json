@@ -1,0 +1,40 @@
+{
+  "groupCounts": [
+    {
+      "count": 1,
+      "kind": "CLASS"
+    },
+    {
+      "count": 2,
+      "kind": "LINE"
+    }
+  ],
+  "records": [
+    {
+      "class": "HelloWorld",
+      "kind": "CLASS",
+      "message": "Initialization mode of HelloWorld is SIMULATED",
+      "sourceFile": "HelloWorld.java"
+    },
+    {
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 4
+      },
+      "message": "Call to getenv is inlined by phase PEGraphDecoder",
+      "sourceFile": "HelloWorld.java"
+    },
+    {
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 4
+      },
+      "message": "Call to println is inlined by phase PEGraphDecoder",
+      "sourceFile": "HelloWorld.java"
+    }
+  ],
+  "reportCount": 3,
+  "usedMethods": 1
+}

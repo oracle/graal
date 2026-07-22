@@ -234,6 +234,11 @@ import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
+import com.oracle.svm.hosted.ide.IDEReportCanonicalPayload;
+import com.oracle.svm.hosted.ide.IDEReportOptions;
+import com.oracle.svm.hosted.ide.IDEReportSplitStorage;
+import com.oracle.svm.hosted.ide.IDEReportStorageData;
+import com.oracle.svm.hosted.ide.IDEReportStorageMode;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
 import com.oracle.svm.hosted.image.AbstractImage;
@@ -287,6 +292,7 @@ import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -311,6 +317,7 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.ide.IDEReport;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -582,6 +589,10 @@ public class NativeImageGenerator {
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
         var tempDirectoryOptionValue = NativeImageOptions.TempDirectory.getValue(hostedOptionValues.get()).lastValue().orElse(null);
+        IDEReport ideReport = null;
+        IDEReportOptions.Configuration ideReportConfiguration = null;
+        IDEReportStorageData ideReportStorageData = null;
+        Throwable buildFailure = null;
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
@@ -617,9 +628,59 @@ public class NativeImageGenerator {
             }
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
 
+            var options = hostedOptionValues.get();
+            ideReportConfiguration = IDEReportOptions.resolve(options);
+            if (ideReportConfiguration.enabled()) {
+                ideReport = IDEReport.create(IDEReport.Options.IDEReportFiltered.getValue(options));
+                ImageSingletons.add(IDEReport.class, ideReport);
+                ideReportStorageData = new IDEReportStorageData(ideReportConfiguration, ideReport);
+                ImageSingletons.add(IDEReportStorageData.class, ideReportStorageData);
+            }
             doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
+        } catch (RuntimeException | Error failure) {
+            buildFailure = failure;
+            throw failure;
         } finally {
             reporter.ensureCreationStageEndCompleted();
+            if (ideReport != null) {
+                try {
+                    Path reportsDirectory = generatedFiles(hostedOptionValues.get()).resolve("ide-reports");
+                    ideReportStorageData.prepare();
+                    if (ideReportConfiguration.legacyExport()) {
+                        try (var _ = TimerCollection.createTimerAndStart("ide-report-legacy-write")) {
+                            IDEReport.writeLegacyReport(reportsDirectory, ideReportStorageData.snapshot());
+                        }
+                    } else {
+                        if (ideReportConfiguration.storageModes().contains(IDEReportStorageMode.EXPORT)) {
+                            Path reportPath = reportsDirectory.resolve("native_image_ide_report.json");
+                            try (var _ = TimerCollection.createTimerAndStart("ide-report-canonical-write")) {
+                                IDEReportCanonicalPayload.write(ideReportStorageData.canonicalPayload(), reportPath);
+                            }
+                            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.IDE_REPORT, reportPath);
+                        }
+                        if (ideReportConfiguration.storageModes().contains(IDEReportStorageMode.SPLIT)) {
+                            Path imagePath = generatedFiles(hostedOptionValues.get()).resolve(imageName);
+                            Path reportPath;
+                            try (var _ = TimerCollection.createTimerAndStart("ide-report-split-write")) {
+                                reportPath = IDEReportSplitStorage.write(imagePath, ideReportStorageData.envelope());
+                            }
+                            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.IDE_REPORT, reportPath);
+                        }
+                    }
+                } catch (RuntimeException reportFailure) {
+                    if (buildFailure != null) {
+                        buildFailure.addSuppressed(reportFailure);
+                    } else {
+                        LogUtils.warning("Could not write the IDE report: %s", reportFailure.getMessage());
+                    }
+                } catch (IOException reportFailure) {
+                    if (buildFailure != null) {
+                        buildFailure.addSuppressed(reportFailure);
+                    } else {
+                        LogUtils.warning("Could not write the IDE report: %s", reportFailure.getMessage());
+                    }
+                }
+            }
         }
     }
 

@@ -30,6 +30,7 @@
 .factorypath
 .idea
 .metadata/
+.validation/
 .project
 .pydevproject
 .settings/

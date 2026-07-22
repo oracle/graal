@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,8 @@ public interface BuildArtifacts {
          * For all artifacts from image generator (e.g., build statistics, lists, call trees, ...).
          */
         BUILD_INFO("build_info"),
+        /* For IDE reports exported by the image generator or stored next to the image. */
+        IDE_REPORT("ide_report"),
         /* For all debugging-related artifacts. */
         DEBUG_INFO("debug_info"),
 

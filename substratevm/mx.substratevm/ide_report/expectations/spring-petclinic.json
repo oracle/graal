@@ -1,0 +1,59 @@
+{
+  "groupCounts": [
+    {
+      "count": 38,
+      "kind": "CLASS"
+    },
+    {
+      "kind": "LINE",
+      "max": 852,
+      "min": 849
+    },
+    {
+      "count": 11,
+      "kind": "METHOD"
+    }
+  ],
+  "records": [
+    {
+      "class": "org.springframework.samples.petclinic.PetClinicApplication",
+      "kind": "CLASS",
+      "message": "Initialization mode of PetClinicApplication is SIMULATED",
+      "sourceFile": "org/springframework/samples/petclinic/PetClinicApplication.java"
+    },
+    {
+      "class": "org.springframework.samples.petclinic.PetClinicApplication",
+      "kind": "METHOD",
+      "messageRegex": "Method <init> is not part of the produced image since all its invocations are inlined",
+      "method": "<init>",
+      "signature": "()V",
+      "sourceFile": "org/springframework/samples/petclinic/PetClinicApplication.java"
+    },
+    {
+      "class": "org.springframework.samples.petclinic.owner.OwnerController",
+      "kind": "CLASS",
+      "message": "Initialization mode of OwnerController is SIMULATED",
+      "sourceFile": "org/springframework/samples/petclinic/owner/OwnerController.java"
+    },
+    {
+      "class": "org.springframework.samples.petclinic.model.Person",
+      "kind": "CLASS",
+      "message": "Initialization mode of Person is SIMULATED",
+      "sourceFile": "org/springframework/samples/petclinic/model/Person.java"
+    },
+    {
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 110
+      },
+      "message": "addPaginationModel always returns \"owners/ownersList\"",
+      "sourceFile": "org/springframework/samples/petclinic/owner/OwnerController.java"
+    }
+  ],
+  "reportCount": {
+    "max": 901,
+    "min": 898
+  },
+  "usedMethods": 141
+}

@@ -1,0 +1,95 @@
+{
+  "groupCounts": [
+    {
+      "count": 11,
+      "kind": "CLASS"
+    },
+    {
+      "count": 1,
+      "kind": "FIELD"
+    },
+    {
+      "count": 43,
+      "kind": "LINE"
+    },
+    {
+      "count": 12,
+      "kind": "METHOD"
+    },
+    {
+      "count": 1,
+      "kind": "UNREACHABLE"
+    }
+  ],
+  "records": [
+    {
+      "category": "class-initialization",
+      "class": "com.oracle.svm.test.ide.IDEReportFixture",
+      "kind": "CLASS",
+      "message": "Initialization mode of IDEReportFixture is SIMULATED",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "constant-field",
+      "class": "com.oracle.svm.test.ide.IDEReportFixture$ReturnPayload",
+      "field": "label",
+      "kind": "FIELD",
+      "message": "Field label has constant value \"fixture-constant\"",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "reflection",
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 86
+      },
+      "messageRegex": "Call to forName: access to class com\\.oracle\\.svm\\.test\\.ide\\.IDEReportFixture\\$ReflectionTarget has been resolved at build time\\.",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "devirtualization",
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 69
+      },
+      "messageRegex": "Invocation of singleValue has been devirtualized to com\\.oracle\\.svm\\.test\\.ide\\.IDEReportFixture\\$SinglePrimaryService\\.singleValue\\(java\\.lang\\.String\\)",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "parameter-value",
+      "kind": "LINE",
+      "line": {
+        "mode": "exact",
+        "value": 94
+      },
+      "message": "Parameter flag of method branchWithUnreachablePath is constant: true",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "unreachable",
+      "kind": "UNREACHABLE",
+      "message": "Branch is unreachable",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    },
+    {
+      "category": "inlined-only-method",
+      "class": "com.oracle.svm.test.ide.IDEReportFixture",
+      "kind": "METHOD",
+      "messageRegex": "Method normalize is not part of the produced image since all its invocations are inlined",
+      "method": "normalize",
+      "signature": "(I)I",
+      "sourceFile": "com/oracle/svm/test/ide/IDEReportFixture.java"
+    }
+  ],
+  "forbiddenRecords": [
+    {
+      "category": "return-value",
+      "kind": "LINE",
+      "messageRegex": "mixedValue always returns"
+    }
+  ],
+  "reportCount": 68,
+  "usedMethods": 24
+}
