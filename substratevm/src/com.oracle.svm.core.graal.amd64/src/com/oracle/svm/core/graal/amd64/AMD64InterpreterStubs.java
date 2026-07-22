@@ -58,6 +58,8 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -84,6 +86,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -277,7 +280,7 @@ public class AMD64InterpreterStubs {
 
             /*
              * Ristretto currently makes this frame context reachable during analysis. Explicitly
-             * avoid the singleton lookup in that case until GR-55022 is fixed.
+             * avoid the singleton lookup in that case until GR-74744 is fixed.
              */
             if (SubstrateUtil.HOSTED) {
                 if (emitVTableFastPath) {
@@ -322,6 +325,80 @@ public class AMD64InterpreterStubs {
             /* rax contains the raw result. Make it available in both ABI return registers. */
             masm.movdq(xmm0, rax);
 
+            super.leave(crb);
+        }
+    }
+
+    /** Adapts incoming JNI arguments to the interpreter wrapper signature. */
+    public static class InterpreterJNIUpcallStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
+        private final CallVariant callVariant;
+        private final boolean nonVirtual;
+
+        public InterpreterJNIUpcallStubContext(SharedMethod method, CallingConvention callingConvention) {
+            super(method, callingConvention);
+            InterpreterJNIUpcallStub annotation = AnnotationUtil.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            assert annotation != null : "Missing @InterpreterJNIUpcallStub annotation on JNI interpreter wrapper.";
+            callVariant = annotation.callVariant();
+            nonVirtual = annotation.nonVirtual();
+        }
+
+        private static AMD64Address jniUpcallDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
+            return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterJNIUpcallData()) + offset);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
+            SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) frameMap.getRegisterConfig();
+            StackSlot jniUpcallData = frameMap.getInterpreterJNIUpcallData();
+            assert (callVariant == CallVariant.VARARGS) == (jniUpcallData != null);
+
+            List<Register> gps = registerConfig.getNativeGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+            Register originalSp = AMD64.r11;
+
+            /* Preserve the caller stack pointer before the regular prologue allocates the frame. */
+            masm.movq(originalSp, rsp);
+            super.enter(crb);
+
+            if (callVariant == CallVariant.VARARGS) {
+                /* Capture the original JNI arguments before adapting registers for the wrapper. */
+                masm.movq(jniUpcallDataAddress(frameMap, offsetAbiSpReg()), originalSp);
+                for (int i = 0; i < gps.size(); i++) {
+                    masm.movq(jniUpcallDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
+                }
+                for (int i = 0; i < fps.size(); i++) {
+                    masm.movq(jniUpcallDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
+                }
+            }
+
+            if (nonVirtual) {
+                /* Drop the JNI clazz argument: methodID becomes the third argument. */
+                masm.movq(gps.get(2), gps.get(3));
+            }
+
+            Register payload = gps.get(3);
+            if (callVariant == CallVariant.VARARGS) {
+                /* Pass the address of the dedicated frame slot that preserves the captured arguments. */
+                masm.leaq(payload, jniUpcallDataAddress(frameMap, 0));
+            } else if (nonVirtual) {
+                /* Due to the drop of the JNI clazz argument: payload becomes the fourth argument. */
+                if (gps.size() > 4) {
+                    masm.movq(payload, gps.get(4));
+                } else {
+                    assert Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
+                    /* On Windows, the fifth JNI argument follows shadow space on the caller stack. */
+                    masm.movq(payload, new AMD64Address(originalSp, FrameAccess.returnAddressSize() + callingConvention.getStackSize()));
+                }
+            }
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            /* The wrapper returns raw bits in rax; JNI floating-point variants return them in xmm0. */
+            masm.movdq(xmm0, rax);
             super.leave(crb);
         }
     }

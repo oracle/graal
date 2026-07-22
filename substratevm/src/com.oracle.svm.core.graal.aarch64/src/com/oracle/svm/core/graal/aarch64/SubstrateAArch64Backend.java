@@ -37,7 +37,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -48,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -82,9 +80,11 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
@@ -99,6 +99,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -203,6 +204,7 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -1526,8 +1528,25 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         return new AArch64FrameMapBuilder(newFrameMap(registerConfigNonNull), getCodeCache(), registerConfigNonNull);
     }
 
+    static class SubstrateAArch64FrameMap extends AArch64FrameMap {
+        private StackSlot interpreterJNIUpcallData;
+
+        SubstrateAArch64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
+            super(codeCache, registerConfig, referenceMapFactory);
+        }
+
+        void allocateInterpreterJNIUpcallData() {
+            assert interpreterJNIUpcallData == null;
+            interpreterJNIUpcallData = allocateStackMemory(AArch64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
+        }
+
+        StackSlot getInterpreterJNIUpcallData() {
+            return interpreterJNIUpcallData;
+        }
+    }
+
     public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new AArch64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory());
+        return new SubstrateAArch64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory());
     }
 
     @Override
@@ -1567,6 +1586,18 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             case InterpreterEnterStub -> {
                 assert InterpreterSupport.isEnabled();
                 yield new AArch64InterpreterStubs.InterpreterEnterStubContext(method);
+            }
+            case InterpreterJNIUpcallStub -> {
+                /*
+                 * Ristretto currently makes this frame context reachable during analysis. As it uses a hosted type explicitly
+                 * avoid it in that case until GR-74744 is fixed.
+                 */
+                if (SubstrateUtil.HOSTED) {
+                    assert InterpreterSupport.isEnabled();
+                    yield new AArch64InterpreterStubs.InterpreterJNIUpcallStubContext(method);
+                } else {
+                    throw VMError.shouldNotReachHere("JNI interpreter stubs cannot be generated at run-time");
+                }
             }
             case InterpreterLeaveStub -> {
                 assert InterpreterSupport.isEnabled();
@@ -1722,10 +1753,13 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
             if (cremaData != null) {
-                try (ScratchRegister enterDataScratch = asm.getScratchRegister()) {
-                    Register enterDataRegister = enterDataScratch.getRegister();
-                    emitCremaJNITrampoline(asm, result, methodIdArg, scratchRegister, enterDataRegister, cremaData);
-                }
+                Label nonCremaMethodId = new Label();
+                // Negative method IDs encode CremaResolvedJavaMethod instances.
+                asm.tbz(methodIdArg.getRegister(), 63, nonCremaMethodId);
+                result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(cremaData.wrapperMethod()))));
+                asm.adrpAdd(scratchRegister);
+                asm.jmp(scratchRegister);
+                asm.bind(nonCremaMethodId);
             }
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
             /*
@@ -1744,82 +1778,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
         return result;
-    }
-
-    private void emitCremaJNITrampoline(AArch64MacroAssembler asm, CompilationResult result, RegisterValue methodIdArg, Register scratchRegister, Register enterDataRegister,
-                    CremaJNITrampolineData cremaData) {
-        ResolvedJavaMethod wrapperMethod = cremaData.wrapperMethod();
-        boolean needsEnterData = cremaData.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN_AARCH64.class);
-        boolean needsCallerStackPointer = cremaData.callVariant() == CallVariant.VARARGS && Platform.includedIn(Platform.DARWIN_AARCH64.class);
-        Label imageHeapMethodId = new Label();
-        // Negative method IDs encode CremaResolvedJavaMethod instances.
-        asm.tbz(methodIdArg.getRegister(), 63, imageHeapMethodId);
-        if (SubstrateControlFlowIntegrity.enabled()) {
-            /* Sign lr before the Crema path changes sp or saves the return address. */
-            asm.paciasp();
-        }
-        CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
-        AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
-        assert ValueUtil.isRegister(payloadArgument);
-        Register payloadRegister = asRegister(payloadArgument);
-        if (needsEnterData) {
-            emitCremaJNITrampolineEnterData(asm, scratchRegister, enterDataRegister, payloadRegister);
-        } else if (needsCallerStackPointer) {
-            /*
-             * AArch64 keeps the return address in lr instead of pushing it. This runs before the
-             * frame record below is created, so sp is still the JNI caller's stack-argument base.
-             */
-            asm.mov(64, payloadRegister, sp);
-        }
-        asm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * getTarget().wordSize));
-        asm.mov(64, fp, sp);
-        int before = asm.position();
-        asm.bl();
-        int after = asm.position();
-        var call = result.recordCall(before, after - before, wrapperMethod, null, true);
-        asm.postCallNop(call);
-        asm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * getTarget().wordSize));
-        if (needsEnterData) {
-            asm.add(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
-        }
-        /*
-         * The wrapper uses a uniform word-sized return type, so floating-point results arrive as raw
-         * bits in the general-purpose return register. Mirror those bits into the ABI floating-point
-         * return register without affecting integer or reference results.
-         */
-        asm.fmov(64, AArch64.v0, AArch64.r0);
-        if (SubstrateControlFlowIntegrity.enabled()) {
-            /* sp is back at its entry value, so authenticate lr with the original modifier. */
-            asm.autiasp();
-        }
-        asm.ret(lr);
-        asm.bind(imageHeapMethodId);
-    }
-
-    private void emitCremaJNITrampolineEnterData(AArch64MacroAssembler asm, Register originalSp, Register enterData, Register payloadArgument) {
-        /* The return address is in lr, so the entry sp can be recorded without an adjustment. */
-        asm.mov(64, originalSp, sp);
-        asm.sub(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
-        asm.mov(64, enterData, sp);
-
-        SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) getCodeCache().getRegisterConfig();
-        List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
-        List<Register> fps = registerConfig.getFloatingPointParameterRegs();
-
-        asm.str(64, originalSp, createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiSpReg()));
-        for (int i = 0; i < gps.size(); i++) {
-            asm.str(64, gps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiGpArg(i)));
-        }
-
-        for (int i = 0; i < fps.size(); i++) {
-            asm.fstr(64, fps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiFpArg(i)));
-        }
-
-        asm.mov(64, payloadArgument, enterData);
-    }
-
-    private static AArch64Address createEnterDataAddress(Register enterData, int offset) {
-        return AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, enterData, offset);
     }
 
     @Override
@@ -1865,6 +1823,17 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         FrameMap frameMap = ((FrameMapBuilderTool) lirGenerationResult.getFrameMapBuilder()).getFrameMap();
         Deoptimizer.StubType stubType = method.getDeoptStubType();
+        /*
+         * Ristretto currently makes this path reachable during analysis. Avoid accessing the
+         * hosted-only CallVariant in that case until GR-74744 is fixed.
+         */
+        if (SubstrateUtil.HOSTED) {
+            InterpreterJNIUpcallStub annotation = AnnotationUtil.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            if (annotation != null && annotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
+                assert InterpreterSupport.isEnabled();
+                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
+            }
+        }
         if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
             assert InterpreterSupport.isEnabled();
             frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeEnterStub());
