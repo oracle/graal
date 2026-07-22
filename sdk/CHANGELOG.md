@@ -11,6 +11,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 25.3.4
 * GR-76904: Isolated polyglot contexts now warn when host access is enabled without host method scoping. The warning can be disabled with the `engine.WarnMethodScoping=false` option.
+* GR-61383 JLine3 upgrade from 3.28 to 4.3.1.
 
 ## Version 25.1.3
 * GR-65048: GR-65048: Introduced the `-Dpolyglot.engine.allowUnsupportedPlatform=true` system property to enable Truffle to run on unsupported platforms. If this property is enabled then the failure will be suppressed. Please see follow-up errors and warnings for instructions on how to continue. Note that using an unsupported platform will also force the fallback runtime without runtime optimization.

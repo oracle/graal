@@ -1002,7 +1002,7 @@ public abstract class Launcher {
             int width;
             if (isTTY()) {
                 try (Terminal terminal = createSystemTerminal()) {
-                    width = terminal.getWidth();
+                    width = terminal.getSize().getColumns();
                 } catch (IOException exception) {
                     width = FALLBACK_TERMINAL_WIDTH;
                 }
@@ -1019,8 +1019,7 @@ public abstract class Launcher {
     }
 
     static Terminal createSystemTerminal() throws IOException {
-        // Create a system Terminal. JNA is not shipped in the SDK JLINE3 jar.
-        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+        return TerminalBuilder.builder().system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
