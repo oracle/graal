@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -60,6 +61,20 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import sun.security.util.SecurityConstants;
+
+// Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
+// §FS-security-providers.3.1 and §FS-security-providers.4.1
+@TargetClass(className = "sun.security.jca.Providers")
+final class Target_sun_security_jca_Providers_ExplicitRegistration {
+    @Substitute
+    public static Provider getSunProvider() {
+        if (Boolean.getBoolean(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + "explicit-security-provider-registration") &&
+                        !SecurityProvidersSupport.singleton().isSecurityProviderIncluded("SUN", "sun.security.provider.Sun")) {
+            SecurityProvidersSupport.reportMissingProviderRegistration(sun.security.provider.Sun.class);
+        }
+        return new sun.security.provider.Sun();
+    }
+}
 
 /*
  * All security checks are disabled.
