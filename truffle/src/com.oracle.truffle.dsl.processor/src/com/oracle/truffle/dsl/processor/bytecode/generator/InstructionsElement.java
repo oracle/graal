@@ -786,7 +786,7 @@ final class InstructionsElement extends AbstractElement {
             }
             b.declaration(InstructionsElement.this.type(int.class), "index", BytecodeRootNodeElement.readIntSafe("bc", "bci"));
             b.declaration(InstructionsElement.this.type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
-            b.startIf().string("profiles == null").end().startBlock();
+            b.startIf().string("profiles == null || index == -1").end().startBlock();
 
             b.startReturn();
             b.startNew(InstructionsElement.this.types.Instruction_Argument_BranchProfile);

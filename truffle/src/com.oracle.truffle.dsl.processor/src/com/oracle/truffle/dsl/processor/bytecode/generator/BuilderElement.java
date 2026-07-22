@@ -4082,7 +4082,7 @@ final class BuilderElement extends AbstractElement {
                     }
                     String readBranchProfile = BytecodeRootNodeElement.readInt("state.bc", "toUpdate + " + offset + " /* loop branch profile */");
                     buildEmitInstruction(b, null, model.branchBackwardInstruction,
-                                    new String[]{operationStack.read(op, operationFields.whileStartBci), "toUpdate != " + UNINIT + " ? " + readBranchProfile + " : 0"});
+                                    new String[]{operationStack.read(op, operationFields.whileStartBci), "toUpdate != " + UNINIT + " ? " + readBranchProfile + " : -1"});
                     b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                     b.statement(BytecodeRootNodeElement.writeInt("state.bc", "toUpdate", requestLeaderBci("while loop exit")));
                     b.end();

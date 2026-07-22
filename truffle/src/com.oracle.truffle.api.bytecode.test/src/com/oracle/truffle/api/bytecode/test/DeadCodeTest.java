@@ -51,6 +51,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
@@ -781,6 +782,38 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "return");
 
         assertEquals(42, node.getCallTarget().call(42));
+    }
+
+    @Test
+    public void testUnreachableConditionWhileBranchProfile() {
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginWhile();
+            b.beginBlock();
+            // Make the condition and its branch.false unreachable.
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
+
+            b.beginBlock();
+            // The label revives reachability, so the unreachable loop still emits branch.backward.
+            BytecodeLabel label = b.createLabel();
+            b.emitLabel(label);
+            b.emitLoadConstant(false);
+            b.endBlock();
+            b.endWhile();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals(42, node.getCallTarget().call());
+
+        Instruction branchBackward = node.getBytecodeNode().getInstructionsAsList().stream().filter(instruction -> instruction.getName().equals("branch.backward")).findFirst().orElseThrow();
+        Instruction.Argument branchProfile = branchBackward.getArguments().stream().filter(argument -> argument.getKind() == Instruction.Argument.Kind.BRANCH_PROFILE).findFirst().orElseThrow();
+        assertEquals(-1, branchProfile.asBranchProfile().index());
     }
 
     @Test

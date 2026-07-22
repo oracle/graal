@@ -2782,6 +2782,9 @@ final class BytecodeNodeElement extends AbstractElement {
                         new CodeVariableElement(type(int.class), "profileIndex"));
         CodeTreeBuilder b = ensureFalseProfile.createBuilder();
 
+        b.startIf().string("profileIndex == -1").end().startBlock();
+        b.returnStatement();
+        b.end();
         b.startIf().tree(BytecodeRootNodeElement.readIntArray("branchProfiles", "profileIndex * 2 + 1")).string(" == 0").end().startBlock();
         b.statement(BytecodeRootNodeElement.writeIntArray("branchProfiles", "profileIndex * 2 + 1", "1"));
         b.end();

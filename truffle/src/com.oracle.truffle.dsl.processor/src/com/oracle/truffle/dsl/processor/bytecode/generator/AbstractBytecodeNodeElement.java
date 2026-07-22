@@ -736,12 +736,13 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return ex;
     }
 
-    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean localVar, boolean localVarMat) {
+    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean localVar, boolean localVarMat, boolean allowsMissingBranchProfile) {
 
         InstructionValidationGroup(InstructionModel instruction) {
             this(instruction.getImmediates(), instruction.getInstructionLength(),
                             instruction.kind.isLocalVariableAccess(),
-                            instruction.kind.isLocalVariableMaterializedAccess());
+                            instruction.kind.isLocalVariableMaterializedAccess(),
+                            instruction.kind == InstructionModel.InstructionKind.BRANCH_BACKWARD);
         }
 
     }
@@ -885,7 +886,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                     case BRANCH_PROFILE:
                         b.tree(declareImmediate);
                         b.startIf().string("branchProfiles != null").end().startBlock();
-                        b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
+                        b.startIf().string(localName).string(" < ").string(group.allowsMissingBranchProfile() ? "-1" : "0").string(
+                                        " || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
                         b.tree(createValidationErrorWithBci("branch profile is out of bounds"));
                         b.end();
                         b.end();
