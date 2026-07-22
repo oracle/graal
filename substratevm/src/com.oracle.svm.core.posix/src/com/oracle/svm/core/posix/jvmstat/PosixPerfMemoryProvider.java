@@ -233,7 +233,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/hotspot/os/posix/perfMemory_posix.cpp#L852-L966")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/hotspot/os/posix/perfMemory_posix.cpp#L852-L966")
     private static int createSharedMemFile(CCharPointer directoryPath, CCharPointer filename, int size) {
         if (!makeUserTmpDir(directoryPath)) {
             return -1;
@@ -292,6 +292,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             }
             success = fs.writeInt(rawFd, 0);
             if (!success) {
+                removePerfFile(directoryPath, filename);
                 break;
             }
         }
@@ -302,6 +303,14 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
 
         return fd;
+    }
+
+    private static void removePerfFile(CCharPointer directoryPath, CCharPointer filename) {
+        try (SecureDirectory directory = openDirectorySecure(directoryPath)) {
+            if (directory != null) {
+                Fcntl.NoTransitions.unlinkat(directory.fd, filename, 0);
+            }
+        }
     }
 
     private static int tryCreatePerfFile(CCharPointer directoryPath, CCharPointer filename) {

@@ -292,7 +292,7 @@ public final class RuntimeOptionParser {
     /// - other launcher-only options: `-splash:<imagepath>`, `--disable-@files`
     ///
     /// See GR-75297 for work to implement the currently unimplemented options.
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/runtime/arguments.cpp")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/hotspot/share/runtime/arguments.cpp")
     private static String[] parseJavaVMOptions(String[] args, ParseContext context) {
         int newIdx = 0;
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
