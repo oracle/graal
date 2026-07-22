@@ -87,8 +87,8 @@ public class JNILibraryLoadFeature implements Feature {
         AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
         for (AnalysisMethod method : accessImpl.getUniverse().getMethods()) {
             if (method.isReachable() && method.getWrapped() instanceof JNINativeCallWrapperMethod wrapper && wrapper.isBuiltInFunction()) {
-                nativeCallWrapperSymbols.add(wrapper.getShortName());
-                nativeCallWrapperSymbols.add(wrapper.getLongName());
+                nativeCallWrapperSymbols.add(wrapper.getShortSymbol());
+                nativeCallWrapperSymbols.add(wrapper.getLongSymbol());
             }
         }
     }
@@ -117,10 +117,6 @@ public class JNILibraryLoadFeature implements Feature {
             }
         }
         return inputFiles.size();
-    }
-
-    void registerNativeCallWrapperSymbol(String name) {
-        nativeCallWrapperSymbols.add(name);
     }
 
     private Set<String> collectStaticBuiltinSymbols(NativeLibraries nativeLibraries, Collection<String> staticLibNames) {

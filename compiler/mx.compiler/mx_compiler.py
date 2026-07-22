@@ -60,6 +60,7 @@ import json
 import mx_graal_tools #pylint: disable=unused-import
 
 import mx_graal_benchmark #pylint: disable=unused-import
+import mx_run_jdk_test #pylint: disable=unused-import
 _suite = mx.suite('compiler')
 
 
@@ -1628,6 +1629,7 @@ def igvutil(args):
     cp = mx.classpath('GRAAL_IGVUTIL', jdk=jdk)
     vm_args = ['-cp', cp, 'org.graalvm.igvutil.IgvUtility'] + args
     return jdk.run_java(args=vm_args)
+
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],

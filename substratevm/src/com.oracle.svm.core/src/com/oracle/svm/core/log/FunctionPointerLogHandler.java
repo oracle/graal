@@ -32,22 +32,29 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
+import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-/**
- * A {@link LogHandler} that can use provided function pointers for each operation. If a function
- * pointer is missing, it forwards the operation to the delegate set in the constructor.
- */
+/// A [LogHandler] that can use provided function pointers for each operation. If a function
+/// pointer is missing, it forwards the operation to the delegate set in the constructor.
+/// A file descriptor can be [configured][#configureLogFile] instead of a function pointer
+/// for the [#log] operation.
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class FunctionPointerLogHandler implements LogHandlerExtension {
     private static final CGlobalData<CCharPointer> LOG_OPTION = CGlobalDataFactory.createCString("_log");
@@ -62,6 +69,9 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     private VoidFunctionPointer flushFunctionPointer;
     private VoidFunctionPointer fatalErrorFunctionPointer;
 
+    /// Descriptor used when logging to a file.
+    private volatile RawFileDescriptor logFileDescriptor;
+
     public FunctionPointerLogHandler(LogHandler delegate) {
         this.delegate = delegate;
     }
@@ -70,6 +80,8 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     public void log(CCharPointer bytes, UnsignedWord length) {
         if (logFunctionPointer.isNonNull()) {
             logFunctionPointer.invoke(bytes, length);
+        } else if (hasLogFile()) {
+            rawFiles().write(logFileDescriptor, (Pointer) bytes, length);
         } else if (delegate != null) {
             delegate.log(bytes, length);
         }
@@ -79,6 +91,8 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     public void flush() {
         if (flushFunctionPointer.isNonNull()) {
             flushFunctionPointer.invoke();
+        } else if (hasLogFile()) {
+            /* Raw file logging writes each chunk directly, so there is no buffered state to flush. */
         } else if (delegate != null) {
             delegate.flush();
         }
@@ -128,6 +142,46 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         }
     }
 
+    /// Configures the low level log stream to write to `path` for `optionString`.
+    ///
+    /// Throws `IllegalArgumentException` if the installed log handler is not a FunctionPointerLogHandler,
+    /// a JNI `_log` callback already defines the log destination, a log file
+    /// is already configured, or the log file cannot be opened.
+    ///
+    /// @return a hook that can be executed to close the log file
+    public static RuntimeSupport.Hook configureLogFile(String optionString, String path) {
+        LogHandler handler = ImageSingletons.lookup(LogHandler.class);
+        if (!(handler instanceof FunctionPointerLogHandler fpHandler)) {
+            throw new IllegalArgumentException("The " + optionString + " option is not supported");
+        }
+        if (fpHandler.logFunctionPointer.isNonNull()) {
+            throw new IllegalArgumentException("The " + optionString + " option cannot be used together with the _log JNI VM option");
+        }
+        RawFileOperationSupport rfos = rawFiles();
+        if (rfos.isValid(fpHandler.logFileDescriptor)) {
+            long rawFD = fpHandler.logFileDescriptor.rawValue();
+            throw new IllegalArgumentException("Cannot overwrite log file with descriptor " + rawFD + " for " + optionString + ": " + path);
+        }
+        RawFileDescriptor fd = rfos.create(path, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.WRITE);
+        if (!rfos.isValid(fd)) {
+            throw new IllegalArgumentException("Could not create log file for " + optionString + ": " + path);
+        }
+        fpHandler.logFileDescriptor = fd;
+        return _ -> {
+            if (fpHandler.hasLogFile()) {
+                boolean closed = rawFiles().close(fpHandler.logFileDescriptor);
+                fpHandler.logFileDescriptor = Word.nullPointer();
+                if (!closed) {
+                    Log.log().string("Error closing descriptor to log file ").string(path).newline();
+                }
+            }
+        };
+    }
+
+    private boolean hasLogFile() {
+        return rawFiles().isValid(logFileDescriptor);
+    }
+
     interface LogFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke(CCharPointer bytes, UnsignedWord length);
@@ -166,11 +220,17 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
 
     private static FunctionPointerLogHandler handler(CCharPointer optionString) {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
-        if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
+        if (!(handler instanceof FunctionPointerLogHandler)) {
             String str = CTypeConversion.toJavaString(optionString);
-            throw new IllegalArgumentException("The " + str + " option is not supported by JNI_CreateJavaVM");
+            throw new IllegalArgumentException("The " + str + " option is not supported");
         }
         return (FunctionPointerLogHandler) handler;
+    }
+
+    private static RawFileOperationSupport rawFiles() {
+        // The endianness is irrelevant since only byte[] writes are
+        // performed on logFileDescriptor
+        return RawFileOperationSupport.bigEndian();
     }
 
     /**

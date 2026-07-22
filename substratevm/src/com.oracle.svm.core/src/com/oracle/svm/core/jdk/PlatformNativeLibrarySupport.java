@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -41,13 +40,15 @@ import com.oracle.svm.shared.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
 
-    public static final String[] defaultBuiltInLibraries = {
+    /// Names (without platform-specific prefixes or suffixes) of the default built-in libraries.
+    public static final String[] defaultBuiltinLibraries = {
                     "java",
                     "nio",
                     "net"
     };
 
-    private static final String[] defaultBuiltInPkgNatives = {
+    /// JNI native symbol prefixes (without leading `Java_`) for default built-in native methods.
+    private static final String[] defaultBuiltinNatives = {
                     "com_sun_demo_jvmti_hprof",
                     "com_sun_java_util_jar_pack",
                     "com_sun_net_ssl",
@@ -87,62 +88,59 @@ public abstract class PlatformNativeLibrarySupport {
                     "com_oracle_svm_core_jdk"
     };
 
-    private static final String[] defaultBuiltInPkgNativesBlocklist;
-
-    static {
-        ArrayList<String> blocklist = new ArrayList<>();
-        Collections.addAll(blocklist,
-                        "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
-                        "sun_security_krb5_Config_getWindowsDirectory",
-                        "jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl",
-                        "jdk_internal_misc_ScopedMemoryAccess_closeScope0",
-                        "jdk_internal_misc_ScopedMemoryAccess_registerNatives",
-                        "java_lang_invoke_VarHandle_weakCompareAndSetPlain",
-                        "java_lang_invoke_VarHandle_weakCompareAndSetRelease",
-                        "java_lang_invoke_VarHandle_getAndBitwiseAndAcquire",
-                        "java_lang_invoke_VarHandle_getVolatile",
-                        "java_lang_invoke_VarHandle_compareAndSet",
-                        "java_lang_invoke_VarHandle_compareAndExchangeRelease",
-                        "java_lang_invoke_VarHandle_getAndAddRelease",
-                        "java_lang_invoke_VarHandle_getAndBitwiseOr",
-                        "java_lang_invoke_VarHandle_getOpaque",
-                        "java_lang_invoke_VarHandle_compareAndExchangeAcquire",
-                        "java_lang_invoke_VarHandle_getAndBitwiseXorAcquire",
-                        "java_lang_invoke_VarHandle_get",
-                        "java_lang_invoke_VarHandle_setRelease",
-                        "java_lang_invoke_VarHandle_setVolatile",
-                        "java_lang_invoke_VarHandle_getAndBitwiseOrRelease",
-                        "java_lang_invoke_VarHandle_getAndBitwiseAnd",
-                        "java_lang_invoke_VarHandle_getAndBitwiseXorRelease",
-                        "java_lang_invoke_VarHandle_weakCompareAndSet",
-                        "java_lang_invoke_VarHandle_getAndSetRelease",
-                        "java_lang_invoke_VarHandle_weakCompareAndSetAcquire",
-                        "java_lang_invoke_VarHandle_setOpaque",
-                        "java_lang_invoke_VarHandle_getAndBitwiseAndRelease",
-                        "java_lang_invoke_VarHandle_getAndAdd",
-                        "java_lang_invoke_VarHandle_getAndBitwiseXor",
-                        "java_lang_invoke_VarHandle_getAndAddAcquire",
-                        "java_lang_invoke_VarHandle_getAndSet",
-                        "java_lang_invoke_VarHandle_getAndBitwiseOrAcquire",
-                        "java_lang_invoke_VarHandle_set",
-                        "java_lang_invoke_VarHandle_compareAndExchange",
-                        "java_lang_invoke_VarHandle_getAcquire",
-                        "java_lang_invoke_VarHandle_getAndSetAcquire",
-                        "java_nio_MappedMemoryUtils_load0",
-                        "java_nio_MappedMemoryUtils_unload0",
-                        "java_nio_MappedMemoryUtils_isLoaded0",
-                        "java_nio_MappedMemoryUtils_force0");
-        defaultBuiltInPkgNativesBlocklist = blocklist.toArray(new String[0]);
-    }
+    /// JNI native symbol prefixes (without leading `Java_`) for native methods
+    /// that are blocked from being built-in.
+    private static final String[] defaultBuiltinNativesBlocklist = {
+                    "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
+                    "sun_security_krb5_Config_getWindowsDirectory",
+                    "jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl",
+                    "jdk_internal_misc_ScopedMemoryAccess_closeScope0",
+                    "jdk_internal_misc_ScopedMemoryAccess_registerNatives",
+                    "java_lang_invoke_VarHandle_weakCompareAndSetPlain",
+                    "java_lang_invoke_VarHandle_weakCompareAndSetRelease",
+                    "java_lang_invoke_VarHandle_getAndBitwiseAndAcquire",
+                    "java_lang_invoke_VarHandle_getVolatile",
+                    "java_lang_invoke_VarHandle_compareAndSet",
+                    "java_lang_invoke_VarHandle_compareAndExchangeRelease",
+                    "java_lang_invoke_VarHandle_getAndAddRelease",
+                    "java_lang_invoke_VarHandle_getAndBitwiseOr",
+                    "java_lang_invoke_VarHandle_getOpaque",
+                    "java_lang_invoke_VarHandle_compareAndExchangeAcquire",
+                    "java_lang_invoke_VarHandle_getAndBitwiseXorAcquire",
+                    "java_lang_invoke_VarHandle_get",
+                    "java_lang_invoke_VarHandle_setRelease",
+                    "java_lang_invoke_VarHandle_setVolatile",
+                    "java_lang_invoke_VarHandle_getAndBitwiseOrRelease",
+                    "java_lang_invoke_VarHandle_getAndBitwiseAnd",
+                    "java_lang_invoke_VarHandle_getAndBitwiseXorRelease",
+                    "java_lang_invoke_VarHandle_weakCompareAndSet",
+                    "java_lang_invoke_VarHandle_getAndSetRelease",
+                    "java_lang_invoke_VarHandle_weakCompareAndSetAcquire",
+                    "java_lang_invoke_VarHandle_setOpaque",
+                    "java_lang_invoke_VarHandle_getAndBitwiseAndRelease",
+                    "java_lang_invoke_VarHandle_getAndAdd",
+                    "java_lang_invoke_VarHandle_getAndBitwiseXor",
+                    "java_lang_invoke_VarHandle_getAndAddAcquire",
+                    "java_lang_invoke_VarHandle_getAndSet",
+                    "java_lang_invoke_VarHandle_getAndBitwiseOrAcquire",
+                    "java_lang_invoke_VarHandle_set",
+                    "java_lang_invoke_VarHandle_compareAndExchange",
+                    "java_lang_invoke_VarHandle_getAcquire",
+                    "java_lang_invoke_VarHandle_getAndSetAcquire",
+                    "java_nio_MappedMemoryUtils_load0",
+                    "java_nio_MappedMemoryUtils_unload0",
+                    "java_nio_MappedMemoryUtils_isLoaded0",
+                    "java_nio_MappedMemoryUtils_force0"
+    };
 
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
     }
 
     protected PlatformNativeLibrarySupport() {
-        builtInPkgNatives = new ArrayList<>();
+        builtinNatives = new ArrayList<>();
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            builtInPkgNatives.addAll(Arrays.asList(defaultBuiltInPkgNatives));
+            builtinNatives.addAll(Arrays.asList(defaultBuiltinNatives));
         }
     }
 
@@ -155,28 +153,38 @@ public abstract class PlatformNativeLibrarySupport {
         return false;
     }
 
-    private List<String> builtInPkgNatives;
-    private boolean builtInPkgNativesSealed;
+    /// Stores JNI-mangled symbol prefixes, without the leading `Java_`, that are associated
+    /// with built-in native libraries. For example, package `java.lang` is represented as
+    /// `java_lang`.
+    private final List<String> builtinNatives;
 
-    public void addBuiltinPkgNativePrefix(String name) {
-        if (builtInPkgNativesSealed) {
-            throw VMError.shouldNotReachHere("Cannot register any more packages as built-ins because information has already been used.");
+    private boolean builtinNativesSealed;
+
+    public void addBuiltinNativePrefix(String symbolPrefix) {
+        if (builtinNativesSealed) {
+            throw VMError.shouldNotReachHere("Cannot register any more native built-ins because information has already been used.");
         }
-        builtInPkgNatives.add(name);
+        builtinNatives.add(symbolPrefix);
     }
 
-    public boolean isBuiltinPkgNative(String name) {
-        builtInPkgNativesSealed = true;
+    /// Determines whether `jniSymbol` corresponds to a built-in native method.
+    /// The method checks if the symbol name starts with `"Java_"` and matches any
+    /// allowed identifiers while ensuring it does not match with blocklisted ones.
+    ///
+    /// @param jniSymbol the JNI symbol name to evaluate.
+    /// @return `true` if the symbol corresponds to a built-in native method; `false` otherwise.
+    public boolean isBuiltinNative(String jniSymbol) {
+        builtinNativesSealed = true;
 
         String commonPrefix = "Java_";
-        if (name.startsWith(commonPrefix)) {
-            String strippedName = name.substring(commonPrefix.length());
-            for (String str : defaultBuiltInPkgNativesBlocklist) {
+        if (jniSymbol.startsWith(commonPrefix)) {
+            String strippedName = jniSymbol.substring(commonPrefix.length());
+            for (String str : defaultBuiltinNativesBlocklist) {
                 if (strippedName.startsWith(str)) {
                     return false;
                 }
             }
-            for (String str : builtInPkgNatives) {
+            for (String str : builtinNatives) {
                 if (strippedName.startsWith(str)) {
                     return true;
                 }
@@ -217,7 +225,7 @@ class PlatformNativeLibrarySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            for (String libName : PlatformNativeLibrarySupport.defaultBuiltInLibraries) {
+            for (String libName : PlatformNativeLibrarySupport.defaultBuiltinLibraries) {
                 NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(libName);
             }
         }

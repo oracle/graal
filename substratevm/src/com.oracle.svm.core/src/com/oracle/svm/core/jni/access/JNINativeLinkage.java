@@ -25,11 +25,15 @@
 package com.oracle.svm.core.jni.access;
 
 import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
+import static com.oracle.svm.core.libjvm.WhiteBoxEntryPoints.WHITEBOX_REGISTER_NATIVES;
+import static com.oracle.svm.core.libjvm.WhiteBoxEntryPoints.WHITEBOX_REGISTER_NATIVES_SYMBOL;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
@@ -98,7 +102,7 @@ public final class JNINativeLinkage {
         return (String) declaringClassName;
     }
 
-    public String getName() {
+    public String getMethodName() {
         return (String) name;
     }
 
@@ -107,13 +111,13 @@ public final class JNINativeLinkage {
     }
 
     public boolean isBuiltInFunction() {
-        return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
+        return PlatformNativeLibrarySupport.singleton().isBuiltinNative(getShortSymbol());
     }
 
     public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
         assert isBuiltInFunction();
         if (builtInAddress == null) {
-            builtInAddress = createSymbol.apply(getShortName());
+            builtInAddress = createSymbol.apply(getShortSymbol());
         }
         return builtInAddress;
     }
@@ -144,8 +148,7 @@ public final class JNINativeLinkage {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof JNINativeLinkage) {
-            JNINativeLinkage that = (JNINativeLinkage) obj;
+        if (obj instanceof JNINativeLinkage that) {
             return (that == this) ||
                             (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClassName, that.declaringClassName) &&
                                             WRAPPED_CSTRING_EQUIVALENCE.equals(name, that.name) &&
@@ -157,14 +160,24 @@ public final class JNINativeLinkage {
     @Override
     public String toString() {
         return MetaUtil.internalNameToJava(getDeclaringClassName(), true, false) + "." + name + descriptor +
-                        " [symbol: " + getShortName() + " or " + getLongName() + "]";
+                        " [symbol: " + getShortSymbol() + " or " + getLongSymbol() + "]";
 
     }
 
-    /**
-     * Gets the native address for the {@code native} method represented by this object, attempting
-     * to resolve it if it is currently 0.
-     */
+    /// Native methods whose implementation is a method in the VM annotated by `CEntryPoint`.
+    /// These methods have no symbols in an external library that would be processed by
+    /// `JNILibraryLoadFeature`. Furthermore, this table only contains entries for
+    /// classes not known at build-time as build-time classes will have
+    /// `JNINativeCallWrapperMethod`s generated for their native methods.
+    ///
+    /// This is similar to the `lookup_special_native_methods` table in
+    /// the HotSpot source file.
+    private static final Map<String, CEntryPointLiteral<?>> VM_IMPLEMENTED_NATIVE_METHODS = Map.of(
+                    WHITEBOX_REGISTER_NATIVES_SYMBOL, WHITEBOX_REGISTER_NATIVES);
+
+    /// Gets the native address for the `native` method represented by this object.
+    ///
+    /// If the entry point has not been resolved yet, this method asks the declaring class loader.
     public PointerBase getOrFindEntryPoint() {
         if (entryPoint.isNull()) {
             Class<?> classObject = null;
@@ -177,29 +190,48 @@ public final class JNINativeLinkage {
                 classObject = DynamicHub.toClass(declaringClass);
                 classLoader = declaringClass.getClassLoader();
             }
-            String shortName = getShortName();
-            entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortName, getName()));
+            String shortSymbol = getShortSymbol();
+
+            // If the loader is null, this is a lookup for a system class, so look
+            // for an internally implemented method.
+            if (classLoader == null) {
+                CEntryPointLiteral<?> val = VM_IMPLEMENTED_NATIVE_METHODS.get(shortSymbol);
+                if (val != null) {
+                    entryPoint = val.getFunctionPointer();
+                }
+            }
+
             if (entryPoint.isNull()) {
-                String longName = getLongName();
-                entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longName, getName()));
+                entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortSymbol, getMethodName()));
                 if (entryPoint.isNull()) {
-                    throw new UnsatisfiedLinkError(toString());
+                    String longSymbol = getLongSymbol();
+                    entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longSymbol, getMethodName()));
+                    if (entryPoint.isNull()) {
+                        throw new UnsatisfiedLinkError(toString());
+                    }
                 }
             }
         }
         return entryPoint;
     }
 
-    public String getShortName() {
+    /// Gets the native method's JNI-mangled qualified name without a signature suffix.
+    ///
+    /// For example, `java.lang.Object.registerNatives()` maps to
+    /// `Java_java_lang_Object_registerNatives`.
+    public String getShortSymbol() {
         StringBuilder sb = new StringBuilder("Java_");
         mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
         sb.append('_');
-        mangleName(getName(), 0, name.length(), sb);
+        mangleName(getMethodName(), 0, name.length(), sb);
         return sb.toString();
     }
 
-    public String getLongName() {
-        return getShortName() + "__" + getSignature();
+    /// Gets the native method's JNI-mangled qualified name with a signature suffix.
+    ///
+    /// For example, `pkg.Native.method(int)` maps to `Java_pkg_Native_method__I`.
+    public String getLongSymbol() {
+        return getShortSymbol() + "__" + getSignature();
     }
 
     private String getSignature() {
@@ -231,9 +263,8 @@ public final class JNINativeLinkage {
                     default: // _0xxxx, where xxxx is lower-case hexadecimal Unicode value
                         sb.append('_');
                         String hex = Integer.toHexString(c);
-                        for (int j = hex.length(); j < 5; j++) {
-                            sb.append('0'); // padding
-                        }
+                        // padding
+                        sb.repeat("0", 5 - hex.length());
                         sb.append(hex);
                         break;
                 }

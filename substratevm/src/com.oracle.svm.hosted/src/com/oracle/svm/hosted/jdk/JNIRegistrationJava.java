@@ -126,7 +126,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
         if (isWindows()) {
             /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
+            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_provider_NativeSeedGenerator");
         }
         if (isDarwin()) {
             List<ResolvedJavaMethod> darwinMethods = Arrays.asList(

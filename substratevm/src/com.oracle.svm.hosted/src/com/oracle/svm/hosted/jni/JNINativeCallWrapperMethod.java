@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -64,6 +65,15 @@ class JNINativeCallWrapperMethod extends AbstractJNINativeCallWrapperMethod {
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
         super(method);
+        assert !(method instanceof WrappedJavaMethod);
+    }
+
+    String getShortSymbol() {
+        return linkage.getShortSymbol();
+    }
+
+    String getLongSymbol() {
+        return linkage.getLongSymbol();
     }
 
     @Override

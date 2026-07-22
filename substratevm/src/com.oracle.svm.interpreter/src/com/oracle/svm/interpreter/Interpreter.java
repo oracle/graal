@@ -430,13 +430,13 @@ public final class Interpreter {
             }
         } else {
             if (method.isNative()) {
-                // GR-73665
-                throw VMError.shouldNotReachHere(MetadataUtil.fmt("Runtime native method linkage is not implemented: %s", method));
+                throw VMError.shouldNotReachHere(MetadataUtil.fmt("Runtime native method should have been dispatched earlier: %s", method));
             } else if (!method.isAbstract()) {
                 throw VMError.shouldNotReachHere(MetadataUtil.fmt("Missing bytecode for run-time-loaded method %s", method));
             } else {
                 throw VMError.shouldNotReachHere(MetadataUtil.fmt("Should not reach interpreter for run-time-loaded abstract method %s", method));
             }
+
         }
     }
 
@@ -447,7 +447,7 @@ public final class Interpreter {
 
     /**
      * Returns the monitor object for a synchronized method at normal interpreter entry.
-     *
+     * <p>
      * Static synchronized methods lock their declaring class mirror. Instance synchronized methods
      * lock local 0 ({@code this}), which must be live on normal entry because the interpreter is
      * about to acquire the monitor itself.
@@ -573,7 +573,7 @@ public final class Interpreter {
     /**
      * Completes a successful interpreter return by performing the trace and debugger notifications
      * that are part of the interpreter's return-side effects.
-     *
+     * <p>
      * Ristretto OSR returns bypass this helper because the OSR continuation has already left the
      * interpreter and returns as runtime-compiled code.
      */
