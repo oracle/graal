@@ -26,6 +26,7 @@ package jdk.graal.compiler.hostvmaccess;
 
 import static jdk.graal.compiler.hostvmaccess.HostProxyHandler.computeMethodMap;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -46,7 +47,9 @@ import java.security.ProtectionDomain;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
@@ -54,6 +57,7 @@ import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.hostvmaccess.HostProxyHandler.HostProxyHandlerMethodHandles;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.vmaccess.HostAnnotationValueConverter;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
@@ -643,6 +647,19 @@ final class HostVMAccess implements VMAccess {
             // (ResolvedJavaType) -> Class
             originalClass = originalClass.bindTo(providers.getSnippetReflection());
 
+            // (Annotation, Function<Class<?>, ResolvedJavaType>) -> AnnotationValue
+            MethodHandle annotationAsAnnotationValue = lookup.findStatic(HostAnnotationValueConverter.class, "toAnnotationValue",
+                            MethodType.methodType(AnnotationValue.class, Annotation.class, Function.class));
+            // (Annotation) -> AnnotationValue
+            annotationAsAnnotationValue = MethodHandles.insertArguments(annotationAsAnnotationValue, 1, (Function<Class<?>, ResolvedJavaType>) providers.getMetaAccess()::lookupJavaType);
+
+            // (AnnotationValue, Class, Function<ResolvedJavaType, Class<?>>) -> Annotation
+            MethodHandle annotationValueAsAnnotation = lookup.findStatic(HostAnnotationValueConverter.class, "toAnnotation",
+                            MethodType.methodType(Annotation.class, AnnotationValue.class, Class.class, Function.class));
+            // (AnnotationValue, Class) -> Annotation
+            annotationValueAsAnnotation = MethodHandles.insertArguments(annotationValueAsAnnotation, 2,
+                            (Function<ResolvedJavaType, Class<?>>) providers.getSnippetReflection()::originalClass);
+
             // (SnippetReflectionProvider, Throwable) -> Object
             MethodHandle filterException = lookup.findStatic(HostProxyHandler.class, "filterException", MethodType.methodType(Object.class, SnippetReflectionProvider.class, Throwable.class));
             // (Throwable) -> Object
@@ -655,6 +672,8 @@ final class HostVMAccess implements VMAccess {
                             javaConstantAsBoolean, javaConstantAsByte, javaConstantAsShort, javaConstantAsChar, javaConstantAsInt, javaConstantAsLong, javaConstantAsFloat, javaConstantAsDouble,
                             lookupJavaField, lookupJavaMethod, lookupJavaType,
                             originalField, originalMethod, originalClass,
+                            annotationAsAnnotationValue,
+                            annotationValueAsAnnotation,
                             filterException);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);

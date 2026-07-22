@@ -361,6 +361,7 @@ suite = {
         ],
         "java.base": [
           "jdk.internal.module",
+          "sun.reflect.annotation",
         ],
       },
       "javaCompliance": "21+",
@@ -745,12 +746,16 @@ suite = {
           "jdk.graal.compiler.vmaccess",
         ],
         "requiresConcealed": {
+          "java.base": [
+            "sun.reflect.annotation",
+          ],
           "jdk.internal.vm.ci": [
             "jdk.vm.ci.meta",
             "jdk.vm.ci.meta.annotation",
             "jdk.vm.ci.code",
           ],
           "jdk.graal.compiler": [
+            "jdk.graal.compiler.annotation",
             "jdk.graal.compiler.phases.util",
           ]
         },
@@ -790,7 +795,7 @@ suite = {
             "jdk.internal.access",
             "jdk.internal.loader",
             "jdk.internal.module",
-            "jdk.internal.misc"
+            "jdk.internal.misc",
           ],
           "jdk.internal.vm.ci": [
             "jdk.vm.ci.meta",
@@ -799,6 +804,7 @@ suite = {
           "jdk.graal.compiler": [
             "jdk.graal.compiler.api.replacements",
             "jdk.graal.compiler.api.runtime",
+            "jdk.graal.compiler.annotation",
             "jdk.graal.compiler.core.target",
             "jdk.graal.compiler.phases.util",
             "jdk.graal.compiler.runtime",
