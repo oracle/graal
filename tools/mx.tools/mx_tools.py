@@ -71,6 +71,8 @@ def javadoc(args):
     if not args:
         projectNames = []
         for p in mx.projects(True, True):
+            if getattr(p, "noMavenJavadoc", False):
+                continue
             projectNames.append(p.name)
         mx.javadoc(['--unified', '--disallow-all-warnings', '--projects', ','.join(projectNames)], includeDeps=False)
     else:
