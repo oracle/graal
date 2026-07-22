@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -111,8 +111,10 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64InclNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncqNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64LoadControlWordNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64LahfNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64ReadFlagswNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ReadControlWordNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MullNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulqNodeGen;
@@ -223,7 +225,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI16LiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
@@ -768,8 +769,13 @@ public class AsmFactory {
             }
             case "fstcw":
             case "fnstcw": {
-                assert getPrimitiveType(dstType) == PrimitiveKind.I16;
-                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0x037F)));
+                dstType = PrimitiveType.I16;
+                statements.add(getOperandStore(dstType, operand, LLVMAMD64ReadControlWordNodeGen.create()));
+                return;
+            }
+            case "fldcw": {
+                dstType = PrimitiveType.I16;
+                statements.add(LLVMAMD64LoadControlWordNodeGen.create(getOperandLoad(dstType, operand)));
                 return;
             }
             default:

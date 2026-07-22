@@ -39,7 +39,7 @@ _suite = mx.suite('sulong')
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -75,7 +75,7 @@ COPYRIGHT_HEADER_BSD = """\
 
 COPYRIGHT_HEADER_BSD_HASH = """\
 #
-# Copyright (c) 2020, 2025, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2026, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #

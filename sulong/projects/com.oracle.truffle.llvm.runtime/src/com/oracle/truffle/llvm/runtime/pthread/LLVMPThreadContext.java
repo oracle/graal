@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,9 +36,11 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
@@ -48,6 +50,7 @@ public final class LLVMPThreadContext {
 
     // associated context for creating threads
     private final TruffleLanguage.Env env;
+    private final LLVMLanguage language;
 
     // the long-key is the thread-id
     private final Object threadLock;
@@ -80,6 +83,7 @@ public final class LLVMPThreadContext {
 
     public LLVMPThreadContext(TruffleLanguage.Env env, LLVMLanguage language, DataLayout dataLayout) {
         this.env = env;
+        this.language = language;
 
         // pthread storages
         this.threadLock = new Object();
@@ -201,7 +205,12 @@ public final class LLVMPThreadContext {
     public Thread createThread(Runnable runnable) {
         synchronized (threadLock) {
             if (isCreateThreadAllowed) {
-                final Thread thread = env.newTruffleThreadBuilder(runnable).build();
+                int initialRoundingMode = language.getCapability(PlatformCapability.class).getOS() == OS.DARWIN ? LLVMLanguage.DEFAULT_ROUNDING_MODE : language.getRoundingMode();
+                Runnable initializeFloatingPointEnvironment = () -> {
+                    language.setRoundingMode(initialRoundingMode);
+                    runnable.run();
+                };
+                final Thread thread = env.newTruffleThreadBuilder(initializeFloatingPointEnvironment).build();
                 threadStorage.put(thread.getId(), new WeakReference<>(thread));
                 return thread;
             } else {

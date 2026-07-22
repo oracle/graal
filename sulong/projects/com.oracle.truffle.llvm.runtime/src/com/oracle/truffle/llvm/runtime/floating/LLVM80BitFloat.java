@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -182,14 +182,7 @@ public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
     private static LLVM80BitFloat fromLong(long val, boolean sign) {
         int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
         int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
-        long fractionMask;
-        if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
-            fractionMask = 0xffffffff;
-        } else {
-            fractionMask = (1L << leadingOnePosition + 1) - 1;
-        }
-        long maskedFractionValue = val & fractionMask;
-        long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
+        long fraction = val << (Long.SIZE - leadingOnePosition);
         return LLVM80BitFloat.fromRawValues(sign, exponent, fraction);
     }
 
@@ -325,13 +318,14 @@ public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
 
     public boolean isQNaN() {
         // Checkstyle: stop magic number name check
+        if (getExponent() != 0 && !getBit(63, getFraction())) {
+            return true; // Handle pseudo-NaNs, pseudo-infinities, and unnormals as quiet NaNs
+        }
         if (getExponent() == EXPONENT_MASK) {
             if (getBit(63, getFraction())) {
                 if (getBit(62, getFraction())) {
                     return true;
                 }
-            } else {
-                return true; // Handle Pseudo NaN as quiet NaN
             }
         }
         // Checkstyle: resume magic number name check

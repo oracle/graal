@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMFloatingArithmeticNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -42,6 +45,94 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMVectorReduce {
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFAddNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(float start, LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = start;
+            if (getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                for (int i = 0; i < getVectorLength(); i++) {
+                    result += value.getValue(i);
+                }
+            } else {
+                int roundingMode = getLanguage().getRoundingMode();
+                for (int i = 0; i < getVectorLength(); i++) {
+                    float right = value.getValue(i);
+                    float nearest = result + right;
+                    double exact = (double) result + right;
+                    result = exact == 0 ? LLVMFloatingArithmeticNode.exactZero(nearest, roundingMode) : LLVMFloatingArithmeticNode.adjustRounding(nearest, exact, roundingMode);
+                }
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(double start, LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = start;
+            if (getLanguage().getDefaultRoundingModeAssumption().isValid()) {
+                for (int i = 0; i < getVectorLength(); i++) {
+                    result += value.getValue(i);
+                }
+            } else {
+                int roundingMode = getLanguage().getRoundingMode();
+                for (int i = 0; i < getVectorLength(); i++) {
+                    double right = value.getValue(i);
+                    double nearest = result + right;
+                    if (result == -right) {
+                        result = LLVMFloatingArithmeticNode.exactZero(nearest, roundingMode);
+                    } else if (Double.isInfinite(nearest) && Double.isFinite(result) && Double.isFinite(right)) {
+                        result = LLVMFloatingArithmeticNode.adjustOverflow(nearest, roundingMode);
+                    } else {
+                        result = LLVMFloatingArithmeticNode.adjustRounding(nearest, LLVMFloatingArithmeticNode.addError(result, right, nearest), roundingMode);
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFMaxNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                float element = value.getValue(i);
+                if (!Float.isNaN(element)) {
+                    result = Float.isNaN(result) ? element : Math.max(result, element);
+                }
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                double element = value.getValue(i);
+                if (!Double.isNaN(element)) {
+                    result = Double.isNaN(result) ? element : Math.max(result, element);
+                }
+            }
+            return result;
+        }
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "vectorLength", type = int.class)

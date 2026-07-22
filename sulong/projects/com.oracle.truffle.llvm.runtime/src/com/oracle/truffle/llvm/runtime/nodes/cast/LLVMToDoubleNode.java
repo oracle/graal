@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -165,8 +166,6 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUnsignedCastToDoubleNode extends LLVMToDoubleNode {
 
-        private static final double LEADING_BIT = 0x1.0p63;
-
         protected LLVMUnsignedCastToDoubleNode() {
         }
 
@@ -205,11 +204,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
 
         public static double doI64(long from) {
-            double val = from & Long.MAX_VALUE;
-            if (from < 0) {
-                val += LEADING_BIT;
-            }
-            return val;
+            return ExactMath.unsignedToDouble(from);
         }
 
         @Specialization

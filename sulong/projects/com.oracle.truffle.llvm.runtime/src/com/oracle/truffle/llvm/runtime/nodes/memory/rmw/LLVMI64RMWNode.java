@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
@@ -51,12 +53,30 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVMPointer doOp(LLVMNativePointer address, LLVMPointer value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            long oldValue = getLanguage().getLLVMMemory().getAndSetI64(this, address, toNative.executeWithTarget(value).asNative());
+            return LLVMNativePointer.create(oldValue);
+        }
+
+        @Specialization
         protected Object doOp(LLVMManagedPointer address, long value,
                         @Cached LLVMI64LoadNode read,
                         @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 Object result = read.executeWithTargetGeneric(address);
                 write.executeWithTarget(address, value);
+                return result;
+            }
+        }
+
+        @Specialization
+        protected Object doOp(LLVMManagedPointer address, Object value,
+                        @Cached LLVMI64LoadNode read,
+                        @Cached LLVMI64OffsetStoreNode write) {
+            synchronized (address.getObject()) {
+                Object result = read.executeWithTargetGeneric(address);
+                write.executeWithTargetGeneric(address, 0, value);
                 return result;
             }
         }

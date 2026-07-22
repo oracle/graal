@@ -1,0 +1,452 @@
+From 1d96596a534b796b34ca665f967b8805875a6385 Mon Sep 17 00:00:00 2001
+From: Joseph Huber <huberjn@outlook.com>
+Date: Wed, 20 May 2026 11:11:44 -0500
+Subject: [PATCH 4/4] [flang-rt] Implement iso module in C++ in the runtime
+ (#197687)
+
+Summary:
+Right now we have a very heavy dependency on `flang` for a single module
+file. The flang build will handle creating the actual module file, we
+just need to export the symbols. This PR ports the source file from the
+flang .f90 to equivalent C++. This allows us to build `flang-rt`
+standalone without bringing in the entire flang infrastructure, which is
+by far the heaviest build in the entire LLVM project.
+
+I verified the symbols and values against a previous build, so they are
+identical.
+
+(cherry picked from commit d7232bdaf502e189415136aa0f90b00bbe92c7cd)
+---
+ flang-rt/CMakeLists.txt                       |   3 +
+ flang-rt/lib/runtime/CMakeLists.txt           |   2 +-
+ flang-rt/lib/runtime/iso_fortran_env_impl.cpp | 253 ++++++++++++++++++
+ .../compare_iso_fortran_env_symbols.f90       |  13 +
+ flang-rt/test/Driver/iso_fortran_env_impl.f90 |  23 ++
+ flang/include/flang/Common/type-kinds.h       |  41 ++-
+ flang/module/iso_fortran_env_impl.f90         |   5 +-
+ 7 files changed, 329 insertions(+), 11 deletions(-)
+ create mode 100644 flang-rt/lib/runtime/iso_fortran_env_impl.cpp
+ create mode 100644 flang-rt/test/Driver/compare_iso_fortran_env_symbols.f90
+ create mode 100644 flang-rt/test/Driver/iso_fortran_env_impl.f90
+
+diff --git a/flang-rt/CMakeLists.txt b/flang-rt/CMakeLists.txt
+index 50b8e834776f..6560f0915b28 100644
+--- a/flang-rt/CMakeLists.txt
++++ b/flang-rt/CMakeLists.txt
+@@ -246,6 +246,9 @@ if (UNIX AND CMAKE_SYSTEM_NAME MATCHES "AIX")
+   add_compile_definitions(_LARGE_FILE_API)
+ endif ()
+ 
++# Indicates REAL(16) support via an external library (e.g. libquadmath).
++add_compile_definitions(FLANG_RT_SUPPORTS_REAL16=$<BOOL:${FLANG_RUNTIME_F128_MATH_LIB}>)
++
+ # Check whether the compiler can undefine a macro using the "-Wp,-U" flag.
+ # Aternatively, we could use
+ #   CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU"
+diff --git a/flang-rt/lib/runtime/CMakeLists.txt b/flang-rt/lib/runtime/CMakeLists.txt
+index 7fa8c2cb9541..2b01bdb460c9 100644
+--- a/flang-rt/lib/runtime/CMakeLists.txt
++++ b/flang-rt/lib/runtime/CMakeLists.txt
+@@ -74,7 +74,7 @@ set(supported_sources
+ 
+ # List of source not used for GPU offloading.
+ set(host_sources
+-  ${FLANG_SOURCE_DIR}/module/iso_fortran_env_impl.f90
++  iso_fortran_env_impl.cpp
+   command.cpp
+   complex-powi.cpp
+   complex-reduction.c
+diff --git a/flang-rt/lib/runtime/iso_fortran_env_impl.cpp b/flang-rt/lib/runtime/iso_fortran_env_impl.cpp
+new file mode 100644
+index 000000000000..144662f1262a
+--- /dev/null
++++ b/flang-rt/lib/runtime/iso_fortran_env_impl.cpp
+@@ -0,0 +1,253 @@
++//===-- lib/runtime/iso_fortran_env_impl.cpp --------------------*- C++ -*-===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++//
++// Provides linkable symbols for the iso_fortran_env_impl module constants. It
++// replaces the Fortran source (flang/module/iso_fortran_env_impl.f90) to remove
++// the runtime library's build dependency on the Fortran compiler.
++//
++// The values here must stay in sync with the Fortran module source which
++// generates the .mod file during the flang compiler build.
++//
++// Symbol naming follows Flang's module variable mangling:
++//   _QM<module_name>EC<constant_name>
++//
++//===----------------------------------------------------------------------===//
++
++#include "flang/Common/float128.h"
++#include "flang/Common/float80.h"
++#include "flang/Common/type-kinds.h"
++#include <cstdint>
++
++// Fortran merge(tsource, fsource, mask) to match the source module style.
++static constexpr std::int32_t Merge(
++    std::int32_t tsource, std::int32_t fsource, bool mask) {
++  return mask ? tsource : fsource;
++}
++
++// Fortran digits() for integer kind K returns 8*K - 1 (excludes sign bit).
++static constexpr int IntDigits(int kind) { return 8 * kind - 1; }
++
++// Fortran digits() for unsigned kind K returns 8*K (no sign bit).
++static constexpr int UintDigits(int kind) { return 8 * kind; }
++
++// Fortran digits() for real kind K returns the binary precision.
++static constexpr int RealDigits(int kind) {
++  return Fortran::common::PrecisionOfRealKind(kind);
++}
++
++// The smallest valid real kind, used as a safe fallback when a selected
++// real kind is unavailable (so digits() can be called without error).
++static constexpr std::int32_t safeRealFallback{2};
++
++// Integer kinds, selected -> safe -> validated.
++static constexpr std::int32_t selectedInt8{1};
++static constexpr std::int32_t selectedInt16{2};
++static constexpr std::int32_t selectedInt32{4};
++static constexpr std::int32_t selectedInt64{8};
++static constexpr std::int32_t selectedInt128{16};
++
++static constexpr std::int32_t safeInt8{
++    Merge(selectedInt8, 1, selectedInt8 >= 0)};
++static constexpr std::int32_t safeInt16{
++    Merge(selectedInt16, 1, selectedInt16 >= 0)};
++static constexpr std::int32_t safeInt32{
++    Merge(selectedInt32, 1, selectedInt32 >= 0)};
++static constexpr std::int32_t safeInt64{
++    Merge(selectedInt64, 1, selectedInt64 >= 0)};
++static constexpr std::int32_t safeInt128{
++    Merge(selectedInt128, 1, selectedInt128 >= 0)};
++
++static constexpr std::int32_t int8{Merge(
++    selectedInt8, Merge(-2, -1, selectedInt8 >= 0), IntDigits(safeInt8) == 7)};
++static constexpr std::int32_t int16{Merge(selectedInt16,
++    Merge(-2, -1, selectedInt16 >= 0), IntDigits(safeInt16) == 15)};
++static constexpr std::int32_t int32{Merge(selectedInt32,
++    Merge(-2, -1, selectedInt32 >= 0), IntDigits(safeInt32) == 31)};
++static constexpr std::int32_t int64{Merge(selectedInt64,
++    Merge(-2, -1, selectedInt64 >= 0), IntDigits(safeInt64) == 63)};
++static constexpr std::int32_t int128{Merge(selectedInt128,
++    Merge(-2, -1, selectedInt128 >= 0), IntDigits(safeInt128) == 127)};
++
++// Unsigned kinds, same selection as integer, validated with unsigned digits.
++static constexpr std::int32_t selectedUInt8{selectedInt8};
++static constexpr std::int32_t selectedUInt16{selectedInt16};
++static constexpr std::int32_t selectedUInt32{selectedInt32};
++static constexpr std::int32_t selectedUInt64{selectedInt64};
++static constexpr std::int32_t selectedUInt128{selectedInt128};
++
++static constexpr std::int32_t safeUInt8{safeInt8};
++static constexpr std::int32_t safeUInt16{safeInt16};
++static constexpr std::int32_t safeUInt32{safeInt32};
++static constexpr std::int32_t safeUInt64{safeInt64};
++static constexpr std::int32_t safeUInt128{safeInt128};
++
++static constexpr std::int32_t uint8{Merge(selectedUInt8,
++    Merge(-2, -1, selectedUInt8 >= 0), UintDigits(safeUInt8) == 8)};
++static constexpr std::int32_t uint16{Merge(selectedUInt16,
++    Merge(-2, -1, selectedUInt16 >= 0), UintDigits(safeUInt16) == 16)};
++static constexpr std::int32_t uint32{Merge(selectedUInt32,
++    Merge(-2, -1, selectedUInt32 >= 0), UintDigits(safeUInt32) == 32)};
++static constexpr std::int32_t uint64{Merge(selectedUInt64,
++    Merge(-2, -1, selectedUInt64 >= 0), UintDigits(safeUInt64) == 64)};
++static constexpr std::int32_t uint128{Merge(selectedUInt128,
++    Merge(-2, -1, selectedUInt128 >= 0), UintDigits(safeUInt128) == 128)};
++
++// Logical kinds mirror integer kinds.
++static constexpr std::int32_t logical8{int8};
++static constexpr std::int32_t logical16{int16};
++static constexpr std::int32_t logical32{int32};
++static constexpr std::int32_t logical64{int64};
++
++// Real kinds, selected -> safe -> validated.
++static constexpr std::int32_t selectedReal16{2};
++static constexpr std::int32_t selectedBfloat16{3};
++static constexpr std::int32_t selectedReal32{4};
++static constexpr std::int32_t selectedReal64{8};
++
++#if HAS_FLOAT80
++static constexpr std::int32_t selectedReal80{10};
++#elif HAS_LDBL128 || FLANG_RT_SUPPORTS_REAL16
++static constexpr std::int32_t selectedReal80{16};
++#else
++static constexpr std::int32_t selectedReal80{-3};
++#endif
++
++#if HAS_LDBL128 || FLANG_RT_SUPPORTS_REAL16
++static constexpr std::int32_t selectedReal64x2{16};
++static constexpr std::int32_t selectedReal128{16};
++#elif HAS_FLOAT80
++static constexpr std::int32_t selectedReal64x2{-1};
++static constexpr std::int32_t selectedReal128{-1};
++#else
++static constexpr std::int32_t selectedReal64x2{-1};
++static constexpr std::int32_t selectedReal128{-3};
++#endif
++
++static constexpr std::int32_t safeReal16{
++    Merge(selectedReal16, safeRealFallback, selectedReal16 >= 0)};
++static constexpr std::int32_t safeBfloat16{
++    Merge(selectedBfloat16, safeRealFallback, selectedBfloat16 >= 0)};
++static constexpr std::int32_t safeReal32{
++    Merge(selectedReal32, safeRealFallback, selectedReal32 >= 0)};
++static constexpr std::int32_t safeReal64{
++    Merge(selectedReal64, safeRealFallback, selectedReal64 >= 0)};
++static constexpr std::int32_t safeReal80{
++    Merge(selectedReal80, safeRealFallback, selectedReal80 >= 0)};
++static constexpr std::int32_t safeReal64x2{
++    Merge(selectedReal64x2, safeRealFallback, selectedReal64x2 >= 0)};
++static constexpr std::int32_t safeReal128{
++    Merge(selectedReal128, safeRealFallback, selectedReal128 >= 0)};
++
++static constexpr std::int32_t real16{Merge(selectedReal16,
++    Merge(-2, -1, selectedReal16 >= 0), RealDigits(safeReal16) == 11)};
++static constexpr std::int32_t bfloat16{Merge(selectedBfloat16,
++    Merge(-2, -1, selectedBfloat16 >= 0), RealDigits(safeBfloat16) == 8)};
++static constexpr std::int32_t real32{Merge(selectedReal32,
++    Merge(-2, -1, selectedReal32 >= 0), RealDigits(safeReal32) == 24)};
++static constexpr std::int32_t real64{Merge(selectedReal64,
++    Merge(-2, -1, selectedReal64 >= 0), RealDigits(safeReal64) == 53)};
++static constexpr std::int32_t real80{Merge(selectedReal80,
++    Merge(-2, -1, selectedReal80 >= 0), RealDigits(safeReal80) == 64)};
++static constexpr std::int32_t real64x2{Merge(selectedReal64x2,
++    Merge(-2, -1, selectedReal64x2 >= 0), RealDigits(safeReal64x2) == 106)};
++static constexpr std::int32_t real128{Merge(selectedReal128,
++    Merge(-2, -1, selectedReal128 >= 0), RealDigits(safeReal128) == 113)};
++
++// Exported symbols with Flang module-variable mangling.
++#define FORTRAN_NAMED_CONST(name) _QMiso_fortran_env_implEC##name
++
++extern "C" {
++
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedint8){selectedInt8};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedint16){selectedInt16};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedint32){selectedInt32};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedint64){selectedInt64};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedint128){selectedInt128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(safeint8){safeInt8};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeint16){safeInt16};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeint32){safeInt32};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeint64){safeInt64};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeint128){safeInt128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(int8){int8};
++extern const std::int32_t FORTRAN_NAMED_CONST(int16){int16};
++extern const std::int32_t FORTRAN_NAMED_CONST(int32){int32};
++extern const std::int32_t FORTRAN_NAMED_CONST(int64){int64};
++extern const std::int32_t FORTRAN_NAMED_CONST(int128){int128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(selecteduint8){selectedUInt8};
++extern const std::int32_t FORTRAN_NAMED_CONST(selecteduint16){selectedUInt16};
++extern const std::int32_t FORTRAN_NAMED_CONST(selecteduint32){selectedUInt32};
++extern const std::int32_t FORTRAN_NAMED_CONST(selecteduint64){selectedUInt64};
++extern const std::int32_t FORTRAN_NAMED_CONST(selecteduint128){selectedUInt128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(safeuint8){safeUInt8};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeuint16){safeUInt16};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeuint32){safeUInt32};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeuint64){safeUInt64};
++extern const std::int32_t FORTRAN_NAMED_CONST(safeuint128){safeUInt128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(uint8){uint8};
++extern const std::int32_t FORTRAN_NAMED_CONST(uint16){uint16};
++extern const std::int32_t FORTRAN_NAMED_CONST(uint32){uint32};
++extern const std::int32_t FORTRAN_NAMED_CONST(uint64){uint64};
++extern const std::int32_t FORTRAN_NAMED_CONST(uint128){uint128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(logical8){logical8};
++extern const std::int32_t FORTRAN_NAMED_CONST(logical16){logical16};
++extern const std::int32_t FORTRAN_NAMED_CONST(logical32){logical32};
++extern const std::int32_t FORTRAN_NAMED_CONST(logical64){logical64};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal16){selectedReal16};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedbfloat16){
++    selectedBfloat16};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal32){selectedReal32};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal64){selectedReal64};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal80){selectedReal80};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal64x2){
++    selectedReal64x2};
++extern const std::int32_t FORTRAN_NAMED_CONST(selectedreal128){selectedReal128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal16){safeReal16};
++extern const std::int32_t FORTRAN_NAMED_CONST(safebfloat16){safeBfloat16};
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal32){safeReal32};
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal64){safeReal64};
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal80){safeReal80};
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal64x2){safeReal64x2};
++extern const std::int32_t FORTRAN_NAMED_CONST(safereal128){safeReal128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(real16){real16};
++extern const std::int32_t FORTRAN_NAMED_CONST(bfloat16){bfloat16};
++extern const std::int32_t FORTRAN_NAMED_CONST(real32){real32};
++extern const std::int32_t FORTRAN_NAMED_CONST(real64){real64};
++extern const std::int32_t FORTRAN_NAMED_CONST(real80){real80};
++extern const std::int32_t FORTRAN_NAMED_CONST(real64x2){real64x2};
++extern const std::int32_t FORTRAN_NAMED_CONST(real128){real128};
++
++extern const std::int32_t FORTRAN_NAMED_CONST(
++    __builtin_integer_kinds)[] = FORTRAN_INTEGER_KINDS;
++
++extern const std::int32_t FORTRAN_NAMED_CONST(
++    __builtin_logical_kinds)[] = FORTRAN_LOGICAL_KINDS;
++
++// Target-filtered subset of FORTRAN_REAL_KINDS from type-kinds.h.
++extern const std::int32_t FORTRAN_NAMED_CONST(__builtin_real_kinds)[]{
++    2,
++    3,
++    4,
++    8,
++#if HAS_FLOAT80
++    10,
++#endif
++#if HAS_LDBL128 || FLANG_RT_SUPPORTS_REAL16
++    16,
++#endif
++};
++
++} // extern "C"
+diff --git a/flang-rt/test/Driver/compare_iso_fortran_env_symbols.f90 b/flang-rt/test/Driver/compare_iso_fortran_env_symbols.f90
+new file mode 100644
+index 000000000000..4182162341e8
+--- /dev/null
++++ b/flang-rt/test/Driver/compare_iso_fortran_env_symbols.f90
+@@ -0,0 +1,13 @@
++! UNSUPPORTED: offload-cuda
++
++! RUN: %flang -c -funsigned %include/../module/iso_fortran_env_impl.f90 -o %t.f90.o
++! RUN: %clang -x c++ -std=c++17 -c -I "%include" %S/../../lib/runtime/iso_fortran_env_impl.cpp -o %t.cpp.o
++
++! Extract defined symbol names and sizes from both objects.
++! RUN: llvm-nm --defined-only --format=posix --print-size %t.f90.o \
++! RUN:   | grep '_QMiso_fortran_env_impl' | cut -d' ' -f1,4 | sort > %t.f90.syms
++! RUN: llvm-nm --defined-only --format=posix --print-size %t.cpp.o \
++! RUN:   | grep '_QMiso_fortran_env_impl' | cut -d' ' -f1,4 | sort > %t.cpp.syms
++
++! The two symbol lists must be identical.
++! RUN: diff %t.f90.syms %t.cpp.syms
+diff --git a/flang-rt/test/Driver/iso_fortran_env_impl.f90 b/flang-rt/test/Driver/iso_fortran_env_impl.f90
+new file mode 100644
+index 000000000000..f9dac6f0a20b
+--- /dev/null
++++ b/flang-rt/test/Driver/iso_fortran_env_impl.f90
+@@ -0,0 +1,23 @@
++! Verify that iso_fortran_env constants from the C++ runtime
++! (iso_fortran_env_impl.cpp) match the Fortran module definitions.
++
++! UNSUPPORTED: offload-cuda
++! RUN: %flang %isysroot -L"%libdir" %s -o %t
++! RUN: env LD_LIBRARY_PATH="$LD_LIBRARY_PATH:%libdir" %t | FileCheck %s
++
++program check_iso_env
++  use iso_fortran_env, only: int8, int16, int32, int64, real32, real64
++
++  ! CHECK: PASS int8 1
++  print '("PASS int8 ",I0)', int8
++  ! CHECK: PASS int16 2
++  print '("PASS int16 ",I0)', int16
++  ! CHECK: PASS int32 4
++  print '("PASS int32 ",I0)', int32
++  ! CHECK: PASS int64 8
++  print '("PASS int64 ",I0)', int64
++  ! CHECK: PASS real32 4
++  print '("PASS real32 ",I0)', real32
++  ! CHECK: PASS real64 8
++  print '("PASS real64 ",I0)', real64
++end program
+diff --git a/flang/include/flang/Common/type-kinds.h b/flang/include/flang/Common/type-kinds.h
+index 4e5c4f69fcc6..dd100b9dcd17 100644
+--- a/flang/include/flang/Common/type-kinds.h
++++ b/flang/include/flang/Common/type-kinds.h
+@@ -13,10 +13,26 @@
+ #include "real.h"
+ #include <cinttypes>
+ 
++// Canonical lists of supported Fortran kinds for each intrinsic type.
++#define FORTRAN_INTEGER_KINDS {1, 2, 4, 8, 16}
++#define FORTRAN_UNSIGNED_KINDS FORTRAN_INTEGER_KINDS
++#define FORTRAN_REAL_KINDS {2, 3, 4, 8, 10, 16}
++#define FORTRAN_LOGICAL_KINDS {1, 2, 4, 8}
++#define FORTRAN_CHARACTER_KINDS {1, 2, 4}
++
+ namespace Fortran::common {
+ 
+ static constexpr int maxKind{16};
+ 
++template <typename T, std::size_t N>
++static constexpr bool IsKindInList(const T (&kinds)[N], std::int64_t kind) {
++  for (std::size_t i{0}; i < N; ++i) {
++    if (kinds[i] == kind)
++      return true;
++  }
++  return false;
++}
++
+ // A predicate that is true when a kind value is a kind that could possibly
+ // be supported for an intrinsic type category on some target instruction
+ // set architecture.
+@@ -24,16 +40,23 @@ static constexpr bool IsValidKindOfIntrinsicType(
+     TypeCategory category, std::int64_t kind) {
+   switch (category) {
+   case TypeCategory::Integer:
+-  case TypeCategory::Unsigned:
+-    return kind == 1 || kind == 2 || kind == 4 || kind == 8 || kind == 16;
++  case TypeCategory::Unsigned: {
++    constexpr int kinds[] = FORTRAN_INTEGER_KINDS;
++    return IsKindInList(kinds, kind);
++  }
+   case TypeCategory::Real:
+-  case TypeCategory::Complex:
+-    return kind == 2 || kind == 3 || kind == 4 || kind == 8 || kind == 10 ||
+-        kind == 16;
+-  case TypeCategory::Character:
+-    return kind == 1 || kind == 2 || kind == 4;
+-  case TypeCategory::Logical:
+-    return kind == 1 || kind == 2 || kind == 4 || kind == 8;
++  case TypeCategory::Complex: {
++    constexpr int kinds[] = FORTRAN_REAL_KINDS;
++    return IsKindInList(kinds, kind);
++  }
++  case TypeCategory::Character: {
++    constexpr int kinds[] = FORTRAN_CHARACTER_KINDS;
++    return IsKindInList(kinds, kind);
++  }
++  case TypeCategory::Logical: {
++    constexpr int kinds[] = FORTRAN_LOGICAL_KINDS;
++    return IsKindInList(kinds, kind);
++  }
+   default:
+     return false;
+   }
+diff --git a/flang/module/iso_fortran_env_impl.f90 b/flang/module/iso_fortran_env_impl.f90
+index 5408e7de3700..d0726e621bbd 100644
+--- a/flang/module/iso_fortran_env_impl.f90
++++ b/flang/module/iso_fortran_env_impl.f90
+@@ -1,4 +1,4 @@
+-!===-- module/iso_fortran_env_impl.f90 --=--------------------------------===!
++!===-- module/iso_fortran_env_impl.f90 --=----------------------------------===!
+ !
+ ! Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+ ! See https://llvm.org/LICENSE.txt for license information.
+@@ -9,6 +9,9 @@
+ ! This MODULE implements part of the ISO_FORTRAN_ENV module file, which
+ ! partially requires linkable symbols for some entities defined
+ ! (e.g., real_kinds).
++!
++! The runtime symbols are in flang-rt/lib/runtime/iso_fortran_env_impl.cpp and
++! must be kept up-to-date.
+ 
+ module iso_fortran_env_impl
+   implicit none
+-- 
+2.52.0
+

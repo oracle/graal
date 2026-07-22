@@ -166,33 +166,33 @@ suite = {
       },
     },
     "LLVM_ORG" : {
-      "version" : "20.1.4-2-gb73e7327e3-bgd1ab043d9b",
+      "version" : "22.1.8-4-g1d96596a53-bg6891668b1e",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-{version}-linux-amd64.tar.gz"],
-            "digest" : "sha512:507abc885dd5244b41c58379225d194dcde25fad3b746c4de529eaf0b5a3433a0ac736ef5928a4d411eee6b317fb9d3d24ad21fa3ef72ad105421d4e96499ea5",
+            "digest" : "sha512:a7c7db68d93d6d446ba0a8fb57c718f9fbed8c3027893a4201b980f368dc7a33fe45c9e979a1d7c9576ec15239b42de08a6d86e020941f1569e72128d9228f9a",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-{version}-linux-aarch64.tar.gz"],
-            "digest" : "sha512:02eb6d6e6d6c484f61072659447170d24f41c1c11239df0a57d9dd2fc43f943ac7f22cd40a41f1d369522d9cc32b8b6a142d246c836df1b6d85467d960945f37",
+            "digest" : "sha512:9428707b32cab9fca85b756aea88daa0e7ea818a53d7e4a75b7e0ee6d7ba4ad82e738764d0464a072a1a4611432c59c478f0761130dabca5311fea3d01866e97",
           },
           "riscv64": {
             "urls" : ["{host}/llvm-{version}-linux-riscv64.tar.gz"],
-            "digest" : "sha512:1a2bb51fdbaee044a89bee93395560f7271113d5ee5bacdf5215c5eef2d56a523c403ee781871090bdd5def84781243291b11e9a8fe9ef8175b38625959347bb",
+            "digest" : "sha512:f9139c334c80fd198c6b4f24b8afedb756e9f484724f741ebe9188dd5a959d19fd6e2e3b097cac07ca8fa7c4a5655987b4fd5030a1066bcb0452dbf2c77a5e82",
           },
         },
         "darwin" : {
           "aarch64" : {
             "urls" : ["{host}/llvm-{version}-darwin-aarch64.tar.gz"],
-            "digest" : "sha512:3fdbd49d7aadc55d39c04651962e594fab0df2f05ae9e91c8105233dcbceca5cd6ed70d68dae46274a75c5f1dbfa9b819e84f2c677c96adfc3b62c740aefee1c",
+            "digest" : "sha512:6c061e61b94756085b8eb104920e2eb2b437d61d7e02e30e8ba3d1b50507b9f531778f729f0b1de254f9b9ef0d7ac052d085b54bb47af425987e29e46590faaa",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-{version}-windows-amd64.tar.gz"],
-            "digest" : "sha512:970bbb53384c58e3687ea13b0efcf96ad35428d796ef41b051e9ae6577f966c411c686fb52e44a281f7d88efb7ff38fb7d2fc2f8eaed0e38fd240277ced0b422",
+            "digest" : "sha512:f868d2e752fa984cf254707b781c2a4f8307de1c229c81a70b833d42c9620c995b741f9927235706a07a7a0f3af185690df8076ffb7c5ce04ec8744ee8997229",
           }
         },
         "<others>": {
@@ -204,19 +204,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "20.1.4-2-gb73e7327e3-bgd1ab043d9b",
+      "version" : "22.1.8-4-g1d96596a53-bg6891668b1e",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-{version}-linux-amd64.tar.gz"],
-      "digest" : "sha512:158d94bb1c8c4dd027c0d490e19c6e4d18191c48ef0ba42abbccb37b5477e304d7cbd36f0611884b4d29167816ce786ae322e771e7bcbd934879d42d60a0cd68",
+      "digest" : "sha512:5fe9593455ec1f81d5361247ea465efa39c89c31ed5cad5d656dd190c484c75f1a886ce2caeb6be372c17b536f70ce027a905b5dbfecd6a4e4e30679cb31ba2f",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "20.1.4-2-gb73e7327e3-bgd1ab043d9b",
+      "version" : "22.1.8-4-g1d96596a53-bg6891668b1e",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-{version}.tar.gz"],
-      "digest" : "sha512:10319a3ad1d201961190c953b960ddda99eba3a75458f84c4bc505cec7a68214ca186d723b2feadcc47b2f409e40104eb253ff1edb365fb572925914dd32cf54",
+      "digest" : "sha512:ae3645453304cbe6898eab416e5a3c5d5ce6bafb1ce39ef34ee4efa31a719a76309a7046af3b5991dd459ff6dfd2dd4724f305f8895afc8f6db5ab2942a80f6b",
       "license" : "Apache-2.0-LLVM",
     },
     "MUSL_GCC_TOOLCHAIN" : {

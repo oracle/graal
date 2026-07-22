@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,6 +57,8 @@ public class CxxVTableTest2 extends InteropTestBase {
     private static Object testCppLibraryInternal;
     private static Value preparePolyglotA;
     private static Value preparePolyglotBasA;
+    private static Value preparePolyglotVirtualDerived;
+    private static Value preparePolyglotEmptyFirst;
     private static Object preparePolyglotBasAInternal;
 
     @BeforeClass
@@ -65,6 +67,8 @@ public class CxxVTableTest2 extends InteropTestBase {
         testCppLibraryInternal = loadTestBitcodeInternal("vtableTest2.cpp");
         preparePolyglotA = testCppLibrary.getMember("preparePolyglotA");
         preparePolyglotBasA = testCppLibrary.getMember("preparePolyglotBasA");
+        preparePolyglotVirtualDerived = testCppLibrary.getMember("preparePolyglotVirtualDerived");
+        preparePolyglotEmptyFirst = testCppLibrary.getMember("preparePolyglotEmptyFirst");
         try {
             preparePolyglotBasAInternal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "preparePolyglotBasA");
         } catch (InteropException e) {
@@ -134,6 +138,19 @@ public class CxxVTableTest2 extends InteropTestBase {
         int foo2Result = a.invokeMember("foo2").asInt();
         Assert.assertEquals(1, foo1Result);
         Assert.assertEquals(2, foo2Result);
+    }
+
+    @Test
+    public void testVirtualMethodsInheritedThroughVirtualBase() {
+        Value value = preparePolyglotVirtualDerived.execute();
+        Assert.assertEquals(1, value.invokeMember("foo1").asInt());
+        Assert.assertEquals(2, value.invokeMember("foo2").asInt());
+    }
+
+    @Test
+    public void testEmptyBaseAtVTableOffset() {
+        Value value = preparePolyglotEmptyFirst.execute();
+        Assert.assertEquals(21, value.invokeMember("emptyFoo").asInt());
     }
 
 }

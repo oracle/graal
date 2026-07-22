@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -329,6 +329,7 @@ unary_op :
   | 'cmpxchg16b'
   | 'fstcw'
   | 'fnstcw'
+  | 'fldcw'
   )
   operand                                        { factory.createUnaryOperationImplicitSize($op.getText(), $operand.op); }
   ;

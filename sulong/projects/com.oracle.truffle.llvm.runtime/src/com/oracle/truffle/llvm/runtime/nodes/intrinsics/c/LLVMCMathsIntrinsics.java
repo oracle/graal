@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,12 +35,15 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKinds;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen;
@@ -49,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMMaxnumVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen;
@@ -60,6 +64,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
@@ -142,7 +148,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple1(LLVMRintNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMRintNodeGen::create, (vectorSize, arg) -> LLVMVectorUnaryNodeGen.create(vectorSize, LLVMRintNodeGen.create(null), arg));
             case X86_FP80:
                 return TypedBuiltinFactory.simple((args) -> LLVMLongDoubleNode.createUnary("rint", args[1], LongDoubleKinds.FP80));
             case F128:
@@ -170,7 +176,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple1(LLVMFloorNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMFloorNodeGen::create, (vectorSize, arg) -> LLVMVectorUnaryNodeGen.create(vectorSize, LLVMFloorNodeGen.create(null), arg));
             case X86_FP80:
                 return TypedBuiltinFactory.simple((args) -> LLVMLongDoubleNode.createUnary("floor", args[1], LongDoubleKinds.FP80));
             case F128:
@@ -260,7 +266,7 @@ public abstract class LLVMCMathsIntrinsics {
         switch (type) {
             case FLOAT:
             case DOUBLE:
-                return TypedBuiltinFactory.simple2(LLVMMaxnumNodeGen::create);
+                return TypedBuiltinFactory.vector2(LLVMMaxnumNodeGen::create, LLVMMaxnumVectorNodeGen::create);
             default:
                 return null;
         }
@@ -283,7 +289,7 @@ public abstract class LLVMCMathsIntrinsics {
             case I16:
             case I32:
             case I64:
-                return TypedBuiltinFactory.simple1(LLVMAbsNodeGen::create);
+                return TypedBuiltinFactory.vector1(LLVMAbsNodeGen::create, LLVMAbsVectorNodeGen::create);
             default:
                 return null;
         }
@@ -405,17 +411,44 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMRint extends LLVMBuiltin {
+    public abstract static class LLVMRint extends LLVMUnaryNode {
+
+        protected LLVMRint() {
+            super(UnaryOperation.NEG);
+        }
 
         @Specialization
         protected float doIntrinsic(float value) {
-            return (float) Math.rint(value);
+            switch (getLanguage().getRoundingMode()) {
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
+                    return (float) Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
+                    return (float) Math.floor(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
+                    return value >= 0 ? (float) Math.floor(value) : (float) Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY:
+                    float nearest = (float) Math.rint(value);
+                    return Math.abs(value - nearest) == 0.5f ? Math.copySign((float) Math.ceil(Math.abs(value)), value) : nearest;
+                default:
+                    return (float) Math.rint(value);
+            }
         }
 
         @Specialization
         protected double doIntrinsic(double value) {
-            return Math.rint(value);
+            switch (getLanguage().getRoundingMode()) {
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_POSITIVE:
+                    return Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_NEGATIVE:
+                    return Math.floor(value);
+                case LLVMLanguage.ROUNDING_MODE_TOWARD_ZERO:
+                    return value >= 0 ? Math.floor(value) : Math.ceil(value);
+                case LLVMLanguage.ROUNDING_MODE_NEAREST_TIES_AWAY:
+                    double nearest = Math.rint(value);
+                    return Math.abs(value - nearest) == 0.5 ? Math.copySign(Math.ceil(Math.abs(value)), value) : nearest;
+                default:
+                    return Math.rint(value);
+            }
         }
     }
 
@@ -433,8 +466,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloor extends LLVMBuiltin {
+    public abstract static class LLVMFloor extends LLVMUnaryNode {
+
+        protected LLVMFloor() {
+            super(UnaryOperation.NEG);
+        }
 
         @Specialization
         protected float doIntrinsic(float value) {
@@ -500,6 +536,60 @@ public abstract class LLVMCMathsIntrinsics {
                 // valid pointers are always positive
                 return value;
             }
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMAbsVectorNode extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        LLVMAbsVectorNode(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI8Vector doVector(LLVMI8Vector value) {
+            assert value.getLength() == vectorLength;
+            byte[] result = new byte[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (byte) Math.abs(value.getValue(i));
+            }
+            return LLVMI8Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI16Vector doVector(LLVMI16Vector value) {
+            assert value.getLength() == vectorLength;
+            short[] result = new short[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (short) Math.abs(value.getValue(i));
+            }
+            return LLVMI16Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doVector(LLVMI32Vector value) {
+            assert value.getLength() == vectorLength;
+            int[] result = new int[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMI32Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doVector(LLVMI64Vector value) {
+            assert value.getLength() == vectorLength;
+            long[] result = new long[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMI64Vector.create(result);
         }
     }
 
@@ -587,25 +677,68 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected float doIntrinsic(float value1, float value2) {
-            if (Float.isNaN(value1)) {
-                return value2;
-            }
-            if (Float.isNaN(value2)) {
-                return value1;
-            }
-            return Math.max(value1, value2);
+            return maxnum(value1, value2);
         }
 
         @Specialization
         protected double doIntrinsic(double value1, double value2) {
-            if (Double.isNaN(value1)) {
-                return value2;
-            }
-            if (Double.isNaN(value2)) {
-                return value1;
-            }
-            return Math.max(value1, value2);
+            return maxnum(value1, value2);
         }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMMaxnumVector extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        protected LLVMMaxnumVector(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doFloatVector(LLVMFloatVector value1, LLVMFloatVector value2) {
+            assert value1.getLength() == vectorLength;
+            assert value2.getLength() == vectorLength;
+            float[] result = new float[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = maxnum(value1.getValue(i), value2.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMDoubleVector doDoubleVector(LLVMDoubleVector value1, LLVMDoubleVector value2) {
+            assert value1.getLength() == vectorLength;
+            assert value2.getLength() == vectorLength;
+            double[] result = new double[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = maxnum(value1.getValue(i), value2.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
+        }
+    }
+
+    private static float maxnum(float value1, float value2) {
+        if (Float.isNaN(value1)) {
+            return value2;
+        }
+        if (Float.isNaN(value2)) {
+            return value1;
+        }
+        return Math.max(value1, value2);
+    }
+
+    private static double maxnum(double value1, double value2) {
+        if (Double.isNaN(value1)) {
+            return value2;
+        }
+        if (Double.isNaN(value2)) {
+            return value1;
+        }
+        return Math.max(value1, value2);
     }
 
     @NodeChild(type = LLVMExpressionNode.class)

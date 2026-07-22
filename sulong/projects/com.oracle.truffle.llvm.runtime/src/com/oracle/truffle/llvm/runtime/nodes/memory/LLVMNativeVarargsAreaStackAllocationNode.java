@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     @Child private LLVMAllocaInstruction allocation;
 
     public LLVMNativeVarargsAreaStackAllocationNode() {
-        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 8, null);
+        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 16, null);
     }
 
     @Specialization

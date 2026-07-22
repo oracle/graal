@@ -1,23 +1,23 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Loic Ottet <loic.ottet@oracle.com>
-Date: Mon, 23 Sep 2019 16:55:33 +0200
-Subject: [PATCH] [GR-17692] [Statepoints] Support for compressed pointers in
- the statepoint emission pass
+From 96297c36859262d7e2b5b88b31934b82273383bb Mon Sep 17 00:00:00 2001
+From: Christian Haeubl <christian.haeubl@oracle.com>
+Date: Fri, 22 May 2026 12:15:23 +0200
+Subject: [PATCH 2/4] Re-add compressed-pointer GC strategy to LLVM.
 
 ---
- llvm/include/llvm/IR/IRBuilder.h              |  19 +++++
- llvm/lib/IR/BuiltinGCs.cpp                    |  27 +++++++
- llvm/lib/IR/IRBuilder.cpp                     |  22 ++++++
- .../Scalar/RewriteStatepointsForGC.cpp        |  77 ++++++++++++++++++--
+ llvm/include/llvm/IR/IRBuilder.h              | 19 +++++
+ llvm/lib/IR/BuiltinGCs.cpp                    | 27 +++++++
+ llvm/lib/IR/IRBuilder.cpp                     | 22 ++++++
+ .../Scalar/RewriteStatepointsForGC.cpp        | 77 +++++++++++++++++--
  4 files changed, 137 insertions(+), 8 deletions(-)
 
 diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
+index bc35caabeb84..8a7c403c31c4 100644
 --- a/llvm/include/llvm/IR/IRBuilder.h
 +++ b/llvm/include/llvm/IR/IRBuilder.h
-@@ -907,6 +907,16 @@ public:
-                                    ArrayRef<Value *> GCArgs,
-                                    const Twine &Name = "");
-
+@@ -896,6 +896,16 @@ public:
+                          std::optional<ArrayRef<Use>> DeoptArgs,
+                          ArrayRef<Value *> GCArgs, const Twine &Name = "");
+ 
 +  /// Create a call to the experimental.gc.statepoint intrinsic to
 +  /// start a new statepoint sequence.
 +  CallInst *CreateGCStatepointCall(uint64_t ID, uint32_t NumPatchBytes,
@@ -31,11 +31,10 @@ diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
    /// Conveninence function for the common case when CallArgs are filled
    /// in using ArrayRef(CS.arg_begin(), CS.arg_end()); Use needs to be
    /// .get()'ed to get the Value pointer.
-@@ -936,6 +946,15 @@ public:
-       ArrayRef<Value *> InvokeArgs, std::optional<ArrayRef<Use>> TransitionArgs,
+@@ -923,6 +933,15 @@ public:
        std::optional<ArrayRef<Use>> DeoptArgs, ArrayRef<Value *> GCArgs,
        const Twine &Name = "");
-+
+ 
 +  /// Create an invoke to the experimental.gc.statepoint intrinsic to
 +  /// start a new statepoint sequence.
 +  InvokeInst *CreateGCStatepointInvoke(
@@ -44,16 +43,18 @@ diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
 +      ArrayRef<Value *> InvokeArgs, std::optional<ArrayRef<Use>> TransitionArgs,
 +      std::optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs,
 +      const Twine &Name = "");
-
++
    // Convenience function for the common case when CallArgs are filled in using
    // ArrayRef(CS.arg_begin(), CS.arg_end()); Use needs to be .get()'ed to
+   // get the Value *.
 diff --git a/llvm/lib/IR/BuiltinGCs.cpp b/llvm/lib/IR/BuiltinGCs.cpp
+index 163b0383e22c..77cd2515a198 100644
 --- a/llvm/lib/IR/BuiltinGCs.cpp
 +++ b/llvm/lib/IR/BuiltinGCs.cpp
-@@ -84,6 +84,32 @@ public:
+@@ -85,6 +85,32 @@ public:
    }
  };
-
+ 
 +/// A GC strategy for the LLVM backend of the Graal compiler. The strategy
 +/// is similar to the statepoint-example GC, but adds support for a second
 +/// type of pointer in addrspace(2). Live pointers in this address space
@@ -89,15 +90,16 @@ diff --git a/llvm/lib/IR/BuiltinGCs.cpp b/llvm/lib/IR/BuiltinGCs.cpp
                                         "an example strategy for statepoint");
 +static GCRegistry::Add<CompressedPointerGC> F("compressed-pointer", "GC supporting compressed pointers");
  static GCRegistry::Add<CoreCLRGC> E("coreclr", "CoreCLR-compatible GC");
-
+ 
  // Provide hook to ensure the containing library is fully loaded.
 diff --git a/llvm/lib/IR/IRBuilder.cpp b/llvm/lib/IR/IRBuilder.cpp
+index 702b1dd9088b..28a7ef284248 100644
 --- a/llvm/lib/IR/IRBuilder.cpp
 +++ b/llvm/lib/IR/IRBuilder.cpp
-@@ -778,6 +778,17 @@ CallInst *IRBuilderBase::CreateGCStatepointCall(
+@@ -723,6 +723,17 @@ CallInst *IRBuilderBase::CreateGCStatepointCall(
        DeoptArgs, GCArgs, Name);
  }
-
+ 
 +CallInst *IRBuilderBase::CreateGCStatepointCall(
 +    uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualCallee,
 +    uint32_t Flags, ArrayRef<Value *> CallArgs,
@@ -112,10 +114,10 @@ diff --git a/llvm/lib/IR/IRBuilder.cpp b/llvm/lib/IR/IRBuilder.cpp
  CallInst *IRBuilderBase::CreateGCStatepointCall(
      uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualCallee,
      ArrayRef<Use> CallArgs, std::optional<ArrayRef<Value *>> DeoptArgs,
-@@ -835,6 +846,17 @@ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
+@@ -781,6 +792,17 @@ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
        InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
  }
-
+ 
 +InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
 +    uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualInvokee,
 +    BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
@@ -131,12 +133,13 @@ diff --git a/llvm/lib/IR/IRBuilder.cpp b/llvm/lib/IR/IRBuilder.cpp
      uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualInvokee,
      BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Use> InvokeArgs,
 diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
+index 74448d872aad..d3a28217c4db 100644
 --- a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
 +++ b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
-@@ -1644,6 +1644,28 @@ static StringRef getDeoptLowering(CallBase *Call) {
+@@ -1643,6 +1643,28 @@ static StringRef getDeoptLowering(CallBase *Call) {
    return "live-through";
  }
-
+ 
 +static bool supportsCompressedPointers(Function &F) {
 +  return F.hasGC() && F.getGC() == "compressed-pointer";
 +}
@@ -162,7 +165,7 @@ diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/T
  static void
  makeStatepointExplicitImpl(CallBase *Call, /* to replace */
                             const SmallVectorImpl<Value *> &BasePtrs,
-@@ -1828,9 +1850,23 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+@@ -1830,9 +1852,23 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
    // Create the statepoint given all the arguments
    GCStatepointInst *Token = nullptr;
    if (auto *CI = dyn_cast<CallInst>(Call)) {
@@ -186,10 +189,10 @@ diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/T
 +          StatepointID, NumPatchBytes, CallTarget, Flags, CallArgs,
 +          TransitionArgs, DeoptArgs, GCLive, "safepoint_token");
 +    }
-
+ 
      SPCall->setTailCallKind(CI->getTailCallKind());
      SPCall->setCallingConv(CI->getCallingConv());
-@@ -1859,10 +1895,25 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+@@ -1855,10 +1891,25 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
      // Insert the new invoke into the old block.  We'll remove the old one in a
      // moment at which point this will become the new terminator for the
      // original block.
@@ -216,10 +219,10 @@ diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/T
 +          II->getUnwindDest(), Flags, CallArgs, TransitionArgs, DeoptArgs,
 +          GCLive, "statepoint_token");
 +    }
-
+ 
      SPInvoke->setCallingConv(II->getCallingConv());
-
-@@ -2686,8 +2737,18 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
+ 
+@@ -2679,8 +2730,18 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
    // Insert a dummy call with all of the deopt operands we'll need for the
    // actual safepoint insertion as arguments.  This ensures reference operands
    // in the deopt argument list are considered live through the safepoint (and
@@ -237,5 +240,8 @@ diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/T
 +    }
 +
      SmallVector<Value *, 64> DeoptValues;
-
+ 
      for (Value *Arg : GetDeoptBundleOperands(Call)) {
+-- 
+2.52.0
+
