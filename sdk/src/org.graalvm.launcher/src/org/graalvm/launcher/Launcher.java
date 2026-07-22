@@ -1019,7 +1019,9 @@ public abstract class Launcher {
     }
 
     static Terminal createSystemTerminal() throws IOException {
-        return TerminalBuilder.builder().system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+        // This terminal is used only to obtain its size. Avoid JLine's grapheme-cluster
+        // capability probe, which writes escape sequences to the terminal while probing.
+        return TerminalBuilder.builder().system(true).graphemeCluster(false).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
