@@ -71,7 +71,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.encoder.SymbolEncoder;
@@ -90,6 +89,7 @@ import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -101,8 +101,8 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostedModuleSupport;
 
 import jdk.internal.loader.BuiltinClassLoader;
-import jdk.internal.loader.ClassLoaders;
 import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ModuleReferenceImpl;
@@ -382,6 +382,15 @@ public class ModuleLayerFeature implements InternalFeature {
                         .distinct()
                         .sorted(Comparator.comparingInt(ModuleLayerFeatureUtils::distanceFromBootModuleLayer))
                         .collect(Collectors.toList());
+
+        if (reachableModuleLayers.isEmpty() && ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /*
+             * An extension layer can be small enough to have no reachable types from named modules.
+             * We still need to synthesize the runtime boot layer, so use the hosted boot layer as
+             * the minimal input when no other module layer is reachable.
+             */
+            reachableModuleLayers = List.of(ModuleLayer.boot());
+        }
 
         /*
          * Remove once GR-44584 is merged. See

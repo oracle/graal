@@ -31,7 +31,6 @@ import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CLASS_I
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
-import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
 
 import java.lang.reflect.Constructor;
 import java.nio.channels.FileChannel;
@@ -105,7 +104,6 @@ import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
-import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -118,13 +116,10 @@ import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BytecodeParser;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.reflect.ReflectionFactory;
@@ -161,7 +156,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Map<Integer, BaseLayerField> baseLayerFields = new ConcurrentHashMap<>();
 
     protected final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
-    private final Map<ResolvedJavaType, Boolean> capturingClasses = new ConcurrentHashMap<>();
     private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
 
     /** Map from {@link SVMImageLayerSnapshotUtil#getTypeDescriptor} to base layer type ids. */
@@ -368,9 +362,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             metaAccess.lookupJavaType(constructorAccessor);
             return true;
         } else if (wrappedType.isLambda()) {
-            String capturingClassName = wrappedType.getLambda().getCapturingClass();
-            ResolvedJavaType capturingClass = imageLayerBuildingSupport.lookupType(false, capturingClassName);
-            loadLambdaTypes(capturingClass);
+            WrappedType.Lambda.Loader lambda = wrappedType.getLambda();
+            String capturingClassName = lambda.getCapturingClass();
+            Class<?> capturingClass = imageLayerBuildingSupport.lookupClass(false, capturingClassName);
+            Class<?> lambdaClass = LambdaParser.findLambdaClassForCaptureSite(capturingClass, lambda.getCaptureSite());
+            if (lambdaClass == null) {
+                return false;
+            }
+            metaAccess.lookupJavaType(lambdaClass);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
             Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> getAnalysisTypeForBaseLayerId(tid).getJavaClass(), Class[]::new);
@@ -379,51 +378,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return true;
         }
         return false;
-    }
-
-    /**
-     * The {@link SubstitutionMethod} contains less information than the original
-     * {@link ResolvedJavaMethod} and trying to access it can result in an exception.
-     */
-    private static ResolvedJavaMethod getOriginalWrapped(AnalysisMethod method) {
-        ResolvedJavaMethod wrapped = method.getWrapped();
-        if (wrapped instanceof SubstitutionMethod subst) {
-            return subst.getAnnotated();
-        }
-        return wrapped;
-    }
-
-    /**
-     * Load all lambda types of the given capturing class. Each method of the capturing class is
-     * parsed (see {@link LambdaParser#createMethodGraph(ResolvedJavaMethod, OptionValues)}). The
-     * lambda types can then be found in the constant nodes of the graphs.
-     */
-    private void loadLambdaTypes(ResolvedJavaType capturingClass) {
-        capturingClasses.computeIfAbsent(capturingClass, _ -> {
-            /*
-             * Getting the original wrapped method is important to avoid getting exceptions that
-             * would be ignored otherwise.
-             */
-            LambdaParser.allExecutablesDeclaredInClass(universe.lookup(capturingClass))
-                            .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(getOriginalWrapped((AnalysisMethod) m), universe.getBigbang()));
-            return true;
-        });
-    }
-
-    private static void loadLambdaTypes(ResolvedJavaMethod m, BigBang bigBang) {
-        StructuredGraph graph = getMethodGraph(m, bigBang);
-        if (graph != null) {
-            NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
-
-            for (ConstantNode cNode : constantNodes) {
-                Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
-
-                if (lambdaClass != null) {
-                    bigBang.getMetaAccess().lookupJavaType(lambdaClass);
-                }
-            }
-        }
     }
 
     private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {
