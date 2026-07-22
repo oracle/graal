@@ -137,6 +137,8 @@ final class BreakpointInterceptor {
     private static NativeImageAgent agent;
     private static Supplier<InterceptedState> interceptedStateSupplier;
 
+    private static final String JDK_METHOD_HANDLE_HELPER_CALLER = "java.lang.invoke.MethodHandleImpl$1";
+
     private static Map<Long, Breakpoint> installedBreakpoints;
 
     /**
@@ -1051,7 +1053,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean findMethodHandle(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = getMethodHandleCallerClass(jni, state);
         JNIObjectHandle lookup = getReceiver(thread);
         JNIObjectHandle self = getObjectArgument(thread, 1);
         JNIObjectHandle methodName = getObjectArgument(thread, 2);
@@ -1099,8 +1101,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean methodMethodHandle(JNIEnvironment jni, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, JNIObjectHandle nameHandle,
-                    JNIObjectHandle paramTypesHandle,
-                    JNIMethodId[] stackTrace) {
+                    JNIObjectHandle paramTypesHandle, JNIMethodId[] stackTrace) {
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
         traceReflectBreakpoint(jni, clazz, declaringClass, callerClass, "findMethodHandle", clazz.notEqual(nullHandle()) && name != null, stackTrace, name, paramTypes);
@@ -1108,13 +1109,21 @@ final class BreakpointInterceptor {
     }
 
     private static boolean findConstructorHandle(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = getMethodHandleCallerClass(jni, state);
         JNIObjectHandle declaringClass = getObjectArgument(thread, 1);
         JNIObjectHandle methodType = getObjectArgument(thread, 2);
 
         Object paramTypes = getClassArrayNames(jni, getParamTypes(jni, methodType));
         traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", declaringClass.notEqual(nullHandle()), state.getFullStackTraceOrNull(), paramTypes);
         return true;
+    }
+
+    private static JNIObjectHandle getMethodHandleCallerClass(JNIEnvironment jni, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        if (JDK_METHOD_HANDLE_HELPER_CALLER.equals(getClassNameOrNull(jni, callerClass))) {
+            callerClass = state.getCallerClass(2);
+        }
+        return callerClass;
     }
 
     private static JNIObjectHandle getParamTypes(JNIEnvironment jni, JNIObjectHandle methodType) {
