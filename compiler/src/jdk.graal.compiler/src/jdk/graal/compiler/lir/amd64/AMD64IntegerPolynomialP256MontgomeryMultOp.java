@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVDQA64;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVDQU64;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQA64;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU64;
@@ -255,10 +254,12 @@ public final class AMD64IntegerPolynomialP256MontgomeryMultOp extends AMD64LIRIn
 
         masm.movq(t0, 0x1f);
         masm.kmovq(allLimbs, t0);
-        EVMOVDQA64.emit(masm, AVXSize.ZMM, shift1L, recordExternalAddress(crb, SHIFT_1L), allLimbs, Z1, B0);
-        EVMOVDQA64.emit(masm, AVXSize.ZMM, shift1R, recordExternalAddress(crb, SHIFT_1R), allLimbs, Z1, B0);
-        EVMOVDQA64.emit(masm, AVXSize.ZMM, mask52, recordExternalAddress(crb, P256_MASK52), allLimbs, Z1, B0);
-        EVMOVDQA64.emit(masm, AVXSize.ZMM, modulus, recordExternalAddress(crb, MODULUS_P256), allLimbs, Z1, B0);
+        // JVMCI-installed data sections guarantee at most 32-byte alignment, so ZMM constants need
+        // unaligned loads even though the corresponding HotSpot stub uses aligned loads.
+        EVMOVDQU64.emit(masm, AVXSize.ZMM, shift1L, recordExternalAddress(crb, SHIFT_1L), allLimbs, Z1, B0);
+        EVMOVDQU64.emit(masm, AVXSize.ZMM, shift1R, recordExternalAddress(crb, SHIFT_1R), allLimbs, Z1, B0);
+        EVMOVDQU64.emit(masm, AVXSize.ZMM, mask52, recordExternalAddress(crb, P256_MASK52), allLimbs, Z1, B0);
+        EVMOVDQU64.emit(masm, AVXSize.ZMM, modulus, recordExternalAddress(crb, MODULUS_P256), allLimbs, Z1, B0);
 
         EVMOVDQU64.emit(masm, AVXSize.YMM, a, new AMD64Address(aLimbs, 8));
         AMD64Assembler.VexRVMOp.EVPERMQ.emit(masm, AVXSize.ZMM, a, shift1L, a, allLimbs, Z1, B0);
