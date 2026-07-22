@@ -1061,15 +1061,25 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_sdk_benchmark.SpecJvm2008Benchmark
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         return super().extra_agent_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
+    def native_image_run_system_properties(self, args):
+        _, _, _, system_properties, _, _, _ = mx_sdk_benchmark.NativeImageVM.extract_benchmark_arguments(
+            args, self.all_command_line_args_are_vm_args())
+        return system_properties
+
+    def native_image_run_args(self, args, image_run_args, stage_run_args):
+        return self.native_image_run_system_properties(args) + ["--"] + image_run_args + stage_run_args
+
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
-        return super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
+        image_run_args = super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
+        return self.native_image_run_args(args, image_run_args, SpecJVM2008NativeImageBenchmarkSuite.short_run_args)
 
     def extra_image_build_argument(self, benchmark, args):
         # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration (GR-50701).
-        return super().extra_image_build_argument(benchmark, args) + ['-H:CompilationExpirationPeriod=600']
+        return super().extra_image_build_argument(benchmark, args) + ['-H:CompilationExpirationPeriod=600', '-H:-LegacyJavaOptionMode']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
-        return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.long_run_args
+        image_run_args = super().extra_run_arg(benchmark, args, image_run_args)
+        return self.native_image_run_args(args, image_run_args, SpecJVM2008NativeImageBenchmarkSuite.long_run_args)
 
     def successPatterns(self):
         return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
