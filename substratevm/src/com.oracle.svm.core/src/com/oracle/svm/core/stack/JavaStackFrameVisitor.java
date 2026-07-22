@@ -38,6 +38,7 @@ import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport.InterpretedFrameData;
+import com.oracle.svm.core.interpreter.InterpreterSupport.StackWalkState;
 import com.oracle.svm.shared.util.VMError;
 
 /**
@@ -46,6 +47,7 @@ import com.oracle.svm.shared.util.VMError;
  * stack-walking logic in {@code AbstractStackFrameSpliterator}.
  */
 public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
+    private final StackWalkState interpreterStackWalkState = new StackWalkState();
 
     @Override
     public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
@@ -80,7 +82,7 @@ public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
         }
         if (InterpreterSupport.isEnabled()) {
             /* Translate the VM-level vframe to source-level vframes and visit all of them. */
-            FrameSourceInfo sourceVFrame = getSourceLevelVFrames(vFrame, sp, null);
+            FrameSourceInfo sourceVFrame = getSourceLevelVFrames(vFrame, sp, null, interpreterStackWalkState);
             if (vFrame != sourceVFrame) {
                 if (sourceVFrame == null) {
                     return true;
@@ -133,7 +135,9 @@ public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
      * {@code interpretedFrameData == null}, so the interpreted method, BCI, and interpreter frame
      * are read from physical stack state. Stored-continuation frames pass {@code sp == null} and
      * {@code interpretedFrameData != null}, with data captured from that same {@code vFrame}; the
-     * captured data is used instead of re-reading through a stale SP.</li>
+     * captured data is used instead of re-reading through a stale SP. During threaded execution,
+     * {@code stackWalkState} carries the BCI from the Java handler across its hidden generated stub
+     * to the interpreter root, where it overrides the root's stale loop BCI.</li>
      * <li>Ristretto compiled frames that are still on the stack: callers pass
      * {@code sp == current physical-frame SP} and {@code interpretedFrameData == null}. Ristretto
      * runtime-compiled frame metadata is identified by {@code vFrame.getSourceClass() == null} and
@@ -151,30 +155,11 @@ public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
      * At most one of {@code sp} and {@code interpretedFrameData} may provide frame state. Passing
      * neither is valid for frame categories where {@code vFrame} metadata is sufficient or where
      * Ristretto synthetic source information is derived from {@code vFrame.getDeoptMethod()}.
+     * {@code stackWalkState} must be shared by all frames translated during one stack walk.
      */
-    public static FrameSourceInfo getSourceLevelVFrames(FrameInfoQueryResult vFrame, Pointer sp, InterpretedFrameData interpretedFrameData) {
+    public static FrameSourceInfo getSourceLevelVFrames(FrameInfoQueryResult vFrame, Pointer sp, InterpretedFrameData interpretedFrameData, StackWalkState stackWalkState) {
         assert InterpreterSupport.isEnabled();
-        assert interpretedFrameData == null || sp.isNull() : "SP and interpretedFrameData must not both be set";
-
-        if (vFrame == null) {
-            /* Interpreter leave stubs do not have any FrameInfo at the moment. */
-            return null;
-        }
-
-        InterpreterSupport support = InterpreterSupport.singleton();
-        if (support.isInterpreterRoot(vFrame)) {
-            if (interpretedFrameData != null) {
-                return support.getInterpretedMethodFrameInfo(vFrame, interpretedFrameData);
-            }
-            VMError.guarantee(sp.isNonNull(), "Cannot translate interpreter root without a stack pointer");
-            return support.getInterpretedMethodFrameInfo(vFrame, sp);
-        }
-
-        FrameSourceInfo syntheticFrameInfo = support.getSyntheticMethodFrameInfo(vFrame);
-        if (syntheticFrameInfo != null) {
-            return syntheticFrameInfo;
-        }
-        return vFrame;
+        return InterpreterSupport.singleton().translateStackWalkFrame(vFrame, sp, interpretedFrameData, stackWalkState);
     }
 
     public abstract boolean visitFrame(FrameSourceInfo frameInfo, Pointer sp);

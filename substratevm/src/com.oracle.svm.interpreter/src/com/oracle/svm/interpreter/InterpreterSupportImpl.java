@@ -40,9 +40,11 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
@@ -60,6 +62,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
@@ -74,6 +77,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
@@ -89,6 +93,7 @@ import jdk.vm.ci.meta.Signature;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class InterpreterSupportImpl extends InterpreterSupport {
     private static final int MAX_SYMBOL_LOG_LENGTH = 255;
+    private static final String BYTECODE_ROOT_METHOD_NAME = "executeBodyFromBCI";
 
     private final int bciSlot;
     private final int startBCISlot;
@@ -331,14 +336,49 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return isInterpreterBytecodeRoot(frameInfo) || isInterpreterIntrinsicRoot(frameInfo) || isInterpreterJNIDowncallRoot(frameInfo);
     }
 
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isInterpreterBytecodeHandlerStub(FrameInfoQueryResult frameInfo) {
+        return FrameSourceInfo.MethodFlags.isBytecodeHandlerStub(frameInfo.getSourceMethodFlags());
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isInterpreterBytecodeHandlerStub(ResolvedJavaMethod method) {
+        ResolvedJavaMethod unwrapped = method;
+        while (unwrapped instanceof WrappedJavaMethod wrapped) {
+            unwrapped = wrapped.getWrapped();
+        }
+        return unwrapped instanceof SubstrateBytecodeHandlerStub stub && !stub.isDefaultStub() &&
+                        OriginalClassProvider.getJavaClass(stub.getDeclaringClass()) == Interpreter.Root.class;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int getInterpreterBytecodeHandlerBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
+        /*
+         * Bytecode handlers use a uniform ABI whose first argument is curBCI. The generated stub
+         * itself has no Java local containing that value, so frameInfo denotes the Java handler
+         * inlined into the stub.
+         *
+         * Debugger-event delivery explicitly publishes the next BCI on the interpreter frame.
+         * TODO: An asynchronous stack walk directly inside prepareOpcodeForDispatch,
+         * processSingleStepForDispatch, or processBreakpointForDispatch could still observe this
+         * handler argument instead of the next BCI being prepared. These helpers do not suspend,
+         * but their BCI must be preserved explicitly if such asynchronous walks need to report the
+         * transition precisely.
+         */
+        return readBCISlot(frameInfo, sp, 0);
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isInterpreterBytecodeRoot(FrameInfoQueryResult frameInfo) {
-        return Interpreter.Root.class == frameInfo.getSourceClass();
+        return frameInfo.getSourceClass() == Interpreter.Root.class && BYTECODE_ROOT_METHOD_NAME.equals(frameInfo.getSourceMethodName());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isInterpreterIntrinsicRoot(FrameInfoQueryResult frameInfo) {
-        return Interpreter.IntrinsicRoot.class == frameInfo.getSourceClass();
+        return frameInfo.getSourceClass() == Interpreter.IntrinsicRoot.class;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -391,11 +431,24 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int readBCISlot(FrameInfoQueryResult frameInfo, Pointer sp, int slot) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
-        if (slot >= valueInfos.length) {
+        if (valueInfos == null || slot >= valueInfos.length) {
             return BytecodeFrame.UNKNOWN_BCI;
         }
         FrameInfoQueryResult.ValueInfo valueInfo = valueInfos[slot];
-        return readInt(sp, Word.signed(valueInfo.getData()));
+        ValueType type = valueInfo.getType();
+        /*
+         * Frame metadata preserves the compiler's representation of a local. In particular, a BCI
+         * can be constant-folded before its first update, so ValueInfo.data is not necessarily a
+         * stack offset.
+         */
+        if (type == ValueType.StackSlot || type == ValueType.Register) {
+            return readInt(sp, Word.signed(valueInfo.getData()));
+        } else if (type == ValueType.Constant) {
+            return (int) valueInfo.getData();
+        } else if (type == ValueType.DefaultConstant) {
+            return 0;
+        }
+        return BytecodeFrame.UNKNOWN_BCI;
     }
 
     /**
@@ -454,11 +507,11 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
-    public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp) {
+    public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI) {
         if (isInterpreterBytecodeRoot(frameInfo)) {
             InterpreterResolvedJavaMethod interpretedMethod = readInterpretedMethod(frameInfo, sp);
-            int bci = readBCI(frameInfo, sp);
             InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
+            int bci = selectStackWalkBCI(getDebuggerEventBCI(interpreterFrame), threadedHandlerBCI, readBCI(frameInfo, sp));
             return createInterpretedMethodFrameInfo(frameInfo, interpretedMethod, bci, interpreterFrame);
         }
         if (isInterpreterIntrinsicRoot(frameInfo)) {
@@ -478,7 +531,8 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     public void captureInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp, InterpretedFrameData data) {
         data.clear();
         if (isInterpreterBytecodeRoot(frameInfo)) {
-            data.setInterpreted(frameInfo, readInterpretedMethod(frameInfo, sp), readBCI(frameInfo, sp), readInterpreterFrame(frameInfo, sp));
+            InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
+            data.setInterpreted(frameInfo, readInterpretedMethod(frameInfo, sp), readBCI(frameInfo, sp), getDebuggerEventBCI(interpreterFrame), interpreterFrame);
             return;
         }
         if (isInterpreterIntrinsicRoot(frameInfo)) {
@@ -489,18 +543,37 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
-    public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpretedFrameData data) {
+    public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpretedFrameData data, int threadedHandlerBCI) {
         VMError.guarantee(data.isFor(frameInfo), "Captured interpreter frame data does not belong to this frame");
         FrameSourceInfo sourceInfo;
         if (data.isIntrinsic()) {
             sourceInfo = createIntrinsicMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), (InterpreterFrame) data.getInterpreterFrame());
         } else {
-            sourceInfo = createInterpretedMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), data.getBCI(), (InterpreterFrame) data.getInterpreterFrame());
+            int bci = selectStackWalkBCI(data.getDebuggerEventBCI(), threadedHandlerBCI, data.getBCI());
+            sourceInfo = createInterpretedMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), bci, (InterpreterFrame) data.getInterpreterFrame());
         }
         if (sourceInfo == null) {
             data.clear();
         }
         return sourceInfo;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int getDebuggerEventBCI(InterpreterFrame interpreterFrame) {
+        return interpreterFrame != null ? interpreterFrame.getDebuggerEventBCI() : BytecodeFrame.UNKNOWN_BCI;
+    }
+
+    /**
+     * Selects the most precise BCI available for the reconstructed guest frame. An active debugger
+     * event reports the bytecode about to be dispatched, the threaded handler identifies the
+     * bytecode otherwise being executed, and the root BCI is the fallback outside threaded
+     * handlers.
+     */
+    private static int selectStackWalkBCI(int debuggerEventBCI, int threadedHandlerBCI, int rootBCI) {
+        if (debuggerEventBCI != BytecodeFrame.UNKNOWN_BCI) {
+            return debuggerEventBCI;
+        }
+        return threadedHandlerBCI != BytecodeFrame.UNKNOWN_BCI ? threadedHandlerBCI : rootBCI;
     }
 
     private static FrameSourceInfo createInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod interpretedMethod, int bci, InterpreterFrame interpreterFrame) {
@@ -574,17 +647,17 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
-    public void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp) {
+    public void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI) {
         if (isInterpreterIntrinsicRoot(frameInfo)) {
             logInterpreterIntrinsicFrame(log, frameInfo, sp);
         } else if (isInterpreterBytecodeRoot(frameInfo)) {
-            logInterpreterBytecodeFrame(log, frameInfo, sp);
+            logInterpreterBytecodeFrame(log, frameInfo, sp, threadedHandlerBCI);
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
-    private void logInterpreterBytecodeFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp) {
+    private void logInterpreterBytecodeFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI) {
         if (!frameInfo.hasLocalValueInfo()) {
             log.string("  missing local value info (bytecode)");
             return;
@@ -594,7 +667,8 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             log.string("  no interpreter method (bytecode)");
             return;
         }
-        int bci = readBCI(frameInfo, sp);
+        InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
+        int bci = selectStackWalkBCI(getDebuggerEventBCI(interpreterFrame), threadedHandlerBCI, readBCI(frameInfo, sp));
         logInterpreterMethod(log, interpretedMethod, bci);
     }
 

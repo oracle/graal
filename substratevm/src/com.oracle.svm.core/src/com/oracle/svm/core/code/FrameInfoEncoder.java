@@ -146,13 +146,30 @@ public class FrameInfoEncoder {
              * StackTraceElement contains interned strings, so we un-intern these strings and
              * perform our own de-duplication.
              */
-            boolean isHidden = method.getDeclaringClass().isHidden() || AnnotationUtil.isAnnotationPresent(method, Hidden.class);
+            boolean isHidden = isHiddenMethod(method);
             boolean isLambdaFormCompiled = ((SharedMethod) method).isLambdaFormCompiled();
-            int sourceMethodFlags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden, isLambdaFormCompiled);
+            int sourceMethodFlags = computeSourceMethodFlags(method, isHidden, isLambdaFormCompiled);
             String methodSignature = method.getSignature().toMethodDescriptor();
             String sourceMethodName = stringTable.deduplicate(encoder.encodeMethod(source.getMethodName(), sourceClass), true);
             String sourceMethodSignature = CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers() ? stringTable.deduplicate(methodSignature, true) : methodSignature;
             resultFrameInfo.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceMethodFlags);
+        }
+
+        /**
+         * Returns whether the encoded source frame should be hidden from stack walks. Subclasses
+         * can extend the standard Java hidden-method test for generated methods that cannot carry
+         * a {@link Hidden} annotation themselves.
+         */
+        protected boolean isHiddenMethod(ResolvedJavaMethod method) {
+            return method.getDeclaringClass().isHidden() || AnnotationUtil.isAnnotationPresent(method, Hidden.class);
+        }
+
+        /**
+         * Computes the modifiers and internal flags stored for {@code method}. Subclasses may
+         * override this to attach method-kind metadata needed when decoding frame information.
+         */
+        protected int computeSourceMethodFlags(ResolvedJavaMethod method, boolean isHidden, boolean isLambdaFormCompiled) {
+            return FrameSourceInfo.MethodFlags.computeSourceMethodFlags(method.getModifiers(), isHidden, isLambdaFormCompiled);
         }
 
         protected abstract Class<?> getDeclaringJavaClass(ResolvedJavaMethod method);

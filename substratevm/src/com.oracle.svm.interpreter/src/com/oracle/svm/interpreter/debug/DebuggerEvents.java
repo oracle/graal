@@ -53,6 +53,12 @@ public interface DebuggerEvents {
     boolean isEventEnabled(Thread thread, EventKind eventKind);
 
     /**
+     * Returns whether this image contains debugger event support. If it does, event checks must
+     * remain dynamic because events can be enabled at run time.
+     */
+    boolean supportsEvents();
+
+    /**
      * Enable/disable a breakpoint on the specified method and bytecode index.
      *
      * @throws IllegalArgumentException if the method doesn't have bytecodes, or the bytecode index

@@ -963,9 +963,9 @@ public final class InterpreterToVM {
     }
 
     public static Object nullCheck(Object value) throws SemanticJavaException {
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, value != null)) {
-            return value;
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, value == null)) {
+            throw SemanticJavaException.raise(new NullPointerException());
         }
-        throw SemanticJavaException.raise(new NullPointerException());
+        return value;
     }
 }
