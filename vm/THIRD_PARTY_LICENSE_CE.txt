@@ -1976,7 +1976,7 @@ Alex Oliva solved the executable page problem for SElinux.
 
 ================================================================================
 
-Java-WebSocket 1.5.7
+Java-WebSocket 1.6.0
 
 Copyright (c) 2010-2020 Nathan Rajlich
 
