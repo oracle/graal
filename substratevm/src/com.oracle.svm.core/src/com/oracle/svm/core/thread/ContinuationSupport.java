@@ -38,7 +38,9 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -53,6 +55,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -139,6 +142,11 @@ public class ContinuationSupport {
         return copyFrames(fromCont, StoredContinuationAccess.getFramesStart(toCont), preparedData);
     }
 
+    /**
+     * Patches slots in the copied frames that are known to contain addresses into the stack,
+     * specifically spilled stack pointers and frame pointers, but not anything beyond that such as
+     * {@link UnsafeStackValue} containing values in the address range.
+     */
     @Uninterruptible(reason = "Prevent observable unadjusted stack addresses.")
     public static void patchStackAddressesInCopiedFrames(StoredContinuation continuation, CodePointer ip, Pointer newFramesStart) {
         if (!SubstrateOptions.PreserveFramePointer.getValue() && !SubstrateOptions.useFramePointerPhase()) {
@@ -157,6 +165,10 @@ public class ContinuationSupport {
         JavaStackWalker.initialize(walk, thread, newFramesStart, newFramesEnd, ip, Word.nullPointer());
         while (JavaStackWalker.advance(walk, thread)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
+            VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "Deoptimized frames are not supported");
+
             Pointer callerSP = JavaFrames.getCallerSP(frame);
 
             if (SubstrateOptions.PreserveFramePointer.getValue()) {

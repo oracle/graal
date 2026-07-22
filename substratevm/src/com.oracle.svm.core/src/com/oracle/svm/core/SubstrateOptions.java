@@ -958,6 +958,7 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    /** Whether {@code FramePointerPhase} is enabled in general (not all methods are supported). */
     @Fold
     public static boolean useFramePointerPhase() {
         Boolean value = ConcealedOptions.UseFramePointerPhase.getValue();

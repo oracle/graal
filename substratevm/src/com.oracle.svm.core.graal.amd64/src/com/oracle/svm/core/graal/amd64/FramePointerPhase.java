@@ -90,9 +90,13 @@ public class FramePointerPhase extends PreAllocationOptimizationPhase {
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
                 /*
-                 * Note that we need to restore rbp after both calls and exceptions, so for
-                 * simplicity we spill it before each call (not just the ones that might destroy it)
-                 * because then we can simply reload it in each exception handler.
+                 * We need to restore rbp after both calls and exceptions, so for simplicity we
+                 * spill it before each call (not just the ones that might destroy it) because then
+                 * we can simply reload it in each exception handler.
+                 *
+                 * Note that we must never repurpose the spill slot while it is not needed because
+                 * it is assumed to be a stack address and always patched as such when it is part of
+                 * a continuation stack.
                  */
                 buffer.init(instructions);
                 if (block.isExceptionEntry()) {

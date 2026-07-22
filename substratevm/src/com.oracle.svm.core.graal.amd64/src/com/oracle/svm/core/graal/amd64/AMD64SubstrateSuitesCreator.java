@@ -50,7 +50,8 @@ public class AMD64SubstrateSuitesCreator extends AMD64SuitesCreator {
     public LIRSuites createLIRSuites(OptionValues options) {
         LIRSuites lirSuites = super.createLIRSuites(options);
         if (SubstrateOptions.useFramePointerPhase()) {
-            /* Required for Windows unwind info; enabled elsewhere only when explicitly requested. */
+            // Used on Windows for unwind info for supported methods.
+            // Enabled on other platforms only if explicitly requested.
             lirSuites.getPreAllocationOptimizationStage().appendPhase(new FramePointerPhase());
             lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyFramePointerPhase());
         }
