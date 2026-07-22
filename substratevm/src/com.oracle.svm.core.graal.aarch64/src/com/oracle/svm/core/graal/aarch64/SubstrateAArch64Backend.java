@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -1753,6 +1754,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         Label imageHeapMethodId = new Label();
         // Negative method IDs encode CremaResolvedJavaMethod instances.
         asm.tbz(methodIdArg.getRegister(), 63, imageHeapMethodId);
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            /* Sign lr before the Crema path changes sp or saves the return address. */
+            asm.paciasp();
+        }
         CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
         AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
         assert ValueUtil.isRegister(payloadArgument);
@@ -1783,6 +1788,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
          * return register without affecting integer or reference results.
          */
         asm.fmov(64, AArch64.v0, AArch64.r0);
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            /* sp is back at its entry value, so authenticate lr with the original modifier. */
+            asm.autiasp();
+        }
         asm.ret(lr);
         asm.bind(imageHeapMethodId);
     }

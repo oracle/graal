@@ -2198,7 +2198,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         Label imageHeapMethodId = new Label();
         // Negative method IDs encode CremaResolvedJavaMethod instances.
         asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
-        asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, imageHeapMethodId);
+        asm.jcc(AMD64Assembler.ConditionFlag.GreaterEqual, imageHeapMethodId);
         CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
         AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
         /*
@@ -2229,7 +2229,13 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          * return register without affecting integer or reference results.
          */
         asm.movdq(AMD64.xmm0, rax);
-        asm.ret(0);
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            Register returnTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
+            asm.pop(returnTargetRegister);
+            asm.jmp(returnTargetRegister);
+        } else {
+            asm.ret(0);
+        }
         asm.bind(imageHeapMethodId);
     }
 
