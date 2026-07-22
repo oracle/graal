@@ -781,7 +781,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param offsetAddress The offset address of the elem segment, -1 if missing
      * @return The location after the header in the bytecode
      */
-    public int addElemHeader(int mode, int count, int elemType, int tableIndex, byte[] offsetBytecode, int offsetAddress) {
+    public int addElemHeader(int mode, int count, int elemType, int tableIndex, byte[] offsetBytecode, long offsetAddress) {
         assert offsetBytecode == null || offsetAddress == -1 : "elem header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE : "invalid segment mode in elem header";
         assert WasmType.isReferenceType(elemType) : "invalid elem type in elem header";
@@ -826,27 +826,31 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         }
         if (offsetBytecode != null) {
             if (fitsIntoUnsignedByte(offsetBytecode.length)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8;
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U8;
                 add1(offsetBytecode.length);
             } else if (fitsIntoUnsignedShort(offsetBytecode.length)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16;
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U16;
                 add2(offsetBytecode.length);
             } else {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32;
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U32;
                 add4(offsetBytecode.length);
             }
             addBytes(offsetBytecode, 0, offsetBytecode.length);
         }
         if (offsetAddress != -1) {
+            flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET;
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U8;
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U16;
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U16;
                 add2(offsetAddress);
-            } else {
-                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_I32;
+            } else if (fitsIntoUnsignedInt(offsetAddress)) {
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_U32;
                 add4(offsetAddress);
+            } else {
+                flags |= BytecodeBitEncoding.ELEM_SEG_VALUE_I64;
+                add8(offsetAddress);
             }
         }
         set(flagsLocation, (byte) flags);

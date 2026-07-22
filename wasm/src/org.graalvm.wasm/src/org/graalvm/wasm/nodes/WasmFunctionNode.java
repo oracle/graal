@@ -1741,11 +1741,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final int tableIndex = rawPeekU8(state.bytecode, offset + 3);
         final WasmTable table = state.instance.table(tableIndex);
         final Object[] elements = table.elements();
-        final int elementIndex = popInt(frame, --virtualState.stackPointer);
-        if (elementIndex < 0 || elementIndex >= elements.length) {
+        final long tableElementIndex = popTableIndex(frame, --virtualState.stackPointer, table);
+        if (checkOutOfBounds(tableElementIndex, elements.length)) {
             enterErrorBranch(state.thiz.codeEntry);
-            throw WasmException.format(Failure.UNDEFINED_ELEMENT, state.thiz, "Element index '%d' out of table bounds.", elementIndex);
+            throw WasmException.format(Failure.UNDEFINED_ELEMENT, state.thiz, "Element index '%d' out of table bounds.", tableElementIndex);
         }
+        final int elementIndex = (int) tableElementIndex;
         // Currently, table elements may only be functions.
         // We can add a check here when this changes in the future.
         final Object functionCandidate = elements[elementIndex];
@@ -1783,11 +1784,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final int tableIndex = rawPeekI32(state.bytecode, offset + 9);
         final WasmTable table = state.instance.table(tableIndex);
         final Object[] elements = table.elements();
-        final int elementIndex = popInt(frame, --virtualState.stackPointer);
-        if (elementIndex < 0 || elementIndex >= elements.length) {
+        final long tableElementIndex = popTableIndex(frame, --virtualState.stackPointer, table);
+        if (checkOutOfBounds(tableElementIndex, elements.length)) {
             enterErrorBranch(state.thiz.codeEntry);
-            throw WasmException.format(Failure.UNDEFINED_ELEMENT, state.thiz, "Element index '%d' out of table bounds.", elementIndex);
+            throw WasmException.format(Failure.UNDEFINED_ELEMENT, state.thiz, "Element index '%d' out of table bounds.", tableElementIndex);
         }
+        final int elementIndex = (int) tableElementIndex;
         // Currently, table elements may only be functions.
         // We can add a check here when this changes in the future.
         final Object functionCandidate = elements[elementIndex];
@@ -5505,7 +5507,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                 final int n = popInt(frame, stackPointer - 1);
                 final int src = popInt(frame, stackPointer - 2);
-                final int dst = popInt(frame, stackPointer - 3);
+                final long dst = popTableIndex(frame, stackPointer - 3, instance.table(tableIndex));
                 table_init(instance, n, src, dst, tableIndex, elementIndex);
                 stackPointer -= 3;
                 offset += 8;
@@ -5521,9 +5523,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 final int srcIndex = rawPeekI32(bytecode, offset);
                 final int dstIndex = rawPeekI32(bytecode, offset + 4);
 
-                final int n = popInt(frame, stackPointer - 1);
-                final int src = popInt(frame, stackPointer - 2);
-                final int dst = popInt(frame, stackPointer - 3);
+                final WasmTable sourceTable = instance.table(srcIndex);
+                final WasmTable destinationTable = instance.table(dstIndex);
+                final long n = popTableCopyLength(frame, stackPointer - 1, sourceTable, destinationTable);
+                final long src = popTableIndex(frame, stackPointer - 2, sourceTable);
+                final long dst = popTableIndex(frame, stackPointer - 3, destinationTable);
                 table_copy(instance, n, src, dst, srcIndex, dstIndex);
                 stackPointer -= 3;
                 offset += 8;
@@ -5532,11 +5536,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             case Bytecode.TABLE_GROW: {
                 final int tableIndex = rawPeekI32(bytecode, offset);
 
-                final int n = popInt(frame, stackPointer - 1);
+                final WasmTable table = instance.table(tableIndex);
+                final long n = popTableIndex(frame, stackPointer - 1, table);
                 final Object val = popReference(frame, stackPointer - 2);
 
-                final int res = table_grow(instance, n, val, tableIndex);
-                pushInt(frame, stackPointer - 2, res);
+                final long res = table_grow(instance, n, val, tableIndex);
+                pushTableIndex(frame, stackPointer - 2, table, res);
                 stackPointer--;
                 offset += 4;
                 break;
@@ -5551,9 +5556,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             case Bytecode.TABLE_FILL: {
                 final int tableIndex = rawPeekI32(bytecode, offset);
 
-                final int n = popInt(frame, stackPointer - 1);
+                final WasmTable table = instance.table(tableIndex);
+                final long n = popTableIndex(frame, stackPointer - 1, table);
                 final Object val = popReference(frame, stackPointer - 2);
-                final int i = popInt(frame, stackPointer - 3);
+                final long i = popTableIndex(frame, stackPointer - 3, table);
                 table_fill(instance, n, val, i, tableIndex);
                 stackPointer -= 3;
                 offset += 4;
@@ -7850,7 +7856,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @TruffleBoundary
-    private void table_init(WasmInstance instance, int length, int source, int destination, int tableIndex, int elementIndex) {
+    private void table_init(WasmInstance instance, int length, int source, long destination, int tableIndex, int elementIndex) {
         final WasmTable table = instance.table(tableIndex);
         final Object[] elementInstance = instance.elemInstance(elementIndex);
         final int elementInstanceLength;
@@ -7866,44 +7872,44 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (length == 0) {
             return;
         }
-        table.initialize(elementInstance, source, destination, length);
+        table.initialize(elementInstance, source, (int) destination, length);
     }
 
     private void table_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
         final WasmTable table = instance.table(tableIndex);
-        final int i = popInt(frame, stackPointer - 1);
-        if (i < 0 || i >= table.size()) {
+        final long i = popTableIndex(frame, stackPointer - 1, table);
+        if (checkOutOfBounds(i, table.size())) {
             enterErrorBranch(codeEntry);
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
-        final Object value = table.get(i);
+        final Object value = table.get((int) i);
         pushReference(frame, stackPointer - 1, value);
     }
 
     private void table_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
         final WasmTable table = instance.table(tableIndex);
         final Object value = popReference(frame, stackPointer - 1);
-        final int i = popInt(frame, stackPointer - 2);
-        if (i < 0 || i >= table.size()) {
+        final long i = popTableIndex(frame, stackPointer - 2, table);
+        if (checkOutOfBounds(i, table.size())) {
             enterErrorBranch(codeEntry);
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
-        table.set(i, value);
+        table.set((int) i, value);
     }
 
     private static void table_size(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
         final WasmTable table = instance.table(tableIndex);
-        pushInt(frame, stackPointer, table.size());
+        pushTableIndex(frame, stackPointer, table, table.size());
     }
 
     @TruffleBoundary
-    private static int table_grow(WasmInstance instance, int length, Object value, int tableIndex) {
+    private static long table_grow(WasmInstance instance, long length, Object value, int tableIndex) {
         final WasmTable table = instance.table(tableIndex);
         return table.grow(length, value);
     }
 
     @TruffleBoundary
-    private void table_copy(WasmInstance instance, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
+    private void table_copy(WasmInstance instance, long length, long source, long destination, int sourceTableIndex, int destinationTableIndex) {
         final WasmTable sourceTable = instance.table(sourceTableIndex);
         final WasmTable destinationTable = instance.table(destinationTableIndex);
         if (checkOutOfBounds(source, length, sourceTable.size()) || checkOutOfBounds(destination, length, destinationTable.size())) {
@@ -7913,11 +7919,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (length == 0) {
             return;
         }
-        destinationTable.copyFrom(sourceTable, source, destination, length);
+        destinationTable.copyFrom(sourceTable, (int) source, (int) destination, (int) length);
     }
 
     @TruffleBoundary
-    private void table_fill(WasmInstance instance, int length, Object value, int offset, int tableIndex) {
+    private void table_fill(WasmInstance instance, long length, Object value, long offset, int tableIndex) {
         final WasmTable table = instance.table(tableIndex);
         if (checkOutOfBounds(offset, length, table.size())) {
             enterErrorBranch(codeEntry);
@@ -7926,7 +7932,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (length == 0) {
             return;
         }
-        table.fill(offset, length, value);
+        table.fill((int) offset, (int) length, value);
     }
 
     @TruffleBoundary
@@ -7960,14 +7966,39 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         memoryLib(destMemoryIndex).copyFrom(destMemory, this, srcMemory, source, destination, length);
     }
 
+    private static long popTableIndex(VirtualFrame frame, int stackPointer, WasmTable table) {
+        return table.hasIndexType64() ? popLong(frame, stackPointer) : Integer.toUnsignedLong(popInt(frame, stackPointer));
+    }
+
+    private static long popTableCopyLength(VirtualFrame frame, int stackPointer, WasmTable sourceTable, WasmTable destinationTable) {
+        return sourceTable.hasIndexType64() && destinationTable.hasIndexType64() ? popLong(frame, stackPointer) : Integer.toUnsignedLong(popInt(frame, stackPointer));
+    }
+
+    private static void pushTableIndex(VirtualFrame frame, int stackPointer, WasmTable table, long value) {
+        if (table.hasIndexType64()) {
+            pushLong(frame, stackPointer, value);
+        } else {
+            pushInt(frame, stackPointer, (int) value);
+        }
+    }
+
     // Checkstyle: resume method name check
 
     private static boolean checkOutOfBounds(int offset, int size) {
         return offset < 0 || offset >= size;
     }
 
+    private static boolean checkOutOfBounds(long offset, int size) {
+        return Long.compareUnsigned(offset, Integer.toUnsignedLong(size)) >= 0;
+    }
+
     private static boolean checkOutOfBounds(int offset, int length, int size) {
         return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
+    }
+
+    private static boolean checkOutOfBounds(long offset, long length, int size) {
+        return Long.compareUnsigned(offset, Integer.toUnsignedLong(size)) > 0 ||
+                        Long.compareUnsigned(length, Integer.toUnsignedLong(size) - offset) > 0;
     }
 
     private static boolean checkOutOfBounds(int offset, long length, int size) {

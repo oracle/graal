@@ -115,7 +115,7 @@ public abstract class BuiltinModule {
         return index;
     }
 
-    protected int defineTable(WasmContext context, WasmModule module, String tableName, int initSize, int maxSize, int type) {
+    protected int defineTable(WasmContext context, WasmModule module, String tableName, long initSize, long maxSize, boolean indexType64, int type) {
         final boolean referenceTypes = context.getContextOptions().supportBulkMemoryAndRefTypes();
         if (!WasmType.isReferenceType(type)) {
             throw WasmException.create(Failure.MALFORMED_REFERENCE_TYPE, "Only reference types supported in tables.");
@@ -125,7 +125,7 @@ public abstract class BuiltinModule {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Tables of built-in modules must be nullable.");
         }
         int index = module.symbolTable().tableCount();
-        module.symbolTable().declareTable(index, initSize, maxSize, type, null, null, referenceTypes);
+        module.symbolTable().declareTable(index, initSize, maxSize, indexType64, type, null, null, referenceTypes);
         module.symbolTable().exportTable(index, tableName);
         return index;
     }

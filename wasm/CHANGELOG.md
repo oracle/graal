@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.3.4
+
+* Implemented the `table64` part of the [Memory64](https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md) proposal. This feature can be enabled with the option `--wasm.Memory64`.
+
 ## Version 25.1.3
 
 * Adopted a bytecode-handler-based design for the WebAssembly interpreter, improving interpreted performance on Native Image.

@@ -491,11 +491,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static int tableGrow(WasmTable table, int delta, Object ref) {
-        final int result = table.grow(delta, ref);
+        final long result = table.grow(delta, ref);
         if (result == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit");
         }
-        return result;
+        return (int) result;
     }
 
     private static Object tableRead(Object[] args) {

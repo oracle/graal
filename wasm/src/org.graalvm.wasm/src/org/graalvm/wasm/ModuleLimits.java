@@ -231,8 +231,8 @@ public final class ModuleLimits {
         return (long) length * elemByteSize;
     }
 
-    public void checkTableInstanceSize(int size) {
-        assertUnsignedIntLessOrEqual(size, tableInstanceSizeLimit, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
+    public void checkTableInstanceSize(long size) {
+        assertUnsignedLongLessOrEqual(size, tableInstanceSizeLimit, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
     }
 
     public void checkMemoryInstanceSize(long size, boolean indexType64) {
