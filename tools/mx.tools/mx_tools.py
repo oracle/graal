@@ -44,6 +44,8 @@ import mx_sdk_vm
 
 import sys
 
+from mx_sdk_shaded import ShadedLibraryProject  # pylint: disable=unused-import
+
 if sys.version_info[0] < 3:
     from urlparse import urljoin
 else:

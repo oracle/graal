@@ -57,10 +57,10 @@ suite = {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
+                "com.oracle.truffle.tools.utils.java_websocket",
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
                 "truffle:TRUFFLE_JSON",
-                "TruffleJWS",
             ],
             "requires" : [
                 "java.logging",
@@ -319,14 +319,74 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
         },
+        "com.oracle.truffle.tools.utils.java_websocket" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "requires" : [
+                "java.logging",
+            ],
+            "shadedDependencies" : [
+                "tools:JAVA_WEBSOCKET",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.java_websocket" : "com.oracle.truffle.tools.utils.java_websocket",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "META-INF/maven/org.java-websocket/Java-WebSocket/pom.xml",
+                    "META-INF/maven/org.java-websocket/Java-WebSocket/pom.properties",
+                ],
+                "patch" : {
+                    "org/java_websocket/server/WebSocketServer.java" : {
+                        "\"Uncaught exception in thread \\{\\}: \\{\\}\", (t\\.getName\\(\\)|getName\\(\\)), e" : "\"Uncaught exception in thread {0}: {1}\", new Object[] { \\g<1>, e }",
+                    },
+                    "org/java_websocket/WebSocketImpl.java" : {
+                        "\"process\\(\\{\\}\\): \\(\\{\\}\\)\", socketBuffer\\.remaining\\(\\)," : "\"process({0}): ({1})\", new Object[] { socketBuffer.remaining(),",
+                        "socketBuffer\\.remaining\\(\\)\\)\\)\\);" : "socketBuffer.remaining()))});",
+                        "\"write\\(\\{\\}\\): \\{\\}\", buf\\.remaining\\(\\)," : "\"write({0}): {1}\", new Object[] { buf.remaining(),",
+                        "new String\\(buf\\.array\\(\\)\\)\\);" : "new String(buf.array())});",
+                    },
+                    "org/java_websocket/drafts/Draft_6455.java" : {
+                        "\"after(Enconding|Decoding)\\(\\{\\}\\): \\{\\}\", (framedata|frame)\\.getPayloadData\\(\\)\\.remaining\\(\\)," : "\"after\\g<1>({0}): {1}\", new Object[] { \\g<2>.getPayloadData().remaining(),",
+                        "new String\\((framedata|frame)\\.getPayloadData\\(\\)\\.array\\(\\)\\)\\)\\);" : "new String(\\g<1>.getPayloadData().array()))});",
+                        "\"Payload limit reached\\. Allowed: \\{\\} Current: \\{\\}\", maxFrameSize, (length|totalSize)" : "\"Payload limit reached. Allowed: {0} Current: {1}\", new Object[] { maxFrameSize, \\g<1> }",
+                    },
+                    "org/java_websocket/**/*.java" : {
+                        "import org\\.slf4j\\.Logger;" : "import java.util.logging.Level;",
+                        "import org\\.slf4j\\.LoggerFactory;" : "import java.util.logging.Logger;",
+                        "LoggerFactory\\.getLogger\\(([A-Za-z_][A-Za-z0-9_]*)\\.class\\);" : "Logger.getLogger(\\g<1>.class.getName());",
+                        "log\\.trace\\(" : "log.log(Level.FINER, ",
+                        "log\\.error\\(" : "log.log(Level.SEVERE, ",
+                        "log\\.isTraceEnabled\\(\\)" : "log.isLoggable(Level.FINER)",
+                    },
+                },
+            },
+            "description" : "shaded Java-WebSocket library.",
+            "allowsJavadocWarnings": True,
+            "noMavenJavadoc": True,
+            # We need to force javac because the generated sources in this project produce warnings in JDT.
+            "forceJavac" : "true",
+            "javac.lint.overrides" : 'none',
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
+            "workingSets" : "Tools",
+        },
     },
 
     "libraries": {
-        "TruffleJWS" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.7.jar"],
-          "digest" : "sha512:361af8b064075fecfc9aa7fdc298a129f31b678474e1c405205a6c3637218d48cfb5ac61a2247d72489f1318434de0c621ca7404ae27e78f1fa091e6eb8112af",
-          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.7-src.jar"],
-          "sourceDigest" : "sha512:1ba0f2a2ea7a70400225245d0b1512da17f8410d3cfac7dbfe03cff0c9d97b7560588658c34084c07afc643407ffe4bb378d5ce745c357da9c1c81d3c4137949",
+        "JAVA_WEBSOCKET" : {
+            "moduleName": "org.java_websocket",
+            "digest" : "sha512:03a21b3e1f63e7f4d35db7eb5de6f5f25d03fa82b4d3bf4ddf78ddc4a665b83c772f3f4519c38aa92bb81551feb3fe04287ee0a7590dffec1f125b06520a0fc4",
+            "sourceDigest" : "sha512:42a13766f7e41a0579ac31c1d6204de0a2f62ce8d75cc8402e88c6e22178793edb5abf7ff265042db7e88835801fe4c2b0a7ba37c771783969b96922ae703486",
+            "maven" : {
+                "groupId" : "org.java-websocket",
+                "artifactId" : "Java-WebSocket",
+                "version" : "1.6.0",
+            }
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1090.tar.gz"],
