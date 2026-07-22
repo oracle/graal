@@ -2095,7 +2095,7 @@ If you have questions, don't hesitate to ask the author(s) for more information.
 
 ================================================================================
 
-XZ for Java 1.10
+XZ for Java 1.12
 
 Copyright (C) The XZ for Java authors and contributors
 
