@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #include <string.h>
@@ -124,6 +123,12 @@ void CgroupV1Controller::set_subsystem_path(const char* cgroup_path) {
   }
 }
 
+jlong CgroupV1MemoryController::uses_mem_hierarchy() {
+  julong use_hierarchy;
+  CONTAINER_READ_NUMBER_CHECKED(reader(), "/memory.use_hierarchy", "Use Hierarchy", use_hierarchy);
+  return (jlong)use_hierarchy;
+}
+
 /*
  * The common case, containers, we have _root == _cgroup_path, and thus set the
  * controller path to the _mount_point. This is where the limits are exposed in
@@ -160,13 +165,13 @@ void verbose_log(julong read_mem_limit, julong host_mem) {
 jlong CgroupV1MemoryController::read_memory_limit_in_bytes(julong phys_mem) {
   julong memlimit;
   CONTAINER_READ_NUMBER_CHECKED(reader(), "/memory.limit_in_bytes", "Memory Limit", memlimit);
-  if (memlimit >= phys_mem) {
-    verbose_log(memlimit, phys_mem);
-    return (jlong)-1;
-  } else {
-    verbose_log(memlimit, phys_mem);
-    return (jlong)memlimit;
+  if (memlimit >= phys_mem && uses_mem_hierarchy()) {
+    CONTAINER_READ_NUMERICAL_KEY_VALUE_CHECKED(reader(), "/memory.stat",
+                                               "hierarchical_memory_limit", "Hierarchical Memory Limit",
+                                               memlimit);
   }
+  verbose_log(memlimit, phys_mem);
+  return (jlong)((memlimit < phys_mem) ? memlimit : -1);
 }
 
 /* read_mem_swap
@@ -184,12 +189,13 @@ jlong CgroupV1MemoryController::read_memory_limit_in_bytes(julong phys_mem) {
 jlong CgroupV1MemoryController::read_mem_swap(julong host_total_memsw) {
   julong memswlimit;
   CONTAINER_READ_NUMBER_CHECKED(reader(), "/memory.memsw.limit_in_bytes", "Memory and Swap Limit", memswlimit);
-  if (memswlimit >= host_total_memsw) {
-    log_trace(os, container)("Memory and Swap Limit is: Unlimited");
-    return (jlong)-1;
-  } else {
-    return (jlong)memswlimit;
+  if (memswlimit >= host_total_memsw && uses_mem_hierarchy()) {
+    CONTAINER_READ_NUMERICAL_KEY_VALUE_CHECKED(reader(), "/memory.stat",
+                                               "hierarchical_memsw_limit", "Hierarchical Memory and Swap Limit",
+                                               memswlimit);
   }
+  verbose_log(memswlimit, host_total_memsw);
+  return (jlong)((memswlimit < host_total_memsw) ? memswlimit : -1);
 }
 
 jlong CgroupV1MemoryController::memory_and_swap_limit_in_bytes(julong host_mem, julong host_swap) {
@@ -351,7 +357,6 @@ jlong CgroupV1MemoryController::kernel_memory_max_usage_in_bytes() {
   return (jlong)kmem_max_usage;
 }
 
-#ifndef NATIVE_IMAGE
 void CgroupV1MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
   jlong kmem_usage = kernel_memory_usage_in_bytes();
   jlong kmem_limit = kernel_memory_limit_in_bytes(phys_mem);
@@ -361,7 +366,6 @@ void CgroupV1MemoryController::print_version_specific_info(outputStream* st, jul
   OSContainer::print_container_helper(st, kmem_usage, "kernel_memory_usage_in_bytes");
   OSContainer::print_container_helper(st, kmem_max_usage, "kernel_memory_max_usage_in_bytes");
 }
-#endif // !NATIVE_IMAGE
 
 char* CgroupV1Subsystem::cpu_cpuset_cpus() {
   char cpus[1024];

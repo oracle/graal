@@ -1,13 +1,10 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2025, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2025, Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #include "os_linux.hpp"
@@ -67,7 +65,7 @@ void CgroupUtil::adjust_controller(CgroupMemoryController* mem) {
   char* cg_path = os::strdup(orig);
   char* last_slash;
   assert(cg_path[0] == '/', "cgroup path must start with '/'");
-  julong phys_mem = os::Linux::physical_memory();
+  julong phys_mem = static_cast<julong>(os::Linux::physical_memory());
   char* limit_cg_path = nullptr;
   jlong limit = mem->read_memory_limit_in_bytes(phys_mem);
   jlong lowest_limit = limit < 0 ? phys_mem : limit;

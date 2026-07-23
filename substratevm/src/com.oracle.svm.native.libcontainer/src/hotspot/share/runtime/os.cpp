@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,9 +19,9 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-#ifndef NATIVE_IMAGE
 #include "cds/cdsConfig.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/moduleEntry.hpp"
@@ -38,9 +36,7 @@
 #include "jvm.h"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
-#endif // !NATIVE_IMAGE
 #include "memory/allocation.inline.hpp"
-#ifndef NATIVE_IMAGE
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "nmt/mallocHeader.inline.hpp"
@@ -63,9 +59,7 @@
 #include "runtime/javaThread.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/mutexLocker.hpp"
-#endif // !NATIVE_IMAGE
 #include "runtime/os.inline.hpp"
-#ifndef NATIVE_IMAGE
 #include "runtime/osThread.hpp"
 #include "runtime/safefetch.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -77,18 +71,14 @@
 #include "services/attachListener.hpp"
 #include "services/threadService.hpp"
 #include "utilities/align.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/checkedCast.hpp"
-#ifndef NATIVE_IMAGE
 #include "utilities/count_trailing_zeros.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/events.hpp"
 #include "utilities/fastrand.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/permitForbiddenFunctions.hpp"
-#ifndef NATIVE_IMAGE
 #include "utilities/powerOfTwo.hpp"
 
 #ifdef LINUX
@@ -104,9 +94,7 @@
 
 OSThread*         os::_starting_thread    = nullptr;
 volatile unsigned int os::_rand_seed      = 1234567;
-#endif // !NATIVE_IMAGE
 int               os::_processor_count    = 0;
-#ifndef NATIVE_IMAGE
 int               os::_initial_active_processor_count = 0;
 os::PageSizes     os::_page_sizes;
 
@@ -119,7 +107,6 @@ int os::snprintf(char* buf, size_t len, const char* fmt, ...) {
   va_end(args);
   return result;
 }
-#endif // !NATIVE_IMAGE
 
 int os::snprintf_checked(char* buf, size_t len, const char* fmt, ...) {
   va_list args;
@@ -141,7 +128,6 @@ int os::vsnprintf(char* buf, size_t len, const char* fmt, va_list args) {
   return result;
 }
 
-#ifndef NATIVE_IMAGE
 // Fill in buffer with current local time as an ISO-8601 string.
 // E.g., YYYY-MM-DDThh:mm:ss.mmm+zzzz.
 // Returns buffer, or null if it failed.
@@ -605,7 +591,6 @@ bool os::find_builtin_agent(JvmtiAgent* agent, const char* sym) {
   agent->set_os_lib(save_handle);
   return false;
 }
-#endif // !NATIVE_IMAGE
 
 // --------------------- heap allocation utilities ---------------------
 
@@ -617,7 +602,6 @@ char *os::strdup(const char *str, MemTag mem_tag) {
   return dup_str;
 }
 
-#ifndef NATIVE_IMAGE
 char* os::strdup_check_oom(const char* str, MemTag mem_tag) {
   char* p = os::strdup(str, mem_tag);
   if (p == nullptr) {
@@ -638,36 +622,7 @@ static void break_if_ptr_caught(void* ptr) {
   }
 }
 #endif // ASSERT
-#endif // !NATIVE_IMAGE
 
-#ifdef NATIVE_IMAGE
-void* os::malloc(size_t size, MemTag mem_tag) {
-  // On malloc(0), implementations of malloc(3) have the choice to return either
-  // null or a unique non-null pointer. To unify libc behavior across our platforms
-  // we chose the latter.
-  size = MAX2((size_t)1, size);
-  return ::malloc(size);
-}
-
-void* os::realloc(void *memblock, size_t size, MemTag mem_tag) {
-  if (memblock == nullptr) {
-    return os::malloc(size, mem_tag);
-  }
-
-  // On realloc(p, 0), implementers of realloc(3) have the choice to return either
-  // null or a unique non-null pointer. To unify libc behavior across our platforms
-  // we chose the latter.
-  size = MAX2((size_t)1, size);
-  return ::realloc(memblock, size);
-}
-
-void  os::free(void *memblock) {
-  if (memblock == nullptr) {
-    return;
-  }
-  ::free(memblock);
-}
-#else
 void* os::malloc(size_t size, MemTag mem_tag) {
   return os::malloc(size, mem_tag, CALLER_PC);
 }
@@ -711,8 +666,8 @@ void* os::malloc(size_t size, MemTag mem_tag, const NativeCallStack& stack) {
   if (CDSConfig::is_dumping_static_archive()) {
     // Need to deterministically fill all the alignment gaps in C++ structures.
     ::memset(inner_ptr, 0, size);
-  } else {
-    DEBUG_ONLY(::memset(inner_ptr, uninitBlockPad, size);)
+  } else if (ZapCHeap) {
+    ::memset(inner_ptr, uninitBlockPad, size);
   }
   DEBUG_ONLY(break_if_ptr_caught(inner_ptr);)
   return inner_ptr;
@@ -785,7 +740,7 @@ void* os::realloc(void *memblock, size_t size, MemTag mem_tag, const NativeCallS
 
 #ifdef ASSERT
     assert(old_size == free_info.size, "Sanity");
-    if (old_size < size) {
+    if (ZapCHeap && old_size < size) {
       // We also zap the newly extended region.
       ::memset((char*)new_inner_ptr + old_size, uninitBlockPad, size - old_size);
     }
@@ -1228,12 +1183,13 @@ void os::print_summary_info(outputStream* st, char* buf, size_t buflen) {
 #endif // PRODUCT
   get_summary_cpu_info(buf, buflen);
   st->print("%s, ", buf);
-  size_t mem = physical_memory()/G;
+  physical_memory_size_type phys_mem = physical_memory();
+  physical_memory_size_type mem = phys_mem/G;
   if (mem == 0) {  // for low memory systems
-    mem = physical_memory()/M;
-    st->print("%d cores, %zuM, ", processor_count(), mem);
+    mem = phys_mem/M;
+    st->print("%d cores, " PHYS_MEM_TYPE_FORMAT "M, ", processor_count(), mem);
   } else {
-    st->print("%d cores, %zuG, ", processor_count(), mem);
+    st->print("%d cores, " PHYS_MEM_TYPE_FORMAT "G, ", processor_count(), mem);
   }
   get_summary_os_info(buf, buflen);
   st->print_raw(buf);
@@ -1523,7 +1479,6 @@ char* os::format_boot_path(const char* format_string,
     assert((q - formatted_path) == formatted_path_len, "formatted_path size botched");
     return formatted_path;
 }
-#endif // !NATIVE_IMAGE
 
 // This function is a proxy to fopen, it tries to add a non standard flag ('e' or 'N')
 // that ensures automatic closing of the file on exec. If it can not find support in
@@ -1552,7 +1507,6 @@ FILE* os::fopen(const char* path, const char* mode) {
   return file;
 }
 
-#ifndef NATIVE_IMAGE
 bool os::set_boot_path(char fileSep, char pathSep) {
   const char* home = Arguments::get_java_home();
   int home_len = (int)strlen(home);
@@ -1634,7 +1588,6 @@ void os::print_image_release_file(outputStream* st) {
   }
 }
 
-#endif // !NATIVE_IMAGE
 bool os::file_exists(const char* filename) {
   struct stat statbuf;
   if (filename == nullptr || strlen(filename) == 0) {
@@ -1642,7 +1595,6 @@ bool os::file_exists(const char* filename) {
   }
   return os::stat(filename, &statbuf) == 0;
 }
-#ifndef NATIVE_IMAGE
 
 bool os::write(int fd, const void *buf, size_t nBytes) {
   ssize_t res;
@@ -1785,7 +1737,6 @@ void os::pause() {
                 "Could not open pause file '%s', continuing immediately.\n", filename);
   }
 }
-#endif // !NATIVE_IMAGE
 
 static const char* errno_to_string (int e, bool short_text) {
   #define ALL_SHARED_ENUMS(X) \
@@ -1912,7 +1863,6 @@ const char* os::errno_name(int e) {
   return errno_to_string(e, true);
 }
 
-#ifndef NATIVE_IMAGE
 // create binary file, rewriting existing file if required
 int os::create_binary_file(const char* path, bool rewrite_existing) {
   int oflags = O_WRONLY | O_CREAT WINDOWS_ONLY(| O_BINARY);
@@ -1984,17 +1934,17 @@ bool os::is_server_class_machine() {
     return true;
   }
   // Then actually look at the machine
-  bool         result            = false;
-  const unsigned int    server_processors = 2;
-  const julong server_memory     = 2UL * G;
+  bool  result                                    = false;
+  const unsigned int server_processors            = 2;
+  const physical_memory_size_type server_memory   = 2UL * G;
   // We seem not to get our full complement of memory.
   //     We allow some part (1/8?) of the memory to be "missing",
   //     based on the sizes of DIMMs, and maybe graphics cards.
-  const julong missing_memory   = 256UL * M;
-
+  const physical_memory_size_type missing_memory  = 256UL * M;
+  physical_memory_size_type phys_mem              = os::physical_memory();
   /* Is this a server class machine? */
   if ((os::active_processor_count() >= (int)server_processors) &&
-      (os::physical_memory() >= (server_memory - missing_memory))) {
+      (phys_mem >= server_memory - missing_memory)) {
     const unsigned int logical_processors =
       VM_Version::logical_processors_per_package();
     if (logical_processors > 1) {
@@ -2253,16 +2203,24 @@ static void assert_nonempty_range(const char* addr, size_t bytes) {
          p2i(addr), p2i(addr) + bytes);
 }
 
-julong os::used_memory() {
+bool os::used_memory(physical_memory_size_type& value) {
 #ifdef LINUX
   if (OSContainer::is_containerized()) {
     jlong mem_usage = OSContainer::memory_usage_in_bytes();
     if (mem_usage > 0) {
-      return mem_usage;
+      value = static_cast<physical_memory_size_type>(mem_usage);
+      return true;
+    } else {
+      return false;
     }
   }
 #endif
-  return os::physical_memory() - os::available_memory();
+  physical_memory_size_type avail_mem = 0;
+  // Return value ignored - defaulting to 0 on failure.
+  (void)os::available_memory(avail_mem);
+  physical_memory_size_type phys_mem = os::physical_memory();
+  value = phys_mem - avail_mem;
+  return true;
 }
 
 
@@ -2624,6 +2582,10 @@ jint os::set_minimum_stack_sizes() {
   return JNI_OK;
 }
 
+jlong os::get_minimum_java_stack_size() {
+  return static_cast<jlong>(_java_thread_min_stack_allowed);
+}
+
 // Builds a platform dependent Agent_OnLoad_<lib_name> function name
 // which is used to find statically linked in agents.
 // Parameters:
@@ -2681,4 +2643,3 @@ char* os::build_agent_function_name(const char *sym_name, const char *lib_name,
   }
   return agent_entry_name;
 }
-#endif // !NATIVE_IMAGE

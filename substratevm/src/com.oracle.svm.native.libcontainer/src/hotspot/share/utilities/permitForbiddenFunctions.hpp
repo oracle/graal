@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef SHARE_UTILITIES_PERMITFORBIDDENFUNCTIONS_HPP
@@ -29,13 +28,11 @@
 #include "utilities/compilerWarnings.hpp"
 #include "utilities/globalDefinitions.hpp"
 
-#ifndef NATIVE_IMAGE
 #ifdef _WINDOWS
 #include "permitForbiddenFunctions_windows.hpp"
 #else
 #include "permitForbiddenFunctions_posix.hpp"
 #endif
-#endif // !NATIVE_IMAGE
 
 // Provide wrappers for some functions otherwise forbidden from use in HotSpot.
 //
@@ -55,24 +52,20 @@
 namespace permit_forbidden_function {
 BEGIN_ALLOW_FORBIDDEN_FUNCTIONS
 
-#ifndef NATIVE_IMAGE
 [[noreturn]] inline void exit(int status) { ::exit(status); }
 [[noreturn]] inline void _exit(int status) { ::_exit(status); }
-#endif // !NATIVE_IMAGE
 
 ATTRIBUTE_PRINTF(3, 0)
 inline int vsnprintf(char* str, size_t size, const char* format, va_list ap) {
   return ::vsnprintf(str, size, format, ap);
 }
 
-#ifndef NATIVE_IMAGE
 inline void* malloc(size_t size) { return ::malloc(size); }
 inline void free(void* ptr) { return ::free(ptr); }
 inline void* calloc(size_t nmemb, size_t size) { return ::calloc(nmemb, size); }
 inline void* realloc(void* ptr, size_t size) { return ::realloc(ptr, size); }
 
 inline char* strdup(const char* s) { return ::strdup(s); }
-#endif // !NATIVE_IMAGE
 
 END_ALLOW_FORBIDDEN_FUNCTIONS
 } // namespace permit_forbidden_function

@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,15 +19,13 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-#ifndef NATIVE_IMAGE
 #include "cds/classListWriter.hpp"
 #include "compiler/compileLog.hpp"
 #include "jvm.h"
-#endif // !NATIVE_IMAGE
 #include "memory/allocation.inline.hpp"
-#ifndef NATIVE_IMAGE
 #include "oops/oop.inline.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -38,10 +34,8 @@
 #include "runtime/safepoint.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/defaultStream.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
-#ifndef NATIVE_IMAGE
 #include "utilities/vmError.hpp"
 #include "utilities/xmlstream.hpp"
 
@@ -195,16 +189,12 @@ void outputStream::vprint_cr(const char* format, va_list argptr) {
   do_vsnprintf_and_write(format, argptr, true);
 }
 
-#endif // !NATIVE_IMAGE
 void outputStream::print_raw(const char* str, size_t len) {
-#ifndef NATIVE_IMAGE
   if (_autoindent && _position == 0) {
     indent();
   }
-#endif // !NATIVE_IMAGE
   write(str, len);
 }
-#ifndef NATIVE_IMAGE
 
 int outputStream::fill_to(int col) {
   const int need_fill = MAX2(col - position(), 0);
@@ -341,7 +331,6 @@ void outputStream::print_data(void* data, size_t len, bool with_ascii, bool rel_
     }
   }
 }
-#endif // !NATIVE_IMAGE
 
 stringStream::stringStream(size_t initial_capacity) :
   outputStream(),
@@ -356,7 +345,6 @@ stringStream::stringStream(size_t initial_capacity) :
   zero_terminate();
 }
 
-#ifndef NATIVE_IMAGE
 // useful for output to fixed chunks of memory, such as performance counters
 stringStream::stringStream(char* fixed_buffer, size_t fixed_buffer_size) :
   outputStream(),
@@ -367,7 +355,6 @@ stringStream::stringStream(char* fixed_buffer, size_t fixed_buffer_size) :
 {
   zero_terminate();
 }
-#endif // !NATIVE_IMAGE
 
 // Grow backing buffer to desired capacity. Don't call for fixed buffers
 void stringStream::grow(size_t new_capacity) {
@@ -415,12 +402,10 @@ void stringStream::write(const char* s, size_t len) {
     zero_terminate();
   }
 
-#ifndef NATIVE_IMAGE
   // Note that the following does not depend on write_len.
   // This means that position and count get updated
   // even when overflow occurs.
   update_position(s, len);
-#endif // !NATIVE_IMAGE
 }
 
 void stringStream::zero_terminate() {
@@ -429,7 +414,6 @@ void stringStream::zero_terminate() {
   _buffer[_written] = '\0';
 }
 
-#ifndef NATIVE_IMAGE
 void stringStream::reset() {
   assert(_is_frozen == false, "Modification forbidden");
   _written = 0; _precount = 0; _position = 0;
@@ -455,7 +439,6 @@ char* stringStream::as_string(Arena* arena) const {
   copy[_written] = '\0';  // terminating null
   return copy;
 }
-#endif // !NATIVE_IMAGE
 
 stringStream::~stringStream() {
   if (!_is_fixed && _buffer != _small_buffer) {
@@ -463,7 +446,6 @@ stringStream::~stringStream() {
   }
 }
 
-#ifndef NATIVE_IMAGE
 // tty needs to be always accessible since there are code paths that may write to it
 // outside of the VM lifespan.
 // Examples for pre-VM-init accesses: Early NMT init, Early UL init
@@ -629,15 +611,15 @@ void fileStream::write(const char* s, size_t len) {
   }
 }
 
-long fileStream::fileSize() {
-  long size = -1;
+int64_t fileStream::fileSize() {
+  int64_t size = -1;
   if (_file != nullptr) {
-    long pos = ::ftell(_file);
+    int64_t pos = os::ftell(_file);
     if (pos < 0) return pos;
-    if (::fseek(_file, 0, SEEK_END) == 0) {
-      size = ::ftell(_file);
+    if (os::fseek(_file, 0, SEEK_END) == 0) {
+      size = os::ftell(_file);
     }
-    ::fseek(_file, pos, SEEK_SET);
+    os::fseek(_file, pos, SEEK_SET);
   }
   return size;
 }
@@ -1168,6 +1150,5 @@ bool networkStream::connect(const char *host, short port) {
   freeaddrinfo(addr_info);
   return (conn >= 0);
 }
-#endif // !NATIVE_IMAGE
 
 #endif

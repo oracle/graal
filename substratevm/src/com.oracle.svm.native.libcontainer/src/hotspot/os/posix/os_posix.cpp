@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,9 +19,9 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-#ifndef NATIVE_IMAGE
 #include "classfile/classLoader.hpp"
 #include "interpreter/interpreter.hpp"
 #include "jvm.h"
@@ -31,9 +29,7 @@
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "nmt/memTracker.hpp"
-#endif // !NATIVE_IMAGE
 #include "os_posix.inline.hpp"
-#ifndef NATIVE_IMAGE
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/frame.inline.hpp"
@@ -47,10 +43,8 @@
 #include "runtime/sharedRuntime.hpp"
 #include "services/attachListener.hpp"
 #include "utilities/align.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/checkedCast.hpp"
 #include "utilities/debug.hpp"
-#ifndef NATIVE_IMAGE
 #include "utilities/defaultStream.hpp"
 #include "utilities/events.hpp"
 #include "utilities/formatBuffer.hpp"
@@ -65,7 +59,6 @@
 #ifdef AIX
 #include "loadlib_aix.hpp"
 #include "os_aix.hpp"
-#include "porting_aix.hpp"
 #endif
 #ifdef LINUX
 #include "os_linux.hpp"
@@ -114,41 +107,60 @@ size_t os::_os_min_stack_allowed = PTHREAD_STACK_MIN;
 
 // Check core dump limit and report possible place where core can be found
 void os::check_core_dump_prerequisites(char* buffer, size_t bufferSize, bool check_only) {
+  stringStream buf(buffer, bufferSize);
   if (!FLAG_IS_DEFAULT(CreateCoredumpOnCrash) && !CreateCoredumpOnCrash) {
-    jio_snprintf(buffer, bufferSize, "CreateCoredumpOnCrash is disabled from command line");
-    VMError::record_coredump_status(buffer, false);
+    buf.print("CreateCoredumpOnCrash is disabled from command line");
+    VMError::record_coredump_status(buf.freeze(), false);
   } else {
     struct rlimit rlim;
     bool success = true;
     bool warn = true;
     char core_path[PATH_MAX];
     if (get_core_path(core_path, PATH_MAX) <= 0) {
-      jio_snprintf(buffer, bufferSize, "core.%d (may not exist)", current_process_id());
+      // In the warning message, let the user know.
+      if (check_only) {
+        buf.print("the core path couldn't be determined. It commonly defaults to ");
+      }
+      buf.print("core.%d%s", current_process_id(), check_only ? "" : " (may not exist)");
 #ifdef LINUX
     } else if (core_path[0] == '"') { // redirect to user process
-      jio_snprintf(buffer, bufferSize, "Core dumps may be processed with %s", core_path);
+      if (check_only) {
+        buf.print("core dumps may be further processed by the following: ");
+      } else {
+        buf.print("Determined by the following: ");
+      }
+      buf.print("%s", core_path);
 #endif
     } else if (getrlimit(RLIMIT_CORE, &rlim) != 0) {
-      jio_snprintf(buffer, bufferSize, "%s (may not exist)", core_path);
+      if (check_only) {
+        buf.print("the rlimit couldn't be determined. If resource limits permit, the core dump will be located at ");
+      }
+      buf.print("%s%s", core_path, check_only ? "" : " (may not exist)");
     } else {
       switch(rlim.rlim_cur) {
         case RLIM_INFINITY:
-          jio_snprintf(buffer, bufferSize, "%s", core_path);
+          buf.print("%s", core_path);
           warn = false;
           break;
         case 0:
-          jio_snprintf(buffer, bufferSize, "Core dumps have been disabled. To enable core dumping, try \"ulimit -c unlimited\" before starting Java again");
+          buf.print("%s dumps have been disabled. To enable core dumping, try \"ulimit -c unlimited\" before starting Java again", check_only ? "core" : "Core");
           success = false;
           break;
         default:
-          jio_snprintf(buffer, bufferSize, "%s (max size " UINT64_FORMAT " k). To ensure a full core dump, try \"ulimit -c unlimited\" before starting Java again", core_path, uint64_t(rlim.rlim_cur) / K);
+          if (check_only) {
+            buf.print("core dumps are constrained ");
+          } else {
+             buf.print( "%s ", core_path);
+          }
+          buf.print( "(max size " UINT64_FORMAT " k). To ensure a full core dump, try \"ulimit -c unlimited\" before starting Java again", uint64_t(rlim.rlim_cur) / K);
           break;
       }
     }
+    const char* result = buf.freeze();
     if (!check_only) {
-      VMError::record_coredump_status(buffer, success);
+      VMError::record_coredump_status(result, success);
     } else if (warn) {
-      warning("CreateCoredumpOnCrash specified, but %s", buffer);
+      warning("CreateCoredumpOnCrash specified, but %s", result);
     }
   }
 }
@@ -869,6 +881,14 @@ void* os::lookup_function(const char* name) {
   return dlsym(RTLD_DEFAULT, name);
 }
 
+int64_t os::ftell(FILE* file) {
+  return ::ftell(file);
+}
+
+int os::fseek(FILE* file, int64_t offset, int whence) {
+  return ::fseek(file, offset, whence);
+}
+
 jlong os::lseek(int fd, jlong offset, int whence) {
   return (jlong) ::lseek(fd, offset, whence);
 }
@@ -1027,13 +1047,9 @@ char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
   return result;
 }
 
-#endif // !NATIVE_IMAGE
-
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
 }
-
-#ifndef NATIVE_IMAGE
 
 char * os::native_path(char *path) {
   return path;
@@ -1069,95 +1085,6 @@ bool os::same_files(const char* file1, const char* file2) {
     is_same = true;
   }
   return is_same;
-}
-
-static char saved_jvm_path[MAXPATHLEN] = {0};
-
-// Find the full path to the current module, libjvm.so
-void os::jvm_path(char *buf, jint buflen) {
-  // Error checking.
-  if (buflen < MAXPATHLEN) {
-    assert(false, "must use a large-enough buffer");
-    buf[0] = '\0';
-    return;
-  }
-  // Lazy resolve the path to current module.
-  if (saved_jvm_path[0] != 0) {
-    strcpy(buf, saved_jvm_path);
-    return;
-  }
-
-  const char* fname;
-#ifdef AIX
-  Dl_info dlinfo;
-  int ret = dladdr(CAST_FROM_FN_PTR(void *, os::jvm_path), &dlinfo);
-  assert(ret != 0, "cannot locate libjvm");
-  if (ret == 0) {
-    return;
-  }
-  fname = dlinfo.dli_fname;
-#else
-  char dli_fname[MAXPATHLEN];
-  dli_fname[0] = '\0';
-  bool ret = dll_address_to_library_name(
-                                         CAST_FROM_FN_PTR(address, os::jvm_path),
-                                         dli_fname, sizeof(dli_fname), nullptr);
-  assert(ret, "cannot locate libjvm");
-  if (!ret) {
-    return;
-  }
-  fname = dli_fname;
-#endif // AIX
-  char* rp = nullptr;
-  if (fname[0] != '\0') {
-    rp = os::realpath(fname, buf, buflen);
-  }
-  if (rp == nullptr) {
-    return;
-  }
-
-  // If executing unit tests we require JAVA_HOME to point to the real JDK.
-  if (Arguments::executing_unit_tests()) {
-    // Look for JAVA_HOME in the environment.
-    char* java_home_var = ::getenv("JAVA_HOME");
-    if (java_home_var != nullptr && java_home_var[0] != 0) {
-
-      // Check the current module name "libjvm.so".
-      const char* p = strrchr(buf, '/');
-      if (p == nullptr) {
-        return;
-      }
-      assert(strstr(p, "/libjvm") == p, "invalid library name");
-
-      stringStream ss(buf, buflen);
-      rp = os::realpath(java_home_var, buf, buflen);
-      if (rp == nullptr) {
-        return;
-      }
-
-      assert((int)strlen(buf) < buflen, "Ran out of buffer room");
-      ss.print("%s/lib", buf);
-
-      // If the path exists within JAVA_HOME, add the VM variant directory and JVM
-      // library name to complete the path to JVM being overridden.  Otherwise fallback
-      // to the path to the current library.
-      if (0 == access(buf, F_OK)) {
-        // Use current module name "libjvm.so"
-        ss.print("/%s/libjvm%s", Abstract_VM_Version::vm_variant(), JNI_LIB_SUFFIX);
-        assert(strcmp(buf + strlen(buf) - strlen(JNI_LIB_SUFFIX), JNI_LIB_SUFFIX) == 0,
-               "buf has been truncated");
-      } else {
-        // Go back to path of .so
-        rp = os::realpath(fname, buf, buflen);
-        if (rp == nullptr) {
-          return;
-        }
-      }
-    }
-  }
-
-  strncpy(saved_jvm_path, buf, MAXPATHLEN);
-  saved_jvm_path[MAXPATHLEN - 1] = '\0';
 }
 
 // Called when creating the thread.  The minimum stack sizes have already been calculated
@@ -2298,4 +2225,3 @@ const void* os::get_saved_assert_context(const void** sigInfo) {
   *sigInfo = nullptr;
   return nullptr;
 }
-#endif // !NATIVE_IMAGE

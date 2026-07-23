@@ -1,13 +1,11 @@
 /*
+ * Copyright (c) 2020, 2025, Red Hat Inc.
  * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,10 +20,13 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
+
+#include <math.h>
 
 // Constructor
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
@@ -62,22 +63,39 @@ int CgroupV2CpuController::cpu_shares() {
     log_debug(os, container)("CPU Shares is: %d", -1);
     return -1;
   }
+  // cg v2 values must be in range [1-10000]
+  assert(shares_int >= 1 && shares_int <= 10000, "invariant");
 
   // CPU shares (OCI) value needs to get translated into
   // a proper Cgroups v2 value. See:
-  // https://github.com/containers/crun/blob/master/crun.1.md#cpu-controller
+  // https://github.com/containers/crun/blob/1.24/crun.1.md#cpu-controller
   //
   // Use the inverse of (x == OCI value, y == cgroupsv2 value):
-  // ((262142 * y - 1)/9999) + 2 = x
+  // y = 10^(log2(x)^2/612 + 125/612 * log2(x) - 7.0/34.0)
   //
-  int x = 262142 * shares_int - 1;
-  double frac = x/9999.0;
-  x = ((int)frac) + 2;
+  // By re-arranging it to the standard quadratic form:
+  // log2(x)^2 + 125 * log2(x) - (126 + 612 * log_10(y)) = 0
+  //
+  // Therefore, log2(x) = (-125 + sqrt( 125^2 - 4 * (-(126 + 612 * log_10(y)))))/2
+  //
+  // As a result we have the inverse (we can discount substraction of the
+  // square root value since those values result in very small numbers and the
+  // cpu shares values - OCI - are in range [2,262144]):
+  //
+  // x = 2^((-125 + sqrt(16129 + 2448* log10(y)))/2)
+  //
+  double log_multiplicand = log10(shares_int);
+  double discriminant = 16129 + 2448 * log_multiplicand;
+  double square_root = sqrt(discriminant);
+  double exponent = (-125 + square_root)/2;
+  double scaled_val = pow(2, exponent);
+  int x = (int) scaled_val;
   log_trace(os, container)("Scaled CPU shares value is: %d", x);
   // Since the scaled value is not precise, return the closest
   // multiple of PER_CPU_SHARES for a more conservative mapping
   if ( x <= PER_CPU_SHARES ) {
-     // will always map to 1 CPU
+     // Don't do the multiples of PER_CPU_SHARES mapping since we
+     // have a value <= PER_CPU_SHARES
      log_debug(os, container)("CPU Shares is: %d", x);
      return x;
   }
@@ -328,7 +346,6 @@ bool CgroupV2Controller::needs_hierarchy_adjustment() {
   return strcmp(_cgroup_path, "/") != 0;
 }
 
-#ifndef NATIVE_IMAGE
 void CgroupV2MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
   jlong swap_current = memory_swap_current_value(reader());
   jlong swap_limit = memory_swap_limit_value(reader());
@@ -336,7 +353,6 @@ void CgroupV2MemoryController::print_version_specific_info(outputStream* st, jul
   OSContainer::print_container_helper(st, swap_current, "memory_swap_current_in_bytes");
   OSContainer::print_container_helper(st, swap_limit, "memory_swap_max_limit_in_bytes");
 }
-#endif // !NATIVE_IMAGE
 
 char* CgroupV2Controller::construct_path(char* mount_path, const char* cgroup_path) {
   stringStream ss;
