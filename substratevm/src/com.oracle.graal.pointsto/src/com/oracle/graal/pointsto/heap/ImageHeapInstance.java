@@ -54,6 +54,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
 
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
     public static final VarHandle valuesHandle = ReflectionUtil.unreflectField(InstanceData.class, "fieldValues", MethodHandles.lookup());
+    private static final Object[] EMPTY_FIELD_VALUES = new Object[0];
 
     private static final class InstanceData extends ConstantData {
 
@@ -86,7 +87,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     public ImageHeapInstance(AnalysisType type) {
-        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).length], -1, -1), false);
+        super(new InstanceData(type, null, createFieldValues(type.getInstanceFields(true).length), -1, -1), false);
     }
 
     private ImageHeapInstance(ConstantData data, boolean compressed) {
@@ -99,8 +100,16 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     public void setFieldValues(Object[] fieldValues) {
-        boolean success = valuesHandle.compareAndSet(constantData, null, fieldValues);
+        boolean success = valuesHandle.compareAndSet(constantData, null, canonicalizeFieldValues(fieldValues));
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
+    }
+
+    static Object[] createFieldValues(int length) {
+        return length == 0 ? EMPTY_FIELD_VALUES : new Object[length];
+    }
+
+    private static Object[] canonicalizeFieldValues(Object[] fieldValues) {
+        return fieldValues.length == 0 ? EMPTY_FIELD_VALUES : fieldValues;
     }
 
     public boolean nullFieldValues() {
@@ -193,7 +202,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
 
         Object[] fieldValues = getFieldValues();
         Objects.requireNonNull(fieldValues, "Cannot clone an instance before the field values are set.");
-        Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
+        Object[] newFieldValues = fieldValues.length == 0 ? EMPTY_FIELD_VALUES : Arrays.copyOf(fieldValues, fieldValues.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
         return new ImageHeapInstance(new InstanceData(constantData.type, null, newFieldValues, -1, -1), compressed);
     }
