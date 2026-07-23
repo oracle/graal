@@ -102,7 +102,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private final Map<DefinedType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
     private final Map<Integer, WasmStructAccess> structAccessesByEquivalenceClass = new ConcurrentHashMap<>();
     private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-    private final Map<DefinedType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
+    private final Map<Integer, CallTarget> interopCallAdaptersByEquivalenceClass = new ConcurrentHashMap<>();
 
     /**
      * Computes the equivalence class of a top-level defined type. Every distinct top-level defined
@@ -151,10 +151,12 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public CallTarget interopCallAdapterFor(DefinedType type) {
         CompilerAsserts.neverPartOfCompilation();
         assert type.isFunctionType();
-        CallTarget callAdapter = interopCallAdapters.get(type);
+        int equivalenceClass = type.typeEquivalenceClass();
+        assert equivalenceClass != SymbolTable.NO_EQUIVALENCE_CLASS;
+        CallTarget callAdapter = interopCallAdaptersByEquivalenceClass.get(equivalenceClass);
         if (callAdapter == null) {
-            callAdapter = interopCallAdapters.computeIfAbsent(type,
-                            k -> new InteropCallAdapterNode(this, k.asFunctionType()).getCallTarget());
+            callAdapter = interopCallAdaptersByEquivalenceClass.computeIfAbsent(equivalenceClass,
+                            k -> new InteropCallAdapterNode(this, type.asFunctionType()).getCallTarget());
         }
         return callAdapter;
     }

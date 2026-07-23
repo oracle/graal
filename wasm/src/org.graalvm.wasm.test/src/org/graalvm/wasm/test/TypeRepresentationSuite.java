@@ -59,7 +59,7 @@ import com.oracle.truffle.api.CallTarget;
 
 public class TypeRepresentationSuite {
 
-    private static DefinedType recursiveFunctionType(NumberType fieldType) {
+    private static DefinedType recursiveFunctionType(NumberType fieldType, WasmLanguage language) {
         FunctionType functionType = new FunctionType(
                         new ValueType[]{new ReferenceType(false, DefinedType.makeRecursiveReference(1))},
                         ValueType.EMPTY);
@@ -74,30 +74,35 @@ public class TypeRepresentationSuite {
         for (SubType subType : subTypes) {
             subType.unroll(recursiveTypes);
         }
+        definedType.setTypeEquivalenceClass(language.equivalenceClassFor(definedType));
         return definedType;
     }
 
     @Test
     public void testInteropCallAdapterUsesTopLevelTypeEquality() {
-        DefinedType firstI32Type = recursiveFunctionType(NumberType.I32);
-        DefinedType secondI32Type = recursiveFunctionType(NumberType.I32);
-        DefinedType i64Type = recursiveFunctionType(NumberType.I64);
-
-        // When looking at the components of the two defined function types for i32 and i64, they
-        // are structurally the same, but the recursive references resolve to different types in
-        // different recursive groups.
-        Assert.assertEquals(firstI32Type.asFunctionType(), i64Type.asFunctionType());
-        // When comparing the defined types referencing i32 and i64 structs as a whole, they should
-        // not be equal.
-        Assert.assertNotEquals(firstI32Type, i64Type);
-        // The two function types that reference an i32 struct should still be seen as equal.
-        Assert.assertEquals(firstI32Type, secondI32Type);
-
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             WasmTestUtils.runInWasmContext(context, wasmContext -> {
-                CallTarget firstI32Adapter = wasmContext.language().interopCallAdapterFor(firstI32Type);
-                CallTarget secondI32Adapter = wasmContext.language().interopCallAdapterFor(secondI32Type);
-                CallTarget i64Adapter = wasmContext.language().interopCallAdapterFor(i64Type);
+                WasmLanguage language = wasmContext.language();
+
+                DefinedType firstI32Type = recursiveFunctionType(NumberType.I32, language);
+                DefinedType secondI32Type = recursiveFunctionType(NumberType.I32, language);
+                DefinedType i64Type = recursiveFunctionType(NumberType.I64, language);
+
+                // When looking at the components of the two defined function types for i32 and i64, they
+                // are structurally the same, but the recursive references resolve to different types in
+                // different recursive groups.
+                Assert.assertEquals(firstI32Type.asFunctionType(), i64Type.asFunctionType());
+                // When comparing the defined types referencing i32 and i64 structs as a whole, they should
+                // not be equal.
+                Assert.assertNotEquals(firstI32Type, i64Type);
+                Assert.assertNotEquals(firstI32Type.typeEquivalenceClass(), i64Type.typeEquivalenceClass());
+                // The two function types that reference an i32 struct should still be seen as equal.
+                Assert.assertEquals(firstI32Type, secondI32Type);
+                Assert.assertEquals(firstI32Type.typeEquivalenceClass(), secondI32Type.typeEquivalenceClass());
+
+                CallTarget firstI32Adapter = language.interopCallAdapterFor(firstI32Type);
+                CallTarget secondI32Adapter = language.interopCallAdapterFor(secondI32Type);
+                CallTarget i64Adapter = language.interopCallAdapterFor(i64Type);
 
                 // Functions with equivalent types should share the same adapter.
                 Assert.assertSame(firstI32Adapter, secondI32Adapter);
