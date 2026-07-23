@@ -56,19 +56,20 @@ import sun.security.util.Debug;
 ///
 /// This class holds the build-time and run-time structures for JCA security-provider inclusion,
 /// verification, and metadata tracing. The required behavior is specified separately by
-/// §FS-security-providers. See the [JCA Security Services documentation](../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md)
-/// for the user-facing configuration model.
+/// §FS-security-providers. See the
+/// <a href="../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">JCA
+/// Security Services documentation</a> for the user-facing configuration model.
 ///
 /// ## 1. Build-Time Inclusion and Verification
 ///
-/// [SecurityServicesFeature] coordinates two analysis inputs: subtype reachability discovers
+/// `SecurityServicesFeature` coordinates two analysis inputs: subtype reachability discovers
 /// candidate [Provider] classes, and JCA factory reachability discovers used service types. For a
 /// provider candidate, the feature queries the reflection registry for type, constructor, or
 /// factory-method registration. It instantiates accepted candidates through the declared nullary
 /// constructor or static `provider()` method, then registers their service implementation
 /// classes. The service-driven path calls the same service-registration machinery independently.
 /// These mechanisms implement §FS-security-providers.2 and §FS-security-providers.7.3.
-/// [SecureRandom] acquisition registers the complete configured providers that declare
+/// `SecureRandom` acquisition registers the complete configured providers that declare
 /// `SecureRandom` services as the narrow platform exception specified by
 /// §FS-security-providers.2.4.
 ///
@@ -80,7 +81,7 @@ import sun.security.util.Debug;
 ///
 /// ## 2. Run-Time Verification-Result Lookup
 ///
-/// The [javax.crypto.JceSecurity] substitutions consult the maps in this singleton when the JDK
+/// The `javax.crypto.JceSecurity` substitutions consult the maps in this singleton when the JDK
 /// verification cache has no entry. [Boolean#TRUE] encodes successful verification; an exception
 /// object encodes the original verification failure. This lets run-time JCE checks reuse the
 /// build-time result without retaining the provider instance or repeating JAR verification.
@@ -101,7 +102,7 @@ import sun.security.util.Debug;
 ///
 /// ## 4. Run-Time Provider Construction
 ///
-/// With run-time provider initialization, the [ProviderConfig] substitutions ask this class to
+/// With run-time provider initialization, the `ProviderConfig` substitutions ask this class to
 /// construct included JDK providers directly. Other configured providers follow the JDK's
 /// reflective loading path. The substitutions preserve the JDK's provider-list state, recursion
 /// guard, and retry counter, while the verification maps remain independent of provider creation.
