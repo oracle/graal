@@ -19,6 +19,8 @@ Run-time class loading cannot reload a class that was already partially included
 This will result in errors if run-time-loaded classes try to use such removed methods or static fields.
 A typical way to address this is to use `-H:Preserve=package=...` at build time to ensure all methods and fields of a package are included in the native image.
 
+To enable just-in-time (JIT) compilation of run-time-loaded bytecode, use `-H:+GraalJITCompileAtRuntime`.
+
 ## Resource URLs
 The semantics of the internal `resource:` URL depends on `ClassForNameRespectsClassLoader`:
 * `-H:-ClassForNameRespectsClassLoader`: the host part of the URL is the module name, matching the legacy resource lookup scheme.
@@ -61,8 +63,5 @@ This matches HotSpot-style resource lookup behavior where each directory resourc
 
 ## Current Limitations
 * Parallel class loading is explicitly disabled and not supported.
-* JNI is not supported (JNI will not find run-time-loaded classes/methods/fields, and native methods in run-time-loaded classes will not link).
-* "condy" entries are not supported in the constant pool of run-time-loaded classes.
-* The boot layer modules are frozen at build time, and it may not be possible to load additional classes at run time from modules of the build-time module path.
 * The assertion status of classes is fixed at image build time.
-* Methods or static fields that are removed by analysis in a class that is inluded in the image have no fall-back and will cause an error if used by runtime loaded code.
+* Methods or static fields removed by analysis from a class included in the image have no fallback and cause an error if run-time-loaded code uses them.
