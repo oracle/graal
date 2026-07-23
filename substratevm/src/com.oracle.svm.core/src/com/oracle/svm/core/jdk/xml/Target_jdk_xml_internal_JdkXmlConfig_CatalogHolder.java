@@ -29,6 +29,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
@@ -48,6 +49,24 @@ public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
     public static Target_javax_xml_catalog_Catalog JDKCATALOG;
+}
+
+@TargetClass(className = "jdk.xml.internal.JdkXmlUtils")
+final class Target_jdk_xml_internal_JdkXmlUtils {
+    @Alias @InjectAccessors(JdkXmlUtilsJavaHomeAccessors.class) //
+    public static String JAVA_HOME;
+}
+
+@SuppressWarnings("unused")
+final class JdkXmlUtilsJavaHomeAccessors {
+    private static String javaHome;
+
+    static String get() {
+        if (javaHome == null) {
+            javaHome = System.getProperty("java.home");
+        }
+        return javaHome;
+    }
 }
 
 @TargetClass(className = "javax.xml.catalog.Catalog")
