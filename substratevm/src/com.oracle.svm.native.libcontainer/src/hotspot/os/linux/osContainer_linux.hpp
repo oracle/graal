@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,7 +21,6 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
 #ifndef OS_LINUX_OSCONTAINER_LINUX_HPP
@@ -44,8 +45,10 @@ class OSContainer: AllStatic {
 
  public:
   static void init();
+#ifndef NATIVE_IMAGE
   static void print_version_specific_info(outputStream* st);
   static void print_container_helper(outputStream* st, jlong j, const char* metrics);
+#endif // !NATIVE_IMAGE
 
   static inline bool is_containerized();
   static const char * container_type();
