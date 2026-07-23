@@ -128,6 +128,23 @@ public abstract class FrameAccess {
         return sourceSp.subtract(returnAddressSize());
     }
 
+    /**
+     * Do not use this method unless absolutely necessary as it does not perform any verification.
+     * It is very easy to accidentally access a native frame, which can result in hard-to-debug
+     * transient failures.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Pointer unsafePreservedFramePointerLocation(Pointer sourceSp) {
+        /*
+         * Note that even without PreserveFramePointer, frames can have a frame pointer *slot*, but
+         * it contains just an arbitrary callee-saved register value.
+         */
+        VMError.guarantee(SubstrateOptions.PreserveFramePointer.getValue());
+
+        VMError.guarantee(!SubstrateOptions.useLLVMBackend(), "unsupported: LLVM frame layouts can deviate");
+        return unsafeReturnAddressLocation(sourceSp).subtract(SubstrateTarget.getWordSize());
+    }
+
     @Fold
     protected int getReturnAddressSize() {
         int value = SubstrateTarget.getArchitecture().getReturnAddressSize();

@@ -85,6 +85,11 @@ public class WebImageJSFrameAccess extends FrameAccess {
     public Pointer unsafeReturnAddressLocation(Pointer sourceSp) {
         throw GraalError.unimplemented("unsafeReturnAddressLocation"); // ExcludeFromJacocoGeneratedReport
     }
+
+    @Override
+    public Pointer unsafePreservedFramePointerLocation(Pointer sourceSp) {
+        throw GraalError.unimplemented("unsafePreservedFramePointerLocation"); // ExcludeFromJacocoGeneratedReport
+    }
 }
 
 @AutomaticallyRegisteredFeature

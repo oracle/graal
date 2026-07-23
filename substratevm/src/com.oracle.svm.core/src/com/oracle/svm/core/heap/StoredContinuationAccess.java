@@ -118,6 +118,17 @@ public final class StoredContinuationAccess {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Pointer getOriginalCarrierSP(StoredContinuation s) {
+        return s.originalCarrierSP;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setOriginalCarrierSP(StoredContinuation s, Pointer sp) {
+        assert sp.isNonNull();
+        s.originalCarrierSP = sp;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isInitialized(StoredContinuation s) {
         return s.ip.isNonNull();
     }
@@ -136,6 +147,7 @@ public final class StoredContinuationAccess {
     private static void fillUninterruptibly(StoredContinuation stored, CodePointer ip, Pointer sp, int size) {
         UnmanagedMemoryUtil.copyWordsForward(sp, getFramesStart(stored), Word.unsigned(size));
         setIP(stored, ip);
+        setOriginalCarrierSP(stored, sp);
         afterFill(stored);
     }
 
@@ -161,6 +173,7 @@ public final class StoredContinuationAccess {
     private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone, Object preparedData) {
         CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone, preparedData);
         setIP(clone, ip);
+        setOriginalCarrierSP(clone, StoredContinuationAccess.getOriginalCarrierSP(cont));
         afterFill(clone);
         return clone;
     }

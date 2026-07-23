@@ -1111,7 +1111,7 @@ public final class Deoptimizer {
      */
     @Fold
     public static int savedBasePointerSize() {
-        if (SubstrateOptions.hasFramePointer()) {
+        if (SubstrateOptions.hasFramePointerSlot()) {
             return SubstrateTarget.getWordSize();
         } else {
             VMError.guarantee(Platform.includedIn(Platform.AMD64.class));

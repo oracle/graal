@@ -186,13 +186,13 @@ public final class JfrStackWalker {
                     int wordSize = SubstrateTarget.getWordSize();
                     if (isSPAligned(sp)) {
                         UnsignedWord topFrameSize = Word.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
-                        if (SubstrateOptions.hasFramePointer() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
+                        if (SubstrateOptions.hasFramePointerSlot() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
                             /*
-                             * If we have a frame pointer, then the stack pointer can be aligned
+                             * If we have a frame pointer slot, the stack pointer can be aligned
                              * while we are in the method prologue/epilogue (i.e., the frame pointer
-                             * and the return address are on top of the stack, but the actual stack
+                             * slot and return address are on top of the stack, but the actual stack
                              * frame is missing). We should reach the caller if we skip the
-                             * incomplete top frame (frame pointer and return address).
+                             * incomplete top frame (frame pointer slot and return address).
                              */
                             sp = sp.add(wordSize * 2);
                         } else {

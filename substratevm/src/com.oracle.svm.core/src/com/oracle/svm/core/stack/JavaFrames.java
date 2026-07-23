@@ -98,6 +98,7 @@ public class JavaFrames {
         frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
         frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
         frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+        frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization and GC.", callerMustBe = true)
@@ -112,6 +113,7 @@ public class JavaFrames {
             frame.setEncodedFrameSize(deoptimizedFrame.getSourceEncodedFrameSize());
             frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
             frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+            frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
         } else {
             CodePointer returnAddress = ip;
             if (Deoptimizer.checkLazyDeoptimized(ip)) {
@@ -133,6 +135,7 @@ public class JavaFrames {
                 frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
                 frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
                 frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+                frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
             } else {
                 /* Encountered a normal Java frame. */
                 Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);

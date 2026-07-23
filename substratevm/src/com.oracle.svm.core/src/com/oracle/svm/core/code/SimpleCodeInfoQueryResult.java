@@ -58,4 +58,13 @@ public interface SimpleCodeInfoQueryResult extends PointerBase {
 
     @RawField
     void setReferenceMapIndex(long referenceMapIndex);
+
+    /**
+     * See {@link CodeInfoQueryResult#getFramePointerSaveAreaOffset()}.
+     */
+    @RawField
+    long getFramePointerSaveAreaOffset();
+
+    @RawField
+    void setFramePointerSaveAreaOffset(long framePointerSaveAreaOffset);
 }
