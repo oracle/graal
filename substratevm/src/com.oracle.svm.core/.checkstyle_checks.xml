@@ -265,8 +265,8 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.customMessage" value="Illegal whitespace before a comma."/>
     </module>
     <module name="RegexpSinglelineJava">
-      <property name="format" value="[^\x00-\x7F\x{00A7}]"/>
-      <property name="message" value="Only use ASCII characters, except for the section sign."/>
+      <property name="format" value="[^\x00-\x7F\x{00A7}]|\x{00A7}(?!(?:[a-z0-9][a-z0-9-]*/)?[A-Z]+-[a-z0-9][a-z0-9-]*(?:\.[0-9]+)*(?:$|[^A-Za-z0-9_.-]|\.(?![A-Za-z0-9])))"/>
+      <property name="message" value="Only use ASCII characters, except in valid grund references."/>
     </module>
     <module name="RegexpSinglelineJava">
       <property name="format" value="new (Hashtable|Vector|Stack|StringBuffer)[^\w]"/>
