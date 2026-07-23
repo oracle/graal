@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BooleanSupplier;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -156,6 +157,13 @@ public final class WhiteBoxEntryPoints {
     private WhiteBoxEntryPoints() {
     }
 
+    private static final class WhiteBoxIncluded implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.IncludeWhiteBoxAPI.getValue();
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Method findMethod(String methodName) {
         Method result = null;
@@ -187,7 +195,7 @@ public final class WhiteBoxEntryPoints {
     /// Entry point address for [#registerNatives].
     public static final CEntryPointLiteral<?> WHITEBOX_REGISTER_NATIVES = CEntryPointLiteral.create(WhiteBoxEntryPoints.class, "registerNatives", JNIEnvironment.class, JNIObjectHandle.class);
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = WHITEBOX_REGISTER_NATIVES_SYMBOL, publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = WHITEBOX_REGISTER_NATIVES_SYMBOL, publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void registerNatives(@SuppressWarnings("unused") JNIEnvironment env, JNIObjectHandle clazz) {
         Class<?> whiteBoxClass = JNIObjectHandles.getObject(clazz);
@@ -210,7 +218,7 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports whether `nameHandle` denotes a constant runtime option.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isConstantVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isConstantVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isConstantVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         // Checks for flag existence.
@@ -220,7 +228,7 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports whether `nameHandle` still has its default runtime option value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isDefaultVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isDefaultVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isDefaultVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         Descriptor descriptor = getDescriptor(nameHandle, Object.class);
@@ -231,7 +239,7 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports whether `nameHandle` denotes a locked runtime option.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isLockedVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isLockedVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isLockedVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         // Checks for flag existence.
@@ -241,70 +249,70 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Sets a boolean runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setBooleanVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setBooleanVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setBooleanVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, boolean value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets an integer runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setIntVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setIntVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setIntVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets an unsigned integer runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUintVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUintVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setUintVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets an `intx` runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setIntxVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setIntxVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setIntxVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets a `uintx` runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUintxVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUintxVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setUintxVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets a 64-bit unsigned runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUint64VMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setUint64VMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setUint64VMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets a `size_t` runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setSizeTVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setSizeTVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setSizeTVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, long value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Sets a string runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setStringVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setStringVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setStringVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, JNIObjectHandle valueHandle) {
         setRuntimeOption(nameHandle, JNIObjectHandles.getObject(valueHandle));
     }
 
     /// Sets a double runtime option from a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setDoubleVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_setDoubleVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void setDoubleVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle, double value) {
         setRuntimeOption(nameHandle, value);
     }
 
     /// Gets a boolean runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getBooleanVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getBooleanVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getBooleanVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         String name = Objects.requireNonNull(JNIObjectHandles.getObject(nameHandle));
@@ -318,56 +326,56 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Gets an integer runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getIntVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getIntVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getIntVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets an unsigned integer runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUintVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUintVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getUintVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets an `intx` runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getIntxVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getIntxVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getIntxVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets a `uintx` runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUintxVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUintxVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getUintxVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets a 64-bit unsigned runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUint64VMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getUint64VMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getUint64VMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets a `size_t` runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getSizeTVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getSizeTVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getSizeTVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getLongRuntimeOption(nameHandle);
     }
 
     /// Gets a string runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getStringVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getStringVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getStringVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getRuntimeOption(nameHandle, String.class);
     }
 
     /// Gets a double runtime option as a HotSpot WhiteBox VM flag.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getDoubleVMFlag", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getDoubleVMFlag", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getDoubleVMFlag(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle nameHandle) {
         return getRuntimeOption(nameHandle, Double.class);
@@ -485,7 +493,7 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports the HotSpot CPU feature string expected by WhiteBox tests.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getCPUFeatures", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getCPUFeatures", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getCPUFeatures(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         Set<String> featureNames = new TreeSet<>();
@@ -502,49 +510,49 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Gets the virtual memory page size as a HotSpot WhiteBox value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getVMPageSize", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getVMPageSize", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static int getVMPageSize(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return (int) VirtualMemoryProvider.get().getGranularity().rawValue();
     }
 
     /// Gets the heap reference size as a HotSpot WhiteBox value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapOopSize", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapOopSize", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static int getHeapOopSize(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return ObjectLayout.singleton().getReferenceSize();
     }
 
     /// Gets the virtual-memory allocation granularity as a HotSpot WhiteBox value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getVMAllocationGranularity", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getVMAllocationGranularity", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long getVMAllocationGranularity(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return VirtualMemoryProvider.get().getGranularity().rawValue();
     }
 
     /// Gets the SVM object alignment as a HotSpot WhiteBox heap-space alignment value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapSpaceAlignment", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapSpaceAlignment", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long getHeapSpaceAlignment(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return ObjectLayout.singleton().getAlignment();
     }
 
     /// Gets the SVM object alignment as a HotSpot WhiteBox heap alignment value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapAlignment", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getHeapAlignment", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long getHeapAlignment(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return ObjectLayout.singleton().getAlignment();
     }
 
     /// Gets the current native address of the object represented by `objectHandle`.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getObjectAddress0", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getObjectAddress0", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long getObjectAddress0(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle objectHandle) {
         return Word.objectToUntrackedPointer(JNIObjectHandles.getObject(objectHandle)).rawValue();
     }
 
     /// Gets the current allocation size of the object represented by `objectHandle`.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getObjectSize0", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_getObjectSize0", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.")
     static long getObjectSize0(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, JNIObjectHandle objectHandle) {
@@ -552,70 +560,70 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Gets the SVM word size as a HotSpot WhiteBox value.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_wordSize", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, name = "Java_jdk_test_whitebox_WhiteBox_wordSize", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long wordSize(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return SubstrateTarget.getWordSize();
     }
 
     /// Requests the SVM garbage collector to perform a collection.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_youngGC", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_youngGC", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void youngGC(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         Heap.getHeap().getGC().collect(GCCause.UnitTest);
     }
 
     /// Requests the SVM garbage collector to perform a complete collection.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_fullGC", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_fullGC", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void fullGC(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         Heap.getHeap().getGC().collectCompletely(GCCause.UnitTest);
     }
 
     /// Reports whether C2 or JVMCI support is included in the VM.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isC2OrJVMCIIncluded", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isC2OrJVMCIIncluded", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isC2OrJVMCIIncluded(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return true;
     }
 
     /// Reports whether JVMCI is supported by the selected garbage collector.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJVMCISupportedByGC", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJVMCISupportedByGC", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isJVMCISupportedByGC(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return true;
     }
 
     /// Reports whether Class Data Sharing support is included.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isCDSIncluded", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isCDSIncluded", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isCDSIncluded(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether Java Flight Recorder support is included.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJFRIncluded", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJFRIncluded", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isJFRIncluded(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return HasJfrSupport.get();
     }
 
     /// Reports whether DTrace support is included.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isDTraceIncluded", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isDTraceIncluded", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isDTraceIncluded(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether this VM can write Java heap archives.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_canWriteJavaHeapArchive", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_canWriteJavaHeapArchive", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean canWriteJavaHeapArchive(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether JVMTI support is included.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJVMTIIncluded", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isJVMTIIncluded", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isJVMTIIncluded(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return SubstrateOptions.JVMTI.getValue();
@@ -637,28 +645,28 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports whether the HotSpot GC id `name` is supported.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSupported", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSupported", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isGCSupported(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, int name) {
         return isHeapGC(name);
     }
 
     /// Reports whether the HotSpot GC id `name` is supported by the JVMCI compiler.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSupportedByJVMCICompiler", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSupportedByJVMCICompiler", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isGCSupportedByJVMCICompiler(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, @SuppressWarnings("unused") int name) {
         return isHeapGC(name);
     }
 
     /// Reports whether the HotSpot GC id `name` is currently selected.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSelected", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSelected", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isGCSelected(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self, int name) {
         return isHeapGC(name);
     }
 
     /// Reports whether the selected garbage collector was chosen ergonomically.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSelectedErgonomically", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isGCSelectedErgonomically", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isGCSelectedErgonomically(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         // The SVM GC is never selected ergonomically as it's selected at build time.
@@ -666,28 +674,28 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Reports whether the VM was built with AddressSanitizer.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isAsanEnabled", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isAsanEnabled", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isAsanEnabled(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether the VM was built with UndefinedBehaviorSanitizer.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isUbsanEnabled", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isUbsanEnabled", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isUbsanEnabled(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether libgraal is available.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_hasLibgraal", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_hasLibgraal", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean hasLibgraal(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return false;
     }
 
     /// Reports whether the VM is a statically linked image.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isStatic", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, name = "Java_jdk_test_whitebox_WhiteBox_isStatic", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean isStatic(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         // This is exposed as the `jdk.requires` property for `@requires` clauses in jtreg tests.
@@ -696,7 +704,7 @@ public final class WhiteBoxEntryPoints {
     }
 
     /// Gets the libc name reported through the WhiteBox API.
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getLibcName", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, name = "Java_jdk_test_whitebox_WhiteBox_getLibcName", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle getLibcName(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
         return JNIObjectHandles.createLocal("default");
@@ -788,7 +796,7 @@ public final class WhiteBoxEntryPoints {
             String exceptionHandler = exceptionHandler(returnType);
 
             System.out.println("    @CEntryPoint(exceptionHandler = " + exceptionHandler + ".class, name = \"Java_jdk_test_whitebox_WhiteBox_" + methodName +
-                            "\", publishAs = Publish.NotPublished, include = LibJVMSupport.Enabled.class)");
+                            "\", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)");
             System.out.println("    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)");
             StringBuilder declaration = new StringBuilder("    static ").append(returnType).append(' ').append(methodName).append(
                             "(@SuppressWarnings(\"unused\") JNIEnvironment env, @SuppressWarnings(\"unused\") JNIObjectHandle self");
