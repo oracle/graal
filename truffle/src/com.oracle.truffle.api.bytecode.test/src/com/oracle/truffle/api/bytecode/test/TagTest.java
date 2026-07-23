@@ -82,6 +82,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.TagTree;
+import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -2544,6 +2545,218 @@ public class TagTest extends AbstractInstructionTest {
                         });
     }
 
+    /**
+     * GR-76894: Ordinary instructions after an unconditional return must consume logical BCI
+     * space even when they are physically omitted, so locations remain stable after tag
+     * materialization makes them physically reachable.
+     */
+    @Test
+    public void testEndTagReachabilityBciRemapping() {
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginBlock();
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+            for (int i = 0; i < 100; i++) {
+                b.emitNop();
+            }
+            b.endBlock();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitLoadConstant(2);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+        Instruction oldFinalReturn = oldInstructions.get(oldInstructions.size() - 1);
+        assertEquals("return", oldFinalReturn.getName());
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build());
+
+        assertEquals("return", oldFinalReturn.getLocation().update().getInstruction().getName());
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+    }
+
+    /**
+     * Nested tags and control-flow transitions can change physical reachability without changing
+     * the logical BCI space consumed by ordinary emitter calls.
+     */
+    @Test
+    public void testNestedEndTagReachabilityBciRemapping() {
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.beginBlock();
+            b.beginTag(StatementTag.class);
+            b.beginBlock();
+            b.beginTag(ExpressionTag.class);
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            b.endTag(ExpressionTag.class);
+            b.emitNop();
+            b.endBlock();
+            b.endTag(StatementTag.class);
+            for (int i = 0; i < 10; i++) {
+                b.emitNop();
+            }
+            b.endBlock();
+            b.beginBlock();
+            b.emitNop();
+            b.endBlock();
+            b.endIfThenElse();
+            b.beginReturn();
+            b.emitLoadConstant(2);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+        Instruction oldFinalReturn = oldInstructions.get(oldInstructions.size() - 1);
+        assertEquals("return", oldFinalReturn.getName());
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build());
+
+        assertEquals("return", oldFinalReturn.getLocation().update().getInstruction().getName());
+        assertEquals(1, node.getCallTarget().call(true));
+        assertEquals(2, node.getCallTarget().call(false));
+    }
+
+    @Test
+    public void testReentrantMaterialization() {
+        AtomicReference<TagInstrumentationTestRootNode> rootRef = new AtomicReference<>();
+        Runnable attach = () -> {
+            rootRef.get().getRootNodes().ensureSourceInformation();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(), eventContext -> null);
+        };
+
+        Source source = Source.newBuilder(TagTestLanguage.ID, " ", "reentrant-materialization").build();
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 1);
+            b.beginRoot();
+            b.beginBlock();
+            // Produce an instruction-rewrite remapping before materializing ExpressionTag.
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(321);
+            b.endTag(ExpressionTag.class);
+            b.beginIfThen();
+            b.beginIs();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(0);
+            b.endIs();
+            b.beginTag(ExpressionTag.class);
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            // Tag materialization restores physical reachability and emits the dead block's stack cleanup.
+            b.emitLoadConstant(123);
+            b.endBlock();
+            b.endTag(ExpressionTag.class);
+            b.endIfThen();
+            b.beginIfThen();
+            b.beginIs();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(5);
+            b.endIs();
+            b.emitInvokeRunnable(attach);
+            b.endIfThen();
+            b.beginReturn();
+            b.beginInvokeRecursive();
+            b.beginAdd();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(-1);
+            b.endAdd();
+            b.endInvokeRecursive();
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+        rootRef.set(node);
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(1, node.getCallTarget().call(6));
+    }
+
+    @Test
+    public void testExceptionalReentrantMaterialization() {
+        AtomicReference<TagInstrumentationTestRootNode> rootRef = new AtomicReference<>();
+        AtomicInteger invocationCount = new AtomicInteger();
+        AtomicInteger finallyCount = new AtomicInteger();
+        Runnable attach = () -> {
+            rootRef.get().getRootNodes().ensureSourceInformation();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(), eventContext -> null);
+        };
+
+        Source source = Source.newBuilder(TagTestLanguage.ID, " ", "exceptional-reentrant-materialization").build();
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 1);
+            b.beginRoot();
+            b.beginBlock();
+            // Produce an instruction-rewrite remapping before the omitted-instruction remapping.
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(321);
+            b.endTag(ExpressionTag.class);
+            b.beginIfThen();
+            b.beginIs();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(0);
+            b.endIs();
+            b.beginTag(ExpressionTag.class);
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(1);
+            b.endReturn();
+            b.emitLoadConstant(123);
+            b.endBlock();
+            b.endTag(ExpressionTag.class);
+            b.endIfThen();
+
+            b.beginTryFinally(() -> b.emitInvokeRunnable(finallyCount::incrementAndGet));
+            b.beginInvokeVariadicAndThrow(attach, invocationCount);
+            for (int i = 0; i < 5; i++) {
+                b.emitLoadConstant(i);
+            }
+            b.endInvokeVariadicAndThrow();
+            b.endTryFinally();
+
+            b.beginReturn();
+            b.emitLoadConstant(2);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+        rootRef.set(node);
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        try {
+            node.getCallTarget().call(1);
+            fail("exception expected");
+        } catch (TestException expected) {
+            // Expected.
+        }
+        assertEquals(1, invocationCount.get());
+        assertEquals(1, finallyCount.get());
+    }
+
     @Test
     public void testOnStackTestInOperation() {
         AtomicReference<List<Event>> events0 = new AtomicReference<>();
@@ -2604,8 +2817,8 @@ public class TagTest extends AbstractInstructionTest {
 
     /**
      * When reparsing with tags, an endTag instruction can make a previously-unreachable path
-     * reachable. The following reachability tests are regression tests that ensure the frame and
-     * constant pool layout do not change between parses.
+     * physically reachable. The following reachability tests ensure ordinary emitter calls still
+     * consume logical BCI space and that frame and constant pool layouts do not change.
      */
     @Test
     public void testReachabilityTryFinally() {
@@ -2854,11 +3067,33 @@ public class TagTest extends AbstractInstructionTest {
         }
 
         @Operation
+        @ConstantOperand(name = "runnable", type = Runnable.class)
+        @ConstantOperand(name = "invocationCount", type = AtomicInteger.class)
+        static final class InvokeVariadicAndThrow {
+            @Specialization
+            public static void doThrow(Runnable runnable, AtomicInteger invocationCount, @Variadic Object[] arguments, @Bind Node node) {
+                assertEquals(5, arguments.length);
+                invocationCount.incrementAndGet();
+                runnable.run();
+                throw new TestException(node);
+            }
+        }
+
+        @Operation
         @ConstantOperand(name = "rootNode", type = TagInstrumentationTestRootNode.class)
         static final class InvokeRootNode {
             @Specialization
             public static Object doRunnable(TagInstrumentationTestRootNode rootNode) {
                 return rootNode.getCallTarget().call();
+            }
+        }
+
+        @Operation
+        static final class InvokeRecursive {
+            @Specialization
+            @TruffleBoundary
+            public static Object doCall(int argument, @Bind TagInstrumentationTestRootNode rootNode) {
+                return rootNode.getCallTarget().call(argument);
             }
         }
 
