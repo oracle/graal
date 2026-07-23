@@ -185,6 +185,7 @@ import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -1166,9 +1167,15 @@ public class SVMHost extends HostVM {
             return false;
         }
 
+        if (!isSupportedMethod(bb, method)) {
+            return false;
+        }
+        if (!hasSupportedOriginalSignatureTypes(bb, method)) {
+            return false;
+        }
         /* If the method is substituted we need to check the substitution layer for @Fold. */
         ResolvedJavaMethod substitutionMethod = bb.getUniverse().getSubstitutions().lookup(method);
-        if (!isSupportedMethod(bb, method) || !isSupportedMethod(bb, substitutionMethod)) {
+        if (!isSupportedMethod(bb, substitutionMethod)) {
             return false;
         }
 
@@ -1178,6 +1185,35 @@ public class SVMHost extends HostVM {
         }
 
         return super.isSupportedOriginalMethod(bb, method);
+    }
+
+    /**
+     * Checks whether an original method's signature only references types that can be represented in
+     * the shared layer. This runs before substitution lookup so speculatively included base-layer
+     * methods do not create JNI wrappers or analysis methods whose signatures contain deleted types.
+     */
+    private boolean hasSupportedOriginalSignatureTypes(BigBang bb, ResolvedJavaMethod method) {
+        ResolvedJavaType accessingClass = method.getDeclaringClass();
+        if (!isSupportedOriginalDeclaredType(bb, method.getSignature().getReturnType(accessingClass), accessingClass)) {
+            return false;
+        }
+        for (int i = 0; i < method.getSignature().getParameterCount(false); i++) {
+            if (!isSupportedOriginalDeclaredType(bb, method.getSignature().getParameterType(i, accessingClass), accessingClass)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isSupportedOriginalDeclaredType(BigBang bb, JavaType type, ResolvedJavaType accessingClass) {
+        ResolvedJavaType resolvedType;
+        try {
+            resolvedType = type instanceof ResolvedJavaType ? (ResolvedJavaType) type : type.resolve(accessingClass);
+        } catch (LinkageError e) {
+            return false;
+        }
+        ResolvedJavaType elementalType = resolvedType.getElementalType();
+        return elementalType.isPrimitive() || isSupportedOriginalType(bb, elementalType);
     }
 
     private boolean isSupportedMethod(BigBang bb, ResolvedJavaMethod method) {
@@ -1196,7 +1232,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Deleted methods should not be included in the image. */
-        if (AnnotationUtil.isAnnotationPresent(method, Delete.class)) {
+        if (annotationSubstitutions.isDeleted(method)) {
             return false;
         }
 
@@ -1307,6 +1343,10 @@ public class SVMHost extends HostVM {
 
         /* Fields that are deleted or substituted should not be in the image. */
         if (annotationSubstitutions.isDeleted(field) || annotationSubstitutions.hasInjectAccessors(field)) {
+            return false;
+        }
+
+        if (!isSupportedOriginalDeclaredType(bb, field.getType(), field.getDeclaringClass())) {
             return false;
         }
 
