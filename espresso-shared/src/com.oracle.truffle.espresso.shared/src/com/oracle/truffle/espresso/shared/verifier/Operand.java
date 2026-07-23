@@ -260,7 +260,15 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
             if (getType() == methodVerifier.getThisKlass().getSymbolicType()) {
                 klass = methodVerifier.getThisKlass();
             } else if (cpi != CPI_UNKNOWN) {
-                klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
+                // Small optimization: Try to resolve the class in the constant pool.
+                // This is a stronger requirement than what is mandated by the verifier as this
+                // notably performs access control.
+                try {
+                    klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
+                } catch (Throwable e) {
+                    // On failure, retry without the stricter requirements.
+                    klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
+                }
             } else {
                 klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
             }
