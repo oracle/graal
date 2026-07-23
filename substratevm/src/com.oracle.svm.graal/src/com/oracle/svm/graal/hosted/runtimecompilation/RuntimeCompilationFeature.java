@@ -66,6 +66,8 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.RuntimeRandomness;
+import com.oracle.svm.core.SecureRandomRuntimeRandomness;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -414,6 +416,14 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     public void duringSetup(DuringSetupAccess c) {
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
+        }
+        /*
+         * Runtime randomness seeds constant blinding and code-offset randomization. Register it
+         * only with its runtime-compilation consumer so ordinary executables do not retain JCA
+         * security providers. \u00A7FS-security-providers.2.4
+         */
+        if (!ImageSingletons.contains(RuntimeRandomness.class)) {
+            ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
         }
         ImageSingletons.add(RuntimeCompilationSupport.class, new RuntimeCompilationSupport());
         /*
