@@ -53,27 +53,13 @@ class os::Linux {
 
  protected:
 
-<<<<<<< Native Image adaptations
-  static julong _physical_memory;
-#ifndef NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-  static julong _physical_memory;
-=======
   static physical_memory_size_type _physical_memory;
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
+#ifndef NATIVE_IMAGE
   static pthread_t _main_thread;
 
-<<<<<<< Native Image adaptations
-  static julong available_memory();
-  static julong free_memory();
-#endif // !NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-  static julong available_memory();
-  static julong free_memory();
-=======
   static bool available_memory(physical_memory_size_type& value);
   static bool free_memory(physical_memory_size_type& value);
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
+#endif // !NATIVE_IMAGE
 
 
 #ifdef NATIVE_IMAGE

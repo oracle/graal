@@ -349,26 +349,12 @@ class os: AllStatic {
   [[nodiscard]] static bool used_memory(physical_memory_size_type& value);
   [[nodiscard]] static bool free_memory(physical_memory_size_type& value);
 
-<<<<<<< Native Image adaptations
-  static jlong total_swap_space();
-  static jlong free_swap_space();
-#endif // !NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-  static jlong total_swap_space();
-  static jlong free_swap_space();
-=======
   [[nodiscard]] static bool total_swap_space(physical_memory_size_type& value);
   [[nodiscard]] static bool free_swap_space(physical_memory_size_type& value);
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
+#endif // !NATIVE_IMAGE
 
-<<<<<<< Native Image adaptations
-  static julong physical_memory();
-#ifndef NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-  static julong physical_memory();
-=======
   static physical_memory_size_type physical_memory();
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
+#ifndef NATIVE_IMAGE
   static bool has_allocatable_memory_limit(size_t* limit);
   static bool is_server_class_machine();
   static size_t rss();
@@ -698,13 +684,9 @@ class os: AllStatic {
   static FILE* fdopen(int fd, const char* mode);
 #endif // !NATIVE_IMAGE
   static FILE* fopen(const char* path, const char* mode);
-<<<<<<< Native Image adaptations
 #ifndef NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-=======
   static int64_t ftell(FILE* file);
   static int fseek(FILE* file, int64_t offset, int whence);
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
   static jlong lseek(int fd, jlong offset, int whence);
 #endif // !NATIVE_IMAGE
   static bool file_exists(const char* file);

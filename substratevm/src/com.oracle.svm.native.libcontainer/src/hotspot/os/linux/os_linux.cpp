@@ -388,15 +388,11 @@ physical_memory_size_type os::physical_memory() {
   return phys_mem;
 }
 
-<<<<<<< Native Image adaptations
 #ifndef NATIVE_IMAGE
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-=======
 // Returns the resident set size (RSS) of the process.
 // Falls back to using VmRSS from /proc/self/status if /proc/self/smaps_rollup is unavailable.
 // Note: On kernels with memory cgroups or shared memory, VmRSS may underreport RSS.
 // Users requiring accurate RSS values should be aware of this limitation.
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
 size_t os::rss() {
   size_t size = 0;
   os::Linux::accurate_meminfo_t accurate_info;
@@ -575,14 +571,8 @@ void os::Linux::initialize_system_info() {
       fclose(fp);
     }
   }
-<<<<<<< Native Image adaptations
 #endif // !NATIVE_IMAGE
-  _physical_memory = (julong)sysconf(_SC_PHYS_PAGES) * (julong)sysconf(_SC_PAGESIZE);
-||||||| jdk-26+4 (1ca008fd02496dc33e2707c102560cae1690fba5)
-  _physical_memory = (julong)sysconf(_SC_PHYS_PAGES) * (julong)sysconf(_SC_PAGESIZE);
-=======
   _physical_memory = static_cast<physical_memory_size_type>(sysconf(_SC_PHYS_PAGES)) * static_cast<physical_memory_size_type>(sysconf(_SC_PAGESIZE));
->>>>>>> jvmci-25.2-b20 (dcb61fb16d8754f6f607cbf686156a31c34e68e1)
   assert(processor_count() > 0, "linux error");
 }
 
