@@ -303,7 +303,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 ConfigurationMemberAccessibility previous = typeData.registerAs(accessibility);
                 if (previous == null) {
                     registerTypesForHeapType(analysisType);
-                    typeData.linkageError = linkType(analysisType);
+                    typeData.registerLinkageError(linkType(analysisType));
                 }
 
                 if (accessibility == NONE) {
@@ -317,7 +317,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
                 if (accessibility == ACCESSED) {
                     if (previous == null || !previous.includes(ACCESSED) || !preserved && typeData.dynamicAccess.isPreserved()) {
-                        registerTypesForTypeQuery(analysisType, typeData, preserved, typeData.linkageError != null);
+                        registerTypesForTypeQuery(analysisType, typeData, preserved, typeData.hasLinkageError());
                     }
                 }
                 return typeData;
@@ -1412,8 +1412,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getClassLookupErrors() {
         Map<Class<?>, Throwable> classLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.classLookupLinkageError != null) {
-                classLookupExceptions.put(type.getJavaClass(), data.classLookupLinkageError);
+            LinkageError error = data.getClassLookupError();
+            if (error != null) {
+                classLookupExceptions.put(type.getJavaClass(), error);
             }
         });
         return Collections.unmodifiableMap(classLookupExceptions);
@@ -1553,78 +1554,147 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Linkage errors caught when registering class metadata need to be stored in the image and
          * rethrown at runtime.
          */
-        private LinkageError linkageError = null;
-        private LinkageError classLookupLinkageError = null;
-        private LinkageError declaredFieldLookupLinkageError = null;
-        private LinkageError publicFieldLookupLinkageError = null;
-        private LinkageError declaredMethodLookupLinkageError = null;
-        private LinkageError publicMethodLookupLinkageError = null;
-        private LinkageError declaredConstructorLookupLinkageError = null;
-        private LinkageError publicConstructorLookupLinkageError = null;
-        private LinkageError recordComponentLookupLinkageError = null;
+        private LookupErrors lookupErrors = null;
+
+        private LookupErrors lookupErrors() {
+            if (lookupErrors == null) {
+                lookupErrors = new LookupErrors();
+            }
+            return lookupErrors;
+        }
+
+        void registerLinkageError(LinkageError error) {
+            if (error != null) {
+                lookupErrors().linkageError = error;
+            }
+        }
+
+        boolean hasLinkageError() {
+            return lookupErrors != null && lookupErrors.linkageError != null;
+        }
 
         void registerClassLookupError(LinkageError error) {
-            classLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().classLookupLinkageError = error;
+            }
         }
 
         void registerDeclaredFieldLookupError(LinkageError error) {
-            declaredFieldLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().declaredFieldLookupLinkageError = error;
+            }
         }
 
         void registerPublicFieldLookupError(LinkageError error) {
-            publicFieldLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().publicFieldLookupLinkageError = error;
+            }
         }
 
         void registerDeclaredMethodLookupError(LinkageError error) {
-            declaredMethodLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().declaredMethodLookupLinkageError = error;
+            }
         }
 
         void registerPublicMethodLookupError(LinkageError error) {
-            publicMethodLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().publicMethodLookupLinkageError = error;
+            }
         }
 
         void registerDeclaredConstructorLookupError(LinkageError error) {
-            declaredConstructorLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().declaredConstructorLookupLinkageError = error;
+            }
         }
 
         void registerPublicConstructorLookupError(LinkageError error) {
-            publicConstructorLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().publicConstructorLookupLinkageError = error;
+            }
         }
 
         void registerRecordComponentLookupError(LinkageError error) {
-            recordComponentLookupLinkageError = error;
+            if (error != null) {
+                lookupErrors().recordComponentLookupLinkageError = error;
+            }
+        }
+
+        LinkageError getClassLookupError() {
+            return lookupErrors != null ? lookupErrors.classLookupLinkageError : null;
         }
 
         LinkageError getDeclaredFieldLookupError() {
-            return declaredFieldLookupLinkageError != null ? declaredFieldLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getDeclaredFieldLookupError() : null;
         }
 
         LinkageError getPublicFieldLookupError() {
-            return publicFieldLookupLinkageError != null ? publicFieldLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getPublicFieldLookupError() : null;
         }
 
         LinkageError getDeclaredMethodLookupError() {
-            return declaredMethodLookupLinkageError != null ? declaredMethodLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getDeclaredMethodLookupError() : null;
         }
 
         LinkageError getPublicMethodLookupError() {
-            return publicMethodLookupLinkageError != null ? publicMethodLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getPublicMethodLookupError() : null;
         }
 
         LinkageError getDeclaredConstructorLookupError() {
-            return declaredConstructorLookupLinkageError != null ? declaredConstructorLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getDeclaredConstructorLookupError() : null;
         }
 
         LinkageError getPublicConstructorLookupError() {
-            return publicConstructorLookupLinkageError != null ? publicConstructorLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getPublicConstructorLookupError() : null;
         }
 
         LinkageError getRecordComponentLookupError() {
-            return recordComponentLookupLinkageError != null ? recordComponentLookupLinkageError : linkageError;
+            return lookupErrors != null ? lookupErrors.getRecordComponentLookupError() : null;
         }
 
         void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
             unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.addCondition(unsafeAllocatedDynamicAccess, condition, preserved);
+        }
+
+        private static final class LookupErrors {
+            private LinkageError linkageError;
+            private LinkageError classLookupLinkageError;
+            private LinkageError declaredFieldLookupLinkageError;
+            private LinkageError publicFieldLookupLinkageError;
+            private LinkageError declaredMethodLookupLinkageError;
+            private LinkageError publicMethodLookupLinkageError;
+            private LinkageError declaredConstructorLookupLinkageError;
+            private LinkageError publicConstructorLookupLinkageError;
+            private LinkageError recordComponentLookupLinkageError;
+
+            LinkageError getDeclaredFieldLookupError() {
+                return declaredFieldLookupLinkageError != null ? declaredFieldLookupLinkageError : linkageError;
+            }
+
+            LinkageError getPublicFieldLookupError() {
+                return publicFieldLookupLinkageError != null ? publicFieldLookupLinkageError : linkageError;
+            }
+
+            LinkageError getDeclaredMethodLookupError() {
+                return declaredMethodLookupLinkageError != null ? declaredMethodLookupLinkageError : linkageError;
+            }
+
+            LinkageError getPublicMethodLookupError() {
+                return publicMethodLookupLinkageError != null ? publicMethodLookupLinkageError : linkageError;
+            }
+
+            LinkageError getDeclaredConstructorLookupError() {
+                return declaredConstructorLookupLinkageError != null ? declaredConstructorLookupLinkageError : linkageError;
+            }
+
+            LinkageError getPublicConstructorLookupError() {
+                return publicConstructorLookupLinkageError != null ? publicConstructorLookupLinkageError : linkageError;
+            }
+
+            LinkageError getRecordComponentLookupError() {
+                return recordComponentLookupLinkageError != null ? recordComponentLookupLinkageError : linkageError;
+            }
         }
     }
 
