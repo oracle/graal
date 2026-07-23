@@ -38,7 +38,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;
