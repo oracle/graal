@@ -35,6 +35,7 @@ class and required reflective construction metadata Native Image can retain in t
 Registration is a build-time property.
 Constructing a provider object at run time does not register the provider or add omitted services
 to the executable.
+Section 2.4 defines the one platform registration rule for default `SecureRandom` acquisition.
 
 ### 1.2 JDK-Managed Providers and Acquisition
 
@@ -126,6 +127,25 @@ class Native Image can resolve.
 It must also retain the metadata required to construct those service implementations.
 Provider registration does not change the configured provider order or make an unconfigured
 provider visible by name.
+This behavior implements §DF-complete-security-provider-registration.2.
+
+### 2.4 Default SecureRandom Provider
+
+When the JDK default `SecureRandom` acquisition path is reachable, Native Image must register the
+complete fallback SUN provider without requiring application reflection metadata for that provider.
+This registration has the effects specified in section 2.3, including retention of every valid SUN
+service whose implementation class Native Image can resolve.
+
+This rule applies to the no-argument `SecureRandom` constructor and other JDK paths that perform the
+same default-provider selection. It does not apply to named algorithm or named provider acquisition.
+It is a platform registration rule, not the earlier service-driven inclusion behavior described in
+section 7.3.
+
+Native Image internal runtime randomness must cause this registration only in an executable that
+includes the runtime-compilation subsystem that consumes that randomness. The presence of the
+optional internal randomness implementation must not register SUN in an ordinary executable.
+
+This behavior implements §DF-default-secure-random-provider.2.
 
 ## 3. Permitted Run-Time Access
 
@@ -146,8 +166,8 @@ This rule applies uniformly to:
 
 A direct JDK fallback must not bypass registration when the configured provider list contains no
 matching registered provider.
-For example, a default `SecureRandom` construction must not expose a fallback SUN provider unless
-the SUN provider class is registered.
+Default `SecureRandom` construction follows the platform registration rule in section 2.4; other
+fallbacks must fail before exposing an unregistered provider.
 
 ### 3.2 Provider List Lookups
 
@@ -342,6 +362,9 @@ With `--future-defaults=explicit-security-provider-registration`, this compatibi
 disabled.
 A factory call for an algorithm supplied only by an unregistered provider follows section 4.2, and
 a lookup that reflectively loads the provider follows section 4.3.
+The default `SecureRandom` registration rule in section 2.4 remains enabled because it supplies the
+complete provider for a standard JDK default-acquisition path rather than inferring providers from a
+general service factory.
 
 ### 7.4 Earlier Build-Time Initialization Behavior
 
