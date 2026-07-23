@@ -34,8 +34,8 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.TypeSymbol;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -114,33 +114,33 @@ public class VectorAPIIntrinsics {
         r = new Registration(plugins, vectorSupportName);
 
         /* Types of vectors and related data. */
-        OptionalLazySymbol vectorSpecies = new OptionalLazySymbol(vectorSupportName + "$VectorSpecies");
-        OptionalLazySymbol vector = new OptionalLazySymbol(vectorSupportName + "$Vector");
-        OptionalLazySymbol vectorMask = new OptionalLazySymbol(vectorSupportName + "$VectorMask");
-        OptionalLazySymbol vectorShuffle = new OptionalLazySymbol(vectorSupportName + "$VectorShuffle");
-        OptionalLazySymbol vectorPayload = new OptionalLazySymbol(vectorSupportName + "$VectorPayload");
+        TypeSymbol vectorSpecies = new TypeSymbol(vectorSupportName + "$VectorSpecies");
+        TypeSymbol vector = new TypeSymbol(vectorSupportName + "$Vector");
+        TypeSymbol vectorMask = new TypeSymbol(vectorSupportName + "$VectorMask");
+        TypeSymbol vectorShuffle = new TypeSymbol(vectorSupportName + "$VectorShuffle");
+        TypeSymbol vectorPayload = new TypeSymbol(vectorSupportName + "$VectorPayload");
 
         /* Types of operations on vectors. */
-        OptionalLazySymbol fromBitsCoercedOperation = new OptionalLazySymbol(vectorSupportName + "$FromBitsCoercedOperation");
-        OptionalLazySymbol indexPartiallyInUpperRangeOp = new OptionalLazySymbol(vectorSupportName + "$IndexPartiallyInUpperRangeOperation");
-        OptionalLazySymbol indexOperation = new OptionalLazySymbol(vectorSupportName + "$IndexOperation");
-        OptionalLazySymbol reductionOperation = new OptionalLazySymbol(vectorSupportName + "$ReductionOperation");
-        OptionalLazySymbol extractOp = new OptionalLazySymbol(vectorSupportName + "$VecExtractOp");
-        OptionalLazySymbol insertOp = new OptionalLazySymbol(vectorSupportName + "$VecInsertOp");
-        OptionalLazySymbol unaryOperation = new OptionalLazySymbol(vectorSupportName + "$UnaryOperation");
-        OptionalLazySymbol binaryOperation = new OptionalLazySymbol(vectorSupportName + "$BinaryOperation");
-        OptionalLazySymbol ternaryOperation = new OptionalLazySymbol(vectorSupportName + "$TernaryOperation");
-        OptionalLazySymbol loadOperation = new OptionalLazySymbol(vectorSupportName + "$LoadOperation");
-        OptionalLazySymbol loadMaskedOperation = new OptionalLazySymbol(vectorSupportName + "$LoadVectorMaskedOperation");
-        OptionalLazySymbol storeVectorOperation = new OptionalLazySymbol(vectorSupportName + "$StoreVectorOperation");
-        OptionalLazySymbol storeMaskedOperation = new OptionalLazySymbol(vectorSupportName + "$StoreVectorMaskedOperation");
-        OptionalLazySymbol vectorCompareOp = new OptionalLazySymbol(vectorSupportName + "$VectorCompareOp");
-        OptionalLazySymbol vectorBlendOp = new OptionalLazySymbol(vectorSupportName + "$VectorBlendOp");
-        OptionalLazySymbol vectorBroadcastIntOp = new OptionalLazySymbol(vectorSupportName + "$VectorBroadcastIntOp");
-        OptionalLazySymbol vectorConvertOp = new OptionalLazySymbol(vectorSupportName + "$VectorConvertOp");
-        OptionalLazySymbol vectorRearrangeOp = new OptionalLazySymbol(vectorSupportName + "$VectorRearrangeOp");
-        OptionalLazySymbol compressExpandOperation = new OptionalLazySymbol(vectorSupportName + "$CompressExpandOperation");
-        OptionalLazySymbol vectorMaskOp = new OptionalLazySymbol(vectorSupportName + "$VectorMaskOp");
+        TypeSymbol fromBitsCoercedOperation = new TypeSymbol(vectorSupportName + "$FromBitsCoercedOperation");
+        TypeSymbol indexPartiallyInUpperRangeOp = new TypeSymbol(vectorSupportName + "$IndexPartiallyInUpperRangeOperation");
+        TypeSymbol indexOperation = new TypeSymbol(vectorSupportName + "$IndexOperation");
+        TypeSymbol reductionOperation = new TypeSymbol(vectorSupportName + "$ReductionOperation");
+        TypeSymbol extractOp = new TypeSymbol(vectorSupportName + "$VecExtractOp");
+        TypeSymbol insertOp = new TypeSymbol(vectorSupportName + "$VecInsertOp");
+        TypeSymbol unaryOperation = new TypeSymbol(vectorSupportName + "$UnaryOperation");
+        TypeSymbol binaryOperation = new TypeSymbol(vectorSupportName + "$BinaryOperation");
+        TypeSymbol ternaryOperation = new TypeSymbol(vectorSupportName + "$TernaryOperation");
+        TypeSymbol loadOperation = new TypeSymbol(vectorSupportName + "$LoadOperation");
+        TypeSymbol loadMaskedOperation = new TypeSymbol(vectorSupportName + "$LoadVectorMaskedOperation");
+        TypeSymbol storeVectorOperation = new TypeSymbol(vectorSupportName + "$StoreVectorOperation");
+        TypeSymbol storeMaskedOperation = new TypeSymbol(vectorSupportName + "$StoreVectorMaskedOperation");
+        TypeSymbol vectorCompareOp = new TypeSymbol(vectorSupportName + "$VectorCompareOp");
+        TypeSymbol vectorBlendOp = new TypeSymbol(vectorSupportName + "$VectorBlendOp");
+        TypeSymbol vectorBroadcastIntOp = new TypeSymbol(vectorSupportName + "$VectorBroadcastIntOp");
+        TypeSymbol vectorConvertOp = new TypeSymbol(vectorSupportName + "$VectorConvertOp");
+        TypeSymbol vectorRearrangeOp = new TypeSymbol(vectorSupportName + "$VectorRearrangeOp");
+        TypeSymbol compressExpandOperation = new TypeSymbol(vectorSupportName + "$CompressExpandOperation");
+        TypeSymbol vectorMaskOp = new TypeSymbol(vectorSupportName + "$VectorMaskOp");
 
         r.register(new InlineOnlyInvocationPlugin("fromBitsCoerced", Class.class, Class.class, int.class, long.class, int.class, vectorSpecies, fromBitsCoercedOperation) {
             @Override

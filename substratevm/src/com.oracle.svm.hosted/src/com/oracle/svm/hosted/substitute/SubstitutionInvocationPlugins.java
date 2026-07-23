@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -56,6 +58,43 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
         this.missingIntrinsicMetrics = null;
     }
 
+    /// Resolves `plugin` to a method or constructor declared in `declaringClass`.
+    ///
+    /// This method is the same as `InvocationPlugins.ClassPlugins#resolveJavaMethod`
+    /// but is in terms of core reflection instead of JVMCI reflection.
+    ///
+    /// @return `null` if no matching member is found
+    public static Executable resolveExecutable(Class<?> declaringClass, InvocationPlugin plugin) {
+        if (!"<init>".equals(plugin.name)) {
+            Method[] methods = declaringClass.getDeclaredMethods();
+            Method match = null;
+            for (Method m : methods) {
+                if (plugin.isSameType(m)) {
+                    if (match == null) {
+                        match = m;
+                    } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
+                        // `m` has a more specific return type - choose it
+                        // (`match` is most likely a bridge method)
+                        match = m;
+                    } else {
+                        if (!m.getReturnType().isAssignableFrom(match.getReturnType())) {
+                            throw new NoSuchMethodError(String.format(
+                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
+                        }
+                    }
+                }
+            }
+            return match;
+        }
+        Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
+        for (Constructor<?> c : constructors) {
+            if (plugin.isSameType(c)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
     @Override
     protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         Type targetClass;
@@ -63,7 +102,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
             targetClass = annotationSubstitutionProcessor.getTargetClass(annotatedClass);
             if (targetClass != declaringClass) {
                 /* Found a target class. Check if it is included. */
-                Executable annotatedMethod = plugin.name.equals("<init>") ? resolveConstructor(annotatedClass, plugin) : resolveMethod(annotatedClass, plugin);
+                Executable annotatedMethod = resolveExecutable(annotatedClass, plugin);
                 String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, (Class<?>) targetClass);
                 if (originalName == null) {
                     /*

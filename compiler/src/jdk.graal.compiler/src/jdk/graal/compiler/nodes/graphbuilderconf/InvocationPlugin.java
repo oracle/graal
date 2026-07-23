@@ -412,7 +412,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     private static boolean isSameType(Class<?> actualType, Type toMatch) {
         if (actualType == toMatch) {
             return true;
-        } else if (toMatch instanceof InvocationPlugins.OptionalLazySymbol) {
+        } else if (toMatch instanceof InvocationPlugins.TypeSymbol) {
             return actualType.getTypeName().equals(toMatch.getTypeName());
         }
         return false;
@@ -535,9 +535,14 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     /**
      * ConditionalInvocationPlugin enables additional checks (e.g., CPU feature detection) before
      * the plugin is applied. In a native image with runtime compilation, this plugin can help
-     * identify plugins that cannot be applied during image building but may still be relevant when
-     * running the image on more advanced architectures.
-     *
+     * identify plugins that cannot be applied during image building (e.g., due to {code -march=compatibility})
+     * but may still be relevant when running the image on more advanced architectures.
+     * <p>
+     * Note that broad architecture family filtering for plugins is done during plugin registration.
+     * For example, a plugin that is not applicable to AArch64 at all will never be registered, but
+     * a plugin that is applicable only for certain AArch64 CPU features will be registered as a
+     * ConditionalInvocationPlugin whose {@link #isApplicable} method does the CPU feature check.
+     * <p>
      * Because supporting arbitrary plugins in the context of encoded graphs is complex, we disallow
      * ConditionalInvocationPlugin in snippets. See
      * {@code SymbolicSnippetEncoder$HotSpotSnippetBytecodeParser#tryInvocationPlugin}
@@ -556,6 +561,14 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
             return super.execute(b, targetMethod, receiver, argsIncludingReceiver);
         }
 
+        /**
+         * Determines whether the detailed architecture check for the applicability of this plugin
+         * is deferred until image runtime.
+         *
+         * @param arch the architecture to be checked
+         * @return {@code true} if the plugin requires runtime-specific evaluation for the given architecture,
+         *         {@code false} otherwise
+         */
         public boolean isRuntimeChecked(Architecture arch) {
             return !isApplicable(arch);
         }
@@ -573,7 +586,10 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         }
 
         /**
-         * Determines if this plugin is applicable on the given {@code arch}.
+         * Determines if this plugin is applicable for {@code arch}. Note that this is only
+         * for detailed architecture checks such as CPU feature checks. A plugin that is not
+         * applicable for an architecture family will not be registered and thus never
+         * have this method called.
          */
         public abstract boolean isApplicable(Architecture arch);
     }

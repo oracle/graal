@@ -32,12 +32,11 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotOptimizingFieldLocationIdentity.CLASS_ARRAY_KLASS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.HOTSPOT_JAVA_THREAD_CONT_ENTRY_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.HOTSPOT_JAVA_THREAD_CONT_ENTRY_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.JAVA_THREAD_MONITOR_OWNER_ID_LOCATION;
@@ -45,6 +44,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.Ho
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.KLASS_ACCESS_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.KLASS_MISC_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.KLASS_SUPER_KLASS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotOptimizingFieldLocationIdentity.CLASS_ARRAY_KLASS_LOCATION;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
@@ -1281,7 +1281,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerDualPivotQuicksortPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Architecture architecture) {
         Registration r = new Registration(plugins, "java.util.DualPivotQuicksort");
         r.register(new ConditionalInvocationPlugin("sort", Class.class, Object.class, long.class, int.class, int.class,
-                        new InvocationPlugins.OptionalLazySymbol("java.util.DualPivotQuicksort$SortOperation")) {
+                        new InvocationPlugins.TypeSymbol("java.util.DualPivotQuicksort$SortOperation")) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elemType, ValueNode array,
                             ValueNode offset, ValueNode low, ValueNode high, ValueNode so) {
@@ -1311,7 +1311,7 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
         r.register(new ConditionalInvocationPlugin("partition", Class.class, Object.class, long.class, int.class, int.class, int.class, int.class,
-                        new InvocationPlugins.OptionalLazySymbol("java.util.DualPivotQuicksort$PartitionOperation")) {
+                        new InvocationPlugins.TypeSymbol("java.util.DualPivotQuicksort$PartitionOperation")) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elemType, ValueNode array,
                             ValueNode offset, ValueNode low, ValueNode high, ValueNode pivotIndex1, ValueNode pivotIndex2, ValueNode so) {
