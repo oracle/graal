@@ -34,132 +34,20 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
-import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 
 /**
- * Annotated replacements to be called from uninterruptible code for methods whose source I do not
- * control, and so can not annotate.
+ * String-related helpers that can be called from uninterruptible code.
  *
- * For each of these methods I have to inline the body of the method I am replacing. This is a
- * maintenance nightmare. Fortunately these methods are simple.
+ * This part of {@code UninterruptibleUtils} remains in {@code svm.core} because several of its
+ * implementations depend on the {@code Target_java_lang_String*} substitutions. The
+ * {@link Character} helpers remain co-located with that String-related group.
+ *
+ * Once Terminus supports these substitutions, the remaining helpers will move to guest staging and
+ * this core copy will be removed. This is tracked by GR-77810.
+ *
+ * @see com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils
  */
 public class UninterruptibleUtils {
-
-    /** Methods like the ones from {@link java.lang.Math} but annotated as uninterruptible. */
-    public static class Math {
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int min(int a, int b) {
-            return (a <= b) ? a : b;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long min(long a, long b) {
-            return (a <= b) ? a : b;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int max(int a, int b) {
-            return (a >= b) ? a : b;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long max(long a, long b) {
-            return (a >= b) ? a : b;
-        }
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public static double max(double a, double b) {
-            if (a != a) {
-                return a;   // a is NaN
-            }
-            if ((a == 0.0d) && (b == 0.0d) && (Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(-0.0d))) {
-                // Raw conversion ok since NaN can't map to -0.0.
-                return b;
-            }
-            return (a >= b) ? a : b;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int clamp(int value, int min, int max) {
-            assert min <= max;
-            return min(max(value, min), max);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long clamp(long value, long min, long max) {
-            assert min <= max;
-            return min(max(value, min), max);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int abs(int a) {
-            return (a < 0) ? -a : a;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long abs(long a) {
-            return (a < 0) ? -a : a;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long floorToLong(double value) {
-            assert value == value : "must not be NaN";
-            return (long) value;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long ceilToLong(double a) {
-            long floor = floorToLong(a);
-            return a > floor ? floor + 1 : floor;
-        }
-    }
-
-    public static class Byte {
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        @SuppressWarnings("cast")
-        public static int toUnsignedInt(byte x) {
-            return ((int) x) & 0xff;
-        }
-    }
-
-    public static class Long {
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int countTrailingZeros(long i) {
-            return CountTrailingZerosNode.countLongTrailingZeros(i);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int hashCode(long value) {
-            return (int) (value ^ (value >>> 32));
-        }
-    }
-
-    public static class Integer {
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int highestOneBit(int i) {
-            return i & (java.lang.Integer.MIN_VALUE >>> numberOfLeadingZeros(i));
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int numberOfLeadingZeros(int i) {
-            return CountLeadingZerosNode.countIntLeadingZeros(i);
-        }
-
-        /** Uninterruptible version of {@link java.lang.Integer#compare(int, int)}. */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int compare(int x, int y) {
-            return (x < y) ? -1 : ((x == y) ? 0 : 1);
-        }
-
-        /** Uninterruptible version of {@link java.lang.Integer#compareUnsigned(int, int)}. */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int compareUnsigned(int x, int y) {
-            return compare(x + java.lang.Integer.MIN_VALUE, y + java.lang.Integer.MIN_VALUE);
-        }
-    }
-
     public static class Character {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isHighSurrogate(char ch) {
@@ -584,38 +472,4 @@ public class UninterruptibleUtils {
         }
     }
 
-    public static class CodeUtil {
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public static long signExtend(long value, int inputBits) {
-            if (inputBits < 64) {
-                if ((value >>> (inputBits - 1) & 1) == 1) {
-                    return value | (-1L << inputBits);
-                } else {
-                    return value & ~(-1L << inputBits);
-                }
-            } else {
-                return value;
-            }
-        }
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public static long zeroExtend(long value, int inputBits) {
-            if (inputBits < 64) {
-                return value & ~(-1L << inputBits);
-            } else {
-                return value;
-            }
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isPowerOf2(int val) {
-            return val > 0 && (val & val - 1) == 0;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int log2(int val) {
-            assert val > 0;
-            return (java.lang.Integer.SIZE - 1) - Integer.numberOfLeadingZeros(val);
-        }
-    }
 }

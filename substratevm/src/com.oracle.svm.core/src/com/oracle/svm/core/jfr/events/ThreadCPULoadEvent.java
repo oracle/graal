@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jdk.Jvm;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;

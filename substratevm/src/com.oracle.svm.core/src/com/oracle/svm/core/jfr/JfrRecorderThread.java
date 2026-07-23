@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
@@ -59,7 +59,7 @@ public class JfrRecorderThread extends Thread {
     private final VMSemaphore semaphore;
     private final ReentrantLock lock;
     /* A volatile boolean field would not be enough to ensure synchronization. */
-    private final UninterruptibleAtomicUtils.AtomicBoolean atomicNotify;
+    private final UninterruptibleUtils.AtomicBoolean atomicNotify;
 
     private volatile boolean stopped;
 
@@ -71,7 +71,7 @@ public class JfrRecorderThread extends Thread {
         this.unlockedChunkWriter = unlockedChunkWriter;
         this.semaphore = new VMSemaphore("jfrRecorder");
         this.lock = new ReentrantLock();
-        this.atomicNotify = new UninterruptibleAtomicUtils.AtomicBoolean(false);
+        this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
     }
 

@@ -28,7 +28,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.CodeUtil;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.CodeUtil;
 import org.graalvm.word.impl.Word;
 
 public abstract class CEnumRuntimeData {

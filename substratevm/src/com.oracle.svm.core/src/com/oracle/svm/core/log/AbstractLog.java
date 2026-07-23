@@ -26,10 +26,10 @@ package com.oracle.svm.core.log;
 
 import com.oracle.svm.guest.staging.log.Log;
 
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.Integer.highestOneBit;
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.abs;
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.max;
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.min;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Integer.highestOneBit;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.abs;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.max;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.min;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.String.charAt;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
