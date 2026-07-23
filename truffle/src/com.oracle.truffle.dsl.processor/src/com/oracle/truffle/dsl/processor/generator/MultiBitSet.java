@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,6 +133,27 @@ public class MultiBitSet {
         }
         return builder.build();
 
+    }
+
+    /**
+     * Applies the transaction updates and persists only state words that changed. The comparison
+     * uses the already loaded state locals and does not reload state from the node.
+     */
+    public CodeTree persistTransactionIfChanged(FrameState frameState, StateTransaction transaction, CodeTree updates) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        for (BitSet set : transaction.modified) {
+            if (!set.hasLocal(frameState)) {
+                throw new AssertionError("Cannot persist transaction state local without a local variable in the frame state.");
+            }
+            builder.declaration(set.getType(), set.getName() + "_previous", set.createReference(frameState));
+        }
+        builder.tree(updates);
+        for (BitSet set : transaction.modified) {
+            builder.startIf().string(set.getName(), "_previous != ").tree(set.createReference(frameState)).end().startBlock();
+            builder.tree(set.createSet(frameState, null, null, true));
+            builder.end();
+        }
+        return builder.build();
     }
 
     public CodeTree createSet(FrameState frameState, StateTransaction transaction, StateQuery query, boolean value, boolean persist) {
