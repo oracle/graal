@@ -86,12 +86,6 @@ Security.insertProviderAt(bcProvider, 1);
 If `--future-defaults=all` or `--future-defaults=run-time-initialize-jdk` is enabled, the list of providers is constructed at run time.
 The same approach to manipulating providers can then be used.
 
-## SecureRandom
-
-The `SecureRandom` implementations open the `/dev/random` and `/dev/urandom` files which are used as sources.
-These files are usually opened in class initializers.
-To avoid capturing state from the machine that runs the `native-image` builder, these classes need to be initialized at run time.
-
 ## Custom Service Types
 
 By default, only services specified in the JCA framework are automatically registered. To automatically register custom service types, you can use the `-H:AdditionalSecurityServiceTypes` option.
