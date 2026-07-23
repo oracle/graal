@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 
@@ -32,4 +33,13 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 final class Target_jdk_internal_loader_NativeLibrary {
     @Delete
     private static native long findEntry0(long handle, String name);
+}
+
+@TargetClass(className = "jdk.internal.loader.RawNativeLibraries", innerClass = "RawNativeLibraryImpl", onlyWith = ClassRegistries.IgnoresClassLoader.class)
+final class Target_jdk_internal_loader_RawNativeLibraries_RawNativeLibraryImpl {
+    @Substitute
+    @SuppressWarnings("static-method")
+    public long find(String name) {
+        return NativeLibrarySupport.singleton().findSymbol(name).rawValue();
+    }
 }
