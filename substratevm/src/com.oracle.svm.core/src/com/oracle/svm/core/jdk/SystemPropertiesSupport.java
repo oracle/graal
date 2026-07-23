@@ -417,7 +417,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         String objectFileStr = !SubstrateOptions.SharedLibrary.getValue() ? ProcessProperties.getExecutableName()
                         : ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(KnownIntrinsics.readReturnAddress());
         if (objectFileStr == null) {
-            throw VMError.shouldNotReachHere("Unable to get path to current image.");
+            return null;
         }
         if (!ImageSingletons.contains(LibJVMSupport.class)) {
             // This is not libjvm, use the image directory
