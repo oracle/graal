@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.guest.staging.core.thread;
 
 public class ThreadStatus {
 
@@ -31,7 +31,7 @@ public class ThreadStatus {
      */
 
     static final int JVMTI_THREAD_STATE_ALIVE = 0x0001;
-    static final int JVMTI_THREAD_STATE_TERMINATED = 0x0002;
+    public static final int JVMTI_THREAD_STATE_TERMINATED = 0x0002;
     static final int JVMTI_THREAD_STATE_RUNNABLE = 0x0004;
     static final int JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER = 0x0400;
     static final int JVMTI_THREAD_STATE_WAITING = 0x0080;

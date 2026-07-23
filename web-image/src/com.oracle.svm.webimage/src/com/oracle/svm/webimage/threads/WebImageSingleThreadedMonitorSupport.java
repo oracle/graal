@@ -27,7 +27,7 @@ package com.oracle.svm.webimage.threads;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.thread.ThreadStatus;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;

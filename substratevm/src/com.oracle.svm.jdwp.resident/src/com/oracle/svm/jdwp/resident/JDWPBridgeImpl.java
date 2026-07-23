@@ -183,7 +183,7 @@ public final class JDWPBridgeImpl implements JDWPBridge {
             int i = 0;
             threadsLoop: for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 Thread t = ThreadStartDeathSupport.get().filterAppThread(thread);
-                if (t == null || PlatformThreads.getThreadStatus(t) == com.oracle.svm.core.thread.ThreadStatus.TERMINATED) {
+                if (t == null || PlatformThreads.getThreadStatus(t) == com.oracle.svm.guest.staging.core.thread.ThreadStatus.TERMINATED) {
                     continue;
                 }
                 for (Thread ignoredThread : ignoredThreads) {
