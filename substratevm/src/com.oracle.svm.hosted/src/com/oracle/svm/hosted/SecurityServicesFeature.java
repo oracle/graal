@@ -697,14 +697,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         registerGSSReachabilityHandler(access);
 
         /*
-         * On Oracle JDK the SecureRandom service implementations are not automatically discovered
-         * by the mechanism above because SecureRandom.getInstance() is not invoked. For example
-         * java.security.SecureRandom.getDefaultPRNG() calls
-         * java.security.Provider.Service.newInstance() directly. On Open JDK
-         * SecureRandom.getInstance() is used instead.
+         * Default SecureRandom acquisition does not use SecureRandom.getInstance(). Register its
+         * private common path directly: on Oracle JDK the SUN fast path also bypasses
+         * Provider.getDefaultSecureRandomService().
          */
-        Optional<ResolvedJavaMethod> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
-        defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), OriginalMethodProvider.getJavaMethod(m)));
+        Method getDefaultPRNG = ReflectionUtil.lookupMethod(SecureRandom.class, "getDefaultPRNG", boolean.class, byte[].class);
+        access.registerReachabilityHandler(a -> registerDefaultSecureRandomServices(a, getDefaultPRNG), getDefaultPRNG);
+    }
+
+    private void registerDefaultSecureRandomServices(DuringAnalysisAccess access, Executable trigger) {
+        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            // Default acquisition retains the complete fallback provider as a platform dependency.
+            // \u00A7FS-security-providers.2.4
+            Class<?> providerClass = sun.security.provider.Sun.class;
+            registerProviderClassForReflection(providerClass);
+            addCandidateProviderClass(providerClass);
+        }
+        registerServices(access, trigger, SECURE_RANDOM_SERVICE);
     }
 
     private void registerGSSReachabilityHandler(BeforeAnalysisAccess access) {
