@@ -664,9 +664,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            // GR-76168: added libraries should not be necessary
+            // GR-77836: added libraries should not be necessary
             if (ClassRegistries.respectClassLoader()) {
-                cmd.add("winhttp.lib");
                 cmd.add("shell32.lib");
                 cmd.add("ole32.lib");
             }

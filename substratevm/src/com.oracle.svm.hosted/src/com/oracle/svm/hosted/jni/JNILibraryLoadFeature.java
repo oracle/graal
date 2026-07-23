@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,28 +34,44 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNILibraryInitializer;
+import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = JNILibraryLoadFeature.LayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class JNILibraryLoadFeature implements Feature {
 
     private static final String WINDOWS_EXTNET_ONLOAD_SYMBOL = JNILibraryInitializer.getOnLoadName("extnet", true);
+    private static final String AOT_OWNED_NATIVE_SYMBOLS = "aotOwnedNativeSymbols";
 
     private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
-    private final Set<String> nativeCallWrapperSymbols = new LinkedHashSet<>();
+    private final Set<String> aotOwnedNativeSymbols = new LinkedHashSet<>();
 
     private boolean emitNopExtnetOnLoad = false;
 
@@ -83,13 +99,28 @@ public class JNILibraryLoadFeature implements Feature {
             return;
         }
 
-        nativeCallWrapperSymbols.clear();
         AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
-        for (AnalysisMethod method : accessImpl.getUniverse().getMethods()) {
-            if (method.isReachable() && method.getWrapped() instanceof JNINativeCallWrapperMethod wrapper && wrapper.isBuiltInFunction()) {
-                nativeCallWrapperSymbols.add(wrapper.getShortSymbol());
-                nativeCallWrapperSymbols.add(wrapper.getLongSymbol());
+        AnnotationSubstitutionProcessor substitutions = ((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor();
+        /*
+         * Reachable classes are owned by AOT image code. Since a native library can only be loaded
+         * by one class loader, collect their builtin symbols so runtime-loaded classes cannot claim
+         * them.
+         */
+        for (AnalysisType type : accessImpl.getUniverse().getTypes()) {
+            if (!type.isReachable()) {
+                continue;
             }
+            collectAOTOwnedNativeSymbols(type.getWrapped());
+        }
+
+        /* Deleted types need not be present in the analysis universe. */
+        for (ResolvedJavaType type : substitutions.getDeletedTypes()) {
+            collectAOTOwnedNativeSymbols(type);
+        }
+
+        /* Deleted methods can belong to types that are not present in the analysis universe. */
+        for (ResolvedJavaMethod method : substitutions.getDeletedMethods()) {
+            collectAOTOwnedNativeSymbol(method);
         }
     }
 
@@ -100,7 +131,7 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectStaticBuiltinSymbols(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);
@@ -119,7 +150,39 @@ public class JNILibraryLoadFeature implements Feature {
         return inputFiles.size();
     }
 
-    private Set<String> collectStaticBuiltinSymbols(NativeLibraries nativeLibraries, Collection<String> staticLibNames) {
+    private void collectAOTOwnedNativeSymbols(ResolvedJavaType type) {
+        ResolvedJavaType originalType = type;
+        if (originalType instanceof SubstitutionType substitutionType) {
+            originalType = substitutionType.getOriginal();
+        }
+
+        for (ResolvedJavaMethod method : originalType.getDeclaredMethods(false)) {
+            collectAOTOwnedNativeSymbol(method);
+        }
+    }
+
+    private void collectAOTOwnedNativeSymbol(ResolvedJavaMethod method) {
+        ResolvedJavaMethod originalMethod = method;
+        if (originalMethod instanceof SubstitutionMethod substitutionMethod) {
+            originalMethod = substitutionMethod.getOriginal();
+        }
+
+        if (!originalMethod.isNative()) {
+            return;
+        }
+
+        String declaringClass = originalMethod.getDeclaringClass().getName();
+        String name = originalMethod.getName();
+        String descriptor = originalMethod.getSignature().toMethodDescriptor();
+
+        String shortName = JNINativeLinkage.getShortSymbol(declaringClass, name);
+        if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(shortName)) {
+            aotOwnedNativeSymbols.add(shortName);
+            aotOwnedNativeSymbols.add(JNINativeLinkage.getLongSymbol(declaringClass, name, descriptor));
+        }
+    }
+
+    private Set<String> collectBuiltinSymbolsForRuntimeLookup(NativeLibraries nativeLibraries, Collection<String> staticLibNames) {
         Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
         for (String libName : staticLibNames) {
             staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
@@ -127,9 +190,36 @@ public class JNILibraryLoadFeature implements Feature {
                 emitNopExtnetOnLoad = true;
             }
         }
-        // Remove function symbols for which we create wrappers aot.
-        staticBuiltinSymbols.removeAll(nativeCallWrapperSymbols);
+        if (RuntimeClassLoading.isSupported()) {
+            // Remove function symbols whose declaring classes are owned by the AOT image layers.
+            staticBuiltinSymbols.removeAll(aotOwnedNativeSymbols);
+        } else {
+            /*
+             * Without runtime class loading, all builtin native method calls are AOT owned. The
+             * JNI_OnLoad_<library> symbols remain in the table so System.loadLibrary can identify builtin
+             * libraries.
+             */
+            staticBuiltinSymbols.removeIf(symbol -> !JNILibraryInitializer.isBuiltinOnLoadName(symbol));
+        }
         return staticBuiltinSymbols;
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<JNILibraryLoadFeature>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, JNILibraryLoadFeature singleton) {
+                    writer.writeStringList(AOT_OWNED_NATIVE_SYMBOLS, singleton.aotOwnedNativeSymbols.stream().sorted().toList());
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, JNILibraryLoadFeature singleton) {
+                    singleton.aotOwnedNativeSymbols.addAll(loader.readStringList(AOT_OWNED_NATIVE_SYMBOLS));
+                }
+            });
+        }
     }
 
     private Path writeStaticBuiltinSymbolTable(Path tempDirectory, Set<String> staticBuiltinSymbols) {

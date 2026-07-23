@@ -71,6 +71,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "jdk_internal_misc",
                     "jdk_internal_org",
                     "jdk_internal_platform",
+                    "jdk_internal_reflect",
                     "jdk_internal_util",
                     "jdk_internal_vm",
                     "jdk_internal_loader",
