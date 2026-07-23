@@ -35,6 +35,27 @@
 
 // Shared cgroups code (used by cgroup version 1 and version 2)
 
+#ifndef NATIVE_IMAGE
+/*
+ * PER_CPU_SHARES has been set to 1024 because CPU shares' quota
+ * is commonly used in cloud frameworks like Kubernetes[1],
+ * AWS[2] and Mesos[3] in a similar way. They spawn containers with
+ * --cpu-shares option values scaled by PER_CPU_SHARES. Thus, we do
+ * the inverse for determining the number of possible available
+ * CPUs to the JVM inside a container. See JDK-8216366.
+ *
+ * [1] https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu
+ *     In particular:
+ *        When using Docker:
+ *          The spec.containers[].resources.requests.cpu is converted to its core value, which is potentially
+ *          fractional, and multiplied by 1024. The greater of this number or 2 is used as the value of the
+ *          --cpu-shares flag in the docker run command.
+ * [2] https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ContainerDefinition.html
+ * [3] https://github.com/apache/mesos/blob/3478e344fb77d931f6122980c6e94cd3913c441d/src/docker/docker.cpp#L648
+ *     https://github.com/apache/mesos/blob/3478e344fb77d931f6122980c6e94cd3913c441d/src/slave/containerizer/mesos/isolators/cgroups/constants.hpp#L30
+ */
+#define PER_CPU_SHARES 1024
+#endif // !NATIVE_IMAGE
 
 #define CGROUPS_V1               1
 #define CGROUPS_V2               2
@@ -165,12 +186,24 @@ class CachedMetric : public CHeapObj<mtInternal>{
       _next_check_counter = min_jlong;
     }
     bool should_check_metric() {
+#ifdef NATIVE_IMAGE
       // NOTE (chaeubl): we do all caching on the Java-side instead of the C-side
       return true;
+#else
+      return os::elapsed_counter() > _next_check_counter;
+#endif // NATIVE_IMAGE
     }
     jlong value() { return _metric; }
     void set_value(jlong value, jlong timeout) {
       _metric = value;
+#ifndef NATIVE_IMAGE
+      // Metric is unlikely to change, but we want to remain
+      // responsive to configuration changes. A very short grace time
+      // between re-read avoids excessive overhead during startup without
+      // significantly reducing the VMs ability to promptly react to changed
+      // metric config
+      _next_check_counter = os::elapsed_counter() + timeout;
+#endif // !NATIVE_IMAGE
     }
 };
 
@@ -195,6 +228,9 @@ class CgroupCpuController: public CHeapObj<mtInternal> {
   public:
     virtual int cpu_quota() = 0;
     virtual int cpu_period() = 0;
+#ifndef NATIVE_IMAGE
+    virtual int cpu_shares() = 0;
+#endif // !NATIVE_IMAGE
     virtual bool needs_hierarchy_adjustment() = 0;
     virtual bool is_read_only() = 0;
     virtual const char* subsystem_path() = 0;
@@ -227,6 +263,9 @@ class CgroupMemoryController: public CHeapObj<mtInternal> {
     virtual jlong memory_max_usage_in_bytes() = 0;
     virtual jlong rss_usage_in_bytes() = 0;
     virtual jlong cache_usage_in_bytes() = 0;
+#ifndef NATIVE_IMAGE
+    virtual void print_version_specific_info(outputStream* st, julong host_mem) = 0;
+#endif // !NATIVE_IMAGE
     virtual bool needs_hierarchy_adjustment() = 0;
     virtual bool is_read_only() = 0;
     virtual const char* subsystem_path() = 0;
@@ -253,6 +292,9 @@ class CgroupSubsystem: public CHeapObj<mtInternal> {
 
     int cpu_quota();
     int cpu_period();
+#ifndef NATIVE_IMAGE
+    int cpu_shares();
+#endif // !NATIVE_IMAGE
 
     jlong cpu_usage_in_micros();
 
@@ -264,6 +306,9 @@ class CgroupSubsystem: public CHeapObj<mtInternal> {
     jlong memory_max_usage_in_bytes();
     jlong rss_usage_in_bytes();
     jlong cache_usage_in_bytes();
+#ifndef NATIVE_IMAGE
+    void print_version_specific_info(outputStream* st);
+#endif // !NATIVE_IMAGE
 };
 
 // Utility class for storing info retrieved from /proc/cgroups,

@@ -358,6 +358,17 @@ jlong CgroupV1MemoryController::kernel_memory_max_usage_in_bytes() {
   return (jlong)kmem_max_usage;
 }
 
+#ifndef NATIVE_IMAGE
+void CgroupV1MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
+  jlong kmem_usage = kernel_memory_usage_in_bytes();
+  jlong kmem_limit = kernel_memory_limit_in_bytes(phys_mem);
+  jlong kmem_max_usage = kernel_memory_max_usage_in_bytes();
+
+  OSContainer::print_container_helper(st, kmem_limit, "kernel_memory_limit_in_bytes");
+  OSContainer::print_container_helper(st, kmem_usage, "kernel_memory_usage_in_bytes");
+  OSContainer::print_container_helper(st, kmem_max_usage, "kernel_memory_max_usage_in_bytes");
+}
+#endif // !NATIVE_IMAGE
 
 char* CgroupV1Subsystem::cpu_cpuset_cpus() {
   char cpus[1024];
@@ -401,6 +412,27 @@ int CgroupV1CpuController::cpu_period() {
   return (int)period;
 }
 
+#ifndef NATIVE_IMAGE
+/* cpu_shares
+ *
+ * Return the amount of cpu shares available to the process
+ *
+ * return:
+ *    Share number (typically a number relative to 1024)
+ *                 (2048 typically expresses 2 CPUs worth of processing)
+ *    -1 for no share setup
+ *    OSCONTAINER_ERROR for not supported
+ */
+int CgroupV1CpuController::cpu_shares() {
+  julong shares;
+  CONTAINER_READ_NUMBER_CHECKED(reader(), "/cpu.shares", "CPU Shares", shares);
+  int shares_int = (int)shares;
+  // Convert 1024 to no shares setup
+  if (shares_int == 1024) return -1;
+
+  return shares_int;
+}
+#endif // !NATIVE_IMAGE
 
 jlong CgroupV1CpuacctController::cpu_usage_in_micros() {
   julong cpu_usage;

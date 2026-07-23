@@ -90,6 +90,9 @@ class CgroupV1MemoryController final : public CgroupMemoryController {
     jlong kernel_memory_usage_in_bytes();
     jlong kernel_memory_limit_in_bytes(julong host_mem);
     jlong kernel_memory_max_usage_in_bytes();
+#ifndef NATIVE_IMAGE
+    void print_version_specific_info(outputStream* st, julong host_mem) override;
+#endif // !NATIVE_IMAGE
     bool needs_hierarchy_adjustment() override {
       return reader()->needs_hierarchy_adjustment();
     }
@@ -119,6 +122,9 @@ class CgroupV1CpuController final : public CgroupCpuController {
   public:
     int cpu_quota() override;
     int cpu_period() override;
+#ifndef NATIVE_IMAGE
+    int cpu_shares() override;
+#endif // !NATIVE_IMAGE
     void set_subsystem_path(const char *cgroup_path) override {
       reader()->set_subsystem_path(cgroup_path);
     }

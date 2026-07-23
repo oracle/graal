@@ -28,5 +28,38 @@
 
 #include "runtime/os.hpp"
 
+#ifndef NATIVE_IMAGE
+#include OS_HEADER_INLINE(os)
+#include OS_CPU_HEADER_INLINE(os)
+
+// Below are inline functions that are rarely implemented by the platforms.
+// Provide default empty implementation.
+
+#ifndef HAVE_PLATFORM_PRINT_NATIVE_STACK
+inline bool os::platform_print_native_stack(outputStream* st, const void* context,
+                                     char *buf, int buf_size, address& lastpc) {
+  return false;
+}
+#endif
+
+#ifndef HAVE_CDS_CORE_REGION_ALIGNMENT
+inline size_t os::cds_core_region_alignment() {
+  return (size_t)os::vm_allocation_granularity();
+}
+#endif
+
+#ifndef _WINDOWS
+// Currently used only on Windows.
+inline bool os::register_code_area(char *low, char *high) {
+  return true;
+}
+#endif
+
+#ifndef HAVE_FUNCTION_DESCRIPTORS
+inline void* os::resolve_function_descriptor(void* p) {
+  return nullptr;
+}
+#endif
+#endif // !NATIVE_IMAGE
 
 #endif // SHARE_RUNTIME_OS_INLINE_HPP

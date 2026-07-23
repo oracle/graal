@@ -27,6 +27,9 @@
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+#ifndef NATIVE_IMAGE
+#include <math.h>
+#endif // !NATIVE_IMAGE
 
 // Constructor
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
@@ -44,6 +47,73 @@ CgroupV2Controller::CgroupV2Controller(const CgroupV2Controller& o) :
   _mount_point = o._mount_point;
 }
 
+#ifndef NATIVE_IMAGE
+/* cpu_shares
+ *
+ * Return the amount of cpu shares available to the process
+ *
+ * return:
+ *    Share number (typically a number relative to 1024)
+ *                 (2048 typically expresses 2 CPUs worth of processing)
+ *    -1 for no share setup
+ *    OSCONTAINER_ERROR for not supported
+ */
+int CgroupV2CpuController::cpu_shares() {
+  julong shares;
+  CONTAINER_READ_NUMBER_CHECKED(reader(), "/cpu.weight", "Raw value for CPU Shares", shares);
+  int shares_int = (int)shares;
+  // Convert default value of 100 to no shares setup
+  if (shares_int == 100) {
+    log_debug(os, container)("CPU Shares is: %d", -1);
+    return -1;
+  }
+  // cg v2 values must be in range [1-10000]
+  assert(shares_int >= 1 && shares_int <= 10000, "invariant");
+
+  // CPU shares (OCI) value needs to get translated into
+  // a proper Cgroups v2 value. See:
+  // https://github.com/containers/crun/blob/1.24/crun.1.md#cpu-controller
+  //
+  // Use the inverse of (x == OCI value, y == cgroupsv2 value):
+  // y = 10^(log2(x)^2/612 + 125/612 * log2(x) - 7.0/34.0)
+  //
+  // By re-arranging it to the standard quadratic form:
+  // log2(x)^2 + 125 * log2(x) - (126 + 612 * log_10(y)) = 0
+  //
+  // Therefore, log2(x) = (-125 + sqrt( 125^2 - 4 * (-(126 + 612 * log_10(y)))))/2
+  //
+  // As a result we have the inverse (we can discount substraction of the
+  // square root value since those values result in very small numbers and the
+  // cpu shares values - OCI - are in range [2,262144]):
+  //
+  // x = 2^((-125 + sqrt(16129 + 2448* log10(y)))/2)
+  //
+  double log_multiplicand = log10(shares_int);
+  double discriminant = 16129 + 2448 * log_multiplicand;
+  double square_root = sqrt(discriminant);
+  double exponent = (-125 + square_root)/2;
+  double scaled_val = pow(2, exponent);
+  int x = (int) scaled_val;
+  log_trace(os, container)("Scaled CPU shares value is: %d", x);
+  // Since the scaled value is not precise, return the closest
+  // multiple of PER_CPU_SHARES for a more conservative mapping
+  if ( x <= PER_CPU_SHARES ) {
+     // Don't do the multiples of PER_CPU_SHARES mapping since we
+     // have a value <= PER_CPU_SHARES
+     log_debug(os, container)("CPU Shares is: %d", x);
+     return x;
+  }
+  int f = x/PER_CPU_SHARES;
+  int lower_multiple = f * PER_CPU_SHARES;
+  int upper_multiple = (f + 1) * PER_CPU_SHARES;
+  int distance_lower = MAX2(lower_multiple, x) - MIN2(lower_multiple, x);
+  int distance_upper = MAX2(upper_multiple, x) - MIN2(upper_multiple, x);
+  x = distance_lower <= distance_upper ? lower_multiple : upper_multiple;
+  log_trace(os, container)("Closest multiple of %d of the CPU Shares value is: %d", PER_CPU_SHARES, x);
+  log_debug(os, container)("CPU Shares is: %d", x);
+  return x;
+}
+#endif // !NATIVE_IMAGE
 
 /* cpu_quota
  *
@@ -281,6 +351,15 @@ bool CgroupV2Controller::needs_hierarchy_adjustment() {
   return strcmp(_cgroup_path, "/") != 0;
 }
 
+#ifndef NATIVE_IMAGE
+void CgroupV2MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
+  jlong swap_current = memory_swap_current_value(reader());
+  jlong swap_limit = memory_swap_limit_value(reader());
+
+  OSContainer::print_container_helper(st, swap_current, "memory_swap_current_in_bytes");
+  OSContainer::print_container_helper(st, swap_limit, "memory_swap_max_limit_in_bytes");
+}
+#endif // !NATIVE_IMAGE
 
 char* CgroupV2Controller::construct_path(char* mount_path, const char* cgroup_path) {
   stringStream ss;

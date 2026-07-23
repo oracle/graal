@@ -886,8 +886,19 @@ int CgroupSubsystem::cpu_period() {
   return cpu_controller()->controller()->cpu_period();
 }
 
+#ifndef NATIVE_IMAGE
+int CgroupSubsystem::cpu_shares() {
+  return cpu_controller()->controller()->cpu_shares();
+}
+#endif // !NATIVE_IMAGE
 
 jlong CgroupSubsystem::cpu_usage_in_micros() {
   return cpuacct_controller()->cpu_usage_in_micros();
 }
 
+#ifndef NATIVE_IMAGE
+void CgroupSubsystem::print_version_specific_info(outputStream* st) {
+  julong phys_mem = static_cast<julong>(os::Linux::physical_memory());
+  memory_controller()->controller()->print_version_specific_info(st, phys_mem);
+}
+#endif // !NATIVE_IMAGE

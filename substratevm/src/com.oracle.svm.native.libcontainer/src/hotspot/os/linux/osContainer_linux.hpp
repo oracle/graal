@@ -45,6 +45,10 @@ class OSContainer: AllStatic {
 
  public:
   static void init();
+#ifndef NATIVE_IMAGE
+  static void print_version_specific_info(outputStream* st);
+  static void print_container_helper(outputStream* st, jlong j, const char* metrics);
+#endif // !NATIVE_IMAGE
 
   static inline bool is_containerized();
   static const char * container_type();
@@ -67,6 +71,9 @@ class OSContainer: AllStatic {
   static int cpu_quota();
   static int cpu_period();
 
+#ifndef NATIVE_IMAGE
+  static int cpu_shares();
+#endif // !NATIVE_IMAGE
 
   static jlong cpu_usage_in_micros();
 
