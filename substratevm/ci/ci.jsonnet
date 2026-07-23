@@ -136,7 +136,7 @@
     }),
     "basics": mxgate("build,helloworld,all_native_unittests,check_svm_invariants,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig,java_desktop_integration") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
-      "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
+      "windows:amd64:jdk-latest": tier3 + partial(2) + t("1:00:00"),
     }) + variants({
       "optlevel:quickbuild": {
         "windows:amd64:jdk-latest": sg.daily + task_spec({ notify_groups+: ["native_image_other"] }) + t("2:00:00"),
