@@ -122,7 +122,9 @@ class CgroupV1CpuController final : public CgroupCpuController {
   public:
     int cpu_quota() override;
     int cpu_period() override;
+#ifndef NATIVE_IMAGE
     int cpu_shares() override;
+#endif // !NATIVE_IMAGE
     void set_subsystem_path(const char *cgroup_path) override {
       reader()->set_subsystem_path(cgroup_path);
     }

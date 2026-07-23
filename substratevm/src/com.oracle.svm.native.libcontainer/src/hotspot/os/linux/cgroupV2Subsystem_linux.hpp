@@ -62,7 +62,9 @@ class CgroupV2CpuController: public CgroupCpuController {
     }
     int cpu_quota() override;
     int cpu_period() override;
+#ifndef NATIVE_IMAGE
     int cpu_shares() override;
+#endif // !NATIVE_IMAGE
     jlong cpu_usage_in_micros();
     bool is_read_only() override {
       return reader()->is_read_only();

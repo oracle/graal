@@ -27,7 +27,9 @@
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+#ifndef NATIVE_IMAGE
 #include <math.h>
+#endif // !NATIVE_IMAGE
 
 // Constructor
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
@@ -45,6 +47,7 @@ CgroupV2Controller::CgroupV2Controller(const CgroupV2Controller& o) :
   _mount_point = o._mount_point;
 }
 
+#ifndef NATIVE_IMAGE
 /* cpu_shares
  *
  * Return the amount of cpu shares available to the process
@@ -110,6 +113,7 @@ int CgroupV2CpuController::cpu_shares() {
   log_debug(os, container)("CPU Shares is: %d", x);
   return x;
 }
+#endif // !NATIVE_IMAGE
 
 /* cpu_quota
  *

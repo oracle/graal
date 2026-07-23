@@ -412,6 +412,7 @@ int CgroupV1CpuController::cpu_period() {
   return (int)period;
 }
 
+#ifndef NATIVE_IMAGE
 /* cpu_shares
  *
  * Return the amount of cpu shares available to the process
@@ -431,6 +432,7 @@ int CgroupV1CpuController::cpu_shares() {
 
   return shares_int;
 }
+#endif // !NATIVE_IMAGE
 
 jlong CgroupV1CpuacctController::cpu_usage_in_micros() {
   julong cpu_usage;

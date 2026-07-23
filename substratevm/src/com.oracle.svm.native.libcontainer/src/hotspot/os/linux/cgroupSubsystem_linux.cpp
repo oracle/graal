@@ -886,9 +886,11 @@ int CgroupSubsystem::cpu_period() {
   return cpu_controller()->controller()->cpu_period();
 }
 
+#ifndef NATIVE_IMAGE
 int CgroupSubsystem::cpu_shares() {
   return cpu_controller()->controller()->cpu_shares();
 }
+#endif // !NATIVE_IMAGE
 
 jlong CgroupSubsystem::cpu_usage_in_micros() {
   return cpuacct_controller()->cpu_usage_in_micros();
