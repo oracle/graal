@@ -52,6 +52,9 @@
 // these written-out wrapper functions.  All that have been tried don't work
 // for one reason or another.
 
+
+namespace svm_container {
+
 namespace permit_forbidden_function {
 BEGIN_ALLOW_FORBIDDEN_FUNCTIONS
 
@@ -76,5 +79,8 @@ inline char* strdup(const char* s) { return ::strdup(s); }
 
 END_ALLOW_FORBIDDEN_FUNCTIONS
 } // namespace permit_forbidden_function
+
+
+} // namespace svm_container
 
 #endif // SHARE_UTILITIES_PERMITFORBIDDENFUNCTIONS_HPP
