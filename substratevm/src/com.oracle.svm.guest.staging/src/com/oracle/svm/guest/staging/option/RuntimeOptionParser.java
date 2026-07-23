@@ -42,6 +42,7 @@ import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.meta.GuaranteeFolded;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;
@@ -113,7 +114,7 @@ public final class RuntimeOptionParser {
     private static final String AGENT_PATH_OPTION_PREFIX = "-agentpath:";
     private static final String LOG_FILE_OPTION = "LogFile";
     private static final String LOG_FILE_OPTION_PREFIX = NORMAL_OPTION_PREFIX + LOG_FILE_OPTION + "=";
-    private static final String HOTSPOT_OPTION_COMPATIBILITY_NAME = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
+    @GuaranteeFolded private static final String HOTSPOT_OPTION_COMPATIBILITY_NAME = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
     private static final String RESERVED_INTERNAL_MODULE_PROPERTY_WARNING = "Ignoring system property options whose names match '-Djdk.module.*', which is reserved for internal use.";
 
     private static final Set<String> SYSTEM_ASSERTION_OPTIONS = Set.of(
@@ -121,7 +122,7 @@ public final class RuntimeOptionParser {
                     "-dsa",
                     "-enablesystemassertions",
                     "-disablesystemassertions");
-    private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
+    @GuaranteeFolded private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "UnlockExperimentalVMOptions",
                     "UnlockDiagnosticVMOptions",
                     "AbortVMOnCompilationFailure",
@@ -132,7 +133,7 @@ public final class RuntimeOptionParser {
                     "DisplayVMOutput",
                     "LogVMOutput",
                     "PrintFlagsFinal");
-    private static final Set<String> RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
+    @GuaranteeFolded private static final Set<String> RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     "TieredStopAtLevel",
                     "MaxRAMPercentage",
