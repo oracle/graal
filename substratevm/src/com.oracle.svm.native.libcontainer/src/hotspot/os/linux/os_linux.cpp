@@ -185,7 +185,7 @@ enum CoredumpFilterBit {
 
 namespace svm_container {
 
-julong os::Linux::_physical_memory = 0;
+physical_memory_size_type os::Linux::_physical_memory = 0;
 
 #ifndef NATIVE_IMAGE
 address   os::Linux::_initial_thread_stack_bottom = nullptr;
@@ -261,15 +261,16 @@ julong os::Linux::available_memory_in_container() {
   return avail_mem;
 }
 
-julong os::available_memory() {
-  return Linux::available_memory();
+bool os::available_memory(physical_memory_size_type& value) {
+  return Linux::available_memory(value);
 }
 
-julong os::Linux::available_memory() {
+bool os::Linux::available_memory(physical_memory_size_type& value) {
   julong avail_mem = available_memory_in_container();
   if (avail_mem != static_cast<julong>(-1L)) {
     log_trace(os)("available container memory: " JULONG_FORMAT, avail_mem);
-    return avail_mem;
+    value = static_cast<physical_memory_size_type>(avail_mem);
+    return true;
   }
 
   FILE *fp = os::fopen("/proc/meminfo", "r");
@@ -284,66 +285,88 @@ julong os::Linux::available_memory() {
     fclose(fp);
   }
   if (avail_mem == static_cast<julong>(-1L)) {
-    avail_mem = free_memory();
+    physical_memory_size_type free_mem = 0;
+    if (!free_memory(free_mem)) {
+      return false;
+    }
+    avail_mem = static_cast<julong>(free_mem);
   }
   log_trace(os)("available memory: " JULONG_FORMAT, avail_mem);
-  return avail_mem;
+  value = static_cast<physical_memory_size_type>(avail_mem);
+  return true;
 }
 
-julong os::free_memory() {
-  return Linux::free_memory();
+bool os::free_memory(physical_memory_size_type& value) {
+  return Linux::free_memory(value);
 }
 
-julong os::Linux::free_memory() {
+bool os::Linux::free_memory(physical_memory_size_type& value) {
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
   julong free_mem = available_memory_in_container();
   if (free_mem != static_cast<julong>(-1L)) {
     log_trace(os)("free container memory: " JULONG_FORMAT, free_mem);
-    return free_mem;
+    value = static_cast<physical_memory_size_type>(free_mem);
+    return true;
   }
 
-  sysinfo(&si);
+  int ret = sysinfo(&si);
+  if (ret != 0) {
+    return false;
+  }
   free_mem = (julong)si.freeram * si.mem_unit;
   log_trace(os)("free memory: " JULONG_FORMAT, free_mem);
-  return free_mem;
+  value = static_cast<physical_memory_size_type>(free_mem);
+  return true;
 }
 
-jlong os::total_swap_space() {
+bool os::total_swap_space(physical_memory_size_type& value) {
   if (OSContainer::is_containerized()) {
-    if (OSContainer::memory_limit_in_bytes() > 0) {
-      return (jlong)(OSContainer::memory_and_swap_limit_in_bytes() - OSContainer::memory_limit_in_bytes());
+    jlong memory_and_swap_limit_in_bytes = OSContainer::memory_and_swap_limit_in_bytes();
+    jlong memory_limit_in_bytes = OSContainer::memory_limit_in_bytes();
+    if (memory_limit_in_bytes > 0 && memory_and_swap_limit_in_bytes > 0) {
+      value = static_cast<physical_memory_size_type>(memory_and_swap_limit_in_bytes - memory_limit_in_bytes);
+      return true;
     }
-  }
+  } // fallback to the host swap space if the container did return the unbound value of -1
   struct sysinfo si;
   int ret = sysinfo(&si);
   if (ret != 0) {
-    return -1;
+    assert(false, "sysinfo failed in total_swap_space(): %s", os::strerror(errno));
+    return false;
   }
-  return  (jlong)(si.totalswap * si.mem_unit);
+  value = static_cast<physical_memory_size_type>(si.totalswap) * si.mem_unit;
+  return true;
 }
 
-static jlong host_free_swap() {
+static bool host_free_swap_f(physical_memory_size_type& value) {
   struct sysinfo si;
   int ret = sysinfo(&si);
   if (ret != 0) {
-    return -1;
+    assert(false, "sysinfo failed in host_free_swap_f(): %s", os::strerror(errno));
+    return false;
   }
-  return (jlong)(si.freeswap * si.mem_unit);
+  value = static_cast<physical_memory_size_type>(si.freeswap) * si.mem_unit;
+  return true;
 }
 
-jlong os::free_swap_space() {
+bool os::free_swap_space(physical_memory_size_type& value) {
   // os::total_swap_space() might return the containerized limit which might be
   // less than host_free_swap(). The upper bound of free swap needs to be the lower of the two.
-  jlong host_free_swap_val = MIN2(os::total_swap_space(), host_free_swap());
-  assert(host_free_swap_val >= 0, "sysinfo failed?");
+  physical_memory_size_type total_swap_space = 0;
+  physical_memory_size_type host_free_swap = 0;
+  if (!os::total_swap_space(total_swap_space) || !host_free_swap_f(host_free_swap)) {
+    return false;
+  }
+  physical_memory_size_type host_free_swap_val = MIN2(total_swap_space, host_free_swap);
   if (OSContainer::is_containerized()) {
     jlong mem_swap_limit = OSContainer::memory_and_swap_limit_in_bytes();
     jlong mem_limit = OSContainer::memory_limit_in_bytes();
     if (mem_swap_limit >= 0 && mem_limit >= 0) {
       jlong delta_limit = mem_swap_limit - mem_limit;
       if (delta_limit <= 0) {
-        return 0;
+        value = 0;
+        return true;
       }
       jlong mem_swap_usage = OSContainer::memory_and_swap_usage_in_bytes();
       jlong mem_usage = OSContainer::memory_usage_in_bytes();
@@ -351,40 +374,50 @@ jlong os::free_swap_space() {
         jlong delta_usage = mem_swap_usage - mem_usage;
         if (delta_usage >= 0) {
           jlong free_swap = delta_limit - delta_usage;
-          return free_swap >= 0 ? free_swap : 0;
+          value = free_swap >= 0 ? static_cast<physical_memory_size_type>(free_swap) : 0;
+          return true;
         }
       }
     }
     // unlimited or not supported. Fall through to return host value
     log_trace(os,container)("os::free_swap_space: container_swap_limit=" JLONG_FORMAT
-                            " container_mem_limit=" JLONG_FORMAT " returning host value: " JLONG_FORMAT,
+                            " container_mem_limit=" JLONG_FORMAT " returning host value: " PHYS_MEM_TYPE_FORMAT,
                             mem_swap_limit, mem_limit, host_free_swap_val);
   }
-  return host_free_swap_val;
+  value = host_free_swap_val;
+  return true;
 }
 #endif // !NATIVE_IMAGE
 
-julong os::physical_memory() {
-  jlong phys_mem = 0;
+physical_memory_size_type os::physical_memory() {
   if (OSContainer::is_containerized()) {
     jlong mem_limit;
     if ((mem_limit = OSContainer::memory_limit_in_bytes()) > 0) {
       log_trace(os)("total container memory: " JLONG_FORMAT, mem_limit);
-      return mem_limit;
+      return static_cast<physical_memory_size_type>(mem_limit);
     }
   }
 
-  phys_mem = Linux::physical_memory();
-  log_trace(os)("total system memory: " JLONG_FORMAT, phys_mem);
+  physical_memory_size_type phys_mem = Linux::physical_memory();
+  log_trace(os)("total system memory: " PHYS_MEM_TYPE_FORMAT, phys_mem);
   return phys_mem;
 }
 
 #ifndef NATIVE_IMAGE
+// Returns the resident set size (RSS) of the process.
+// Falls back to using VmRSS from /proc/self/status if /proc/self/smaps_rollup is unavailable.
+// Note: On kernels with memory cgroups or shared memory, VmRSS may underreport RSS.
+// Users requiring accurate RSS values should be aware of this limitation.
 size_t os::rss() {
   size_t size = 0;
-  os::Linux::meminfo_t info;
-  if (os::Linux::query_process_memory_info(&info)) {
-    size = info.vmrss * K;
+  os::Linux::accurate_meminfo_t accurate_info;
+  if (os::Linux::query_accurate_process_memory_info(&accurate_info) && accurate_info.rss != -1) {
+    size = accurate_info.rss * K;
+  } else {
+    os::Linux::meminfo_t info;
+    if (os::Linux::query_process_memory_info(&info)) {
+      size = info.vmrss * K;
+    }
   }
   return size;
 }
@@ -500,13 +533,11 @@ bool os::Linux::get_tick_information(CPUPerfTicks* pticks, int which_logical_cpu
 }
 
 #ifndef SYS_gettid
-// i386: 224, amd64: 186, sparc: 143
+// i386: 224, amd64: 186
   #if defined(__i386__)
     #define SYS_gettid 224
   #elif defined(__amd64__)
     #define SYS_gettid 186
-  #elif defined(__sparc__)
-    #define SYS_gettid 143
   #else
     #error "Define SYS_gettid for this architecture"
   #endif
@@ -556,7 +587,7 @@ void os::Linux::initialize_system_info() {
     }
   }
 #endif // !NATIVE_IMAGE
-  _physical_memory = (julong)sysconf(_SC_PHYS_PAGES) * (julong)sysconf(_SC_PAGESIZE);
+  _physical_memory = static_cast<physical_memory_size_type>(sysconf(_SC_PHYS_PAGES)) * static_cast<physical_memory_size_type>(sysconf(_SC_PAGESIZE));
   assert(processor_count() > 0, "linux error");
 }
 
@@ -1955,6 +1986,8 @@ void * os::Linux::dlopen_helper(const char *filename, char *ebuf, int ebuflen) {
   assert(rtn == 0, "fegetenv must succeed");
 #endif // IA32
 
+  Events::log_dll_message(nullptr, "Attempting to load shared library %s", filename);
+
   void* result;
   JFR_ONLY(NativeLibraryLoadEvent load_event(filename, &result);)
   result = ::dlopen(filename, RTLD_LAZY);
@@ -2383,6 +2416,37 @@ bool os::Linux::query_process_memory_info(os::Linux::meminfo_t* info) {
   return false;
 }
 
+// Accurate memory information need Linux 4.14 or newer
+bool os::Linux::query_accurate_process_memory_info(os::Linux::accurate_meminfo_t* info) {
+  FILE* f = os::fopen("/proc/self/smaps_rollup", "r");
+  if (f == nullptr) {
+    return false;
+  }
+
+  const size_t num_values = sizeof(os::Linux::accurate_meminfo_t) / sizeof(size_t);
+  size_t num_found = 0;
+  char buf[256];
+  info->rss = info->pss = info->pssdirty = info->pssanon =
+      info->pssfile = info->pssshmem = info->swap = info->swappss = -1;
+
+  while (::fgets(buf, sizeof(buf), f) != nullptr && num_found < num_values) {
+    if ( (info->rss == -1        && sscanf(buf, "Rss: %zd kB", &info->rss) == 1) ||
+         (info->pss == -1        && sscanf(buf, "Pss: %zd kB", &info->pss) == 1) ||
+         (info->pssdirty == -1   && sscanf(buf, "Pss_Dirty: %zd kB", &info->pssdirty) == 1) ||
+         (info->pssanon == -1    && sscanf(buf, "Pss_Anon: %zd kB", &info->pssanon) == 1) ||
+         (info->pssfile == -1    && sscanf(buf, "Pss_File: %zd kB", &info->pssfile) == 1) ||
+         (info->pssshmem == -1   && sscanf(buf, "Pss_Shmem: %zd kB", &info->pssshmem) == 1) ||
+         (info->swap == -1       && sscanf(buf, "Swap: %zd kB", &info->swap) == 1) ||
+         (info->swappss == -1    && sscanf(buf, "SwapPss: %zd kB", &info->swappss) == 1)
+         )
+    {
+      num_found ++;
+    }
+  }
+  fclose(f);
+  return true;
+}
+
 #ifdef __GLIBC__
 // For Glibc, print a one-liner with the malloc tunables.
 // Most important and popular is MALLOC_ARENA_MAX, but we are
@@ -2467,6 +2531,7 @@ void os::Linux::print_uptime_info(outputStream* st) {
   if (ret == 0) {
     os::print_dhm(st, "OS uptime:", (long) sinfo.uptime);
   }
+  assert(ret == 0, "sysinfo failed: %s", os::strerror(errno));
 }
 
 bool os::Linux::print_container_info(outputStream* st) {
@@ -2589,16 +2654,21 @@ void os::print_memory_info(outputStream* st) {
 
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
-  sysinfo(&si);
-
-  st->print(", physical " UINT64_FORMAT "k",
-            os::physical_memory() >> 10);
-  st->print("(" UINT64_FORMAT "k free)",
-            os::available_memory() >> 10);
-  st->print(", swap " UINT64_FORMAT "k",
-            ((jlong)si.totalswap * si.mem_unit) >> 10);
-  st->print("(" UINT64_FORMAT "k free)",
-            ((jlong)si.freeswap * si.mem_unit) >> 10);
+  int ret = sysinfo(&si);
+  assert(ret == 0, "sysinfo failed: %s", os::strerror(errno));
+  physical_memory_size_type phys_mem = physical_memory();
+  st->print(", physical " PHYS_MEM_TYPE_FORMAT "k",
+            phys_mem >> 10);
+  physical_memory_size_type avail_mem = 0;
+  (void)os::available_memory(avail_mem);
+  st->print("(" PHYS_MEM_TYPE_FORMAT "k free)",
+            avail_mem >> 10);
+  if (ret == 0) {
+    st->print(", swap " UINT64_FORMAT "k",
+              ((jlong)si.totalswap * si.mem_unit) >> 10);
+    st->print("(" UINT64_FORMAT "k free)",
+              ((jlong)si.freeswap * si.mem_unit) >> 10);
+  }
   st->cr();
   st->print("Page Sizes: ");
   _page_sizes.print_on(st);
@@ -2730,8 +2800,6 @@ const char* search_string = "CPU";
 const char* search_string = "cpu";
 #elif defined(S390)
 const char* search_string = "machine =";
-#elif defined(SPARC)
-const char* search_string = "cpu";
 #else
 const char* search_string = "Processor";
 #endif
@@ -2783,8 +2851,6 @@ void os::get_summary_cpu_info(char* cpuinfo, size_t length) {
   strncpy(cpuinfo, LP64_ONLY("RISCV64") NOT_LP64("RISCV32"), length);
 #elif defined(S390)
   strncpy(cpuinfo, "S390", length);
-#elif defined(SPARC)
-  strncpy(cpuinfo, "sparcv9", length);
 #elif defined(ZERO_LIBARCH)
   strncpy(cpuinfo, ZERO_LIBARCH, length);
 #else
@@ -2792,8 +2858,117 @@ void os::get_summary_cpu_info(char* cpuinfo, size_t length) {
 #endif
 }
 
+static char saved_jvm_path[MAXPATHLEN] = {0};
+
+// Find the full path to the current module, libjvm.so
+void os::jvm_path(char *buf, jint buflen) {
+  // Error checking.
+  if (buflen < MAXPATHLEN) {
+    assert(false, "must use a large-enough buffer");
+    buf[0] = '\0';
+    return;
+  }
+  // Lazy resolve the path to current module.
+  if (saved_jvm_path[0] != 0) {
+    strcpy(buf, saved_jvm_path);
+    return;
+  }
+
+  char dli_fname[MAXPATHLEN];
+  dli_fname[0] = '\0';
+  bool ret = dll_address_to_library_name(
+                                         CAST_FROM_FN_PTR(address, os::jvm_path),
+                                         dli_fname, sizeof(dli_fname), nullptr);
+  assert(ret, "cannot locate libjvm");
+  char *rp = nullptr;
+  if (ret && dli_fname[0] != '\0') {
+    rp = os::realpath(dli_fname, buf, buflen);
+  }
+  if (rp == nullptr) {
+    return;
+  }
+
+  // If executing unit tests we require JAVA_HOME to point to the real JDK.
+  if (Arguments::executing_unit_tests()) {
+    // Look for JAVA_HOME in the environment.
+    char* java_home_var = ::getenv("JAVA_HOME");
+    if (java_home_var != nullptr && java_home_var[0] != 0) {
+
+      // Check the current module name "libjvm.so".
+      const char* p = strrchr(buf, '/');
+      if (p == nullptr) {
+        return;
+      }
+      assert(strstr(p, "/libjvm") == p, "invalid library name");
+
+      stringStream ss(buf, buflen);
+      rp = os::realpath(java_home_var, buf, buflen);
+      if (rp == nullptr) {
+        return;
+      }
+
+      assert((int)strlen(buf) < buflen, "Ran out of buffer room");
+      ss.print("%s/lib", buf);
+
+      if (0 == access(buf, F_OK)) {
+        // Use current module name "libjvm.so"
+        ss.print("/%s/libjvm%s", Abstract_VM_Version::vm_variant(), JNI_LIB_SUFFIX);
+        assert(strcmp(buf + strlen(buf) - strlen(JNI_LIB_SUFFIX), JNI_LIB_SUFFIX) == 0,
+               "buf has been truncated");
+      } else {
+        // Go back to path of .so
+        rp = os::realpath(dli_fname, buf, buflen);
+        if (rp == nullptr) {
+          return;
+        }
+      }
+    }
+  }
+
+  strncpy(saved_jvm_path, buf, MAXPATHLEN);
+  saved_jvm_path[MAXPATHLEN - 1] = '\0';
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Virtual Memory
+
+// Rationale behind this function:
+//  current (Mon Apr 25 20:12:18 MSD 2005) oprofile drops samples without executable
+//  mapping for address (see lookup_dcookie() in the kernel module), thus we cannot get
+//  samples for JITted code. Here we create private executable mapping over the code cache
+//  and then we can use standard (well, almost, as mapping can change) way to provide
+//  info for the reporting script by storing timestamp and location of symbol
+void linux_wrap_code(char* base, size_t size) {
+  static volatile jint cnt = 0;
+
+  static_assert(sizeof(off_t) == 8, "Expected Large File Support in this file");
+
+  if (!UseOprofile) {
+    return;
+  }
+
+  char buf[PATH_MAX+1];
+  int num = Atomic::add(&cnt, 1);
+
+  snprintf(buf, sizeof(buf), "%s/hs-vm-%d-%d",
+           os::get_temp_directory(), os::current_process_id(), num);
+  unlink(buf);
+
+  int fd = ::open(buf, O_CREAT | O_RDWR, S_IRWXU);
+
+  if (fd != -1) {
+    off_t rv = ::lseek(fd, size-2, SEEK_SET);
+    if (rv != (off_t)-1) {
+      if (::write(fd, "", 1) == 1) {
+        mmap(base, size,
+             PROT_READ|PROT_WRITE|PROT_EXEC,
+             MAP_PRIVATE|MAP_FIXED|MAP_NORESERVE, fd, 0);
+      }
+    }
+    ::close(fd);
+    unlink(buf);
+  }
+}
 
 static bool recoverable_mmap_error(int err) {
   // See if the error is one we can let the caller handle. This
@@ -5160,7 +5335,7 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
 
     if (core_pattern[0] == '|') {
       written = jio_snprintf(buffer, bufferSize,
-                             "\"%s\" (or dumping to %s/core.%d)",
+                             "\"%s\" (alternatively, falling back to %s/core.%d)",
                              &core_pattern[1], p, current_process_id());
     } else if (pid_pos != nullptr) {
       *pid_pos = '\0';

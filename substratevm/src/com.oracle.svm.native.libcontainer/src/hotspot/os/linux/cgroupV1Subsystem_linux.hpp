@@ -106,6 +106,7 @@ class CgroupV1MemoryController final : public CgroupMemoryController {
     const char* mount_point() override { return reader()->mount_point(); }
     const char* cgroup_path() override { return reader()->cgroup_path(); }
   private:
+    jlong uses_mem_hierarchy();
     jlong read_mem_swappiness();
     jlong read_mem_swap(julong host_total_memsw);
 
@@ -124,7 +125,9 @@ class CgroupV1CpuController final : public CgroupCpuController {
   public:
     int cpu_quota() override;
     int cpu_period() override;
+#ifndef NATIVE_IMAGE
     int cpu_shares() override;
+#endif // !NATIVE_IMAGE
     void set_subsystem_path(const char *cgroup_path) override {
       reader()->set_subsystem_path(cgroup_path);
     }

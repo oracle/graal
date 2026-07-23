@@ -720,8 +720,8 @@ void* os::malloc(size_t size, MemTag mem_tag, const NativeCallStack& stack) {
   if (CDSConfig::is_dumping_static_archive()) {
     // Need to deterministically fill all the alignment gaps in C++ structures.
     ::memset(inner_ptr, 0, size);
-  } else {
-    DEBUG_ONLY(::memset(inner_ptr, uninitBlockPad, size);)
+  } else if (ZapCHeap) {
+    ::memset(inner_ptr, uninitBlockPad, size);
   }
   DEBUG_ONLY(break_if_ptr_caught(inner_ptr);)
   return inner_ptr;
@@ -794,7 +794,7 @@ void* os::realloc(void *memblock, size_t size, MemTag mem_tag, const NativeCallS
 
 #ifdef ASSERT
     assert(old_size == free_info.size, "Sanity");
-    if (old_size < size) {
+    if (ZapCHeap && old_size < size) {
       // We also zap the newly extended region.
       ::memset((char*)new_inner_ptr + old_size, uninitBlockPad, size - old_size);
     }
@@ -1237,12 +1237,13 @@ void os::print_summary_info(outputStream* st, char* buf, size_t buflen) {
 #endif // PRODUCT
   get_summary_cpu_info(buf, buflen);
   st->print("%s, ", buf);
-  size_t mem = physical_memory()/G;
+  physical_memory_size_type phys_mem = physical_memory();
+  physical_memory_size_type mem = phys_mem/G;
   if (mem == 0) {  // for low memory systems
-    mem = physical_memory()/M;
-    st->print("%d cores, %zuM, ", processor_count(), mem);
+    mem = phys_mem/M;
+    st->print("%d cores, " PHYS_MEM_TYPE_FORMAT "M, ", processor_count(), mem);
   } else {
-    st->print("%d cores, %zuG, ", processor_count(), mem);
+    st->print("%d cores, " PHYS_MEM_TYPE_FORMAT "G, ", processor_count(), mem);
   }
   get_summary_os_info(buf, buflen);
   st->print_raw(buf);
@@ -1993,17 +1994,17 @@ bool os::is_server_class_machine() {
     return true;
   }
   // Then actually look at the machine
-  bool         result            = false;
-  const unsigned int    server_processors = 2;
-  const julong server_memory     = 2UL * G;
+  bool  result                                    = false;
+  const unsigned int server_processors            = 2;
+  const physical_memory_size_type server_memory   = 2UL * G;
   // We seem not to get our full complement of memory.
   //     We allow some part (1/8?) of the memory to be "missing",
   //     based on the sizes of DIMMs, and maybe graphics cards.
-  const julong missing_memory   = 256UL * M;
-
+  const physical_memory_size_type missing_memory  = 256UL * M;
+  physical_memory_size_type phys_mem              = os::physical_memory();
   /* Is this a server class machine? */
   if ((os::active_processor_count() >= (int)server_processors) &&
-      (os::physical_memory() >= (server_memory - missing_memory))) {
+      (phys_mem >= server_memory - missing_memory)) {
     const unsigned int logical_processors =
       VM_Version::logical_processors_per_package();
     if (logical_processors > 1) {
@@ -2262,16 +2263,24 @@ static void assert_nonempty_range(const char* addr, size_t bytes) {
          p2i(addr), p2i(addr) + bytes);
 }
 
-julong os::used_memory() {
+bool os::used_memory(physical_memory_size_type& value) {
 #ifdef LINUX
   if (OSContainer::is_containerized()) {
     jlong mem_usage = OSContainer::memory_usage_in_bytes();
     if (mem_usage > 0) {
-      return mem_usage;
+      value = static_cast<physical_memory_size_type>(mem_usage);
+      return true;
+    } else {
+      return false;
     }
   }
 #endif
-  return os::physical_memory() - os::available_memory();
+  physical_memory_size_type avail_mem = 0;
+  // Return value ignored - defaulting to 0 on failure.
+  (void)os::available_memory(avail_mem);
+  physical_memory_size_type phys_mem = os::physical_memory();
+  value = phys_mem - avail_mem;
+  return true;
 }
 
 
@@ -2631,6 +2640,10 @@ jint os::set_minimum_stack_sizes() {
     return JNI_ERR;
   }
   return JNI_OK;
+}
+
+jlong os::get_minimum_java_stack_size() {
+  return static_cast<jlong>(_java_thread_min_stack_allowed);
 }
 
 // Builds a platform dependent Agent_OnLoad_<lib_name> function name
