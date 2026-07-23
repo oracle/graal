@@ -52,81 +52,77 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import sun.security.util.Debug;
 
-/**
- * AR-security-providers: Security Provider Architecture
- *
- * This class holds the build-time and run-time structures for JCA security-provider inclusion,
- * verification, and metadata tracing. The required behavior is specified separately by
- * §FS-security-providers.
- * See the <a href="../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
- * JCA Security Services documentation</a> for the user-facing configuration model.
- *
- * ## 1. Build-Time Inclusion and Verification
- *
- * {@code SecurityServicesFeature} coordinates two analysis inputs: subtype reachability discovers
- * candidate {@link Provider} classes, and JCA factory reachability discovers used service types.
- * For a provider candidate, the feature queries the reflection registry for type, constructor, or
- * factory-method registration. It instantiates accepted candidates through the declared nullary
- * constructor or static {@code provider()} method, then registers their service implementation
- * classes. The service-driven path calls the same service-registration machinery independently.
- * These mechanisms implement §FS-security-providers.2 and §FS-security-providers.7.3.
- * Default {@code SecureRandom} acquisition first registers the complete fallback SUN provider as
- * the narrow platform exception specified by §FS-security-providers.2.4.
- *
- * During analysis, the feature obtains each included provider's JCE verification result and stores
- * it in this image singleton, keyed by provider class name and provider name. The feature removes
- * those entries from the JDK's object-keyed cache so build-time provider instances do not remain
- * reachable in the image heap.
- *
- * ## 2. Run-Time Verification-Result Lookup
- *
- * The {@code javax.crypto.JceSecurity} substitutions consult the maps in this singleton when the
- * JDK verification cache has no entry. {@link Boolean#TRUE} encodes successful verification; an
- * exception object encodes the original verification failure. This lets run-time JCE checks reuse
- * the build-time result without retaining the provider instance or repeating JAR verification.
- *
- * ## 3. Type and Constructor Tracing
- *
- * The metadata tracer represents provider loading as two distinct accesses: a dynamic
- * {@link Class#forName(String)} lookup records the type, and constructor access records how the
- * provider is instantiated. Because the JCE lookup already has a provider instance,
- * {@link #traceProviderLookup(Provider)} emits the constructor access directly instead of creating
- * another provider. This is the native-image counterpart of the Tracing Agent's provider event.
- *
- * On a verification-result cache miss, {@link #reportMissingProviderRegistration(Class)} performs
- * an opaque, non-initializing {@code Class.forName} lookup using the provider's class loader. The
- * opaque name prevents image-build analysis from removing the probe. The lookup enters the regular
- * missing-reflection-registration machinery required by
- * §FS-security-providers.5.3. A successful lookup without a verification result is
- * an internal invariant violation.
- *
- * ## 4. Run-Time Provider Construction
- *
- * With run-time provider initialization, the {@code ProviderConfig} substitutions ask this class
- * to construct included JDK providers directly. Other configured providers follow the JDK's
- * reflective loading path. The substitutions preserve the JDK's provider-list state, recursion
- * guard, and retry counter, while the verification maps remain independent of provider creation.
- *
- * ## 5. Concurrent Analysis Registration
- *
- * Provider subtype callbacks add candidates to a concurrent set and mark it changed. A serialized
- * security-services analysis pass consumes new candidates and requests another analysis iteration
- * when processing registers new reflection or JNI metadata. The callbacks do not request analysis
- * iterations themselves, so concurrent discovery cannot race with iteration scheduling or lose
- * registrations pending for a later iteration.
- */
+/// AR-security-providers: Security Provider Architecture
+///
+/// This class holds the build-time and run-time structures for JCA security-provider inclusion,
+/// verification, and metadata tracing. The required behavior is specified separately by
+/// §FS-security-providers. See the [JCA Security Services documentation](../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md)
+/// for the user-facing configuration model.
+///
+/// ## 1. Build-Time Inclusion and Verification
+///
+/// [SecurityServicesFeature] coordinates two analysis inputs: subtype reachability discovers
+/// candidate [Provider] classes, and JCA factory reachability discovers used service types. For a
+/// provider candidate, the feature queries the reflection registry for type, constructor, or
+/// factory-method registration. It instantiates accepted candidates through the declared nullary
+/// constructor or static `provider()` method, then registers their service implementation
+/// classes. The service-driven path calls the same service-registration machinery independently.
+/// These mechanisms implement §FS-security-providers.2 and §FS-security-providers.7.3.
+/// [SecureRandom] acquisition registers the complete configured providers that declare
+/// `SecureRandom` services as the narrow platform exception specified by
+/// §FS-security-providers.2.4.
+///
+/// During analysis, the feature obtains each included provider's JCE verification result and stores
+/// it in this image singleton, keyed by provider class name. Provider inclusion is tracked
+/// separately so it cannot overwrite a failed verification result. The feature removes those
+/// entries from the JDK's object-keyed cache so build-time provider instances do not remain
+/// reachable in the image heap.
+///
+/// ## 2. Run-Time Verification-Result Lookup
+///
+/// The [javax.crypto.JceSecurity] substitutions consult the maps in this singleton when the JDK
+/// verification cache has no entry. [Boolean#TRUE] encodes successful verification; an exception
+/// object encodes the original verification failure. This lets run-time JCE checks reuse the
+/// build-time result without retaining the provider instance or repeating JAR verification.
+///
+/// ## 3. Type and Constructor Tracing
+///
+/// The metadata tracer represents provider loading as two distinct accesses: a dynamic
+/// [Class#forName(String)] lookup records the type, and constructor access records how the
+/// provider is instantiated. Because the JCE lookup already has a provider instance,
+/// [#traceProviderLookup(Provider)] emits the constructor access directly instead of creating
+/// another provider. This is the native-image counterpart of the Tracing Agent's provider event.
+///
+/// On a verification-result cache miss, [#reportMissingProviderRegistration(Class)] performs an
+/// opaque, non-initializing `Class.forName` lookup using the provider's class loader. The opaque
+/// name prevents image-build analysis from removing the probe. The lookup enters the regular
+/// missing-reflection-registration machinery required by §FS-security-providers.5.3. A successful
+/// lookup without a verification result is an internal invariant violation.
+///
+/// ## 4. Run-Time Provider Construction
+///
+/// With run-time provider initialization, the [ProviderConfig] substitutions ask this class to
+/// construct included JDK providers directly. Other configured providers follow the JDK's
+/// reflective loading path. The substitutions preserve the JDK's provider-list state, recursion
+/// guard, and retry counter, while the verification maps remain independent of provider creation.
+///
+/// ## 5. Concurrent Analysis Registration
+///
+/// Provider subtype callbacks add candidates to a concurrent set and mark it changed. A serialized
+/// security-services analysis pass consumes new candidates and requests another analysis iteration
+/// when processing registers new reflection or JNI metadata. The callbacks do not request analysis
+/// iterations themselves, so concurrent discovery cannot race with iteration scheduling or lose
+/// registrations pending for a later iteration.
+///
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class SecurityProvidersSupport {
     private static final Class<?>[] NO_PARAMETERS = new Class<?>[0];
 
-    /**
-     * A map of providers, identified by their names (see {@link Provider#getName()}), and the
-     * results of their verification (see javax.crypto.JceSecurity#getVerificationResult). This
-     * structure is used instead of the (see javax.crypto.JceSecurity#verifyingProviders) map to
-     * avoid keeping provider objects in the image heap.
-     */
-    private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
-    private final EconomicMap<String, Object> verifiedSecurityProviderClasses = ImageHeapMap.create("verifiedSecurityProviderClasses");
+    /// Provider classes that may be constructed at run time.
+    private final EconomicMap<String, Boolean> includedSecurityProviderClasses = ImageHeapMap.create("includedSecurityProviderClasses");
+
+    /// Build-time JCE verification results keyed by the run-time provider class.
+    private final EconomicMap<String, Object> securityProviderVerificationResults = ImageHeapMap.create("securityProviderVerificationResults");
 
     private Properties savedInitialSecurityProperties;
 
@@ -142,27 +138,22 @@ public final class SecurityProvidersSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addVerifiedSecurityProvider(String providerName, String providerClassName, Object verificationResult) {
-        verifiedSecurityProviders.put(providerName, verificationResult);
-        verifiedSecurityProviderClasses.put(providerClassName, verificationResult);
+    public void addSecurityProviderVerificationResult(String providerClassName, Object verificationResult) {
+        securityProviderVerificationResults.put(providerClassName, verificationResult);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addIncludedSecurityProviderClass(String providerClassName) {
-        verifiedSecurityProviderClasses.put(providerClassName, Boolean.TRUE);
+        includedSecurityProviderClasses.put(providerClassName, Boolean.TRUE);
     }
 
     public Object getSecurityProviderVerificationResult(Provider provider) {
-        Object result = verifiedSecurityProviderClasses.get(provider.getClass().getName());
-        return result != null ? result : verifiedSecurityProviders.get(provider.getName());
+        return securityProviderVerificationResults.get(provider.getClass().getName());
     }
 
-    /**
-     * Returns {@code true} if the provider, identified by either its name (e.g., SUN) or fully
-     * qualified name (e.g., sun.security.provider.Sun), was included in the native image.
-     */
-    public boolean isSecurityProviderIncluded(String providerName, String providerFQName) {
-        return verifiedSecurityProviders.containsKey(providerName) || verifiedSecurityProviderClasses.containsKey(providerFQName);
+    /// Returns `true` if the provider class was included in the native image.
+    public boolean isSecurityProviderIncluded(String providerClassName) {
+        return includedSecurityProviderClasses.containsKey(providerClassName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -188,13 +179,17 @@ public final class SecurityProvidersSupport {
     }
 
     public static String getBuiltInProviderName(String provName) {
-        return switch (provName) {
-            case "SUN", "sun.security.provider.Sun" -> "SUN";
-            case "SunRsaSign", "sun.security.rsa.SunRsaSign" -> "SunRsaSign";
-            case "SunJCE", "com.sun.crypto.provider.SunJCE" -> "SunJCE";
-            case "SunJSSE", "sun.security.ssl.SunJSSE" -> "SunJSSE";
-            case "SunEC", "sun.security.ec.SunEC" -> "SunEC";
-            case "Apple", "apple.security.AppleProvider" -> "Apple";
+        String providerClassName = getBuiltInProviderClassName(provName);
+        if (providerClassName == null) {
+            return null;
+        }
+        return switch (providerClassName) {
+            case "sun.security.provider.Sun" -> "SUN";
+            case "sun.security.rsa.SunRsaSign" -> "SunRsaSign";
+            case "com.sun.crypto.provider.SunJCE" -> "SunJCE";
+            case "sun.security.ssl.SunJSSE" -> "SunJSSE";
+            case "sun.security.ec.SunEC" -> "SunEC";
+            case "apple.security.AppleProvider" -> "Apple";
             default -> null;
         };
     }
@@ -211,7 +206,7 @@ public final class SecurityProvidersSupport {
         };
     }
 
-    /** §AR-security-providers.3: Cache misses probe type access for standard diagnostics. */
+    /// §AR-security-providers.3: Cache misses probe type access for standard diagnostics.
     public static void reportMissingProviderRegistration(Class<?> providerClass) {
         try {
             Class.forName(GraalDirectives.opaque(providerClass.getName()), false, providerClass.getClassLoader());
@@ -221,7 +216,7 @@ public final class SecurityProvidersSupport {
         throw VMError.shouldNotReachHere("A security provider without a verification result was registered for reflection: " + providerClass.getName());
     }
 
-    /** §AR-security-providers.3: Existing providers trace constructor access directly. */
+    /// §AR-security-providers.3: Existing providers trace constructor access directly.
     public static Provider traceProviderLookup(Provider provider) {
         if (provider == null) {
             return null;
@@ -249,20 +244,24 @@ public final class SecurityProvidersSupport {
     }
 
     public Provider loadBuiltInProvider(String provName, Debug debug) {
-        return switch (provName) {
-            case "SUN", "sun.security.provider.Sun" ->
-                isSecurityProviderIncluded("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : loadProviderReflectively("sun.security.provider.Sun", debug);
-            case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                isSecurityProviderIncluded("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : loadProviderReflectively("sun.security.rsa.SunRsaSign", debug);
-            case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                isSecurityProviderIncluded("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : loadProviderReflectively("com.sun.crypto.provider.SunJCE", debug);
-            case "SunJSSE", "sun.security.ssl.SunJSSE" ->
-                isSecurityProviderIncluded("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : loadProviderReflectively("sun.security.ssl.SunJSSE", debug);
-            case "SunEC", "sun.security.ec.SunEC" ->
-                isSecurityProviderIncluded("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : loadProviderReflectively("sun.security.ec.SunEC", debug);
-            case "Apple", "apple.security.AppleProvider" -> {
+        String providerClassName = getBuiltInProviderClassName(provName);
+        if (providerClassName == null) {
+            return null;
+        }
+        return switch (providerClassName) {
+            case "sun.security.provider.Sun" ->
+                isSecurityProviderIncluded(providerClassName) ? new sun.security.provider.Sun() : loadProviderReflectively(providerClassName, debug);
+            case "sun.security.rsa.SunRsaSign" ->
+                isSecurityProviderIncluded(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadProviderReflectively(providerClassName, debug);
+            case "com.sun.crypto.provider.SunJCE" ->
+                isSecurityProviderIncluded(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadProviderReflectively(providerClassName, debug);
+            case "sun.security.ssl.SunJSSE" ->
+                isSecurityProviderIncluded(providerClassName) ? new sun.security.ssl.SunJSSE() : loadProviderReflectively(providerClassName, debug);
+            case "sun.security.ec.SunEC" ->
+                isSecurityProviderIncluded(providerClassName) ? allocateSunECProvider() : loadProviderReflectively(providerClassName, debug);
+            case "apple.security.AppleProvider" -> {
                 try {
-                    Class<?> c = Class.forName("apple.security.AppleProvider");
+                    Class<?> c = Class.forName(providerClassName);
                     if (Provider.class.isAssignableFrom(c)) {
                         yield (Provider) c.getDeclaredConstructor().newInstance();
                     }
@@ -281,15 +280,6 @@ public final class SecurityProvidersSupport {
     }
 
     public static boolean isBuiltInProvider(String provName) {
-        return switch (provName) {
-            case "SUN", "sun.security.provider.Sun",
-                            "SunRsaSign", "sun.security.rsa.SunRsaSign",
-                            "SunJCE", "com.sun.crypto.provider.SunJCE",
-                            "SunJSSE", "sun.security.ssl.SunJSSE",
-                            "SunEC", "sun.security.ec.SunEC",
-                            "Apple", "apple.security.AppleProvider" ->
-                true;
-            default -> false;
-        };
+        return getBuiltInProviderClassName(provName) != null;
     }
 }
