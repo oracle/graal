@@ -106,8 +106,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private final Map<FunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
 
     /**
-     * Computes the equivalence class of a defined type. Every distinct defined type has a unique
-     * equivalence class and two defined types are equal iff their equivalence classes are equal.
+     * Computes the equivalence class of a top-level defined type. Every distinct top-level defined
+     * type has a unique equivalence class and two top-level defined types are equal iff their
+     * equivalence classes are equal.
      * <p>
      * These type equivalence classes are shared for all modules of all contexts in a given
      * {@link WasmLanguage} instance.
