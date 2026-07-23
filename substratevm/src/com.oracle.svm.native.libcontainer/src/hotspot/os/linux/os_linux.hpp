@@ -36,7 +36,7 @@ class os::Linux {
 
  protected:
 
-  static julong _physical_memory;
+  static physical_memory_size_type _physical_memory;
 
 
  public:
@@ -44,7 +44,7 @@ class os::Linux {
 
   static int active_processor_count();
 
-  static julong physical_memory() { return _physical_memory; }
+  static physical_memory_size_type physical_memory() { return _physical_memory; }
   static julong host_swap();
 
 };

@@ -174,10 +174,6 @@ int OSContainer::cpu_period() {
   return cgroup_subsystem->cpu_period();
 }
 
-int OSContainer::cpu_shares() {
-  assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");
-  return cgroup_subsystem->cpu_shares();
-}
 
 jlong OSContainer::cpu_usage_in_micros() {
   assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");

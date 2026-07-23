@@ -27,6 +27,7 @@
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+
 // Constructor
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
                                        char *cgroup_path,
@@ -43,54 +44,6 @@ CgroupV2Controller::CgroupV2Controller(const CgroupV2Controller& o) :
   _mount_point = o._mount_point;
 }
 
-/* cpu_shares
- *
- * Return the amount of cpu shares available to the process
- *
- * return:
- *    Share number (typically a number relative to 1024)
- *                 (2048 typically expresses 2 CPUs worth of processing)
- *    -1 for no share setup
- *    OSCONTAINER_ERROR for not supported
- */
-int CgroupV2CpuController::cpu_shares() {
-  julong shares;
-  CONTAINER_READ_NUMBER_CHECKED(reader(), "/cpu.weight", "Raw value for CPU Shares", shares);
-  int shares_int = (int)shares;
-  // Convert default value of 100 to no shares setup
-  if (shares_int == 100) {
-    log_debug(os, container)("CPU Shares is: %d", -1);
-    return -1;
-  }
-
-  // CPU shares (OCI) value needs to get translated into
-  // a proper Cgroups v2 value. See:
-  // https://github.com/containers/crun/blob/master/crun.1.md#cpu-controller
-  //
-  // Use the inverse of (x == OCI value, y == cgroupsv2 value):
-  // ((262142 * y - 1)/9999) + 2 = x
-  //
-  int x = 262142 * shares_int - 1;
-  double frac = x/9999.0;
-  x = ((int)frac) + 2;
-  log_trace(os, container)("Scaled CPU shares value is: %d", x);
-  // Since the scaled value is not precise, return the closest
-  // multiple of PER_CPU_SHARES for a more conservative mapping
-  if ( x <= PER_CPU_SHARES ) {
-     // will always map to 1 CPU
-     log_debug(os, container)("CPU Shares is: %d", x);
-     return x;
-  }
-  int f = x/PER_CPU_SHARES;
-  int lower_multiple = f * PER_CPU_SHARES;
-  int upper_multiple = (f + 1) * PER_CPU_SHARES;
-  int distance_lower = MAX2(lower_multiple, x) - MIN2(lower_multiple, x);
-  int distance_upper = MAX2(upper_multiple, x) - MIN2(upper_multiple, x);
-  x = distance_lower <= distance_upper ? lower_multiple : upper_multiple;
-  log_trace(os, container)("Closest multiple of %d of the CPU Shares value is: %d", PER_CPU_SHARES, x);
-  log_debug(os, container)("CPU Shares is: %d", x);
-  return x;
-}
 
 /* cpu_quota
  *

@@ -67,7 +67,6 @@ class OSContainer: AllStatic {
   static int cpu_quota();
   static int cpu_period();
 
-  static int cpu_shares();
 
   static jlong cpu_usage_in_micros();
 

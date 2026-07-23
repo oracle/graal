@@ -52,7 +52,7 @@ class os: AllStatic {
 
  public:
 
-  static julong physical_memory();
+  static physical_memory_size_type physical_memory();
 
   // number of CPUs
   static int processor_count() {
