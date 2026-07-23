@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.test.services;
 
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
+import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 
@@ -37,6 +40,19 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "--future-defaults=run-time-initialize-security-providers,explicit-security-provider-registration"
 })
 public class SecurityServiceExplicitProviderRegistrationTest {
+    @Test
+    public void testDefaultSecureRandomIncludesCompleteSunProvider() throws NoSuchAlgorithmException {
+        SecureRandom random = new SecureRandom();
+        Provider provider = random.getProvider();
+
+        Assert.assertEquals("SUN", provider.getName());
+        Assert.assertSame(provider, Security.getProvider("SUN"));
+        Assert.assertNotNull("Default SecureRandom must retain its SHA dependency.", MessageDigest.getInstance("SHA", provider));
+        Provider.Service jksService = provider.getService("KeyStore", "JKS");
+        Assert.assertNotNull("Provider registration must retain unrelated advertised services.", jksService);
+        Assert.assertNotNull("An unrelated advertised service must remain usable.", jksService.newInstance(null));
+    }
+
     @Test
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
         Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));

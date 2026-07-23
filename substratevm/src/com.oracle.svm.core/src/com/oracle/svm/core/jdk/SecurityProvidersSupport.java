@@ -70,6 +70,8 @@ import sun.security.util.Debug;
  * constructor or static {@code provider()} method, then registers their service implementation
  * classes. The service-driven path calls the same service-registration machinery independently.
  * These mechanisms implement §FS-security-providers.2 and §FS-security-providers.7.3.
+ * Default {@code SecureRandom} acquisition first registers the complete fallback SUN provider as
+ * the narrow platform exception specified by §FS-security-providers.2.4.
  *
  * During analysis, the feature obtains each included provider's JCE verification result and stores
  * it in this image singleton, keyed by provider class name and provider name. The feature removes
