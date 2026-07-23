@@ -44,6 +44,8 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.util.LogUtils;
 
@@ -83,6 +85,8 @@ public abstract class ConfigurationParser {
     public static final String BUNDLE_KEY = "bundle";
     private final EconomicMap<String, EconomicSet<String>> seenUnknownAttributesByType = EconomicMap.create();
     private final EnumSet<ConfigurationParserOption> parserOptions;
+    /* Build-time reporting state; the parser itself can also be used from image runtime code. */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static EconomicSet<String> usedMetadataFiles = EconomicSet.create();
 
     protected ConfigurationParser(EnumSet<ConfigurationParserOption> parserOptions) {
@@ -107,7 +111,9 @@ public abstract class ConfigurationParser {
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
             parseAndRegister(new JsonParser(reader).parse(), uri);
-            reportUsedMetadataFile(uri); // report if successfully parsed
+            if (!ImageInfo.inImageRuntimeCode()) {
+                reportUsedMetadataFile(uri); // report if successfully parsed
+            }
         } catch (FileNotFoundException e) {
             /*
              * Ignore: *-config.json files can be missing when reachability-metadata.json is
@@ -116,6 +122,7 @@ public abstract class ConfigurationParser {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void reportUsedMetadataFile(URI uri) {
         // usedMetadataFiles should not be null in regular usecases, unless already read
         // OmitPreviousConfigTests is an example where this unfortunately happens.
@@ -124,6 +131,7 @@ public abstract class ConfigurationParser {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static EconomicSet<String> getUsedMetadataFiles() {
         if (usedMetadataFiles == null) {
             return null;
