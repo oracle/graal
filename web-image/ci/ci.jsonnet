@@ -9,7 +9,7 @@ local platforms = r.platforms;
 local t = r.t;
 
 local daily = r.daily;
-local tier2 = r.tier2;
+local tier4 = r.tier4;
 
 {
   // THE TASK CONFIGURATION
@@ -18,10 +18,8 @@ local tier2 = r.tier2;
     'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.jdt + r.spotbugs + r.prettier + r.notify.base + platforms({
       'linux:amd64:jdk-latest': daily,
     }),
-    'unittest': mxgate('webimagebuild,webimageunittest,webimagespectest_no-closure') + r.task_spec({
-      mxgate_unittest_suite:: 'JS_JTT_Zip',
-    }) + t('30:00') + r.node22 + platforms({
-      'linux:amd64:jdk-latest': tier2,
+    'unittest': mxgate('webimagebuild,webimageunittest') + t('30:00') + r.notify.base + r.node22 + platforms({
+      'linux:amd64:jdk-latest': tier4,
     }),
   },
   processed_tasks:: r.process(self.task_dict),

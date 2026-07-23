@@ -26,7 +26,6 @@
 package com.oracle.svm.hosted.webimage.codegen;
 
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackend.CremaJNITrampolineData;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
