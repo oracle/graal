@@ -56,7 +56,6 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.struct.WasmStructAccess;
 import org.graalvm.wasm.types.DefinedType;
-import org.graalvm.wasm.types.FunctionType;
 import org.graalvm.wasm.types.StructType;
 
 import com.oracle.truffle.api.CallTarget;
@@ -103,7 +102,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private final Map<DefinedType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
     private final Map<Integer, WasmStructAccess> structAccessesByEquivalenceClass = new ConcurrentHashMap<>();
     private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-    private final Map<FunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
+    private final Map<DefinedType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
 
     /**
      * Computes the equivalence class of a top-level defined type. Every distinct top-level defined
@@ -146,15 +145,16 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     /**
-     * Gets or creates the interop call adapter for a function type. Always returns the same call
-     * target for any particular type.
+     * Gets or creates the interop call adapter for a top-level function type. Always returns the
+     * same call target for equivalent types.
      */
-    public CallTarget interopCallAdapterFor(FunctionType type) {
+    public CallTarget interopCallAdapterFor(DefinedType type) {
         CompilerAsserts.neverPartOfCompilation();
+        assert type.isFunctionType();
         CallTarget callAdapter = interopCallAdapters.get(type);
         if (callAdapter == null) {
             callAdapter = interopCallAdapters.computeIfAbsent(type,
-                            k -> new InteropCallAdapterNode(this, k).getCallTarget());
+                            k -> new InteropCallAdapterNode(this, k.asFunctionType()).getCallTarget());
         }
         return callAdapter;
     }
