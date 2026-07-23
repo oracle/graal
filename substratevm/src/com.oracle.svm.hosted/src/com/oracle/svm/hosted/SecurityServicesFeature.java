@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -69,7 +68,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import javax.crypto.Cipher;
@@ -120,7 +118,6 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -167,9 +164,12 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
     public static class Options {
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the security provider class for reflection instead.";
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class " +
                         "for reflection, or build with -H:Preserve=all).";
-        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register the security provider class for reflection instead; the tracing agent does this automatically.";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register each security provider class for reflection in reachability-metadata.json using " +
+                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]}; the Tracing Agent generates this metadata automatically.";
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE;
 
         @Option(help = "Enable automatic registration of security services.")//
         public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
@@ -177,7 +177,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         @Option(help = "Enable tracing of security services automatic registration.")//
         public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
 
-        @Option(help = "Comma-separated list of additional security service types (fully qualified class names) for automatic registration. Note that these must be JCA compliant.")//
+        @Option(help = ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP, deprecated = true, deprecationMessage = ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -533,16 +533,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
-        if (p == null) {
-            return true;
-        }
-        if (usedProviders.contains(p)) {
-            return false;
-        }
-        if (substitutionProcessor.isDeleted(GuestAccess.get().lookupType(p.getClass()))) {
-            return true;
-        }
-        return true;
+        return p == null || !usedProviders.contains(p);
     }
 
     private static void traceRemovedProviders(List<Provider> removedProviders) {
@@ -681,12 +672,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
 
         for (Class<?> serviceClass : computeKnownServices(access)) {
-            BiConsumer<DuringAnalysisAccess, Executable> handler = (a, t) -> registerServices(a, t, serviceClass);
             for (Method method : serviceClass.getMethods()) {
                 if (method.getName().equals("getInstance")) {
                     checkGetInstanceMethod(method);
                     /* The handler will be executed only once if any of the methods is triggered. */
-                    access.registerMethodOverrideReachabilityHandler(handler, method);
+                    access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, serviceClass), method);
                 }
             }
         }
@@ -702,18 +692,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * Provider.getDefaultSecureRandomService().
          */
         Method getDefaultPRNG = ReflectionUtil.lookupMethod(SecureRandom.class, "getDefaultPRNG", boolean.class, byte[].class);
-        access.registerReachabilityHandler(a -> registerDefaultSecureRandomServices(a, getDefaultPRNG), getDefaultPRNG);
-    }
-
-    private void registerDefaultSecureRandomServices(DuringAnalysisAccess access, Executable trigger) {
-        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
-            // Default acquisition retains the complete fallback provider as a platform dependency.
-            // \u00A7FS-security-providers.2.4
-            Class<?> providerClass = sun.security.provider.Sun.class;
-            registerProviderClassForReflection(providerClass);
-            addCandidateProviderClass(providerClass);
-        }
-        registerServices(access, trigger, SECURE_RANDOM_SERVICE);
+        access.registerReachabilityHandler(a -> registerServices(a, getDefaultPRNG, SecureRandom.class), getDefaultPRNG);
     }
 
     private void registerGSSReachabilityHandler(BeforeAnalysisAccess access) {
@@ -781,7 +760,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         // Checkstyle: disallow Class.getSimpleName
     }
 
-    ConcurrentHashMap<String, Boolean> processedServiceClasses = new ConcurrentHashMap<>();
+    private final Set<String> processedServiceTypes = ConcurrentHashMap.newKeySet();
 
     private void registerServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         /*
@@ -790,10 +769,30 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * reachable at run time", therefore we need to make sure that each serviceClass is
          * processed only once.
          */
-        processedServiceClasses.computeIfAbsent(serviceType, _ -> {
+        if (processedServiceTypes.add(serviceType)) {
+            if (FutureDefaultsOptions.explicitSecurityProviderRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
+                registerSecureRandomProviders();
+            }
             doRegisterServices(access, trigger, serviceType);
-            return true;
-        });
+        }
+    }
+
+    /**
+     * SecureRandom acquisition conditionally retains its complete configured providers as platform
+     * dependencies. The application does not need provider reflection metadata.
+     */
+    private void registerSecureRandomProviders() {
+        // \u00A7FS-security-providers.2.4
+        EconomicSet<Service> services = availableServices.get(SECURE_RANDOM_SERVICE);
+        VMError.guarantee(services != null);
+        EconomicSet<Class<?>> providerClasses = EconomicSet.create();
+        for (Service service : services) {
+            providerClasses.add(service.getProvider().getClass());
+        }
+        for (Class<?> providerClass : providerClasses) {
+            registerProviderClassForReflection(providerClass);
+            addCandidateProviderClass(providerClass);
+        }
     }
 
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
@@ -908,7 +907,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             registerForReflection(provider.getClass());
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
-            SecurityProvidersSupport.singleton().addVerifiedSecurityProvider(provider.getName(), provider.getClass().getName(), getProviderVerificationResult(provider));
+            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+            String providerClassName = provider.getClass().getName();
+            support.addIncludedSecurityProviderClass(providerClassName);
+            support.addSecurityProviderVerificationResult(providerClassName, getProviderVerificationResult(provider));
         }
     }
 
