@@ -54,7 +54,7 @@ import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**

@@ -33,7 +33,7 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;

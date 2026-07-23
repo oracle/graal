@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.hosted.ImageClassLoader;

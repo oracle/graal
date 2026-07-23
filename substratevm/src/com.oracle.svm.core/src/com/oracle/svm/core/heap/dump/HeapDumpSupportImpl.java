@@ -47,7 +47,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpError;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;

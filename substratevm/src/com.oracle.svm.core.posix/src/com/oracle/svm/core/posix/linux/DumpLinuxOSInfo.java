@@ -37,7 +37,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;

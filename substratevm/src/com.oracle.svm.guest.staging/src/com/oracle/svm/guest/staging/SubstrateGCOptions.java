@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging;
 
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
@@ -30,15 +30,13 @@ import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOption
 import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.heap.HeapSizeVerifier;
-import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -56,11 +54,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MinHeapSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().minHeapSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -72,11 +66,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxHeapSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().maxHeapSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -88,11 +78,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-
-                /* Update the isolate argument parser value. */
-                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxNewSize);
-                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+                GuestStagingDependencyBridge.singleton().maxNewSizeOptionValueChanged(newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -130,8 +116,7 @@ public class SubstrateGCOptions {
     public static final HostedOptionKey<TLABPolicy> TLABUsagePolicy = new HostedOptionKey<>(TLABPolicy.Auto, SubstrateGCOptions::verifyTLABUsagePolicy, DoNotPassToNativeGC);
 
     @Option(help = "Determines whether to outline write barrier code to a separate function, trading reduced image size for (potentially) worse performance.", type = OptionType.Expert) //
-    public static final HostedOptionKey<OutlineWriteBarriers> WriteBarrierOutlining = new HostedOptionKey<>(OutlineWriteBarriers.Auto, SubstrateGCOptions::verifyWriteBarrierOutlining,
-                    DoNotPassToNativeGC);
+    public static final HostedOptionKey<OutlineWriteBarriers> WriteBarrierOutlining = new HostedOptionKey<>(OutlineWriteBarriers.Auto, DoNotPassToNativeGC);
 
     @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
@@ -146,10 +131,10 @@ public class SubstrateGCOptions {
         }
     }
 
-    private static void verifyWriteBarrierOutlining(HostedOptionKey<OutlineWriteBarriers> key) {
-        OutlineWriteBarriers value = key.getValue();
-        if (SubstrateOptions.useG1GC() && value == OutlineWriteBarriers.YoungOnly) {
-            throw UserError.invalidOptionValue(key, value.name(), "This option value is not supported with the G1 garbage collector");
+    public static void validateWriteBarrierOutlining(boolean useG1GC) {
+        OutlineWriteBarriers value = WriteBarrierOutlining.getValue();
+        if (useG1GC && value == OutlineWriteBarriers.YoungOnly) {
+            throw UserError.invalidOptionValue(WriteBarrierOutlining, value.name(), "This option value is not supported with the G1 garbage collector");
         }
     }
 
@@ -175,9 +160,10 @@ public class SubstrateGCOptions {
         public static void validateVerifyGCOption(RuntimeOptionKey<Boolean> key) {
             Boolean value = key.getValue();
             if (value != null && value) {
-                if (SubstrateOptions.useEpsilonGC()) {
+                GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+                if (dependencyBridge.useEpsilonGC()) {
                     throw UserError.invalidOptionValue(key, true, "This option cannot be enabled if epsilon GC is used");
-                } else if (SubstrateOptions.useSerialGC() && !VerifyHeap.getValue()) {
+                } else if (dependencyBridge.useSerialGC() && !VerifyHeap.getValue()) {
                     throw UserError.invalidOptionValue(key, true, "This option can only be used together with " + SubstrateOptionsParser.commandArgument(VerifyHeap, "+"));
                 }
             }

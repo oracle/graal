@@ -24,14 +24,29 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.PrintStream;
+
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
+
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.HeapSizeVerifier;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
@@ -39,7 +54,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * directly.
  */
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
 
     @Override
@@ -48,8 +63,49 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void verifyHeapOptions() {
-        HeapSizeVerifier.verifyHeapOptions();
+    public boolean useEpsilonGC() {
+        return SubstrateOptions.useEpsilonGC();
+    }
+
+    @Override
+    public boolean useSerialGC() {
+        return SubstrateOptions.useSerialGC();
+    }
+
+    @Override
+    public UnsignedWord getMaxHeapAddressSpaceSize() {
+        return ReferenceAccess.singleton().getMaxAddressSpaceSize();
+    }
+
+    @Override
+    public int getHeapCompressionShift() {
+        return ReferenceAccess.singleton().getCompressionShift();
+    }
+
+    @Override
+    public void minHeapSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MinHeapSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+    }
+
+    @Override
+    public void maxHeapSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+    }
+
+    @Override
+    public void maxNewSizeOptionValueChanged(long newValue) {
+        HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxNewSize);
+        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
+    }
+
+    @Override
+    public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
+        Heap.getHeap().optionValueChanged(key);
     }
 
     @Override
@@ -65,5 +121,48 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void runLogManagerShutdownHook() {
         Util_java_lang_Shutdown.runLogManagerShutdownHook();
+    }
+
+    @Override
+    public Log log() {
+        return CoreLogSupport.log();
+    }
+
+    @Override
+    public PrintStream logStream() {
+        return CoreLogSupport.logStream();
+    }
+
+    @Override
+    public Log noopLog() {
+        return CoreLogSupport.noopLog();
+    }
+
+    @Override
+    public void configureLogFile(String optionPrefix, String logFile) {
+        RuntimeSupport.Hook closeLogFile = FunctionPointerLogHandler.configureLogFile(optionPrefix, logFile);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(closeLogFile);
+    }
+
+    @Override
+    public boolean shouldParseRuntimeOptions() {
+        return SubstrateOptions.ParseRuntimeOptions.getValue() ||
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
+    }
+
+    @Override
+    public boolean legacyJavaOptionMode() {
+        return SubstrateOptions.LegacyJavaOptionMode.getValue();
+    }
+
+    @Override
+    public void initializeSystemProperty(String key, String value) {
+        SystemPropertiesSupport.singleton().initializeProperty(key, value);
+    }
+
+    @Override
+    public void enablePreviewFeatures() {
+        Target_jdk_internal_misc_PreviewFeatures.ENABLED = true;
+        Target_java_lang_runtime_SwitchBootstraps.previewEnabled = true;
     }
 }

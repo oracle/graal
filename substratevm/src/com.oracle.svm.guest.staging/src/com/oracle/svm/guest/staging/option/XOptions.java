@@ -22,29 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.options.OptionKey;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
- * has a corresponding {@link RuntimeOptionKey} in {@link SubstrateOptions}.
+ * has a corresponding {@link RuntimeOptionKey} in guest staging.
  */
 public final class XOptions {
     private static final XFlag[] XOPTIONS = {
                     new XFlag("ms", SubstrateGCOptions.MinHeapSize),
                     new XFlag("mx", SubstrateGCOptions.MaxHeapSize),
                     new XFlag("mn", SubstrateGCOptions.MaxNewSize),
-                    new XFlag("ss", SubstrateOptions.StackSize)
+                    new XFlag("ss", SubstrateGuestOptions.StackSize)
     };
 
     /**

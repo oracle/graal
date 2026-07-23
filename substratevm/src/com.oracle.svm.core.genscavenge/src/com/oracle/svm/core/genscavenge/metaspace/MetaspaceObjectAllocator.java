@@ -43,7 +43,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;

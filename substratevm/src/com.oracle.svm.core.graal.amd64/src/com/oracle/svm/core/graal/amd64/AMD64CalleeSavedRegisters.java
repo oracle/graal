@@ -52,7 +52,7 @@ import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;

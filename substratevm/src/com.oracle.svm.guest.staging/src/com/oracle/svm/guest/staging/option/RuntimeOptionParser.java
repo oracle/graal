@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.guest.staging.option;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -38,20 +38,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.jdk.Target_java_lang_runtime_SwitchBootstraps;
-import com.oracle.svm.core.jdk.Target_jdk_internal_misc_PreviewFeatures;
-import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.guest.staging.ArgsSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -61,7 +52,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -94,7 +84,7 @@ public final class RuntimeOptionParser {
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
      */
-    static final String X_OPTION_PREFIX = "-X";
+    public static final String X_OPTION_PREFIX = "-X";
 
     private static final String PROPERTY_PREFIX = "-D";
     private static final String BOOT_CLASS_PATH_APPEND_PROPERTY = "jdk.boot.class.path.append";
@@ -181,7 +171,7 @@ public final class RuntimeOptionParser {
      * Returns the singleton instance that is created during native image generation and stored in
      * the {@link ImageSingletons}.
      */
-    @Fold
+    @GuestFold
     public static RuntimeOptionParser singleton() {
         return ImageSingletons.lookup(RuntimeOptionParser.class);
     }
@@ -203,12 +193,10 @@ public final class RuntimeOptionParser {
     /// returned array contains all arguments that were not consumed, i.e., were not recognized as
     /// options.
     ///
-    /// Note that the logic of whether to parse options must be in sync with
-    /// [IsolateArgumentParser#shouldParseArguments].
+    /// Note that the logic of whether to parse options must be in sync with the isolate argument
+    /// parser. [GuestStagingDependencyBridge#shouldParseRuntimeOptions] provides that policy here.
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        boolean parseRuntimeOptions = SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
-        if (!parseRuntimeOptions) {
+        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions()) {
             return initialArgs;
         }
 
@@ -225,7 +213,7 @@ public final class RuntimeOptionParser {
 
     /** Parses runtime options for a Java main image and returns the application main arguments. */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+        if (GuestStagingDependencyBridge.singleton().legacyJavaOptionMode()) {
             return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
         }
 
@@ -245,8 +233,7 @@ public final class RuntimeOptionParser {
     /// Configures the low level log file after all runtime options have been parsed.
     private static void configureLogFile(String logFile) {
         if (logFile != null) {
-            RuntimeSupport.Hook closeLogFile = FunctionPointerLogHandler.configureLogFile(LOG_FILE_OPTION_PREFIX, logFile);
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(closeLogFile);
+            GuestStagingDependencyBridge.singleton().configureLogFile(LOG_FILE_OPTION_PREFIX, logFile);
         }
     }
 
@@ -299,7 +286,7 @@ public final class RuntimeOptionParser {
      *             {@link Throwable#getMessage()}.
      */
     public void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean ignoreUnrecognized) {
-        Predicate<OptionKey<?>> isHosted = _ -> false;
+        Predicate<OptionKey<?>> isHosted = optionKey -> false;
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
@@ -396,7 +383,7 @@ public final class RuntimeOptionParser {
     private static void initializeProperties(EconomicMap<String, String> properties) {
         MapCursor<String, String> cursor = properties.getEntries();
         while (cursor.advance()) {
-            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue());
+            GuestStagingDependencyBridge.singleton().initializeSystemProperty(cursor.getKey(), cursor.getValue());
         }
     }
 
@@ -437,40 +424,6 @@ public final class RuntimeOptionParser {
             if (propertySuffix.equals(reservedSuffix) || propertySuffix.startsWith(reservedSuffix + ".")) {
                 return true;
             }
-        }
-        return false;
-    }
-
-    /// Parses module options that SVM applies to the runtime boot layer into the normalized
-    /// `jdk.module.*` property scheme.
-    private static boolean parseModuleOption(String arg, ParseContext context) {
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.MODULE_PATH_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.UPGRADE_MODULE_PATH_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.UPGRADE_MODULE_PATH_PROPERTY, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_MODULES_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + context.addModulesIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_READS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_READS_PROPERTY_PREFIX + context.addReadsIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_EXPORTS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + context.addExportsIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_OPENS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + context.addOpensIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerSupport.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
-            context.properties.put(RuntimeBootModuleLayerSupport.ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX + context.enableNativeAccessIndex++, optionValue(arg));
-            return true;
         }
         return false;
     }
@@ -544,14 +497,47 @@ public final class RuntimeOptionParser {
         Log.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
     }
 
+    /// Parses module options that SVM applies to the runtime boot layer into the normalized
+    /// `jdk.module.*` property scheme.
+    private static boolean parseModuleOption(String arg, ParseContext context) {
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.MODULE_PATH_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_PROPERTY, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_MODULES_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_MODULES_PROPERTY_PREFIX + context.addModulesIndex++, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_READS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_READS_PROPERTY_PREFIX + context.addReadsIndex++, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_EXPORTS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_EXPORTS_PROPERTY_PREFIX + context.addExportsIndex++, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_OPENS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ADD_OPENS_PROPERTY_PREFIX + context.addOpensIndex++, optionValue(arg));
+            return true;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX + context.enableNativeAccessIndex++, optionValue(arg));
+            return true;
+        }
+        return false;
+    }
+
     /// Parses `--enable-preview` and enables the runtime preview-feature flag consulted by
     /// `jdk.internal.misc.PreviewFeatures`.
     private static boolean parsePreviewOption(String arg) {
         if (!arg.equals(ENABLE_PREVIEW_OPTION)) {
             return false;
         }
-        Target_jdk_internal_misc_PreviewFeatures.ENABLED = true;
-        Target_java_lang_runtime_SwitchBootstraps.previewEnabled = true;
+        GuestStagingDependencyBridge.singleton().enablePreviewFeatures();
         return true;
     }
 
@@ -666,7 +652,7 @@ public final class RuntimeOptionParser {
 
     private static final class ParseContext {
         /// Whether to preserve the Java option handling behavior that existed before GR-74762.
-        final boolean legacyJavaOptionMode = SubstrateOptions.LegacyJavaOptionMode.getValue();
+        final boolean legacyJavaOptionMode = GuestStagingDependencyBridge.singleton().legacyJavaOptionMode();
 
         /// Collects system properties to initialize after recognized options are parsed.
         final EconomicMap<String, String> properties = EconomicMap.create();

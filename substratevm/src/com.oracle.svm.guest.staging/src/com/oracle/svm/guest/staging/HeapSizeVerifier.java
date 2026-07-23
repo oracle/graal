@@ -22,17 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging;
 
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.util.UserError;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 
 /**
  * Verifies that the heap size options are used consistently. Note that some checks seem redundant
@@ -89,11 +85,11 @@ public final class HeapSizeVerifier {
         }
     }
 
-    public static void verifyMinHeapSizeAgainstMaxAddressSpaceSize(UnsignedWord minHeapSize) throws UserException {
+    public static void verifyMinHeapSizeAgainstMaxAddressSpaceSize(UnsignedWord minHeapSize) {
         verifyAgainstMaxAddressSpaceSize(minHeapSize, MIN_HEAP_SIZE_NAME);
     }
 
-    public static void verifyMaxHeapSizeAgainstMaxAddressSpaceSize(UnsignedWord maxHeapSize) throws UserException {
+    public static void verifyMaxHeapSizeAgainstMaxAddressSpaceSize(UnsignedWord maxHeapSize) {
         verifyAgainstMaxAddressSpaceSize(maxHeapSize, MAX_HEAP_SIZE_NAME);
     }
 
@@ -102,10 +98,11 @@ public final class HeapSizeVerifier {
     }
 
     private static void verifyAgainstMaxAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
-        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
+        GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+        UnsignedWord maxAddressSpaceSize = dependencyBridge.getMaxHeapAddressSpaceSize();
         if (actualValue.aboveThan(maxAddressSpaceSize)) {
             String message = formatError(actualValue, actualValueName, maxAddressSpaceSize, "largest possible heap address space");
-            if (ReferenceAccess.singleton().getCompressionShift() > 0) {
+            if (dependencyBridge.getHeapCompressionShift() > 0) {
                 message += " To allow larger values, please disable compressed references when building the image by adding the option '-H:-UseCompressedReferences'";
             }
             throw reportError(message);
@@ -120,7 +117,7 @@ public final class HeapSizeVerifier {
         }
     }
 
-    private static RuntimeException reportError(String message) throws UserException {
+    private static RuntimeException reportError(String message) {
         if (SubstrateUtil.HOSTED) {
             throw UserError.abort(message);
         }
@@ -140,14 +137,5 @@ public final class HeapSizeVerifier {
             index++;
         }
         return value.rawValue() + units[index];
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class HostedHeapSizeVerifierFeature implements InternalFeature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /* At build-time, we can do a GC-independent verification of all the heap size settings. */
-        HeapSizeVerifier.verifyHeapOptions();
     }
 }

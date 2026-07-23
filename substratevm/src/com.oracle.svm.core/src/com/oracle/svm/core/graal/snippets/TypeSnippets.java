@@ -36,7 +36,7 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.word.DynamicHubAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;

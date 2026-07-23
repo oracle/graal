@@ -35,7 +35,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -51,7 +51,7 @@ class PosixLogHandlerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Log.finalizeDefaultLogHandler(new PosixLogHandler());
+        CoreLogSupport.finalizeDefaultLogHandler(new PosixLogHandler());
     }
 }
 

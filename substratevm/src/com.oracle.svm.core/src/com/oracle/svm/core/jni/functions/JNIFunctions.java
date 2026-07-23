@@ -119,8 +119,9 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -2134,7 +2135,7 @@ public final class JNIFunctions {
             StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
             LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-            Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
+            Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, message, null);
             if (log != null) {
                 try {
                     log.string("Fatal error reported via JNI: ").string(message).newline();

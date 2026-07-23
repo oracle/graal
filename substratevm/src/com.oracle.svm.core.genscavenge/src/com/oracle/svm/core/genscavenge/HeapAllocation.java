@@ -38,7 +38,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;

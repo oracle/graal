@@ -37,7 +37,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;

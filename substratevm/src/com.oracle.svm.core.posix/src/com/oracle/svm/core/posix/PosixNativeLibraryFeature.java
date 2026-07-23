@@ -44,7 +44,7 @@ import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;

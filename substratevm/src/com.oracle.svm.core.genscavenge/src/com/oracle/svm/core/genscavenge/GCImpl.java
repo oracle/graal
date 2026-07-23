@@ -45,7 +45,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -86,7 +86,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;

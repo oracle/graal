@@ -48,7 +48,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;

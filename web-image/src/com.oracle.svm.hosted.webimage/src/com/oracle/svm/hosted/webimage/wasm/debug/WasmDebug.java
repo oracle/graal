@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;

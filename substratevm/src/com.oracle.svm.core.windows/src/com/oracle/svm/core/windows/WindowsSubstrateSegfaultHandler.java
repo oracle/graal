@@ -41,7 +41,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;

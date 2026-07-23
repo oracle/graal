@@ -35,7 +35,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;

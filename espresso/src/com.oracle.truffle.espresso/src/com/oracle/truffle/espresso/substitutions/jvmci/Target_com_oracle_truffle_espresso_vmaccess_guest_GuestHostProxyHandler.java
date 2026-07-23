@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -242,6 +243,8 @@ public final class Target_com_oracle_truffle_espresso_vmaccess_guest_GuestHostPr
                 throw e;
             } catch (AbstractTruffleException ex) {
                 hostExceptionProfile.enter(node);
+                /* Capture the truffle stack trace now since we are going to wrap this exception before going through guest frames */
+                TruffleStackTrace.fillIn(ex);
                 StaticObject exceptionWrapper = meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoHostProxyException.allocateInstance(meta.getContext());
                 StaticObject foreignWrapper = StaticObject.createForeign(language, meta.java_lang_Object, ex, exceptionInterop);
                 String message = null;

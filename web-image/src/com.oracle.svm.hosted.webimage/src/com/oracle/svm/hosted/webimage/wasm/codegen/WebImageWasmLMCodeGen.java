@@ -34,10 +34,10 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeapWriter;
@@ -113,7 +113,7 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
     }
 
     private static int getNumStackPages() {
-        long stackSize = SubstrateOptions.StackSize.getValue();
+        long stackSize = SubstrateGuestOptions.StackSize.getValue();
         if (stackSize <= 0) {
             return 16;
         }

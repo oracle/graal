@@ -39,7 +39,7 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter.Group;
 import com.oracle.svm.shared.Uninterruptible;

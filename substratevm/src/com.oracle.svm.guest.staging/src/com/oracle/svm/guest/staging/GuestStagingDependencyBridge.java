@@ -24,7 +24,13 @@
  */
 package com.oracle.svm.guest.staging;
 
+import java.io.PrintStream;
+
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.UnsignedWord;
+
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 
 /**
  * Temporary bridge for cutting builder-to-guest migration dependencies.
@@ -44,17 +50,70 @@ public interface GuestStagingDependencyBridge {
      * {@code com.oracle.svm.core.IsolateArgumentParser.singleton().verifyOptionValues()}.
      * <p>
      * Remove this method when {@code com.oracle.svm.core.IsolateArgumentParser} moves to
-     * guest/staging.
+     * guest/staging (GR-77356).
      */
     void verifyIsolateArgumentOptionValues();
 
     /**
-     * Delegates to {@code com.oracle.svm.core.heap.HeapSizeVerifier.verifyHeapOptions()}.
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.
      * <p>
-     * Remove this method when {@code com.oracle.svm.core.heap.HeapSizeVerifier} moves to
-     * guest/staging.
+     * Remove this method when GC selection becomes guest-owned.
      */
-    void verifyHeapOptions();
+    boolean useEpsilonGC();
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useSerialGC()}.
+     * <p>
+     * Remove this method when GC selection becomes guest-owned.
+     */
+    boolean useSerialGC();
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.heap.ReferenceAccess.singleton().getMaxAddressSpaceSize()}.
+     * <p>
+     * Remove this method when reference layout information becomes guest-owned.
+     */
+    UnsignedWord getMaxHeapAddressSpaceSize();
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.heap.ReferenceAccess.singleton().getCompressionShift()}.
+     * <p>
+     * Remove this method when reference layout information becomes guest-owned.
+     */
+    int getHeapCompressionShift();
+
+    /**
+     * Verifies and records an updated minimum heap size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging (GR-77356).
+     */
+    void minHeapSizeOptionValueChanged(long newValue);
+
+    /**
+     * Verifies and records an updated maximum heap size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging (GR-77356).
+     */
+    void maxHeapSizeOptionValueChanged(long newValue);
+
+    /**
+     * Verifies and records an updated maximum young-generation size.
+     * <p>
+     * Remove this method when heap-size verification and isolate-argument storage move to
+     * guest/staging (GR-77356).
+     */
+    void maxNewSizeOptionValueChanged(long newValue);
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().optionValueChanged(key)}.
+     * <p>
+     * Remove this method when GC option change notification moves to guest/staging.
+     */
+    void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key);
 
     /**
      * Delegates to {@code com.oracle.svm.core.Isolates.isCurrentFirst()}.
@@ -81,4 +140,64 @@ public interface GuestStagingDependencyBridge {
      * (GR-71844).
      */
     void runLogManagerShutdownHook();
+
+    /**
+     * Returns the active low-level log.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    Log log();
+
+    /**
+     * Returns the active low-level log as a {@link PrintStream}.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    PrintStream logStream();
+
+    /**
+     * Returns the disabled low-level log.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    Log noopLog();
+
+    /**
+     * Configures the low-level log file and registers its teardown hook.
+     * <p>
+     * Remove this method when the low-level logging implementation moves to guest/staging
+     * (GR-77530).
+     */
+    void configureLogFile(String optionPrefix, String logFile);
+
+    /**
+     * Returns whether runtime arguments must be parsed in the current isolate.
+     * <p>
+     * Remove this method when isolate startup policy moves to guest/staging.
+     */
+    boolean shouldParseRuntimeOptions();
+
+    /**
+     * Returns whether runtime Java options use the legacy compatibility mode.
+     * <p>
+     * Remove this method when {@code LegacyJavaOptionMode} moves to guest/staging.
+     */
+    boolean legacyJavaOptionMode();
+
+    /**
+     * Initializes a system property parsed from a runtime Java option.
+     * <p>
+     * Remove this method when system-property initialization moves to guest/staging.
+     */
+    void initializeSystemProperty(String key, String value);
+
+    /**
+     * Enables the JDK runtime state selected by {@code --enable-preview}.
+     * <p>
+     * Remove this method when substitutions can move to guest/staging (GR-71844).
+     */
+    void enablePreviewFeatures();
 }

@@ -29,7 +29,7 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;

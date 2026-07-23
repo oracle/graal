@@ -46,7 +46,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;

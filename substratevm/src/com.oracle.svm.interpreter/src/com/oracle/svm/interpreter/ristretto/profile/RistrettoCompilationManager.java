@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
 public final class RistrettoCompilationManager {

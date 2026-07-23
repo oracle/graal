@@ -74,10 +74,10 @@ import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIExceptionHandle
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.util.Timer;
 
 /** Collection timers primarily for {@link GCImpl}. */

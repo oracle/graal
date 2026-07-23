@@ -175,6 +175,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserErrorSupportImpl;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestLibC;
@@ -1093,6 +1094,7 @@ public class NativeImageGenerator {
 
                 /* Init the BuildPhaseProviderImpl before any features need it. */
                 BuildPhaseProviderImpl.init();
+                UserErrorSupportImpl.init();
 
                 AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
 

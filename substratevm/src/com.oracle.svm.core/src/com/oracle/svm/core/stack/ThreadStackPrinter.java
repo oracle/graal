@@ -44,7 +44,7 @@ import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.vm.ci.code.BytecodeFrame;

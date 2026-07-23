@@ -50,7 +50,7 @@ import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.AlwaysInline;

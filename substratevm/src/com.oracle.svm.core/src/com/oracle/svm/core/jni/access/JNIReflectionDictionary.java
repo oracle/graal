@@ -49,7 +49,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;

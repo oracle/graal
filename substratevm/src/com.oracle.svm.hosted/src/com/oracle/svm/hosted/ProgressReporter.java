@@ -69,7 +69,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;

@@ -28,7 +28,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 

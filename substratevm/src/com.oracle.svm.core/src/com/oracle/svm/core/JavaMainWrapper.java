@@ -52,7 +52,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;

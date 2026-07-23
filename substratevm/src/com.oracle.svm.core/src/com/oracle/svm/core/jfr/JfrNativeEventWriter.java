@@ -32,7 +32,7 @@ import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

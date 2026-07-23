@@ -39,7 +39,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -112,7 +113,7 @@ public final class InvalidMethodPointerHandler {
          * cause of the fatal error.
          */
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
+        Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, message, null);
         if (log != null) {
             SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, Word.nullPointer(), true);
             log.string(message).newline();

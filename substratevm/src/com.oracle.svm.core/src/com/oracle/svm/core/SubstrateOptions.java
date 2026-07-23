@@ -618,9 +618,6 @@ public class SubstrateOptions {
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
-    @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
-
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(0L);
 

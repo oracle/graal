@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.shared.Uninterruptible;
@@ -63,6 +64,10 @@ public class RuntimeOptionValues {
         v = new AtomicReference<>(new OptionValues(values));
     }
 
+    public static RuntimeOptionsSupport createRuntimeOptionsSupport() {
+        return new RuntimeOptionsSupportImpl();
+    }
+
     /**
      * In layered images we only expose the actual singleton within the final layer. In other layers
      * we expose a {@link SharedLayerRuntimeOptionsValues} singleton which does not allow values to
@@ -77,7 +82,7 @@ public class RuntimeOptionValues {
         }
     }
 
-    public UnmodifiableEconomicSet<String> getAllOptionNames() {
+    UnmodifiableEconomicSet<String> getAllOptionNames() {
         return allOptionNames;
     }
 

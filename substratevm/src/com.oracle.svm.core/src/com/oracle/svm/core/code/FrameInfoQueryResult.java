@@ -33,7 +33,7 @@ import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;

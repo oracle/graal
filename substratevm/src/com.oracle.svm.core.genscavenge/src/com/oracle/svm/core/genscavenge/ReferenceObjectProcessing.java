@@ -39,7 +39,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;

@@ -39,7 +39,7 @@ import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;

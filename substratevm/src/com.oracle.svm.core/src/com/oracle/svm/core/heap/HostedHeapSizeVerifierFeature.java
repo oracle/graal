@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.core.heap;
 
-import java.util.function.Consumer;
-
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.guest.staging.HeapSizeVerifier;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 /**
- * Notifies the {@link Heap} implementation after the value of the option has changed.
+ * Invokes guest-owned heap option verification during image building.
  */
-public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public NotifyGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
-
-    public NotifyGCRuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> validation, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, validation, flags);
-    }
-
+@AutomaticallyRegisteredFeature
+class HostedHeapSizeVerifierFeature implements InternalFeature {
     @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
-        }
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* At build-time, we can do a GC-independent verification of all the heap size settings. */
+        GuestAccess guestAccess = GuestAccess.get();
+        var verifyHeapOptions = JVMCIReflectionUtil.getUniqueDeclaredMethod(guestAccess.lookupType(HeapSizeVerifier.class), "verifyHeapOptions");
+        guestAccess.invoke(verifyHeapOptions, null);
     }
 }

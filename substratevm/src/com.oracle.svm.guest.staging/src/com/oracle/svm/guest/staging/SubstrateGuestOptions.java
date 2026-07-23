@@ -25,16 +25,21 @@
 package com.oracle.svm.guest.staging;
 
 import com.oracle.svm.shared.meta.GuestFold;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
 
 public final class SubstrateGuestOptions {
 
     @Option(help = "Initialize the VM and run startup hooks.")//
     public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
+
+    @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
     @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
     @Option(help = "Prefix that is added to the names of entry point methods.")//

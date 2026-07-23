@@ -65,7 +65,7 @@ import com.oracle.svm.core.jvmti.JvmtiEnvs;
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;

@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;

@@ -36,7 +36,7 @@ import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;

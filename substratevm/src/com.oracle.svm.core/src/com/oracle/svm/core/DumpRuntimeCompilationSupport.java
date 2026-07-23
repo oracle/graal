@@ -27,7 +27,7 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.JavaVMOperation;
 
 public class DumpRuntimeCompilationSupport {

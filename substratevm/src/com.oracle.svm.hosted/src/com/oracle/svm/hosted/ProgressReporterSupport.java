@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeImageWriteAccess;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;

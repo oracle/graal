@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;

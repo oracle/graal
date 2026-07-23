@@ -55,7 +55,7 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.util.VMError;

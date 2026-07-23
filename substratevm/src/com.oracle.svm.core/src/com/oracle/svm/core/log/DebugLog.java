@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;

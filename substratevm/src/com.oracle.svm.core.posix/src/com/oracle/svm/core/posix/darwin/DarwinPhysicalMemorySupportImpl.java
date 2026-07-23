@@ -36,7 +36,7 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.posix.headers.darwin.Sysctl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
