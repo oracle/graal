@@ -582,10 +582,9 @@ public class NativeImageGenerator {
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
         var tempDirectoryOptionValue = NativeImageOptions.TempDirectory.getValue(hostedOptionValues.get()).lastValue().orElse(null);
-        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
-            var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
-            HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
-
+        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue);
+                        HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader,
+                                        tempDirectoryProvider.getTemporaryBuildDirectory())) {
             loader.initBuilderModules();
 
             installSingletonRegistries(imageLayerSupport);

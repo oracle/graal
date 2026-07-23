@@ -33,7 +33,7 @@ import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSIST
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 
 import java.lang.reflect.Constructor;
-import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -132,7 +132,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SVMImageLayerLoader extends ImageLayerLoader {
+public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseable {
     private final boolean useSharedLayerGraphs;
     private final boolean useSharedLayerStrengthenedGraphs;
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
@@ -176,15 +176,15 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final BaseLayerMethodResolver baseLayerMethodResolver = new BaseLayerMethodResolver(new LoaderBaseLayerProvider());
 
     public SVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshotData.Loader snapshot,
-                    FileChannel graphChannel, boolean useSharedLayerGraphs, boolean useSharedLayerStrengthenedGraphs) {
+                    Path graphPath, boolean useSharedLayerGraphs, boolean useSharedLayerStrengthenedGraphs) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.imageLayerBuildingSupport = imageLayerBuildingSupport;
         this.snapshot = snapshot;
-        this.graphStore = graphChannel == null ? null : ImageLayerGraphStore.openForReading(graphChannel);
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         this.useSharedLayerStrengthenedGraphs = useSharedLayerStrengthenedGraphs;
         classInitializationSupport = ClassInitializationSupport.singleton();
         buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
+        this.graphStore = graphPath == null ? null : ImageLayerGraphStore.openForReading(graphPath);
     }
 
     public AnalysisUniverse getUniverse() {
@@ -273,6 +273,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public void cleanupAfterCompilation() {
+        close();
+    }
+
+    @Override
+    public void close() {
         if (graphStore != null) {
             graphStore.close();
         }
