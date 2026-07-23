@@ -408,7 +408,7 @@ public class SVMHost extends HostVM {
 
     private void checkForbidden(AnalysisType type, UsageKind kind) {
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(null, type);
+            NamingConventionVerifier.checkName(null, type);
         }
 
         if (forbiddenTypes == null) {
@@ -1116,7 +1116,7 @@ public class SVMHost extends HostVM {
 
         /* Remaining types should match the naming conventions. */
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(bb, type);
+            NamingConventionVerifier.checkName(bb, type);
         }
 
         return super.isSupportedOriginalType(bb, type);
@@ -1142,7 +1142,7 @@ public class SVMHost extends HostVM {
 
         /* Remaining methods should match the naming conventions. */
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(bb, method);
+            NamingConventionVerifier.checkName(bb, method);
         }
 
         return super.isSupportedAnalysisMethod(bb, method);
@@ -1174,7 +1174,7 @@ public class SVMHost extends HostVM {
 
         /* Remaining methods should match the naming conventions. */
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(bb, method);
+            NamingConventionVerifier.checkName(bb, method);
         }
 
         return super.isSupportedOriginalMethod(bb, method);
@@ -1271,7 +1271,7 @@ public class SVMHost extends HostVM {
 
         /* Remaining fields should match the naming conventions. */
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(bb, field);
+            NamingConventionVerifier.checkName(bb, field);
         }
 
         return super.isSupportedAnalysisField(bb, field);
@@ -1312,7 +1312,7 @@ public class SVMHost extends HostVM {
 
         /* Remaining fields should match the naming conventions. */
         if (verifyNamingConventions) {
-            NativeImageGenerator.checkName(bb, field);
+            NamingConventionVerifier.checkName(bb, field);
         }
 
         return super.isSupportedOriginalField(bb, field);

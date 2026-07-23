@@ -97,7 +97,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -297,7 +296,6 @@ import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
@@ -360,7 +358,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.riscv64.RISCV64;
@@ -2087,24 +2084,7 @@ public class NativeImageGenerator {
     }
 
     private void checkUniverse() {
-        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
-            for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isReachable()) && AnnotationUtil.getAnnotation(method, Fold.class) == null) {
-                    checkName(bb, method);
-                }
-            }
-            for (AnalysisField field : aUniverse.getFields()) {
-                if (field.isAccessed()) {
-                    checkName(bb, field);
-                }
-            }
-            for (AnalysisType type : aUniverse.getTypes()) {
-                if (type.isReachable()) {
-                    checkName(bb, type);
-                }
-            }
-        }
-
+        NamingConventionVerifier.checkUniverse(bb, aUniverse);
         checkForInvalidCallsToEntryPoints();
     }
 
@@ -2130,78 +2110,6 @@ public class NativeImageGenerator {
         }
 
         // the unsupported features are reported after checkUniverse is invoked
-    }
-
-    public static void checkName(BigBang bb, AnalysisMethod method) {
-        String format = method.format("%H.%n(%p)");
-        checkName(bb, method, format);
-    }
-
-    public static void checkName(BigBang bb, ResolvedJavaMethod method) {
-        String format = method.format("%H.%n(%p)");
-        checkName(bb, null, format);
-    }
-
-    public static void checkName(BigBang bb, ResolvedJavaField field) {
-        String format = field.format("%H.%n");
-        checkName(bb, null, format);
-    }
-
-    public static void checkName(BigBang bb, ResolvedJavaType type) {
-        String format = type.toJavaName(true);
-        checkName(bb, null, format);
-    }
-
-    /**
-     * These are legitimate runtime elements that have hotspot in their name.
-     */
-    private static final Set<String> CHECK_NAMING_EXCEPTIONS = Set.of(
-                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.HOTSPOT_OPTION_COMPATIBILITY_NAME",
-                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS",
-                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS",
-                    "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
-                    "sun.lwawt.macosx.CCustomCursor.fHotspot",
-                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
-                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
-
-    private static void checkName(BigBang bb, AnalysisMethod method, String name) {
-        String message = namingConventionsViolation(name);
-        if (message != null) {
-            report(bb, name, method, message);
-        }
-    }
-
-    private static String namingConventionsViolation(String name) {
-        /*
-         * We do not want any parts of the native image generator in the generated image. Therefore,
-         * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "host VM" elements, which come from the hosting VM, unless they are
-         * JDK internal types.
-         */
-        String lcName = name.toLowerCase(Locale.ROOT);
-        if (!CHECK_NAMING_EXCEPTIONS.contains(name)) {
-            if (lcName.contains("hosted")) {
-                return "Hosted element used at run time: " + name + namingConventionsErrorMessageSuffix("hosted");
-            } else if (!lcName.startsWith("jdk.internal") && lcName.contains("hotspot")) {
-                return "Element with HotSpot in its name used at run time: " + name + namingConventionsErrorMessageSuffix("HotSpot");
-            }
-        }
-        return null;
-    }
-
-    private static String namingConventionsErrorMessageSuffix(String elementType) {
-        return """
-
-                        If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
-                        If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
-    }
-
-    private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
-        if (bb != null) {
-            bb.getUnsupportedFeatures().addMessage(key, method, message);
-        } else {
-            throw new UnsupportedFeatureException(message);
-        }
     }
 
     protected void processNativeLibraryImports(NativeLibraries nativeLibs, ClassInitializationSupport classInitializationSupport) {
