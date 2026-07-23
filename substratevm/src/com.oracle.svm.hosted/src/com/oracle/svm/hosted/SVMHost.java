@@ -407,7 +407,7 @@ public class SVMHost extends HostVM {
     }
 
     private void checkForbidden(AnalysisType type, UsageKind kind) {
-        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+        if (verifyNamingConventions) {
             NativeImageGenerator.checkName(null, type);
         }
 
@@ -1114,6 +1114,11 @@ public class SVMHost extends HostVM {
             return false;
         }
 
+        /* Remaining types should match the naming conventions. */
+        if (verifyNamingConventions) {
+            NativeImageGenerator.checkName(bb, type);
+        }
+
         return super.isSupportedOriginalType(bb, type);
     }
 
@@ -1134,6 +1139,12 @@ public class SVMHost extends HostVM {
         if (method.isGuaranteeFolded()) {
             return false;
         }
+
+        /* Remaining methods should match the naming conventions. */
+        if (verifyNamingConventions) {
+            NativeImageGenerator.checkName(bb, method);
+        }
+
         return super.isSupportedAnalysisMethod(bb, method);
     }
 
@@ -1160,6 +1171,12 @@ public class SVMHost extends HostVM {
         if (!isSupportedMethod(bb, method) || !isSupportedMethod(bb, substitutionMethod)) {
             return false;
         }
+
+        /* Remaining methods should match the naming conventions. */
+        if (verifyNamingConventions) {
+            NativeImageGenerator.checkName(bb, method);
+        }
+
         return super.isSupportedOriginalMethod(bb, method);
     }
 
@@ -1292,12 +1309,26 @@ public class SVMHost extends HostVM {
         if (annotationSubstitutions.isDeleted(field) || annotationSubstitutions.hasInjectAccessors(field)) {
             return false;
         }
+
         /* Remaining fields should match the naming conventions. */
         if (verifyNamingConventions) {
             NativeImageGenerator.checkName(bb, field);
         }
 
         return super.isSupportedOriginalField(bb, field);
+    }
+
+    /**
+     * Determine if a type should be included in the shared layer.
+     */
+    @Override
+    public boolean isTypeIncludedInSharedLayer(ResolvedJavaType type) {
+        // GR-71702 will prevent batch registering svm.core elements as roots
+        return !isJDKGraalCompilerType(type);
+    }
+
+    private static boolean isJDKGraalCompilerType(ResolvedJavaType type) {
+        return type.toJavaName().startsWith("jdk.graal.compiler");
     }
 
     /**
@@ -1308,8 +1339,7 @@ public class SVMHost extends HostVM {
         if (isAlwaysClosedField(field)) {
             return false;
         }
-        // GR-71702 will prevent batch registering svm.core fields as roots
-        return !field.getDeclaringClass().toJavaName().startsWith("jdk.graal.compiler");
+        return super.isFieldIncludedInSharedLayer(field);
     }
 
     @Override

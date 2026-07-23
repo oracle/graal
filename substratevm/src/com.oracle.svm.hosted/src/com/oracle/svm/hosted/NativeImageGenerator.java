@@ -2137,6 +2137,11 @@ public class NativeImageGenerator {
         checkName(bb, method, format);
     }
 
+    public static void checkName(BigBang bb, ResolvedJavaMethod method) {
+        String format = method.format("%H.%n(%p)");
+        checkName(bb, null, format);
+    }
+
     public static void checkName(BigBang bb, ResolvedJavaField field) {
         String format = field.format("%H.%n");
         checkName(bb, null, format);
@@ -2148,15 +2153,25 @@ public class NativeImageGenerator {
     }
 
     /**
-     * These are legit elements from the JDK that have hotspot in their name.
+     * These are legitimate runtime elements that have hotspot in their name.
      */
     private static final Set<String> CHECK_NAMING_EXCEPTIONS = Set.of(
+                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.HOTSPOT_OPTION_COMPATIBILITY_NAME",
+                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS",
+                    "com.oracle.svm.guest.staging.option.RuntimeOptionParser.RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS",
                     "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
                     "sun.lwawt.macosx.CCustomCursor.fHotspot",
                     "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
                     "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
 
     private static void checkName(BigBang bb, AnalysisMethod method, String name) {
+        String message = namingConventionsViolation(name);
+        if (message != null) {
+            report(bb, name, method, message);
+        }
+    }
+
+    private static String namingConventionsViolation(String name) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
@@ -2166,11 +2181,12 @@ public class NativeImageGenerator {
         String lcName = name.toLowerCase(Locale.ROOT);
         if (!CHECK_NAMING_EXCEPTIONS.contains(name)) {
             if (lcName.contains("hosted")) {
-                report(bb, name, method, "Hosted element used at run time: " + name + namingConventionsErrorMessageSuffix("hosted"));
+                return "Hosted element used at run time: " + name + namingConventionsErrorMessageSuffix("hosted");
             } else if (!lcName.startsWith("jdk.internal") && lcName.contains("hotspot")) {
-                report(bb, name, method, "Element with HotSpot in its name used at run time: " + name + namingConventionsErrorMessageSuffix("HotSpot"));
+                return "Element with HotSpot in its name used at run time: " + name + namingConventionsErrorMessageSuffix("HotSpot");
             }
         }
+        return null;
     }
 
     private static String namingConventionsErrorMessageSuffix(String elementType) {
