@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.3
+* GR-57730: Improved descriptive `toString()` output for Polyglot API objects and builders.
+
 ## Version 25.2
 * GR-77583: Bytecode DSL: Added `BytecodeRootNode.interceptIncomingValue(Object)` and `BytecodeRootNode.interceptOutgoingValue(Object)` to convert values exchanged with tag instrumentation.
 * GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.

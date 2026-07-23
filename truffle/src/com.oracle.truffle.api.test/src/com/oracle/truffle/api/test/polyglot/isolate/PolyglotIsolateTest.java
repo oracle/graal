@@ -459,6 +459,18 @@ public class PolyglotIsolateTest {
     }
 
     @Test
+    public void testToStringAfterClose() {
+        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.SpawnIsolate", "true").build();
+        Context context = Context.newBuilder().engine(engine).build();
+        assertNotNull(engine.toString());
+        assertNotNull(context.toString());
+        context.close();
+        assertNotNull(context.toString());
+        engine.close();
+        assertNotNull(engine.toString());
+    }
+
+    @Test
     public void testContextCloseWithUnbalancedExplicitEnter() {
         // Not a truffe isolate specific test. Until ContextAPITest is refactored to be
         // able to run with truffle isolate, we need this test here.

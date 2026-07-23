@@ -52,6 +52,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -90,6 +91,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -2274,6 +2276,101 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return preInitializedLanguages.isEmpty();
+    }
+
+    String toEmbedderString(int identityHash, String isolate, String implementationName, String version) {
+        StringBuilder b = new StringBuilder("Engine[id=");
+        b.append(Integer.toHexString(identityHash));
+        b.append(", isolate=");
+        b.append(isolate);
+        b.append(", state=");
+        boolean localClosing = closingThread != null;
+        boolean localClosed = closed;
+        if (localClosed) {
+            b.append("CLOSED");
+        } else if (localClosing) {
+            b.append("CLOSING");
+        } else {
+            b.append("OPEN");
+        }
+        b.append(", implementationName=");
+        b.append(implementationName);
+        b.append(", version=");
+        b.append(version);
+        b.append(", sandboxPolicy=");
+        b.append(sandboxPolicy);
+        b.append(", instantiatedLanguages=[");
+        String separator = "";
+        for (PolyglotLanguage language : idToPublicLanguage.values()) {
+            if (language.isInstantiated()) {
+                b.append(separator);
+                b.append(language.getId());
+                separator = ", ";
+            }
+        }
+        b.append("], createdInstruments=[");
+        separator = "";
+        for (PolyglotInstrument instrument : idToPublicInstrument.values()) {
+            if (instrument.isCreated()) {
+                b.append(separator);
+                b.append(instrument.getId());
+                separator = ", ";
+            }
+        }
+        b.append(']');
+        if (!localClosed && !localClosing) {
+            b.append(", options={");
+            separator = appendSetOptions(b, engineOptionValues, "");
+            for (PolyglotLanguage language : idToLanguage.values()) {
+                separator = appendSetOptions(b, language.getOptionValuesIfExists(), separator);
+            }
+            for (PolyglotInstrument instrument : idToInstrument.values()) {
+                separator = appendSetOptions(b, instrument.getOptionValuesIfExists(), separator);
+            }
+            b.append('}');
+        }
+        b.append(']');
+        return b.toString();
+    }
+
+    static String appendSetOptions(StringBuilder b, OptionValuesImpl optionValues, String separator) {
+        String nextSeparator = separator;
+        if (optionValues != null) {
+            for (OptionDescriptor descriptor : optionValues.getDescriptors()) {
+                OptionKey<?> key = descriptor.getKey();
+                if (optionValues.hasBeenSet(key)) {
+                    b.append(nextSeparator);
+                    b.append(descriptor.getName());
+                    b.append('=');
+                    appendOptionValue(b, optionValues.get(key));
+                    nextSeparator = ", ";
+                }
+            }
+        }
+        return nextSeparator;
+    }
+
+    static void appendOptionValue(StringBuilder b, Object value) {
+        if (value == null) {
+            b.append("null");
+        } else if (value instanceof Boolean || value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float ||
+                        value instanceof Double) {
+            b.append(value);
+        } else if (value instanceof Enum<?> enumValue) {
+            b.append(enumValue.name());
+        } else if (value.getClass().isArray()) {
+            b.append('[');
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                if (i > 0) {
+                    b.append(", ");
+                }
+                appendOptionValue(b, Array.get(value, i));
+            }
+            b.append(']');
+        } else {
+            b.append(value);
+        }
     }
 
     OptionValuesImpl getEngineOptionValues() {

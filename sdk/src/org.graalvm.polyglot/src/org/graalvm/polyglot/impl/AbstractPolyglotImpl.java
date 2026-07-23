@@ -675,6 +675,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void onContextCollected(Object receiver);
 
+        public String toString(Object receiver, int identityHash, String isolate) {
+            return receiver.toString();
+        }
+
     }
 
     public abstract static class AbstractEngineDispatch extends AbstractDispatchClass {
@@ -738,6 +742,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord);
 
         public abstract ByteBuffer persistCache(Object engineReceiver, Engine.CancellationCallback callback);
+
+        public String toString(Object receiver, int identityHash, String isolate) {
+            return receiver.toString();
+        }
 
     }
 

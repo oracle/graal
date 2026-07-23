@@ -134,6 +134,10 @@ final class ForeignEngine implements ForeignObject {
         contexts.add(foreignContext);
     }
 
+    synchronized boolean isClosed() {
+        return closed;
+    }
+
     synchronized void close() {
         closed = true;
         if (!contexts.isEmpty()) {

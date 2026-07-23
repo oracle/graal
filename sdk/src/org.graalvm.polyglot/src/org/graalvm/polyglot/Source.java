@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.polyglot.Engine.ToStringSupport;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -1063,6 +1064,86 @@ public final class Source {
                 option(entry.getKey(), entry.getValue());
             }
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("Source.newBuilder(");
+            b.append(ToStringSupport.quote(language));
+            b.append(", ");
+            if (origin instanceof File file) {
+                b.append("new File(");
+                b.append(ToStringSupport.quote(file.getPath()));
+                b.append(")");
+                b.append(')');
+                if (name != null) {
+                    ToStringSupport.appendCall(b, "name", ToStringSupport.quote(name));
+                }
+            } else if (origin instanceof URL url) {
+                b.append("URI.create(");
+                b.append(ToStringSupport.quote(url.toExternalForm()));
+                b.append(").toURL()");
+                b.append(')');
+                if (name != null) {
+                    ToStringSupport.appendCall(b, "name", ToStringSupport.quote(name));
+                }
+            } else {
+                b.append(summarizeOrigin(origin));
+                b.append(", ");
+                b.append(ToStringSupport.quote(name));
+                b.append(')');
+            }
+            if (content != null) {
+                ToStringSupport.appendCall(b, "content", summarizeContent(content));
+            }
+            if (uri != null) {
+                ToStringSupport.appendCall(b, "uri", "URI.create(" + ToStringSupport.quote(uri.toString()) + ")");
+            }
+            if (mimeType != null) {
+                ToStringSupport.appendCall(b, "mimeType", ToStringSupport.quote(mimeType));
+            }
+            if (fileEncoding != null) {
+                ToStringSupport.appendCall(b, "encoding", "Charset.forName(" + ToStringSupport.quote(fileEncoding.name()) + ")");
+            }
+            if (interactive) {
+                ToStringSupport.appendCall(b, "interactive", true);
+            }
+            if (internal) {
+                ToStringSupport.appendCall(b, "internal", true);
+            }
+            if (!cached) {
+                ToStringSupport.appendCall(b, "cached", false);
+            }
+            if (options != null) {
+                for (Map.Entry<String, String> entry : options.entrySet()) {
+                    ToStringSupport.appendCall(b, "option", ToStringSupport.quote(entry.getKey()), ToStringSupport.quote(entry.getValue()));
+                }
+            }
+            return b.toString();
+        }
+
+        private static String summarizeOrigin(Object value) {
+            if (value instanceof CharSequence || value instanceof ByteSequence) {
+                return summarizeContent(value);
+            } else if (value instanceof Reader) {
+                return "<reader: " + value.getClass().getName() + ">";
+            }
+            return String.valueOf(value);
+        }
+
+        private static String summarizeContent(Object value) {
+            if (value instanceof CharSequence characters) {
+                return "<characters: length=" + characters.length() + ">";
+            } else if (value instanceof ByteSequence bytes) {
+                return "<bytes: length=" + bytes.length() + ">";
+            } else {
+                return "<content: " + value.getClass().getName() + ">";
+            }
         }
 
         /**
