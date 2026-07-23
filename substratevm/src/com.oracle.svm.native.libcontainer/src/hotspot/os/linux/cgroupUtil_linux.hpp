@@ -30,9 +30,6 @@
 #include "utilities/globalDefinitions.hpp"
 #include "cgroupSubsystem_linux.hpp"
 
-
-namespace svm_container {
-
 class CgroupUtil: AllStatic {
 
   public:
@@ -44,8 +41,5 @@ class CgroupUtil: AllStatic {
     // that represents the closest cpu limit.
     static void adjust_controller(CgroupCpuController* c);
 };
-
-
-} // namespace svm_container
 
 #endif // CGROUP_UTIL_LINUX_HPP

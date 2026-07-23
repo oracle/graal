@@ -30,15 +30,9 @@
 // using classes for grouping.  Deriving from this class indicates the
 // derived class is intended to be a namespace, with no instances ever
 // created.
-
-namespace svm_container {
-
 struct AllStatic {
   AllStatic() = delete;
   ~AllStatic() = delete;
 };
-
-
-} // namespace svm_container
 
 #endif // SHARE_MEMORY_ALLSTATIC_HPP

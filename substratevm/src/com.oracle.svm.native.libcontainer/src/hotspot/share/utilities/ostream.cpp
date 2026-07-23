@@ -46,9 +46,6 @@
 #include "utilities/xmlstream.hpp"
 
 // Declarations of jvm methods
-
-namespace svm_container {
-
 extern "C" void jio_print(const char* s, size_t len);
 extern "C" int jio_printf(const char *fmt, ...);
 
@@ -198,13 +195,7 @@ void outputStream::vprint_cr(const char* format, va_list argptr) {
   do_vsnprintf_and_write(format, argptr, true);
 }
 
-
-} // namespace svm_container
-
 #endif // !NATIVE_IMAGE
-
-namespace svm_container {
-
 void outputStream::print_raw(const char* str, size_t len) {
 #ifndef NATIVE_IMAGE
   if (_autoindent && _position == 0) {
@@ -472,9 +463,6 @@ stringStream::~stringStream() {
   }
 }
 
-
-} // namespace svm_container
-
 #ifndef NATIVE_IMAGE
 // tty needs to be always accessible since there are code paths that may write to it
 // outside of the VM lifespan.
@@ -485,9 +473,6 @@ stringStream::~stringStream() {
 // The policy followed here is a compromise reached during review of JDK-8292351:
 // - pre-init: we silently swallow all output. We won't see anything, but at least won't crash
 // - post-exit: we write to a simple fdStream, but somewhat mimic the behavior of the real defaultStream
-
-namespace svm_container {
-
 static nullStream tty_preinit_stream;
 outputStream* tty = &tty_preinit_stream;
 
@@ -1107,9 +1092,6 @@ bufferedStream::~bufferedStream() {
   FREE_C_HEAP_ARRAY(char, buffer);
 }
 
-
-} // namespace svm_container
-
 #ifndef PRODUCT
 
 #if defined(LINUX) || defined(AIX) || defined(_ALLBSD_SOURCE)
@@ -1123,9 +1105,6 @@ bufferedStream::~bufferedStream() {
 #endif
 
 // Network access
-
-namespace svm_container {
-
 networkStream::networkStream() : bufferedStream(1024*10, 1024*10) {
 
   _socket = -1;
@@ -1189,9 +1168,6 @@ bool networkStream::connect(const char *host, short port) {
   freeaddrinfo(addr_info);
   return (conn >= 0);
 }
-
-} // namespace svm_container
-
 #endif // !NATIVE_IMAGE
 
 #endif

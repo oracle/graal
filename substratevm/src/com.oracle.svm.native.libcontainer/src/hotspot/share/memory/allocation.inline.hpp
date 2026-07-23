@@ -39,9 +39,6 @@
 
 #ifndef PRODUCT
 // Increments unsigned long value for statistics (not atomic on MP, but avoids word-tearing on 32 bit).
-
-namespace svm_container {
-
 inline void inc_stat_counter(volatile julong* dest, julong add_value) {
 #ifdef _LP64
   *dest += add_value;
@@ -50,13 +47,7 @@ inline void inc_stat_counter(volatile julong* dest, julong add_value) {
   Atomic::store(dest, value + add_value);
 #endif
 }
-
-} // namespace svm_container
-
 #endif
-
-
-namespace svm_container {
 
 template <class E>
 size_t MmapArrayAllocator<E>::size_for(size_t length) {
@@ -121,9 +112,6 @@ template <class E>
 void MallocArrayAllocator<E>::free(E* addr) {
   FreeHeap(addr);
 }
-
-} // namespace svm_container
-
 #endif // !NATIVE_IMAGE
 
 #endif // SHARE_MEMORY_ALLOCATION_INLINE_HPP
