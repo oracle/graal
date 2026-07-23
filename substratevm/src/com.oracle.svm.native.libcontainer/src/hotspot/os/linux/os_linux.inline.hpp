@@ -31,32 +31,5 @@
 #include "runtime/os.hpp"
 #include "os_posix.inline.hpp"
 
-#ifndef NATIVE_IMAGE
-inline bool os::zero_page_read_protected() {
-  return true;
-}
-
-inline bool os::uses_stack_guard_pages() {
-  return true;
-}
-
-inline bool os::must_commit_stack_guard_pages() {
-  assert(uses_stack_guard_pages(), "sanity check");
-  return true;
-}
-
-// Bang the shadow pages if they need to be touched to be mapped.
-inline void os::map_stack_shadow_pages(address sp) {
-}
-
-// Trim-native support
-inline bool os::can_trim_native_heap() {
-#ifdef __GLIBC__
-  return true;
-#else
-  return false; // musl
-#endif
-}
-#endif // !NATIVE_IMAGE
 
 #endif // OS_LINUX_OS_LINUX_INLINE_HPP

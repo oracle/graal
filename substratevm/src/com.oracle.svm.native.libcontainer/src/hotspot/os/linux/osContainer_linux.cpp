@@ -148,12 +148,6 @@ jlong OSContainer::cache_usage_in_bytes() {
   return cgroup_subsystem->cache_usage_in_bytes();
 }
 
-#ifndef NATIVE_IMAGE
-void OSContainer::print_version_specific_info(outputStream* st) {
-  assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");
-  cgroup_subsystem->print_version_specific_info(st);
-}
-#endif // !NATIVE_IMAGE
 
 char * OSContainer::cpu_cpuset_cpus() {
   assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");
@@ -180,12 +174,10 @@ int OSContainer::cpu_period() {
   return cgroup_subsystem->cpu_period();
 }
 
-#ifndef NATIVE_IMAGE
 int OSContainer::cpu_shares() {
   assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");
   return cgroup_subsystem->cpu_shares();
 }
-#endif // !NATIVE_IMAGE
 
 jlong OSContainer::cpu_usage_in_micros() {
   assert(cgroup_subsystem != nullptr, "cgroup subsystem not available");
@@ -202,17 +194,3 @@ jlong OSContainer::pids_current() {
   return cgroup_subsystem->pids_current();
 }
 
-#ifndef NATIVE_IMAGE
-void OSContainer::print_container_helper(outputStream* st, jlong j, const char* metrics) {
-  st->print("%s: ", metrics);
-  if (j >= 0) {
-    if (j >= 1024) {
-      st->print_cr(UINT64_FORMAT " k", uint64_t(j) / K);
-    } else {
-      st->print_cr(UINT64_FORMAT, uint64_t(j));
-    }
-  } else {
-    st->print_cr("%s", j == OSCONTAINER_ERROR ? "not supported" : "unlimited");
-  }
-}
-#endif // !NATIVE_IMAGE

@@ -62,9 +62,7 @@ class CgroupV2CpuController: public CgroupCpuController {
     }
     int cpu_quota() override;
     int cpu_period() override;
-#ifndef NATIVE_IMAGE
     int cpu_shares() override;
-#endif // !NATIVE_IMAGE
     jlong cpu_usage_in_micros();
     bool is_read_only() override {
       return reader()->is_read_only();
@@ -126,9 +124,6 @@ class CgroupV2MemoryController final: public CgroupMemoryController {
     jlong memory_max_usage_in_bytes() override;
     jlong rss_usage_in_bytes() override;
     jlong cache_usage_in_bytes() override;
-#ifndef NATIVE_IMAGE
-    void print_version_specific_info(outputStream* st, julong host_mem) override;
-#endif // !NATIVE_IMAGE
     bool is_read_only() override {
       return reader()->is_read_only();
     }

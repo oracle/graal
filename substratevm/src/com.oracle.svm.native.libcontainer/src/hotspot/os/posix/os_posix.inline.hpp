@@ -28,44 +28,5 @@
 
 #include "os_posix.hpp"
 
-#ifndef NATIVE_IMAGE
-#include "runtime/mutex.hpp"
-#include "runtime/os.hpp"
-
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
-// Aix does not have NUMA support but need these for compilation.
-inline bool os::numa_has_group_homing()     { AIX_ONLY(ShouldNotReachHere();) return false;  }
-
-// Platform Mutex/Monitor implementation
-
-inline void PlatformMutex::lock() {
-  int status = pthread_mutex_lock(mutex());
-  assert_status(status == 0, status, "mutex_lock");
-}
-
-inline void PlatformMutex::unlock() {
-  int status = pthread_mutex_unlock(mutex());
-  assert_status(status == 0, status, "mutex_unlock");
-}
-
-inline bool PlatformMutex::try_lock() {
-  int status = pthread_mutex_trylock(mutex());
-  assert_status(status == 0 || status == EBUSY, status, "mutex_trylock");
-  return status == 0;
-}
-
-inline void PlatformMonitor::notify() {
-  int status = pthread_cond_signal(cond());
-  assert_status(status == 0, status, "cond_signal");
-}
-
-inline void PlatformMonitor::notify_all() {
-  int status = pthread_cond_broadcast(cond());
-  assert_status(status == 0, status, "cond_broadcast");
-}
-#endif // !NATIVE_IMAGE
 
 #endif // OS_POSIX_OS_POSIX_INLINE_HPP
