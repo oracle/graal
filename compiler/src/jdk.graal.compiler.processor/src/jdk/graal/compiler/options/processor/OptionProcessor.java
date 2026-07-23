@@ -325,7 +325,7 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*fieldName*/ \"%s\",\n", fieldName);
                 out.printf("                /*stability*/ %s.%s,\n", getSimpleName(OPTION_STABILITY_CLASS_NAME), stability);
                 out.printf("                /*deprecated*/ %b,\n", deprecated);
-                out.printf("                /*deprecationMessage*/ \"%s\");\n", deprecationMessage);
+                out.printf("                /*deprecationMessage*/ %s);\n", literal(deprecationMessage));
                 out.println("        }");
             }
             out.println("        // CheckStyle: resume line length check");

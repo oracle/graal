@@ -31,15 +31,21 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--future-defaults=run-time-initialize-security-providers,explicit-security-provider-registration"
+                "--future-defaults=run-time-initialize-security-providers,explicit-security-provider-registration",
+                "--exact-reachability-metadata=com.oracle.svm.test.services"
 })
 public class SecurityServiceExplicitProviderRegistrationTest {
+    private static final String REGISTERED_PROVIDER_NAME = "reflection-metadata-provider";
+
     @Test
     public void testDefaultSecureRandomIncludesCompleteSunProvider() throws NoSuchAlgorithmException {
         SecureRandom random = new SecureRandom();
@@ -57,5 +63,24 @@ public class SecurityServiceExplicitProviderRegistrationTest {
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
         Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> Signature.getInstance("SHA256withECDSA"));
+    }
+
+    /** Tests \u00A7FS-security-providers.5.3. */
+    @Test
+    public void testUnregisteredProviderCannotReuseVerificationByName() {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+        SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+
+        Assert.assertEquals(Boolean.TRUE,
+                        support.getSecurityProviderVerificationResult(new SecurityServiceTest.ReflectionMetadataProvider()));
+        Assert.assertNull(support.getSecurityProviderVerificationResult(new SameNameUnregisteredProvider()));
+    }
+
+    public static final class SameNameUnregisteredProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        public SameNameUnregisteredProvider() {
+            super(REGISTERED_PROVIDER_NAME, "1.0", "Unregistered provider with a registered provider's name");
+        }
     }
 }

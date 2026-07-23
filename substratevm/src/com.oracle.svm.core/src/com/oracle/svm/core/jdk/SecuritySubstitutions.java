@@ -69,7 +69,7 @@ final class Target_sun_security_jca_Providers_ExplicitRegistration {
     @Substitute
     public static Provider getSunProvider() {
         if (Boolean.getBoolean(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + "explicit-security-provider-registration") &&
-                        !SecurityProvidersSupport.singleton().isSecurityProviderIncluded("SUN", "sun.security.provider.Sun")) {
+                        !SecurityProvidersSupport.singleton().isSecurityProviderIncluded("sun.security.provider.Sun")) {
             SecurityProvidersSupport.reportMissingProviderRegistration(sun.security.provider.Sun.class);
         }
         return new sun.security.provider.Sun();
