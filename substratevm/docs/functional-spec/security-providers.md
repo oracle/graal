@@ -18,23 +18,29 @@ service-driven provider inclusion and build-time provider-list initialization.
 
 ### 1.1 Registered Providers and Services
 
-A provider class is **registered for reflection** for the purposes of this specification when all
-the following conditions hold:
+A provider class is **registered for reflection** for the purposes of this specification when it
+is a concrete `Provider` subtype and reflection metadata registers access to the provider type, a
+declared nullary constructor, or a qualifying `provider()` method.
 
-- the class is a concrete `Provider` subtype;
-- Native Image can construct it through either a declared nullary constructor or a declared public
-  static nullary `provider()` method whose return type is assignable to `Provider`; and
-- reflection metadata registers access to at least one of the provider type, its declared nullary
-  constructor, or its qualifying `provider()` method.
+A registered provider class is **JDK-constructible** when Native Image can construct it through
+either a declared nullary constructor or a declared public static nullary `provider()` method whose
+return type is assignable to `Provider`.
+A **registered provider** is an instance of a provider class registered for reflection.
+A **registered service** is a valid service whose implementation class and required reflective
+construction metadata Native Image can retain in the executable.
 
-A **registered provider** is a provider whose class satisfies this definition.
-A **registered service** is a valid service declared by a registered provider whose implementation
-class and required reflective construction metadata Native Image can retain in the executable.
+JDK-managed acquisition requires a JDK-constructible registered provider.
+An application-supplied provider does not need to be JDK-constructible because the application
+already possesses its instance.
+For such a provider, Native Image does not inspect the provider at build time; each service used at
+run time must be retained independently, for example through metadata collected while tracing the
+corresponding factory call.
 
 Registration is a build-time property.
 Constructing a provider object at run time does not register the provider or add omitted services
 to the executable.
-Section 2.4 defines the one platform registration rule for `SecureRandom` acquisition.
+Section 2.4 defines the platform-owned conditional registration signal for `SecureRandom`
+acquisition.
 
 ### 1.2 JDK-Managed Providers and Acquisition
 
@@ -98,8 +104,8 @@ Algorithm aliases and provider selection otherwise follow the standard JCA API b
 
 Type access, declared nullary constructor access, and qualifying `provider()` method access are
 alternative registration signals.
-Registering any one of them is sufficient if the provider class meets all construction
-requirements in section 1.1; registering a signal does not relax those requirements.
+Registering any one of them is sufficient to register the provider class.
+Type access alone does not make a provider JDK-constructible.
 
 ### 2.2 Provider Construction
 
@@ -111,9 +117,11 @@ lookups and JCA factory calls as it exposed when Native Image inspected it at bu
 
 ### 2.3 Registration Effects
 
-Registering a provider includes every valid service declared by the provider whose implementation
-class Native Image can resolve, and retains the metadata required to construct those service
-implementations.
+Registering a JDK-constructible provider includes every valid service declared by the provider
+whose implementation class Native Image can resolve, and retains the metadata required to
+construct those service implementations.
+Registering a provider class that is not JDK-constructible does not include its services; services
+used through an application-supplied instance must be retained independently.
 Provider registration does not change the configured provider order or make an unconfigured
 provider visible by name.
 This behavior implements §DF-complete-security-provider-registration.2.
@@ -122,16 +130,19 @@ This behavior implements §DF-complete-security-provider-registration.2.
 
 When a `SecureRandom` acquisition path is reachable, Native Image must register the complete
 configured providers that declare `SecureRandom` services.
-The application does not need to supply reflection metadata for those providers.
+The acquisition path is a platform-owned conditional provider-registration signal, so the
+application does not need to supply reflection metadata for those providers.
 This registration has the effects specified in section 2.3, including retention of every valid
 service that each registered provider declares and whose implementation class Native Image can
 resolve.
 
 This rule applies to the `SecureRandom` constructors, the `SecureRandom.getInstance` overloads,
 and JDK paths that perform the same default-provider selection.
-It is a conditional platform registration rule: Native Image must not register these providers
-when no `SecureRandom` acquisition path is reachable.
-It is not the earlier service-driven inclusion behavior described in section 7.3.
+It is not the earlier service-driven inclusion behavior described in section 7.3: the platform
+supplies a provider-registration signal, and the ordinary complete-provider semantics in section
+2.3 apply.
+Native Image must not register these providers when no `SecureRandom` acquisition path is
+reachable.
 
 Native Image internal runtime randomness must cause this registration only in an executable that
 includes the runtime-compilation subsystem that consumes that randomness.
@@ -144,7 +155,7 @@ This behavior implements §DF-default-secure-random-provider.2.
 
 ### 3.1 JDK-Managed Acquisition
 
-Every JDK-managed provider acquired at run time must be a registered provider.
+Every JDK-managed provider acquired at run time must be a JDK-constructible registered provider.
 This rule applies uniformly to:
 
 - direct provider APIs, including provider enumeration, name lookup, filtering, and algorithm
@@ -159,8 +170,8 @@ This rule applies uniformly to:
 
 A direct JDK fallback must not bypass registration when the configured provider list contains no
 matching registered provider.
-Default `SecureRandom` construction follows the platform registration rule in section 2.4; other
-fallbacks must fail before exposing an unregistered provider.
+Default `SecureRandom` construction follows the platform-owned conditional registration signal in
+section 2.4; other fallbacks must fail before exposing an unregistered provider.
 
 ### 3.2 Provider List Lookups
 
@@ -242,6 +253,8 @@ location of `reachability-metadata.json`.
 For a provider with a supported construction path, the type-only entry suggested by a missing-type
 diagnostic is sufficient under section 2.1; Native Image retains the provider's construction and
 service metadata during the subsequent build.
+For an application-supplied provider without a supported construction path, the type-only entry
+registers the provider class but does not retain its service implementations.
 
 This requirement applies both to loading a provider from the configured provider list and to Java
 Cryptography Extension (JCE) verification of a programmatically supplied provider.
@@ -254,10 +267,10 @@ missing-registration diagnostic.
 
 An application can construct a provider and pass it directly to a JCA factory.
 Because the application already possesses this object, its construction and ordinary Java method
-calls are not JDK-managed provider acquisition as defined in section 1.2; direct construction
-does not, however, waive the registration requirements in section 1.1.
-If the provider is registered, the factory can use its registered services without the provider
-being in the run-time provider list.
+calls are not JDK-managed provider acquisition as defined in section 1.2.
+The provider class must be registered for reflection, but it does not need to be JDK-constructible.
+The factory can use its registered services without the provider being in the run-time provider
+list.
 
 If the provider is unregistered and the operation requires JCE verification, the operation follows
 the missing-registration behavior in section 4.3.
@@ -288,6 +301,12 @@ Extension (JCE) verification, Native Image must have established a verification 
 provider at build time.
 Registration is necessary for such an operation, but registration is not successful verification.
 
+For a registered application-supplied provider class that is not one of the build-time configured
+providers, Native Image establishes the successful verification outcome from the class
+registration without constructing a provider instance.
+This permits JCE use of an existing application-supplied instance while avoiding an unsupported
+attempt to reconstruct it.
+
 Native Image must preserve the build-time verification outcome and apply it to run-time instances
 of that provider class, including an instance whose provider name differs from the name observed
 at build time.
@@ -306,8 +325,11 @@ availability rules in sections 1 and 2.
 Metadata collected by the Tracing Agent or native metadata tracing from a successful provider
 lookup must be sufficient for a subsequently built native executable to perform the same lookup
 and use the same provider services without additional provider metadata.
-The collected metadata must retain a supported construction path: declared nullary constructor
-access or access to the static `provider()` method.
+For a JDK-managed provider, the collected metadata must retain a supported construction path:
+declared nullary constructor access or access to the static `provider()` method.
+For an application-supplied provider, tracing must register the provider type without inventing a
+constructor access and must independently retain each service implementation exercised by the
+traced factory calls.
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.
@@ -350,9 +372,9 @@ With `--future-defaults=explicit-security-provider-registration`, this compatibi
 disabled.
 A factory call for an algorithm supplied only by an unregistered provider follows section 4.2, and
 a lookup that reflectively loads the provider follows section 4.3.
-The `SecureRandom` registration rule in section 2.4 remains enabled because it conditionally
-supplies complete providers for this commonly used JDK facility rather than inferring providers
-from a general service factory.
+The platform-owned `SecureRandom` registration signal in section 2.4 remains enabled.
+It registers complete providers for this commonly used JDK facility rather than inferring partial
+provider support from a general service factory.
 
 ### 7.4 Earlier Build-Time Initialization Behavior
 
