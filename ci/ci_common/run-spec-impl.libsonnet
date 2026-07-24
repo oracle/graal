@@ -215,7 +215,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
       local onlyMatrixKeys = union == known_fields;
       local noMatrixKeys = inter == [];
       if isLeaf then
-        assert noMatrixKeys: "unexected platform spec keys in build definition %s (context: %s, stack: %s)" % [inter, context, stack];
+        assert noMatrixKeys: "unexpected platform spec keys in build definition %s (context: %s, stack: %s)" % [inter, context, stack];
         obj
       else
         assert onlyMatrixKeys : "unexpected keys in platform spec %s, expected %s (context: %s, stack: %s)" % [diff, known_fields, context, stack];
