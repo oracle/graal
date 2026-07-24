@@ -26,6 +26,11 @@
 
 package com.oracle.svm.core.monitor;
 
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractQueuedLongSynchronizer;
 import java.util.concurrent.locks.LockSupport;
@@ -35,11 +40,13 @@ import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 import com.oracle.svm.core.jfr.traceid.JfrEpoch;
+import com.oracle.svm.core.monitor.JavaMonitor.FastMonitorExitStatus;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
+import jdk.graal.compiler.nodes.PauseNode;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -63,6 +70,13 @@ import jdk.internal.misc.Unsafe;
  */
 @BasedOnJDKClass(AbstractQueuedLongSynchronizer.class)
 public abstract class JavaMonitorQueuedSynchronizer {
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2259-L2265") //
+    private static final int PRE_SPIN = 10;
+    private static final int SPIN_LIMIT = 5000;
+    private static final int SPIN_POVERTY = 1000;
+    private static final int SPIN_BONUS = 100;
+    private static final int SPIN_PENALTY = 200;
+
     // Node status bits, also used as argument and return values
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
@@ -70,6 +84,9 @@ public abstract class JavaMonitorQueuedSynchronizer {
 
     /** Return value of {@link #trySpinAcquire} if successfully acquired. */
     protected static final int SPIN_SUCCESS = -1;
+
+    @SuppressWarnings("unused") // used via Unsafe
+    private int spinDuration = SPIN_LIMIT;
 
     // see AbstractQueuedLongSynchronizer.Node
     @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "Node")
@@ -273,32 +290,106 @@ public abstract class JavaMonitorQueuedSynchronizer {
         return s != null && s.status != 0;
     }
 
-    protected void signalReleaseSuccessor() {
+    /** @see FastMonitorExitStatus#MUST_SIGNAL_SUCCESSOR */
+    public void signalReleaseSuccessor() {
         signalNext(head);
     }
 
     /**
-     * Attempt to acquire as part of spinning, returning {@link #SPIN_SUCCESS} if successful, else
-     * the number of remaining attempts.
+     * Attempt to acquire as part of spinning, based on HotSpot's {@code ObjectMonitor::try_spin()}.
+     * Returns {@link #SPIN_SUCCESS} if successful, otherwise, the number of remaining attempts.
+     * <p>
+     * We omit the thread state checks because they don't have enough of an impact and need the
+     * owner's {@link Thread} object, which would require a GC write barrier on acquisition.
+     * <p>
+     * Note that {@code acquire} and {@code #signalNext} already implement an heir presumptive
+     * mechanism, clearing {@code Node.status} for the head of the queue to indicate ongoing
+     * attempts to acquire.
      */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2310-L2445")
     protected int trySpinAcquire(int spins, long arg) {
         assert spins > 0;
-        if (tryAcquire(arg)) {
+        final int abort = 0; // return value to stop spinning
+
+        if (shortFixedSpin(arg, PRE_SPIN, true)) {
             return SPIN_SUCCESS;
         }
-        return spins - 1;
+
+        int ctr = U.getIntOpaque(this, SPIN_DURATION);
+        if (ctr <= 0) {
+            return abort;
+        }
+
+        // Spin aggressively.
+        long prv = 0;
+        while (--ctr >= 0) {
+            if ((ctr & 0xFF) == 0) {
+                PauseNode.pause();
+            }
+            long owner = getState();
+            if (probability(NOT_FREQUENT_PROBABILITY, owner == 0)) {
+                if (probability(FREQUENT_PROBABILITY, tryAcquire(arg))) {
+                    adjustSpinDurationUp();
+                    return SPIN_SUCCESS;
+                }
+                break; // another thread acquired the lock
+            }
+            if (probability(NOT_FREQUENT_PROBABILITY, owner != prv) && probability(SLOW_PATH_PROBABILITY, prv != 0)) {
+                break; // lock ownership changed
+            }
+            prv = owner;
+        }
+
+        if (ctr < 0) {
+            adjustSpinDurationDown();
+        }
+        return abort;
+    }
+
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2294-L2308")
+    private boolean shortFixedSpin(long arg, int spinCount, boolean adapt) {
+        for (int ctr = 0; ctr < spinCount; ctr++) {
+            if (probability(NOT_FREQUENT_PROBABILITY, tryAcquire(arg))) {
+                if (adapt) {
+                    adjustSpinDurationUp();
+                }
+                return true;
+            }
+            PauseNode.pause();
+        }
+        return false;
+    }
+
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2267-L2277")
+    private void adjustSpinDurationUp() {
+        int x = U.getIntOpaque(this, SPIN_DURATION);
+        if (x < SPIN_LIMIT) {
+            if (x < SPIN_POVERTY) {
+                x = SPIN_POVERTY;
+            }
+            U.putIntOpaque(this, SPIN_DURATION, x + SPIN_BONUS);
+        }
+    }
+
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+37/src/hotspot/share/runtime/objectMonitor.cpp#L2279-L2292")
+    private void adjustSpinDurationDown() {
+        int x = U.getIntOpaque(this, SPIN_DURATION);
+        if (x > 0) {
+            x -= SPIN_PENALTY;
+            if (x < 0) {
+                x = 0;
+            }
+            U.putIntOpaque(this, SPIN_DURATION, x);
+        }
     }
 
     /**
-     * Given the number of previous park operations, returns the number of attempts for
-     * {@link #trySpinAcquire}, provided that the thread is eligible to acquire the lock (not queued
-     * yet or first in the queue).
+     * Returns the number of attempts for {@link #trySpinAcquire} before the first park and then
+     * after each unpark, provided that the thread is eligible to acquire the lock (not queued yet
+     * or first in the queue).
      */
-    protected int getSpinAttempts(int parks) {
-        if (parks < 0 || parks > 8) {
-            return 0xff;
-        }
-        return (1 << parks) - 1;
+    private static int getSpinAttemptsPerPark() {
+        return 1;
     }
 
     // see AbstractQueuedLongSynchronizer.reacquire(Node, long)
@@ -337,7 +428,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         Thread current = Thread.currentThread();
         /* Spinning logic is SVM-specific. */
         int parks = 0;
-        int spins = getSpinAttempts(parks);
+        int spins = getSpinAttemptsPerPark();
         boolean first = false;
         Node pred = null; // predecessor of node when enqueued
         long recheckNanos = -1;
@@ -411,7 +502,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
             } else {
                 /* Spinning logic is SVM-specific. */
                 parks++;
-                spins = getSpinAttempts(parks);
+                spins = getSpinAttemptsPerPark();
                 try {
                     if (recheckNanos == -1) {
                         LockSupport.park(this);
@@ -732,4 +823,5 @@ public abstract class JavaMonitorQueuedSynchronizer {
     private static final long STATE = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "state");
     private static final long HEAD = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "head");
     private static final long TAIL = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "tail");
+    private static final long SPIN_DURATION = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "spinDuration");
 }
