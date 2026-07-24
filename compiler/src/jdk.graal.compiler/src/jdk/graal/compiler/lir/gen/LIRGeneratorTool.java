@@ -838,7 +838,17 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitSha1ImplCompressMB(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state, Value ofs, Value limit) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default void emitSha256ImplCompress(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitSha256ImplCompressMB(EnumSet<?> runtimeCheckedCPUFeatures, Value buf, Value state, Value ofs, Value limit) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
@@ -853,12 +863,27 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitSha3ImplCompressMB(Value buf, Value state, Value blockSize, Value ofs, Value limit) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default void emitSha512ImplCompress(Value buf, Value state) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
     @SuppressWarnings("unused")
+    default Variable emitSha512ImplCompressMB(Value buf, Value state, Value ofs, Value limit) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default void emitMD5ImplCompress(Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitMD5ImplCompressMB(Value buf, Value state, Value ofs, Value limit) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

@@ -76,10 +76,15 @@ import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
@@ -133,11 +138,16 @@ public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
                         new StubDescriptor(KyberInverseNttNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(KyberNttMultNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(KyberNttNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(MD5MultiBlockNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(MD5Node.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(Poly1305ProcessBlocksNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(SHA1MultiBlockNode.STUB, SHA1MultiBlockNode.minFeaturesAARCH64(), SHA1MultiBlockNode.minFeaturesAARCH64()),
                         new StubDescriptor(SHA1Node.STUB, SHA1Node.minFeaturesAARCH64(), SHA1Node.minFeaturesAARCH64()),
+                        new StubDescriptor(SHA256MultiBlockNode.STUB, SHA256MultiBlockNode.minFeaturesAARCH64(), SHA256MultiBlockNode.minFeaturesAARCH64()),
                         new StubDescriptor(SHA256Node.STUB, SHA256Node.minFeaturesAARCH64(), SHA256Node.minFeaturesAARCH64()),
+                        new StubDescriptor(SHA3MultiBlockNode.STUB, SHA3MultiBlockNode.minFeaturesAARCH64(), SHA3MultiBlockNode.minFeaturesAARCH64()),
                         new StubDescriptor(SHA3Node.STUB, SHA3Node.minFeaturesAARCH64(), SHA3Node.minFeaturesAARCH64()),
+                        new StubDescriptor(SHA512MultiBlockNode.STUB, SHA512MultiBlockNode.minFeaturesAARCH64(), SHA512MultiBlockNode.minFeaturesAARCH64()),
                         new StubDescriptor(SHA512Node.STUB, SHA512Node.minFeaturesAARCH64(), SHA512Node.minFeaturesAARCH64()),
                         new StubDescriptor(StringLatin1InflateNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(StringUTF16CompressNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),

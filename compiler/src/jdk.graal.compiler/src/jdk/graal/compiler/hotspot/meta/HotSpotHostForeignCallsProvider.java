@@ -34,18 +34,13 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS_MB;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
@@ -606,21 +601,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(UNSAFE_SETMEMORY, c.unsafeSetMemory, NativeCall);
         }
 
-        if (c.md5ImplCompressMultiBlock != 0L) {
-            registerForeignCall(MD5_IMPL_COMPRESS_MB, c.md5ImplCompressMultiBlock, NativeCall);
-        }
-        if (c.sha1ImplCompressMultiBlock != 0L) {
-            registerForeignCall(SHA_IMPL_COMPRESS_MB, c.sha1ImplCompressMultiBlock, NativeCall);
-        }
-        if (c.sha256ImplCompressMultiBlock != 0L) {
-            registerForeignCall(SHA2_IMPL_COMPRESS_MB, c.sha256ImplCompressMultiBlock, NativeCall);
-        }
-        if (c.sha512ImplCompressMultiBlock != 0L) {
-            registerForeignCall(SHA5_IMPL_COMPRESS_MB, c.sha512ImplCompressMultiBlock, NativeCall);
-        }
-        if (c.sha3ImplCompressMultiBlock != 0L) {
-            registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
-        }
         if (c.stubArrayPartition != 0L) {
             registerForeignCall(ARRAY_PARTITION, c.stubArrayPartition, NativeCall);
         }
@@ -686,10 +666,15 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, IntegerPolynomialP256MontgomeryMultNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Poly1305ProcessBlocksNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA1Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA1MultiBlockNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA256Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA256MultiBlockNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA3Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA3MultiBlockNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA512Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.SHA512MultiBlockNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.MD5Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, MessageDigestNode.MD5MultiBlockNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberNttNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberInverseNttNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, KyberNttMultNode.STUB);

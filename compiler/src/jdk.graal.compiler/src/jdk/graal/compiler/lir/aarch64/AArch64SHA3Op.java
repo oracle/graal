@@ -34,6 +34,11 @@ import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.Hal
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.r1;
+import static jdk.vm.ci.aarch64.AArch64.r2;
+import static jdk.vm.ci.aarch64.AArch64.r3;
+import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v10;
@@ -93,11 +98,11 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
 
     public static final LIRInstructionClass<AArch64SHA3Op> TYPE = LIRInstructionClass.create(AArch64SHA3Op.class);
 
-    @Alive({REG}) private Value bufValue;
-    @Alive({REG}) private Value stateValue;
-    @Alive({REG}) private Value blockSizeValue;
-    @Alive({REG, ILLEGAL}) private Value ofsValue;
-    @Alive({REG, ILLEGAL}) private Value limitValue;
+    @Use({REG}) private Value bufValue;
+    @Use({REG}) private Value stateValue;
+    @Use({REG}) private Value blockSizeValue;
+    @Use({REG, ILLEGAL}) private Value ofsValue;
+    @Use({REG, ILLEGAL}) private Value limitValue;
 
     @Temp({REG}) private Value blockSizeTempValue;
 
@@ -118,6 +123,13 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
                     AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
 
+        GraalError.guarantee(asRegister(bufValue).equals(r0), "expect bufValue at r0, but was %s", bufValue);
+        GraalError.guarantee(asRegister(stateValue).equals(r1), "expect stateValue at r1, but was %s", stateValue);
+        GraalError.guarantee(asRegister(blockSizeValue).equals(r2), "expect blockSizeValue at r2, but was %s", blockSizeValue);
+        GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(r3), "expect ofsValue at r3, but was %s", ofsValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(r4), "expect limitValue at r4, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(r0), "expect resultValue at r0, but was %s", resultValue);
+
         this.bufValue = bufValue;
         this.stateValue = stateValue;
         this.blockSizeValue = blockSizeValue;
@@ -126,13 +138,13 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
         this.limitValue = limitValue;
         this.resultValue = resultValue;
 
-        this.bufTempValue = tool.newVariable(bufValue.getValueKind());
+        this.bufTempValue = bufValue;
         this.blockSizeTempValue = tool.newVariable(blockSizeValue.getValueKind());
 
         this.multiBlock = multiBlock;
 
         if (multiBlock) {
-            this.ofsTempValue = tool.newVariable(ofsValue.getValueKind());
+            this.ofsTempValue = ofsValue;
         } else {
             this.ofsTempValue = Value.ILLEGAL;
         }
@@ -281,8 +293,6 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
         Register ofs;
         Register limit;
 
-        masm.mov(64, buf, asRegister(bufValue));
-
         if (multiBlock) {
             GraalError.guarantee(ofsValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid ofsValue kind: %s", ofsValue);
             GraalError.guarantee(limitValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid limitValue kind: %s", limitValue);
@@ -290,7 +300,6 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             ofs = asRegister(ofsTempValue);
             limit = asRegister(limitValue);
 
-            masm.mov(64, ofs, asRegister(ofsValue));
         } else {
             ofs = Register.None;
             limit = Register.None;
@@ -416,12 +425,12 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             masm.cbnz(32, rscratch2, labelRounds24Loop);
 
             if (multiBlock) {
-                masm.add(32, ofs, ofs, blockSize);
-                masm.cmp(32, ofs, limit);
+                masm.add(64, ofs, ofs, blockSize);
+                masm.cmp(64, ofs, limit);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.LE, labelSHA3Loop);
 
                 GraalError.guarantee(resultValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
-                masm.mov(32, asRegister(resultValue), ofs); // return ofs
+                masm.mov(64, asRegister(resultValue), ofs); // return ofs
             }
 
             masm.neon.st1MultipleVVVV(HalfReg, ElementSize.DoubleWord, v0, v1, v2, v3,

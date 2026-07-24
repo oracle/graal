@@ -74,10 +74,15 @@ import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
@@ -132,11 +137,16 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 KyberAddPoly3Node.class,
                 Kyber12To16Node.class,
                 KyberBarrettReduceNode.class,
+                MD5MultiBlockNode.class,
                 MD5Node.class,
                 Poly1305ProcessBlocksNode.class,
+                SHA1MultiBlockNode.class,
                 SHA1Node.class,
+                SHA256MultiBlockNode.class,
                 SHA256Node.class,
+                SHA3MultiBlockNode.class,
                 SHA3Node.class,
+                SHA512MultiBlockNode.class,
                 SHA512Node.class,
                 StringCodepointIndexToByteIndexNode.class,
                 StringLatin1InflateNode.class,
