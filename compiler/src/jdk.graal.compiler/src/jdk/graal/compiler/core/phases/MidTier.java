@@ -49,6 +49,9 @@ import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.common.VerifyHeapAtReturnPhase;
 import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
+import jdk.graal.compiler.phases.dfanalysis.analyses.LSCCPPhase;
+import jdk.graal.compiler.phases.dfanalysis.analyses.PentagonalAnalysisPhase;
+import jdk.graal.compiler.phases.dfanalysis.analyses.StampAnalysisPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 
 public class MidTier extends BaseTier<MidTierContext> {
@@ -78,6 +81,18 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new GuardLoweringPhase());
+
+        if (GraalOptions.ConditionalConstantPropagation.getValue(options)) {
+            appendPhase(new LSCCPPhase(canonicalizer));
+        }
+
+        if (GraalOptions.FullStampAnalysis.getValue(options)) {
+            appendPhase(new StampAnalysisPhase(canonicalizer));
+        }
+
+        if (GraalOptions.PentagonalAnalysis.getValue(options)) {
+            appendPhase(new PentagonalAnalysisPhase(canonicalizer));
+        }
 
         if (SpectrePHTMitigations.Options.SpectrePHTBarriers.getValue(options) == SpectrePHTMitigations.GuardTargets ||
                         SpectrePHTMitigations.Options.SpectrePHTBarriers.getValue(options) == SpectrePHTMitigations.NonDeoptGuardTargets) {
