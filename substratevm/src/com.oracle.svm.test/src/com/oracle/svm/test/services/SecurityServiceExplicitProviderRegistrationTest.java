@@ -65,7 +65,7 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> Signature.getInstance("SHA256withECDSA"));
     }
 
-    /** Tests \u00A7FS-security-providers.5.3. */
+    /** Tests §FS-security-providers.5.3. */
     @Test
     public void testUnregisteredProviderCannotReuseVerificationByName() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
