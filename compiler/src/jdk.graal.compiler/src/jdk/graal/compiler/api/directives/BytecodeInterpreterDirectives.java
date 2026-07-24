@@ -122,6 +122,31 @@ public final class BytecodeInterpreterDirectives {
                  * primitive fields.
                  */
                 boolean nonNull() default true;
+
+                /**
+                 * Marks the expanded field as the template variable used to specialize template
+                 * variants and select the template variant of the next threaded bytecode handler.
+                 * A value of {@code 0} means that the field is not a template variable. A value of
+                 * {@code N >= 2} makes the field a template variable with {@code N} variants.
+                 * {@code 1} is invalid. If multiple template variables are configured, the total
+                 * template count is the product of their variant counts. Template variables are
+                 * encoded in expanded-field order using mixed-radix indexing.
+                 * <p>
+                 * At a threaded dispatch, each template variable value must be a constant or a phi
+                 * whose inputs recursively resolve to constants. If multiple template variables are
+                 * non-constant phis at the same dispatch, those phis must be produced by the same
+                 * merge. Independent branch merges for different template variables are rejected.
+                 * <p>
+                 * When template mode is enabled, template variables are initialized from the
+                 * selected template variant and do not occupy a stub ABI argument slot. Their value
+                 * at the end of a threaded handler selects the variant of the next threaded handler.
+                 * When template mode is not enabled, this metadata is ignored and the field remains
+                 * an ordinary expanded argument.
+                 * <p>
+                 * The field must be an {@code int} field of a {@link ExpansionKind#VIRTUAL}
+                 * argument.
+                 */
+                int templateVariable() default 0;
             }
 
             /**

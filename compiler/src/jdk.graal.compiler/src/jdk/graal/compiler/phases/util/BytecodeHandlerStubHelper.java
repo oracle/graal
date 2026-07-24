@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -38,6 +38,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
@@ -86,10 +87,10 @@ public final class BytecodeHandlerStubHelper {
      * arguments whose bytecode-handler configuration guarantees non-null values.
      */
     public static ParameterNode[] collectParameterNodes(BytecodeHandlerConfig config, GraphKit kit) {
-        List<ArgumentInfo> argumentInfos = config.getArgumentInfos();
-        ParameterNode[] stubParameters = new ParameterNode[argumentInfos.size()];
+        List<ArgumentInfo> stubAbiArgumentInfos = config.getStubAbiArgumentInfos();
+        ParameterNode[] stubParameters = new ParameterNode[stubAbiArgumentInfos.size()];
 
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             ParameterNode stubParameter = kit.unique(new ParameterNode(argumentInfo.index(), StampFactory.forDeclaredType(kit.getAssumptions(), argumentInfo.type(), false)));
             if (argumentInfo.nonNull() && stubParameter.stamp(NodeView.DEFAULT).isObjectStamp()) {
                 stubParameter.setStamp(((AbstractObjectStamp) stubParameter.stamp(NodeView.DEFAULT)).asNonNull());
@@ -105,15 +106,15 @@ public final class BytecodeHandlerStubHelper {
      * expanded arguments are re-materialized as virtual objects whose fields alias the separate
      * stub parameters.
      */
-    private static ValueNode[] createHandlerArguments(BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, GraphKit kit, ParameterNode[] stubParameters) {
+    private static ValueNode[] createHandlerArguments(BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, GraphKit kit, ParameterNode[] stubParameters, int templateIndex) {
         ArrayList<ValueNode> handlerArguments = new ArrayList<>();
 
         AllocatedObjectNode[] allocatedObjects = new AllocatedObjectNode[targetMethod.getSignature().getParameterCount(targetMethod.hasReceiver())];
         EconomicMap<AllocatedObjectNode, List<ValueNode>> virtualFields = EconomicMap.create();
 
-        List<ArgumentInfo> argumentInfos = handlerConfig.getArgumentInfos();
-        for (ArgumentInfo argumentInfo : argumentInfos) {
-            ParameterNode stubParameter = stubParameters[argumentInfo.index()];
+        List<ArgumentInfo> allArgumentInfos = handlerConfig.getAllArgumentInfos();
+        int remainingTemplateIndex = templateIndex;
+        for (ArgumentInfo argumentInfo : allArgumentInfos) {
             if (argumentInfo.isExpanded()) {
                 int index = argumentInfo.originalIndex();
                 if (argumentInfo.isOwnerVirtual()) {
@@ -127,15 +128,22 @@ public final class BytecodeHandlerStubHelper {
 
                         handlerArguments.add(allocatedObj);
                     }
-                    virtualFields.get(allocatedObj).add(stubParameter);
+                    if (argumentInfo.isTemplateVariable()) {
+                        int templateValue = remainingTemplateIndex % argumentInfo.templateVariants();
+                        remainingTemplateIndex /= argumentInfo.templateVariants();
+                        virtualFields.get(allocatedObj).add(kit.unique(ConstantNode.forInt(templateValue)));
+                    } else {
+                        virtualFields.get(allocatedObj).add(stubParameters[argumentInfo.index()]);
+                    }
                 } else {
                     ValueNode owner = handlerArguments.getLast();
-                    kit.append(new FieldAliasNode(owner, argumentInfo.field(), stubParameter));
+                    kit.append(new FieldAliasNode(owner, argumentInfo.field(), stubParameters[argumentInfo.index()]));
                 }
             } else {
-                handlerArguments.add(stubParameter);
+                handlerArguments.add(stubParameters[argumentInfo.index()]);
             }
         }
+        GraalError.guarantee(remainingTemplateIndex == 0, "Invalid template index %d for %d template variants", templateIndex, handlerConfig.getTemplatesLength());
 
         if (!virtualFields.isEmpty()) {
             CommitAllocationNode commit = kit.append(new CommitAllocationNode());
@@ -166,7 +174,7 @@ public final class BytecodeHandlerStubHelper {
      */
     private static ValueNode[] loadCurrentHandlerArguments(BytecodeHandlerConfig handlerConfig, ValueNode[] handlerArguments, ValueNode handlerResult) {
         ValueNode[] updatedHandlerArguments = handlerArguments.clone();
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             if (argumentInfo.copyFromReturn()) {
                 GraalError.guarantee(handlerResult != null, "copying from Void");
                 updatedHandlerArguments[argumentInfo.originalIndex()] = handlerResult;
@@ -184,8 +192,8 @@ public final class BytecodeHandlerStubHelper {
      * stub ABI snapshot before the stub rethrows.
      */
     private static ValueNode[] loadCurrentStubArguments(BytecodeHandlerConfig handlerConfig, GraphKit kit, ParameterNode[] stubParameters, ValueNode[] handlerArguments, ValueNode handlerResult) {
-        ValueNode[] values = new ValueNode[handlerConfig.getArgumentInfos().size()];
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        ValueNode[] values = new ValueNode[handlerConfig.getStubAbiArgumentInfos().size()];
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             if (argumentInfo.isExpanded()) {
                 if (argumentInfo.isImmutable()) {
                     values[argumentInfo.index()] = stubParameters[argumentInfo.index()];
@@ -211,7 +219,7 @@ public final class BytecodeHandlerStubHelper {
         MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(handlerResult, tailCallTarget));
         List<ValueNode> additionalReturnResults = multiReturnNode.getAdditionalReturnResults();
 
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             additionalReturnResults.add(currentStubArguments[argumentInfo.index()]);
             if (tailCallTarget != null && argumentInfo.nonNull() && !argumentInfo.type().isPrimitive()) {
                 LogicNode isNull = kit.unique(IsNullNode.create(additionalReturnResults.getLast()));
@@ -231,18 +239,26 @@ public final class BytecodeHandlerStubHelper {
          * Emits backend-specific unwind handling. {@code exceptionPathStubArguments} contains the
          * current stub ABI values at the throwing handler call site.
          */
-        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathStubArguments);
+        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathStubArguments, ValueNode[] templateValues);
+    }
+
+    /**
+     * Backend-specific hook for publishing template state when a handler chain returns to Java.
+     */
+    @FunctionalInterface
+    public interface TemplateStateSupplier {
+        void apply(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] templateValues);
     }
 
     /**
      * Generates a bytecode-handler stub that expands stub ABI inputs back to the Java handler call
      * shape, invokes the original handler, and returns the current stub ABI values. If the handler
-     * throws, the optional {@code unwindPathSupplier} can publish backend-specific pending state
-     * before the stub unwinds the same exception.
+     * throws, the optional {@code unwindPathSupplier} publishes backend-specific pending state and
+     * the stub unwinds the same exception.
      */
     public static StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, int bci, boolean threading, ResolvedJavaMethod nextOpcodeMethod,
-                    Supplier<Object> bytecodeHandlerTableSupplier, BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod,
-                    UnwindPathSupplier unwindPathSupplier) {
+                    IntFunction<Object> bytecodeHandlerTableSupplier, BytecodeHandlerConfig handlerConfig, ResolvedJavaMethod targetMethod, int templateIndex,
+                    TemplateStateSupplier templateStateSupplier, UnwindPathSupplier unwindPathSupplier) {
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
         graph.start().setStateAfter(frameStateBuilder.create(bci, graph.start()));
@@ -250,7 +266,7 @@ public final class BytecodeHandlerStubHelper {
         graph.getGraphState().forceDisableFrameStateVerification();
 
         ParameterNode[] stubParameters = collectParameterNodes(handlerConfig, kit);
-        ValueNode[] handlerArguments = createHandlerArguments(handlerConfig, targetMethod, kit, stubParameters);
+        ValueNode[] handlerArguments = createHandlerArguments(handlerConfig, targetMethod, kit, stubParameters, templateIndex);
         InvokeWithExceptionNode handlerInvocation = kit.startInvokeWithException(targetMethod, invokeKind(targetMethod), frameStateBuilder, bci,
                         handlerArguments);
         if (unwindPathSupplier != null) {
@@ -268,14 +284,17 @@ public final class BytecodeHandlerStubHelper {
         kit.noExceptionPart();
         kit.append(new ControlFlowAnchorNode());
 
+        ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
+        TemplateSelection template = loadTemplateSelection(handlerConfig, kit, updatedHandlerArguments);
         BytecodeHandlerDispatchAddressNode tailCallTarget = null;
         if (threading) {
             GraalError.guarantee(nextOpcodeMethod != null, "Threaded bytecode handler stubs require a BytecodeInterpreterFetchOpcode method");
             GraalError.guarantee(nextOpcodeMethod.getSignature().getReturnType(nextOpcodeMethod.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                             "BytecodeInterpreterFetchOpcode method must not return void: %s", nextOpcodeMethod);
-            ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
             ValueNode nextOpcode = createFetchOpcodeInvoke(kit, nextOpcodeMethod, frameStateBuilder, bci, updatedHandlerArguments);
-            tailCallTarget = kit.append(new BytecodeHandlerDispatchAddressNode(nextOpcode, bytecodeHandlerTableSupplier));
+            tailCallTarget = kit.append(new BytecodeHandlerDispatchAddressNode(nextOpcode, template.values(), template.variants(), bytecodeHandlerTableSupplier));
+        } else if (templateStateSupplier != null && template.values().length != 0) {
+            templateStateSupplier.apply(handlerConfig, kit, template.values());
         }
 
         ValueNode[] normalPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, handlerResult);
@@ -284,7 +303,8 @@ public final class BytecodeHandlerStubHelper {
         kit.exceptionPart();
         if (unwindPathSupplier != null) {
             ValueNode[] exceptionPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, null);
-            unwindPathSupplier.apply(handlerConfig, kit, exceptionPathStubArguments);
+            TemplateSelection exceptionTemplate = loadTemplateSelection(handlerConfig, kit, handlerArguments);
+            unwindPathSupplier.apply(handlerConfig, kit, exceptionPathStubArguments, exceptionTemplate.values());
         }
         kit.append(new UnwindNode(kit.exceptionObject()));
         kit.endInvokeWithException();
@@ -305,6 +325,23 @@ public final class BytecodeHandlerStubHelper {
         return nextOpcode;
     }
 
+    private static TemplateSelection loadTemplateSelection(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] currentHandlerArguments) {
+        List<ArgumentInfo> templateVariables = handlerConfig.getTemplateVariableArguments();
+        ValueNode[] templateValues = new ValueNode[templateVariables.size()];
+        int[] templateVariants = new int[templateVariables.size()];
+        for (int i = 0; i < templateVariables.size(); i++) {
+            ArgumentInfo templateVariable = templateVariables.get(i);
+            ValueNode owner = currentHandlerArguments[templateVariable.originalIndex()];
+            ValueNode templateValue = kit.append(LoadFieldNode.create(kit.getAssumptions(), owner, templateVariable.field()));
+            templateValues[i] = templateValue;
+            templateVariants[i] = templateVariable.templateVariants();
+        }
+        return new TemplateSelection(templateValues, templateVariants);
+    }
+
+    private record TemplateSelection(ValueNode[] values, int[] variants) {
+    }
+
     /**
      * Generates a graph for a default bytecode-handler stub that serves as a fallback when no
      * specific handler is available.
@@ -314,14 +351,15 @@ public final class BytecodeHandlerStubHelper {
      * additional return results. This stub effectively terminates threading and triggers a
      * re-dispatch of the bytecode in the caller.
      */
-    public static StructuredGraph createEmptyStub(GraphKit kit, BytecodeHandlerConfig handlerConfig, Register returnRegister) {
+    public static StructuredGraph createEmptyStub(GraphKit kit, BytecodeHandlerConfig handlerConfig, Register returnRegister, int templateIndex,
+                    TemplateStateSupplier templateStateSupplier) {
         StructuredGraph graph = kit.getGraph();
         graph.getGraphState().forceDisableFrameStateVerification();
 
         ParameterNode[] stubParameters = collectParameterNodes(handlerConfig, kit);
         ValueNode returnResult = null;
 
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             if (argumentInfo.copyFromReturn()) {
                 returnResult = stubParameters[argumentInfo.index()];
                 break;
@@ -335,11 +373,27 @@ public final class BytecodeHandlerStubHelper {
             }
         }
 
+        if (templateStateSupplier != null && !handlerConfig.getTemplateVariableArguments().isEmpty()) {
+            templateStateSupplier.apply(handlerConfig, kit, templateValuesForIndex(handlerConfig, kit, templateIndex));
+        }
+
         MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
         multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(stubParameters));
-
         kit.append(new ReturnNode(multiReturnNode));
         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for default bytecode handler stub");
         return graph;
+    }
+
+    private static ValueNode[] templateValuesForIndex(BytecodeHandlerConfig handlerConfig, GraphKit kit, int templateIndex) {
+        List<ArgumentInfo> templateVariables = handlerConfig.getTemplateVariableArguments();
+        ValueNode[] values = new ValueNode[templateVariables.size()];
+        int remainingTemplateIndex = templateIndex;
+        for (int i = 0; i < values.length; i++) {
+            int variants = templateVariables.get(i).templateVariants();
+            values[i] = kit.unique(ConstantNode.forInt(remainingTemplateIndex % variants));
+            remainingTemplateIndex /= variants;
+        }
+        GraalError.guarantee(remainingTemplateIndex == 0, "Invalid template index %d for %d template variants", templateIndex, handlerConfig.getTemplatesLength());
+        return values;
     }
 }

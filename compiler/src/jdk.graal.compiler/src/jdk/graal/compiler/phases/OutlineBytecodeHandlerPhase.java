@@ -60,7 +60,11 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
     }
 
     protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
-        return new BytecodeHandlerCallSite(enclosingMethod, bci, targetMethod);
+        return new BytecodeHandlerCallSite(enclosingMethod, bci, targetMethod, templateModeEnabled());
+    }
+
+    protected boolean templateModeEnabled() {
+        return false;
     }
 
     protected Function<ResolvedJavaField, ResolvedJavaField> getFieldMap(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {
@@ -106,7 +110,7 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
                 if (BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(targetMethod) == null) {
                     continue;
                 }
-                BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod);
+                BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled());
 
                 // targetMethod is annotated with @BytecodeInterpreterHandler, replace the
                 // invoke with stub call. Use the invoke's frame-state owner so split inlinees
@@ -119,7 +123,7 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
                 GraalError.guarantee(invokeState != null, "Missing frame state for handler invoke %s in %s", invoke, graph);
                 ResolvedJavaMethod invokeEnclosingMethod = invokeState.getMethod();
                 GraalError.guarantee(invokeEnclosingMethod != null, "Missing context method for handler invoke %s in %s", invoke, graph);
-                guaranteeConsistentHandlerConfig(handlerConfig, enclosingMethod, invokeEnclosingMethod, targetMethod);
+                guaranteeConsistentHandlerConfig(handlerConfig, enclosingMethod, invokeEnclosingMethod, targetMethod, templateModeEnabled());
                 BytecodeHandlerCallSite callsite = getBytecodeHandlerCallSite(invokeEnclosingMethod, invoke.bci(), targetMethod);
                 ValueNode[] oldArguments = invoke.callTarget().arguments().toArray(ValueNode.EMPTY_ARRAY);
                 ValueNode[] newArguments = callsite.createCallerArguments(oldArguments, invoke.asFixedNode(), getFieldMap(context.getMetaAccess()));
@@ -139,11 +143,11 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
      * updating caller state as if it belonged to another layout.
      */
     private static void guaranteeConsistentHandlerConfig(BytecodeHandlerConfig enclosingConfig, ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod invokeEnclosingMethod,
-                    ResolvedJavaMethod targetMethod) {
+                    ResolvedJavaMethod targetMethod, boolean templateModeEnabled) {
         if (enclosingMethod.equals(invokeEnclosingMethod)) {
             return;
         }
-        BytecodeHandlerConfig invokeConfig = BytecodeHandlerConfig.getHandlerConfig(invokeEnclosingMethod, targetMethod);
+        BytecodeHandlerConfig invokeConfig = BytecodeHandlerConfig.getHandlerConfig(invokeEnclosingMethod, targetMethod, templateModeEnabled);
         GraalError.guarantee(enclosingConfig.equals(invokeConfig), "Inconsistent BytecodeInterpreterHandlerConfig for handler %s between switch methods %s and %s",
                         targetMethod.format("%H.%n(%p)"), enclosingMethod.format("%H.%n(%p)"), invokeEnclosingMethod.format("%H.%n(%p)"));
     }

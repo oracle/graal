@@ -47,8 +47,9 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * Shared resolver for bytecode-interpreter annotations.
  * <p>
  * The compiler-side annotations are defined by {@link BytecodeInterpreterDirectives}. Frontends
- * that expose an equivalent annotation API, such as Truffle, can register their resolved annotation
- * types with {@link #registerAnnotationTypes(ResolvedJavaType, ResolvedJavaType, ResolvedJavaType)}
+ * that expose an equivalent annotation API, such as Truffle, can register their resolved
+ * annotation types with
+ * {@link #registerAnnotationTypes(ResolvedJavaType, ResolvedJavaType, ResolvedJavaType)}
  * so shared bytecode-handler support can recognize those annotations without depending on the
  * frontend API classes.
  */

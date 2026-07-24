@@ -1108,23 +1108,30 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         @Override
         protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             boolean hasHiddenArgument = callTarget instanceof SubstrateIndirectCallTargetNode substrateIndirectCallTargetNode && substrateIndirectCallTargetNode.getHiddenArgument() != null;
-            boolean isNativeABI = ((SubstrateCallingConventionType) callTarget.callType()).nativeABI();
+            SubstrateCallingConventionType callingConventionType = (SubstrateCallingConventionType) callTarget.callType();
+            boolean isNativeABI = callingConventionType.nativeABI();
+            Value[] actualTemps = temps;
+            if (callingConventionType.customABI()) {
+                actualTemps = callingConventionType.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
+            }
 
             // The register allocator cannot handle variables at call sites, need a fixed register.
             // Do not use RAX for C calls, it contains the number of XMM registers for varargs.
             // RAX can also be used for the hidden argument (non-native ABI only).
-            Register targetAddressRegister = AMD64.rax;
-            if (hasHiddenArgument || isNativeABI) {
+            Register targetAddressRegister = selectIndirectCallTargetRegister(parameters, temps, callingConventionType);
+            if (hasHiddenArgument || (isNativeABI && !callingConventionType.customABI())) {
                 targetAddressRegister = AMD64.r10;
             }
+            actualTemps = removeRegister(actualTemps, targetAddressRegister);
             AllocatableValue targetAddress = targetAddressRegister.asValue(SubstrateTarget.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
 
             Value[] multipleResults = new Value[0];
-            var callingConventionType = (SubstrateCallingConventionType) callTarget.callType();
-            if (callingConventionType.customABI() && callingConventionType.usesReturnBuffer()) {
+            if (callingConventionType.customABI()) {
+                multipleResults = callingConventionType.getAdditionalReturns(result, parameters);
+            } else if (callingConventionType.usesReturnBuffer()) {
                 multipleResults = Arrays.stream(callingConventionType.returnSaving)
                                 .map(SubstrateAMD64NodeLIRBuilder::asReturnedValue)
                                 .toList().toArray(new Value[0]);
@@ -1136,9 +1143,43 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 hiddenArgument = HIDDEN_ARGUMENT_REGISTER.asValue(LIRKind.value(AMD64Kind.QWORD));
             }
 
-            append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
+            append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, actualTemps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults, callingConventionType, hiddenArgument));
+        }
+
+        private static Register selectIndirectCallTargetRegister(Value[] parameters, Value[] temps, SubstrateCallingConventionType callingConventionType) {
+            if (!callingConventionType.customABI()) {
+                return AMD64.rax;
+            }
+            for (Register candidate : List.of(AMD64.rax, AMD64.r10, AMD64.r11, AMD64.r14, AMD64.r13, AMD64.r12, AMD64.r9, AMD64.r8, AMD64.rcx, AMD64.rdx, AMD64.rsi, AMD64.rdi)) {
+                if (!containsRegister(parameters, candidate) && !containsRegister(temps, candidate)) {
+                    return candidate;
+                }
+            }
+            throw GraalError.shouldNotReachHere("No register available for indirect custom-ABI call target");
+        }
+
+        private static Value[] removeRegister(Value[] values, Register register) {
+            if (!containsRegister(values, register)) {
+                return values;
+            }
+            List<Value> filtered = new ArrayList<>(values.length - 1);
+            for (Value value : values) {
+                if (!isRegister(value) || !asRegister(value).equals(register)) {
+                    filtered.add(value);
+                }
+            }
+            return filtered.toArray(Value.NO_VALUES);
+        }
+
+        private static boolean containsRegister(Value[] values, Register register) {
+            for (Value value : values) {
+                if (isRegister(value) && asRegister(value).equals(register)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
