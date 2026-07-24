@@ -25,8 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
@@ -37,8 +35,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -67,11 +63,14 @@ import sun.security.util.Debug;
 /// provider candidate, the feature queries the reflection registry for type, constructor, or
 /// factory-method registration. It instantiates accepted candidates through the declared nullary
 /// constructor or static `provider()` method, then registers their service implementation
-/// classes. The service-driven path calls the same service-registration machinery independently.
-/// These mechanisms implement §FS-security-providers.2 and §FS-security-providers.7.3.
-/// `SecureRandom` acquisition registers the complete configured providers that declare
-/// `SecureRandom` services as the narrow platform exception specified by
-/// §FS-security-providers.2.4.
+/// classes. A registered application-supplied provider without either construction path receives a
+/// class-based JCE verification result but no automatically registered services. Its service
+/// implementations must be retained independently. The service-driven path calls the same
+/// service-registration machinery independently. These mechanisms implement
+/// §FS-security-providers.2, §FS-security-providers.5.3, and §FS-security-providers.7.3.
+/// `SecureRandom` acquisition supplies the platform-owned conditional registration signal
+/// specified by §FS-security-providers.2.4. The registered providers then follow the same complete
+/// provider-processing path as providers registered through application metadata.
 ///
 /// During analysis, the feature obtains each included provider's JCE verification result and stores
 /// it in this image singleton, keyed by provider class name. Provider inclusion is tracked
@@ -86,13 +85,14 @@ import sun.security.util.Debug;
 /// object encodes the original verification failure. This lets run-time JCE checks reuse the
 /// build-time result without retaining the provider instance or repeating JAR verification.
 ///
-/// ## 3. Type and Constructor Tracing
+/// ## 3. Provider Type Tracing
 ///
-/// The metadata tracer represents provider loading as two distinct accesses: a dynamic
-/// [Class#forName(String)] lookup records the type, and constructor access records how the
-/// provider is instantiated. Because the JCE lookup already has a provider instance,
-/// [#traceProviderLookup(Provider)] emits the constructor access directly instead of creating
-/// another provider. This is the native-image counterpart of the Tracing Agent's provider event.
+/// The metadata tracer records the type of a provider instance returned by a lookup or supplied to
+/// JCE. It does not invent constructor access because an application-supplied provider can have no
+/// JDK-supported construction path, for example when it is a non-static inner class. JDK-managed
+/// construction paths are traced separately at their actual reflective access sites. This is the
+/// native-image counterpart of the Tracing Agent's provider event and implements
+/// §FS-security-providers.6.
 ///
 /// On a verification-result cache miss, [#reportMissingProviderRegistration(Class)] performs an
 /// opaque, non-initializing `Class.forName` lookup using the provider's class loader. The opaque
@@ -117,8 +117,6 @@ import sun.security.util.Debug;
 ///
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class SecurityProvidersSupport {
-    private static final Class<?>[] NO_PARAMETERS = new Class<?>[0];
-
     /// Provider classes that may be constructed at run time.
     private final EconomicMap<String, Boolean> includedSecurityProviderClasses = ImageHeapMap.create("includedSecurityProviderClasses");
 
@@ -217,14 +215,13 @@ public final class SecurityProvidersSupport {
         throw VMError.shouldNotReachHere("A security provider without a verification result was registered for reflection: " + providerClass.getName());
     }
 
-    /// §AR-security-providers.3: Existing providers trace constructor access directly.
+    /// §AR-security-providers.3: Existing provider instances trace type access.
     public static Provider traceProviderLookup(Provider provider) {
         if (provider == null) {
             return null;
         }
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceMethodAccess(provider.getClass(), CONSTRUCTOR_NAME, SignatureUtil.toInternalSignature(NO_PARAMETERS),
-                            ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            MetadataTracer.singleton().traceReflectionType(provider.getClass());
         }
         return provider;
     }
