@@ -57,6 +57,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangObjectGetClass;
     final JNIMethodId javaLangObjectToString;
 
+    final JNIMethodId javaSecurityProviderServiceGetProvider;
+    final JNIObjectHandle sunSecurityProviderSun;
+    final JNIObjectHandle sunSecurityRsaSunRsaSign;
+    final JNIObjectHandle sunSecurityEcSunEC;
+    final JNIObjectHandle sunSecuritySslSunJSSE;
+    final JNIObjectHandle comSunCryptoProviderSunJCE;
+    final JNIObjectHandle appleSecurityAppleProvider;
+
     final JNIObjectHandle javaLangStackOverflowError;
 
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
@@ -162,6 +170,17 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
         javaLangObjectToString = getMethodId(env, javaLangObject, "toString", "()Ljava/lang/String;", false);
+
+        JNIObjectHandle javaSecurityProviderService = findClass(env, "java/security/Provider$Service");
+        javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
+
+        sunSecurityProviderSun = newClassGlobalRef(env, "sun/security/provider/Sun");
+        sunSecurityRsaSunRsaSign = newClassGlobalRef(env, "sun/security/rsa/SunRsaSign");
+        sunSecurityEcSunEC = newClassGlobalRef(env, "sun/security/ec/SunEC");
+        sunSecuritySslSunJSSE = newClassGlobalRef(env, "sun/security/ssl/SunJSSE");
+        comSunCryptoProviderSunJCE = newClassGlobalRef(env, "com/sun/crypto/provider/SunJCE");
+        JNIObjectHandle appleProvider = findClassOptional(env, "apple/security/AppleProvider");
+        appleSecurityAppleProvider = appleProvider.equal(nullHandle()) ? nullHandle() : newTrackedGlobalRef(env, appleProvider);
 
         javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
 

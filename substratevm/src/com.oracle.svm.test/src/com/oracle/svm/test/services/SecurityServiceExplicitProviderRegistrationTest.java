@@ -64,7 +64,12 @@ public class SecurityServiceExplicitProviderRegistrationTest {
     @Test
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
         Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));
-        Assert.assertThrows(NoSuchAlgorithmException.class, () -> Signature.getInstance("SHA256withECDSA"));
+        try {
+            Signature signature = Signature.getInstance("SHA256withECDSA");
+            Assert.assertNotEquals("A different platform provider may supply the same algorithm.", "SunEC", signature.getProvider().getName());
+        } catch (NoSuchAlgorithmException expected) {
+            /* The algorithm is unavailable when no other platform provider supplies it. */
+        }
     }
 
     /** Tests §FS-security-providers.5.3. */
