@@ -39,7 +39,19 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
 
+    /**
+     * Returns reflection field metadata. This is the only reflection metadata query that may still
+     * be called after {@link #afterRuntimeMetadataEncoding()} if retention was requested through
+     * {@link #retainReflectionFieldsAfterRuntimeMetadataEncoding()}, in which case implementations
+     * can return a retained reporting view instead of their full build-time metadata.
+     */
     Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields();
+
+    /**
+     * Requests that {@link #getReflectionFields()} remains available after
+     * {@link #afterRuntimeMetadataEncoding()}.
+     */
+    void retainReflectionFieldsAfterRuntimeMetadataEncoding();
 
     Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
 
@@ -82,6 +94,14 @@ public interface ReflectionHostedSupport {
     Map<AnalysisType, Set<AnalysisMethod.Signature>> getNegativeMethodQueries();
 
     Map<AnalysisType, Set<AnalysisType[]>> getNegativeConstructorQueries();
+
+    /**
+     * Called after runtime metadata encoding has consumed all reflection metadata. Implementations
+     * should release build-time-only state and fail loudly if any later phase tries to query it,
+     * except for {@link #getReflectionFields()} when retention was requested through
+     * {@link #retainReflectionFieldsAfterRuntimeMetadataEncoding()}.
+     */
+    void afterRuntimeMetadataEncoding();
 
     Map<Class<?>, Throwable> getClassLookupErrors();
 

@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
@@ -39,6 +40,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.junit.Test;
 
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 import jdk.internal.misc.Unsafe;
@@ -126,9 +128,17 @@ public class ReflectionRegistrationTest {
                 // expected
             }
 
+            RuntimeReflection.register(FieldLookupTarget.class);
             RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
         }
 
+        @Override
+        public void afterAnalysis(AfterAnalysisAccess access) {
+            Set<String> knownClassNames = ImageSingletons.lookup(ReflectionHostedSupport.class).getKnownClassNames();
+            if (!knownClassNames.contains(FieldLookupTarget.class.getName())) {
+                throw new AssertionError(FieldLookupTarget.class.getName() + " is missing from reflection metadata");
+            }
+        }
     }
 
     @Test

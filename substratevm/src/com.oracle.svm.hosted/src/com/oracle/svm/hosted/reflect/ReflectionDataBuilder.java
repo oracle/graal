@@ -105,6 +105,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
@@ -174,25 +175,30 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
     private AnalysisMetaAccess metaAccess;
-    private final SubstrateAnnotationExtractor annotationExtractor;
+    private SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
     private LayeredReflectionDataBuilder layeredReflectionDataBuilder;
     private SubstitutionReflectivityFilter reflectivityFilter;
     private ClassAccess classAccess;
 
     // Metadata maps
-    private final Map<AnalysisType, TypeData> types = new ConcurrentHashMap<>();
-    private final Map<AnalysisField, ElementData> fields = new ConcurrentHashMap<>();
-    private final Map<AnalysisMethod, ElementData> methods = new ConcurrentHashMap<>();
-    private final Set<String> negativeClassLookups = ConcurrentHashMap.newKeySet();
+    private Map<AnalysisType, TypeData> types = new ConcurrentHashMap<>();
+    private Map<AnalysisField, ElementData> fields = new ConcurrentHashMap<>();
+    private Map<AnalysisMethod, ElementData> methods = new ConcurrentHashMap<>();
+    private Set<String> negativeClassLookups = ConcurrentHashMap.newKeySet();
 
     // Intermediate bookkeeping
     private Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
 
     // Annotations handling
-    private final Map<Annotated, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
-    private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
-    private final Map<Annotated, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
+    private Map<Annotated, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
+    private Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
+    private Map<Annotated, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
+
+    private boolean runtimeMetadataEncodingComplete = false;
+    private boolean retainReflectionFieldsAfterRuntimeMetadataEncoding = false;
+    private LayeredReflectionDataSnapshot layeredReflectionDataSnapshot = null;
+    private Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> reflectionFieldsAfterRuntimeMetadataEncoding = null;
 
     // Reason tracking for manually triggered rescans
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ReflectionDataBuilder.class);
@@ -201,8 +207,29 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         this.annotationExtractor = annotationExtractor;
     }
 
+    private void guaranteeRuntimeMetadataEncodingNotComplete() {
+        VMError.guarantee(!runtimeMetadataEncodingComplete, "Reflection metadata was queried or updated after runtime metadata encoding completed.");
+    }
+
+    private void guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete() {
+        VMError.guarantee(isSealed() || BuildPhaseProvider.isAnalysisFinished(), "Reflection metadata cannot be queried before analysis is complete.");
+        guaranteeRuntimeMetadataEncodingNotComplete();
+    }
+
+    private void guaranteeSealedAndRuntimeMetadataEncodingNotComplete() {
+        VMError.guarantee(isSealed(), "Reflection metadata cannot be cleared before it is sealed.");
+        guaranteeRuntimeMetadataEncodingNotComplete();
+    }
+
+    @Override
+    public void abortIfSealed() {
+        guaranteeRuntimeMetadataEncodingNotComplete();
+        super.abortIfSealed();
+    }
+
     /* This data is only available at the duringSetup stage */
     void init(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         this.metaAccess = analysisMetaAccess;
         classAccess = new ClassAccess(analysisMetaAccess);
         setUniverse(analysisUniverse);
@@ -214,6 +241,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     void setAnalysisAccess(BeforeAnalysisAccessImpl beforeAnalysisAccess) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         this.analysisAccess = beforeAnalysisAccess;
     }
 
@@ -263,6 +291,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     /* GR-72061: Add to new JVMCI internal reflection API */
     public void registerUnsafeAllocation(AccessCondition condition, boolean preserved, ResolvedJavaType type) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         if (type.isArray() || type.isInterface() || type.isAbstract()) {
             return;
         }
@@ -288,6 +317,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerClass(AccessCondition condition, ConfigurationMemberAccessibility accessibility, ResolvedJavaType type, boolean preserved) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(type);
             if (analysisType == null || shouldExcludeClass(analysisType, accessibility)) {
@@ -409,6 +439,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerClassLookupException(AccessCondition condition, String typeName, Throwable t, boolean preserved) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         if (RuntimeClassLoading.isSupported() && t != null) {
             /*
              * Linkage errors don't need to be stored in the image when runtime class loading is
@@ -547,6 +578,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerMethod(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaMethod method) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         runConditionalTask(condition, cnd -> {
             AnalysisMethod analysisMethod = reflectivityFilter.getFilteredAnalysisMethod(method);
             if (analysisMethod == null) {
@@ -698,6 +730,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaField field) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         runConditionalTask(condition, cnd -> {
             AnalysisField analysisField = reflectivityFilter.getFilteredAnalysisField(field);
             if (analysisField == null) {
@@ -1188,13 +1221,55 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     void afterAnalysis() {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         seal();
         processedTypes = null;
     }
 
     @Override
+    public void afterRuntimeMetadataEncoding() {
+        guaranteeSealedAndRuntimeMetadataEncodingNotComplete();
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+            layeredReflectionDataSnapshot = LayeredReflectionDataSnapshot.create(types, methods, fields, negativeClassLookups);
+        }
+        if (retainReflectionFieldsAfterRuntimeMetadataEncoding) {
+            reflectionFieldsAfterRuntimeMetadataEncoding = createReflectionFields();
+        }
+
+        metaAccess = null;
+        annotationExtractor = null;
+        analysisAccess = null;
+        clearAnalysisAccess();
+        layeredReflectionDataBuilder = null;
+        reflectivityFilter = null;
+        classAccess = null;
+
+        types = null;
+        fields = null;
+        methods = null;
+        negativeClassLookups = null;
+        processedTypes = null;
+        filteredAnnotations = null;
+        filteredParameterAnnotations = null;
+        filteredTypeAnnotations = null;
+
+        universe = null;
+        setHostVM(null);
+
+        runtimeMetadataEncodingComplete = true;
+    }
+
+    private LayeredReflectionDataSnapshot getLayeredReflectionDataSnapshot() {
+        if (layeredReflectionDataSnapshot != null) {
+            return layeredReflectionDataSnapshot;
+        }
+        guaranteeRuntimeMetadataEncodingNotComplete();
+        return LayeredReflectionDataSnapshot.create(types, methods, fields, negativeClassLookups);
+    }
+
+    @Override
     public Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<Class<?>, Set<Class<?>>> innerClasses = new HashMap<>();
         types.forEach((type, typeData) -> {
             if (typeData.isRegisteredAs(ACCESSED)) {
@@ -1226,6 +1301,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public int getEnabledReflectionQueries(Class<?> clazz) {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         /*
          * Primitives and arrays are registered by default since they provide reflective access to
          * no members.
@@ -1251,7 +1327,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields() {
-        assert isSealed();
+        if (runtimeMetadataEncodingComplete) {
+            VMError.guarantee(reflectionFieldsAfterRuntimeMetadataEncoding != null,
+                            "Reflection field metadata cannot be queried after runtime metadata encoding unless retention was requested before encoding.");
+            return reflectionFieldsAfterRuntimeMetadataEncoding;
+        }
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
+        return createReflectionFields();
+    }
+
+    @Override
+    public void retainReflectionFieldsAfterRuntimeMetadataEncoding() {
+        guaranteeRuntimeMetadataEncodingNotComplete();
+        retainReflectionFieldsAfterRuntimeMetadataEncoding = true;
+    }
+
+    private Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> createReflectionFields() {
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> registeredFields = new HashMap<>();
         fields.forEach((field, data) -> {
             if (data.isRegisteredAs(QUERIED)) {
@@ -1267,7 +1358,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> registeredMethods = new HashMap<>();
         methods.forEach((method, data) -> {
             if (data.isRegisteredAs(QUERIED)) {
@@ -1282,7 +1373,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Object getAccessor(AnalysisMethod method) {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         if (!methods.containsKey(method) || !methods.get(method).isRegisteredAs(ACCESSED)) {
             return null;
         }
@@ -1291,7 +1382,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Set<ResolvedJavaField> getHidingReflectionFields() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Set<ResolvedJavaField> hidingFields = new HashSet<>();
         fields.forEach((field, data) -> {
             if (data.hiding) {
@@ -1303,7 +1394,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Set<ResolvedJavaMethod> getHidingReflectionMethods() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Set<ResolvedJavaMethod> hidingMethods = new HashSet<>();
         methods.forEach((method, data) -> {
             if (data.hiding) {
@@ -1315,7 +1406,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public RecordComponent[] getRecordComponents(Class<?> clazz) {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         TypeData data = types.get(metaAccess.lookupJavaType(clazz));
         if (data == null || !data.isRegisteredAs(ACCESSED) || data.getRecordComponentLookupError() != null) {
             return null;
@@ -1324,23 +1415,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public RuntimeDynamicAccessMetadata getTypeMetadata(Class<?> clazz) {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         return types.get(analysisType).dynamicAccess;
     }
 
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return types.get(metaAccess.lookupJavaType(clazz)).unsafeAllocatedDynamicAccess;
     }
 
     @Override
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         Class<?> clazz = ((DynamicHub) object).getHostedJavaClass();
         registerClass(unconditional(), NONE, GuestAccess.get().lookupType(clazz), false);
     }
 
     @Override
     public Set<DynamicHub> getHeapDynamicHubs() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Set<DynamicHub> heapDynamicHubs = new HashSet<>();
         types.forEach((type, data) -> {
             if (data.inHeap) {
@@ -1352,11 +1446,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         registerField(unconditional(), NONE, false, GuestAccess.get().lookupField(reflectField));
     }
 
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
+        guaranteeRuntimeMetadataEncodingNotComplete();
         if (reflectExecutable instanceof Constructor<?> reflectConstructor && ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectConstructor)) {
             /*
              * Constructors created by Constructor.newWithAccessor are indistinguishable from an
@@ -1371,7 +1467,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisField, Field> getHeapReflectionFields() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<AnalysisField, Field> heapFields = new HashMap<>();
         fields.forEach((field, data) -> {
             if (data.inHeap) {
@@ -1383,7 +1479,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisMethod, Executable> getHeapReflectionExecutables() {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<AnalysisMethod, Executable> heapMethods = new HashMap<>();
         methods.forEach((method, data) -> {
             if (data.inHeap) {
@@ -1395,21 +1491,25 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<AnalysisType, Set<String>> getNegativeFieldQueries() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return Collections.emptyMap();
     }
 
     @Override
     public Map<AnalysisType, Set<AnalysisMethod.Signature>> getNegativeMethodQueries() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return Collections.emptyMap();
     }
 
     @Override
     public Map<AnalysisType, Set<AnalysisType[]>> getNegativeConstructorQueries() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return Collections.emptyMap();
     }
 
     @Override
     public Map<Class<?>, Throwable> getClassLookupErrors() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<Class<?>, Throwable> classLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
             LinkageError error = data.getClassLookupError();
@@ -1451,6 +1551,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private Map<Class<?>, Throwable> getLookupErrors(Function<TypeData, LinkageError> errorGetter) {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<Class<?>, Throwable> lookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
             LinkageError error = errorGetter.apply(data);
@@ -1463,6 +1564,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Map<Class<?>, Throwable> getRecordComponentLookupErrors() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         Map<Class<?>, Throwable> recordComponentLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
             LinkageError error = data.getRecordComponentLookupError();
@@ -1476,30 +1578,32 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static final AnnotationValue[] NO_ANNOTATIONS = new AnnotationValue[0];
 
     public AnnotationValue[] getAnnotationData(Annotated element) {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return filteredAnnotations.getOrDefault(element, NO_ANNOTATIONS);
     }
 
     private static final AnnotationValue[][] NO_PARAMETER_ANNOTATIONS = new AnnotationValue[0][0];
 
     public AnnotationValue[][] getParameterAnnotationData(AnalysisMethod element) {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return filteredParameterAnnotations.getOrDefault(element, NO_PARAMETER_ANNOTATIONS);
     }
 
     private static final TypeAnnotationValue[] NO_TYPE_ANNOTATIONS = new TypeAnnotationValue[0];
 
     public TypeAnnotationValue[] getTypeAnnotationData(Annotated element) {
-        assert isSealed();
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return filteredTypeAnnotations.getOrDefault(element, NO_TYPE_ANNOTATIONS);
     }
 
     public Object getAnnotationDefaultData(AnalysisMethod element) {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return annotationExtractor.getAnnotationDefaultValue(element);
     }
 
     @Override
     public Set<String> getKnownClassNames() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         var knownClassNames = filterElements(types).stream()
                         .map(AnalysisType::toClassName)
                         .collect(Collectors.toSet());
@@ -1509,16 +1613,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public int getReflectionClassesCount() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return countElements(types);
     }
 
     @Override
     public int getReflectionMethodsCount() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return countElements(methods);
     }
 
     @Override
     public int getReflectionFieldsCount() {
+        guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return countElements(fields);
     }
 
@@ -1531,6 +1638,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private static int countElements(Map<? extends AnalysisElement, ? extends ElementData> elements) {
         return filterElements(elements).size();
+    }
+
+    private record LayeredReflectionDataSnapshot(Set<Integer> registeredTypes, Set<Integer> registeredMethods, Set<Integer> registeredFields, Set<String> registeredTypeNames,
+                    Set<Integer> unsafeAllocatedTypes) {
+        static LayeredReflectionDataSnapshot create(Map<AnalysisType, TypeData> types, Map<AnalysisMethod, ElementData> methods, Map<AnalysisField, ElementData> fields,
+                        Set<String> negativeClassLookups) {
+            return new LayeredReflectionDataSnapshot(
+                            getRegisteredElementIds(types, AnalysisType::getId, d -> d.isRegisteredAs(ACCESSED)),
+                            getRegisteredElementIds(methods, AnalysisMethod::getId, d -> d.isRegisteredAs(ACCESSED)),
+                            getRegisteredElementIds(fields, AnalysisField::getId, d -> d.isRegisteredAs(ACCESSED)),
+                            Set.copyOf(negativeClassLookups),
+                            getRegisteredElementIds(types, AnalysisType::getId, d -> d.unsafeAllocatedDynamicAccess != null));
+        }
+
+        private static <T extends AnalysisElement, D extends ElementData> Set<Integer> getRegisteredElementIds(Map<T, D> elements, Function<T, Integer> getId, Predicate<D> filter) {
+            return elements.entrySet().stream()
+                            .filter(e -> filter.test(e.getValue()))
+                            .map(e -> getId.apply(e.getKey()))
+                            .collect(Collectors.toUnmodifiableSet());
+        }
     }
 
     public static class TestBackdoor {
@@ -1556,7 +1683,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         private LookupErrors lookupErrors = null;
 
-        private LookupErrors lookupErrors() {
+        private synchronized LookupErrors lookupErrors() {
             if (lookupErrors == null) {
                 lookupErrors = new LookupErrors();
             }
@@ -1984,24 +2111,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     @Override
                     public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
                         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
-                        persistRegisteredElements(getRegisteredElements(reflectionDataBuilder.types), AnalysisType::getId, writer::writeIntList, TYPES);
-                        persistRegisteredElements(getRegisteredElements(reflectionDataBuilder.methods), AnalysisMethod::getId, writer::writeIntList, METHODS);
-                        persistRegisteredElements(getRegisteredElements(reflectionDataBuilder.fields), AnalysisField::getId, writer::writeIntList, FIELDS);
-                        persistRegisteredElements(reflectionDataBuilder.negativeClassLookups, Function.identity(), writer::writeStringList, TYPE_NAMES);
-                        persistRegisteredElements(getRegisteredElements(reflectionDataBuilder.types, d -> d.unsafeAllocatedDynamicAccess != null), AnalysisType::getId, writer::writeIntList,
-                                        UNSAFE_ALLOCATED_TYPES);
+                        LayeredReflectionDataSnapshot snapshot = reflectionDataBuilder.getLayeredReflectionDataSnapshot();
+                        persistRegisteredElements(snapshot.registeredTypes, Function.identity(), writer::writeIntList, TYPES);
+                        persistRegisteredElements(snapshot.registeredMethods, Function.identity(), writer::writeIntList, METHODS);
+                        persistRegisteredElements(snapshot.registeredFields, Function.identity(), writer::writeIntList, FIELDS);
+                        persistRegisteredElements(snapshot.registeredTypeNames, Function.identity(), writer::writeStringList, TYPE_NAMES);
+                        persistRegisteredElements(snapshot.unsafeAllocatedTypes, Function.identity(), writer::writeIntList, UNSAFE_ALLOCATED_TYPES);
                         return LayeredPersistFlags.CREATE;
-                    }
-
-                    private <T extends AnalysisElement, D extends ElementData> Set<T> getRegisteredElements(Map<T, D> elements) {
-                        return getRegisteredElements(elements, d -> d.isRegisteredAs(ACCESSED));
-                    }
-
-                    private <T extends AnalysisElement, D extends ElementData> Set<T> getRegisteredElements(Map<T, D> elements, Predicate<D> filter) {
-                        return elements.entrySet().stream()
-                                        .filter(e -> filter.test(e.getValue()))
-                                        .map(Map.Entry::getKey)
-                                        .collect(Collectors.toUnmodifiableSet());
                     }
 
                     @Override
