@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.nodes.Node;
 import org.junit.Assert;
@@ -299,6 +300,116 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         });
 
         assertEquals(true, root.getCallTarget().call(OSR_THRESHOLD + 1));
+    }
+
+    /**
+     * Regression test for GR-77657. OSR compilation of the innermost loop produces irreducible
+     * control flow that should be properly supported by the compiler.
+     */
+    @Test
+    public void testGR77657NestedOSR() {
+        int osrThreshold = BytecodeOSRMetadata.OSR_POLL_INTERVAL;
+        setupContext("engine.MultiTier", "false",
+                        "engine.OSRCompilationThreshold", String.valueOf(osrThreshold),
+                        "engine.SingleTierCompilationThreshold", String.valueOf(osrThreshold * 100),
+                        "engine.CompilationFailureAction", "Throw");
+
+        /*
+         * @formatter:off
+         * int outer = 0;
+         * int compiledCount = 0;
+         * while (outer < 2) {
+         *     int counter = 0;
+         *     while (counter < 1) {
+         *         while (counter < arg0) { // OSR entry
+         *             counter++;
+         *         }
+         *         compiledCount += inCompiledCode() ? 1 : 0;
+         *         if (outer < 1) break;
+         *     }
+         *     outer++;
+         * }
+         * return compiledCount
+         * @formatter:on
+         */
+        BytecodeDSLOSRTestRootNode root = parseNode(b -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            BytecodeLocal outer = b.createLocal();
+            b.beginStoreLocal(outer);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLocal compiledCount = b.createLocal();
+            b.beginStoreLocal(compiledCount);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLocal counter = b.createLocal();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(outer);
+            b.emitLoadConstant(2);
+            b.endLt();
+            b.beginBlock();
+
+            b.beginStoreLocal(counter);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLabel retryExit = b.createLabel();
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(counter);
+            b.emitLoadConstant(1);
+            b.endLt();
+            b.beginBlock();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(counter);
+            b.emitLoadArgument(0);
+            b.endLt();
+            b.beginIncrement(counter);
+            b.emitLoadLocal(counter);
+            b.endIncrement();
+            b.endWhile();
+
+            b.beginIncrementIfCompiled(compiledCount);
+            b.emitLoadLocal(compiledCount);
+            b.endIncrementIfCompiled();
+
+            b.beginIfThen();
+            b.beginLt();
+            b.emitLoadLocal(outer);
+            b.emitLoadConstant(1);
+            b.endLt();
+            b.emitBranch(retryExit);
+            b.endIfThen();
+
+            b.endBlock();
+            b.endWhile();
+            b.emitLabel(retryExit);
+
+            b.beginIncrement(outer);
+            b.emitLoadLocal(outer);
+            b.endIncrement();
+
+            b.endBlock();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(compiledCount);
+            b.endReturn();
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(0, root.getCallTarget().call(1));
+        assertEquals(2, root.getCallTarget().call(osrThreshold));
     }
 
     private static BytecodeParser<BytecodeDSLOSRTestRootNodeWithYieldGen.Builder> getParserForYieldTest(boolean emitYield) {
