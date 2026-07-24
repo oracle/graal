@@ -45,6 +45,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.BuildPhaseProvider;
 
 import jdk.internal.vm.annotation.Stable;
@@ -87,9 +88,10 @@ public final class JNINativeLinkage {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JNINativeLinkage(ResolvedJavaType declaringClass, CharSequence name, CharSequence descriptor) {
-        this.declaringClassName = MetaUtil.toInternalName(declaringClass.toClassName());
-        this.name = name;
-        this.descriptor = descriptor;
+        HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
+        this.declaringClassName = stringTable.deduplicate(MetaUtil.toInternalName(declaringClass.toClassName()), true);
+        this.name = stringTable.deduplicate(name.toString(), true);
+        this.descriptor = stringTable.deduplicate(descriptor.toString(), true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
