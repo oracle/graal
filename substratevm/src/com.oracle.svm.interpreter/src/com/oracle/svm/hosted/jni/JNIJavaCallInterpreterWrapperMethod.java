@@ -146,12 +146,12 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
         ValueNode formerPendingException = kit.invokeGetAndClearPendingException();
         String interpreterStubNamePrefix;
         if (needsArrayReadDoubleForFloatStub(callVariant)) {
-            interpreterStubNamePrefix = "enterDirectInterpreterStubArrayReadDoubleForFloat";
+            interpreterStubNamePrefix = "enterInterpreterForJNIUpcallArrayReadDoubleForFloat";
         } else {
             interpreterStubNamePrefix = switch (callVariant) {
-                case ARRAY -> "enterDirectInterpreterStubArray";
-                case VARARGS -> "enterDirectInterpreterStubVarargs";
-                case VA_LIST -> "enterDirectInterpreterStubVaList";
+                case ARRAY -> "enterInterpreterForJNIUpcallArray";
+                case VARARGS -> "enterInterpreterForJNIUpcallVarargs";
+                case VA_LIST -> "enterInterpreterForJNIUpcallVaList";
             };
         }
         String interpreterStubName = interpreterStubNamePrefix + (nonVirtual ? "NonVirtual" : "Virtual");
