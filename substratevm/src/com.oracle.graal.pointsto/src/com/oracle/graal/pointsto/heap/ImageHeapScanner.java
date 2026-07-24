@@ -417,7 +417,7 @@ public abstract class ImageHeapScanner {
                         continue;
                     }
                 }
-                hostedFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> {
+                hostedFieldValues[field.getPosition()] = new ImageHeapInstance.FieldValueTask(rawFieldValue, () -> {
                     ScanReason fieldReason = new FieldScan(field, instance, reason);
                     JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
                     instance.setFieldValue(field, value);
@@ -681,7 +681,7 @@ public abstract class ImageHeapScanner {
     }
 
     private void updateInstanceField(AnalysisField field, ImageHeapInstance imageHeapInstance, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        if (isValueAvailable(field, imageHeapInstance)) {
+        if (imageHeapInstance.isFieldValueAvailable(field) && isValueAvailable(field, imageHeapInstance)) {
             JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
             markReachable(fieldValue, reason, onAnalysisModified);
             notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
