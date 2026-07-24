@@ -46,6 +46,8 @@ import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodFlowsGraph implements MethodFlowsGraphInfo {
+    private static final FormalParamTypeFlow[] EMPTY_PARAMETERS = new FormalParamTypeFlow[0];
+
     /**
      * The type of method flows graph.
      */
@@ -95,7 +97,11 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         // parameters
         boolean isStatic = Modifier.isStatic(method.getModifiers());
         int parameterCount = method.getSignature().getParameterCount(!isStatic);
-        parameters = new FormalParamTypeFlow[parameterCount];
+        parameters = createParameters(parameterCount);
+    }
+
+    static FormalParamTypeFlow[] createParameters(int length) {
+        return length == 0 ? EMPTY_PARAMETERS : new FormalParamTypeFlow[length];
     }
 
     public <T extends TypeFlow<?>> T lookupCloneOf(@SuppressWarnings("unused") PointsToAnalysis bb, T original) {

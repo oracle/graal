@@ -78,7 +78,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
 
         if (!isReclone) {
             // during a reclone the original parameters and returnflow are retained
-            parameters = new FormalParamTypeFlow[originalFlowsGraph.parameters.length];
+            parameters = createParameters(originalFlowsGraph.parameters.length);
             for (int i = 0; i < originalFlowsGraph.parameters.length; i++) {
                 // copy the flow
                 if (originalFlowsGraph.getParameter(i) != null) {
