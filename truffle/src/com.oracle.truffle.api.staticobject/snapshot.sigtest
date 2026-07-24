@@ -89,6 +89,7 @@ CLSS public final static com.oracle.truffle.api.staticobject.StaticShape$Builder
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(com.oracle.truffle.api.staticobject.StaticShape<{%%0}>)
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(java.lang.Class<?>,java.lang.Class<{%%0}>)
 meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty,java.lang.Class<?>,boolean)
+meth public final com.oracle.truffle.api.staticobject.StaticShape$Builder safetyChecks(boolean)
 meth public com.oracle.truffle.api.staticobject.StaticShape<com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory> build()
 supr java.lang.Object
 hfds DELIMITER,MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,counter,hasLongPropertyId,isActive,language,staticProperties,storageClassName
