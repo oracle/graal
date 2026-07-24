@@ -167,7 +167,7 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        // Permit an absent class-path descriptor without including omitted providers.
+        // §FS-security-providers.7.2: Permit an absent descriptor without including its providers.
         Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             Collection<String> providersToSkip = providers;
@@ -219,6 +219,7 @@ public class ServiceLoaderFeature implements InternalFeature {
              * the regular Class.forName failure at run time.
              */
             if (isSecurityProviderService) {
+                // §FS-security-providers.7.2
                 registerProviderForRuntimeResourceAccess(access, provider, registeredProviders);
                 continue;
             }

@@ -241,6 +241,8 @@ public final class SecurityProvidersSupport {
         }
     }
 
+    /// §FS-security-providers.3.1, §FS-security-providers.4.3, and
+    /// §FS-security-providers.7.1: Construct included providers; probe omitted providers normally.
     public Provider loadBuiltInProvider(String provName, Debug debug) {
         String providerClassName = getBuiltInProviderClassName(provName);
         if (providerClassName == null) {

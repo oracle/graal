@@ -420,8 +420,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         /*
          * Runtime randomness seeds constant blinding and code-offset randomization. Register it
          * only with its runtime-compilation consumer so ordinary executables do not retain JCA
-         * security providers. §FS-security-providers.2.4
+         * security providers.
          */
+        // §FS-security-providers.2.4
         if (!ImageSingletons.contains(RuntimeRandomness.class)) {
             ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
         }

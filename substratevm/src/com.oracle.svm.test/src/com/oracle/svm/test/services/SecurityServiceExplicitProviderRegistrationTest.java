@@ -46,6 +46,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 public class SecurityServiceExplicitProviderRegistrationTest {
     private static final String REGISTERED_PROVIDER_NAME = "reflection-metadata-provider";
 
+    /** Tests §FS-security-providers.2.3 and §FS-security-providers.2.4. */
     @Test
     public void testDefaultSecureRandomIncludesCompleteSunProvider() throws NoSuchAlgorithmException {
         SecureRandom random = new SecureRandom();
@@ -59,6 +60,7 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         Assert.assertNotNull("An unrelated advertised service must remain usable.", jksService.newInstance(null));
     }
 
+    /** Tests §FS-security-providers.4.2 and §FS-security-providers.7.3. */
     @Test
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
         Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));

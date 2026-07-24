@@ -743,6 +743,17 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean getSecurityServiceForProvider(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle type = getObjectArgument(thread, 0);
+        JNIObjectHandle algorithm = getObjectArgument(thread, 1);
+        JNIObjectHandle provider = getObjectArgument(thread, 2);
+        JNIObjectHandle service = Support.callStaticObjectMethodLLL(jni, bp.clazz, bp.method, type, algorithm, provider);
+        boolean validResult = !clearException(jni) && service.notEqual(nullHandle());
+        traceSecurityProvider(jni, provider, validResult, state.getDirectCallerClass(), state);
+        return true;
+    }
+
+    /** §FS-security-providers.6: Provider insertion and lookup trace provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
             return;
@@ -1853,6 +1864,8 @@ final class BreakpointInterceptor {
                     brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", BreakpointInterceptor::getStaticSecurityProviderByName),
+                    brk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
+                                    BreakpointInterceptor::getSecurityServiceForProvider),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
                                     BreakpointInterceptor::findSystemClass),

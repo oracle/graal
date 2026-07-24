@@ -156,7 +156,7 @@ public class SecurityServiceTest {
         }
     }
 
-    /** Verifies service-driven GSS provider inclusion. */
+    /** Tests service-driven GSS provider inclusion from §FS-security-providers.7.3. */
     @Test
     public void testGSSProviderServiceRegistration() throws Exception {
         Oid kerberosV5 = new Oid("1.2.840.113554.1.2.2");
@@ -165,6 +165,8 @@ public class SecurityServiceTest {
         Assert.assertEquals("user@REALM", manager.createName("user@REALM", GSSName.NT_USER_NAME, kerberosV5).toString());
     }
 
+    // Tests provider registration, complete services, and provider-object factory calls.
+    // §FS-security-providers.2.1, §FS-security-providers.2.3, and §FS-security-providers.5.1
     @Test
     public void testReflectionMetadataProviderRegistration() throws Exception {
         Provider provider = (Provider) Class.forName(REFLECTION_METADATA_PROVIDER_CLASS_NAME).getDeclaredConstructor().newInstance();
@@ -180,6 +182,8 @@ public class SecurityServiceTest {
         }
     }
 
+    // Tests type-only registration, complete services, and provider-object factory calls.
+    // §FS-security-providers.2.1, §FS-security-providers.2.3, and §FS-security-providers.5.1
     @Test
     public void testTypeMetadataProviderRegistration() throws Exception {
         Provider provider = new TypeMetadataProvider();
@@ -194,6 +198,7 @@ public class SecurityServiceTest {
         }
     }
 
+    /** Tests §FS-security-providers.4.1. */
     @Test
     public void testReachableProviderWithoutMetadataDoesNotRegisterServices() {
         Provider provider = new ReachableProviderWithoutMetadata();
@@ -206,6 +211,7 @@ public class SecurityServiceTest {
         }
     }
 
+    /** Tests §FS-security-providers.7.2. */
     @Test
     public void testServiceLoaderProviderWithoutMetadataUsesReflectionLookupFailure() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -220,6 +226,7 @@ public class SecurityServiceTest {
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
     }
 
+    /** Tests §FS-security-providers.7.2. */
     @Test
     public void testServiceLoaderProviderWithMetadataIsPreserved() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -251,12 +258,14 @@ public class SecurityServiceTest {
         Assert.assertNull("Provider should not be present.", registered);
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testReachableBuiltInProviderIsIncluded() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Assert.assertNotNull("Service-driven registration should include SunEC.", Security.getProvider("SunEC"));
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testReachableBuiltInProviderGetService() throws NoSuchAlgorithmException {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
@@ -264,12 +273,14 @@ public class SecurityServiceTest {
         Assert.assertEquals("SunEC", service.getProvider().getName());
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testReachableBuiltInProviderGetInstance() throws NoSuchAlgorithmException {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Assert.assertNotNull(GetInstance.getInstance(OMITTED_PROVIDER_SERVICE, null, OMITTED_PROVIDER_ALGORITHM));
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testReachableBuiltInProviderGetServices() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
@@ -277,12 +288,14 @@ public class SecurityServiceTest {
         Assert.assertTrue("Generic service iteration should include the reachable built-in provider.", services.hasNext());
     }
 
+    /** Tests the standard unavailable result from §FS-security-providers.4.2. */
     @Test
     public void testGenericMissingAlgorithmExhaustsProviderList() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> KeyGenerator.getInstance(MISSING_KEY_GENERATOR_ALGORITHM));
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testSecurityGetAlgorithmsIncludesReachableBuiltInProviderAlgorithm() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
@@ -291,6 +304,7 @@ public class SecurityServiceTest {
                         algorithms.contains(OMITTED_PROVIDER_ALGORITHM.toUpperCase()));
     }
 
+    /** Tests the compatibility behavior in §FS-security-providers.7.3. */
     @Test
     public void testSecurityGetProvidersFilterIncludesReachableBuiltInProvider() {
         Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
