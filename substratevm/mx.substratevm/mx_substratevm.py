@@ -3618,10 +3618,8 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
         # Espresso loads Truffle NFI from the org.graalvm.truffle module.
         vmArgs.extend(['--enable-native-access=org.graalvm.truffle'])
 
-        # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
-        # for the junit harness which uses reflection to find @Test methods. In addition, the
-        # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
-        # ALL-UNNAMED.
+        # Configure tests may run before JVMCI applies its dynamic exports, so export these
+        # packages eagerly.
         mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.graal.compiler,ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
 
@@ -3679,6 +3677,29 @@ class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(SVMDriverUnittestsConfig())
+
+
+class SvmUnittestConfig(mx_compiler.GraalUnittestConfig):
+
+    def __init__(self):
+        super().__init__('svm-unittest')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = super().apply(config)
+
+        # SubstrateVM configure tests can initialize pointsto classes before JVMCI has performed
+        # its dynamic exports, so they need these JVMCI packages exported eagerly.
+        vmArgs.extend([
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+        ])
+
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(SvmUnittestConfig())
 
 
 @mx.command(suite, 'update-build-options-table', usage_msg='[--check] - Update or verify the BuildOptions.md table')
