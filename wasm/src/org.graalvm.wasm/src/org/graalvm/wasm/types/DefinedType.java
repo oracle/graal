@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,9 @@ import java.util.Objects;
  * for certain operations which would try to traverse the entire AST, we treat the recursive
  * references as not unrolled by first checking {@link #recursiveReference} and stopping further
  * traversal. This is notably the case for {@link #equals(Object)} and {@link #hashCode()}, where
- * this yields the iso-recursive type equality predicate that is required by the spec.
+ * this yields the iso-recursive type equality predicate that is required by the spec when comparing
+ * top-level types. Recursive references embedded in type definitions are marked as such, so their
+ * representation equality does not necessarily correspond to type equivalence.
  */
 public final class DefinedType implements HeapType {
 
@@ -92,8 +94,8 @@ public final class DefinedType implements HeapType {
     }
 
     /**
-     * Gets the type equivalence class of this type. This can be used to implement more efficient
-     * equality checks on defined types, since {@code a.equals(b)} iff
+     * Gets the type equivalence class of this top-level type. This can be used to implement more
+     * efficient equality checks on top-level defined types, since {@code a.equals(b)} iff
      * {@code a.typeEquivalenceClass() == b.typeEquivalenceClass()} (this works across different
      * modules and contexts, as long as they share the same {@link org.graalvm.wasm.WasmLanguage}
      * instance).
@@ -190,6 +192,12 @@ public final class DefinedType implements HeapType {
         }
     }
 
+    /**
+     * Compares the representations of two defined types. This corresponds to type equivalence when
+     * both operands are top-level types. Recursive references compare as references within their
+     * enclosing recursive type group and should not be compared directly to determine type
+     * equivalence.
+     */
     @Override
     public boolean equals(Object obj) {
         return obj instanceof DefinedType that && this.recursiveReference == that.recursiveReference && this.subTypeIndex == that.subTypeIndex &&
