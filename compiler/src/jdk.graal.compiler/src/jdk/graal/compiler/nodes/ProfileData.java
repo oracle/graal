@@ -225,6 +225,22 @@ public abstract class ProfileData {
             return UNKNOWN_BRANCH_PROFILE;
         }
 
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof BranchProbabilityData other)) {
+                return false;
+            }
+            return profileSource == other.profileSource && Double.compare(designatedSuccessorProbability, other.designatedSuccessorProbability) == 0;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * profileSource.hashCode() + Double.hashCode(designatedSuccessorProbability);
+        }
+
         /**
          * Computes combined profile data for short-circuiting evaluation of {@code a || b}.
          */

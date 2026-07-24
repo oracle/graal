@@ -291,6 +291,34 @@ public final class GraalDirectives {
         return condition;
     }
 
+    /** Combines two boolean values with a short circuit OR in the compiler graph. */
+    public static boolean shortCircuitOr(boolean x, boolean y) {
+        return x || y;
+    }
+
+    /**
+     * Combines two boolean values with a short circuit OR in the compiler graph. The probability
+     * describes how often the second operand is not evaluated because the first operand is true.
+     */
+    public static boolean shortCircuitOr(double shortCircuitProbability, boolean x, boolean y) {
+        assert shortCircuitProbability >= 0.0 && shortCircuitProbability <= 1.0 : "Probability must be between [0D;1D] but is " + shortCircuitProbability;
+        return x || y;
+    }
+
+    /** Combines two boolean values with a short circuit AND in the compiler graph. */
+    public static boolean shortCircuitAnd(boolean x, boolean y) {
+        return x && y;
+    }
+
+    /**
+     * Combines two boolean values with a short circuit AND in the compiler graph. The probability
+     * describes how often the second operand is not evaluated because the first operand is false.
+     */
+    public static boolean shortCircuitAnd(double shortCircuitProbability, boolean x, boolean y) {
+        assert shortCircuitProbability >= 0.0 && shortCircuitProbability <= 1.0 : "Probability must be between [0D;1D] but is " + shortCircuitProbability;
+        return x && y;
+    }
+
     /**
      * Injects a probability into the profiling information of a switch branch. The probability must
      * be a value between 0.0 and 1.0 (inclusive). This directive should only be used as the first
