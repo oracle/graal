@@ -38,13 +38,13 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "-Dcom.oracle.svm.test.services.SecureRandomExplicitProviderRegistrationTest=true"
 })
 public class SecureRandomExplicitProviderRegistrationTest {
-    /** Tests \u00A7FS-security-providers.2.4. */
+    /** Tests §FS-security-providers.2.4. */
     @Test
-    public void testNamedSecureRandomNeedsNoProviderReflectionMetadata() throws NoSuchAlgorithmException {
+    public void testNamedSecureRandomUsesPlatformRegistrationSignal() throws NoSuchAlgorithmException {
         SecureRandom random = SecureRandom.getInstance("DRBG");
 
         Assert.assertEquals("SUN", random.getProvider().getName());
-        Assert.assertEquals("Named SecureRandom acquisition must retain its implementation.", 1,
+        Assert.assertEquals("The platform registration signal must retain the implementation.", 1,
                         random.generateSeed(1).length);
     }
 }

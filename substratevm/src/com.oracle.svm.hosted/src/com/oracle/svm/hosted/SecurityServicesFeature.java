@@ -251,7 +251,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** All providers deemed to be used by this feature. */
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> candidateProviderClasses = ConcurrentHashMap.newKeySet();
-    private final Set<Class<?>> includedProviderClasses = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> processedProviderClasses = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean candidateProviderClassesChanged = new AtomicBoolean();
 
     private Field verificationResultsField;
@@ -771,18 +771,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         if (processedServiceTypes.add(serviceType)) {
             if (FutureDefaultsOptions.explicitSecurityProviderRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
-                registerSecureRandomProviders();
+                registerSecureRandomProvidersFromPlatformSignal();
             }
             doRegisterServices(access, trigger, serviceType);
         }
     }
 
     /**
-     * SecureRandom acquisition conditionally retains its complete configured providers as platform
-     * dependencies. The application does not need provider reflection metadata.
+     * SecureRandom acquisition supplies a platform-owned conditional registration signal. The
+     * registered providers follow the ordinary complete-provider processing path.
      */
-    private void registerSecureRandomProviders() {
-        // \u00A7FS-security-providers.2.4
+    private void registerSecureRandomProvidersFromPlatformSignal() {
+        // §FS-security-providers.2.4
         EconomicSet<Service> services = availableServices.get(SECURE_RANDOM_SERVICE);
         VMError.guarantee(services != null);
         EconomicSet<Class<?>> providerClasses = EconomicSet.create();
@@ -944,6 +944,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
         if (!isLoadableProviderClass(access, providerClass)) {
+            registerApplicationSuppliedProviderClass(providerClass);
             return;
         }
         Provider provider = buildTimeProvidersByClassName.get(providerClass.getName());
@@ -957,6 +958,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 registerService(access, service);
             }
         }
+    }
+
+    /**
+     * An application-supplied provider does not need a construction path because the application
+     * already owns its instance. Preserve only its class-based JCE verification result; its service
+     * implementations must be registered independently.
+     */
+    private void registerApplicationSuppliedProviderClass(Class<?> providerClass) {
+        // §FS-security-providers.5.3: Preserve verification without reconstructing the provider.
+        Provider buildTimeProvider = buildTimeProvidersByClassName.get(providerClass.getName());
+        Object verificationResult = buildTimeProvider == null ? Boolean.TRUE : getProviderVerificationResult(buildTimeProvider);
+        SecurityProvidersSupport.singleton().addSecurityProviderVerificationResult(providerClass.getName(), verificationResult);
     }
 
     private boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
@@ -1122,15 +1135,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         boolean newProviderCandidate = candidateProviderClassesChanged.getAndSet(false);
-        boolean includedProvider = false;
+        boolean processedProvider = false;
         for (Class<?> providerClass : candidateProviderClasses) {
-            if (!includedProviderClasses.contains(providerClass) && isProviderRegisteredForReflection(providerClass)) {
-                includedProviderClasses.add(providerClass);
+            if (!processedProviderClasses.contains(providerClass) && isProviderRegisteredForReflection(providerClass)) {
+                processedProviderClasses.add(providerClass);
                 includeProviderClass(access, providerClass);
-                includedProvider = true;
+                processedProvider = true;
             }
         }
-        if (includedProvider || newProviderCandidate) {
+        if (processedProvider || newProviderCandidate) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }
