@@ -51,11 +51,7 @@ public class IndexAddressNode extends AddressNode implements Lowerable {
     }
 
     public IndexAddressNode(ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
-        this(TYPE, array, index, arrayKind, elementKind);
-    }
-
-    protected IndexAddressNode(NodeClass<? extends IndexAddressNode> c, ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
-        super(c);
+        super(TYPE);
         this.array = array;
         this.index = index;
         this.arrayKind = arrayKind;

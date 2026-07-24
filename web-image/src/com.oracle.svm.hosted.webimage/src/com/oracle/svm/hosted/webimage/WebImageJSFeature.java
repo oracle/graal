@@ -91,8 +91,7 @@ public class WebImageJSFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        SubstrateAllocationSnippets allocationSnippets = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
-        SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers, allocationSnippets);
+        SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers);
         templates.registerLowering(lowerings);
     }
 

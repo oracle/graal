@@ -60,7 +60,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -116,7 +115,6 @@ public class WebImageHostedConfiguration extends HostedConfiguration {
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
             ObjectLayout objectLayout = createObjectLayout(JavaKind.Object, IdentityHashMode.OBJECT_HEADER);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
-            ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 

@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
-import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -161,10 +160,10 @@ public class WebImageObjectInspector extends ObjectInspector {
         for (HostedField f : type.getInstanceFields(true)) {
             /*
              * We need to have access to typeCheckSlots as a field for instanceof checks. However,
-             * we don't include hybrid fields or the hub's vtable (there is special handing for
-             * vtables in TypeVtableLowered).
+             * we don't include the hub's vtable because it has special handling in
+             * TypeVtableLowered.
              */
-            if (HybridLayout.isHybridField(f) || f.equals(DynamicHubLayout.singleton().vTableField)) {
+            if (f.equals(DynamicHubLayout.singleton().vTableField)) {
                 continue;
             }
 

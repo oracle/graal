@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.hosted.config;
 
+import java.lang.reflect.Modifier;
+
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -43,25 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HybridLayout {
 
     public static boolean isHybrid(ResolvedJavaType clazz) {
-        return HybridLayoutSupport.singleton().isHybrid(clazz);
-    }
-
-    public static boolean isHybridField(HostedField field) {
-        return HybridLayoutSupport.singleton().isHybridField(field);
-    }
-
-    /**
-     * See {@link HybridLayoutSupport#canHybridFieldsBeDuplicated(HostedType)} for explanation.
-     */
-    public static boolean canHybridFieldsBeDuplicated(HostedType clazz) {
-        return HybridLayoutSupport.singleton().canHybridFieldsBeDuplicated(clazz);
-    }
-
-    /**
-     * See {@link HybridLayoutSupport#canInstantiateAsInstance(HostedType)} for explanation.
-     */
-    public static boolean canInstantiateAsInstance(HostedType clazz) {
-        return HybridLayoutSupport.singleton().canInstantiateAsInstance(clazz);
+        return AnnotationUtil.isAnnotationPresent(clazz, Hybrid.class);
     }
 
     private final ObjectLayout layout;
@@ -71,15 +56,15 @@ public class HybridLayout {
 
     @SuppressWarnings("this-escape")
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, MetaAccessProvider metaAccess) {
-        this.layout = layout;
-        HybridLayoutSupport.HybridInfo hybridInfo = HybridLayoutSupport.singleton().inspectHybrid(hybridClass, metaAccess);
-        this.arrayComponentType = hybridInfo.arrayComponentType;
-        this.arrayField = hybridInfo.arrayField;
-        this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
-    }
+        assert Modifier.isFinal(hybridClass.getModifiers()) : "Hybrid class must be final " + hybridClass;
 
-    public HostedType getArrayComponentType() {
-        return arrayComponentType;
+        Class<?> componentType = AnnotationUtil.getAnnotation(hybridClass, Hybrid.class).componentType();
+        assert componentType != void.class : "@Hybrid.componentType cannot be void";
+
+        this.layout = layout;
+        this.arrayComponentType = (HostedType) metaAccess.lookupJavaType(componentType);
+        this.arrayField = null;
+        this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
     }
 
     public JavaKind getArrayElementStorageKind() {

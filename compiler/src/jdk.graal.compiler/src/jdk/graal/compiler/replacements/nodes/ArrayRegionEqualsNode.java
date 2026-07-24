@@ -72,80 +72,80 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
     /**
      * Pointer to the first array object.
      */
-    @Input protected ValueNode arrayA;
+    @Input private ValueNode arrayA;
 
     /**
      * Byte offset to be added to the first array pointer. Must include the array's base offset!
      */
-    @Input protected ValueNode offsetA;
+    @Input private ValueNode offsetA;
 
     /**
      * Pointer to the second array object.
      */
-    @Input protected ValueNode arrayB;
+    @Input private ValueNode arrayB;
 
     /**
      * Byte offset to be added to the second array pointer. Must include the array's base offset!
      */
-    @Input protected ValueNode offsetB;
+    @Input private ValueNode offsetB;
 
     /**
      * Length of the array region.
      */
-    @Input protected ValueNode length;
+    @Input private ValueNode length;
 
     /**
      * Optional argument for dispatching to any combination of strides at runtime, as described in
      * {@link StrideUtil}.
      */
-    @OptionalInput protected ValueNode dynamicStrides;
+    @OptionalInput private ValueNode dynamicStrides;
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, NamedLocationIdentity.getArrayLocation(arrayKind));
+        this(arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, NamedLocationIdentity.getArrayLocation(arrayKind));
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     Stride strideA,
                     Stride strideB,
                     LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, locationIdentity);
+        this(arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, locationIdentity);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, locationIdentity);
+        this(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, locationIdentity);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
-    protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
+    private ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
                     Stride strideA,
                     Stride strideB,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {
-        super(c, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, locationIdentity);
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, locationIdentity);
         this.strideA = strideA;
         this.strideB = strideB;
         this.arrayA = arrayA;

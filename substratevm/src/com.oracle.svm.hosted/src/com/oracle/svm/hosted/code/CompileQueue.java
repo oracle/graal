@@ -563,7 +563,7 @@ public class CompileQueue {
         return originalSuites;
     }
 
-    protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
+    private PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new ImplicitAssertionsPhase());
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
@@ -978,18 +978,13 @@ public class CompileQueue {
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
-        return getCallerAnnotation(invoke, annotationClass) != null;
-    }
-
-    private static <T extends Annotation> T getCallerAnnotation(Invoke invoke, Class<T> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
             assert state.getMethod() != null : state;
-            T annotation = AnnotationUtil.getAnnotation(state.getMethod(), annotationClass);
-            if (annotation != null) {
-                return annotation;
+            if (AnnotationUtil.getAnnotation(state.getMethod(), annotationClass) != null) {
+                return true;
             }
         }
-        return null;
+        return false;
     }
 
     protected CompileTask createCompileTask(HostedMethod method, CompileReason reason) {

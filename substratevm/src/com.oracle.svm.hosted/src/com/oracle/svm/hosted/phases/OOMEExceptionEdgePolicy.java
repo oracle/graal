@@ -67,10 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * synthetic exception object, while the normal successor continues with the frame state that is
  * established by the next real state-bearing node.
  * <p>
- * Later phases that introduce new allocation nodes must make the same decision locally. For example,
- * enterprise string inlining only preserves OOME routing when a new materialization allocation can
- * share an existing local OOME exception boundary; it deliberately does not reconstruct handlers
- * from bytecode metadata after inlining.
+ * Later phases that introduce new allocation nodes must make the same decision locally.
  */
 public final class OOMEExceptionEdgePolicy {
 
