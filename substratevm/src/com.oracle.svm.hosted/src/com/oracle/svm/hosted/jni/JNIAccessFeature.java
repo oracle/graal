@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -188,18 +189,12 @@ public class JNIAccessFeature implements Feature {
     private record RegistrationWithPreserved<T>(T element, boolean preserved) {
     }
 
-    private record NegativeMethodLookup(Class<?> clazz, String methodName, List<Class<?>> parameterTypes) {
-    }
-
-    private record NegativeFieldLookup(Class<?> clazz, String fieldName) {
-    }
-
     private final Set<RegistrationWithPreserved<Class<?>>> newClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> newNegativeClassLookups = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<RegistrationWithPreserved<Executable>> newMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<NegativeMethodLookup> newNegativeMethodLookups = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<Class<?>, Set<Pair<String, Class<?>[]>>> newNegativeMethodLookups = new ConcurrentHashMap<>();
     private final Map<RegistrationWithPreserved<Field>, Boolean> newFields = new ConcurrentHashMap<>();
-    private final Set<NegativeFieldLookup> newNegativeFieldLookups = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<Class<?>, Set<String>> newNegativeFieldLookups = new ConcurrentHashMap<>();
 
     // Needs Pair to de-duplicate linkage objects for lack of key-to-key lookups.
     private final Map<JNINativeLinkage, Pair<JNINativeLinkage, ResolvedJavaType>> nativeLinkages = new ConcurrentHashMap<>();
@@ -291,7 +286,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, preserved, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
-                newNegativeFieldLookups.add(new NegativeFieldLookup(declaringClass, fieldName));
+                newNegativeFieldLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(fieldName); // noEconomicSet
             }
         }
 
@@ -300,7 +295,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, preserved, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.add(new NegativeMethodLookup(declaringClass, methodName, List.of(parameterTypes)));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create(methodName, parameterTypes)); // noEconomicSet
             }
         }
 
@@ -309,7 +304,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, preserved, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.add(new NegativeMethodLookup(declaringClass, "<init>", List.of(parameterTypes)));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create("<init>", parameterTypes)); // noEconomicSet
             }
         }
     }
@@ -439,32 +434,33 @@ public class JNIAccessFeature implements Feature {
         newClasses.clear();
 
         for (String className : newNegativeClassLookups) {
-            if (newNegativeClassLookups.remove(className)) {
-                addNegativeClassLookup(className);
-            }
+            addNegativeClassLookup(className);
         }
+        newNegativeClassLookups.clear();
 
         for (var registration : newMethods) {
             addMethod(registration.element(), registration.preserved(), access);
         }
         newMethods.clear();
 
-        for (NegativeMethodLookup lookup : newNegativeMethodLookups) {
-            if (newNegativeMethodLookups.remove(lookup)) {
-                addNegativeMethodLookup(lookup.clazz(), lookup.methodName(), lookup.parameterTypes().toArray(Class<?>[]::new), access);
+        newNegativeMethodLookups.forEach((clazz, signatures) -> {
+            for (Pair<String, Class<?>[]> signature : signatures) {
+                addNegativeMethodLookup(clazz, signature.getLeft(), signature.getRight(), access);
             }
-        }
+        });
+        newNegativeMethodLookups.clear();
 
         newFields.forEach((registration, writable) -> {
             addField(registration.element(), registration.preserved(), writable, access);
         });
         newFields.clear();
 
-        for (NegativeFieldLookup lookup : newNegativeFieldLookups) {
-            if (newNegativeFieldLookups.remove(lookup)) {
-                addNegativeFieldLookup(lookup.clazz(), lookup.fieldName(), access);
+        newNegativeFieldLookups.forEach((clazz, fieldNames) -> {
+            for (String fieldName : fieldNames) {
+                addNegativeFieldLookup(clazz, fieldName, access);
             }
-        }
+        });
+        newNegativeFieldLookups.clear();
 
         access.requireAnalysisIteration();
     }
