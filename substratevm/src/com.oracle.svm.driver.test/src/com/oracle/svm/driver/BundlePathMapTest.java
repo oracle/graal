@@ -27,6 +27,7 @@ package com.oracle.svm.driver;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -139,6 +140,42 @@ public class BundlePathMapTest {
     public void matchesOnlyJavaLauncherInlineModulePathSpellings() {
         assertNotNull(matchAny("--module-path=mods"));
         assertNull(matchAny("-p=mods"));
+    }
+
+    @Test
+    public void matchesInlineConfigurationsPathSpelling() {
+        assertNotNull(matchAny("--configurations-path=config"));
+    }
+
+    @Test
+    public void matchesSplitConfigurationsPathSpelling() {
+        ArrayDeque<String> args = new ArrayDeque<>(List.of("--configurations-path", "config"));
+
+        DriverPathOptions.Match match = DriverPathOptions.matchAny(args);
+
+        assertNotNull(match);
+        assertTrue(args.isEmpty());
+    }
+
+    @Test
+    public void consumesInlineExpertOptionsDetailSpelling() {
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue("test");
+        args.add("--expert-options-detail=AbortOnTypeReachable");
+
+        assertTrue(nativeImage.cmdLineOptionHandler.consume(args));
+        assertTrue(args.isEmpty());
+    }
+
+    @Test
+    public void consumesSplitExpertOptionsDetailSpelling() {
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue("test");
+        args.add("--expert-options-detail");
+        args.add("AbortOnTypeReachable");
+
+        assertTrue(nativeImage.cmdLineOptionHandler.consume(args));
+        assertTrue(args.isEmpty());
     }
 
     @Test
