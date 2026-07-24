@@ -2407,6 +2407,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public OptionKey<Boolean> getWarnMethodScopingOption() {
+            return PolyglotEngineOptions.WarnMethodScoping;
+        }
+
+        @Override
         public boolean isIsolateMemoryProtection(OptionValues optionValues) {
             return PolyglotEngineOptions.isIsolateMemoryProtection(optionValues);
         }
@@ -2448,6 +2453,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Source getSourceReceiver(org.graalvm.polyglot.Source source) {
             return (Source) PolyglotImpl.findInstance().getAPIAccess().getSourceReceiver(source);
+        }
+
+        @Override
+        public TruffleLogger getEngineLogger(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).getEngineLogger();
         }
     }
 

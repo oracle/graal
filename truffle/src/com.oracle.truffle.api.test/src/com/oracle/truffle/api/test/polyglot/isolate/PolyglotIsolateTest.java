@@ -2270,6 +2270,51 @@ public class PolyglotIsolateTest {
         }
     }
 
+    @Test
+    public void testNoMethodScopingWarningWithoutIsolation() throws Exception {
+        testScopingWarningImpl(false, HostAccess.ALL, false, false);
+    }
+
+    @Test
+    public void testNoMethodScopingWarningForNoHostAccess() throws Exception {
+        testScopingWarningImpl(true, HostAccess.NONE, false, false);
+    }
+
+    @Test
+    public void testMethodScopingWarningForUnscopedHostAccess() throws Exception {
+        testScopingWarningImpl(true, HostAccess.ALL, false, true);
+    }
+
+    @Test
+    public void testNoMethodScopingWarningForScopedHostAccess() throws Exception {
+        HostAccess scopedHostAccess = HostAccess.newBuilder(HostAccess.ALL).methodScoping(true).build();
+        testScopingWarningImpl(true, scopedHostAccess, false, false);
+    }
+
+    @Test
+    public void testMethodScopingWarningDisabled() throws Exception {
+        testScopingWarningImpl(true, HostAccess.ALL, true, false);
+    }
+
+    private static void testScopingWarningImpl(boolean spawnIsolate, HostAccess hostAccess, boolean disableWarning, boolean expectWarning) throws Exception {
+        assumeFalse(ImageInfo.inImageRuntimeCode());
+        SubprocessTestUtils.Builder builder = SubprocessTestUtils.newBuilder(PolyglotIsolateTest.class, () -> {
+            Context context = Context.newBuilder("triste").allowHostAccess(hostAccess).spawnIsolate(spawnIsolate).build();
+            context.close();
+        });
+        // Remove engine.SpawnIsolate option passed by gates, the test controls spawn isolate itself
+        builder.prefixVmOption(SubprocessTestUtils.markForRemoval(("-Dpolyglot.engine.SpawnIsolate=true")));
+        if (disableWarning) {
+            builder.prefixVmOption("-Dpolyglot.engine.WarnMethodScoping=false");
+        } else {
+            builder.prefixVmOption(SubprocessTestUtils.markForRemoval(("-Dpolyglot.engine.WarnMethodScoping=false")));
+        }
+        builder.onExit((p) -> {
+            assertEquals(expectWarning, p.output.stream().anyMatch((l) -> l.contains("An isolated polyglot context uses host access without host method scoping.")));
+        });
+        builder.run();
+    }
+
     @HostReflection
     public static final class HostObjectFactory {
 

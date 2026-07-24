@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 import org.graalvm.nativebridge.ByLocalReference;
 import org.graalvm.nativebridge.ByRemoteReference;
@@ -68,8 +69,10 @@ import org.graalvm.nativebridge.Peer;
 import org.graalvm.nativebridge.ProcessPeer;
 import org.graalvm.nativebridge.ReceiverMethod;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -201,6 +204,17 @@ abstract class ForeignEngineDispatch extends AbstractEngineDispatch {
         Engine localEngine = foreignEngine.getLocalEngine();
         AbstractEngineDispatch dispatch = apiAccess.getEngineDispatch(localEngine);
         Object engineReceiver = apiAccess.getEngineReceiver(localEngine);
+        if (hostAccess != HostAccess.NONE && !apiAccess.isMethodScopingEnabled(hostAccess)) {
+            OptionValues engineOptions = PolyglotIsolateAccessor.ENGINE.getEngineOptionValues(engineReceiver);
+            if (engineOptions.get(PolyglotIsolateAccessor.ENGINE.getWarnMethodScopingOption())) {
+                String warningMessage = """
+                                An isolated polyglot context uses host access without host method scoping. Guest values passed to host methods may create cross-heap reference cycles that might not be reclaimable.
+                                To resolve this, enable method scoping using HostAccess.Builder.methodScoping(true).
+                                To disable this warning use the '--engine.WarnMethodScoping=false' option or the '-Dpolyglot.engine.WarnMethodScoping=false' system property.
+                                """;
+                PolyglotIsolateAccessor.ENGINE.getEngineLogger(engineReceiver).log(Level.WARNING, warningMessage);
+            }
+        }
         Context localContext = dispatch.createContext(engineReceiver, localEngine, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, apiAccess.getPolyglotAccessAll(), allowNativeAccess,
                         allowCreateThread,
                         allowHostClassLoading,

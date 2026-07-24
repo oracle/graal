@@ -135,6 +135,10 @@ final class PolyglotEngineOptions {
                     "Warn that the virtual thread support is experimental (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnVirtualThreadSupport = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Warn when an isolated context uses host access without host method scoping (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
+    static final OptionKey<Boolean> WarnMethodScoping = new OptionKey<>(true);
+
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
