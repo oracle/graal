@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier.ScanningObserver;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -331,7 +332,16 @@ public abstract class ImageHeapScanner {
          * Access the constant type after the replacement. Some constants may have types that should
          * not be reachable at run time and thus are replaced.
          */
-        AnalysisType type = universe.lookup(GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(constant));
+        AnalysisType type;
+        try {
+            type = universe.lookup(GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(constant));
+        } catch (UnsupportedPlatformException ex) {
+            StringBuilder backtrace = new StringBuilder();
+            ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
+            UnsupportedPlatformException diagnosticException = new UnsupportedPlatformException(ex.getMessage() + System.lineSeparator() + backtrace);
+            diagnosticException.initCause(ex);
+            throw diagnosticException;
+        }
 
         if (type.isArray()) {
             Integer length = hostedValuesProvider.readArrayLength(constant);
