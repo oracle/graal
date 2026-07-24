@@ -734,26 +734,53 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle name = getObjectArgument(thread, 0);
-        JNIObjectHandle provider = Support.callStaticObjectMethodL(jni, bp.clazz, bp.method, name);
-        boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        traceSecurityProvider(jni, provider, validResult, callerClass, state);
+    /** §FS-security-providers.6.2: Observe an explicit-provider lookup without invoking it. */
+    private static boolean getSecurityServiceForProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle provider = getObjectArgument(thread, 2);
+        /*
+         * Do not invoke GetInstance.getService from its entry breakpoint. Doing so can initialize
+         * and cache the service while recursive tracing is suppressed, preventing the real call
+         * from recording its implementation metadata and resource accesses.
+         */
+        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()), state.getDirectCallerClass(), state);
         return true;
     }
 
-    private static boolean getSecurityServiceForProvider(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle type = getObjectArgument(thread, 0);
-        JNIObjectHandle algorithm = getObjectArgument(thread, 1);
-        JNIObjectHandle provider = getObjectArgument(thread, 2);
-        JNIObjectHandle service = Support.callStaticObjectMethodLLL(jni, bp.clazz, bp.method, type, algorithm, provider);
-        boolean validResult = !clearException(jni) && service.notEqual(nullHandle());
+    /** §FS-security-providers.6.1: Trace the provider selected for service instantiation. */
+    private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle service = getReceiver(thread);
+        JNIObjectHandle provider = Support.callObjectMethod(jni, service, agent.handles().javaSecurityProviderServiceGetProvider);
+        boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
         traceSecurityProvider(jni, provider, validResult, state.getDirectCallerClass(), state);
         return true;
     }
 
-    /** §FS-security-providers.6: Provider insertion and lookup trace provider type access. */
+    /** §FS-security-providers.6.1 and §FS-security-providers.6.2: Trace lookup metadata only. */
+    private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle providerName = getObjectArgument(thread, 0);
+        if (providerName.equal(nullHandle())) {
+            return true;
+        }
+        JNIObjectHandle providerClass = switch (fromJniString(jni, providerName)) {
+            case "SUN", "sun.security.provider.Sun" -> agent.handles().sunSecurityProviderSun;
+            case "SunRsaSign", "sun.security.rsa.SunRsaSign" -> agent.handles().sunSecurityRsaSunRsaSign;
+            case "SunEC", "sun.security.ec.SunEC" -> agent.handles().sunSecurityEcSunEC;
+            case "SunJSSE", "sun.security.ssl.SunJSSE" -> agent.handles().sunSecuritySslSunJSSE;
+            case "SunJCE", "com.sun.crypto.provider.SunJCE" -> agent.handles().comSunCryptoProviderSunJCE;
+            case "Apple", "apple.security.AppleProvider" -> agent.handles().appleSecurityAppleProvider;
+            default -> nullHandle();
+        };
+        if (providerClass.notEqual(nullHandle())) {
+            /*
+             * Record the implicit no-argument construction without eagerly invoking getProvider,
+             * which would cache the provider while recursive tracing is suppressed.
+             */
+            traceReflectBreakpoint(jni, providerClass, providerClass, state.getDirectCallerClass(), "invokeConstructor", true, state.getFullStackTraceOrNull(), (Object) new String[0]);
+        }
+        return true;
+    }
+
+    /** §FS-security-providers.6.1: Provider insertion and lookup trace provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
             return;
@@ -1863,9 +1890,12 @@ final class BreakpointInterceptor {
 
                     brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
-                    brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", BreakpointInterceptor::getStaticSecurityProviderByName),
+                    brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;",
+                                    BreakpointInterceptor::getStaticSecurityProviderByName),
                     brk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
                                     BreakpointInterceptor::getSecurityServiceForProvider),
+                    brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
+                                    BreakpointInterceptor::newSecurityServiceInstance),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
                                     BreakpointInterceptor::findSystemClass),

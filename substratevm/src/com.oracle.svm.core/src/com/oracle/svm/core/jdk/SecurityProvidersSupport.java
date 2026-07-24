@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -92,7 +93,7 @@ import sun.security.util.Debug;
 /// JDK-supported construction path, for example when it is a non-static inner class. JDK-managed
 /// construction paths are traced separately at their actual reflective access sites. This is the
 /// native-image counterpart of the Tracing Agent's provider event and implements
-/// §FS-security-providers.6.
+/// §FS-security-providers.6.1.
 ///
 /// On a verification-result cache miss, [#reportMissingProviderRegistration(Class)] performs an
 /// opaque, non-initializing `Class.forName` lookup using the provider's class loader. The opaque
@@ -206,9 +207,10 @@ public final class SecurityProvidersSupport {
     }
 
     /// §AR-security-providers.3: Cache misses probe type access for standard diagnostics.
+    @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
     public static void reportMissingProviderRegistration(Class<?> providerClass) {
         try {
-            Class.forName(GraalDirectives.opaque(providerClass.getName()), false, providerClass.getClassLoader());
+            Class.forName(providerClass.getName(), false, providerClass.getClassLoader());
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere("A reachable security provider class was not found.", ex);
         }

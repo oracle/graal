@@ -325,6 +325,8 @@ availability rules in sections 1 and 2.
 
 ## 6. Tracing Metadata
 
+### 6.1 Provider and Service Coverage
+
 Metadata collected by the Tracing Agent or native metadata tracing from a successful provider
 lookup must be sufficient for a subsequently built native executable to perform the same lookup
 and use the same provider services without additional provider metadata.
@@ -336,6 +338,15 @@ traced factory calls.
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.
+
+### 6.2 Observational Transparency
+
+Tracing must observe the application's provider lookup, service lookup, and service instantiation
+without invoking any of those operations an additional time.
+It must not initialize or cache a provider, service, implementation class, or resource while
+recursive tracing is suppressed.
+Metadata must include the nested reflection and resource accesses performed by the application's
+actual operation.
 
 ## 7. Transition to the Future Defaults
 
