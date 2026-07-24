@@ -105,7 +105,7 @@ import jdk.vm.ci.meta.Signature;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class InterpreterFeature implements InternalFeature {
     private AnalysisMethod leaveStub;
-    private AnalysisMethod leaveJNIStub;
+    private AnalysisMethod jniDowncallStub;
 
     static boolean assertionsEnabled() {
         boolean enabled = false;
@@ -283,9 +283,9 @@ public class InterpreterFeature implements InternalFeature {
         leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
 
-        Method leaveJNIMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterJNIStub", CFunctionPointer.class, Pointer.class, long.class, boolean.class);
-        leaveJNIStub = metaAccess.lookupJavaMethod(leaveJNIMethod);
-        accessImpl.registerAsRoot(leaveJNIStub, true, "low level JNI entry point");
+        Method jniDowncallMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterForJNIDowncallStub", CFunctionPointer.class, Pointer.class, long.class, boolean.class);
+        jniDowncallStub = metaAccess.lookupJavaMethod(jniDowncallMethod);
+        accessImpl.registerAsRoot(jniDowncallStub, true, "low level JNI downcall entry point");
 
         InterpreterOptions.registerInterpreterTraceOptionValidation();
     }
@@ -325,10 +325,10 @@ public class InterpreterFeature implements InternalFeature {
 
         InterpreterSupport.setLeaveStubPointer(new MethodPointer(hLeaveStub), leaveStubLength);
 
-        HostedMethod hLeaveJNIStub = accessImpl.getUniverse().lookup(leaveJNIStub);
-        int leaveJNIStubLength = accessImpl.getCompilations().get(hLeaveJNIStub).result.getTargetCodeSize();
+        HostedMethod hJNIDowncallStub = accessImpl.getUniverse().lookup(jniDowncallStub);
+        int jniDowncallStubLength = accessImpl.getCompilations().get(hJNIDowncallStub).result.getTargetCodeSize();
 
-        InterpreterSupport.setLeaveJNIStubPointer(new MethodPointer(hLeaveJNIStub), leaveJNIStubLength);
+        InterpreterSupport.setJNIDowncallStubPointer(new MethodPointer(hJNIDowncallStub), jniDowncallStubLength);
     }
 
     private static ResolvedJavaMethod getExecuteBodyFromBCIMethod(MetaAccessProvider metaAccess) {

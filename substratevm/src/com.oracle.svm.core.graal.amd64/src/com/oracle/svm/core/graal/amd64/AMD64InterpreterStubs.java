@@ -419,9 +419,9 @@ public class AMD64InterpreterStubs {
         }
     }
 
-    public static class InterpreterLeaveJNIStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
+    public static class InterpreterJNIDowncallStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
 
-        public InterpreterLeaveJNIStubContext(SharedMethod method, CallingConvention callingConvention) {
+        public InterpreterJNIDowncallStubContext(SharedMethod method, CallingConvention callingConvention) {
             super(method, callingConvention);
         }
 

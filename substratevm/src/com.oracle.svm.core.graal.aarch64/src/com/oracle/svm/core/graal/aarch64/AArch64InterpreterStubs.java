@@ -416,9 +416,9 @@ public class AArch64InterpreterStubs {
         }
     }
 
-    public static class InterpreterLeaveJNIStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+    public static class InterpreterJNIDowncallStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
 
-        public InterpreterLeaveJNIStubContext(SharedMethod method) {
+        public InterpreterJNIDowncallStubContext(SharedMethod method) {
             super(method);
         }
 
