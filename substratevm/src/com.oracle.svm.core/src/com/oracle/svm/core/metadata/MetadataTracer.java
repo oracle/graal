@@ -338,13 +338,21 @@ public final class MetadataTracer {
      * Marks the given resource bundle within the given locale as reachable.
      */
     public void traceResourceBundle(String baseName) {
+        traceResourceBundle(null, baseName);
+    }
+
+    /**
+     * Marks the given resource bundle within the given module as reachable.
+     */
+    public void traceResourceBundle(String moduleName, String baseName) {
         assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             UnresolvedAccessCondition condition = traceCondition();
             if (condition != null) {
-                debug("resource bundle registered", baseName);
-                configurationSet.getResourceConfiguration().addBundle(condition, baseName, List.of());
+                String debugName = moduleName != null ? moduleName + ":" + baseName : baseName;
+                debug("resource bundle registered", debugName);
+                configurationSet.getResourceConfiguration().addBundle(condition, moduleName, baseName, List.of());
             }
         }
     }

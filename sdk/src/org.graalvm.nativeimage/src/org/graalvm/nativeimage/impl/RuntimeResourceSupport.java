@@ -61,7 +61,15 @@ public interface RuntimeResourceSupport<C> {
 
     void addResourceBundles(C condition, boolean preserved, String name);
 
+    default void addResourceBundles(C condition, boolean preserved, String moduleName, String name) {
+        addResourceBundles(condition, preserved, qualifyBundleName(moduleName, name));
+    }
+
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+
+    default void addResourceBundles(C condition, String moduleName, String basename, Collection<Locale> locales) {
+        addResourceBundles(condition, qualifyBundleName(moduleName, basename), locales);
+    }
 
     /* Following functions are used only from features */
     void addCondition(AccessCondition condition, Module module, String resourcePath);
@@ -78,4 +86,9 @@ public interface RuntimeResourceSupport<C> {
     }
 
     void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin);
+
+    /* Adapter for legacy string-based bundle registration APIs. */
+    private static String qualifyBundleName(String moduleName, String bundleName) {
+        return moduleName != null && !moduleName.isEmpty() ? moduleName + ":" + bundleName : bundleName;
+    }
 }
