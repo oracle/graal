@@ -60,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -249,10 +250,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Map<String, EconomicSet<Service>> availableServices;
 
     /** All providers deemed to be used by this feature. */
-    private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
+    private final Set<Provider> usedProviders = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
     private final Set<Class<?>> candidateProviderClasses = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> processedProviderClasses = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean candidateProviderClassesChanged = new AtomicBoolean();
+
+    /** Providers marked as used by the deprecated compatibility option. */
+    private final EconomicSet<String> manuallyMarkedUsedProviderClassNames = EconomicSet.create();
 
     private Field verificationResultsField;
     private Field providerListField;
@@ -270,7 +274,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
 
-    private final Map<String, Provider> buildTimeProvidersByClassName = new HashMap<>();
+    private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -502,6 +506,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private List<Provider> filterProviderList(Object originalValue) {
+        // §FS-security-providers.7.4: The build-time list must not expose omitted providers.
         return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
     }
 
@@ -512,6 +517,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 Class<?> classByName = access.findClassByName(className);
                 UserError.guarantee(classByName != null,
                                 "Manually marked security provider class doesn't exist: %s. Make sure that the class name is correct and that the class is on the image builder classpath.", className);
+                manuallyMarkedUsedProviderClassNames.add(className);
                 if (shouldRegisterProviderClassForReflection(accessImpl, classByName)) {
                     registerProviderClassForReflection(classByName);
                 }
@@ -533,7 +539,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
-        return p == null || !usedProviders.contains(p);
+        if (p == null) {
+            return true;
+        }
+        if (usedProviders.contains(p)) {
+            return false;
+        }
+        if (substitutionProcessor.isDeleted(p.getClass())) {
+            return true;
+        }
+        return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
 
     private static void traceRemovedProviders(List<Provider> removedProviders) {
@@ -711,7 +726,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
         for (Provider provider : Security.getProviders()) {
-            buildTimeProvidersByClassName.put(provider.getClass().getName(), provider);
+            buildTimeProvidersByClassName.computeIfAbsent(provider.getClass().getName(), _ -> new ArrayList<>()).add(provider);
+            // Configured providers can predate the subtype handler.
+            // Reflection registration still controls inclusion. §FS-security-providers.2.1
+            addCandidateProviderClass(provider.getClass());
         }
     }
 
@@ -719,6 +737,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
+                // Descriptors discover candidates without registering them.
+                // §FS-security-providers.7.2
                 for (String provider : providers) {
                     Class<?> providerClass = access.findClassByName(provider);
                     if (providerClass != null) {
@@ -773,6 +793,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             if (FutureDefaultsOptions.explicitSecurityProviderRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
                 registerSecureRandomProvidersFromPlatformSignal();
             }
+            // Service reachability is a compatibility inclusion signal.
+            // §FS-security-providers.7.3
             doRegisterServices(access, trigger, serviceType);
         }
     }
@@ -915,6 +937,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private Object getProviderVerificationResult(Provider provider) {
+        // §FS-security-providers.5.3: Preserve the build-time outcome by provider class.
         if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
             return Boolean.TRUE;
         }
@@ -942,20 +965,26 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    // Use the preferred construction path and retain the complete valid, resolvable catalog.
+    // §FS-security-providers.2.2 and §FS-security-providers.2.3
     private void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
         if (!isLoadableProviderClass(access, providerClass)) {
             registerApplicationSuppliedProviderClass(providerClass);
             return;
         }
-        Provider provider = buildTimeProvidersByClassName.get(providerClass.getName());
-        if (provider == null) {
-            provider = instantiateProvider(providerClass);
+        List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
+        if (providers == null) {
+            providers = List.of(instantiateProvider(providerClass));
         }
-        registerProvider(provider);
         SecurityProvidersSupport.singleton().addIncludedSecurityProviderClass(providerClass.getName());
-        for (Service service : provider.getServices()) {
-            if (isValid(service)) {
-                registerService(access, service);
+        // Register every configured instance and the union of their service metadata.
+        // §FS-security-providers.2.3
+        for (Provider provider : providers) {
+            registerProvider(provider);
+            for (Service service : provider.getServices()) {
+                if (isValid(service)) {
+                    registerService(access, service);
+                }
             }
         }
     }
@@ -967,8 +996,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      */
     private void registerApplicationSuppliedProviderClass(Class<?> providerClass) {
         // §FS-security-providers.5.3: Preserve verification without reconstructing the provider.
-        Provider buildTimeProvider = buildTimeProvidersByClassName.get(providerClass.getName());
-        Object verificationResult = buildTimeProvider == null ? Boolean.TRUE : getProviderVerificationResult(buildTimeProvider);
+        List<Provider> buildTimeProviders = buildTimeProvidersByClassName.get(providerClass.getName());
+        Object verificationResult = buildTimeProviders == null ? Boolean.TRUE : getProviderVerificationResult(buildTimeProviders.getFirst());
         SecurityProvidersSupport.singleton().addSecurityProviderVerificationResult(providerClass.getName(), verificationResult);
     }
 
@@ -1003,6 +1032,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerService(DuringAnalysisAccess a, Service service) {
+        // §FS-security-providers.7.3: Explicit mode disables service-driven provider inclusion.
         if (FutureDefaultsOptions.explicitSecurityProviderRegistration() && !isProviderRegisteredForReflection(service.getProvider().getClass())) {
             trace("Skipped service %s because provider %s was not registered for reflection.", asString(service), service.getProvider().getClass().getName());
             return;
@@ -1036,6 +1066,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    // Recognize every qualifying reflection-registration signal.
+    // §FS-security-providers.1.1 and §FS-security-providers.2.1
     private static boolean isProviderRegisteredForReflection(Class<?> providerClass) {
         ReflectionDataBuilder reflectionData = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
         if (reflectionData.isTypeRegisteredForReflection(providerClass)) {
@@ -1134,6 +1166,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        // §AR-security-providers.5: Consume concurrent candidates in the serialized feature pass.
         boolean newProviderCandidate = candidateProviderClassesChanged.getAndSet(false);
         boolean processedProvider = false;
         for (Class<?> providerClass : candidateProviderClasses) {
