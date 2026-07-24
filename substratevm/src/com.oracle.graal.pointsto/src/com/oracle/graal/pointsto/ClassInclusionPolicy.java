@@ -95,6 +95,14 @@ public abstract class ClassInclusionPolicy {
     }
 
     /**
+     * Determines if a native {@code method} needs to be included in the image according to this
+     * policy.
+     */
+    public boolean isOriginalNativeMethodIncluded(ResolvedJavaMethod method) {
+        return isOriginalMethodIncluded(method);
+    }
+
+    /**
      * Includes the given {@code method} in the image.
      */
     public void includeMethod(ResolvedJavaMethod method) {
@@ -173,6 +181,9 @@ public abstract class ClassInclusionPolicy {
          */
         @Override
         public boolean isOriginalTypeIncluded(ResolvedJavaType type) {
+            if (!bb.getHostVM().isTypeIncludedInSharedLayer(type)) {
+                return false;
+            }
             if (!super.isOriginalTypeIncluded(type)) {
                 return false;
             }
@@ -202,12 +213,22 @@ public abstract class ClassInclusionPolicy {
 
         @Override
         public boolean isAnalysisMethodIncluded(AnalysisMethod method) {
-            return super.isAnalysisMethodIncluded(method) && isMethodAccessible(method);
+            return bb.getHostVM().isMethodIncludedInSharedLayer(method) && super.isAnalysisMethodIncluded(method) && isMethodAccessible(method);
         }
 
         @Override
         public boolean isOriginalMethodIncluded(ResolvedJavaMethod method) {
-            return super.isOriginalMethodIncluded(method) && isMethodAccessible(method);
+            return bb.getHostVM().isMethodIncludedInSharedLayer(method) && super.isOriginalMethodIncluded(method) && isMethodAccessible(method);
+        }
+
+        @Override
+        public boolean isOriginalNativeMethodIncluded(ResolvedJavaMethod method) {
+            /*
+             * Native methods intentionally bypass the accessibility filter used for Java methods.
+             * Native methods from one statically linked library must stay in the same layer because
+             * splitting them across layers duplicates the library and its C static state.
+             */
+            return bb.getHostVM().isMethodIncludedInSharedLayer(method) && super.isOriginalMethodIncluded(method);
         }
 
         /**
@@ -243,12 +264,12 @@ public abstract class ClassInclusionPolicy {
 
         @Override
         public boolean isAnalysisFieldIncluded(AnalysisField field) {
-            return super.isAnalysisFieldIncluded(field) && bb.getHostVM().isFieldIncludedInSharedLayer(field);
+            return bb.getHostVM().isFieldIncludedInSharedLayer(field) && super.isAnalysisFieldIncluded(field);
         }
 
         @Override
         public boolean isOriginalFieldIncluded(ResolvedJavaField field) {
-            return super.isOriginalFieldIncluded(field) && bb.getHostVM().isFieldIncludedInSharedLayer(field);
+            return bb.getHostVM().isFieldIncludedInSharedLayer(field) && super.isOriginalFieldIncluded(field);
         }
     }
 

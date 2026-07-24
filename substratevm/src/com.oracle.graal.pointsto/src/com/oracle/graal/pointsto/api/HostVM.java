@@ -446,10 +446,22 @@ public abstract class HostVM {
         return true;
     }
 
+    /** Determine if type should be included in the shared layer. */
+    @SuppressWarnings("unused")
+    public boolean isTypeIncludedInSharedLayer(ResolvedJavaType type) {
+        return true;
+    }
+
+    /** Determine if method should be included in the shared layer. */
+    @SuppressWarnings("unused")
+    public boolean isMethodIncludedInSharedLayer(ResolvedJavaMethod method) {
+        return isTypeIncludedInSharedLayer(method.getDeclaringClass());
+    }
+
     /** Determine if field should be included in the shared layer. */
     @SuppressWarnings("unused")
     public boolean isFieldIncludedInSharedLayer(ResolvedJavaField field) {
-        return true;
+        return isTypeIncludedInSharedLayer(field.getDeclaringClass());
     }
 
     /** Returns true for fields that should be always closed, even in an open-world analysis. */
