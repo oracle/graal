@@ -1829,7 +1829,7 @@ public class MethodTypeFlowBuilder {
 
         TypeFlowBuilder<InvokeTypeFlow> invokeBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), invoke, InvokeTypeFlow.class, () -> {
 
-            TypeFlow<?>[] actualParameters = new TypeFlow<?>[actualParametersBuilders.length];
+            TypeFlow<?>[] actualParameters = InvokeTypeFlow.createActualParameters(actualParametersBuilders.length);
             for (int i = 0; i < actualParameters.length; i++) {
                 actualParameters[i] = actualParametersBuilders[i] != null ? actualParametersBuilders[i].get() : null;
             }
