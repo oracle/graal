@@ -751,7 +751,8 @@ final class BreakpointInterceptor {
         if (clearException(jni)) {
             providerClass = nullHandle();
         }
-        traceReflectBreakpoint(jni, providerClass, providerClass, callerClass, "invokeConstructor", providerClass.notEqual(nullHandle()), state.getFullStackTraceOrNull(), Arrays.asList());
+        String providerClassName = getClassNameOrNull(jni, providerClass);
+        traceReflectBreakpoint(jni, agent.handles().javaLangClass, nullHandle(), callerClass, "forName", providerClassName != null, state.getFullStackTraceOrNull(), providerClassName);
     }
 
     private static boolean newArrayInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
