@@ -52,6 +52,7 @@ final class Target_java_security_Security {
 @TargetClass(java.security.Security.class)
 final class Target_java_security_Security_ProviderLookup {
 
+    /** §FS-security-providers.6: Successful name-based lookup traces provider type access. */
     @Substitute
     public static Provider getProvider(String name) {
         return SecurityProvidersSupport.traceProviderLookup(sun.security.jca.Providers.getProviderList().getProvider(name));

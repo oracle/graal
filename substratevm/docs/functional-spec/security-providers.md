@@ -120,6 +120,9 @@ lookups and JCA factory calls as it exposed when Native Image inspected it at bu
 Registering a JDK-constructible provider includes every valid service declared by the provider
 whose implementation class Native Image can resolve, and retains the metadata required to
 construct those service implementations.
+When the configured provider list contains multiple instances of the same registered provider
+class, Native Image retains every instance and the valid, resolvable services declared by each
+instance.
 Registering a provider class that is not JDK-constructible does not include its services; services
 used through an application-supplied instance must be retained independently.
 Provider registration does not change the configured provider order or make an unconfigured
