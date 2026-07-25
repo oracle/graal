@@ -755,6 +755,34 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    /**
+     * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
+     */
+    private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle securityApiCaller = findSecurityApiCaller(jni, state);
+        if (securityApiCaller.equal(nullHandle())) {
+            return true;
+        }
+        JNIObjectHandle providerConfig = getReceiver(thread);
+        JNIObjectHandle provider = jniFunctions().getGetObjectField().invoke(jni, providerConfig, agent.handles().sunSecurityJcaProviderConfigProvider);
+        boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
+        traceSecurityProvider(jni, provider, validResult, securityApiCaller, state);
+        return true;
+    }
+
+    private static JNIObjectHandle findSecurityApiCaller(JNIEnvironment jni, InterceptedState state) {
+        JNIObjectHandle securityApiCaller = nullHandle();
+        for (int depth = 1;; depth++) {
+            JNIObjectHandle callerClass = state.getCallerClass(depth);
+            if (callerClass.equal(nullHandle())) {
+                return securityApiCaller;
+            }
+            if ("java.security.Security".equals(getClassNameOrNull(jni, callerClass))) {
+                securityApiCaller = state.getCallerClass(depth + 1);
+            }
+        }
+    }
+
     /** §FS-security-providers.6.1 and §FS-security-providers.6.2: Trace lookup metadata only. */
     private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle providerName = getObjectArgument(thread, 0);
@@ -1896,6 +1924,8 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getSecurityServiceForProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
                                     BreakpointInterceptor::newSecurityServiceInstance),
+                    brk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
+                                    BreakpointInterceptor::getCachedSecurityProvider),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
                                     BreakpointInterceptor::findSystemClass),
