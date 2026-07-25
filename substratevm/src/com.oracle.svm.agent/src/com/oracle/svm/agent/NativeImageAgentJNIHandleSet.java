@@ -58,6 +58,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangObjectToString;
 
     final JNIMethodId javaSecurityProviderServiceGetProvider;
+    final JNIFieldId sunSecurityJcaProviderConfigProvider;
     final JNIObjectHandle sunSecurityProviderSun;
     final JNIObjectHandle sunSecurityRsaSunRsaSign;
     final JNIObjectHandle sunSecurityEcSunEC;
@@ -173,6 +174,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaSecurityProviderService = findClass(env, "java/security/Provider$Service");
         javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
+
+        JNIObjectHandle sunSecurityJcaProviderConfig = findClass(env, "sun/security/jca/ProviderConfig");
+        sunSecurityJcaProviderConfigProvider = getFieldId(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);
 
         sunSecurityProviderSun = newClassGlobalRef(env, "sun/security/provider/Sun");
         sunSecurityRsaSunRsaSign = newClassGlobalRef(env, "sun/security/rsa/SunRsaSign");
