@@ -330,6 +330,8 @@ availability rules in sections 1 and 2.
 Metadata collected by the Tracing Agent or native metadata tracing from a successful provider
 lookup must be sufficient for a subsequently built native executable to perform the same lookup
 and use the same provider services without additional provider metadata.
+This includes provider enumeration and filtering through the `Security` APIs when the JDK loaded
+and cached a returned provider before the traced operation.
 For a JDK-managed provider, the collected metadata must retain a supported construction path:
 declared nullary constructor access or access to the static `provider()` method.
 For an application-supplied provider, tracing must register the provider type without inventing a
