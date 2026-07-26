@@ -51,6 +51,31 @@ public class SecurityProviderAgentTest {
         Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
     }
 
+    /** Tests §FS-security-providers.6.1. */
+    @Test
+    public void programmaticProviderMutationDoesNotTraceConfiguredProviders() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+
+        Provider provider = new ProgrammaticallyAddedProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("The test provider must be added", position > 0);
+            Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
+        } finally {
+            Security.removeProvider(provider.getName());
+        }
+    }
+
     static final class ReflectiveProbe {
+    }
+
+    static final class ProgrammaticallyAddedProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        @SuppressWarnings("deprecation")
+        ProgrammaticallyAddedProvider() {
+            super("AgentMutationProvider", 1.0, "Provider used to verify mutation tracing");
+        }
     }
 }

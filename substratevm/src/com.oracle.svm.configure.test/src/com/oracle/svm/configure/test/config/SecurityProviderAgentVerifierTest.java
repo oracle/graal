@@ -69,6 +69,28 @@ public class SecurityProviderAgentVerifierTest {
         }
     }
 
+    @Test
+    public void verifyMutationRecordedOnlySuppliedProvider() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        assertRecorded(reflectionConfiguration, SecurityProviderAgentTest.ReflectiveProbe.class.getName());
+        assertRecorded(reflectionConfiguration, SecurityProviderAgentTest.ProgrammaticallyAddedProvider.class.getName());
+        for (Provider provider : Security.getProviders()) {
+            String providerClassName = provider.getClass().getName();
+            Assert.assertNull("Provider-list mutation unexpectedly recorded configured provider " + providerClassName,
+                            reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                                            NamedConfigurationTypeDescriptor.fromReflectionName(providerClassName)));
+        }
+    }
+
+    private static void assertRecorded(TypeConfiguration reflectionConfiguration, String className) {
+        Assert.assertNotNull("Missing reflection metadata for " + className,
+                        reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                                        NamedConfigurationTypeDescriptor.fromReflectionName(className)));
+    }
+
     private static ConfigurationSet loadActualConfig() throws Exception {
         String configurationPath = System.getProperty(CONFIG_PATH_PROPERTY);
         Assert.assertNotNull("Missing generated configuration path", configurationPath);
