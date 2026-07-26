@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,10 +35,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.BuiltInSecurityProviderLoader;
+import com.oracle.svm.core.jdk.JceProviderVerificationSupport;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -47,16 +49,6 @@ final class Target_java_security_Security {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     static Properties props;
-}
-
-@TargetClass(java.security.Security.class)
-final class Target_java_security_Security_ProviderLookup {
-
-    /** §FS-security-providers.6: Successful name-based lookup traces provider type access. */
-    @Substitute
-    public static Provider getProvider(String name) {
-        return SecurityProvidersSupport.traceProviderLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
-    }
 }
 
 @TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
@@ -69,7 +61,7 @@ final class Target_java_security_Security_SecPropLoader {
      */
     @Substitute
     private static void loadMaster() {
-        Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
+        Target_java_security_Security.props = SecurityProviderRuntimeState.singleton().getSavedInitialSecurityProperties();
     }
 }
 
@@ -104,18 +96,7 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* The verification results map key is an identity wrapper object. */
-        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
-        if (o == Boolean.TRUE) {
-            SecurityProvidersSupport.traceProviderLookup(p);
-            return null;
-        } else if (o != null) {
-            return (Exception) o;
-        }
-        /* §AR-security-providers.3: Probe the missing type through the ordinary reflection path;
-         * report an inconsistent success. */
-        SecurityProvidersSupport.reportMissingProviderRegistration(p.getClass());
-        throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + p.getClass().getName());
+        return JceProviderVerificationSupport.getVerificationResult(p);
     }
 }
 
@@ -163,8 +144,8 @@ final class Target_sun_security_jca_ProviderConfig {
                 return null;
             }
             // Create providers which are in java.base directly
-            if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
-                provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
+                provider = BuiltInSecurityProviderLoader.load(provName, debug);
             } else {
                 if (isLoading) {
                     /*
@@ -208,15 +189,15 @@ final class Target_sun_security_jca_ProviderList {
     public Provider getProvider(String name) {
         int index = getIndex(name);
         if (index >= 0) {
-            return SecurityProvidersSupport.traceProviderLookup(getProvider(index));
+            return SecurityProviderRuntimeAccess.traceLookup(getProvider(index));
         }
         for (Target_sun_security_jca_ProviderConfig config : configs) {
             String configuredProviderName = config.provName;
-            String providerName = SecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
-            String providerFQName = SecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
+            String providerName = BuiltInSecurityProviderLoader.getProviderName(configuredProviderName);
+            String providerFQName = BuiltInSecurityProviderLoader.getProviderClassName(configuredProviderName);
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
-                return SecurityProvidersSupport.traceProviderLookup(config.getProvider());
+                return SecurityProviderRuntimeAccess.traceLookup(config.getProvider());
             }
         }
         return null;
