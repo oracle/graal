@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -64,13 +63,12 @@ import sun.security.util.SecurityConstants;
 
 // Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
 // §FS-security-providers.3.1 and §FS-security-providers.4.1
-@TargetClass(className = "sun.security.jca.Providers")
+@TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
     @Substitute
     public static Provider getSunProvider() {
-        if (Boolean.getBoolean(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + "explicit-security-provider-registration") &&
-                        !SecurityProvidersSupport.singleton().isSecurityProviderIncluded("sun.security.provider.Sun")) {
-            SecurityProvidersSupport.reportMissingProviderRegistration(sun.security.provider.Sun.class);
+        if (!SecurityProviderRuntimeState.singleton().isJdkConstructible("sun.security.provider.Sun")) {
+            SecurityProviderRuntimeAccess.reportMissingRegistration(sun.security.provider.Sun.class);
         }
         return new sun.security.provider.Sun();
     }
@@ -285,22 +283,12 @@ final class Target_javax_crypto_JceSecurity {
         Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
         Object o = verificationResults.get(key);
         if (o == PROVIDER_VERIFIED) {
-            SecurityProvidersSupport.traceProviderLookup(p);
+            SecurityProviderRuntimeAccess.traceLookup(p);
             return null;
         } else if (o != null) {
             return (Exception) o;
         }
-        o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p);
-        if (o == Boolean.TRUE) {
-            SecurityProvidersSupport.traceProviderLookup(p);
-            return null;
-        } else if (o != null) {
-            return (Exception) o;
-        }
-        /* §AR-security-providers.3: Probe the missing type through the ordinary reflection path;
-         * report an inconsistent success. */
-        SecurityProvidersSupport.reportMissingProviderRegistration(p.getClass());
-        throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + p.getClass().getName());
+        return JceProviderVerificationSupport.getVerificationResult(p);
     }
 }
 
@@ -375,29 +363,6 @@ final class AllPermissionsPolicy extends Policy {
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
-    }
-}
-
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderConfig {
-
-    @Alias //
-    private String provName;
-
-    /**
-     * All security providers used in a native-image must be registered during image build time. At
-     * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
-     * at runtime, and transitively includes other types in the image, among which is
-     * sun.security.jca.ProviderConfig.ProviderLoader. This class contains a static field with a
-     * cache of providers loaded during the image build. The contents of this cache can vary even
-     * when building the same image due to the way services are loaded on Java 11. This cache can
-     * increase the final image size substantially (if it contains, for example,
-     * {@code org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
-     */
-    @Substitute
-    private Provider doLoadProvider() {
-        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
     }
 }
 

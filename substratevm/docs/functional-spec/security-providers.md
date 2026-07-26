@@ -39,6 +39,8 @@ corresponding factory call.
 Registration is a build-time property.
 Constructing a provider object at run time does not register the provider or add omitted services
 to the executable.
+Run-time changes to system properties, including properties that report enabled future defaults,
+must not change the provider-registration policy selected while building the executable.
 Section 2.4 defines the platform-owned conditional registration signal for `SecureRandom`
 acquisition.
 
@@ -362,6 +364,8 @@ actual operation.
 Sections 1 through 6 specify the planned default behavior.
 The following options select its two independent parts while the earlier behaviors remain
 available for compatibility.
+Every combination of provider-inclusion policy and provider-list initialization must preserve the
+applicable behavior below; selecting one part must not implicitly select or disable the other.
 
 ### 7.1 Run-Time Provider-List Initialization
 
