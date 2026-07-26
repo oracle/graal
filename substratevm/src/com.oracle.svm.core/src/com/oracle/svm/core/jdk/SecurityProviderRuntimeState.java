@@ -144,14 +144,15 @@ public final class SecurityProviderRuntimeState {
     @Platforms(Platform.HOSTED_ONLY.class)
     private void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult) {
         Exception verificationFailure = verificationResult instanceof Exception exception ? exception : null;
+        AcquisitionKind effectiveAcquisitionKind = acquisitionKind;
         ProviderInfo previous = providerInfos.get(providerClassName);
         if (previous != null && previous.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE) {
-            acquisitionKind = AcquisitionKind.JDK_CONSTRUCTIBLE;
+            effectiveAcquisitionKind = AcquisitionKind.JDK_CONSTRUCTIBLE;
         }
         if (previous != null && previous.verificationFailure() != null) {
             verificationFailure = previous.verificationFailure();
         }
-        providerInfos.put(providerClassName, new ProviderInfo(acquisitionKind, verificationFailure));
+        providerInfos.put(providerClassName, new ProviderInfo(effectiveAcquisitionKind, verificationFailure));
     }
 
     public ProviderInfo getProviderInfo(Provider provider) {
