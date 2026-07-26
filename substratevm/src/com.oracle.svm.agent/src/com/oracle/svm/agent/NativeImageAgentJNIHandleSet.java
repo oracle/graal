@@ -58,6 +58,16 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangObjectToString;
 
     final JNIMethodId javaSecurityProviderServiceGetProvider;
+    final JNIMethodId javaSecurityProviderServiceNewInstance;
+    final JNIMethodId javaSecurityProviderGetName;
+    final JNIMethodId javaSecurityGetProvider;
+    final JNIMethodId javaSecurityGetProviders;
+    final JNIMethodId javaSecurityGetProvidersString;
+    final JNIMethodId javaSecurityGetProvidersMap;
+    final JNIMethodId javaSecurityGetAlgorithms;
+    final JNIMethodId javaSecurityAddProvider;
+    final JNIMethodId javaSecurityInsertProviderAt;
+    final JNIMethodId javaSecurityRemoveProvider;
     final JNIFieldId sunSecurityJcaProviderConfigProvider;
     final JNIObjectHandle sunSecurityProviderSun;
     final JNIObjectHandle sunSecurityRsaSunRsaSign;
@@ -174,6 +184,19 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaSecurityProviderService = findClass(env, "java/security/Provider$Service");
         javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
+        javaSecurityProviderServiceNewInstance = getMethodId(env, javaSecurityProviderService, "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
+        JNIObjectHandle javaSecurityProvider = findClass(env, "java/security/Provider");
+        javaSecurityProviderGetName = getMethodId(env, javaSecurityProvider, "getName", "()Ljava/lang/String;", false);
+
+        JNIObjectHandle javaSecuritySecurity = findClass(env, "java/security/Security");
+        javaSecurityGetProvider = getMethodId(env, javaSecuritySecurity, "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", true);
+        javaSecurityGetProviders = getMethodId(env, javaSecuritySecurity, "getProviders", "()[Ljava/security/Provider;", true);
+        javaSecurityGetProvidersString = getMethodId(env, javaSecuritySecurity, "getProviders", "(Ljava/lang/String;)[Ljava/security/Provider;", true);
+        javaSecurityGetProvidersMap = getMethodId(env, javaSecuritySecurity, "getProviders", "(Ljava/util/Map;)[Ljava/security/Provider;", true);
+        javaSecurityGetAlgorithms = getMethodId(env, javaSecuritySecurity, "getAlgorithms", "(Ljava/lang/String;)Ljava/util/Set;", true);
+        javaSecurityAddProvider = getMethodId(env, javaSecuritySecurity, "addProvider", "(Ljava/security/Provider;)I", true);
+        javaSecurityInsertProviderAt = getMethodId(env, javaSecuritySecurity, "insertProviderAt", "(Ljava/security/Provider;I)I", true);
+        javaSecurityRemoveProvider = getMethodId(env, javaSecuritySecurity, "removeProvider", "(Ljava/lang/String;)V", true);
 
         JNIObjectHandle sunSecurityJcaProviderConfig = findClass(env, "sun/security/jca/ProviderConfig");
         sunSecurityJcaProviderConfigProvider = getFieldId(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);

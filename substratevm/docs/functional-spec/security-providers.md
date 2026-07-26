@@ -332,11 +332,18 @@ lookup must be sufficient for a subsequently built native executable to perform 
 and use the same provider services without additional provider metadata.
 This includes provider enumeration and filtering through the `Security` APIs when the JDK loaded
 and cached a returned provider before the traced operation.
+Provider-list mutation through `Security.addProvider`, `Security.insertProviderAt`, or
+`Security.removeProvider` is not provider enumeration or lookup. Tracing such a mutation must
+register a supplied provider that the operation observes, but it must not register unrelated
+configured providers loaded or inspected by the JDK while maintaining the provider list.
 For a JDK-managed provider, the collected metadata must retain a supported construction path:
 declared nullary constructor access or access to the static `provider()` method.
 For an application-supplied provider, tracing must register the provider type without inventing a
 constructor access and must independently retain each service implementation exercised by the
-traced factory calls.
+traced factory calls. This includes a service implementation named only by
+`Provider.Service.getClassName()`: the caller-filtered trace must retain the construction access
+performed inside `Provider.Service.newInstance` and attribute it to the application operation that
+selected the service.
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.

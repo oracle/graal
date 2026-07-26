@@ -705,6 +705,16 @@ final class BreakpointInterceptor {
 
     private static boolean handleInvokeConstructor(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, JNIObjectHandle constructor) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle providerServiceCaller = findProviderServiceCaller(jni, state);
+        if (providerServiceCaller.notEqual(nullHandle())) {
+            /*
+             * Provider.Service performs the reflective construction on behalf of the application.
+             * Attribute that access to the application operation so caller filters do not discard
+             * the service implementation metadata merely because the immediate caller is in the
+             * JDK.
+             */
+            callerClass = providerServiceCaller;
+        }
 
         JNIObjectHandle declaring = Support.callObjectMethod(jni, constructor, agent.handles().javaLangReflectMemberGetDeclaringClass);
         if (clearException(jni)) {
@@ -751,7 +761,9 @@ final class BreakpointInterceptor {
         JNIObjectHandle service = getReceiver(thread);
         JNIObjectHandle provider = Support.callObjectMethod(jni, service, agent.handles().javaSecurityProviderServiceGetProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        traceSecurityProvider(jni, provider, validResult, state.getDirectCallerClass(), state);
+        JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
+        traceSecurityProvider(jni, provider, validResult,
+                        callerClass.notEqual(nullHandle()) ? callerClass : state.getDirectCallerClass(), state);
         return true;
     }
 
@@ -759,28 +771,106 @@ final class BreakpointInterceptor {
      * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
      */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle securityApiCaller = findSecurityApiCaller(jni, state);
+        JNIObjectHandle securityApiCaller = findSecurityAcquisitionCaller(state);
         if (securityApiCaller.equal(nullHandle())) {
             return true;
         }
         JNIObjectHandle providerConfig = getReceiver(thread);
         JNIObjectHandle provider = jniFunctions().getGetObjectField().invoke(jni, providerConfig, agent.handles().sunSecurityJcaProviderConfigProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
+        JNIObjectHandle requestedProviderName = findRequestedSecurityProviderName(thread, state);
+        if (validResult && requestedProviderName.notEqual(nullHandle())) {
+            JNIObjectHandle providerName = Support.callObjectMethod(jni, provider, agent.handles().javaSecurityProviderGetName);
+            validResult = !clearException(jni) &&
+                            fromJniString(jni, requestedProviderName).equals(fromJniString(jni, providerName));
+        }
         traceSecurityProvider(jni, provider, validResult, securityApiCaller, state);
         return true;
     }
 
-    private static JNIObjectHandle findSecurityApiCaller(JNIEnvironment jni, InterceptedState state) {
+    private static JNIObjectHandle findSecurityAcquisitionCaller(InterceptedState state) {
         JNIObjectHandle securityApiCaller = nullHandle();
         for (int depth = 1;; depth++) {
-            JNIObjectHandle callerClass = state.getCallerClass(depth);
-            if (callerClass.equal(nullHandle())) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
                 return securityApiCaller;
             }
-            if ("java.security.Security".equals(getClassNameOrNull(jni, callerClass))) {
+            if (isSecurityMutationMethod(callerMethod)) {
+                return nullHandle();
+            }
+            if (isSecurityAcquisitionMethod(callerMethod)) {
                 securityApiCaller = state.getCallerClass(depth + 1);
             }
         }
+    }
+
+    private static JNIObjectHandle findRequestedSecurityProviderName(JNIObjectHandle thread, InterceptedState state) {
+        JNIObjectHandle requestedProviderName = nullHandle();
+        for (int depth = 1;; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                return requestedProviderName;
+            }
+            if (isSecurityMutationMethod(callerMethod)) {
+                return nullHandle();
+            }
+            if (isSecurityAcquisitionMethod(callerMethod)) {
+                requestedProviderName = callerMethod.equal(agent.handles().javaSecurityGetProvider)
+                                ? Support.getObjectArgument(thread, depth, 0)
+                                : nullHandle();
+            }
+        }
+    }
+
+    private static boolean isSecurityAcquisitionMethod(JNIMethodId method) {
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        return method.equal(handles.javaSecurityGetProvider) ||
+                        method.equal(handles.javaSecurityGetProviders) ||
+                        method.equal(handles.javaSecurityGetProvidersString) ||
+                        method.equal(handles.javaSecurityGetProvidersMap) ||
+                        method.equal(handles.javaSecurityGetAlgorithms);
+    }
+
+    private static boolean isSecurityMutationMethod(JNIMethodId method) {
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        return method.equal(handles.javaSecurityAddProvider) ||
+                        method.equal(handles.javaSecurityInsertProviderAt) ||
+                        method.equal(handles.javaSecurityRemoveProvider);
+    }
+
+    private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
+        for (int depth = 1;; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                return nullHandle();
+            }
+            if (callerMethod.equal(agent.handles().javaSecurityProviderServiceNewInstance)) {
+                return findExternalSecurityCaller(jni, state, depth + 1);
+            }
+        }
+    }
+
+    private static JNIObjectHandle findExternalSecurityCaller(JNIEnvironment jni, InterceptedState state, int startDepth) {
+        for (int depth = startDepth;; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                return nullHandle();
+            }
+            JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
+            String callerClassName = getClassNameOrNull(jni, callerClass);
+            if (callerClassName != null && !isJdkSecurityImplementation(callerClassName)) {
+                return callerClass;
+            }
+        }
+    }
+
+    private static boolean isJdkSecurityImplementation(String className) {
+        return className.startsWith("java.security.") ||
+                        className.startsWith("javax.crypto.") ||
+                        className.startsWith("javax.net.ssl.") ||
+                        className.startsWith("javax.security.") ||
+                        className.startsWith("sun.security.") ||
+                        className.startsWith("com.sun.crypto.provider.");
     }
 
     /** §FS-security-providers.6.1 and §FS-security-providers.6.2: Trace lookup metadata only. */
