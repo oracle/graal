@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -146,6 +146,8 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final EconomicSet<String> serviceProvidersToSkip = EconomicSet.create(SKIPPED_PROVIDERS);
+    private final LinkedHashSet<String> securityProviderDescriptors = new LinkedHashSet<>();
+    private SecurityProviderMode securityProviderMode;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -154,7 +156,8 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+        securityProviderMode = SecurityProviderMode.current();
+        if (!securityProviderMode.runtimeProviderList() && !securityProviderMode.explicitRegistration()) {
             servicesToSkip.add(java.security.Provider.class.getName());
         }
         if (!FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
@@ -170,6 +173,10 @@ public class ServiceLoaderFeature implements InternalFeature {
         // §FS-security-providers.7.2: Permit an absent descriptor without including its providers.
         Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+            if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName())) {
+                securityProviderDescriptors.addAll(providers);
+                return;
+            }
             Collection<String> providersToSkip = providers;
             try {
                 if (!servicesToSkip.contains(serviceName)) {
@@ -202,6 +209,25 @@ public class ServiceLoaderFeature implements InternalFeature {
             // skip service
             ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip)); // noEconomicSet(concurrency)
         });
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        if (!securityProviderDescriptors.isEmpty()) {
+            preserveSecurityProviderDescriptors(access, securityProviderDescriptors);
+            securityProviderDescriptors.clear();
+        }
+    }
+
+    private void preserveSecurityProviderDescriptors(DuringAnalysisAccess access, Collection<String> providers) {
+        LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
+        for (String provider : providers) {
+            if (!serviceProvidersToSkip.contains(provider)) {
+                registerProviderForRuntimeResourceAccess(access, provider, registeredProviders);
+            }
+        }
+        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(),
+                        java.security.Provider.class.getName(), registeredProviders);
     }
 
     void handleServiceClassIsReachable(DuringAnalysisAccess access, ResolvedJavaType serviceProvider, Collection<String> providers) {

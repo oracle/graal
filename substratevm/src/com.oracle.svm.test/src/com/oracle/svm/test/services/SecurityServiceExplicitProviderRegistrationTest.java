@@ -36,7 +36,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
@@ -76,11 +76,12 @@ public class SecurityServiceExplicitProviderRegistrationTest {
     @Test
     public void testUnregisteredProviderCannotReuseVerificationByName() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+        SecurityProviderRuntimeState state = SecurityProviderRuntimeState.singleton();
 
-        Assert.assertEquals(Boolean.TRUE,
-                        support.getSecurityProviderVerificationResult(new SecurityServiceTest.ReflectionMetadataProvider()));
-        Assert.assertNull(support.getSecurityProviderVerificationResult(new SameNameUnregisteredProvider()));
+        SecurityProviderRuntimeState.ProviderInfo registered = state.getProviderInfo(new SecurityServiceTest.ReflectionMetadataProvider());
+        Assert.assertNotNull(registered);
+        Assert.assertNull(registered.verificationFailure());
+        Assert.assertNull(state.getProviderInfo(new SameNameUnregisteredProvider()));
     }
 
     public static final class SameNameUnregisteredProvider extends Provider {
