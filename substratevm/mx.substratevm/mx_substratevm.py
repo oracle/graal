@@ -980,21 +980,26 @@ def conditional_config_task(native_image):
 
 
 def run_agent_security_provider_config_test(agent_path):
-    config_dir = join(svmbuild_dir(), 'security-provider-agent-test-config')
-    if exists(config_dir):
-        mx.rmtree(config_dir)
-
     generator_class = 'com.oracle.svm.configure.test.config.SecurityProviderAgentTest'
     verifier_class = 'com.oracle.svm.configure.test.config.SecurityProviderAgentVerifierTest'
-    agent_opts = ['config-output-dir=' + config_dir]
-    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
-                  '-D' + generator_class + '.generator.enabled=true'] +
-                 _configure_test_jvmci_exports() +
-                 [generator_class + '#enumerateSecurityProviders'])
-    jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
-                  '-D' + verifier_class + '.configpath=' + config_dir] +
-                 _configure_test_jvmci_exports() +
-                 [verifier_class + '#verifyEnumeratedProvidersWereRecorded'])
+    cases = [
+        ('enumeration', 'enumerateSecurityProviders', 'verifyEnumeratedProvidersWereRecorded'),
+        ('mutation', 'programmaticProviderMutationDoesNotTraceConfiguredProviders',
+         'verifyMutationRecordedOnlySuppliedProvider'),
+    ]
+    for name, generator_method, verifier_method in cases:
+        config_dir = join(svmbuild_dir(), 'security-provider-agent-' + name + '-test-config')
+        if exists(config_dir):
+            mx.rmtree(config_dir)
+        agent_opts = ['config-output-dir=' + config_dir]
+        jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                      '-D' + generator_class + '.generator.enabled=true'] +
+                     _configure_test_jvmci_exports() +
+                     [generator_class + '#' + generator_method])
+        jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                      '-D' + verifier_class + '.configpath=' + config_dir] +
+                     _configure_test_jvmci_exports() +
+                     [verifier_class + '#' + verifier_method])
 
 
 def run_agent_jar_url_protocol_config_test(agent_path):
