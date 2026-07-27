@@ -780,6 +780,84 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testExceptionOutwardClearedLocal() {
+        assumeTrue(run.hasBlockScoping());
+        String clearedValue1 = "cleared block local 1";
+        String clearedValue2 = "cleared block local 2";
+        String preservedValue1 = "preserved block local 1";
+        String preservedValue2 = "preserved block local 2";
+        // @formatter:off
+        // {
+        //   p1 = preservedValue1;
+        //   p2 = preservedValue2;
+        //   try {
+        //     {
+        //       x = clearedValue1;
+        //       y = clearedValue2;
+        //       throw 42;
+        //     }
+        //   } catch (ex) {
+        //     return materializeFrame();
+        //   }
+        // }
+        // @formatter:on
+        BasicInterpreter root = parseNode("exceptionOutwardClearedLocal", b -> {
+            b.beginRoot();
+            b.beginBlock();
+            BytecodeLocal preserved1 = b.createLocal();
+            BytecodeLocal preserved2 = b.createLocal();
+
+            b.beginStoreLocal(preserved1);
+            b.emitLoadConstant(preservedValue1);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(preserved2);
+            b.emitLoadConstant(preservedValue2);
+            b.endStoreLocal();
+
+            b.beginTryCatch();
+            b.beginBlock();
+            BytecodeLocal cleared1 = b.createLocal();
+            BytecodeLocal cleared2 = b.createLocal();
+
+            b.beginStoreLocal(cleared1);
+            b.emitLoadConstant(clearedValue1);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(cleared2);
+            b.emitLoadConstant(clearedValue2);
+            b.endStoreLocal();
+
+            b.beginThrowOperation();
+            b.emitLoadConstant(42L);
+            b.endThrowOperation();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitMaterializeFrame();
+            b.endReturn();
+            b.endTryCatch();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        MaterializedFrame frame = (MaterializedFrame) root.getCallTarget().call();
+        boolean foundPreservedValue1 = false;
+        boolean foundPreservedValue2 = false;
+        for (int i = 0; i < frame.getFrameDescriptor().getNumberOfSlots(); i++) {
+            if (frame.getTag(i) != FrameSlotKind.Illegal.tag) {
+                Object value = frame.getValue(i);
+                assertTrue(!clearedValue1.equals(value));
+                assertTrue(!clearedValue2.equals(value));
+                foundPreservedValue1 |= preservedValue1.equals(value);
+                foundPreservedValue2 |= preservedValue2.equals(value);
+            }
+        }
+        assertTrue(foundPreservedValue1);
+        assertTrue(foundPreservedValue2);
+    }
+
+    @Test
     public void testGR73539() {
         assumeTrue(run.hasBoxingElimination());
         // Regression test for a bug where the materialized store slow-path would try to load the

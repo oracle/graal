@@ -2745,6 +2745,9 @@ final class BuilderElement extends AbstractElement {
 
         b.startAssign("bytecodes_").startStaticCall(type(Arrays.class), "copyOf").string("state.bc").string("state.bci").end().end();
         b.startAssign("constants_").string("state.toConstants()").end();
+        if (model.enableBlockScoping) {
+            b.statement("state.finalizeExceptionHandlerLocalCounts()");
+        }
         b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("state.handlerTable").string("state.handlerTableSize").end().end();
         b.startAssign("numNodes_").string("state.numNodes").end();
         b.startAssign("locals_").string("state.locals == null ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string(
@@ -5575,6 +5578,9 @@ final class BuilderElement extends AbstractElement {
             this.add(createAllocateLocalsTableEntry());
             this.add(createPatchHandlerTable());
             this.add(createDoCreateExceptionHandler());
+            if (model.enableBlockScoping) {
+                this.add(createFinalizeExceptionHandlerLocalCounts());
+            }
             this.add(createRegisterUnresolvedLabel());
             this.add(createResolveUnresolvedLabel());
 
@@ -6155,13 +6161,45 @@ final class BuilderElement extends AbstractElement {
 
             b.statement("return result");
 
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_START_BCI")).createInitBuilder().string("0");
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_END_BCI")).createInitBuilder().string("1");
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_KIND")).createInitBuilder().string("2");
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_BCI")).createInitBuilder().string("3");
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_SP")).createInitBuilder().string("4");
-            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_LENGTH")).createInitBuilder().string("5");
+            int handlerEntryLength = 0;
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_START_BCI")).createInitBuilder().string(Integer.toString(
+                            handlerEntryLength++));
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_END_BCI")).createInitBuilder().string(Integer.toString(handlerEntryLength++));
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_KIND")).createInitBuilder().string(Integer.toString(handlerEntryLength++));
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_BCI")).createInitBuilder().string(Integer.toString(
+                            handlerEntryLength++));
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_SP")).createInitBuilder().string(Integer.toString(
+                            handlerEntryLength++));
+            if (model.enableBlockScoping) {
+                parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_LOCAL_COUNT")).createInitBuilder().string(Integer.toString(
+                                handlerEntryLength++));
+            }
+            parent.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_LENGTH")).createInitBuilder().string(Integer.toString(handlerEntryLength));
 
+            return ex;
+        }
+
+        private CodeExecutableElement createFinalizeExceptionHandlerLocalCounts() {
+            assert model.enableBlockScoping;
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "finalizeExceptionHandlerLocalCounts");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startFor().string("int handlerIndex = 0; handlerIndex < handlerTableSize; handlerIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.startIf().string("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
+            b.statement("continue");
+            b.end();
+            b.declaration(type(int.class), "handlerBci", "handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+            b.startAssert().string("handlerBci >= 0").end();
+            b.declaration(type(int.class), "localCount", "0");
+            b.startFor().string("int localIndex = 0; localIndex < localsTableIndex; localIndex += LOCALS_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "localStartBci", "locals[localIndex + LOCALS_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "localEndBci", "locals[localIndex + LOCALS_OFFSET_END_BCI]");
+            b.startIf().string("handlerBci >= localStartBci && handlerBci < localEndBci").end().startBlock();
+            b.statement("localCount++");
+            b.end();
+            b.end();
+            b.statement("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_LOCAL_COUNT] = localCount");
+            b.end();
             return ex;
         }
 
