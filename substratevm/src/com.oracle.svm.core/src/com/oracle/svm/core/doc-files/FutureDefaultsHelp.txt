@@ -19,4 +19,4 @@ The meaning of each possible option is as follows:
 
   'explicit-feature-singleton-registration' - stops automatically publishing user features reached from '--features' as 'ImageSingletons'. If code needs feature-singleton lookup compatibility, the feature must register its feature object explicitly.
 
-  'explicit-security-provider-registration' - requires reflection metadata to include a security provider and its services. Reachable security-service factory methods do not include providers without reflection metadata.
+  'explicit-security-provider-registration' - requires reflection metadata to include a security provider and its services, and enables 'run-time-initialize-security-providers'. Reachable security-service factory methods do not include providers without reflection metadata.

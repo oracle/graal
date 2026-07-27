@@ -362,10 +362,13 @@ actual operation.
 ## 7. Transition to the Future Defaults
 
 Sections 1 through 6 specify the planned default behavior.
-The following options select its two independent parts while the earlier behaviors remain
-available for compatibility.
-Every combination of provider-inclusion policy and provider-list initialization must preserve the
-applicable behavior below; selecting one part must not implicitly select or disable the other.
+The following options select the transition behavior while the earlier behaviors remain available
+for compatibility.
+Run-time provider-list initialization can be selected independently.
+Explicit provider registration depends on and implicitly enables run-time provider-list
+initialization.
+The supported combinations are legacy inclusion with build-time initialization, legacy inclusion
+with run-time initialization, and explicit registration with run-time initialization.
 
 ### 7.1 Run-Time Provider-List Initialization
 
@@ -374,6 +377,7 @@ run-time provider list from the configured security properties using only regist
 An unregistered provider is not added to the list, and its services remain unavailable.
 Filtering unregistered providers preserves the ordering and lookup results specified in sections
 1.3, 3.2, and 4.
+`--future-defaults=explicit-security-provider-registration` implicitly enables this behavior.
 
 ### 7.2 Provider Service Descriptors
 
@@ -412,9 +416,5 @@ provider support from a general service factory.
 
 `--future-defaults=run-time-initialize-security-providers` replaces the earlier behavior in which
 Native Image initializes the configured provider list at build time; during the transition,
-omitting this future default retains that earlier initialization behavior.
-When explicit provider registration is enabled without run-time provider initialization, Native
-Image must filter the build-time provider list before storing it in the executable so that it does
-not expose an unregistered JDK-managed provider.
-Provider and service availability is still determined at build time according to either the
-explicit registration rules in sections 1 and 2 or the compatibility rule in section 7.3.
+omitting this future default and explicit provider registration retains that earlier initialization
+behavior.

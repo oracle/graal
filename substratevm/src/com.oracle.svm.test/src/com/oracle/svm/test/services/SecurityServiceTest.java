@@ -130,8 +130,7 @@ public class SecurityServiceTest {
      */
     @Test
     public void testUnknownSecurityServices() throws Exception {
-        Assume.assumeTrue("needs explicit or runtime provider registration",
-                        FutureDefaultsOptions.explicitSecurityProviderRegistration() || FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
+        Assume.assumeTrue("needs runtime provider initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             /* Register the provider at run time. */
             Security.addProvider(new NoOpProvider());
