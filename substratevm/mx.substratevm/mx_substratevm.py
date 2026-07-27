@@ -3268,30 +3268,29 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def archive_prefix(self):
         return ''
 
-    def _computeResults(self):
+    def _computeResults(self, write_config):
         """
-        Returns a lazily computed tuple of the paths for the files storing the configuration
-        managed by this builder and a bool denoting whether any of the files were updated
-        as their paths were computed.
+        Returns a tuple of the paths for the files storing the configuration managed by this
+        builder and a bool denoting whether any of the files were updated as their paths were
+        computed.
         """
-        if not hasattr(self, '.results'):
-            graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
+        graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
+        if write_config:
             mx_util.ensure_dir_exists(self.output_dir())
-            versions = sorted(graal_compiler_flags_map.keys())
-            file_paths = []
-            changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths)
-            for version in versions:
-                changed = self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version], file_paths) or changed
-            setattr(self, '.results', (file_paths, changed))
-        return getattr(self, '.results')
+        versions = sorted(graal_compiler_flags_map.keys())
+        file_paths = []
+        changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths, write_config)
+        for version in versions:
+            changed = self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version], file_paths, write_config) or changed
+        return file_paths, changed
 
     def getResults(self):
-        return self._computeResults()[0]
+        return self._computeResults(False)[0]
 
     def getBuildTask(self, args):
         return SubstrateCompilerFlagsBuildTask(self, args)
 
-    def config_file_update(self, file_path, lines, file_paths):
+    def config_file_update(self, file_path, lines, file_paths, write_config):
         changed = True
         file_contents = '\n'.join(str(line) for line in lines)
         try:
@@ -3301,7 +3300,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         except:
             pass
 
-        if changed:
+        if write_config and changed:
             with open(file_path, 'w', encoding='utf-8') as f:
                 print('Write file ' + file_path)
                 f.write(file_contents)
@@ -3361,14 +3360,18 @@ class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
         return 'Building SVM compiler flags'
 
     def needsBuild(self, newestInput):
-        if self.subject._computeResults()[1]:
+        if self.subject._computeResults(False)[1]:
             return (True, 'SVM compiler flags configuration changed')
         return (False, None)
 
     def build(self):
-        self.subject._computeResults()
+        self.subject._computeResults(True)
 
     def clean(self, forBuild=False):
+        output_dir = self.subject.output_dir()
+        if exists(output_dir):
+            mx.rmtree(output_dir)
+
         driver_resources_dir = join(mx.dependency('substratevm:com.oracle.svm.driver').dir, 'resources')
         ancient_config_files = glob(join(driver_resources_dir, 'graal-compiler-flags-*.config'))
         for f in ancient_config_files:
