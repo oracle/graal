@@ -1103,6 +1103,22 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    private SecurityProviderRegistrationPlanner.Source completeProviderSource(DuringAnalysisAccess access, Class<?> providerClass) {
+        if (!isProviderRegisteredForReflection(providerClass)) {
+            return null;
+        }
+        if (preserveAll) {
+            return SecurityProviderRegistrationPlanner.Source.PRESERVE;
+        }
+        // Compatibility mode keeps constructible-provider metadata inert. Application providers
+        // still need class-based JCE verification. §FS-security-providers.5.3,
+        // §FS-security-providers.7.3
+        if (mode.explicitRegistration() || !isLoadableProviderClass(access, providerClass)) {
+            return SecurityProviderRegistrationPlanner.Source.APPLICATION_METADATA;
+        }
+        return null;
+    }
+
     private static void registerProviderClassForReflection(Class<?> providerClass) {
         RuntimeReflection.register(providerClass);
         Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
@@ -1202,10 +1218,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         // Consume concurrent plans in the serialized feature pass.
         if (providerPlanner.processNewCompleteProviders(
-                        providerClass -> mode.explicitRegistration() && isProviderRegisteredForReflection(providerClass)
-                                        ? SecurityProviderRegistrationPlanner.Source.APPLICATION_METADATA
-                                        : preserveAll && isProviderRegisteredForReflection(providerClass)
-                                                        ? SecurityProviderRegistrationPlanner.Source.PRESERVE : null,
+                        providerClass -> completeProviderSource(access, providerClass),
                         providerClass -> catalogRegistrar.includeProviderClass(access, providerClass))) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
