@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -57,6 +58,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides functionality for scanning constant objects.
@@ -399,7 +401,7 @@ public class ObjectScanner {
         if (constant == null || constant.isNull()) {
             return "null";
         }
-        AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
+        ResolvedJavaType type = constant instanceof TypedConstant typedConstant ? typedConstant.getType() : bb.getMetaAccess().getWrapped().lookupJavaType(constant);
         JavaConstant hosted = constant;
         if (constant instanceof ImageHeapConstant heapConstant) {
             JavaConstant hostedObject = heapConstant.getHostedObject();
