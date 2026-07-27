@@ -194,32 +194,32 @@ import sun.security.x509.OIDMap;
 /// Deprecated provider options and service-reachability inclusion are confined to
 /// `LegacySecurityProviderCompatibility`. Removing compatibility behavior does not change the
 /// planner, catalog registrar, run-time manifest, or planned-default substitutions.
-/**
- * <p>
- * This feature automatically registers security providers and their services for reflection and JNI
- * access, ensuring they are available at run time.
- *
- * <p>
- * The feature distinguishes between providers that are initialized at build time and those that are
- * initialized at run time. This distinction is essential because certain providers may perform
- * sensitive operations. Right now, all providers are initialized build-time by default, but that
- * can be changed using <code>--future-defaults=run-time-initialize-security-providers</code>
- *
- * <p>
- * The initialization strategy is:
- * <ul>
- * <li>Build-time Initialization: Most cryptographic infrastructure is initialized at build-time.
- * This includes reflection metadata and service registration.</li>
- * <li>Run-time Initialization: Classes that rely on system resources (e.g., {@code /dev/urandom},
- * keystore passwords, or native Windows libraries) are marked for runtime initialization or the
- * providers (if --future-defaults is used).</li>
- * </ul>
- *
- * <p>
- * This feature is automatically registered, but it can be controlled via the
- * {@code EnableSecurityServicesFeature} option. For debugging or detailed inspection, tracing can
- * be enabled via the {@code TraceSecurityServices} option.
- */
+///
+/// <p>
+/// This feature automatically registers security providers and their services for reflection and
+/// JNI access, ensuring they are available at run time.
+///
+/// <p>
+/// The feature distinguishes between providers that are initialized at build time and those that
+/// are initialized at run time. This distinction is essential because certain providers may
+/// perform sensitive operations. Right now, all providers are initialized build-time by default,
+/// but that can be changed using
+/// <code>--future-defaults=run-time-initialize-security-providers</code>
+///
+/// <p>
+/// The initialization strategy is:
+/// <ul>
+/// <li>Build-time Initialization: Most cryptographic infrastructure is initialized at build-time.
+/// This includes reflection metadata and service registration.</li>
+/// <li>Run-time Initialization: Classes that rely on system resources (e.g., {@code /dev/urandom},
+/// keystore passwords, or native Windows libraries) are marked for runtime initialization or the
+/// providers (if --future-defaults is used).</li>
+/// </ul>
+///
+/// <p>
+/// This feature is automatically registered, but it can be controlled via the
+/// {@code EnableSecurityServicesFeature} option. For debugging or detailed inspection, tracing can
+/// be enabled via the {@code TraceSecurityServices} option.
 @AutomaticallyRegisteredFeature
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
