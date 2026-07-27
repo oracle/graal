@@ -26,33 +26,25 @@ package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 
-/** The two independent transition axes from §FS-security-providers.7. */
-record SecurityProviderMode(InclusionPolicy inclusionPolicy, ProviderListInitialization listInitialization) {
-    enum InclusionPolicy {
-        LEGACY_SERVICE_REACHABILITY,
-        EXPLICIT_METADATA
-    }
-
-    enum ProviderListInitialization {
-        BUILD_TIME,
-        RUN_TIME
-    }
+/** The supported transition modes from §FS-security-providers.7. */
+enum SecurityProviderMode {
+    LEGACY_BUILD_TIME,
+    LEGACY_RUN_TIME,
+    EXPLICIT_RUN_TIME;
 
     static SecurityProviderMode current() {
-        InclusionPolicy inclusion = FutureDefaultsOptions.explicitSecurityProviderRegistration()
-                        ? InclusionPolicy.EXPLICIT_METADATA
-                        : InclusionPolicy.LEGACY_SERVICE_REACHABILITY;
-        ProviderListInitialization initialization = FutureDefaultsOptions.securityProvidersInitializedAtRunTime()
-                        ? ProviderListInitialization.RUN_TIME
-                        : ProviderListInitialization.BUILD_TIME;
-        return new SecurityProviderMode(inclusion, initialization);
+        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            assert FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
+            return EXPLICIT_RUN_TIME;
+        }
+        return FutureDefaultsOptions.securityProvidersInitializedAtRunTime() ? LEGACY_RUN_TIME : LEGACY_BUILD_TIME;
     }
 
     boolean explicitRegistration() {
-        return inclusionPolicy == InclusionPolicy.EXPLICIT_METADATA;
+        return this == EXPLICIT_RUN_TIME;
     }
 
     boolean runtimeProviderList() {
-        return listInitialization == ProviderListInitialization.RUN_TIME;
+        return this != LEGACY_BUILD_TIME;
     }
 }

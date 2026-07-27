@@ -47,6 +47,15 @@ public final class BuiltInSecurityProviderLoader {
             case "com.sun.crypto.provider.SunJCE" -> "SunJCE";
             case "sun.security.ssl.SunJSSE" -> "SunJSSE";
             case "sun.security.ec.SunEC" -> "SunEC";
+            case "sun.security.jgss.SunProvider" -> "SunJGSS";
+            case "com.sun.security.sasl.Provider" -> "SunSASL";
+            case "org.jcp.xml.dsig.internal.dom.XMLDSigRI" -> "XMLDSig";
+            case "sun.security.smartcardio.SunPCSC" -> "SunPCSC";
+            case "sun.security.provider.certpath.ldap.JdkLDAP" -> "JdkLDAP";
+            case "com.sun.security.sasl.gsskerb.JdkSASL" -> "JdkSASL";
+            case "sun.security.pkcs11.SunPKCS11" -> "SunPKCS11";
+            case "sun.security.mscapi.SunMSCAPI" -> "SunMSCAPI";
+            case "com.oracle.security.ucrypto.UcryptoProvider" -> "OracleUcrypto";
             case "apple.security.AppleProvider" -> "Apple";
             default -> null;
         };
@@ -59,13 +68,35 @@ public final class BuiltInSecurityProviderLoader {
             case "SunJCE", "com.sun.crypto.provider.SunJCE" -> "com.sun.crypto.provider.SunJCE";
             case "SunJSSE", "sun.security.ssl.SunJSSE" -> "sun.security.ssl.SunJSSE";
             case "SunEC", "sun.security.ec.SunEC" -> "sun.security.ec.SunEC";
+            case "SunJGSS", "sun.security.jgss.SunProvider" -> "sun.security.jgss.SunProvider";
+            case "SunSASL", "com.sun.security.sasl.Provider" -> "com.sun.security.sasl.Provider";
+            case "XMLDSig", "org.jcp.xml.dsig.internal.dom.XMLDSigRI" -> "org.jcp.xml.dsig.internal.dom.XMLDSigRI";
+            case "SunPCSC", "sun.security.smartcardio.SunPCSC" -> "sun.security.smartcardio.SunPCSC";
+            case "JdkLDAP", "sun.security.provider.certpath.ldap.JdkLDAP" -> "sun.security.provider.certpath.ldap.JdkLDAP";
+            case "JdkSASL", "com.sun.security.sasl.gsskerb.JdkSASL" -> "com.sun.security.sasl.gsskerb.JdkSASL";
+            case "SunPKCS11", "sun.security.pkcs11.SunPKCS11" -> "sun.security.pkcs11.SunPKCS11";
+            case "SunMSCAPI", "sun.security.mscapi.SunMSCAPI" -> "sun.security.mscapi.SunMSCAPI";
+            case "OracleUcrypto", "com.oracle.security.ucrypto.UcryptoProvider" -> "com.oracle.security.ucrypto.UcryptoProvider";
             case "Apple", "apple.security.AppleProvider" -> "apple.security.AppleProvider";
             default -> null;
         };
     }
 
     public static boolean isBuiltIn(String providerNameOrClassName) {
-        return getProviderClassName(providerNameOrClassName) != null;
+        String providerClassName = getProviderClassName(providerNameOrClassName);
+        if (providerClassName == null) {
+            return false;
+        }
+        return switch (providerClassName) {
+            case "sun.security.provider.Sun",
+                            "sun.security.rsa.SunRsaSign",
+                            "com.sun.crypto.provider.SunJCE",
+                            "sun.security.ssl.SunJSSE",
+                            "sun.security.ec.SunEC",
+                            "apple.security.AppleProvider" ->
+                true;
+            default -> false;
+        };
     }
 
     /** §FS-security-providers.3.1, §FS-security-providers.4.3, and §FS-security-providers.7.1. */

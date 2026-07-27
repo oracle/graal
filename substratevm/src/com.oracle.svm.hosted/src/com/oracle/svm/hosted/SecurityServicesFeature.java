@@ -136,10 +136,11 @@ import sun.security.x509.OIDMap;
 /// signals; the reflection registry is not itself the provider-policy model. This architecture
 /// implements §FS-security-providers.
 ///
-/// ## 1. Independent Transition Axes
+/// ## 1. Supported Transition Modes
 ///
-/// `SecurityProviderMode` represents provider inclusion and provider-list initialization as
-/// independent axes. Hosted components query this mode instead of reading future-default options
+/// `SecurityProviderMode` represents the three supported combinations of provider inclusion and
+/// provider-list initialization. Explicit registration depends on run-time provider-list
+/// initialization. Hosted components query this mode instead of reading future-default options
 /// independently. Substitutions whose implementation differs by mode use build-time predicates, so
 /// an application cannot change image-build policy through a run-time system property. This
 /// realizes §FS-security-providers.7.
@@ -179,9 +180,8 @@ import sun.security.x509.OIDMap;
 /// ## 6. Service Descriptors
 ///
 /// Explicit provider registration preserves `java.security.Provider` descriptors without treating
-/// them as provider-registration signals, independently of provider-list initialization. Legacy
-/// suppression remains part of the compatibility policy. This realizes
-/// §FS-security-providers.7.2.
+/// them as provider-registration signals. Legacy suppression remains part of the compatibility
+/// policy. This realizes §FS-security-providers.7.2.
 ///
 /// ## 7. Concurrent Analysis
 ///

@@ -33,7 +33,7 @@ import org.junit.Test;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--future-defaults=run-time-initialize-security-providers,explicit-security-provider-registration",
+                "--future-defaults=explicit-security-provider-registration",
                 "--exact-reachability-metadata=com.oracle.svm.test.services",
                 "-Dcom.oracle.svm.test.services.SecureRandomExplicitProviderRegistrationTest=true"
 })

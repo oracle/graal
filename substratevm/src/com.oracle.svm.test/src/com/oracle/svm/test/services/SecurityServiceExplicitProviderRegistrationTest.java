@@ -36,15 +36,23 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--future-defaults=run-time-initialize-security-providers,explicit-security-provider-registration",
+                "--future-defaults=explicit-security-provider-registration",
                 "--exact-reachability-metadata=com.oracle.svm.test.services"
 })
 public class SecurityServiceExplicitProviderRegistrationTest {
     private static final String REGISTERED_PROVIDER_NAME = "reflection-metadata-provider";
+
+    /** Tests §FS-security-providers.7.1. */
+    @Test
+    public void testExplicitRegistrationEnablesRuntimeProviderInitialization() {
+        Assert.assertTrue(FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        Assert.assertTrue(FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
+    }
 
     /** Tests §FS-security-providers.2.3 and §FS-security-providers.2.4. */
     @Test
