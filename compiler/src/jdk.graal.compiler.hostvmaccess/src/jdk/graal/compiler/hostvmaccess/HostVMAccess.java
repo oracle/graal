@@ -41,6 +41,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.RecordComponent;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
@@ -72,6 +73,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCI;
@@ -401,6 +403,18 @@ final class HostVMAccess implements VMAccess {
             return providers.getMetaAccess().lookupJavaField(field);
         }
         return null;
+    }
+
+    @Override
+    public ResolvedJavaPackage asResolvedJavaPackage(Constant constant) {
+        Package pkg = providers.getSnippetReflection().asObject(Package.class, (JavaConstant) constant);
+        return pkg == null ? null : new HostVMResolvedJavaPackageImpl(providers.getMetaAccess(), pkg);
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent asResolvedJavaRecordComponent(Constant constant) {
+        RecordComponent recordComponent = providers.getSnippetReflection().asObject(RecordComponent.class, (JavaConstant) constant);
+        return recordComponent == null ? null : providers.getMetaAccess().lookupJavaRecordComponent(recordComponent);
     }
 
     @Override

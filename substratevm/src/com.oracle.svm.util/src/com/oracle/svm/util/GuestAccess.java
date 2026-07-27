@@ -618,6 +618,16 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
+    public ResolvedJavaPackage asResolvedJavaPackage(Constant constant) {
+        return delegate.asResolvedJavaPackage(constant);
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent asResolvedJavaRecordComponent(Constant constant) {
+        return delegate.asResolvedJavaRecordComponent(constant);
+    }
+
+    @Override
     public JavaConstant asExecutableConstant(ResolvedJavaMethod method) {
         return delegate.asExecutableConstant(method);
     }

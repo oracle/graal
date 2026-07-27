@@ -26,6 +26,7 @@ package jdk.graal.compiler.vmaccess;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.net.URL;
 import java.util.List;
 
@@ -36,6 +37,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -211,6 +213,20 @@ public interface VMAccess {
      * Returns {@code null} if {@code constant} does not encapsulate a {@link Field}.
      */
     ResolvedJavaField asResolvedJavaField(Constant constant);
+
+    /**
+     * Gets a {@link ResolvedJavaPackage} for a {@link Package} object encapsulated in
+     * {@code constant}. Returns {@code null} if {@code constant} does not encapsulate a
+     * {@link Package}.
+     */
+    ResolvedJavaPackage asResolvedJavaPackage(Constant constant);
+
+    /**
+     * Gets a {@link ResolvedJavaRecordComponent} for a {@link RecordComponent} object encapsulated
+     * in {@code constant}. Returns {@code null} if {@code constant} does not encapsulate a
+     * {@link RecordComponent}.
+     */
+    ResolvedJavaRecordComponent asResolvedJavaRecordComponent(Constant constant);
 
     /**
      * Gets the runtime representation of an {@link Executable} object for {@code method}. This is

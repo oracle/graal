@@ -101,8 +101,16 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected AbstractEspressoResolvedJavaRecordComponent[] getRecordComponents0() {
-        // GR-73163
-        throw JVMCIError.unimplemented();
+        Value value = access.invokeJVMCIHelper("getRecordComponents", getMetaObject());
+        if (value.isNull()) {
+            return null;
+        }
+        int size = Math.toIntExact(value.getArraySize());
+        EspressoExternalResolvedJavaRecordComponent[] result = new EspressoExternalResolvedJavaRecordComponent[size];
+        for (int i = 0; i < size; i++) {
+            result[i] = new EspressoExternalResolvedJavaRecordComponent(this, i, value.getArrayElement(i));
+        }
+        return result;
     }
 
     private EspressoExternalResolvedInstanceType[] translateInstanceTypeArray(Value value) {

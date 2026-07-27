@@ -53,6 +53,8 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute.RecordComponentInfo;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -98,6 +100,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.LOOKUP_INSTANCE_TYPE,
                         InvokeMember.IS_ASSIGNABLE_FROM,
                         InvokeMember.GET_INTERFACES,
+                        InvokeMember.GET_RECORD_COMPONENTS,
                         InvokeMember.INITIALIZE,
                         InvokeMember.LINK,
                         InvokeMember.IS_INITIALIZED,
@@ -171,6 +174,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String IS_LINKED = "isLinked";
         static final String IS_ASSIGNABLE_FROM = "isAssignableFrom";
         static final String GET_INTERFACES = "getInterfaces";
+        static final String GET_RECORD_COMPONENTS = "getRecordComponents";
         static final String GET_CLASS_INITIALIZER = "getClassInitializer";
         static final String GET_DECLARED_METHODS = "getDeclaredMethods";
         static final String GET_DECLARED_CONSTRUCTORS = "getDeclaredConstructors";
@@ -264,6 +268,26 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return new KeysArray<>(interfaces);
+        }
+
+        /** Returns the class-file record components declared by an Espresso class. */
+        @Specialization(guards = "GET_RECORD_COMPONENTS.equals(member)")
+        static Object getRecordComponents(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            RecordAttribute record = klass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
+            if (record == null) {
+                return StaticObject.NULL;
+            }
+            RecordComponentInfo[] components = record.getComponents();
+            RecordComponentInteropWrapper[] wrappers = new RecordComponentInteropWrapper[components.length];
+            for (int i = 0; i < components.length; i++) {
+                wrappers[i] = new RecordComponentInteropWrapper(components[i]);
+            }
+            return new KeysArray<>(wrappers);
         }
 
         @Specialization(guards = "LOOKUP_INSTANCE_TYPE.equals(member)")
@@ -1005,7 +1029,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             if (!(arguments[0] instanceof AttributedElement element)) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an espresso klass, method, or field as first argument");
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso klass, method, field, or record component as first argument");
             }
             int category;
             try {
