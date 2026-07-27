@@ -29,13 +29,23 @@ import java.security.Provider;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(java.security.Security.class)
+@TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 final class Target_java_security_Security_ProviderLookup {
 
     /** §FS-security-providers.6: Successful name-based lookup traces provider type access. */
     @Substitute
     public static Provider getProvider(String name) {
         return SecurityProviderRuntimeAccess.traceLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
+    }
+
+}
+
+/** Keeps provider enumeration tracing active in both provider-list initialization modes. */
+@TargetClass(java.security.Security.class)
+final class Target_java_security_Security_ProviderEnumeration {
+    @Substitute
+    public static Provider[] getProviders() {
+        return SecurityProviderRuntimeAccess.traceLookups(sun.security.jca.Providers.getFullProviderList().toArray());
     }
 }
 
