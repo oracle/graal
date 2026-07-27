@@ -61,7 +61,7 @@ final class Target_java_security_Security_SecPropLoader {
      */
     @Substitute
     private static void loadMaster() {
-        Target_java_security_Security.props = SecurityProviderRuntimeState.singleton().getSavedInitialSecurityProperties();
+        Target_java_security_Security.props = SecurityProviderRuntimeState.getSavedInitialSecurityProperties();
     }
 }
 
