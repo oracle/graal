@@ -989,7 +989,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 }
                 if (!mode.explicitRegistration()) {
                     Class<?> providerClass = service.getProvider().getClass();
-                    providerPlanner.beforeLegacyReflectionRegistration(providerClass, SecurityServicesFeature::isProviderRegisteredForReflection);
+                    providerPlanner.beforeLegacyReflectionRegistration(providerClass);
                 }
                 catalogRegistrar.registerProvider(a, service.getProvider());
             }
