@@ -28,7 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.function.Function;
 
 /**
  * Tracks provider-registration intent separately from reflection metadata emitted to realize it.
@@ -36,6 +36,7 @@ import java.util.function.Predicate;
 final class SecurityProviderRegistrationPlanner {
     enum Source {
         APPLICATION_METADATA,
+        PRESERVE,
         SECURE_RANDOM_PLATFORM,
         LEGACY_ADDITIONAL_PROVIDER,
         LEGACY_SERVICE_REACHABILITY
@@ -71,13 +72,14 @@ final class SecurityProviderRegistrationPlanner {
         legacyGeneratedReflection.add(providerClass);
     }
 
-    boolean processNewCompleteProviders(Predicate<Class<?>> hasRegistrationSignal, Consumer<Class<?>> includeProvider) {
+    boolean processNewCompleteProviders(Function<Class<?>, Source> signalSource, Consumer<Class<?>> includeProvider) {
         boolean discoveredCandidate = changed.getAndSet(false);
         boolean processed = false;
         for (Class<?> providerClass : candidates) {
-            boolean applicationMetadata = !legacyGeneratedReflection.contains(providerClass) && hasRegistrationSignal.test(providerClass);
-            if (applicationMetadata) {
-                requestCompleteProvider(providerClass, Source.APPLICATION_METADATA);
+            Source signal = !legacyGeneratedReflection.contains(providerClass) ? signalSource.apply(providerClass) : null;
+            if (signal != null) {
+                recordSource(providerClass, signal);
+                completePlans.add(providerClass);
             }
             if (completePlans.contains(providerClass) && completed.add(providerClass)) {
                 includeProvider.accept(providerClass);

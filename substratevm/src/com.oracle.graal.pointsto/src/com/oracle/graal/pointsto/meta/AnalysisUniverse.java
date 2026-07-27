@@ -410,6 +410,11 @@ public class AnalysisUniverse implements Universe {
                         ". Probably there are some compilation or classpath problems. ");
     }
 
+    public AnalysisMethod optionalLookup(ResolvedJavaMethod method) {
+        ResolvedJavaMethod actualMethod = substitutions.lookup(method);
+        return methods.get(actualMethod);
+    }
+
     @Override
     public JavaMethod lookupAllowUnresolved(JavaMethod rawMethod) {
         if (rawMethod == null) {

@@ -54,4 +54,14 @@ public final class SecurityProviderRuntimeAccess {
         }
         return provider;
     }
+
+    /** §FS-security-providers.6.1: Enumeration traces every provider returned by the JDK. */
+    public static Provider[] traceLookups(Provider[] providers) {
+        if (providers != null && MetadataTracer.enabled()) {
+            for (Provider provider : providers) {
+                traceLookup(provider);
+            }
+        }
+        return providers;
+    }
 }

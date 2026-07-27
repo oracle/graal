@@ -1116,8 +1116,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining types should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, type);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(type)) {
+            return false;
         }
 
         return super.isSupportedOriginalType(bb, type);
@@ -1142,8 +1142,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining methods should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, method);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(method)) {
+            return false;
         }
 
         return super.isSupportedAnalysisMethod(bb, method);
@@ -1180,8 +1180,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining methods should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, method);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(method)) {
+            return false;
         }
 
         return super.isSupportedOriginalMethod(bb, method);
@@ -1222,7 +1222,7 @@ public class SVMHost extends HostVM {
          * they are replaced by the invocation plugin with a constant. If reachable in an extension
          * image, the plugin will replace it again.
          */
-        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) && GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) || GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
             return false;
         }
 
@@ -1306,8 +1306,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining fields should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, field);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(field)) {
+            return false;
         }
 
         return super.isSupportedAnalysisField(bb, field);
@@ -1351,8 +1351,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining fields should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, field);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(field)) {
+            return false;
         }
 
         return super.isSupportedOriginalField(bb, field);

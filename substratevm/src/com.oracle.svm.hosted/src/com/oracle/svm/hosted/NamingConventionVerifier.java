@@ -99,6 +99,18 @@ final class NamingConventionVerifier {
         checkName(bb, null, format);
     }
 
+    static boolean isNameAllowed(ResolvedJavaMethod method) {
+        return namingConventionsViolation(method.format("%H.%n(%p)")) == null;
+    }
+
+    static boolean isNameAllowed(ResolvedJavaField field) {
+        return namingConventionsViolation(field.format("%H.%n")) == null;
+    }
+
+    static boolean isNameAllowed(ResolvedJavaType type) {
+        return namingConventionsViolation(type.toJavaName(true)) == null;
+    }
+
     private static void checkName(BigBang bb, AnalysisMethod method, String name) {
         String message = namingConventionsViolation(name);
         if (message != null) {

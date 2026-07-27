@@ -1,1 +1,1 @@
-# AR-security-providers: [SecurityProviderRuntimeState](../../src/com.oracle.svm.core/src/com/oracle/svm/core/jdk/SecurityProviderRuntimeState.java)
+# AR-security-providers: [SecurityServicesFeature](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/SecurityServicesFeature.java)

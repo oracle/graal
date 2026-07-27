@@ -69,12 +69,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaSecurityInsertProviderAt;
     final JNIMethodId javaSecurityRemoveProvider;
     final JNIFieldId sunSecurityJcaProviderConfigProvider;
-    final JNIObjectHandle sunSecurityProviderSun;
-    final JNIObjectHandle sunSecurityRsaSunRsaSign;
-    final JNIObjectHandle sunSecurityEcSunEC;
-    final JNIObjectHandle sunSecuritySslSunJSSE;
-    final JNIObjectHandle comSunCryptoProviderSunJCE;
-    final JNIObjectHandle appleSecurityAppleProvider;
 
     final JNIObjectHandle javaLangStackOverflowError;
 
@@ -198,16 +192,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaSecurityInsertProviderAt = getMethodId(env, javaSecuritySecurity, "insertProviderAt", "(Ljava/security/Provider;I)I", true);
         javaSecurityRemoveProvider = getMethodId(env, javaSecuritySecurity, "removeProvider", "(Ljava/lang/String;)V", true);
 
-        JNIObjectHandle sunSecurityJcaProviderConfig = findClass(env, "sun/security/jca/ProviderConfig");
-        sunSecurityJcaProviderConfigProvider = getFieldId(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);
-
-        sunSecurityProviderSun = newClassGlobalRef(env, "sun/security/provider/Sun");
-        sunSecurityRsaSunRsaSign = newClassGlobalRef(env, "sun/security/rsa/SunRsaSign");
-        sunSecurityEcSunEC = newClassGlobalRef(env, "sun/security/ec/SunEC");
-        sunSecuritySslSunJSSE = newClassGlobalRef(env, "sun/security/ssl/SunJSSE");
-        comSunCryptoProviderSunJCE = newClassGlobalRef(env, "com/sun/crypto/provider/SunJCE");
-        JNIObjectHandle appleProvider = findClassOptional(env, "apple/security/AppleProvider");
-        appleSecurityAppleProvider = appleProvider.equal(nullHandle()) ? nullHandle() : newTrackedGlobalRef(env, appleProvider);
+        JNIObjectHandle sunSecurityJcaProviderConfig = findClassOptional(env, "sun/security/jca/ProviderConfig");
+        sunSecurityJcaProviderConfigProvider = sunSecurityJcaProviderConfig.equal(nullHandle())
+                        ? WordFactory.nullPointer()
+                        : getFieldIdOptional(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);
 
         javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
 
