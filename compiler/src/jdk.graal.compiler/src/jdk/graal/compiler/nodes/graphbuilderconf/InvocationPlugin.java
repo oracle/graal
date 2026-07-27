@@ -26,10 +26,9 @@ package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,7 +41,7 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Plugin for handling a specific method invocation.
+ * Plugin for handling/intrinsifying a specific method invocation.
  */
 public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
@@ -66,24 +65,26 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     }
 
     /**
-     * Name of the method.
+     * Name of the intrinsified method.
      */
     public final String name;
 
     /**
-     * Argument types of the method. If the method is non-static, element 0 of this array must be
+     * Argument types of the intrinsified method. If the method is non-static, element 0 of this array must be
      * {@link InvocationPlugin.Receiver} upon initialization and rewritten to declaring class after
      * registration.
      */
     final Type[] argumentTypes;
 
     /**
-     * Determines if the method is static.
+     * Determines if the intrinsified method is static.
      */
     public final boolean isStatic;
 
     /**
-     * Argument descriptor of the method.
+     * Arguments' descriptor of the intrinsified method.
+     * Note that this is different for the parameters' descriptor as it includes
+     * the receiver type for a non-static method.
      */
     public final String argumentsDescriptor;
 
@@ -107,16 +108,21 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         this.argumentsDescriptor = buf.toString();
     }
 
+    /// Gets an immutable view on the argument types of the intrinsified method.
+    public List<Type> getArgumentTypes() {
+        return List.of(argumentTypes);
+    }
+
     /**
-     * Determines if this plugin can only be used when inlining the method is it associated with.
-     * That is, this plugin cannot be used when the associated method is the compilation root.
+     * Determines if this plugin can only be used when inlining the intrinsified method.
+     * That is, this plugin cannot be used when the intrinsified method is the compilation root.
      */
     public boolean inlineOnly() {
         return false;
     }
 
     /**
-     * Determines if this plugin only decorates the method is it associated with. That is, it
+     * Determines if this plugin only decorates the intrinsified method. That is, it
      * inserts nodes prior to the invocation (e.g. some kind of marker nodes) but still expects the
      * parser to process the invocation further.
      */
@@ -125,7 +131,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     }
 
     /**
-     * Determines if this plugin requires the original method to be resolvable. For instance,
+     * Determines if this plugin requires the intrinsified method to be resolvable. For instance,
      * {@code Reference#refersTo0} is introduced in Java 16 and is optional in earlier versions in
      * case it may be backported.
      */
@@ -136,7 +142,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     /**
      * Determines if this plugin can be disabled. For instance, HotSpot intrinsics featuring better
      * performance with specific CPU features can be disabled; utility methods in GraalDirectives
-     * can not be disabled. See {@link InvocationPlugins.Options#DisableIntrinsics}.
+     * cannot be disabled. See {@link InvocationPlugins.Options#DisableIntrinsics}.
      */
     public boolean canBeDisabled() {
         return true;
@@ -144,7 +150,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
     /**
      * Determines if this plugin is only implemented in Graal. This is useful for adapting HotSpot
-     * intrinsic related flags, which for intrinsics not yet implemented in HotSpot are off by
+     * intrinsic-related flags, which for intrinsics not yet implemented in HotSpot are off by
      * default and should not disable Graal plugins.
      */
     public boolean isGraalOnly() {
@@ -393,60 +399,24 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
     }
 
-    public int getArgumentsSize() {
+    /// Gets the number of formal parameters for the method this is a plugin for.
+    public int getParametersCount() {
         return argumentTypes.length - (isStatic ? 0 : 1);
     }
 
+    /// Gets the name of the intrinsified method along with a descriptor of its arguments
+    /// (but not its return type).
     public String getMethodNameWithArgumentsDescriptor() {
         return name + argumentsDescriptor;
     }
 
-    public boolean isSameType(InvocationPlugin other) {
+    /// Determines if `other` intrinsifies the same method as this plugin.
+    public boolean matches(InvocationPlugin other) {
         return isStatic == other.isStatic && name.equals(other.name) && argumentsDescriptor.equals(other.argumentsDescriptor);
     }
 
-    public boolean isSameType(ResolvedJavaMethod method) {
+    public boolean matchesMethod(ResolvedJavaMethod method) {
         return isStatic == method.isStatic() && name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor);
-    }
-
-    private static boolean isSameType(Class<?> actualType, Type toMatch) {
-        if (actualType == toMatch) {
-            return true;
-        } else if (toMatch instanceof InvocationPlugins.TypeSymbol) {
-            return actualType.getTypeName().equals(toMatch.getTypeName());
-        }
-        return false;
-    }
-
-    public boolean isSameType(Method method) {
-        if (isStatic == Modifier.isStatic(method.getModifiers()) && name.equals(method.getName())) {
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            int offset = isStatic ? 0 : 1;
-            if (parameterTypes.length == argumentTypes.length - offset) {
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    if (!isSameType(parameterTypes[i], argumentTypes[i + offset])) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean isSameType(Constructor<?> c) {
-        if (!isStatic && "<init>".equals(name)) {
-            Class<?>[] parameterTypes = c.getParameterTypes();
-            if (parameterTypes.length == argumentTypes.length - 1) {
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    if (!isSameType(parameterTypes[i], argumentTypes[i + 1])) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override

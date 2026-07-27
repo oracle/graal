@@ -342,7 +342,7 @@ public class InvocationPlugins {
             ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
             ResolvedJavaMethod match = null;
             for (ResolvedJavaMethod m : methods) {
-                if (plugin.isSameType(m)) {
+                if (plugin.matchesMethod(m)) {
                     if (match == null) {
                         match = m;
                     } else {
@@ -375,7 +375,7 @@ public class InvocationPlugins {
 
             InvocationPlugin plugin = invocationPlugins.get(method.getName());
             while (plugin != null) {
-                if (plugin.isSameType(method)) {
+                if (plugin.matchesMethod(method)) {
                     return plugin;
                 }
                 plugin = plugin.next;
@@ -398,7 +398,7 @@ public class InvocationPlugins {
         InvocationPlugin lookup(InvocationPlugin plugin) {
             InvocationPlugin registeredPlugin = invocationPlugins.get(plugin.name);
             while (registeredPlugin != null) {
-                if (registeredPlugin.isSameType(plugin)) {
+                if (registeredPlugin.matches(plugin)) {
                     return registeredPlugin;
                 }
                 registeredPlugin = registeredPlugin.next;
@@ -499,7 +499,7 @@ public class InvocationPlugins {
                             List<InvocationPlugin> testInvocationPlugins = testExtensions.get(internalName);
                             if (testInvocationPlugins != null) {
                                 for (InvocationPlugin testInvocationPlugin : testInvocationPlugins) {
-                                    if (testInvocationPlugin.isSameType(method)) {
+                                    if (testInvocationPlugin.matchesMethod(method)) {
                                         return testInvocationPlugin;
                                     }
                                 }
@@ -595,7 +595,7 @@ public class InvocationPlugins {
     private static int findInvocationPlugin(List<InvocationPlugin> list, InvocationPlugin key) {
         for (int i = 0; i < list.size(); i++) {
             InvocationPlugin invocationPlugin = list.get(i);
-            if (invocationPlugin.isSameType(key)) {
+            if (invocationPlugin.matches(key)) {
                 return i;
             }
         }
@@ -1088,7 +1088,7 @@ public class InvocationPlugins {
                         sigs.set(sig.length - 3, sig);
                     }
                 }
-                assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
+                assert !sigs.contains(null) : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
                                 ValueNode.class.getSimpleName());
             }
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
@@ -1109,8 +1109,8 @@ public class InvocationPlugins {
             if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
                 return true;
             }
-            int arguments = plugin.getArgumentsSize();
-            assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments,
+            int parametersCount = plugin.getParametersCount();
+            assert parametersCount < SIGS.length : format("need to extend %s to support method with %d parameters: %s", InvocationPlugin.class.getSimpleName(), parametersCount,
                             plugin.getMethodNameWithArgumentsDescriptor());
 
             Class<?> klass = plugin.getClass();
@@ -1121,7 +1121,7 @@ public class InvocationPlugins {
                     }
                     if (m.getName().equals("apply")) {
                         Class<?>[] parameterTypes = m.getParameterTypes();
-                        if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+                        if (Arrays.equals(SIGS[parametersCount], parameterTypes)) {
                             return true;
                         }
                     }

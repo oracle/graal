@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -58,6 +59,48 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
         this.missingIntrinsicMetrics = null;
     }
 
+    private static boolean matchesType(Class<?> actualType, Type toMatch) {
+        if (actualType == toMatch) {
+            return true;
+        } else if (toMatch instanceof InvocationPlugins.TypeSymbol) {
+            return actualType.getTypeName().equals(toMatch.getTypeName());
+        }
+        return false;
+    }
+
+    private static boolean matchesMethod(InvocationPlugin plugin, Method method) {
+        if (plugin.isStatic == Modifier.isStatic(method.getModifiers()) && plugin.name.equals(method.getName())) {
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            int offset = plugin.isStatic ? 0 : 1;
+            List<Type> argumentTypes = plugin.getArgumentTypes();
+            if (parameterTypes.length == argumentTypes.size() - offset) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (!matchesType(parameterTypes[i], argumentTypes.get(i + offset))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesConstructor(InvocationPlugin plugin, Constructor<?> c) {
+        if (!plugin.isStatic && "<init>".equals(plugin.name)) {
+            Class<?>[] parameterTypes = c.getParameterTypes();
+            List<Type> argumentTypes = plugin.getArgumentTypes();
+            if (parameterTypes.length == argumentTypes.size() - 1) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (!matchesType(parameterTypes[i], argumentTypes.get(i + 1))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// Resolves `plugin` to a method or constructor declared in `declaringClass`.
     ///
     /// This method is the same as `InvocationPlugins.ClassPlugins#resolveJavaMethod`
@@ -69,7 +112,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
             Method[] methods = declaringClass.getDeclaredMethods();
             Method match = null;
             for (Method m : methods) {
-                if (plugin.isSameType(m)) {
+                if (matchesMethod(plugin, m)) {
                     if (match == null) {
                         match = m;
                     } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
@@ -88,7 +131,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
         }
         Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
         for (Constructor<?> c : constructors) {
-            if (plugin.isSameType(c)) {
+            if (matchesConstructor(plugin, c)) {
                 return c;
             }
         }
