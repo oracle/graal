@@ -86,6 +86,16 @@ Security.insertProviderAt(bcProvider, 1);
 If `--future-defaults=all` or `--future-defaults=run-time-initialize-jdk` is enabled, the list of providers is constructed at run time.
 The same approach to manipulating providers can then be used.
 
+## SecureRandom
+
+Native Image initializes `NativePRNG`, its seed generators, and related entropy-holding classes at
+run time.
+This prevents `/dev/random`, `/dev/urandom`, and machine-specific seed state from being captured
+on the image builder.
+Class-initialization safety is separate from provider registration: a reachable `SecureRandom`
+acquisition also triggers registration of the complete configured-provider set that declares
+`SecureRandom` services.
+
 ## Custom Service Types
 
 By default, only services specified in the JCA framework are automatically registered. To automatically register custom service types, you can use the `-H:AdditionalSecurityServiceTypes` option.

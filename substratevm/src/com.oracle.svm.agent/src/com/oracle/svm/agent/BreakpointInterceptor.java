@@ -772,6 +772,9 @@ final class BreakpointInterceptor {
      * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
      */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        if (agent.handles().sunSecurityJcaProviderConfigProvider.isNull()) {
+            return true;
+        }
         SecurityAcquisition acquisition = findSecurityAcquisition(jni, thread, state);
         if (acquisition == null) {
             return true;
@@ -1990,6 +1993,21 @@ final class BreakpointInterceptor {
         tracer = null;
     }
 
+    static boolean securityProviderHooksAvailable() {
+        boolean getService = false;
+        boolean getProvider = false;
+        if (installedBreakpoints != null) {
+            for (Breakpoint breakpoint : installedBreakpoints.values()) {
+                if (breakpoint.specification.className.equals("sun/security/jca/GetInstance") && breakpoint.specification.methodName.equals("getService")) {
+                    getService = true;
+                } else if (breakpoint.specification.className.equals("sun/security/jca/ProviderConfig") && breakpoint.specification.methodName.equals("getProvider")) {
+                    getProvider = true;
+                }
+            }
+        }
+        return getService && getProvider;
+    }
+
     private interface BreakpointHandler {
         boolean dispatch(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state);
     }
@@ -2027,11 +2045,11 @@ final class BreakpointInterceptor {
 
                     brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
-                    brk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
+                    optionalBrk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
                                     BreakpointInterceptor::getSecurityServiceForProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
                                     BreakpointInterceptor::newSecurityServiceInstance),
-                    brk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
+                    optionalBrk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
                                     BreakpointInterceptor::getCachedSecurityProvider),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",

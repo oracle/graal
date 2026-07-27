@@ -50,6 +50,8 @@ final class SecurityProviderCatalogRegistrar {
 
         void registerService(DuringAnalysisAccess access, Service service);
 
+        void registerSelectedConstructionPath(Class<?> providerClass);
+
         Object getProviderVerificationResult(Provider provider);
     }
 
@@ -90,7 +92,9 @@ final class SecurityProviderCatalogRegistrar {
     void registerProvider(DuringAnalysisAccess access, Provider provider) {
         if (usedProviders.add(provider)) {
             RuntimeReflection.register(provider.getClass());
-            RuntimeReflection.register(provider.getClass().getConstructors());
+            if (host.isLoadableProviderClass(access, provider.getClass())) {
+                host.registerSelectedConstructionPath(provider.getClass());
+            }
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
             String providerClassName = provider.getClass().getName();
