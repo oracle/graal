@@ -41,6 +41,8 @@ import mx_sdk_vm
 
 import sys
 
+from mx_sdk_shaded import ShadedLibraryProject  # pylint: disable=unused-import
+
 if sys.version_info[0] < 3:
     from urlparse import urljoin
 else:
@@ -71,6 +73,8 @@ def javadoc(args):
     if not args:
         projectNames = []
         for p in mx.projects(True, True):
+            if getattr(p, "noMavenJavadoc", False):
+                continue
             projectNames.append(p.name)
         mx.javadoc(['--unified', '--disallow-all-warnings', '--projects', ','.join(projectNames)], includeDeps=False)
     else:
