@@ -140,6 +140,13 @@ final class Target_sun_security_jca_ProviderConfig {
             if (provider != null) {
                 return provider;
             }
+            String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
+            String providerClassName = builtInProviderClassName != null ? builtInProviderClassName : provName;
+            /* Omit unregistered providers from the run-time list. §FS-security-providers.7.1 */
+            if (!SecurityProviderRuntimeAccess.shouldLoadUnregisteredConfiguredProvider() &&
+                            !SecurityProviderRuntimeState.isJdkConstructible(providerClassName)) {
+                return null;
+            }
             if (!shouldLoad()) {
                 return null;
             }
@@ -197,7 +204,8 @@ final class Target_sun_security_jca_ProviderList {
             String providerFQName = BuiltInSecurityProviderLoader.getProviderClassName(configuredProviderName);
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
-                return SecurityProviderRuntimeAccess.traceLookup(config.getProvider());
+                Provider provider = SecurityProviderRuntimeAccess.loadUnregisteredConfiguredProvider(config::getProvider);
+                return SecurityProviderRuntimeAccess.traceLookup(provider);
             }
         }
         return null;

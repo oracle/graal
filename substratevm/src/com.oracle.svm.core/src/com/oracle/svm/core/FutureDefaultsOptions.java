@@ -217,6 +217,9 @@ public class FutureDefaultsOptions {
                 result.add(value);
             }
         });
+        if (result.contains(EXPLICIT_SECURITY_PROVIDER_REGISTRATION)) {
+            result.add(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS);
+        }
         return result;
     }
 
