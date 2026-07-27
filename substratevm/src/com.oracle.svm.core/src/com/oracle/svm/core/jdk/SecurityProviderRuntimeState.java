@@ -29,18 +29,16 @@ import java.security.Provider;
 import java.util.Properties;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /// AR-security-providers: Security Provider Architecture
 ///
@@ -107,7 +105,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 /// Deprecated provider options and service-reachability inclusion are confined to
 /// `LegacySecurityProviderCompatibility`. Removing compatibility behavior does not change the
 /// planner, catalog registrar, run-time manifest, or planned-default substitutions.
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public final class SecurityProviderRuntimeState {
     public enum AcquisitionKind {
         APPLICATION_SUPPLIED_ONLY,
@@ -126,9 +124,13 @@ public final class SecurityProviderRuntimeState {
     public SecurityProviderRuntimeState() {
     }
 
-    @Fold
-    public static SecurityProviderRuntimeState singleton() {
-        return ImageSingletons.lookup(SecurityProviderRuntimeState.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static SecurityProviderRuntimeState currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(SecurityProviderRuntimeState.class, false, true);
+    }
+
+    private static SecurityProviderRuntimeState[] singletons() {
+        return MultiLayeredImageSingleton.getAllLayers(SecurityProviderRuntimeState.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -155,13 +157,27 @@ public final class SecurityProviderRuntimeState {
         providerInfos.put(providerClassName, new ProviderInfo(effectiveAcquisitionKind, verificationFailure));
     }
 
-    public ProviderInfo getProviderInfo(Provider provider) {
-        return providerInfos.get(provider.getClass().getName());
+    public static ProviderInfo getProviderInfo(Provider provider) {
+        String providerClassName = provider.getClass().getName();
+        SecurityProviderRuntimeState[] states = singletons();
+        for (int i = states.length - 1; i >= 0; i--) {
+            ProviderInfo info = states[i].providerInfos.get(providerClassName);
+            if (info != null) {
+                return info;
+            }
+        }
+        return null;
     }
 
-    public boolean isJdkConstructible(String providerClassName) {
-        ProviderInfo info = providerInfos.get(providerClassName);
-        return info != null && info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
+    public static boolean isJdkConstructible(String providerClassName) {
+        SecurityProviderRuntimeState[] states = singletons();
+        for (int i = states.length - 1; i >= 0; i--) {
+            ProviderInfo info = states[i].providerInfos.get(providerClassName);
+            if (info != null) {
+                return info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
+            }
+        }
+        return false;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -169,8 +185,13 @@ public final class SecurityProviderRuntimeState {
         sunECConstructor = constructor;
     }
 
-    Constructor<?> getSunECConstructor() {
-        return sunECConstructor;
+    static Constructor<?> getSunECConstructor() {
+        for (SecurityProviderRuntimeState state : singletons()) {
+            if (state.sunECConstructor != null) {
+                return state.sunECConstructor;
+            }
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -178,7 +199,12 @@ public final class SecurityProviderRuntimeState {
         savedInitialSecurityProperties = properties;
     }
 
-    public Properties getSavedInitialSecurityProperties() {
-        return savedInitialSecurityProperties;
+    public static Properties getSavedInitialSecurityProperties() {
+        for (SecurityProviderRuntimeState state : singletons()) {
+            if (state.savedInitialSecurityProperties != null) {
+                return state.savedInitialSecurityProperties;
+            }
+        }
+        return null;
     }
 }
