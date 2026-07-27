@@ -67,7 +67,7 @@ import sun.security.util.SecurityConstants;
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
     @Substitute
     public static Provider getSunProvider() {
-        if (!SecurityProviderRuntimeState.singleton().isJdkConstructible("sun.security.provider.Sun")) {
+        if (!SecurityProviderRuntimeState.isJdkConstructible("sun.security.provider.Sun")) {
             SecurityProviderRuntimeAccess.reportMissingRegistration(sun.security.provider.Sun.class);
         }
         return new sun.security.provider.Sun();

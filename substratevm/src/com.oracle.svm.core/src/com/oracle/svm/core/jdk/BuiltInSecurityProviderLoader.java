@@ -74,26 +74,25 @@ public final class BuiltInSecurityProviderLoader {
         if (providerClassName == null) {
             return null;
         }
-        SecurityProviderRuntimeState state = SecurityProviderRuntimeState.singleton();
         return switch (providerClassName) {
             case "sun.security.provider.Sun" ->
-                state.isJdkConstructible(providerClassName) ? new sun.security.provider.Sun() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.provider.Sun() : loadReflectively(providerClassName, debug);
             case "sun.security.rsa.SunRsaSign" ->
-                state.isJdkConstructible(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadReflectively(providerClassName, debug);
             case "com.sun.crypto.provider.SunJCE" ->
-                state.isJdkConstructible(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadReflectively(providerClassName, debug);
             case "sun.security.ssl.SunJSSE" ->
-                state.isJdkConstructible(providerClassName) ? new sun.security.ssl.SunJSSE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.ssl.SunJSSE() : loadReflectively(providerClassName, debug);
             case "sun.security.ec.SunEC" ->
-                state.isJdkConstructible(providerClassName) ? allocateSunECProvider(state) : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? allocateSunECProvider() : loadReflectively(providerClassName, debug);
             case "apple.security.AppleProvider" -> loadReflectively(providerClassName, debug);
             default -> null;
         };
     }
 
-    private static Provider allocateSunECProvider(SecurityProviderRuntimeState state) {
+    private static Provider allocateSunECProvider() {
         try {
-            return (Provider) state.getSunECConstructor().newInstance();
+            return (Provider) SecurityProviderRuntimeState.getSunECConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere("The SunEC constructor is not present.");
         }

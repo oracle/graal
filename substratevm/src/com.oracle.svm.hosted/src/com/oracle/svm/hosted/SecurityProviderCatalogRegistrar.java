@@ -95,7 +95,7 @@ final class SecurityProviderCatalogRegistrar {
             provider.entrySet();
             String providerClassName = provider.getClass().getName();
             Object verificationResult = host.getProviderVerificationResult(provider);
-            SecurityProviderRuntimeState state = SecurityProviderRuntimeState.singleton();
+            SecurityProviderRuntimeState state = SecurityProviderRuntimeState.currentLayer();
             if (host.isLoadableProviderClass(access, provider.getClass())) {
                 state.registerJdkConstructibleProvider(providerClassName, verificationResult);
             } else {
@@ -108,6 +108,6 @@ final class SecurityProviderCatalogRegistrar {
         // §FS-security-providers.5.3: Preserve verification without reconstructing the provider.
         List<Provider> buildTimeProviders = buildTimeProvidersByClassName.get(providerClass.getName());
         Object verificationResult = buildTimeProviders == null ? Boolean.TRUE : host.getProviderVerificationResult(buildTimeProviders.getFirst());
-        SecurityProviderRuntimeState.singleton().registerApplicationSuppliedProvider(providerClass.getName(), verificationResult);
+        SecurityProviderRuntimeState.currentLayer().registerApplicationSuppliedProvider(providerClass.getName(), verificationResult);
     }
 }

@@ -263,8 +263,8 @@ registers the provider class but does not retain its service implementations.
 
 This requirement applies both to loading a provider from the configured provider list and to Java
 Cryptography Extension (JCE) verification of a programmatically supplied provider.
-Without exact reachability metadata checking, this specification does not guarantee a particular
-missing-registration diagnostic.
+Without exact reachability metadata checking, the operation reports an actionable
+`SecurityException` that identifies the unregistered provider type instead of an internal error.
 
 ## 5. Programmatically Supplied Providers
 
@@ -379,6 +379,8 @@ Filtering unregistered providers preserves the ordering and lookup results speci
 
 A class-path _META-INF/services/java.security.Provider_ descriptor does not register the named
 provider for reflection.
+Native Image preserves the descriptor only when `ServiceLoader` access to
+`java.security.Provider` is reachable.
 If the provider is unregistered, service loading must not return a provider instance.
 Iterating to its descriptor can report the standard `ServiceConfigurationError` or
 missing-reflection error, and the provider's services remain unavailable.
@@ -388,6 +390,9 @@ missing-reflection error, and the provider's services remain unavailable.
 Without `--future-defaults=explicit-security-provider-registration`, reachability of a JCA service
 factory or JDK security-service facade can include services of the corresponding service type even
 when their provider classes have no reflection metadata.
+In this compatibility mode, pre-existing reflection metadata for a provider remains inert unless
+another compatibility registration signal includes that provider; Native Image must not construct
+the provider or expand its complete service catalog merely because its type is registered.
 This compatibility behavior applies to supported facades such as the Generic Security Services API
 (GSS-API).
 For example, reachability of any `Signature.getInstance` overload can cause signature services and
