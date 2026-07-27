@@ -315,7 +315,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             classCacheField = access.findField(Service.class, "classCache");
             constructorCacheField = access.findField(Service.class, "constructorCache");
         } else {
-            SecurityProviderRuntimeState support = SecurityProviderRuntimeState.singleton();
+            SecurityProviderRuntimeState support = SecurityProviderRuntimeState.currentLayer();
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
             ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
             support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
@@ -546,16 +546,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
-        if (p == null) {
-            return true;
-        }
-        if (catalogRegistrar.isUsed(p)) {
-            return false;
-        }
-        if (substitutionProcessor.isDeleted(p.getClass())) {
-            return true;
-        }
-        return true;
+        return p == null || !catalogRegistrar.isUsed(p);
     }
 
     private static void traceRemovedProviders(List<Provider> removedProviders) {
@@ -817,7 +808,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable _ = trace(access, trigger, serviceType)) {
             EconomicSet<Service> services = availableServices.get(serviceType);
-            VMError.guarantee(services != null);
+            if (services == null) {
+                trace("No provider supplies service type %s.", serviceType);
+                return;
+            }
             for (Service service : services) {
                 registerService(access, service);
             }
@@ -923,9 +917,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private Object getProviderVerificationResult(Provider provider) {
         // §FS-security-providers.5.3: Preserve the build-time outcome by provider class.
-        if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
-            return Boolean.TRUE;
-        }
         try {
             Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
             /*
@@ -1024,16 +1015,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     // Recognize every qualifying reflection-registration signal.
     // §FS-security-providers.1.1 and §FS-security-providers.2.1
     private static boolean isProviderRegisteredForReflection(Class<?> providerClass) {
-        ReflectionRegistrationView reflection = ReflectionRegistrationView.singleton();
-        if (reflection.hasTypeAccess(providerClass)) {
-            return true;
+        try {
+            ReflectionRegistrationView reflection = ReflectionRegistrationView.singleton();
+            if (reflection.hasTypeAccess(providerClass)) {
+                return true;
+            }
+            Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+            if (constructor != null && reflection.hasExecutableAccess(constructor)) {
+                return true;
+            }
+            Method providerMethod = findProviderMethod(providerClass);
+            return providerMethod != null && reflection.hasExecutableAccess(providerMethod);
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
         }
-        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
-        if (constructor != null && reflection.hasExecutableAccess(constructor)) {
-            return true;
-        }
-        Method providerMethod = findProviderMethod(providerClass);
-        return providerMethod != null && reflection.hasExecutableAccess(providerMethod);
     }
 
     private static void registerProviderClassForReflection(Class<?> providerClass) {
@@ -1122,7 +1117,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         // Consume concurrent plans in the serialized feature pass.
-        if (providerPlanner.processNewCompleteProviders(SecurityServicesFeature::isProviderRegisteredForReflection,
+        if (providerPlanner.processNewCompleteProviders(
+                        providerClass -> mode.explicitRegistration() && isProviderRegisteredForReflection(providerClass),
                         providerClass -> catalogRegistrar.includeProviderClass(access, providerClass))) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
