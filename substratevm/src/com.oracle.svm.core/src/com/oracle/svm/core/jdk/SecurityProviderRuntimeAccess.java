@@ -28,7 +28,6 @@ import java.security.Provider;
 
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.shared.util.VMError;
 
 public final class SecurityProviderRuntimeAccess {
     private SecurityProviderRuntimeAccess() {
@@ -40,9 +39,12 @@ public final class SecurityProviderRuntimeAccess {
         try {
             Class.forName(providerClass.getName(), false, providerClass.getClassLoader());
         } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere("A reachable security provider class was not found.", ex);
+            throw new SecurityException(
+                            "Attempted to use a security provider that was not registered for reflection at build time: " + providerClass.getName() + ". " +
+                                            "Add the provider type to reachability-metadata.json and rebuild the image.",
+                            ex);
         }
-        throw VMError.shouldNotReachHere("A security provider without a verification result was registered for reflection: " + providerClass.getName());
+        throw new SecurityException("Attempted to use a security provider without build-time verification: " + providerClass.getName());
     }
 
     /** §FS-security-providers.6.1: Existing provider instances trace type access. */

@@ -169,6 +169,7 @@ public class SecurityServiceTest {
     // §FS-security-providers.2.1, §FS-security-providers.2.3, and §FS-security-providers.5.1
     @Test
     public void testReflectionMetadataProviderRegistration() throws Exception {
+        Assume.assumeTrue("needs explicit provider registration", FutureDefaultsOptions.explicitSecurityProviderRegistration());
         Provider provider = (Provider) Class.forName(REFLECTION_METADATA_PROVIDER_CLASS_NAME).getDeclaredConstructor().newInstance();
         int position = Security.addProvider(provider);
         try {
@@ -186,6 +187,7 @@ public class SecurityServiceTest {
     // §FS-security-providers.2.1, §FS-security-providers.2.3, and §FS-security-providers.5.1
     @Test
     public void testTypeMetadataProviderRegistration() throws Exception {
+        Assume.assumeTrue("needs explicit provider registration", FutureDefaultsOptions.explicitSecurityProviderRegistration());
         Provider provider = new TypeMetadataProvider();
         int position = Security.addProvider(provider);
         try {
@@ -209,6 +211,19 @@ public class SecurityServiceTest {
         } finally {
             Security.removeProvider(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME);
         }
+    }
+
+    /** Tests the non-exact diagnostic from §FS-security-providers.4.3. */
+    @Test
+    public void testUnregisteredJceProviderReportsActionableDiagnostic() {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+        Assume.assumeFalse("tests the compatibility-mode fallback", FutureDefaultsOptions.explicitSecurityProviderRegistration());
+
+        Provider provider = new UnregisteredMacProvider();
+        SecurityException error = Assert.assertThrows(SecurityException.class,
+                        () -> Mac.getInstance("unregistered-mac", provider));
+        Assert.assertTrue("The diagnostic must identify the provider type",
+                        error.getMessage().contains(UnregisteredMacProvider.class.getName()));
     }
 
     /** Tests §FS-security-providers.7.2. */
@@ -377,6 +392,9 @@ public class SecurityServiceTest {
         @SuppressWarnings("deprecation")
         public ReflectionMetadataProvider() {
             super(REFLECTION_METADATA_PROVIDER_NAME, 1.0, "Provider registered through reflection metadata");
+            if (ImageInfo.inImageBuildtimeCode() && !FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+                throw new AssertionError("Compatibility mode must not instantiate a provider solely because it has reflection metadata.");
+            }
             putService(new Service(this, "JCACompliantNoOpService", REFLECTION_METADATA_PROVIDER_ALGORITHM,
                             ReflectionMetadataNoOpServiceImpl.class.getName(), null, null));
             putService(new Service(this, "Mac", REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM, ReflectionMetadataMacSpi.class.getName(), null, null));
@@ -402,6 +420,16 @@ public class SecurityServiceTest {
             super(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME, 1.0, "Reachable provider without reflection metadata");
             putService(new Service(this, "JCACompliantNoOpService", REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM,
                             ReachableNoOpServiceImpl.class.getName(), null, null));
+        }
+    }
+
+    public static final class UnregisteredMacProvider extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public UnregisteredMacProvider() {
+            super("unregistered-mac-provider", 1.0, "Provider used to test missing-registration diagnostics");
+            putService(new Service(this, "Mac", "unregistered-mac", ReflectionMetadataMacSpi.class.getName(), null, null));
         }
     }
 

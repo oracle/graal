@@ -133,6 +133,7 @@ import jdk.graal.compiler.util.Digest;
  * Therefore, we do not support this case for now.
  */
 final class BreakpointInterceptor {
+    private static final int MAX_SECURITY_STACK_DEPTH = 32;
     private static Tracer tracer;
     private static NativeImageAgent agent;
     private static Supplier<InterceptedState> interceptedStateSupplier;
@@ -771,53 +772,53 @@ final class BreakpointInterceptor {
      * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
      */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle securityApiCaller = findSecurityAcquisitionCaller(state);
-        if (securityApiCaller.equal(nullHandle())) {
+        SecurityAcquisition acquisition = findSecurityAcquisition(jni, thread, state);
+        if (acquisition == null) {
             return true;
         }
         JNIObjectHandle providerConfig = getReceiver(thread);
         JNIObjectHandle provider = jniFunctions().getGetObjectField().invoke(jni, providerConfig, agent.handles().sunSecurityJcaProviderConfigProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        JNIObjectHandle requestedProviderName = findRequestedSecurityProviderName(thread, state);
+        JNIObjectHandle requestedProviderName = acquisition.requestedProviderName();
         if (validResult && requestedProviderName.notEqual(nullHandle())) {
             JNIObjectHandle providerName = Support.callObjectMethod(jni, provider, agent.handles().javaSecurityProviderGetName);
             validResult = !clearException(jni) &&
                             fromJniString(jni, requestedProviderName).equals(fromJniString(jni, providerName));
         }
-        traceSecurityProvider(jni, provider, validResult, securityApiCaller, state);
+        if (validResult) {
+            traceJdkConstructibleSecurityProvider(jni, provider, acquisition.callerClass(), state);
+        }
+        traceSecurityProvider(jni, provider, validResult, acquisition.callerClass(), state);
         return true;
     }
 
-    private static JNIObjectHandle findSecurityAcquisitionCaller(InterceptedState state) {
-        JNIObjectHandle securityApiCaller = nullHandle();
-        for (int depth = 1;; depth++) {
-            JNIMethodId callerMethod = state.getCallerMethod(depth);
-            if (callerMethod.isNull()) {
-                return securityApiCaller;
-            }
-            if (isSecurityMutationMethod(callerMethod)) {
-                return nullHandle();
-            }
-            if (isSecurityAcquisitionMethod(callerMethod)) {
-                securityApiCaller = state.getCallerClass(depth + 1);
-            }
-        }
+    private record SecurityAcquisition(JNIObjectHandle callerClass, JNIObjectHandle requestedProviderName) {
     }
 
-    private static JNIObjectHandle findRequestedSecurityProviderName(JNIObjectHandle thread, InterceptedState state) {
-        JNIObjectHandle requestedProviderName = nullHandle();
-        for (int depth = 1;; depth++) {
+    private static SecurityAcquisition findSecurityAcquisition(JNIEnvironment jni, JNIObjectHandle thread, InterceptedState state) {
+        SecurityAcquisition fallback = null;
+        for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
             JNIMethodId callerMethod = state.getCallerMethod(depth);
             if (callerMethod.isNull()) {
-                return requestedProviderName;
+                return fallback;
             }
             if (isSecurityMutationMethod(callerMethod)) {
-                return nullHandle();
+                return null;
             }
             if (isSecurityAcquisitionMethod(callerMethod)) {
-                requestedProviderName = callerMethod.equal(agent.handles().javaSecurityGetProvider)
+                JNIObjectHandle requestedProviderName = callerMethod.equal(agent.handles().javaSecurityGetProvider)
                                 ? Support.getObjectArgument(thread, depth, 0)
                                 : nullHandle();
+                SecurityAcquisition acquisition = new SecurityAcquisition(state.getCallerClass(depth + 1), requestedProviderName);
+                if (requestedProviderName.notEqual(nullHandle())) {
+                    return acquisition;
+                }
+                fallback = acquisition;
+            } else if (fallback != null) {
+                String callerClassName = getClassNameOrNull(jni, getMethodDeclaringClass(callerMethod));
+                if (callerClassName != null && !isJdkSecurityImplementation(callerClassName)) {
+                    return fallback;
+                }
             }
         }
     }
@@ -839,19 +840,15 @@ final class BreakpointInterceptor {
     }
 
     private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
-        for (int depth = 1;; depth++) {
-            JNIMethodId callerMethod = state.getCallerMethod(depth);
-            if (callerMethod.isNull()) {
-                return nullHandle();
-            }
-            if (callerMethod.equal(agent.handles().javaSecurityProviderServiceNewInstance)) {
-                return findExternalSecurityCaller(jni, state, depth + 1);
-            }
+        JNIMethodId directCaller = state.getCallerMethod(1);
+        if (directCaller.equal(agent.handles().javaSecurityProviderServiceNewInstance)) {
+            return findExternalSecurityCaller(jni, state, 2);
         }
+        return nullHandle();
     }
 
     private static JNIObjectHandle findExternalSecurityCaller(JNIEnvironment jni, InterceptedState state, int startDepth) {
-        for (int depth = startDepth;; depth++) {
+        for (int depth = startDepth; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
             JNIMethodId callerMethod = state.getCallerMethod(depth);
             if (callerMethod.isNull()) {
                 return nullHandle();
@@ -873,29 +870,32 @@ final class BreakpointInterceptor {
                         className.startsWith("com.sun.crypto.provider.");
     }
 
-    /** §FS-security-providers.6.1 and §FS-security-providers.6.2: Trace lookup metadata only. */
-    private static boolean getStaticSecurityProviderByName(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle providerName = getObjectArgument(thread, 0);
-        if (providerName.equal(nullHandle())) {
-            return true;
+    /** §FS-security-providers.6.1: Retain construction for a successfully acquired JDK provider. */
+    private static void traceJdkConstructibleSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, JNIObjectHandle callerClass, InterceptedState state) {
+        JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
+        if (clearException(jni)) {
+            return;
         }
-        JNIObjectHandle providerClass = switch (fromJniString(jni, providerName)) {
-            case "SUN", "sun.security.provider.Sun" -> agent.handles().sunSecurityProviderSun;
-            case "SunRsaSign", "sun.security.rsa.SunRsaSign" -> agent.handles().sunSecurityRsaSunRsaSign;
-            case "SunEC", "sun.security.ec.SunEC" -> agent.handles().sunSecurityEcSunEC;
-            case "SunJSSE", "sun.security.ssl.SunJSSE" -> agent.handles().sunSecuritySslSunJSSE;
-            case "SunJCE", "com.sun.crypto.provider.SunJCE" -> agent.handles().comSunCryptoProviderSunJCE;
-            case "Apple", "apple.security.AppleProvider" -> agent.handles().appleSecurityAppleProvider;
-            default -> nullHandle();
+        String providerClassName = getClassNameOrNull(jni, providerClass);
+        if (providerClassName == null) {
+            return;
+        }
+        boolean hasNullaryConstruction = switch (providerClassName) {
+            case "sun.security.provider.Sun",
+                            "sun.security.rsa.SunRsaSign",
+                            "sun.security.ec.SunEC",
+                            "sun.security.ssl.SunJSSE",
+                            "com.sun.crypto.provider.SunJCE",
+                            "apple.security.AppleProvider" -> true;
+            default -> false;
         };
-        if (providerClass.notEqual(nullHandle())) {
+        if (hasNullaryConstruction) {
             /*
-             * Record the implicit no-argument construction without eagerly invoking getProvider,
-             * which would cache the provider while recursive tracing is suppressed.
+             * Record the implicit no-argument construction only after ProviderConfig exposed a
+             * non-null result. This also covers a provider cached before the agent started.
              */
-            traceReflectBreakpoint(jni, providerClass, providerClass, state.getDirectCallerClass(), "invokeConstructor", true, state.getFullStackTraceOrNull(), (Object) new String[0]);
+            traceReflectBreakpoint(jni, providerClass, providerClass, callerClass, "invokeConstructor", true, state.getFullStackTraceOrNull(), (Object) new String[0]);
         }
-        return true;
     }
 
     /** §FS-security-providers.6.1: Provider insertion and lookup trace provider type access. */
@@ -2008,8 +2008,6 @@ final class BreakpointInterceptor {
 
                     brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
                     brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
-                    brk("java/security/Security", "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;",
-                                    BreakpointInterceptor::getStaticSecurityProviderByName),
                     brk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
                                     BreakpointInterceptor::getSecurityServiceForProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",

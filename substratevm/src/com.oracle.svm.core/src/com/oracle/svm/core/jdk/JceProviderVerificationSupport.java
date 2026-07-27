@@ -34,7 +34,7 @@ public final class JceProviderVerificationSupport {
     }
 
     public static Exception getVerificationResult(Provider provider) {
-        ProviderInfo info = SecurityProviderRuntimeState.singleton().getProviderInfo(provider);
+        ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
         if (info == null) {
             SecurityProviderRuntimeAccess.reportMissingRegistration(provider.getClass());
             throw VMError.shouldNotReachHere("Security provider reflection access unexpectedly succeeded: " + provider.getClass().getName());

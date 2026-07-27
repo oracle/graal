@@ -71,6 +71,7 @@ import com.oracle.svm.core.SecureRandomRuntimeRandomness;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.graal.RuntimeCompilationCanaryFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
@@ -423,7 +424,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          * security providers.
          */
         // §FS-security-providers.2.4
-        if (!ImageSingletons.contains(RuntimeRandomness.class)) {
+        if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(RuntimeRandomness.class)) {
             ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
         }
         ImageSingletons.add(RuntimeCompilationSupport.class, new RuntimeCompilationSupport());
