@@ -25,15 +25,25 @@
 package com.oracle.svm.core.jdk.xml;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.xml.internal.JdkXmlUtils")
 public final class Target_jdk_xml_internal_JdkXmlUtils {
-    // This unused field captures the build-time Java home.
     // Checkstyle: stop
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true) //
+    @Alias @InjectAccessors(JdkXmlUtilsJavaHomeAccessors.class) //
     public static String JAVA_HOME;
     // Checkstyle: resume
+}
+
+@SuppressWarnings("unused")
+final class JdkXmlUtilsJavaHomeAccessors {
+    private static String javaHome;
+
+    static String get() {
+        if (javaHome == null) {
+            javaHome = System.getProperty("java.home");
+        }
+        return javaHome;
+    }
 }

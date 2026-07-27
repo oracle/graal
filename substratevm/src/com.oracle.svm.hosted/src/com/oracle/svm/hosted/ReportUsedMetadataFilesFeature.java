@@ -40,20 +40,19 @@ import com.oracle.svm.core.feature.InternalFeature;
 @AutomaticallyRegisteredFeature
 public class ReportUsedMetadataFilesFeature implements InternalFeature {
 
-    private EconomicSet<String> usedMetadataFiles;
     private boolean completed = false;
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         // get the set in any case to clean up memory in the parser
-        usedMetadataFiles = ConfigurationParser.getUsedMetadataFiles();
+        EconomicSet<String> usedMetadataFiles = ConfigurationParser.getUsedMetadataFiles();
         if (SubstrateOptions.ReportUsedMetadataFiles.getValue() && !completed) {
             File file = ReportUtils.reportFile(SubstrateOptions.reportsPath(), "usedMetadataFiles", "txt");
-            ReportUtils.report("usedMetadataFiles", file.toPath(), this::printMetadataFiles);
+            ReportUtils.report("usedMetadataFiles", file.toPath(), out -> printMetadataFiles(out, usedMetadataFiles));
         }
     }
 
-    private void printMetadataFiles(PrintWriter out) {
+    private void printMetadataFiles(PrintWriter out, EconomicSet<String> usedMetadataFiles) {
         if (usedMetadataFiles != null) {
             List<String> files = usedMetadataFiles.toList();
             Collections.sort(files);
