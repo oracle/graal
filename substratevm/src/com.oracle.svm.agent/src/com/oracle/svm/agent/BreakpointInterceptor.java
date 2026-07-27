@@ -792,7 +792,24 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private record SecurityAcquisition(JNIObjectHandle callerClass, JNIObjectHandle requestedProviderName) {
+    /* JNIObjectHandle is a Word type. Record-generated methods use method handles,
+     * which cannot use Word parameters in Native Image. */
+    private static final class SecurityAcquisition {
+        private final JNIObjectHandle callerClass;
+        private final JNIObjectHandle requestedProviderName;
+
+        SecurityAcquisition(JNIObjectHandle callerClass, JNIObjectHandle requestedProviderName) {
+            this.callerClass = callerClass;
+            this.requestedProviderName = requestedProviderName;
+        }
+
+        JNIObjectHandle callerClass() {
+            return callerClass;
+        }
+
+        JNIObjectHandle requestedProviderName() {
+            return requestedProviderName;
+        }
     }
 
     private static SecurityAcquisition findSecurityAcquisition(JNIEnvironment jni, JNIObjectHandle thread, InterceptedState state) {
@@ -821,6 +838,7 @@ final class BreakpointInterceptor {
                 }
             }
         }
+        return fallback;
     }
 
     private static boolean isSecurityAcquisitionMethod(JNIMethodId method) {
@@ -859,6 +877,7 @@ final class BreakpointInterceptor {
                 return callerClass;
             }
         }
+        return nullHandle();
     }
 
     private static boolean isJdkSecurityImplementation(String className) {

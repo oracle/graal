@@ -66,14 +66,7 @@ final class SecurityProviderRegistrationPlanner {
         }
     }
 
-    void beforeLegacyReflectionRegistration(Class<?> providerClass, Predicate<Class<?>> hasRegistrationSignal) {
-        /*
-         * Capture metadata that already exists before marking reflection emitted by compatibility
-         * processing. This prevents our own output from feeding back as application intent.
-         */
-        if (hasRegistrationSignal.test(providerClass)) {
-            requestCompleteProvider(providerClass, Source.APPLICATION_METADATA);
-        }
+    void beforeLegacyReflectionRegistration(Class<?> providerClass) {
         recordSource(providerClass, Source.LEGACY_SERVICE_REACHABILITY);
         legacyGeneratedReflection.add(providerClass);
     }
