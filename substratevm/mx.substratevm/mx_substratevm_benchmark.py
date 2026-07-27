@@ -929,13 +929,6 @@ _scala_dacapo_iterations = {
     'tmt'           : 12,
 }
 
-_SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
-    'scalariform'   : ['--allow-incomplete-classpath'],
-    'scalatest'     : ['--allow-incomplete-classpath'],
-    'specs'         : ['--allow-incomplete-classpath'],
-    'tmt'           : ['--allow-incomplete-classpath'],
-}
-
 _scala_daCapo_exclude_lib = {
     'scalariform' : ['scala-library-2.8.0.jar'],
     'scalap'      : ['scala-library-2.8.0.jar'],
@@ -992,10 +985,6 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmark
             return user_args
         else:
             return []
-
-    def extra_image_build_argument(self, benchmark, args):
-        default_args = _SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
-        return default_args + super().extra_image_build_argument(benchmark, args)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
