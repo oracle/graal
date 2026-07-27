@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -49,7 +50,7 @@ public final class SecurityProviderRuntimeState {
     public record ProviderInfo(AcquisitionKind acquisitionKind, Exception verificationFailure) {
     }
 
-    private final EconomicMap<String, ProviderInfo> providerInfos = EconomicMap.create();
+    private final EconomicMap<String, ProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
 
     private Properties savedInitialSecurityProperties;
     private Constructor<?> sunECConstructor;
