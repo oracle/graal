@@ -25,12 +25,35 @@
 package com.oracle.svm.core.jdk;
 
 import java.security.Provider;
+import java.util.function.Supplier;
 
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.NeverInline;
 
 public final class SecurityProviderRuntimeAccess {
+    private static final ThreadLocal<Boolean> LOAD_UNREGISTERED_CONFIGURED_PROVIDER = new ThreadLocal<>();
+
     private SecurityProviderRuntimeAccess() {
+    }
+
+    /** §FS-security-providers.4.3: Explicit configured-provider lookups retain diagnostics. */
+    public static Provider loadUnregisteredConfiguredProvider(Supplier<Provider> loader) {
+        Boolean previous = LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get();
+        LOAD_UNREGISTERED_CONFIGURED_PROVIDER.set(true);
+        try {
+            return loader.get();
+        } finally {
+            if (previous == null) {
+                LOAD_UNREGISTERED_CONFIGURED_PROVIDER.remove();
+            } else {
+                LOAD_UNREGISTERED_CONFIGURED_PROVIDER.set(previous);
+            }
+        }
+    }
+
+    /** §FS-security-providers.7.1: Provider-list construction filters unregistered providers. */
+    public static boolean shouldLoadUnregisteredConfiguredProvider() {
+        return Boolean.TRUE.equals(LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get());
     }
 
     /** §FS-security-providers.4.3: Cache misses probe type access for standard diagnostics. */
