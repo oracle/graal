@@ -39,23 +39,24 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -311,6 +312,10 @@ public final class JavaThreads {
     }
 
     public static void dispatchUncaughtException(Thread thread, Throwable throwable) {
+        // Clear any pending exception before dispatching to potentially non-VM code
+        // as the dispatch might read and rethrow a pending exception.
+        JNIThreadLocalPendingException.clear();
+
         try {
             /* Get the uncaught exception handler for the Thread, or the default one. */
             UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
