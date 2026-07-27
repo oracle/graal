@@ -405,6 +405,9 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         try {
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
                             experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
+            if (handles().sunSecurityJcaProviderConfigProvider.isNull() || !BreakpointInterceptor.securityProviderHooksAvailable()) {
+                warn("JDK security-provider lookup hooks are unavailable; provider lookup coverage is reduced.");
+            }
         } catch (Throwable t) {
             return error(AGENT_ERROR, t.toString());
         }
