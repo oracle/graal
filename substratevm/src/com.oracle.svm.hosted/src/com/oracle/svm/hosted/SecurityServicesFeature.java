@@ -129,6 +129,71 @@ import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
+/// AR-security-providers: Security Provider Architecture
+///
+/// The security-provider implementation separates build-time policy from run-time enforcement.
+/// Reflection metadata, platform rules, and compatibility inputs are build-time registration
+/// signals; the reflection registry is not itself the provider-policy model. This architecture
+/// implements §FS-security-providers.
+///
+/// ## 1. Independent Transition Axes
+///
+/// `SecurityProviderMode` represents provider inclusion and provider-list initialization as
+/// independent axes. Hosted components query this mode instead of reading future-default options
+/// independently. Substitutions whose implementation differs by mode use build-time predicates, so
+/// an application cannot change image-build policy through a run-time system property. This
+/// realizes §FS-security-providers.7.
+///
+/// ## 2. Registration Signals and Plans
+///
+/// The hosted registration planner records provider candidates together with the provenance of the
+/// signal that requests them: application reflection metadata, the platform-owned `SecureRandom`
+/// rule, a deprecated provider option, or legacy service-type reachability. It produces an explicit
+/// provider plan. Metadata emitted while realizing that plan is an output and is not reinterpreted
+/// as a new application signal. This realizes §FS-security-providers.2 and
+/// §FS-security-providers.7.3.
+///
+/// ## 3. Hosted Registration Components
+///
+/// `SecurityServicesFeature` coordinates the feature lifecycle. The registration planner owns
+/// provider intent and iteration-safe candidate processing. The catalog registrar constructs
+/// eligible providers and registers their service catalogs. `LegacySecurityProviderCompatibility`
+/// owns deprecated options and service-driven inclusion. Provider code accesses reflection
+/// registrations through a narrow query rather than the concrete metadata builder.
+///
+/// ## 4. Run-Time Manifest
+///
+/// `SecurityProviderRuntimeState` owns the layered, typed manifest written by hosted registration.
+/// Each entry combines whether the JDK may construct the provider with the preserved JCE
+/// verification outcome. An application-supplied provider can carry verification information
+/// without being marked as JDK-constructible. The manifest is keyed by provider class name, as
+/// required by §FS-security-providers.5.3.
+///
+/// ## 5. Run-Time Access Services
+///
+/// `SecurityProviderRuntimeState` owns manifest access, `BuiltInSecurityProviderLoader` owns JDK
+/// aliases and construction, `SecurityProviderRuntimeAccess` owns tracing and missing-registration
+/// diagnostics, and `JceProviderVerificationSupport` translates manifest outcomes to the JDK
+/// contract. The two provider-list initialization modes share these services.
+///
+/// ## 6. Service Descriptors
+///
+/// Explicit provider registration preserves `java.security.Provider` descriptors without treating
+/// them as provider-registration signals, independently of provider-list initialization. Legacy
+/// suppression remains part of the compatibility policy. This realizes
+/// §FS-security-providers.7.2.
+///
+/// ## 7. Concurrent Analysis
+///
+/// Provider subtype callbacks add candidates to concurrent collections. A serialized feature pass
+/// consumes signals, realizes plans, and requests additional analysis iterations. Callbacks do not
+/// schedule iterations directly.
+///
+/// ## 8. Retirement Boundary
+///
+/// Deprecated provider options and service-reachability inclusion are confined to
+/// `LegacySecurityProviderCompatibility`. Removing compatibility behavior does not change the
+/// planner, catalog registrar, run-time manifest, or planned-default substitutions.
 /**
  * <p>
  * This feature automatically registers security providers and their services for reflection and JNI
@@ -155,7 +220,6 @@ import sun.security.x509.OIDMap;
  * {@code EnableSecurityServicesFeature} option. For debugging or detailed inspection, tracing can
  * be enabled via the {@code TraceSecurityServices} option.
  */
-
 @AutomaticallyRegisteredFeature
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
@@ -265,6 +329,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
     private SecurityProviderCatalogRegistrar catalogRegistrar;
+    private ReflectionRegistrationView reflectionRegistrationView;
+    private boolean preserveAll;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -288,6 +354,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             @Override
             public void registerService(DuringAnalysisAccess access, Service service) {
                 SecurityServicesFeature.this.registerService(access, service);
+            }
+
+            @Override
+            public void registerSelectedConstructionPath(Class<?> providerClass) {
+                SecurityServicesFeature.registerSelectedConstructionPath(providerClass);
             }
 
             @Override
@@ -417,6 +488,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         initializeServiceRegistrationData();
+        preserveAll = access.imageClassLoader.classLoaderSupport.isPreserveAll();
+        reflectionRegistrationView = ReflectionRegistrationView.singleton();
         access.registerSubtypeReachabilityHandler((_, providerClass) -> addCandidateProviderClass(providerClass), Provider.class);
         registerServiceProviderCandidates(access);
         LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
@@ -1014,18 +1087,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     // Recognize every qualifying reflection-registration signal.
     // §FS-security-providers.1.1 and §FS-security-providers.2.1
-    private static boolean isProviderRegisteredForReflection(Class<?> providerClass) {
+    private boolean isProviderRegisteredForReflection(Class<?> providerClass) {
         try {
-            ReflectionRegistrationView reflection = ReflectionRegistrationView.singleton();
-            if (reflection.hasTypeAccess(providerClass)) {
+            if (reflectionRegistrationView.hasTypeAccess(providerClass)) {
                 return true;
             }
             Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
-            if (constructor != null && reflection.hasExecutableAccess(constructor)) {
+            if (constructor != null && reflectionRegistrationView.hasExecutableAccess(constructor)) {
                 return true;
             }
             Method providerMethod = findProviderMethod(providerClass);
-            return providerMethod != null && reflection.hasExecutableAccess(providerMethod);
+            return providerMethod != null && reflectionRegistrationView.hasExecutableAccess(providerMethod);
         } catch (UnsupportedPlatformException | DeletedElementException e) {
             return false;
         }
@@ -1046,6 +1118,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             RuntimeReflection.registerMethodLookup(providerClass, "provider");
         }
         trace("Registered provider %s for reflection", providerClass.getName());
+    }
+
+    private static void registerSelectedConstructionPath(Class<?> providerClass) {
+        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+        if (constructor != null) {
+            RuntimeReflection.register(constructor);
+        } else {
+            Method providerMethod = findProviderMethod(providerClass);
+            if (providerMethod != null) {
+                RuntimeReflection.register(providerMethod);
+            }
+        }
     }
 
     private static boolean hasDeclaredNullaryConstructor(Class<?> providerClass) {
@@ -1118,7 +1202,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         // Consume concurrent plans in the serialized feature pass.
         if (providerPlanner.processNewCompleteProviders(
-                        providerClass -> mode.explicitRegistration() && isProviderRegisteredForReflection(providerClass),
+                        providerClass -> mode.explicitRegistration() && isProviderRegisteredForReflection(providerClass)
+                                        ? SecurityProviderRegistrationPlanner.Source.APPLICATION_METADATA
+                                        : preserveAll && isProviderRegisteredForReflection(providerClass)
+                                                        ? SecurityProviderRegistrationPlanner.Source.PRESERVE : null,
                         providerClass -> catalogRegistrar.includeProviderClass(access, providerClass))) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();

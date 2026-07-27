@@ -301,7 +301,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.sboutlining.concat.SubstrateStringConcatFactory"),
                     clazz("com.oracle.svm.hosted.sboutlining.concat.SubstrateStringConcatGraphBuilder"),
                     clazz("com.oracle.svm.hosted.sboutlining.SBOutliningAnalysis$MetadataLookup"),
-                    clazz("com.oracle.svm.hosted.SecurityProviderCatalogRegistrar"),
                     clazz("com.oracle.svm.hosted.SecurityServicesFeature"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins$3"),

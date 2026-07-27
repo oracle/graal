@@ -847,7 +847,6 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
             '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-            '-H:AdditionalSecurityProviders=sun.security.pkcs11.SunPKCS11',
             '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
         ])
     if extra_build_args is not None:
