@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Currency;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -375,6 +376,16 @@ final class Target_jdk_internal_util_SystemProps_Raw {
 
     @Delete
     private static native String[] platformProperties();
+}
+
+@TargetClass(value = SystemProps.class)
+final class Target_jdk_internal_util_SystemProps {
+
+    @Substitute
+    public static Map<String, String> initProperties() {
+        // SystemProps initialization depends on the deleted raw VM/platform property accessors.
+        throw VMError.unsupportedFeature("SystemProps.initProperties()");
+    }
 }
 
 /** Dummy class to have a class with the file's name. */
