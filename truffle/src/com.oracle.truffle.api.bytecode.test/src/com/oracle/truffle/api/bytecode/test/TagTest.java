@@ -2635,6 +2635,56 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testTransitionFromQuickenedTagLeave() {
+        TagInstrumentationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginIdentity();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadArgument(0);
+            b.endTag(ExpressionTag.class);
+            b.endIdentity();
+            b.endReturn();
+            b.endRoot();
+        });
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build());
+
+        Object value = "value";
+        Assert.assertSame(value, node.getCallTarget().call(value));
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.argument",
+                        "tag.leave$generic",
+                        "c.Identity",
+                        "return");
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        Instruction instructionAfterTagLeave = null;
+        for (int i = 0; i < instructions.size() - 1; i++) {
+            if (instructions.get(i).getName().equals("tag.leave$generic")) {
+                instructionAfterTagLeave = instructions.get(i + 1);
+                break;
+            }
+        }
+        assertNotNull(instructionAfterTagLeave);
+        var locationAfterTagLeave = instructionAfterTagLeave.getLocation();
+
+        node.getRootNodes().update(TagInstrumentationTestRootNodeGen.BYTECODE.newConfigBuilder().addTag(ExpressionTag.class).addTag(StatementTag.class).build());
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.argument",
+                        "tag.leave",
+                        "c.Identity",
+                        "return");
+
+        assertEquals(instructionAfterTagLeave.getName(), locationAfterTagLeave.update().getInstruction().getName());
+    }
+
+    @Test
     public void testReentrantMaterialization() {
         AtomicReference<TagInstrumentationTestRootNode> rootRef = new AtomicReference<>();
         Runnable attach = () -> {
