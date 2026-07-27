@@ -76,12 +76,10 @@ public class SecurityServiceExplicitProviderRegistrationTest {
     @Test
     public void testUnregisteredProviderCannotReuseVerificationByName() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        SecurityProviderRuntimeState state = SecurityProviderRuntimeState.singleton();
-
-        SecurityProviderRuntimeState.ProviderInfo registered = state.getProviderInfo(new SecurityServiceTest.ReflectionMetadataProvider());
+        SecurityProviderRuntimeState.ProviderInfo registered = SecurityProviderRuntimeState.getProviderInfo(new SecurityServiceTest.ReflectionMetadataProvider());
         Assert.assertNotNull(registered);
         Assert.assertNull(registered.verificationFailure());
-        Assert.assertNull(state.getProviderInfo(new SameNameUnregisteredProvider()));
+        Assert.assertNull(SecurityProviderRuntimeState.getProviderInfo(new SameNameUnregisteredProvider()));
     }
 
     public static final class SameNameUnregisteredProvider extends Provider {

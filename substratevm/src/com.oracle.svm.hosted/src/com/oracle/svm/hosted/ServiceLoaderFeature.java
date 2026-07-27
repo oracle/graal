@@ -146,7 +146,6 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final EconomicSet<String> serviceProvidersToSkip = EconomicSet.create(SKIPPED_PROVIDERS);
-    private final LinkedHashSet<String> securityProviderDescriptors = new LinkedHashSet<>();
     private SecurityProviderMode securityProviderMode;
 
     @Override
@@ -174,7 +173,10 @@ public class ServiceLoaderFeature implements InternalFeature {
         Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName())) {
-                securityProviderDescriptors.addAll(providers);
+                ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
+                if (serviceClass != null) {
+                    access.registerReachabilityHandler(a -> preserveSecurityProviderDescriptors(a, providers), serviceClass);
+                }
                 return;
             }
             Collection<String> providersToSkip = providers;
@@ -209,14 +211,6 @@ public class ServiceLoaderFeature implements InternalFeature {
             // skip service
             ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip)); // noEconomicSet(concurrency)
         });
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        if (!securityProviderDescriptors.isEmpty()) {
-            preserveSecurityProviderDescriptors(access, securityProviderDescriptors);
-            securityProviderDescriptors.clear();
-        }
     }
 
     private void preserveSecurityProviderDescriptors(DuringAnalysisAccess access, Collection<String> providers) {

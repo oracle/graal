@@ -475,7 +475,10 @@ public final class NativeImageClassLoaderSupport {
                     preserveSelectors.addModule(m.descriptor().name(), origin);
                 }
             }
-            PreserveOptionsSupport.JDK_MODULES_TO_PRESERVE.forEach(moduleName -> preserveSelectors.addModule(moduleName, origin));
+            /* Some JDK provider modules are platform-specific, for example jdk.crypto.mscapi. */
+            PreserveOptionsSupport.JDK_MODULES_TO_PRESERVE.stream()
+                            .filter(moduleName -> findModule(moduleName).isPresent())
+                            .forEach(moduleName -> preserveSelectors.addModule(moduleName, origin));
             preserveSelectors.addModule(ALL_UNNAMED, origin);
         }
 
