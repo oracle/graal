@@ -77,7 +77,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void preregisterUninitializedBuiltinLibrary(String name) {
+    public void addBuiltinLibrary(String name) {
         knownLibraries.add(PlatformNativeLibrarySupport.singleton().createLibrary(name, true));
     }
 
