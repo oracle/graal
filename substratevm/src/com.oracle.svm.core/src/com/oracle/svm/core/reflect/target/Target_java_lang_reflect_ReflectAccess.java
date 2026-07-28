@@ -27,9 +27,9 @@ package com.oracle.svm.core.reflect.target;
 import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyAccessibleObject;
 import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyExecutable;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * These substitutions are needed to set the injected fields on Method, Field, Constructor. The
@@ -60,6 +60,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
     public Target_java_lang_reflect_Field copyField(Target_java_lang_reflect_Field field) {
         Target_java_lang_reflect_Field copy = field.copy();
         copy.offset = field.offset;
+        copy.installedLayerNumber = field.installedLayerNumber;
         copy.deletedReason = field.deletedReason;
         copyAccessibleObject(SubstrateUtil.cast(copy, Target_java_lang_reflect_AccessibleObject.class),
                         SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class));
