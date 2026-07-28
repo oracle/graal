@@ -172,49 +172,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public ReferenceMapEncoder.OffsetIterator getOffsets() {
-        return new ReferenceMapEncoder.OffsetIterator() {
-            private int nextShiftedOffset = shiftedOffsets == null ? -1 : shiftedOffsets.nextSetBit(0);
-
-            @Override
-            public boolean hasNext() {
-                return (nextShiftedOffset != -1);
-            }
-
-            @Override
-            public int nextInt() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                int result = nextShiftedOffset - shift;
-                /* +1: skip compression bit. */
-                nextShiftedOffset = shiftedOffsets.nextSetBit(nextShiftedOffset + 2);
-                return result;
-            }
-
-            @Override
-            public boolean isNextCompressed() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                return shiftedOffsets.get(nextShiftedOffset + 1);
-            }
-
-            @Override
-            public boolean isNextDerived() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                return derived != null && derived.containsKey(nextShiftedOffset - shift);
-            }
-
-            @Override
-            public EconomicSet<Integer> getDerivedOffsets(int baseOffset) {
-                if (derived == null || !derived.containsKey(baseOffset)) {
-                    throw new NoSuchElementException();
-                }
-                return derived.get(baseOffset);
-            }
-        };
+        return new SubstrateReferenceMapOffsetIterator();
     }
 
     @Override
@@ -333,5 +291,49 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     @Override
     public String toString() {
         return dump(new StringBuilder()).toString();
+    }
+
+    public class SubstrateReferenceMapOffsetIterator implements ReferenceMapEncoder.OffsetIterator {
+        private int nextShiftedOffset = shiftedOffsets == null ? -1 : shiftedOffsets.nextSetBit(0);
+
+        @Override
+        public boolean hasNext() {
+            return (nextShiftedOffset != -1);
+        }
+
+        @Override
+        public int nextInt() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            int result = nextShiftedOffset - shift;
+            /* +1: skip compression bit. */
+            nextShiftedOffset = shiftedOffsets.nextSetBit(nextShiftedOffset + 2);
+            return result;
+        }
+
+        @Override
+        public boolean isNextCompressed() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return shiftedOffsets.get(nextShiftedOffset + 1);
+        }
+
+        @Override
+        public boolean isNextDerived() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return derived != null && derived.containsKey(nextShiftedOffset - shift);
+        }
+
+        @Override
+        public EconomicSet<Integer> getDerivedOffsets(int baseOffset) {
+            if (derived == null || !derived.containsKey(baseOffset)) {
+                throw new NoSuchElementException();
+            }
+            return derived.get(baseOffset);
+        }
     }
 }
