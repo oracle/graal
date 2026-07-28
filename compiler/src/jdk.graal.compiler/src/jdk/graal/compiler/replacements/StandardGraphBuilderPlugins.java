@@ -201,23 +201,23 @@ import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
-import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerLeftShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomeryMultiplyNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
-import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
+import jdk.graal.compiler.replacements.nodes.CRC32TableNode;
+import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
+import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
-import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
-import jdk.graal.compiler.replacements.nodes.CRC32TableNode;
-import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNode;
@@ -227,8 +227,8 @@ import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
 import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
-import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
 import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode;
@@ -2644,8 +2644,8 @@ public class StandardGraphBuilderPlugins {
         public GaloisCounterModeCryptPlugin() {
             super(CryptMode.ENCRYPT, "implGCMCrypt0",
                             byte[].class, int.class, int.class, byte[].class, int.class, byte[].class, int.class,
-                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GCTR"),
-                            new InvocationPlugins.OptionalLazySymbol("com.sun.crypto.provider.GHASH"));
+                            new InvocationPlugins.TypeSymbol("com.sun.crypto.provider.GCTR"),
+                            new InvocationPlugins.TypeSymbol("com.sun.crypto.provider.GHASH"));
         }
 
         protected abstract boolean canApply(GraphBuilderContext b);
