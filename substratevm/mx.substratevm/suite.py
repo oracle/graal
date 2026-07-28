@@ -2471,6 +2471,7 @@ suite = {
                         "./": [
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
+                            "dependency:svm-static-library-symbols/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
                             "file:debug/include",
                             "file:src/com.oracle.svm.core/src/com/oracle/svm/core/gc/shared/include",
@@ -2490,6 +2491,7 @@ suite = {
                         "<os>-<arch>/": [
                             "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.jvm.posix/<os>-<arch>/default/*",
+                            "dependency:svm-static-library-symbols/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.darwin/*",
                             "dependency:com.oracle.svm.native.jvm.windows/*",
                         ],

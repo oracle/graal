@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.jdk;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -37,18 +36,13 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        access.registerReachabilityHandler(this::linkManagementExt, type(access, "com.sun.management.internal.OperatingSystemImpl"));
-        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_management_internal_OperatingSystemImpl");
+        access.registerReachabilityHandler(JNIRegistrationManagementExt::linkManagementExt,
+                        type(access, "com.sun.management.internal.OperatingSystemImpl"));
     }
 
-    private void linkManagementExt(DuringAnalysisAccess access) {
+    private static void linkManagementExt(DuringAnalysisAccess access) {
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
-        /*
-         * Note that we register `management_ext` as a non-JNI static library. This avoids pulling
-         * in `JNI_OnLoad`, which is fine since we're only interested in the native methods of the
-         * `OperatingSystemImpl` class anyway.
-         */
-        nativeLibraries.addStaticNonJniLibrary("management_ext", "java");
+        nativeLibraries.markPotentialBuiltinJNILibraryReachable("management_ext");
         if (isWindows()) {
             nativeLibraries.addDynamicNonJniLibrary("psapi");
         }
