@@ -42,10 +42,6 @@ public interface JVMCIFieldValueTransformerWithAvailability extends JVMCIFieldVa
     @Override
     boolean isAvailable();
 
-    // remove this override once GR-72015 is fixed.
-    @Override
-    JavaConstant transform(JavaConstant receiver, JavaConstant originalValue);
-
     /**
      * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.
      * This allows the compiler to optimize field values that are not available yet, as long as
