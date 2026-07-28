@@ -1383,11 +1383,12 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     record InstrumentationGroup(int instructionLength, boolean instrumentation,
-                    boolean tagInstrumentation, InstructionImmediate tagNodeImmediate) implements Comparable<InstrumentationGroup> {
+                    boolean tagInstrumentation, InstructionImmediate tagNodeImmediate, InstructionModel quickeningRoot) implements Comparable<InstrumentationGroup> {
 
         InstrumentationGroup(InstructionModel instr) {
             this(instr.getInstructionLength(), instr.isInstrumentation(), instr.isTagInstrumentation(),
-                            instr.isTagInstrumentation() ? instr.getImmediate(ImmediateKind.TAG_NODE) : null);
+                            instr.isTagInstrumentation() ? instr.getImmediate(ImmediateKind.TAG_NODE) : null,
+                            instr.getQuickeningRoot().hasQuickenings() ? instr.getQuickeningRoot() : null);
         }
 
         @Override
@@ -1413,7 +1414,21 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             if (compare != 0) {
                 return compare;
             }
-            return 0;
+            if (this.quickeningRoot == null) {
+                return o.quickeningRoot == null ? 0 : -1;
+            } else if (o.quickeningRoot == null) {
+                return 1;
+            }
+            return this.quickeningRoot.getInternalName().compareTo(o.quickeningRoot.getInternalName());
+        }
+    }
+
+    private void emitInstrumentationOpMatch(CodeTreeBuilder b, InstrumentationGroup group) {
+        b.string("searchOp == ");
+        if (group.quickeningRoot == null) {
+            b.string("op");
+        } else {
+            b.tree(parent.createInstructionConstant(group.quickeningRoot));
         }
     }
 
@@ -1441,7 +1456,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.startWhile().string("oldBci < oldBciTarget").end().startBlock();
         b.declaration(type(short.class), "op", BytecodeRootNodeElement.readInstruction("oldBc", "oldBci"));
-        b.statement("searchOp = op");
         b.startSwitch().string("op").end().startBlock();
         for (var groupEntry : groupInstructionsSortedBy(AbstractBytecodeNodeElement.InstrumentationGroup::new)) {
             AbstractBytecodeNodeElement.InstrumentationGroup group = groupEntry.getKey();
@@ -1454,6 +1468,11 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 b.startCase().tree(parent.createInstructionConstant(instruction)).end();
             }
             b.startCaseBlock();
+            if (group.quickeningRoot == null) {
+                b.statement("searchOp = op");
+            } else {
+                b.startStatement().string("searchOp = ").tree(parent.createInstructionConstant(group.quickeningRoot)).end();
+            }
             if (parent.model.enableTagInstrumentation) {
                 if (group.tagInstrumentation) {
                     b.startStatement();
@@ -1501,11 +1520,15 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), "oldTagNodes", BytecodeRootNodeElement.readImmediate("oldBc", "oldBci", group.tagNodeImmediate)));
                 b.string(".tags");
                 b.end(); // declaration
-                b.startIf().string("searchOp == op && searchTags == opTags").end().startBlock();
+                b.startIf();
+                emitInstrumentationOpMatch(b, group);
+                b.string(" && searchTags == opTags").end().startBlock();
                 b.statement("opCounter++");
                 b.end();
             } else {
-                b.startIf().string("searchOp == op").end().startBlock();
+                b.startIf();
+                emitInstrumentationOpMatch(b, group);
+                b.end().startBlock();
                 b.statement("opCounter++");
                 b.end();
             }
@@ -1542,11 +1565,15 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), "newTagNodes", BytecodeRootNodeElement.readImmediate("newBc", "newBci", group.tagNodeImmediate)));
                 b.string(".tags");
                 b.end(); // declaration
-                b.startIf().string("searchOp == op && searchTags == opTags").end().startBlock();
+                b.startIf();
+                emitInstrumentationOpMatch(b, group);
+                b.string(" && searchTags == opTags").end().startBlock();
                 b.statement("opCounter--");
                 b.end();
             } else {
-                b.startIf().string("searchOp == op").end().startBlock();
+                b.startIf();
+                emitInstrumentationOpMatch(b, group);
+                b.end().startBlock();
                 b.statement("opCounter--");
                 b.end();
             }
