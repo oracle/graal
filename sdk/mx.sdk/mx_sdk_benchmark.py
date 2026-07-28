@@ -3994,6 +3994,14 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             extra_options += ["--throughput-iteration-count", "0"]
             return extra_options
 
+        def _pagefaultsTrackerExtraOptions(self, suite: BaristaBenchmarkSuite):
+            """Returns extra options necessary for correct benchmark results when using the 'pagefaults' tracker."""
+            if not isinstance(suite._tracker, mx_benchmark.PagefaultsTracker):
+                return []
+
+            # Give the pagefaults tracker time to initialize before locating the app process.
+            return ["--cmd-app-prefix-init-sleep", "3"]
+
         def produceHarnessCommand(self, cmd, suite):
             """Maps a JVM command into a command tailored for the Barista harness.
 
