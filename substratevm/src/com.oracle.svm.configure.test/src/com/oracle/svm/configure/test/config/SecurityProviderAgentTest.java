@@ -26,8 +26,17 @@ package com.oracle.svm.configure.test.config;
 
 import static org.junit.Assume.assumeTrue;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.PrivateKey;
 import java.security.Provider;
+import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Security;
+import java.security.spec.AlgorithmParameterSpec;
+
+import javax.crypto.KEM;
+import javax.crypto.KEMSpi;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,6 +48,7 @@ import org.junit.Test;
  */
 public class SecurityProviderAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = SecurityProviderAgentTest.class.getName() + ".generator.enabled";
+    private static final String KEM_ALGORITHM = "AgentKEM";
 
     /** Tests §FS-security-providers.6.1. */
     @Test
@@ -67,6 +77,22 @@ public class SecurityProviderAgentTest {
         }
     }
 
+    /** Tests §FS-security-providers.6.1. */
+    @Test
+    public void providerServiceHelpersRetainConstructorMetadata() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+
+        Provider provider = new ProgrammaticallyAddedKEMProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("The test provider must be added", position > 0);
+            Assert.assertNotNull(KEM.getInstance(KEM_ALGORITHM, provider));
+        } finally {
+            Security.removeProvider(provider.getName());
+        }
+    }
+
     static final class ReflectiveProbe {
     }
 
@@ -76,6 +102,30 @@ public class SecurityProviderAgentTest {
         @SuppressWarnings("deprecation")
         ProgrammaticallyAddedProvider() {
             super("AgentMutationProvider", 1.0, "Provider used to verify mutation tracing");
+        }
+    }
+
+    static final class ProgrammaticallyAddedKEMProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        @SuppressWarnings("deprecation")
+        ProgrammaticallyAddedKEMProvider() {
+            super("AgentKEMProvider", 1.0, "Provider used to verify service constructor tracing");
+            put("KEM." + KEM_ALGORITHM, TestKEM.class.getName());
+        }
+    }
+
+    public static final class TestKEM implements KEMSpi {
+        @Override
+        public EncapsulatorSpi engineNewEncapsulator(PublicKey publicKey, AlgorithmParameterSpec spec, SecureRandom secureRandom)
+                        throws InvalidAlgorithmParameterException, InvalidKeyException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DecapsulatorSpi engineNewDecapsulator(PrivateKey privateKey, AlgorithmParameterSpec spec)
+                        throws InvalidAlgorithmParameterException, InvalidKeyException {
+            throw new UnsupportedOperationException();
         }
     }
 }
