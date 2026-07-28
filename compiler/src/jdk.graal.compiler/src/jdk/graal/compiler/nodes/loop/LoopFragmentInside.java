@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,6 @@ import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
-import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -311,7 +310,7 @@ public class LoopFragmentInside extends LoopFragment {
             if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
                 opaque = new OpaqueValueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
-                ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
+                ValueNode newLimit = partialUnrollLimit(opaque, limit, counted);
                 GraalError.guarantee(condition.hasExactlyOneUsage(),
                                 "Unrolling loop %s with condition %s, which has multiple usages. Usages other than the loop exit check would get an incorrect condition.", loop.loopBegin(), condition);
                 condition.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
@@ -330,25 +329,52 @@ public class LoopFragmentInside extends LoopFragment {
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
     }
 
-    public static ValueNode partialUnrollOverflowCheck(OpaqueNode opaque, ValueNode limit, CountedLoopInfo counted) {
+    public static ValueNode partialUnrollLimit(OpaqueNode opaque, ValueNode limit, CountedLoopInfo counted) {
         int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
         ValueNode newLimit = SubNode.create(limit, opaque, NodeView.DEFAULT);
         IntegerHelper helper = counted.getCounterIntegerHelper();
-        LogicNode overflowCheck;
         ConstantNode extremum;
         if (counted.getDirection() == InductionVariable.Direction.Up) {
-            // limit - counterStride could overflow negatively if limit - min <
-            // counterStride
             extremum = ConstantNode.forIntegerBits(bits, helper.minValue());
-            overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), opaque, NodeView.DEFAULT);
         } else {
             assert counted.getDirection() == InductionVariable.Direction.Down : counted.getDirection();
-            // limit - counterStride could overflow if max - limit < -counterStride
-            // i.e., counterStride < limit - max
             extremum = ConstantNode.forIntegerBits(bits, helper.maxValue());
-            overflowCheck = IntegerBelowNode.create(opaque, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
         }
+        LogicNode overflowCheck = partialUnrollOverflowCheck(limit, newLimit, counted);
         return ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
+    }
+
+    /**
+     * Determines whether adjusting a counted loop's limit after partial unrolling would overflow,
+     * that is, whether {@code newLimit = limit - opaque} would go past the minimum or maximum value
+     * in the counted loop's signed or unsigned ordering.
+     *
+     * <p>Partial unrolling uses the accumulated {@code opaque} stride to compute
+     * {@code newLimit = limit - opaque}. If that arithmetic would wrap, the caller selects the
+     * directional extremum for the same ordering instead of
+     * {@code newLimit}:
+     *
+     * <pre>{@code
+     * LogicNode overflowCheck = partialUnrollOverflowCheck(limit, newLimit, counted);
+     * return ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
+     * }</pre>
+     *
+     * <p>For an ascending loop, {@code opaque} is positive, so {@code newLimit} must be less than
+     * {@code limit}. If {@code newLimit} is greater than {@code limit} according to the loop's
+     * ordering, the subtraction went past the minimum value.
+     *
+     * <p>For a descending loop, {@code opaque} is negative, so {@code newLimit} must be greater than
+     * {@code limit}. If {@code newLimit} is less than {@code limit} according to the loop's
+     * ordering, the subtraction went past the maximum value.
+     */
+    private static LogicNode partialUnrollOverflowCheck(ValueNode limit, ValueNode newLimit, CountedLoopInfo counted) {
+        IntegerHelper helper = counted.getCounterIntegerHelper();
+        if (counted.getDirection() == InductionVariable.Direction.Up) {
+            return helper.createCompareNode(limit, newLimit, NodeView.DEFAULT);
+        } else {
+            assert counted.getDirection() == InductionVariable.Direction.Down : counted.getDirection();
+            return helper.createCompareNode(newLimit, limit, NodeView.DEFAULT);
+        }
     }
 
     protected CompareNode placeNewSegmentAndCleanup(Loop loop, EconomicMap<Node, Node> new2OldPhis, @SuppressWarnings("unused") EconomicMap<Node, Node> originalPhi2Backedges) {
