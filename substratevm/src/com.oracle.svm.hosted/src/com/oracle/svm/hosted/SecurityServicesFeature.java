@@ -33,7 +33,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -117,6 +116,7 @@ import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
@@ -222,12 +222,13 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
     public static class Options {
-        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the security provider class for reflection instead.";
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the providers that implement the custom service type for reflection instead.";
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class " +
                         "for reflection, or build with -H:Preserve=all).";
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register each security provider class for reflection in reachability-metadata.json using " +
                         "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]}; the Tracing Agent generates this metadata automatically.";
-        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE;
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = "Register each provider that implements the custom service type and its supported construction path " +
+                        "in reachability-metadata.json, or collect the metadata with the Tracing Agent.";
 
         @Option(help = "Enable automatic registration of security services.")//
         public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
@@ -316,7 +317,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field classCacheField;
     private Field constructorCacheField;
 
-    private ConcurrentHashMap<WeakReference<Provider>, Object> cachedVerificationCache;
+    private ConcurrentHashMap<Object, Object> cachedVerificationCache;
     private ProviderList cachedProviders;
 
     private Class<?> jceSecurityClass;
@@ -355,8 +356,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             }
 
             @Override
-            public void registerSelectedConstructionPath(Class<?> providerClass) {
-                SecurityServicesFeature.registerSelectedConstructionPath(providerClass);
+            public void registerSelectedConstructionPath(DuringAnalysisAccess access, Class<?> providerClass) {
+                if (mode.explicitRegistration()) {
+                    SecurityServicesFeature.registerSelectedConstructionPath(providerClass);
+                } else {
+                    /* §FS-security-providers.7.3:
+                     * Legacy inclusion registers every public constructor; explicit mode selects
+                     * one JDK construction path. */
+                    ResolvedJavaType providerType = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(providerClass);
+                    JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getConstructors(providerType));
+                }
             }
 
             @Override
@@ -560,8 +569,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 public Object transform(Object receiver, Object originalValue) {
                     if (cachedVerificationCache != null) {
                         if (SubstrateUtil.assertionsEnabled()) {
-                            var filteredCache = filterVerificationCache(originalValue);
-                            assert cachedVerificationCache.equals(filteredCache) : Assertions.errorMessage(cachedVerificationCache, filteredCache);
+                            var emptyCache = emptyVerificationCache();
+                            assert cachedVerificationCache.equals(emptyCache) : Assertions.errorMessage(cachedVerificationCache, emptyCache);
                         }
                     }
                     /*
@@ -574,25 +583,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private ConcurrentHashMap<WeakReference<Provider>, Object> filterVerificationCache(Object originalValue) {
+    private static ConcurrentHashMap<Object, Object> emptyVerificationCache() {
         /*
-         * The verification cache is an WeakIdentityWrapper -> Verification result
-         * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it extends
-         * WeakReference and so using WeakReference.get() is sufficient for us.
+         * Verification outcomes used by the image live in SecurityProviderRuntimeState, keyed by
+         * provider class. The JDK's weak, provider-instance-keyed cache must not retain build-time
+         * provider objects in the image heap.
          */
-        var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) originalValue);
-        cleanedCache.keySet().removeIf(key -> shouldRemoveVerificationResult(key.get()));
-        return cleanedCache;
-    }
-
-    private boolean shouldRemoveVerificationResult(Provider provider) {
-        /*
-         * Verification results for used providers are copied into SecurityProviderRuntimeState,
-         * keyed by provider class name. Keep them out of JceSecurity.verificationResults so the weak
-         * cache keys do not keep build-time provider objects reachable in the image heap.
-         */
-        return provider == null || catalogRegistrar.isUsed(provider) || shouldRemoveProvider(provider);
+        return new ConcurrentHashMap<>();
     }
 
     private List<Provider> filterProviderList(Object originalValue) {
@@ -775,9 +772,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
         for (Provider provider : Security.getProviders()) {
-            buildTimeProvidersByClassName.computeIfAbsent(provider.getClass().getName(), _ -> new ArrayList<>()).add(provider);
+            String providerClassName = provider.getClass().getName();
+            buildTimeProvidersByClassName.computeIfAbsent(providerClassName, _ -> new ArrayList<>()).add(provider);
+            /* §FS-security-providers.7.1:
+             * Resolve configured names independently because a token may be a provider name or a
+             * ServiceLoader descriptor. */
+            SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(provider.getName(), providerClassName);
             // Configured providers can predate the subtype handler.
-            // Reflection registration still controls inclusion. §FS-security-providers.2.1
+            // §FS-security-providers.2.1: Reflection registration still controls inclusion.
             addCandidateProviderClass(provider.getClass());
         }
     }
@@ -786,8 +788,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
+                // §FS-security-providers.7.2:
                 // Descriptors discover candidates without registering them.
-                // §FS-security-providers.7.2
                 for (String provider : providers) {
                     Class<?> providerClass = access.findClassByName(provider);
                     if (providerClass != null) {
@@ -840,8 +842,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             if (mode.explicitRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
                 registerSecureRandomProvidersFromPlatformSignal();
             }
+            // §FS-security-providers.7.3:
             // Service reachability is a compatibility inclusion signal.
-            // §FS-security-providers.7.3
             doRegisterServices(access, trigger, serviceType);
         }
     }
@@ -1000,8 +1002,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    // §FS-security-providers.2.2 and §FS-security-providers.2.3:
     // Use the preferred construction path and retain the complete valid, resolvable catalog.
-    // §FS-security-providers.2.2 and §FS-security-providers.2.3
     private boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
         if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive() || Modifier.isAbstract(providerClass.getModifiers())) {
             return false;
@@ -1071,13 +1073,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    // §FS-security-providers.1.1 and §FS-security-providers.2.1:
     // Recognize every qualifying reflection-registration signal.
-    // §FS-security-providers.1.1 and §FS-security-providers.2.1
     private boolean isProviderRegisteredForReflection(Class<?> providerClass) {
         try {
             if (reflectionRegistrationView.hasTypeAccess(providerClass)) {
                 return true;
             }
+            return isProviderConstructionRegisteredForReflection(providerClass);
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
+        }
+    }
+
+    private boolean isProviderConstructionRegisteredForReflection(Class<?> providerClass) {
+        try {
             Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
             if (constructor != null && reflectionRegistrationView.hasExecutableAccess(constructor)) {
                 return true;
@@ -1089,18 +1099,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private SecurityProviderRegistrationPlanner.Source completeProviderSource(DuringAnalysisAccess access, Class<?> providerClass) {
+    private SecurityProviderRegistrationPlanner.Source providerRegistrationSource(Class<?> providerClass) {
         if (!isProviderRegisteredForReflection(providerClass)) {
             return null;
         }
         if (preserveAll) {
             return SecurityProviderRegistrationPlanner.Source.PRESERVE;
         }
-        // Compatibility mode keeps constructible-provider metadata inert. Application providers
-        // still need class-based JCE verification. §FS-security-providers.5.3,
-        // §FS-security-providers.7.3
-        if (mode.explicitRegistration() || !isLoadableProviderClass(access, providerClass)) {
+        if (mode.explicitRegistration()) {
             return SecurityProviderRegistrationPlanner.Source.APPLICATION_METADATA;
+        }
+        // §FS-security-providers.7.3: Compatibility type-only metadata identifies application
+        // providers. It preserves JCE verification without construction or service expansion.
+        if (reflectionRegistrationView.hasTypeAccess(providerClass) && !isProviderConstructionRegisteredForReflection(providerClass)) {
+            return SecurityProviderRegistrationPlanner.Source.APPLICATION_VERIFICATION_METADATA;
         }
         return null;
     }
@@ -1203,9 +1215,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         // Consume concurrent plans in the serialized feature pass.
-        if (providerPlanner.processNewCompleteProviders(
-                        providerClass -> completeProviderSource(access, providerClass),
-                        providerClass -> catalogRegistrar.includeProviderClass(access, providerClass))) {
+        if (providerPlanner.processNewProviders(
+                        this::providerRegistrationSource,
+                        providerClass -> catalogRegistrar.includeProviderClass(access, providerClass),
+                        catalogRegistrar::registerApplicationSuppliedProviderClass)) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }
@@ -1226,14 +1239,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
         if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
-            try {
-                var filteredVerificationCache = filterVerificationCache(verificationResultsField.get(null));
-                if (cachedVerificationCache == null || !cachedVerificationCache.equals(filteredVerificationCache)) {
-                    cachedVerificationCache = filteredVerificationCache;
-                    access.rescanObject(cachedVerificationCache, scanReason);
-                }
-            } catch (IllegalAccessException ex) {
-                throw VMError.shouldNotReachHere("Cannot access field: " + verificationResultsField.getName(), ex);
+            var emptyCache = emptyVerificationCache();
+            if (cachedVerificationCache == null || !cachedVerificationCache.equals(emptyCache)) {
+                cachedVerificationCache = emptyCache;
+                access.rescanObject(cachedVerificationCache, scanReason);
             }
         }
     }

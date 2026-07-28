@@ -13,6 +13,15 @@
       "type": "com.oracle.svm.test.services.SecurityServiceTest$TypeMetadataProvider"
     },
     {
+      "type": "com.oracle.svm.test.services.SecurityServiceTest$ReflectionMetadataMacSpi",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider",
       "methods": [
         {
@@ -20,6 +29,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "com.oracle.svm.test.services.SecurityServiceTest$FailedVerificationProvider"
     }
   ]
 }
