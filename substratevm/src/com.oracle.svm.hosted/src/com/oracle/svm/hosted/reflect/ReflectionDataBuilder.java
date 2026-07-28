@@ -1462,10 +1462,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public boolean isMethodRegisteredForReflection(Executable method) {
-        AnalysisMethod analysisMethod = metaAccess.optionalLookupJavaMethod(method).orElse(null);
-        if (analysisMethod == null) {
-            return false;
-        }
+        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
         ElementData data = methods.get(analysisMethod);
         return data != null && data.isRegisteredAs(ACCESSED);
     }
