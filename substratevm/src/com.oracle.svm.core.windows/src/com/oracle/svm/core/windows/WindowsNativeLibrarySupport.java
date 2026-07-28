@@ -53,14 +53,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@AutomaticallyRegisteredFeature
-class WindowsNativeLibraryFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-    }
-}
-
 @AutomaticallyRegisteredImageSingleton(PlatformNativeLibrarySupport.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
@@ -193,6 +185,14 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 return LibLoaderAPI.GetProcAddress(dlhandle, symbol.get());
             }
         }
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class WindowsNativeLibraryFeature implements InternalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 

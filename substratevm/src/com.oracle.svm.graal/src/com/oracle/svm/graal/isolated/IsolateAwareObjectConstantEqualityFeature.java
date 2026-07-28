@@ -46,6 +46,21 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
 
+@AutomaticallyRegisteredFeature
+final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.SupportCompileInIsolates.getValue();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (RuntimeCompilation.isEnabled()) {
+            ImageSingletons.add(ObjectConstantEquality.class, new IsolateAwareObjectConstantEquality());
+        }
+    }
+}
+
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality {
     @Override
@@ -84,20 +99,5 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
     @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static boolean isolatedHandleTargetEqualImageObject(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> x, ImageHeapRef<?> y) {
         return IsolatedCompileClient.get().unhand(x) == ImageHeapObjects.deref(y);
-    }
-}
-
-@AutomaticallyRegisteredFeature
-final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.SupportCompileInIsolates.getValue();
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        if (RuntimeCompilation.isEnabled()) {
-            ImageSingletons.add(ObjectConstantEquality.class, new IsolateAwareObjectConstantEquality());
-        }
     }
 }

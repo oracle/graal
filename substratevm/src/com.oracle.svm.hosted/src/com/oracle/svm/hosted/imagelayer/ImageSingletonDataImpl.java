@@ -39,31 +39,6 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-final class ImageSingletonSlotData {
-
-    final Class<?> key;
-    final SlotRecordKind kind;
-    private boolean requiresSlot;
-
-    ImageSingletonSlotData(Class<?> key, SlotRecordKind kind) {
-        this.key = key;
-        this.kind = kind;
-    }
-
-    void requireSlot() {
-        assert kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON : kind;
-        requiresSlot = true;
-    }
-
-    boolean requiresSlot() {
-        return requiresSlot;
-    }
-
-    public Class<?> getAccessType() {
-        return kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON ? key : key.arrayType();
-    }
-}
-
 abstract class ImageSingletonDataImpl implements AccessImageSingletonFactory.ImageSingletonAccessData {
 
     final ImageSingletonSlotData slotData;
@@ -108,6 +83,31 @@ abstract class ImageSingletonDataImpl implements AccessImageSingletonFactory.Ima
          * throws at runtime and the singleton cannot be folded.
          */
         return applicationLayerConstant && ImageSingletons.contains(slotData.key);
+    }
+}
+
+final class ImageSingletonSlotData {
+
+    final Class<?> key;
+    final SlotRecordKind kind;
+    private boolean requiresSlot;
+
+    ImageSingletonSlotData(Class<?> key, SlotRecordKind kind) {
+        this.key = key;
+        this.kind = kind;
+    }
+
+    void requireSlot() {
+        assert kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON : kind;
+        requiresSlot = true;
+    }
+
+    boolean requiresSlot() {
+        return requiresSlot;
+    }
+
+    public Class<?> getAccessType() {
+        return kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON ? key : key.arrayType();
     }
 }
 

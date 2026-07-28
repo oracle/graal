@@ -11,6 +11,10 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
+    <module name="OuterTypeFilename">
+      <message key="type.file.mismatch"
+               value="The top-level type matching the filename must be declared first in the file."/>
+    </module>
     <module name="AvoidStarImport">
       <!-- After GR-8623 is fixed this should be disabled again.
            We should not allow star class imports as it allows us to import deprecated API without 
