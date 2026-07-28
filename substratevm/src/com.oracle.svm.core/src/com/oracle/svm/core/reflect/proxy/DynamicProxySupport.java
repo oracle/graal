@@ -208,6 +208,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                 return proxyClassClassloaders.get(clazz);
             }
         }
+        if (Proxy.isProxyClass(clazz)) {
+            return getCommonClassLoaderOrFail(null, defaultSupplier, clazz.getInterfaces());
+        }
         return defaultSupplier.apply(clazz);
     }
 
