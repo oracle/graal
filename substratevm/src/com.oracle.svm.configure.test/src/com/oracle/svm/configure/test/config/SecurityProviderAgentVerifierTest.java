@@ -36,7 +36,10 @@ import org.junit.Test;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.test.AddExports;
 
@@ -83,6 +86,21 @@ public class SecurityProviderAgentVerifierTest {
                             reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
                                             NamedConfigurationTypeDescriptor.fromReflectionName(providerClassName)));
         }
+    }
+
+    @Test
+    public void verifyProviderServiceConstructorWasRecorded() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        ConfigurationType kemType = reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                        NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.TestKEM.class.getName()));
+        Assert.assertNotNull("Missing reflection metadata for the KEM service implementation", kemType);
+        ConfigurationMemberInfo constructorInfo = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(
+                        kemType, new ConfigurationMethod("<init>", "()V"));
+        Assert.assertNotNull("Missing KEM service implementation constructor metadata", constructorInfo);
+        Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
     }
 
     private static void assertRecorded(TypeConfiguration reflectionConfiguration, String className) {

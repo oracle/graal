@@ -860,10 +860,21 @@ final class BreakpointInterceptor {
                         method.equal(handles.javaSecurityRemoveProvider);
     }
 
+    /** §FS-security-providers.6.1: Cross only contiguous Provider.Service helper frames. */
     private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
-        JNIMethodId directCaller = state.getCallerMethod(1);
-        if (directCaller.equal(agent.handles().javaSecurityProviderServiceNewInstance)) {
-            return findExternalSecurityCaller(jni, state, 2);
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                return nullHandle();
+            }
+            if (callerMethod.equal(handles.javaSecurityProviderServiceNewInstance)) {
+                return findExternalSecurityCaller(jni, state, depth + 1);
+            }
+            JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
+            if (!jniFunctions().getIsSameObject().invoke(jni, callerClass, handles.javaSecurityProviderService)) {
+                return nullHandle();
+            }
         }
         return nullHandle();
     }
