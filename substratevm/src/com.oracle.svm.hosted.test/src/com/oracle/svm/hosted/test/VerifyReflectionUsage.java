@@ -299,7 +299,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins$3"),
                     clazz("com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport"),
-                    clazz("com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins"),
                     clazz("com.oracle.svm.hosted.SubstitutionReportFeature"),
                     clazz("com.oracle.svm.hosted.SVMHost"),
                     clazz("com.oracle.svm.hosted.VectorAPIFeature$WarmupData"),

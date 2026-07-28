@@ -290,6 +290,15 @@ public class InvocationPlugins {
     private volatile LateClassPlugins lateRegistrations;
 
     /**
+     * Resolves {@code plugin} to a method or constructor declared in {@code declaringClass}.
+     *
+     * @return the matching method or {@code null} if no matching method is found
+     */
+    public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
+        return ClassPlugins.resolveJavaMethod(declaringClass, plugin);
+    }
+
+    /**
      * Per-class invocation plugins.
      */
     static class ClassPlugins {
