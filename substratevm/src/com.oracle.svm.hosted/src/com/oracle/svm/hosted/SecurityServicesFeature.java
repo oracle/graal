@@ -97,8 +97,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.util.UserError;
@@ -393,16 +391,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (isPosix()) {
             Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
             optMethodGetUnixInfo.ifPresent(m -> {
-                access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
-                /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_security_auth_module_UnixSystem");
+                NativeLibraries.PotentialBuiltinJNILibrary jaas = NativeLibraries.PotentialBuiltinJNILibrary.create("jaas");
+                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess, jaas), m);
             });
         }
 
         if (isMscapiModulePresent) {
-            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, type(access, "sun.security.mscapi.SunMSCAPI"));
-            /* Resolve calls to sun_security_mscapi* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_mscapi");
+            NativeLibraries.PotentialBuiltinJNILibrary sunMSCAPI = NativeLibraries.PotentialBuiltinJNILibrary.create("sunmscapi");
+            access.registerReachabilityHandler(analysisAccess -> registerSunMSCAPIConfig(analysisAccess, sunMSCAPI),
+                            type(access, "sun.security.mscapi.SunMSCAPI"));
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -524,12 +521,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a, NativeLibraries.PotentialBuiltinJNILibrary sunMSCAPI) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We statically link sunmscapi thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
-
-        nativeLibraries.addStaticJniLibrary("sunmscapi");
+        // We statically link sunmscapi, so we classify it as a built-in library.
+        sunMSCAPI.preregisterUninitializedAndAddLibrary();
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
@@ -576,13 +571,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
     }
 
-    private static void linkJaas(DuringAnalysisAccess a) {
+    private static void linkJaas(DuringAnalysisAccess a, NativeLibraries.PotentialBuiltinJNILibrary jaas) {
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We can statically link jaas, thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("jaas");
-        nativeLibraries.addStaticJniLibrary("jaas");
+        // We can statically link jaas, so we classify it as a built-in library.
+        jaas.preregisterUninitializedAndAddLibrary();
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {

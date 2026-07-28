@@ -73,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GuestTypes;
@@ -354,7 +355,8 @@ public final class NativeLibraries {
                 for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
                     Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
                     if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
-                        return libraryPaths;
+                        staticLibsDir = clibPathComponent;
+                        break;
                     }
                 }
             }
@@ -394,6 +396,12 @@ public final class NativeLibraries {
                 }
             }
         }
+        /*
+         * The native-image driver provides the SVM libraries through CLibraryPath. They must be
+         * visible before Feature.duringSetup so a library such as SVM's libjvm can override the
+         * same-named JDK static library for built-in symbol registration.
+         */
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         return libraryPaths;
     }
 
@@ -478,6 +486,51 @@ public final class NativeLibraries {
         dependencyGraph.add(library, allDeps);
     }
 
+    /**
+     * Keeps the name and dependencies of a prepared JNI library together across feature phases.
+     */
+    public static final class PotentialBuiltinJNILibrary {
+        private final String library;
+        private final String[] dependencies;
+
+        private PotentialBuiltinJNILibrary(String library, String[] dependencies) {
+            this.library = library;
+            this.dependencies = dependencies.clone();
+        }
+
+        /**
+         * Registers the symbols of a JNI library early and returns a handle for the operations that can
+         * remain conditional. Calling this method does not preregister the library as built-in or add its static
+         * archive to the linker command.
+         */
+        public static PotentialBuiltinJNILibrary create(String library, String... dependencies) {
+            addBuiltinNatives(library);
+            addBuiltinNatives("jvm");
+            if (library.equals("nio")) {
+                /* "nio" implicitly depends on "net" */
+                addBuiltinNatives("net");
+            }
+            return new PotentialBuiltinJNILibrary(library, dependencies);
+        }
+
+        private static void addBuiltinNatives(String library) {
+            PlatformNativeLibrarySupport.singleton().addBuiltinNatives(singleton().getStaticLibrarySymbols(library));
+        }
+
+        public void preregisterUninitialized() {
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(library);
+        }
+
+        public void linkLibrary() {
+            singleton().addStaticJniLibrary(library, dependencies);
+        }
+
+        public void preregisterUninitializedAndAddLibrary() {
+            preregisterUninitialized();
+            linkLibrary();
+        }
+    }
+
     public void addDynamicNonJniLibrary(String library) {
         libraries.add(library);
     }
@@ -514,6 +567,10 @@ public final class NativeLibraries {
         if (libraryPath == null) {
             return List.of();
         }
+        return readStaticLibrarySymbols(libraryPath);
+    }
+
+    private static List<String> readStaticLibrarySymbols(Path libraryPath) {
         Path symbolsPath = Paths.get(libraryPath + ".symbols");
         if (!Files.isRegularFile(symbolsPath)) {
             return List.of();
@@ -638,7 +695,6 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

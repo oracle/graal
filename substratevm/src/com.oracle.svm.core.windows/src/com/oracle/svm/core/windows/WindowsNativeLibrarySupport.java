@@ -39,13 +39,14 @@ import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.windows.WindowsUtils.WCharPointerHolder;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -192,7 +193,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
+        NativeLibraries.PotentialBuiltinJNILibrary.create("extnet").preregisterUninitialized();
     }
 }
 
