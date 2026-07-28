@@ -70,6 +70,7 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -77,6 +78,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
@@ -1030,6 +1032,22 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testRejectsModifiedFrameDescriptorDefaultValue() {
+        assertThrows(IllegalStateException.class, () -> DefaultLocalValueRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+        assertThrows(IllegalStateException.class, () -> IllegalDefaultValueRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+        assertThrows(IllegalStateException.class, () -> CustomIllegalLocalExceptionRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+    }
+
+    @Test
     public void testInvalidLocalAccesses() {
         assertParseFailure(siblingRootsTest(LocalsTest::loadLocal));
         assertParseFailure(siblingRootsTest(LocalsTest::storeLocal));
@@ -1144,6 +1162,65 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         }
     }
 
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "DEFAULT_LOCAL_VALUE")
+abstract class DefaultLocalValueRootNode extends RootNode implements BytecodeRootNode {
+
+    static final String DEFAULT_LOCAL_VALUE = "default";
+
+    protected DefaultLocalValueRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class IllegalDefaultValueRootNode extends RootNode implements BytecodeRootNode {
+
+    protected IllegalDefaultValueRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, illegalLocalException = CustomIllegalLocalException.class)
+abstract class CustomIllegalLocalExceptionRootNode extends RootNode implements BytecodeRootNode {
+
+    protected CustomIllegalLocalExceptionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@SuppressWarnings("serial")
+final class CustomIllegalLocalException extends AbstractTruffleException {
+
+    private CustomIllegalLocalException(Node location) {
+        super(null, location);
+    }
+
+    public static CustomIllegalLocalException create(Node location) {
+        return new CustomIllegalLocalException(location);
+    }
 }
 
 @ExpectWarning("Custom operation with name ClearLocal conflicts with a built-in operation with the same name. The built-in operation will not be generated.%")
