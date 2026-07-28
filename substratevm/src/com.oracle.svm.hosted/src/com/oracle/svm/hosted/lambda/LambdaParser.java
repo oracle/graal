@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,10 @@ import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.Bytecodes;
@@ -55,10 +57,8 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.MethodHandlePlugin;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -66,6 +66,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class LambdaParser {
+    private static final Class<?> DIRECT_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle");
+
     private static final ConcurrentHashMap<Class<?>, CaptureSites> captureSitesByCapturingClass = new ConcurrentHashMap<>();
 
     public static List<Class<?>> getLambdaClassesInClass(Class<?> declaringClass, List<Class<?>> implementedInterfaces) {
@@ -124,8 +126,7 @@ public class LambdaParser {
      * method handle or receiver.
      */
     public static Class<?> getLambdaClassFromConstantNode(ConstantNode constantNode) {
-        Constant constant = constantNode.getValue();
-        Class<?> lambdaClass = getLambdaClass((JavaConstant) constant);
+        Class<?> lambdaClass = getLambdaClass((JavaConstant) constantNode.getValue());
 
         if (lambdaClass == null) {
             return null;
@@ -135,7 +136,7 @@ public class LambdaParser {
     }
 
     private static Class<?> getLambdaClass(JavaConstant javaConstant) {
-        Providers providers = GuestAccess.get().getProviders();
+        CoreProviders providers = GuestAccess.get().getProviders();
         ResolvedJavaType constantType = providers.getMetaAccess().lookupJavaType(javaConstant);
 
         if (constantType == null) {
@@ -159,6 +160,13 @@ public class LambdaParser {
             }
         }
         return null;
+    }
+
+    public static Member getMemberFromDirectMethodHandleConstant(JavaConstant javaConstant, CoreProviders providers) {
+        ResolvedJavaType directMethodHandleType = providers.getMetaAccess().lookupJavaType(DIRECT_METHOD_HANDLE_CLASS);
+        ResolvedJavaField memberField = JVMCIReflectionUtil.getUniqueDeclaredField(directMethodHandleType, "member");
+        JavaConstant fieldValue = providers.getConstantReflection().readFieldValue(memberField, javaConstant);
+        return providers.getSnippetReflection().asObject(Member.class, fieldValue);
     }
 
     public static String findLambdaCaptureSite(Class<?> lambdaClass) {

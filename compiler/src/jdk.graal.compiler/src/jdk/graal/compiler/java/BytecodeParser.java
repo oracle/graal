@@ -1931,7 +1931,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     /**
      * Creates a frame state for the current parse position.
      */
-    private FrameState createCurrentFrameState() {
+    protected FrameState createCurrentFrameState() {
         return frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
     }
 
@@ -1994,6 +1994,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         ValueNode appendixNode = null;
 
         if (appendix != null) {
+            handleDynamicInvokeAppendix(appendix);
             appendixNode = ConstantNode.forConstant(appendix, getMetaAccess(), graph);
 
             frameState.push(JavaKind.Object, appendixNode);
@@ -2009,6 +2010,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
 
         return true;
+    }
+
+    protected void handleDynamicInvokeAppendix(@SuppressWarnings("unused") JavaConstant appendix) {
     }
 
     protected void genInvokeSpecial(int cpi, int opcode) {
