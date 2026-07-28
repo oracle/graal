@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.injectIterationC
 
 import java.util.ListIterator;
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -398,6 +399,88 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             test("idivSnippet", i);
         }
         check = true;
+    }
+
+    public static int descendingInclusivePartialUnrollSnippet(int start, int limit, int[] values) {
+        int sum = 0;
+        for (int i = start; injectIterationCount(1000, i >= limit); i--) {
+            sum += values[start - i];
+        }
+        return sum;
+    }
+
+    @Test
+    public void testDescendingInclusivePartialUnrollLimitOverflow() {
+        test("descendingInclusivePartialUnrollSnippet", Integer.MAX_VALUE, Integer.MAX_VALUE, new int[]{7});
+        test("descendingInclusivePartialUnrollSnippet", Integer.MAX_VALUE, Integer.MAX_VALUE - 1, new int[]{7, 11});
+        test("descendingInclusivePartialUnrollSnippet", Integer.MAX_VALUE, Integer.MAX_VALUE - 2, new int[]{7, 11, 13});
+    }
+
+    public static int unsignedAscendingInclusivePartialUnrollSnippet(int start, int limit, int[] values) {
+        int sum = 0;
+        for (int i = start; injectIterationCount(1000, Integer.compareUnsigned(i, limit) <= 0); i++) {
+            sum += values[i - start];
+        }
+        return sum;
+    }
+
+    @Test
+    public void testUnsignedAscendingInclusivePartialUnrollSignedBoundary() {
+        test("unsignedAscendingInclusivePartialUnrollSnippet", Integer.MAX_VALUE - 1, Integer.MIN_VALUE, new int[]{7, 11, 13});
+    }
+
+    public static int unsignedDescendingInclusivePartialUnrollSnippet(int start, int limit, int[] values) {
+        int sum = 0;
+        for (int i = start; injectIterationCount(1000, Integer.compareUnsigned(i, limit) >= 0); i--) {
+            sum += values[start - i];
+        }
+        return sum;
+    }
+
+    @Test
+    public void testUnsignedDescendingInclusivePartialUnrollSignedBoundary() {
+        test("unsignedDescendingInclusivePartialUnrollSnippet", Integer.MIN_VALUE + 1, Integer.MAX_VALUE, new int[]{7, 11, 13});
+    }
+
+    public static long descendingInclusivePartialUnrollLongSnippet(long start, long limit, long[] values) {
+        long sum = 0;
+        for (long i = start; injectIterationCount(1000, i >= limit); i--) {
+            sum += values[(int) (start - i)];
+        }
+        return sum;
+    }
+
+    @Test
+    public void testDescendingInclusivePartialUnrollLongLimitOverflow() {
+        check = false;
+        try {
+            test("descendingInclusivePartialUnrollLongSnippet", Long.MAX_VALUE, Long.MAX_VALUE, new long[]{7});
+            test("descendingInclusivePartialUnrollLongSnippet", Long.MAX_VALUE, Long.MAX_VALUE - 1, new long[]{7, 11});
+            test("descendingInclusivePartialUnrollLongSnippet", Long.MAX_VALUE, Long.MAX_VALUE - 2, new long[]{7, 11, 13});
+        } finally {
+            check = true;
+        }
+        buildGraph("descendingInclusivePartialUnrollLongSnippet", true);
+    }
+
+    public static int descendingInclusiveLoop(int start, int limit, int[] values) {
+        int sum = 0;
+        for (int i = start; i >= limit; i--) {
+            sum += values[start - i];
+        }
+        return sum;
+    }
+
+    @Test
+    public void testDescendingInclusivePartialUnrollWarmup() {
+        int[] warm = new int[101];
+        for (int i = 0; i < warm.length; i++) {
+            warm[i] = i + 1;
+        }
+        for (int i = 0; i < 50_000; i++) {
+            descendingInclusiveLoop(100, 0, warm);
+        }
+        Assert.assertEquals(7, descendingInclusiveLoop(Integer.MAX_VALUE, Integer.MAX_VALUE, new int[]{7}));
     }
 
     static int S = 100;
