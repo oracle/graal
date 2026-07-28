@@ -118,7 +118,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements Canonicali
         }
         if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
             // x | ~x |-> -1
-            return ConstantNode.forIntegerStamp(rawXStamp, -1L);
+            return BinaryArithmeticNode.createIntegerConstant(rawXStamp, -1L);
         }
         return self != null ? self : new OrNode(forX, forY).maybeCommuteInputs();
     }

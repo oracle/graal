@@ -35,13 +35,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.ToIntFunction;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -51,6 +50,7 @@ import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -79,6 +79,11 @@ import jdk.vm.ci.meta.JavaKind;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class)
 public class CrossLayerFieldUpdaterFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(CrossLayerFieldUpdaterFeature.class, this);
+    }
+
     private static final int INVALID = -1;
 
     /**
@@ -187,8 +192,9 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         String addReason = "Registered as a required heap constant within the CrossLayerFieldUpdaterFeature";
 
         for (var info : updateInfoMap.values()) {
-            if (patchFilter(info)) {
-                ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
+            // Primitive values are encoded directly in the patch array and do not need heap entries.
+            if (patchFilter(info) && info.kind.isObject()) {
+                JavaConstant singletonConstant = hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
                 heap.addConstant(singletonConstant, false, addReason);
             }
         }
@@ -320,7 +326,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
                 case Long -> buffer.putLong(value.updatedValue.asLong());
                 case Object -> {
                     int encodedValue;
-                    if (value.updatedValue == null) {
+                    if (value.updatedValue == null || value.updatedValue.equals(JavaConstant.NULL_POINTER)) {
                         encodedValue = 0;
                     } else {
                         var newValue = (ImageHeapConstant) heap.aUniverse.getHeapScanner().getImageHeapConstant(value.updatedValue);

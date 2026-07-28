@@ -64,12 +64,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -106,14 +104,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             this.branchBackwardReturnException = null;
         }
 
-        if (parent.model.enableInstructionRewriting) {
-            CodeVariableElement rewrittenBciDeltas = new CodeVariableElement(Set.of(FINAL), type(int[].class), "rewrittenBciDeltas");
-            BytecodeRootNodeElement.addJavadoc(rewrittenBciDeltas, List.of(
-                            "Sparse mapping from rewritten BCI space to stable BCI space.",
-                            "The table contains {@code (rewrittenBci, delta)} pairs sorted by BCI.",
-                            "During translation, each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset.",
-                            "A {@code null} table means the bytecode stream is already in stable BCI space."));
-            add(parent.compFinal(1, rewrittenBciDeltas));
+        if (needsStableBciRemappings()) {
+            CodeVariableElement stableBciDeltas = new CodeVariableElement(Set.of(FINAL), type(int[].class), "stableBciDeltas");
+            BytecodeRootNodeElement.addJavadoc(stableBciDeltas, List.of(
+                            "Sparse mapping from physical BCI space to stable BCI space.",
+                            "The table contains {@code (physicalBci, delta)} pairs sorted by BCI.",
+                            "Each positive delta accounts for ordinary instructions omitted at that physical BCI or for deleted rewrite sections.",
+                            "A {@code null} table means there are no cumulative gaps."));
+            add(parent.compFinal(1, stableBciDeltas));
         }
         if (parent.model.enableTagInstrumentation) {
             parent.child(add(new CodeVariableElement(Set.of(), parent.tagRootNode.asType(), "tagRoot")));
@@ -269,6 +267,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             this.add(createComputeNewBci());
         }
         this.add(createAdoptNodesAfterUpdate());
+    }
+
+    private boolean needsStableBciRemappings() {
+        return parent.model.enableInstructionRewriting || parent.model.enableTagInstrumentation;
     }
 
     private CodeExecutableElement createIsInstructionTracingEnabled() {
@@ -734,13 +736,13 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return ex;
     }
 
-    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean allowNegativeChildBci, boolean localVar, boolean localVarMat) {
+    record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean localVar, boolean localVarMat, boolean allowsMissingBranchProfile) {
 
-        InstructionValidationGroup(BytecodeDSLModel model, InstructionModel instruction) {
+        InstructionValidationGroup(InstructionModel instruction) {
             this(instruction.getImmediates(), instruction.getInstructionLength(),
-                            acceptsInvalidChildBci(model, instruction),
                             instruction.kind.isLocalVariableAccess(),
-                            instruction.kind.isLocalVariableMaterializedAccess());
+                            instruction.kind.isLocalVariableMaterializedAccess(),
+                            instruction.kind == InstructionModel.InstructionKind.BRANCH_BACKWARD);
         }
 
     }
@@ -773,7 +775,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startSwitch().tree(BytecodeRootNodeElement.readInstruction("bc", "bci")).end().startBlock();
 
         Map<InstructionValidationGroup, List<InstructionModel>> groups = parent.model.getInstructions().stream().collect(
-                        BytecodeRootNodeElement.deterministicGroupingBy((i) -> new AbstractBytecodeNodeElement.InstructionValidationGroup(parent.model, i)));
+                        BytecodeRootNodeElement.deterministicGroupingBy(InstructionValidationGroup::new));
 
         for (var entry : groups.entrySet()) {
             InstructionValidationGroup group = entry.getKey();
@@ -788,7 +790,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             for (InstructionImmediate immediate : group.immediates()) {
                 String localName = immediate.name();
                 CodeTree declareImmediate = CodeTreeBuilder.createBuilder() //
-                                .startDeclaration(immediate.kind().toType(parent.context), localName) //
+                                .startDeclaration(immediate.kind().toDeclaredType(parent.context), localName) //
                                 .tree(BytecodeRootNodeElement.readImmediate("bc", "bci", immediate)) //
                                 .end() //
                                 .build();
@@ -797,13 +799,17 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                     case BYTECODE_INDEX:
                         b.tree(declareImmediate);
                         b.startIf();
-                        if (group.allowNegativeChildBci()) {
-                            // supports -1 immediates
-                            b.string(localName, " < -1");
-                        } else {
-                            b.string(localName, " < 0");
-                        }
+                        b.string(localName, " < 0");
                         b.string(" || ").string(localName).string(" >= bc.length").end().startBlock();
+                        b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
+                        b.end();
+                        break;
+                    case RELATIVE_BYTECODE_INDEX:
+                        String rawName = localName + "Raw";
+                        b.declaration(type(byte.class), rawName, BytecodeRootNodeElement.readImmediateWithOffset("bc", "bci", immediate, immediate.offset()));
+                        b.declaration(type(int.class), localName, BytecodeRootNodeElement.decodeRelativeBytecodeIndex("bci", rawName));
+                        b.startIf();
+                        b.string(localName, " < -1 || ", localName, " >= bc.length").end().startBlock();
                         b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
                         b.end();
                         break;
@@ -880,7 +886,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                     case BRANCH_PROFILE:
                         b.tree(declareImmediate);
                         b.startIf().string("branchProfiles != null").end().startBlock();
-                        b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
+                        b.startIf().string(localName).string(" < ").string(group.allowsMissingBranchProfile() ? "-1" : "0").string(
+                                        " || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
                         b.tree(createValidationErrorWithBci("branch profile is out of bounds"));
                         b.end();
                         b.end();
@@ -1035,27 +1042,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return false;
     }
 
-    /**
-     * Returns true if the instruction can take -1 as a child bci.
-     */
-    private static boolean acceptsInvalidChildBci(BytecodeDSLModel model, InstructionModel instr) {
-        if (!model.usesBoxingElimination()) {
-            // Child bci immediates are only used for boxing elimination.
-            return false;
-        }
-
-        if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
-            return true;
-        }
-        return isSameOrGenericQuickening(instr, model.popInstruction) //
-                        || isSameOrGenericQuickening(instr, model.storeLocalInstruction) //
-                        || (model.usesBoxingElimination() && isSameOrGenericQuickening(instr, model.conditionalOperation.instruction));
-    }
-
-    private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
-        return instr == expected || instr.getQuickeningRoot() == expected && instr.quickeningKind == QuickeningKind.GENERIC;
-    }
-
     // calls dump, but catches any exceptions and falls back on an error string
     private CodeExecutableElement createDumpInvalid() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(String.class), "dumpInvalid");
@@ -1203,8 +1189,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startDeclaration(parent.getBytecodeIndexType(), "newBci");
             b.startCall("computeNewBci").string("bytecodeIndex").string("oldBc").string("newBc");
-            if (parent.model.enableInstructionRewriting) {
-                b.string("this.rewrittenBciDeltas");
+            if (needsStableBciRemappings()) {
+                b.string("this.stableBciDeltas");
+                b.string("newBytecode.stableBciDeltas");
             }
             if (parent.model.enableTagInstrumentation) {
                 b.string("this.getTagNodes()");
@@ -1302,8 +1289,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.end();
             b.declaration(parent.getBytecodeIndexType(), "oldBci", BytecodeRootNodeElement.decodeBci("state"));
             b.startAssign("newBci").startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
-            if (parent.model.enableInstructionRewriting) {
-                b.string("this.rewrittenBciDeltas");
+            if (needsStableBciRemappings()) {
+                b.string("this.stableBciDeltas");
+                b.string("bc.stableBciDeltas");
             }
             if (parent.model.enableTagInstrumentation) {
                 b.string("this.getTagNodes()");
@@ -1583,8 +1571,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "oldBci"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
-        if (parent.model.enableInstructionRewriting) {
-            ex.addParameter(new CodeVariableElement(type(int[].class), "oldRewrittenBciDeltas"));
+        if (needsStableBciRemappings()) {
+            ex.addParameter(new CodeVariableElement(type(int[].class), "oldStableBciDeltas"));
+            ex.addParameter(new CodeVariableElement(type(int[].class), "newStableBciDeltas"));
         }
         if (parent.model.enableTagInstrumentation) {
             ex.addParameter(new CodeVariableElement(arrayOf(parent.tagNode.asType()), "oldTagNodes"));
@@ -1594,18 +1583,20 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.startDeclaration(parent.getBytecodeIndexType(), "stableBci").startCall("toStableBytecodeIndex");
         b.string("oldBc").string("oldBci");
-        if (parent.model.enableInstructionRewriting) {
-            b.string("oldRewrittenBciDeltas");
+        if (needsStableBciRemappings()) {
+            b.string("oldStableBciDeltas");
         }
         b.end(2);
-        b.declaration(parent.getBytecodeIndexType(), "newBci", "fromStableBytecodeIndex(newBc, stableBci)");
-        if (parent.model.enableInstructionRewriting) {
-            b.startIf().string("oldRewrittenBciDeltas != null").end().startBlock();
-            b.lineComment("Rewritten bytecodes do not contain instrumentation instructions, so no fix-up is required.");
-            b.startReturn().string("newBci").end();
-            b.end();
+        b.startDeclaration(parent.getBytecodeIndexType(), "newBci").startCall("fromStableBytecodeIndex").string("newBc").string("stableBci");
+        if (needsStableBciRemappings()) {
+            b.string("newStableBciDeltas");
         }
-        b.declaration(parent.getBytecodeIndexType(), "oldBciBase", "fromStableBytecodeIndex(oldBc, stableBci)");
+        b.end(2);
+        b.startDeclaration(parent.getBytecodeIndexType(), "oldBciBase").startCall("fromStableBytecodeIndex").string("oldBc").string("stableBci");
+        if (needsStableBciRemappings()) {
+            b.string("oldStableBciDeltas");
+        }
+        b.end(2);
         b.startIf().string("oldBci != oldBciBase").end().startBlock();
         b.lineComment("When oldBc has instrumentations, multiple instructions can map to the same stableBci.");
         b.lineComment("We need to adjust newBci to the exact location in newBc.");
@@ -1652,24 +1643,54 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
      * @param b the builder
      * @param targetVariable the name of the variable storing the "target" value to map from.
      * @param stableVariable the name of the variable storing the "stable" value.
-     * @param stableIncrement produces a numeric value to increment the stable variable by.
      * @param toStableValue whether to return the stable value or the internal bci.
      */
     private void emitStableBytecodeSearch(CodeTreeBuilder b, String targetVariable, String stableVariable, boolean toStableValue) {
         b.declaration(parent.getBytecodeIndexType(), "bci", "0");
         b.declaration(parent.getBytecodeIndexType(), stableVariable, "0");
-
-        String resultVariable;
-        String searchVariable;
-        if (toStableValue) {
-            resultVariable = stableVariable;
-            searchVariable = "bci";
-        } else {
-            resultVariable = "bci";
-            searchVariable = stableVariable;
+        if (needsStableBciRemappings()) {
+            b.declaration(type(int.class), "deltaIndex", "0");
+            if (toStableValue) {
+                b.startIf().string("stableBciDeltas != null").end().startBlock();
+                b.startWhile().string("deltaIndex < stableBciDeltas.length && stableBciDeltas[deltaIndex] <= ", targetVariable).end().startBlock();
+                b.statement(stableVariable + " += stableBciDeltas[deltaIndex + 1]");
+                b.statement("deltaIndex += 2");
+                b.end();
+                b.end();
+            }
         }
 
-        b.startWhile().string(searchVariable, " != ", targetVariable, " && bci < bc.length").end().startBlock();
+        b.startWhile().string("bci < bc.length").end().startBlock();
+        if (!toStableValue && needsStableBciRemappings()) {
+            b.declaration(parent.getBytecodeIndexType(), "stableBciBeforeDeltas", stableVariable);
+            b.startIf().string("stableBciDeltas != null").end().startBlock();
+            b.startWhile().string("deltaIndex < stableBciDeltas.length && stableBciDeltas[deltaIndex] <= bci").end().startBlock();
+            b.statement(stableVariable + " += stableBciDeltas[deltaIndex + 1]");
+            b.statement("deltaIndex += 2");
+            b.end();
+            b.end();
+        }
+        b.startIf();
+        if (toStableValue) {
+            b.string("bci == ", targetVariable);
+        } else {
+            b.string(stableVariable, " == ", targetVariable);
+        }
+        b.end().startBlock();
+        b.startReturn().string(toStableValue ? stableVariable : "bci").end();
+        b.end();
+        if (!toStableValue) {
+            b.startElseIf().string(stableVariable, " > ", targetVariable).end().startBlock();
+            if (needsStableBciRemappings()) {
+                b.startIf().string("stableBciBeforeDeltas < ", targetVariable).end().startBlock();
+                b.lineComment("The requested stable BCI is inside a delta.");
+                b.startReturn().string("bci").end();
+                b.end();
+            }
+            b.tree(GeneratorUtils.createShouldNotReachHere("Could not translate bytecode index."));
+            b.end();
+        }
+
         b.startSwitch().tree(BytecodeRootNodeElement.readInstruction("bc", "bci")).end().startBlock();
 
         for (var groupEntry : groupInstructionsSortedBy(AbstractBytecodeNodeElement.SearchGroup::new)) {
@@ -1680,10 +1701,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 b.startCase().tree(parent.createInstructionConstant(instruction)).end();
             }
             b.startCaseBlock();
-            if (group.instrumentation) {
-                b.statement("bci += " + group.instructionLength);
-            } else {
-                b.statement("bci += " + group.instructionLength);
+            b.statement("bci += " + group.instructionLength);
+            if (!group.instrumentation) {
                 b.statement(stableVariable + " += " + group.instructionLength);
             }
             b.statement("break");
@@ -1698,11 +1717,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.end(); // while
 
-        b.startIf().string("bci >= bc.length").end().startBlock();
         b.tree(GeneratorUtils.createShouldNotReachHere("Could not translate bytecode index."));
-        b.end();
-
-        b.startReturn().string(resultVariable).end();
     }
 
     private <T extends Comparable<T>> List<Entry<T, List<InstructionModel>>> groupInstructionsSortedBy(Function<InstructionModel, T> constructor) {
@@ -1715,23 +1730,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "toStableBytecodeIndex");
         translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
         translate.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "searchBci"));
-        CodeTreeBuilder b = translate.createBuilder();
-        if (parent.model.enableInstructionRewriting) {
-            translate.addParameter(new CodeVariableElement(type(int[].class), "rewrittenBciDeltas"));
-            b.startIf().string("rewrittenBciDeltas != null").end().startBlock();
-            b.lineComment("Rewritten bytecodes do not contain instrumentation instructions, so stable BCI is");
-            b.lineComment("the rewritten BCI plus all deltas recorded at or before that BCI.");
-            b.declaration(parent.getBytecodeIndexType(), "stableBci", "searchBci");
-            b.startFor().string("int i = 0; i < rewrittenBciDeltas.length; i += 2").end().startBlock();
-            b.declaration(type(int.class), "rewrittenBci", "rewrittenBciDeltas[i]");
-            b.startIf().string("searchBci < rewrittenBci").end().startBlock();
-            b.statement("break");
-            b.end();
-            b.statement("stableBci += rewrittenBciDeltas[i + 1]");
-            b.end();
-            b.startReturn().string("stableBci").end();
-            b.end();
+        if (needsStableBciRemappings()) {
+            translate.addParameter(new CodeVariableElement(type(int[].class), "stableBciDeltas"));
         }
+        CodeTreeBuilder b = translate.createBuilder();
         emitStableBytecodeSearch(b, "searchBci", "stableBci", true);
         return translate;
     }
@@ -1740,6 +1742,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "fromStableBytecodeIndex");
         translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
         translate.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "stableSearchBci"));
+        if (needsStableBciRemappings()) {
+            translate.addParameter(new CodeVariableElement(type(int[].class), "stableBciDeltas"));
+        }
         emitStableBytecodeSearch(translate.createBuilder(), "stableSearchBci", "stableBci", false);
         return translate;
     }

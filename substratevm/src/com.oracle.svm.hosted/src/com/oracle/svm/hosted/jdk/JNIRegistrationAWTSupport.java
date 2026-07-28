@@ -30,17 +30,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @Platforms({Platform.WINDOWS.class, Platform.LINUX.class, Platform.DARWIN.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
     private ResolvedJavaMethod systemLoadMethod;
@@ -60,7 +55,7 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
-        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("awt")) {
+        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
                             "JVM_IsStaticallyLinked");
             jniRegistrationSupport.addJavaShimExports(
@@ -116,11 +111,11 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                 jniRegistrationSupport.registerLibrary("freetype");
             }
         }
-        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("javaaccessbridge")) {
+        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
             jniRegistrationSupport.registerLibrary("jawt");
         }
-        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("javajpeg")) {
+        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("javajpeg")) {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
@@ -131,7 +126,7 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (isWindows() && JNIRegistrationSupport.singleton().isAnyLayerRegisteredLibrary("awt")) {
+        if (isWindows() && JNIRegistrationSupport.singleton().isCurrentLayerRegisteredLibrary("awt")) {
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
                 /*
                  * Add Windows libraries that are pulled in as a side effect of exporting the

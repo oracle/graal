@@ -33,7 +33,6 @@ import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.vm.ci.code.Register;
 
@@ -48,8 +47,6 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
-        assert SubstrateOptions.SpawnIsolates.getValue();
-
         CompressEncoding encoding = compression.getEncoding();
         if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
             return false;
@@ -57,7 +54,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
         long encodingBase = encoding.getBase();
         ValueNode base = other;
-        if (heapBaseRegister != null && encodingBase == heapBase) {
+        if (encodingBase == heapBase) {
             if (other != null) {
                 return false;
             }

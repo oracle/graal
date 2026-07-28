@@ -58,6 +58,9 @@ public class MemoryAPI {
     public static native int PAGE_EXECUTE_READWRITE();
 
     @CConstant
+    public static native int PAGE_EXECUTE_WRITECOPY();
+
+    @CConstant
     public static native int PAGE_NOACCESS();
 
     @CConstant

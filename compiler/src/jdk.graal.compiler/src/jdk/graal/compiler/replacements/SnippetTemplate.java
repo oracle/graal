@@ -2501,7 +2501,7 @@ public class SnippetTemplate {
     }
 
     private boolean requiresFrameStateProcessingBeforeFSA(ValueNode replacee) {
-        return replacee instanceof StateSplit || frameStateAssignment != null;
+        return replacee instanceof WithExceptionNode || replacee instanceof StateSplit || frameStateAssignment != null;
     }
 
     private void rewireFrameStatesBeforeFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {

@@ -70,6 +70,11 @@ public class ContinuationsFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(ContinuationsFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(supported == null);
 
@@ -113,6 +118,8 @@ public class ContinuationsFeature implements InternalFeature {
 
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             access.registerAsAccessed(ipField);
+            Field originalCarrierSPField = ReflectionUtil.lookupField(StoredContinuation.class, "originalCarrierSP");
+            access.registerAsAccessed(originalCarrierSPField);
 
             access.registerReachabilityHandler(_ -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));

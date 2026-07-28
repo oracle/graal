@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -38,6 +39,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.shared.util.VMError;
 
@@ -58,6 +60,14 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     public RuntimeReflectionMetadata(CremaResolvedJavaType type) {
         this.type = type;
+    }
+
+    /** Creates a reflection executable for runtime-loaded {@code method}. */
+    public static Executable fromResolvedMethod(CremaResolvedJavaMethod method) {
+        Class<?> declaringClass = InterpreterSupport.singleton().toClass(method.getDeclaringClass());
+        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
+        RuntimeReflectionMetadata metadata = (RuntimeReflectionMetadata) declaringHub.getCompanion().reflectionMetadata;
+        return method.isConstructor() ? metadata.fromResolvedConstructor(declaringHub, method) : metadata.fromResolvedMethod(declaringHub, method);
     }
 
     @Override
@@ -81,7 +91,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         }
     }
 
-    private static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
+    public static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
         return ReflectionObjectFactory.newField(
                         RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),
@@ -148,17 +158,18 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
     }
 
     private Constructor<?> fromResolvedConstructor(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedConstructor) {
+        Class<?> receiverType = DynamicHub.toClass(declaringClass);
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedConstructor.toParameterTypes(), type);
         return ReflectionObjectFactory.newConstructor(
                         RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
-                        DynamicHub.toClass(declaringClass),
+                        receiverType,
                         parameterTypes,
                         toClassArrayOrThrow(resolvedConstructor.getDeclaredExceptions(), type),
                         resolvedConstructor.getModifiers(),
                         resolvedConstructor.getGenericSignature(),
                         resolvedConstructor.getRawAnnotations(),
                         resolvedConstructor.getRawParameterAnnotations(),
-                        resolvedConstructor.getAccessor(DynamicHub.toClass(declaringClass), parameterTypes),
+                        resolvedConstructor.getAccessor(receiverType, parameterTypes),
                         resolvedConstructor.getParametersAttribute(),
                         resolvedConstructor.getRawTypeAnnotations());
     }
@@ -201,7 +212,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         if (javaType instanceof UnresolvedJavaType unresolvedJavaType) {
             return CremaSupport.singleton().resolveOrThrow(unresolvedJavaType, accessingType);
         } else /* resolved type */ {
-            return CremaSupport.singleton().toClass((ResolvedJavaType) javaType);
+            return InterpreterSupport.singleton().toClass((ResolvedJavaType) javaType);
         }
     }
 

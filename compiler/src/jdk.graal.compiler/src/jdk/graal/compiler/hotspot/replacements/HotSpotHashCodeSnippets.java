@@ -26,9 +26,8 @@ package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.MARK_WORD_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.identityHashCode;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashCodeShift;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashMark;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
@@ -53,7 +52,7 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
     @Override
     protected int computeIdentityHashCode(final Object x) {
-        Word mark = loadWordFromObject(x, markOffset(INJECTED_VMCONFIG));
+        Word mark = MARK_WORD_LOCATION.readWord(x);
 
         // In HotSpot, the upper bits (i.e., [63:2] in 64-bits VM) of the mark word in object header
         // are

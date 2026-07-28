@@ -36,7 +36,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -44,7 +44,7 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
 
 @AutomaticallyRegisteredImageSingleton(VirtualMemoryProvider.class)
 @Platforms(WebImagePlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = DisallowLayered.class)
 public class WebImageVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

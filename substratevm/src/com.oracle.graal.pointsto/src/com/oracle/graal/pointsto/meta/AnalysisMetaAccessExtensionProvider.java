@@ -25,9 +25,14 @@
 
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.annotation.Annotation;
+
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.TypedConstant;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -39,6 +44,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+    @SuppressWarnings("unchecked") //
+    private static final Class<? extends Annotation> LAMBDA_FORM_COMPILED = (Class<? extends Annotation>) ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$Compiled");
+
     private final AnalysisUniverse aUniverse;
 
     public AnalysisMetaAccessExtensionProvider(AnalysisUniverse aUniverse) {
@@ -65,6 +73,23 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return isLambdaFormCompiledMethod(method);
+    }
+
+    public static boolean isLambdaFormCompiledMethod(ResolvedJavaMethod method) {
+        ResolvedJavaMethod original = OriginalMethodProvider.getOriginalMethod(method);
+        if (original instanceof BaseLayerMethod) {
+            /*
+             * Base layer methods are not from GuestAccess' host JVMCI provider, but their persisted
+             * annotations are available.
+             */
+            return AnnotationUtil.isAnnotationPresent(original, LAMBDA_FORM_COMPILED);
+        }
+        return original != null && GuestAccess.get().getProviders().getMetaAccessExtensionProvider().isLambdaFormCompiled(original);
     }
 
     @Override

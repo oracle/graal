@@ -52,9 +52,11 @@
 /* Set by native-image during image build time. Indicates whether the built image is a static binary. */
 extern int __svm_vm_is_static_binary;
 
-#ifdef __linux__
-extern void* __svm_find_builtin_symbol(const char* name) __attribute__((weak));
-#endif
+__attribute__((weak)) void* __svm_find_builtin_symbol(const char* name) {
+    (void) name;
+    return NULL;
+}
+
 /*
     The way JDK checks IPv6 support on Linux involves checking if inet_pton exists using JVM_FindLibraryEntry. That
     function in turn calls dlsym, which is a bad idea in a static binary.
@@ -190,7 +192,7 @@ JNIEXPORT int JNICALL JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
 }
 
 /* Used by Java_jdk_internal_loader_NativeLibraries_load. */
-// TODO GR-75585: add and handle second function parameter throwException
+// TODO GR-76023: add and handle second function parameter throwException
 JNIEXPORT void* JNICALL JVM_LoadLibrary(const char* name) {
     if (name == NULL) {
         return NULL;
@@ -207,43 +209,17 @@ JNIEXPORT void JNICALL JVM_UnloadLibrary(void* handle) {
 
 JNIEXPORT void* JNICALL JVM_FindLibraryEntry(void* handle, const char* name);
 
-static void* current_image_handle = NULL;
-
-static void* get_current_image_handle() {
-    if (current_image_handle != NULL) {
-        return current_image_handle;
-    }
-
-    Dl_info info;
-    if (dladdr((void*) &JVM_FindLibraryEntry, &info) == 0 || info.dli_fname == NULL) {
-        return NULL;
-    }
-
-#ifdef RTLD_NOLOAD
-    current_image_handle = dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD);
-    if (current_image_handle != NULL) {
-        return current_image_handle;
-    }
-#endif
-    current_image_handle = dlopen(info.dli_fname, RTLD_LAZY | RTLD_LOCAL);
-    return current_image_handle;
-}
-
 static void* find_library_entry(void* handle, const char* name) {
-    void* result = dlsym(handle, name);
+    void* result = NULL;
+    /*
+     * Native Image shared libraries can include statically linked JDK JNI libraries such as libnet.
+     * The generated built-in symbol table lets us find such symbols without exporting them globally.
+     */
+    result = __svm_find_builtin_symbol == NULL ? NULL : __svm_find_builtin_symbol(name);
     if (result != NULL) {
         return result;
     }
-
-    /*
-     * Native Image shared libraries can include statically linked JDK JNI libraries such as libnet.
-     * The JDK builtin-library path stores the process handle for such libraries, but a shared image
-     * loaded with RTLD_LOCAL is not visible from that handle. Search this image's own handle as a
-     * fallback for JNI library symbols only.
-     */
-     // TODO GR-75585: do this with __svm_find_builtin_symbol
-    void* current_image_handle = get_current_image_handle();
-    return current_image_handle == NULL || current_image_handle == handle ? NULL : dlsym(current_image_handle, name);
+    return dlsym(handle, name);
 }
 
 void* JVM_FindLibraryEntry(void* handle, const char* name) {
@@ -259,12 +235,10 @@ void* JVM_FindLibraryEntry(void* handle, const char* name) {
         if (strcmp(name, "inet_pton") == 0) {
             return inet_pton;
         }
-#ifdef __linux__
         void* result = __svm_find_builtin_symbol == NULL ? NULL : __svm_find_builtin_symbol(name);
         if (result != NULL) {
             return result;
         }
-#endif
         fprintf(stderr, "Internal error: JVM_FindLibraryEntry called from a static native image with symbol: %s. Results may be unpredictable. Please report this issue to the SubstrateVM team.", name);
         fflush(stderr);
         exit(1);

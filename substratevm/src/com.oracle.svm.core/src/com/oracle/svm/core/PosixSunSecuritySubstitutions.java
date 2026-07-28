@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 
 final class NativeSecureRandomFilesCloserTearDownHook implements RuntimeSupport.Hook {
     @Override

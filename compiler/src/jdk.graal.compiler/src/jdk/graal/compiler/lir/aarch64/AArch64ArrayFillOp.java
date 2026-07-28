@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.Value;
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2389-L2498",
           sha1 = "4ff403a9b236cce54bc806efd30d1e06e92ccde0")
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/fe57c1c22de5cad453d507558fafe224874fb212/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6354-L6424",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6365-L6435",
           sha1 = "bf8efe736d39b5dcb6aa69ac4a38b70c6ff17ffe")
 // @formatter:on
 public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {

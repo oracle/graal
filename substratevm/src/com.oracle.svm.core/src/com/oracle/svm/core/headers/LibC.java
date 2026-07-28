@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
@@ -47,8 +47,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /** Platform-independent LibC support. */
 public class LibC {
-    public static final int EXIT_CODE_ABORT = 99;
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int errno() {
         return libc().errno();
@@ -86,12 +84,7 @@ public class LibC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void abort() {
-        /*
-         * Using the abort system call has unexpected performance implications on Oracle Enterprise
-         * Linux: Storing the crash dump information takes minutes even for tiny images. Therefore,
-         * we just exit with an otherwise unused exit code.
-         */
-        exit(EXIT_CODE_ABORT);
+        libc().abort();
     }
 
     /**

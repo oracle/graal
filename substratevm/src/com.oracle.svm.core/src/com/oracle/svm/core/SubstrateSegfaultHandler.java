@@ -25,7 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
 import java.lang.reflect.Field;
 
@@ -42,33 +42,34 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.SubstrateSegfaultHandler.SingleIsolateSegfaultSetup;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -81,7 +82,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -198,12 +198,11 @@ public abstract class SubstrateSegfaultHandler {
      * only stopped once we trigger a native stack overflow.
      */
     @Uninterruptible(reason = "Thread state not set up yet.")
-    protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
+    protected static boolean tryEnterIsolate(RegisterDumper.Context context, IsolateThread fallbackThreadMemory) {
         /* If there is only a single isolate, we can just enter that isolate. */
         Isolate isolate = SingleIsolateSegfaultSetup.singleton().getIsolate();
         if (isolate.rawValue() != -1) {
-            int error = CEntryPointSnippets.enterAttachFromCrashHandler(isolate);
-            return error == CEntryPointErrors.NO_ERROR;
+            return tryEnterIsolate(isolate, fallbackThreadMemory);
         }
 
         /* Try to determine the isolate via the thread register. */
@@ -212,7 +211,7 @@ public abstract class SubstrateSegfaultHandler {
         }
 
         /* Try to determine the isolate via the heap base register. */
-        return tryEnterIsolateViaHeapBaseRegister(context);
+        return tryEnterIsolateViaHeapBaseRegister(context, fallbackThreadMemory);
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
@@ -238,7 +237,7 @@ public abstract class SubstrateSegfaultHandler {
 
     @Uninterruptible(reason = "Thread state not set up yet.")
     @NeverInline("Prevent register writes from floating")
-    private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context) {
+    private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context, IsolateThread fallbackThreadMemory) {
         /*
          * Set the base registers to null so that we don't execute this code more than once if we
          * trigger a recursive segfault.
@@ -247,10 +246,20 @@ public abstract class SubstrateSegfaultHandler {
 
         Isolate isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
         if (isValid(isolate)) {
-            int error = CEntryPointSnippets.enterAttachFromCrashHandler(isolate);
-            return error == CEntryPointErrors.NO_ERROR;
+            return tryEnterIsolate(isolate, fallbackThreadMemory);
         }
         return false;
+    }
+
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    protected static boolean tryEnterIsolate(Isolate isolate, IsolateThread fallbackThreadMemory) {
+        int error = CEntryPointSnippets.enterFromCrashHandler(isolate);
+        if (error == CEntryPointErrors.UNATTACHED_THREAD) {
+            UnmanagedMemoryUtil.fill((Pointer) fallbackThreadMemory, Word.unsigned(VMThreadLocalSupport.singleton().sizeOfIsolateThread()), (byte) 0);
+            CEntryPointSnippets.initializeIsolateThreadForCrashHandler(CurrentIsolate.getIsolate(), fallbackThreadMemory);
+            return true;
+        }
+        return error == CEntryPointErrors.NO_ERROR;
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
@@ -269,27 +278,6 @@ public abstract class SubstrateSegfaultHandler {
         UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(Word.unsigned(offsetOfStaticFieldWithWellKnownValue));
         Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
         return wellKnownField.readLong(0) == MARKER_VALUE;
-    }
-
-    /**
-     * Enter the isolate in an async-signal safe way. Being async-signal-safe significantly limits
-     * what we can do (e.g., for unattached threads, we need to allocate the IsolateThread on the
-     * stack instead of on the C heap).
-     */
-    @Uninterruptible(reason = "prologue")
-    @SuppressWarnings("unused")
-    public static void enterIsolateAsyncSignalSafe(Isolate isolate) {
-        int error = CEntryPointSnippets.enterFromCrashHandler(isolate);
-        if (error != CEntryPointErrors.NO_ERROR) {
-            /*
-             * Some error occurred or this is an unattached thread. Only set up a minimal
-             * IsolateThread so that we can at least try to dump some information.
-             */
-            int isolateThreadSize = VMThreadLocalSupport.singleton().vmThreadSize;
-            IsolateThread structForUnattachedThread = UnsafeLateStackValue.get(isolateThreadSize);
-            UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, Word.unsigned(isolateThreadSize), (byte) 0);
-            CEntryPointSnippets.initializeIsolateThreadForCrashHandler(isolate, structForUnattachedThread);
-        }
     }
 
     /** Called in certain embedding use-cases. */
@@ -316,7 +304,7 @@ public abstract class SubstrateSegfaultHandler {
 
     private static void dumpInterruptibly(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, ip, "[ [ SegfaultHandler caught a segfault. ] ]", null);
+        Log log = CoreLogSupport.enterFatalContext(logHandler, ip, "[ [ SegfaultHandler caught a segfault. ] ]", null);
         if (log != null) {
             log.newline();
             log.string("[ [ SegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();

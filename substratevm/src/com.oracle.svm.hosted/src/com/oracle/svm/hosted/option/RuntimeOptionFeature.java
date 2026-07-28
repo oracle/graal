@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -43,9 +44,10 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.CommonOptions;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
-import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -82,14 +84,19 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return ImageLayerBuildingSupport.buildingApplicationLayer() ? List.of(CGlobalDataFeature.class) : List.of();
+        return ImageLayerBuildingSupport.buildingImageLayer() ? List.of(CGlobalDataFeature.class) : List.of();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            /*
+             * Do not also register copies in the guest because their state could diverge. GR-77528
+             * tracks moving the sole registration into the guest once that path can be verified.
+             */
             runtimeOptionParser = new RuntimeOptionParser();
             ImageSingletons.add(RuntimeOptionParser.class, runtimeOptionParser);
+            ImageSingletons.add(RuntimeOptionsSupport.class, RuntimeOptionValues.createRuntimeOptionsSupport());
 
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 /*
@@ -97,8 +104,8 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
                  * layers we create symbolic references which refer to the cglobal which is
                  * installed in the final layer.
                  */
-                defaultValues = CGlobalDataFactory.forSymbol(LAYERED_DEFAULT_VALUES_NAME);
-                defaultStrings = CGlobalDataFactory.forSymbol(LAYERED_DEFAULT_STRINGS_NAME);
+                defaultValues = CGlobalDataFactory.forApplicationLayerSymbol(LAYERED_DEFAULT_VALUES_NAME);
+                defaultStrings = CGlobalDataFactory.forApplicationLayerSymbol(LAYERED_DEFAULT_STRINGS_NAME);
             } else {
                 /*
                  * In a traditional build we can directly create the cglobal with a payload.

@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HotSpotFieldLocationIdentity.PENDING_EXCEPTION_LOCATION;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.fatal;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 
@@ -70,7 +71,11 @@ public class ForeignCallSnippets implements Snippets {
      */
     @Snippet(allowMissingProbabilities = true)
     public static void handlePendingException(Word thread, boolean shouldClearException, boolean isObjectResult) {
-        if ((shouldClearException && HotSpotReplacementsUtil.clearPendingException(thread) != null) || (!shouldClearException && HotSpotReplacementsUtil.getPendingException(thread) != null)) {
+        Object pendingException = PENDING_EXCEPTION_LOCATION.readObject(thread);
+        if (shouldClearException) {
+            PENDING_EXCEPTION_LOCATION.writeObject(thread, null);
+        }
+        if (pendingException != null) {
             if (isObjectResult) {
                 getAndClearObjectResult(thread);
             }

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;

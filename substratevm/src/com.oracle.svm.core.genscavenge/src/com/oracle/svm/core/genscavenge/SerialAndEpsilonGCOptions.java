@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
@@ -87,7 +87,7 @@ public final class SerialAndEpsilonGCOptions {
 
     @Fold
     public static int getNullRegionSize() {
-        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue()) {
+        if (SubstrateOptions.UseNullRegion.getValue()) {
             /*
              * The image heap will be mapped in a way that there is a memory protected gap between
              * the heap base and the start of the image heap. The gap won't need any memory in the

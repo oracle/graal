@@ -30,9 +30,10 @@ import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
  * The errors that can happen during {@link LinkResolver resolution}.
  */
 public enum ErrorType {
+    AbstractMethodError,
     IllegalAccessError,
+    IncompatibleClassChangeError,
+    LinkageError,
     NoSuchFieldError,
     NoSuchMethodError,
-    IncompatibleClassChangeError,
-    LinkageError;
 }

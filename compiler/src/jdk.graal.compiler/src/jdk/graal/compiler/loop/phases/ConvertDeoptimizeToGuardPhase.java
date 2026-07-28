@@ -58,6 +58,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
+import jdk.graal.compiler.nodes.StaticDeoptimizingNode.GuardPriority;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -118,14 +119,45 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
     protected void run(final StructuredGraph graph, final CoreProviders context) {
         LazyValue<LoopsData> lazyLoops = new LazyValue<>(() -> context.getLoopsDataProvider().getLoopsData(graph));
 
-        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
-            assert d.isAlive();
-            if (!d.mayConvertToGuard()) {
-                continue;
+        if (GraalOptions.GuardPriorities.getValue(graph.getOptions())) {
+            /**
+             * Visit deopts ordered by priority, higher priorities first. This is necessary to make this transformation
+             * deterministic. Consider the following code, assuming that the condition is always false:
+             *
+             * <pre>
+             *     if (condition) {
+             *         lowPriorityDeopt();
+             *     } else {
+             *         highPriorityDeopt();
+             *     }
+             * </pre>
+             *
+             * Depending on which deopt we propagate first, we can end up with one of two graph shapes:
+             * <pre>
+             *     highPriorityFixedGuard(condition);
+             *     lowPriorityDeopt();
+             * </pre>
+             * or
+             * <pre>
+             *     lowPriorityFixedGuard(condition);
+             *     highPriorityDeopt();
+             * </pre>
+             *
+             * In the first case, the low-priority deopt is not propagated further (due to the priority check in
+             * {@link #propagateFixed}), so the graph remains like this. If the condition never triggers the
+             * high-priority guard, we will always take the low-priority deopt.
+             * </p>
+             *
+             * In the latter case, we would continue propagating the high-priority deopt further upwards, completely
+             * eliminating the low-priority guard and the check of the condition. This could lead to deopt loops if
+             * the high-priority deopt invalidates and has no speculation (as is the case for many Truffle guards)
+             * while the low-priority deopt does not invalidate.
+             */
+            for (GuardPriority priority : GuardPriority.values()) {
+                propagateDeoptimizationsUpwards(graph, context, lazyLoops, priority);
             }
-            try (DebugCloseable closable = d.withNodeSourcePosition()) {
-                propagateFixed(d, d, context, lazyLoops, considerCountedExits);
-            }
+        } else {
+            propagateDeoptimizationsUpwards(graph, context, lazyLoops, null);
         }
         if (context != null) {
             for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
@@ -135,6 +167,30 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
             }
         }
         new DeadCodeEliminationPhase(Optional).apply(graph);
+    }
+
+    /**
+     * Call {@link #propagateFixed} for {@link DeoptimizeNode}s in the graph. If {@code priority} is not {@code null},
+     * only deopts with that priority will be propagated. Otherwise, all deopts will be propagated.
+     * </p>
+     *
+     * {@link #propagateFixed} may add one or more new {@link DeoptimizeNode}s to the graph. Those will copy the
+     * current deopt's metadata and will therefore have the same priority. The traversal will visit them too.
+     */
+    @SuppressWarnings("try")
+    private void propagateDeoptimizationsUpwards(StructuredGraph graph, CoreProviders context, LazyValue<LoopsData> lazyLoops, GuardPriority priority) {
+        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
+            assert d.isAlive();
+            if (!d.mayConvertToGuard()) {
+                continue;
+            }
+            if (priority != null && priority != d.computePriority()) {
+                continue;
+            }
+            try (DebugCloseable closable = d.withNodeSourcePosition()) {
+                propagateFixed(d, d, context, lazyLoops, considerCountedExits);
+            }
+        }
     }
 
     private static void trySplitFixedGuard(FixedGuardNode fixedGuard, CoreProviders context, LazyValue<LoopsData> lazyLoops, boolean considerCountedExits) {

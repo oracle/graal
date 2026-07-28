@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,9 @@ public class WindowsLibC {
     public static native void exit(int status);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native void abort();
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native UnsignedWord strlen(CCharPointer str);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
@@ -85,6 +88,9 @@ public class WindowsLibC {
 
     @CPointerTo(nameOfCType = "wchar_t")
     public interface WCharPointer extends PointerBase {
+        char read(int index);
+
+        void write(int index, char value);
     }
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

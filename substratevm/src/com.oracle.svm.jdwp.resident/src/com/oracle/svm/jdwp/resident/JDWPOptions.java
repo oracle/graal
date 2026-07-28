@@ -27,7 +27,7 @@ package com.oracle.svm.jdwp.resident;
 import com.oracle.svm.interpreter.InterpreterOptions;
 
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 
 import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
 import jdk.graal.compiler.options.Option;

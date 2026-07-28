@@ -28,7 +28,7 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.LPHANDLE;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,10 +36,10 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.locks.PlatformLockingSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
@@ -48,12 +48,12 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(PlatformLockingSupport.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class WindowsLockingSupport implements PlatformLockingSupport {
     private static final long MAX_FINITE_DWORD = (1L << 32) - 2;
 

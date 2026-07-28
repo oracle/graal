@@ -1722,6 +1722,9 @@ public class OracleDBGeneratedTests {
         testCase("[[=\u0085=]]", "", UTF_16BE, noMatch("\u0084", 0)),
         testCase("((\\2a|b|)*?)+o", "", UTF_16BE, match("bao", 0, 0, 3, 2, 2, 1, 2)),
         testCase("((\\2a|b|)*?)+o|", "", UTF_16BE, match("bao", 0, 0, 3, 2, 2, 1, 2)),
+        testCase("aa[b-z]", "", UTF_8, match("aaab", 0, 1, 4)),
+        testCase("abab[c-z]", "", UTF_8, match("abababc", 0, 2, 7)),
+        testCase("w[v-w]\\W", "", UTF_8, match("w\ud839\udfefwww\ud839\udfefw\ud839\udfefw", 5, 6, 12)),
         testCase("(a{1100,1100})\\1", "i", UTF_8, match("a".repeat(2400), 0, 0, 2200, 0, 1100)),
         testCase("[a]\\S{213,213}bcdz", "", UTF_8, noMatch("a".repeat(215) + ("bcxd" + "a".repeat(213)).repeat(3), 0)),
 

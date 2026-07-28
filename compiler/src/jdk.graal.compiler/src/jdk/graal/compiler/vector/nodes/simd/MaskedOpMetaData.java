@@ -28,8 +28,11 @@ package jdk.graal.compiler.vector.nodes.simd;
 import java.util.Objects;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdPairwiseMultiplyAddNode;
 
 /**
  * Describes a masked SIMD operation. The operation is identified by its class. If the operation is
@@ -39,9 +42,12 @@ public class MaskedOpMetaData {
     private final Class<? extends ValueNode> op;
     private final CanonicalCondition cond;
     private final boolean unordered;
+    private final boolean commutative;
+    private final AMD64SimdPairwiseMultiplyAddNode.OpKind pairwiseMultiplyAddKind;
 
     public MaskedOpMetaData(ValueNode node) {
         this.op = node.getClass();
+        this.commutative = node instanceof BinaryArithmeticNode<?> binary && binary.getArithmeticOp() instanceof BinaryOp<?> binaryOp && binaryOp.isCommutative();
         if (node instanceof SimdPrimitiveCompareNode compare) {
             this.cond = compare.getCondition();
             this.unordered = compare.unorderedIsTrue();
@@ -49,10 +55,23 @@ public class MaskedOpMetaData {
             this.cond = null;
             this.unordered = false;
         }
+        this.pairwiseMultiplyAddKind = null;
+    }
+
+    public MaskedOpMetaData(AMD64SimdPairwiseMultiplyAddNode node) {
+        this.op = node.getClass();
+        this.cond = null;
+        this.unordered = false;
+        this.commutative = false;
+        this.pairwiseMultiplyAddKind = node.getOpKind();
     }
 
     public Class<? extends ValueNode> op() {
         return op;
+    }
+
+    public boolean commutative() {
+        return commutative;
     }
 
     public CanonicalCondition comparisonCondition() {
@@ -63,5 +82,9 @@ public class MaskedOpMetaData {
     public boolean comparisonUnordered() {
         GraalError.guarantee(op == SimdPrimitiveCompareNode.class, "not a comparison, %s", op);
         return unordered;
+    }
+
+    public AMD64SimdPairwiseMultiplyAddNode.OpKind pairwiseMultiplyAddKind() {
+        return pairwiseMultiplyAddKind;
     }
 }

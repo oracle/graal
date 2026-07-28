@@ -46,7 +46,7 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 

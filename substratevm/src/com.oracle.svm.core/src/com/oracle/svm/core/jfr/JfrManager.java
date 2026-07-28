@@ -40,8 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrArgumentParser.FlightRecorderOptionsArgument;
 import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
@@ -52,6 +51,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.jfr.FlightRecorder;
@@ -167,11 +167,12 @@ public class JfrManager {
         SubstrateUtil.cast(Repository.getRepository(), Target_jdk_jfr_internal_Repository.class).setBasePath(path);
     }
 
-    public static RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook teardownHook() {
         return _ -> {
             /*
-             * Everything should already have been torn down by JVM.destroyJFR(), which is called in
-             * a shutdown hook. So in this method we should only unregister periodic events.
+             * Remove the Native Image specific periodic events that were registered in the startup
+             * hook. The actual JFR shutdown happens in a JDK shutdown hook that stops recording
+             * and that calls JVM.destroyJFR() eventually.
              */
             FlightRecorder.removePeriodicEvent(EveryChunkNativePeriodicEvents::emit);
             FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
@@ -190,9 +191,9 @@ public class JfrManager {
         FlightRecorder.addPeriodicEvent(EndChunkNativePeriodicEvents.class, EndChunkNativePeriodicEvents::emit);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L219-L247")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L146-L180")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L130-L144")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L219-L247")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L146-L180")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.cpp#L130-L144")
     private static void initRecording() {
         Target_jdk_jfr_internal_dcmd_DCmdStart cmd = new Target_jdk_jfr_internal_dcmd_DCmdStart();
         String[] result = SubstrateUtil.cast(cmd, Target_jdk_jfr_internal_dcmd_AbstractDCmd.class).execute("internal", SubstrateOptions.StartFlightRecording.getValue(), ',');

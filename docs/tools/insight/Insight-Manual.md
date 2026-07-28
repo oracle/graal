@@ -159,12 +159,12 @@ Note: Make sure the Ruby support is enabled. See [Polyglot Programming guide](..
 Apply the JavaScript instrument to the Ruby program. Here is what you should see:
 
 ```bash
-./bin/ruby --polyglot --insight=source-trace.js helloworld.rb
+./bin/ruby --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
 
-It is necessary to start GraalVM's Ruby launcher with the `--polyglot` parameter as the _source-tracing.js_ script remains written in JavaScript.
+The Ruby launcher can run the JavaScript instrument because language launchers enable polyglot access by default.
 
 ## Insights with JavaScript
 
@@ -248,7 +248,7 @@ insight.on("enter", onEnter, Roots())
 Apply this script to [_agent-fib.js_](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} using the following command:
 
 ```bash
-`./bin/js --polyglot --insight=agent.py agent-fib.js`
+./bin/js --insight=agent.py agent-fib.js
 ```
 
 Note: Make sure the Python support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
@@ -274,7 +274,7 @@ puts("Ruby: Hooks are ready!")
 Launch a Node.js program and instrument it with the Ruby script:
 
 ```bash
-./bin/node --js.print --experimental-options --polyglot --insight=source-tracing.rb agent-fib.js
+./bin/node --js.print --experimental-options --insight=source-tracing.rb agent-fib.js
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of node:internal/errors
@@ -313,7 +313,7 @@ insight.on("enter", -> (ctx, frame) {
 
 The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [_agent-fib.js_](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} program is called:
 ```bash
-./bin/node --js.print --experimental-options --polyglot --insight=agent.rb agent-fib.js
+./bin/node --js.print --experimental-options --insight=agent.rb agent-fib.js
 minusOne 4
 minusOne 3
 minusOne 2
@@ -386,7 +386,7 @@ The script counts the number of invocations of the C `nextNatural` function and 
 Run the program as:
 
 ```bash
-./bin/lli --polyglot --insight=agent-limit.js sieve
+./bin/lli --insight=agent-limit.js sieve
 Computed 97 primes in 181 ms. Last one is 509
 GraalVM Insight: nextNatural method called 1000 times. enough!
         at <js> :anonymous(<eval>:7:117-185)
@@ -411,7 +411,7 @@ insight.on('enter', function(ctx, frame) {
 Print out a message every time a new prime is added into the filter list:
 
 ```bash
-./bin/lli --polyglot --insight=agent-limit.js sieve | head -n 3
+./bin/lli --insight=agent-limit.js sieve | head -n 3
 found new prime number 2
 found new prime number 3
 found new prime number 5
@@ -685,7 +685,7 @@ The _term.js_ instrument waits for a call to `log` function with message `are` a
 As a result one gets:
 
 ```bash
-./bin/js --polyglot --insight=term.js seq.js
+./bin/js --insight=term.js seq.js
 Hello GraalVM Insight!
 How
 great you are!

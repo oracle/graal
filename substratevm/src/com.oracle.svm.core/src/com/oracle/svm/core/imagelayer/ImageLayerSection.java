@@ -25,6 +25,7 @@
 package com.oracle.svm.core.imagelayer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
@@ -43,13 +44,15 @@ public abstract class ImageLayerSection {
     protected final CGlobalData<WordPointer> cachedImageFDs;
     protected final CGlobalData<WordPointer> cachedImageHeapOffsets;
     protected final CGlobalData<WordPointer> cachedImageHeapRelocations;
+    protected final CGlobalData<CCharPointer> nextLayerSectionSymbolName;
 
     protected ImageLayerSection(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
-                    CGlobalData<WordPointer> cachedImageHeapRelocations) {
+                    CGlobalData<WordPointer> cachedImageHeapRelocations, CGlobalData<CCharPointer> nextLayerSectionSymbolName) {
         this.initialSectionStart = initialSectionStart;
         this.cachedImageFDs = cachedImageFDs;
         this.cachedImageHeapOffsets = cachedImageHeapOffsets;
         this.cachedImageHeapRelocations = cachedImageHeapRelocations;
+        this.nextLayerSectionSymbolName = nextLayerSectionSymbolName;
     }
 
     public enum SectionEntries {
@@ -63,6 +66,7 @@ public abstract class ImageLayerSection {
         HEAP_WRITEABLE_PATCHED_END,
         CODE_START,
         NEXT_SECTION,
+        FIXUP_TABLE,
         VARIABLY_SIZED_DATA,
         FIRST_SINGLETON,
     }
@@ -94,6 +98,11 @@ public abstract class ImageLayerSection {
     @Fold
     public static CGlobalData<WordPointer> getCachedImageHeapRelocations() {
         return singleton().cachedImageHeapRelocations;
+    }
+
+    @Fold
+    public static CGlobalData<CCharPointer> getNextLayerSectionSymbolName() {
+        return singleton().nextLayerSectionSymbolName;
     }
 
     protected abstract int getEntryOffsetInternal(SectionEntries entry);

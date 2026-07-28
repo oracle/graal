@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.CodeSource;
 import java.util.ArrayDeque;
@@ -68,7 +66,6 @@ import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.SandboxPolicy;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -104,7 +101,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Set<String> languagesOverridingPatchContext = TruffleOptions.AOT ? new HashSet<>() : null;
-    private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
+    private static final Map<AbstractClassLoaderSupplier, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
     @CompilationFinal private static volatile int maxStaticIndex;
     private final String className;
@@ -234,7 +231,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static Map<String, LanguageCache> languages() {
-        return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
+        return loadLanguages(EngineAccessor.loader());
     }
 
     static Collection<LanguageCache> internalLanguages() {
@@ -266,33 +263,31 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return result;
     }
 
-    static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
+    static Map<String, LanguageCache> loadLanguages(AbstractClassLoaderSupplier classLoaderSupplier) {
         if (FORCE_USE_NATIVE_IMAGE_CACHE || ImageInfo.inImageRuntimeCode()) {
             return nativeImageCache;
         }
         synchronized (LanguageCache.class) {
-            Map<String, LanguageCache> cache = runtimeCaches.get(classLoaders);
+            Map<String, LanguageCache> cache = runtimeCaches.get(classLoaderSupplier);
             if (cache == null) {
-                cache = createLanguages(classLoaders);
-                runtimeCaches.put(classLoaders, cache);
+                cache = createLanguages(classLoaderSupplier);
+                runtimeCaches.put(classLoaderSupplier, cache);
             }
             return cache;
         }
     }
 
-    private static synchronized Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
+    private static synchronized Map<String, LanguageCache> createLanguages(AbstractClassLoaderSupplier classLoaderSupplier) {
         List<LanguageCache> caches = new ArrayList<>();
-        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
-        for (AbstractClassLoaderSupplier supplier : suppliers) {
-            ClassLoader loader = supplier.get();
-            if (loader == null) {
-                continue;
-            }
+        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(classLoaderSupplier);
+        ClassLoader loader = classLoaderSupplier.get();
+        if (loader == null) {
+            return Map.of();
+        }
 
-            for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
-                if (supplier.accepts(provider.getClass())) {
-                    loadLanguageImpl(provider, caches, optionalResources);
-                }
+        for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
+            if (classLoaderSupplier.accepts(provider.getClass())) {
+                loadLanguageImpl(provider, caches, optionalResources);
             }
         }
 
@@ -424,24 +419,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sb.toString();
     }
 
-    private static String getLanguageHomeFromSystemProperty(String languageId) {
-        return toRealStringPath("org.graalvm.language." + languageId + ".home");
-    }
-
-    private static String toRealStringPath(String propertyName) {
-        String path = System.getProperty(propertyName);
-        if (path != null) {
-            try {
-                path = Path.of(path).toRealPath().toString();
-            } catch (NoSuchFileException nsfe) {
-                return path;
-            } catch (IOException ioe) {
-                throw CompilerDirectives.shouldNotReachHere(ioe);
-            }
-        }
-        return path;
-    }
-
     static boolean overridesPatchContext(String languageId) {
         assert TruffleOptions.AOT : "Only supported in native image";
         return languagesOverridingPatchContext.contains(languageId);
@@ -474,7 +451,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(createLanguages(List.of(new StrongClassLoaderSupplier(imageClassLoader))));
+        nativeImageCache.putAll(createLanguages(new StrongClassLoaderSupplier(imageClassLoader)));
         nativeImageMimes.putAll(createMimes());
         for (LanguageCache languageCache : nativeImageCache.values()) {
             try {
@@ -598,13 +575,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     String getLanguageHome() {
-        if (languageHome == null) {
-            /*
-             * In the legacy build, the language home property is set by the GraalVMLocator at
-             * startup. We cannot use the HomeFinder#getLanguageHomes() function because it would
-             * make the ProcessProperties#getExecutableName() reachable.
-             */
-            languageHome = getLanguageHomeFromSystemProperty(id);
+        /*
+         * Use `HomeFinder#getLanguageHomes()` because it supports legacy, standalone,
+         * and unchained builds. This code path is never reached in native images when
+         * internal resources are disabled, so it does not pull
+         * `ProcessProperties#getExecutableName()` into the generated native image.
+         */
+        if (languageHome == null && InternalResourceCache.usesInternalResources()) {
+            Path home = HomeFinder.getInstance().getLanguageHomes().get(id);
+            languageHome = home != null ? home.toString() : null;
         }
         return languageHome;
     }

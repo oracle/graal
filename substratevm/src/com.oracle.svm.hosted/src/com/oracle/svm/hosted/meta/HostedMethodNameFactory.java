@@ -73,6 +73,11 @@ public class HostedMethodNameFactory implements InternalFeature {
         return ImageSingletons.lookup(HostedMethodNameFactory.class);
     }
 
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(HostedMethodNameFactory.class, this);
+    }
+
     MethodNameInfo createNames(NameGenerator generator, AnalysisMethod aMethod) {
         MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.loadMethodNameInfo(aMethod) : null;
         if (result != null) {

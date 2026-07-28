@@ -53,6 +53,10 @@ public class SysinfoAPI {
     @CFunction(transition = NO_TRANSITION)
     public static native void GetSystemInfo(SYSTEM_INFO lpSystemInfo);
 
+    /** Retrieves the current local date and time. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native void GetLocalTime(SYSTEMTIME lpSystemTime);
+
     /** Structure containing information about the current computer system. */
     @CStruct
     public interface SYSTEM_INFO extends PointerBase {
@@ -88,6 +92,34 @@ public class SysinfoAPI {
 
         @CField
         short wProcessorRevision();
+    }
+
+    /** Structure containing a date and time. */
+    @CStruct
+    public interface SYSTEMTIME extends PointerBase {
+        @CField
+        short wYear();
+
+        @CField
+        short wMonth();
+
+        @CField
+        short wDayOfWeek();
+
+        @CField
+        short wDay();
+
+        @CField
+        short wHour();
+
+        @CField
+        short wMinute();
+
+        @CField
+        short wSecond();
+
+        @CField
+        short wMilliseconds();
     }
 
     /**

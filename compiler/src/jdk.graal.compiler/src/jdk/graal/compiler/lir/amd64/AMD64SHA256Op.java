@@ -27,6 +27,11 @@ package jdk.graal.compiler.lir.amd64;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdi;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm10;
@@ -72,16 +77,16 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64SHA256Op> TYPE = LIRInstructionClass.create(AMD64SHA256Op.class);
 
-    @Alive({OperandFlag.REG}) private Value bufValue;
-    @Alive({OperandFlag.REG}) private Value stateValue;
-    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
-    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
+    @Use({OperandFlag.REG}) private Value bufValue;
+    @Use({OperandFlag.REG}) private Value stateValue;
+    @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
+    @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
 
     @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value resultValue;
 
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value bufTempValue;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsTempValue;
-    @Temp({OperandFlag.REG}) private Value keyTempValue;
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value raxTempValue;
     @Temp({OperandFlag.REG}) private Value[] temps;
 
     private final boolean multiBlock;
@@ -102,7 +107,13 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
         this.multiBlock = multiBlock;
 
-        this.keyTempValue = tool.newVariable(bufValue.getValueKind());
+        GraalError.guarantee(asRegister(bufValue).equals(rdi), "expect bufValue at rdi, but was %s", bufValue);
+        GraalError.guarantee(asRegister(stateValue).equals(rsi), "expect stateValue at rsi, but was %s", stateValue);
+        GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(rdx), "expect ofsValue at rdx, but was %s", ofsValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(rcx), "expect limitValue at rcx, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(rax), "expect resultValue at rax, but was %s", resultValue);
+
+        this.raxTempValue = multiBlock ? Value.ILLEGAL : rax.asValue();
 
         if (AMD64ComplexVectorOp.supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.AVX)) {
             // vzeroupper clears upper bits of xmm0-xmm15
@@ -140,8 +151,8 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
         }
 
         if (multiBlock) {
-            this.bufTempValue = tool.newVariable(bufValue.getValueKind());
-            this.ofsTempValue = tool.newVariable(ofsValue.getValueKind());
+            this.bufTempValue = bufValue;
+            this.ofsTempValue = ofsValue;
         } else {
             this.bufTempValue = Value.ILLEGAL;
             this.ofsTempValue = Value.ILLEGAL;
@@ -200,8 +211,6 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
             ofs = asRegister(ofsTempValue);
             limit = asRegister(limitValue);
 
-            masm.movq(buf, asRegister(bufValue));
-            masm.movl(ofs, asRegister(ofsValue));
         } else {
             buf = asRegister(bufValue);
             ofs = Register.None;
@@ -224,8 +233,7 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
         Label labelLoop0 = new Label();
 
-        // keyTemp replaces the hardcoded rax in the original stub.
-        Register keyTemp = asRegister(keyTempValue);
+        Register keyTemp = rax;
 
         if (masm.supports(CPUFeature.AVX)) {
             // Insert vzeroupper here to avoid performance penalty of SSE-AVX transition between
@@ -436,11 +444,11 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
         if (multiBlock) {
             // increment data pointer and loop if more to process
             masm.addq(buf, 64);
-            masm.addl(ofs, 64);
-            masm.cmplAndJcc(ofs, limit, BelowEqual, labelLoop0, false);
+            masm.addq(ofs, 64);
+            masm.cmpqAndJcc(ofs, limit, BelowEqual, labelLoop0, false);
 
             GraalError.guarantee(resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
-            masm.movl(asRegister(resultValue), ofs); // return ofs
+            masm.movq(asRegister(resultValue), ofs); // return ofs
         }
 
         masm.pshufd(state0, state0, 0x1B);

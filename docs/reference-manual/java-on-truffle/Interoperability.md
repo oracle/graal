@@ -14,8 +14,8 @@ This guide describes how to load code written in other languages, how to export 
 
 To avoid confusion, the terms *host* and *guest* are used to differentiate the different layers where Java is executed. Espresso refers to the guest layer.
 
-You pass polyglot options to the `java -truffle` launcher.
-If you are using the native configuration, you will need to use the `--polyglot` flag to get access to other languages.
+You can pass polyglot options to the `java -truffle` launcher.
+Language launchers enable access to other languages by default.
 
 Foreign objects must "inhabit" a guest Java type when flowing into Espresso.
 How this type is attached to foreign objects is an implementation detail.
@@ -113,6 +113,14 @@ Object elem0 = Interop.readArrayElement(foreignArray, 0);
 System.out.println(Interop.fitsInInt(elem0)); // prints true
 System.out.println(Interop.asInt(elem0));     // prints 2
 ```
+
+## Implicit Interop
+
+With implicit interop, a foreign object can be typed not just as `java.lang.Object`, but possibly a more concrete class or an array. This can happen at a guest `Polyglot.cast` call, or when receiving a foreign object as a parameter. This requires the foreign object to "fit in" the new type, i.e. support necessary member or array accesses through interop protocol messages. When this happens, a group of bytecode instructions (e.g. field and array accesses) can work on it.
+
+However, this feature brings extra checks at runtime. When implicit interop is enabled, Espresso runs slower even if no foreign object is actually encountered.
+
+This feature is enabled by default and can be disabled with `--java.EnableImplicitInterop=false`. However, when launching from the Espresso launcher or `LibEspresso.createJavaVM`, it is disabled by default for better performance. This behavior can be overridden with `--java.EnableImplicitInterop=true`.
 
 ## Embedding in Host Java
 
@@ -236,7 +244,7 @@ The `java.math.Bigdecimal` part of the option declares the fully qualified meta 
 
 #### java.PolyglotInterfaceMappings
 
-If there are no dedicated `java.PolyglotTypeConverters` for a host object flowing into an embedded Espresso context, automatic interface type mapping kicks in. `java.PolyglotInterfaceMappings` enables seamless interface type sharing between the host and the embedded context. 
+If there are no dedicated `java.PolyglotTypeConverters` for a host object flowing into an embedded Espresso context, automatic interface type mapping kicks in. `java.PolyglotInterfaceMappings` enables seamless interface type sharing between the host and the embedded context.
 
 The following example shows how this option can be used to allow passing common JDK collection types by interface to an embedded Espresso context:
 

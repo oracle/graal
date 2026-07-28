@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -247,6 +247,35 @@ public final class IOAccess {
         public Builder fileSystem(FileSystem fileSystem) {
             this.customFileSystem = Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("IOAccess.newBuilder()");
+            if (allowHostFileAccess) {
+                appendCall(b, "allowHostFileAccess", true);
+            }
+            if (allowHostSocketAccess) {
+                appendCall(b, "allowHostSocketAccess", true);
+            }
+            if (customFileSystem != null) {
+                appendCall(b, "fileSystem", customFileSystem);
+            }
+            return b.toString();
+        }
+
+        private static void appendCall(StringBuilder b, String methodName, Object value) {
+            b.append('\n');
+            b.append("  .");
+            b.append(methodName);
+            b.append('(');
+            b.append(String.valueOf(value));
+            b.append(')');
         }
 
         /**

@@ -51,7 +51,7 @@ import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -403,7 +403,7 @@ public abstract class WasmAssembler {
      * Note: {@code wat2wasm} does not currently implement some Wasm proposals. It currently only
      * works in the WasmLM backend.
      */
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     public static class Wat2Wasm extends WasmAssembler {
 
         protected Wat2Wasm(Path tempDirectory) {
@@ -464,7 +464,7 @@ public abstract class WasmAssembler {
      *
      * @see BinaryenCompat
      */
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     public static class Binaryen extends WasmAssembler {
 
         protected Binaryen(Path tempDirectory) {

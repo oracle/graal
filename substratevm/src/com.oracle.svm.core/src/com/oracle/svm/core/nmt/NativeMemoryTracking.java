@@ -38,10 +38,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -317,7 +317,7 @@ public class NativeMemoryTracking {
         };
     }
 
-    public static RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook teardownHook() {
         return _ -> {
             NativeMemoryTracking.singleton().printStatistics();
         };

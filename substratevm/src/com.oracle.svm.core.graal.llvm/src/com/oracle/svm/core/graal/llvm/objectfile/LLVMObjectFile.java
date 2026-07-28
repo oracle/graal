@@ -161,9 +161,9 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported) {
         SymbolTable symtab = getOrCreateSymbolTable();
-        return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
+        return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode, isExported);
     }
 
     @Override

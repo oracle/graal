@@ -34,9 +34,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -45,7 +42,6 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeature {
     private boolean hasPlatformSocketOptions;
@@ -99,28 +95,23 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                         method(a, "java.net.Inet4AddressImpl", "lookupAllHostAddr", String.class),
                         method(a, "java.net.Inet6AddressImpl", "lookupAllHostAddr", String.class, int.class));
 
+        /*
+         * NetworkInterface.init uses JNI FindClass to look up java/net/NetworkInterface while
+         * initializing that same runtime-initialized class. Register the JNI metadata when the
+         * class is reachable so this lookup does not depend on reachability of the native
+         * initializer itself.
+         */
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerNetworkInterfaceInit,
-                        method(a, "java.net.NetworkInterface", "init"));
+                        type(a, "java.net.NetworkInterface"));
 
         if (this.hasPlatformSocketOptions) {
             /* Support for the libextnet. */
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
                             method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
-            if (isWindows()) {
-                a.registerReachabilityHandler(JNIRegistrationJavaNet::linkWindowsExtNet,
-                                method(a, "jdk.net.WindowsSocketOptions", "keepAliveOptionsSupported0"),
-                                method(a, "jdk.net.WindowsSocketOptions", "setIpDontFragment0", int.class, boolean.class, boolean.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getIpDontFragment0", int.class, boolean.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveProbes0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveProbes0", int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveTime0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveTime0", int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "setTcpKeepAliveIntvl0", int.class, int.class),
-                                method(a, "jdk.net.WindowsSocketOptions", "getTcpKeepAliveIntvl0", int.class));
-            }
         }
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit, method(a, "sun.net.spi.DefaultProxySelector", "init"));
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit,
+                        method(a, "sun.net.spi.DefaultProxySelector", "init"));
 
         if (isWindows()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerResolverConfigurationImplInit0,
@@ -167,14 +158,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
     }
 
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
-        if (isRunOnce(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate)) {
-            return; /* Already registered. */
-        }
-
-        if (isWindows()) {
-            linkWindowsExtNet(a);
-        }
-
         String implClassName;
         if (isLinux()) {
             implClassName = "jdk.net.LinuxSocketOptions";
@@ -186,22 +169,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         }
         JVMCIRuntimeReflection.register(type(a, implClassName));
         JVMCIRuntimeReflection.register(constructor(a, implClassName));
-    }
-
-    private static void linkWindowsExtNet(DuringAnalysisAccess a) {
-        if (isRunOnce(JNIRegistrationJavaNet::linkWindowsExtNet)) {
-            return; /* Already registered. */
-        }
-        VMError.guarantee(isWindows(), "Unexpected platform");
-
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        /*
-         * extnet contains native methods for platform socket options, but the Windows library does
-         * not define JNI_OnLoad_extnet.
-         */
-        if (access.getNativeLibraries().hasStaticLibrary("extnet")) {
-            access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
-        }
     }
 
     private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {

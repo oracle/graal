@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             StaticObject object = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(self);
-            return toJVMCIObjectType(object.getKlass(), objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
+            return toJVMCIObjectType(object.isStaticStorage() ? meta.java_lang_Object : object.getKlass(), objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
         }
     }
 

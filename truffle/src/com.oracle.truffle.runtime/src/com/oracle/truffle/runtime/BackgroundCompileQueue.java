@@ -164,7 +164,8 @@ public class BackgroundCompileQueue {
                     double minScale = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinScale);
                     int minNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinNormalLoad);
                     int maxNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMaxNormalLoad);
-                    dynamicCompilationThresholds = new DynamicCompilationThresholds(threads, minScale, minNormalLoad, maxNormalLoad);
+                    double highLoadSlope = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsHighLoadSlope);
+                    dynamicCompilationThresholds = new DynamicCompilationThresholds(threads, minScale, minNormalLoad, maxNormalLoad, highLoadSlope);
                 }
             }
             TruffleThreadPoolExecutor threadPoolExecutor = new TruffleThreadPoolExecutor(threads, threads,
@@ -562,14 +563,16 @@ public class BackgroundCompileQueue {
         private final double minScale;
         private final int minNormalLoad;
         private final int maxNormalLoad;
-        private final double slope;
+        private final double lowLoadSlope;
+        private final double highLoadSlope;
 
-        DynamicCompilationThresholds(int threads, double minScale, int minNormalLoad, int maxNormalLoad) {
+        DynamicCompilationThresholds(int threads, double minScale, int minNormalLoad, int maxNormalLoad, double highLoadSlope) {
             this.threads = threads;
             this.minScale = minScale;
             this.minNormalLoad = minNormalLoad;
             this.maxNormalLoad = maxNormalLoad;
-            this.slope = (1 - minScale) / minNormalLoad;
+            this.lowLoadSlope = minNormalLoad == 0 ? 0 : (1 - minScale) / minNormalLoad;
+            this.highLoadSlope = highLoadSlope;
         }
 
         private double load() {
@@ -582,9 +585,9 @@ public class BackgroundCompileQueue {
                 return 1;
             }
             if (x < minNormalLoad) {
-                return slope * x + minScale;
+                return lowLoadSlope * x + minScale;
             }
-            return slope * x + (1 - slope * maxNormalLoad);
+            return highLoadSlope * (x - maxNormalLoad) + 1;
         }
 
         private void scaleThresholds() {

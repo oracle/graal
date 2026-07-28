@@ -45,14 +45,15 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.locale.LocaleSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
+import com.oracle.svm.core.libjvm.LibJVMSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.VMError;
 
@@ -155,10 +156,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty("java.home", this::javaHomeValue));
         lazyProperties.add(new LazySystemProperty("java.io.tmpdir", this::javaIoTmpdirValue));
         lazyProperties.add(new LazySystemProperty("java.library.path", this::javaLibraryPathValue));
-        /*
-         * Match HotSpot's dll_dir system property: this is the platform-specific directory used by
-         * boot-loader native library lookup.
-         */
         lazyProperties.add(new LazySystemProperty("sun.boot.library.path", this::sunBootLibraryPathValue));
         lazyProperties.add(new LazySystemProperty("os.version", this::osVersionValue));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE, () -> LocaleSupport.singleton().getLocale().language()));
@@ -380,11 +377,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     @NeverInline("Reads the return address.")
     private String javaHomeValue() {
-
-        if (!ImageSingletons.contains(LibJVMMainMethodWrappers.class)) {
+        if (!ImageSingletons.contains(LibJVMSupport.class)) {
             return null;
         }
-
         if (!SubstrateOptions.SharedLibrary.getValue()) {
             throw VMError.shouldNotReachHere("Invalid " + jvmLibName() + " image. Not a shared library image.");
         }
@@ -409,48 +404,51 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         return javaHome;
     }
 
+    @NeverInline("Reads the return address.")
+    private String sunBootLibraryPathValue() {
+        if (!ClassRegistries.respectClassLoader()) {
+            return null;
+        }
+        /*
+         * Avoid java.io.File / java.nio.file.Path here. Initializing those classes needs system
+         * properties that can recursively query java.home. The path comes from the loaded libjvm
+         * object file on the current platform, so the platform separator is enough.
+         */
+        String objectFileStr = !SubstrateOptions.SharedLibrary.getValue() ? ProcessProperties.getExecutableName()
+                        : ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(KnownIntrinsics.readReturnAddress());
+        if (objectFileStr == null) {
+            return null;
+        }
+        if (!ImageSingletons.contains(LibJVMSupport.class)) {
+            // This is not libjvm, use the image directory
+            return parentPath(objectFileStr);
+        }
+        if (!pathEndsWithName(objectFileStr, jvmLibName())) {
+            throw VMError.shouldNotReachHere("Invalid name for a " + jvmLibName() + " image: " + objectFileStr);
+        }
+        String svmDirectory = parentPath(objectFileStr); // <java.home>/{lib|bin}/svm
+        String libDirectory = parentPath(svmDirectory); // <java.home>/{lib|bin}
+        if (libDirectory == null) {
+            throw VMError.shouldNotReachHere("Unable to determine sun.boot.library.path for " + objectFileStr);
+        }
+        return libDirectory;
+    }
+
     protected String jvmLibName() {
         throw VMError.shouldNotReachHere("System property java.home is not supported in this configuration");
     }
 
-    protected static boolean pathEndsWithName(String path, String name) {
-        if (path == null) {
-            return false;
-        }
+    private static boolean pathEndsWithName(String path, String name) {
         int nameStart = path.lastIndexOf(pathSeparator()) + 1;
         return path.regionMatches(nameStart, name, 0, name.length()) && nameStart + name.length() == path.length();
     }
 
-    protected static String parentPath(String path) {
+    private static String parentPath(String path) {
         if (path == null) {
             return null;
         }
         int separatorIndex = path.lastIndexOf(pathSeparator());
         return separatorIndex < 0 ? null : path.substring(0, separatorIndex);
-    }
-
-    protected static String executableDirectory() {
-        return parentPath(ProcessProperties.getExecutableName());
-    }
-
-    protected static String childPath(String parent, String child) {
-        return parent + pathSeparator() + child;
-    }
-
-    protected String findEnclosingJavaHome(String directory, String bootLibraryDirectoryName, String bootLibraryFileName) {
-        String candidate = directory;
-        while (candidate != null) {
-            String bootLibrary = childPath(childPath(candidate, bootLibraryDirectoryName), bootLibraryFileName);
-            if (pathExists(bootLibrary) && (pathExists(childPath(candidate, "release")) || pathExists(childPath(childPath(candidate, "lib"), "modules")))) {
-                return candidate;
-            }
-            candidate = parentPath(candidate);
-        }
-        return null;
-    }
-
-    protected boolean pathExists(@SuppressWarnings("unused") String path) {
-        return false;
     }
 
     private static char pathSeparator() {
@@ -460,10 +458,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     protected abstract String javaIoTmpdirValue();
 
     protected abstract String javaLibraryPathValue();
-
-    protected String sunBootLibraryPathValue() {
-        return "";
-    }
 
     private static class LazySystemProperty {
         private final String key;

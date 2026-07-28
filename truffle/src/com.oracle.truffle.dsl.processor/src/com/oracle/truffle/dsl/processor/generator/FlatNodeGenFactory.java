@@ -522,7 +522,7 @@ public class FlatNodeGenFactory {
         if (specialization.hasMultipleInstances()) {
             return false;
         }
-        if (specialization.isGuardBindsExclusiveCache() && FlatNodeGenFactory.usesExclusiveInstanceField(specialization)) {
+        if (specialization.isGuardBindsExclusiveCache() && FlatNodeGenFactory.usesSeparateCacheFieldInDuplicateCheck(specialization)) {
             return false;
         }
         return !FlatNodeGenFactory.shouldUseSpecializationClassBySize(specialization);
@@ -539,12 +539,12 @@ public class FlatNodeGenFactory {
                 return true;
             }
 
-            if (specialization.isGuardBindsExclusiveCache() && usesExclusiveInstanceField(specialization)) {
+            if (specialization.isGuardBindsExclusiveCache() && usesSeparateCacheFieldInDuplicateCheck(specialization)) {
                 /*
-                 * For specializations that bind cached values in guards that use instance fields we
-                 * need to use specialization classes because the duplication check is not reliable
-                 * otherwise. E.g. NeverDefaultTest#testSingleInstancePrimitiveCacheNode fails
-                 * without this check.
+                 * The duplicate-flag path uses the specialization-active state as its publication
+                 * marker. If duplicate detection also reads a separately stored cache field, the
+                 * active state may become visible before that field. Use a specialization class to
+                 * publish the cache fields through the existing volatile/CAS protocol.
                  */
                 return true;
             }
@@ -569,9 +569,9 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static boolean usesExclusiveInstanceField(SpecializationData s) {
-        for (CacheExpression cache : s.getCaches()) {
-            if (usesExclusiveInstanceField(cache)) {
+    private static boolean usesSeparateCacheFieldInDuplicateCheck(SpecializationData specialization) {
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (usesSeparateCacheFieldInDuplicateCheck(cache)) {
                 return true;
             }
         }
@@ -3551,7 +3551,7 @@ public class FlatNodeGenFactory {
                     builder.declaration(sType, localName, CodeTreeBuilder.createBuilder().defaultValue(sType).build());
 
                     CodeTreeBuilder accessBuilder = builder.create();
-                    accessBuilder.startParantheses();
+                    accessBuilder.startParentheses();
 
                     CodeTree containsOnly = multiState.createContainsOnly(frameState, originalSourceTypes.indexOf(sType), 1,
                                     StateQuery.create(ImplicitCastState.class, typeGuard),
@@ -5006,16 +5006,6 @@ public class FlatNodeGenFactory {
                 setCacheInitialized(frameState, specialization, cache, true);
             }
 
-            // need to ensure that we update the implicit cast specializations on duplicates
-            if (updateImplicitCast != null) {
-                builder.startElseBlock();
-                stateTransaction = new StateTransaction();
-                builder.tree(createUpdateImplicitCastState(builder, frameState, stateTransaction, specialization));
-                builder.tree(multiState.createSet(frameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
-                builder.tree(multiState.persistTransaction(innerFrameState, stateTransaction));
-                builder.end();
-            }
-
             builder.startIf();
             if (useDuplicateFlag) {
                 builder.string(duplicateFoundName);
@@ -5023,6 +5013,36 @@ public class FlatNodeGenFactory {
                 builder.string(createSpecializationLocalName(specialization), " != null");
             }
             builder.end().startBlock();
+
+            /*
+             * Specialization data is published separately from the node state. A racy state write
+             * can erase activation after publication. Previously, generated duplicate reuse was:
+             *
+             * if (s0_ != null) {
+             *     return doCached(...);
+             * }
+             *
+             * Restore the activation state before reuse, generating:
+             *
+             * if (s0_ != null) {
+             *     int state_0_previous = state_0;
+             *     state_0 |= SPECIALIZATION_ACTIVE;
+             *     if (state_0_previous != state_0) {
+             *         persist(state_0);
+             *     }
+             *     return doCached(...);
+             * }
+             *
+             * Implicit-cast state updates use the same conditional transaction.
+             */
+            stateTransaction = new StateTransaction();
+            CodeTreeBuilder stateUpdates = builder.create();
+            CodeTree duplicateImplicitCastUpdate = createUpdateImplicitCastState(stateUpdates, frameState, stateTransaction, specialization);
+            if (duplicateImplicitCastUpdate != null) {
+                stateUpdates.tree(duplicateImplicitCastUpdate);
+            }
+            stateUpdates.tree(multiState.createSet(frameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
+            builder.tree(multiState.persistTransactionIfChanged(frameState, stateTransaction, stateUpdates.build()));
 
             builder.tree(createCallSpecialization(builder, frameState, executeAndSpecializeType, specialization));
             builder.end();
@@ -5049,20 +5069,24 @@ public class FlatNodeGenFactory {
 
     private static void validateDuplicateFlagUsage(SpecializationData specialization) throws AssertionError {
         for (CacheExpression cache : specialization.getCaches()) {
-            if (usesExclusiveInstanceField(cache)) {
-                throw new AssertionError("Using duplicate flag with cached reference fields is not thread-safe. " + specialization + ": " + cache);
+            if (usesSeparateCacheFieldInDuplicateCheck(cache)) {
+                throw new AssertionError("Using duplicate flag with a separately stored cached field is not thread-safe. " + specialization + ": " + cache);
             }
         }
     }
 
-    static boolean usesExclusiveInstanceField(CacheExpression cache) {
+    /*
+     * Returns whether duplicate detection checks cache initialization through a field that is
+     * stored separately from the specialization-active state. Always and eagerly initialized
+     * caches require no such check. Encoded enums are stored in the active-state bit set, and
+     * inlined caches manage their own state.
+     */
+    static boolean usesSeparateCacheFieldInDuplicateCheck(CacheExpression cache) {
         if (cache.isAlwaysInitialized()) {
             return false;
         } else if (cache.isEagerInitialize()) {
             return false;
         } else if (cache.isEncodedEnum()) {
-            return false;
-        } else if (cache.getSharedGroup() != null) {
             return false;
         } else if (cache.getInlinedNode() != null) {
             return false;
@@ -6208,14 +6232,14 @@ public class FlatNodeGenFactory {
             triples.addAll(initializeCasts(innerFrameState, group, guard.getExpression(), mode));
             IfTriple.materialize(builder, triples, true);
 
-            builder.startStatement();
-            builder.tree(stateRef.reference).string(" = ");
-            builder.tree(stateRef.bitSet.createSetExpression(stateRef.reference, query, true));
-            builder.end();
-
-            innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization(), false));
-
             if (useSpecializationClass(specialization)) {
+                builder.startStatement();
+                builder.tree(stateRef.reference).string(" = ");
+                builder.tree(stateRef.bitSet.createSetExpression(stateRef.reference, query, true));
+                builder.end();
+
+                innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization(), false));
+
                 CodeTreeBuilder b;
                 if (needsDuplicationCheck(specialization)) {
                     b = builder.create();
@@ -6251,6 +6275,12 @@ public class FlatNodeGenFactory {
                 b.end();
 
                 innerTriples.add(new IfTriple(null, null, b.build()));
+            } else {
+                /*
+                 * Node-level guard state is not published with a specialization class. Persist it
+                 * before evaluating the guard so every subsequent slow-path exit can use it.
+                 */
+                builder.tree(stateRef.bitSet.createSet(innerFrameState, query, true, true));
             }
 
             IfTriple.materialize(builder, innerTriples, true);
@@ -6901,7 +6931,7 @@ public class FlatNodeGenFactory {
                 targetType = variable.getResolvedType();
             }
             if (!isAssignable(sourceType, targetType)) {
-                resolved = CodeTreeBuilder.createBuilder().startParantheses().cast(targetType, resolved).end().build();
+                resolved = CodeTreeBuilder.createBuilder().startParentheses().cast(targetType, resolved).end().build();
             }
             resolvedBindings.put(variable, resolved);
         }
@@ -7422,7 +7452,7 @@ public class FlatNodeGenFactory {
                 CodeTree defaultValue = null;
                 prepareBuilder.declaration(context.getType(int.class), implicitStateName, defaultValue);
                 CodeTree specializeCall = TypeSystemCodeGenerator.implicitSpecializeFlat(typeSystem, targetType, valueReference);
-                checkBuilder.startParantheses();
+                checkBuilder.startParentheses();
                 checkBuilder.string(implicitStateName, " = ").tree(specializeCall);
                 checkBuilder.end();
                 checkBuilder.string(" != 0");

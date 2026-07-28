@@ -36,6 +36,7 @@ import com.oracle.svm.espresso.shared.resolver.ResolvedCall;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.shared.util.VMError;
 
 public final class CremaLinkResolver {
     private CremaLinkResolver() {
@@ -76,8 +77,7 @@ public final class CremaLinkResolver {
         try {
             return LinkResolver.resolveMethodSymbol(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
         } catch (LookupSuccessInvocationFailure e) {
-            // GR-70938 Somehow communicate to the caller this info.
-            return e.getResult();
+            throw VMError.shouldNotReachHere("Should be a synthetic method");
         }
     }
 
@@ -88,8 +88,7 @@ public final class CremaLinkResolver {
         try {
             return LinkResolver.resolveMethodSymbolOrNull(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
         } catch (LookupSuccessInvocationFailure e) {
-            // GR-70938 Somehow communicate to the caller this info.
-            return e.getResult();
+            throw VMError.shouldNotReachHere("Should be a synthetic method");
         }
     }
 

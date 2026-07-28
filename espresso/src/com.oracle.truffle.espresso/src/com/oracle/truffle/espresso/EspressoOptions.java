@@ -250,6 +250,12 @@ public final class EspressoOptions {
                     usageSyntax = "true|false") //
     public static final OptionKey<Boolean> ShowCodeDetailsInExceptionMessages = new OptionKey<>(true);
 
+    @Option(help = "Enable implicit interop.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableImplicitInterop = new OptionKey<>(true);
+
     public static List<Path> parsePaths(String paths) {
         List<Path> list = new ArrayList<>();
         for (String path : splitByFileSeparator(paths)) {

@@ -59,7 +59,7 @@ import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.pltgot.aarch64.AArch64HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.amd64.AMD64HostedPLTGOTConfiguration;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -123,7 +123,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * depending on the workload for the default configuration.
  * </ul>
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class PLTGOTFeature implements InternalFeature {
 
     private RelocatableBuffer gotBuffer;
@@ -141,12 +141,16 @@ public class PLTGOTFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(PLTGOTFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class),
                         "PLT and GOT is currently only supported on Linux, Darwin and Windows.");
         VMError.guarantee(Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.AMD64.class), "PLT and GOT is currently only supported on AArch64 and AMD64.");
         VMError.guarantee(!RuntimeCompilation.isEnabled(), "PLT and GOT is currently not supported with runtime compilation.");
-        VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "PLT and GOT cannot work without isolates.");
         VMError.guarantee("lir".equals(SubstrateOptions.CompilerBackend.getValue()), "PLT and GOT cannot work with a custom compiler backend.");
 
         ImageSingletons.add(PLTGOTConfiguration.class, createConfiguration());
@@ -236,11 +240,10 @@ public class PLTGOTFeature implements InternalFeature {
         // already been emitted.
         methodsForDirectGOTRelocation = null;
 
-        objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false);
-        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_BEGIN_SYMBOL_NAME, gotSection, 0, wordSize, false,
-                        SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionExtent.endOffset(), wordSize, false,
-                        SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+        objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false, false);
+        boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_BEGIN_SYMBOL_NAME, gotSection, 0, wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
+        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionExtent.endOffset(), wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
 
         if (PLTGOTOptions.PrintGOT.getValue()) {
             ReportUtils.report("GOT Section contents", SubstrateOptions.reportsPath(), "got", "txt", writer -> {

@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.StringUtil;

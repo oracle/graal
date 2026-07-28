@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,11 @@ final class PolyglotLimits {
         this.statementLimit = statementLimit;
         this.statementLimitSourcePredicate = statementLimitSourcePredicate;
         this.onEvent = onEvent;
+    }
+
+    @Override
+    public String toString() {
+        return "ResourceLimits[statementLimit=" + statementLimit + ", sourceFilter=" + statementLimitSourcePredicate + ", onLimit=" + onEvent + "]";
     }
 
     static void reset(PolyglotContextImpl context) {

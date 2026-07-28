@@ -45,8 +45,8 @@ import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.math.BigInteger;
 import java.time.Duration;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -284,6 +284,9 @@ public final class SandboxContext {
         }
 
         Duration timeLimit = values.get(MaxCPUTime);
+        if (Duration.ZERO.equals(timeLimit)) {
+            timeLimit = null;
+        }
         if (timeLimit != null) {
             long time = -1;
             RuntimeException cause = null;
@@ -756,12 +759,16 @@ public final class SandboxContext {
                         throw invalidValue(t);
                     }
                     String subString = t.substring(0, t.length() - foundUnitName.length());
-                    long value = Long.parseLong(subString);
-                    if (value < 0) {
+                    BigInteger value = new BigInteger(subString);
+                    if (value.signum() < 0) {
                         throw invalidValue(t);
                     }
-                    return Duration.of(value, foundUnit);
-                } catch (NumberFormatException | ArithmeticException | DateTimeParseException e) {
+                    BigInteger millis = value.multiply(BigInteger.valueOf(foundUnit.getDuration().toMillis()));
+                    if (millis.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+                        throw valueTooHigh(t);
+                    }
+                    return Duration.of(value.longValue(), foundUnit);
+                } catch (NumberFormatException | ArithmeticException e) {
                     throw invalidValue(t);
                 }
             }
@@ -791,6 +798,11 @@ public final class SandboxContext {
                                 + "'m' for minutes, " //
                                 + "'h' for hours, and " //
                                 + "'d' for days.");
+            }
+
+            private IllegalArgumentException valueTooHigh(String value) {
+                throw new IllegalArgumentException("Invalid duration '" + value +
+                                "' specified. The duration exceeds Long.MAX_VALUE milliseconds, which is already roughly 292 million years.");
             }
         });
     }

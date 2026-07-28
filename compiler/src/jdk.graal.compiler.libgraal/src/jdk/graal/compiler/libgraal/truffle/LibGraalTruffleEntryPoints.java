@@ -105,18 +105,6 @@ public class LibGraalTruffleEntryPoints {
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_registerRuntime", include = LibGraalFeature.IsEnabled.class)
     @TruffleToLibGraal(Id.RegisterRuntime)
-    public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, JObject truffleRuntime) {
-        try (JNIMethodScope s = openScope(Id.RegisterRuntime, env)) {
-            throw new UnsupportedOperationException("Operation not supported on Graal compiler 25.1 and later");
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-            return false;
-        }
-    }
-
-    @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls3_registerRuntime", include = LibGraalFeature.IsEnabled.class)
-    @TruffleToLibGraal(Id.RegisterRuntime)
     public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, JObject truffleRuntime,
                     JObject javaInstrumentationActive) {
         try (JNIMethodScope s = openScope(Id.RegisterRuntime, env)) {
@@ -131,19 +119,6 @@ public class LibGraalTruffleEntryPoints {
 
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeRuntime", include = LibGraalFeature.IsEnabled.class)
-    @TruffleToLibGraal(Id.InitializeRuntime)
-    public static long initializeRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress,
-                    JObject truffleRuntime, JClass hsClassLoaderDelegate) {
-        try (JNIMethodScope s = openScope(Id.InitializeRuntime, env)) {
-            throw new UnsupportedOperationException("Operation not supported on Graal compiler 25.1 and later");
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-            return 0L;
-        }
-    }
-
-    @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls3_initializeRuntime", include = LibGraalFeature.IsEnabled.class)
     @TruffleToLibGraal(Id.InitializeRuntime)
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress,
                     JObject truffleRuntime, JClass hsClassLoaderDelegate, JObject javaInstrumentationActive) {
@@ -352,7 +327,7 @@ public class LibGraalTruffleEntryPoints {
         return JNIUtil.NewGlobalRef(env, JNIUtil.findClass(env, "java/lang/String"), "Class<java.lang.String>");
     }
 
-    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls2_getCompilationId", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getCompilationId", include = LibGraalFeature.IsEnabled.class)
     @SuppressWarnings({"unused", "try"})
     @TruffleToLibGraal(Id.GetCompilationId)
     public static long getCompilationId(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, long handle) {

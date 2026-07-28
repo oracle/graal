@@ -46,7 +46,7 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * and immutability registration.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class BytecodeHandlerFeature implements InternalFeature {
 
     public static class Options {
@@ -101,6 +101,11 @@ public final class BytecodeHandlerFeature implements InternalFeature {
 
     public static boolean isTailCallThreadingEnabled() {
         return Options.BytecodeInterpreterTailCallThreading.getValue();
+    }
+
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(BytecodeHandlerFeature.class, this);
     }
 
     public boolean isBytecodeHandler(ResolvedJavaMethod method) {

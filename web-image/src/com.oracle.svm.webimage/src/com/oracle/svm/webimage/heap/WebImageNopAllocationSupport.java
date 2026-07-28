@@ -30,7 +30,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -46,7 +46,7 @@ import jdk.graal.compiler.debug.GraalError;
  * <p>
  * None of the methods in this class should ever be called or make it into the image.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageNopAllocationSupport implements GCAllocationSupport {
     @Override
     public ForeignCallDescriptor getNewInstanceStub() {

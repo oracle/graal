@@ -30,20 +30,21 @@ import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
-import com.oracle.svm.core.RuntimeRandomness;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.core.RuntimeRandomness;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -247,8 +248,11 @@ public abstract class SubstrateBackend extends Backend {
 
     public abstract BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache);
 
+    public record CremaJNITrampolineData(ResolvedJavaMethod wrapperMethod, CallVariant callVariant) {
+    }
+
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset);
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData);
 
     /**
      * Returns whether the backend can fold the stack overflow check into the method prologue for

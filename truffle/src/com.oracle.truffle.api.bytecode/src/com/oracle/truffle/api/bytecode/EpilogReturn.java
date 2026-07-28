@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,8 +59,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * <p>
  * The return epilog is guarded by exception intercept methods (e.g.,
  * {@link BytecodeRootNode#interceptInternalException(Throwable, VirtualFrame, BytecodeNode, int)})
- * as well as any language-level exception handlers guarding the return, including the
- * {@link EpilogExceptional exceptional epilog}, if present.
+ * and by the {@link EpilogExceptional exceptional epilog}, if present. It is not guarded by
+ * user-defined language-level exception handlers that guard the return operation.
  *
  * @since 24.2
  * @see EpilogExceptional

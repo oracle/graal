@@ -85,6 +85,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Handles JDWP commands inside the debuggee isolate. Object ids are weak by default, so values that
+ * are materialized for the debugger, such as created strings or invoke results, may need a separate
+ * temporary hold until the debugger disposes them or explicitly changes their collection state.
+ */
 public final class ResidentJDWP implements JDWP {
 
     private static final boolean LOGGING = false;
@@ -95,7 +100,7 @@ public final class ResidentJDWP implements JDWP {
      * Holds debugger-created objects without changing JDWP DisableCollection/EnableCollection
      * reference counts.
      */
-    private static final ConcurrentHashMap<Long, Object> debuggerCreatedObjects = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, DebuggerCreatedObject> debuggerCreatedObjects = new ConcurrentHashMap<>();
 
     public ResidentJDWP() {
     }
@@ -122,11 +127,32 @@ public final class ResidentJDWP implements JDWP {
         return new ReferenceValue(objectId, value);
     }
 
+    private record DebuggerCreatedObject(Object object, int holdCount) {
+    }
+
     private static void holdDebuggerCreatedObject(long objectId, Object object) {
-        debuggerCreatedObjects.put(objectId, object);
+        debuggerCreatedObjects.compute(objectId, (id, oldValue) -> {
+            assert id == objectId;
+            if (oldValue == null) {
+                return new DebuggerCreatedObject(object, 1);
+            }
+            return new DebuggerCreatedObject(oldValue.object, oldValue.holdCount + 1);
+        });
     }
 
     private static void releaseDebuggerCreatedObject(long objectId) {
+        releaseDebuggerCreatedObject(objectId, 1);
+    }
+
+    private static void releaseDebuggerCreatedObject(long objectId, int releaseCount) {
+        debuggerCreatedObjects.computeIfPresent(objectId, (id, oldValue) -> {
+            assert id == objectId;
+            int newHoldCount = oldValue.holdCount - releaseCount;
+            return newHoldCount > 0 ? new DebuggerCreatedObject(oldValue.object, newHoldCount) : null;
+        });
+    }
+
+    private static void releaseAllDebuggerCreatedObjectHolds(long objectId) {
         debuggerCreatedObjects.remove(objectId);
     }
 
@@ -371,6 +397,15 @@ public final class ResidentJDWP implements JDWP {
         writer.writeLong(JDWPBridgeImpl.getIds().getIdOrCreateWeak(value));
     }
 
+    private static void writeTaggedDebuggerCreatedObject(Packet.Writer writer, Object value) {
+        writer.writeByte(TagConstants.getTagFromReference(value));
+        long objectId = JDWPBridgeImpl.getIds().getIdOrCreateWeak(value);
+        writer.writeLong(objectId);
+        if (value != null) {
+            holdDebuggerCreatedObject(objectId, value);
+        }
+    }
+
     @Override
     public Packet VirtualMachine_AllThreads(Packet packet) throws JDWPException {
         WritablePacket reply = WritablePacket.newReplyTo(packet);
@@ -445,7 +480,7 @@ public final class ResidentJDWP implements JDWP {
             long objectId = input.readLong();
             int refCount = input.readInt();
             JDWPBridgeImpl.getIds().enableCollection(objectId, refCount, true);
-            releaseDebuggerCreatedObject(objectId);
+            releaseDebuggerCreatedObject(objectId, refCount);
         }
 
         return WritablePacket.newReplyTo(packet);
@@ -460,7 +495,7 @@ public final class ResidentJDWP implements JDWP {
         if (!success) {
             throw JDWPException.raise(ErrorCode.INVALID_OBJECT);
         }
-        releaseDebuggerCreatedObject(objectId);
+        releaseAllDebuggerCreatedObjectHolds(objectId);
         return WritablePacket.newReplyTo(packet);
     }
 
@@ -473,7 +508,7 @@ public final class ResidentJDWP implements JDWP {
         if (!success) {
             throw JDWPException.raise(ErrorCode.INVALID_OBJECT);
         }
-        releaseDebuggerCreatedObject(objectId);
+        releaseAllDebuggerCreatedObjectHolds(objectId);
         return WritablePacket.newReplyTo(packet);
     }
 
@@ -1172,8 +1207,8 @@ public final class ResidentJDWP implements JDWP {
                         throw JDWPException.raise(ErrorCode.TYPE_MISMATCH);
                     }
                     InterpreterToVM.setArrayObject(value, i, (Object[]) array);
-                    releaseDebuggerCreatedObject(referenceValue.objectId);
                 } finally {
+                    releaseDebuggerCreatedObject(referenceValue.objectId);
                     // Keep debugger-provided object values live through validation and the array write.
                     Reference.reachabilityFence(value);
                 }
@@ -1785,8 +1820,7 @@ public final class ResidentJDWP implements JDWP {
             throw JDWPException.raise(ErrorCode.ILLEGAL_ARGUMENT);
         }
 
-        assert !field.isUndefined() && !field.isUnmaterializedConstant() //
-                        : "Cannot write undefined or unmaterialized field " + field;
+        assert !field.isUndefined() && !field.isUnmaterializedConstant() : "Cannot write undefined or unmaterialized field " + field;
 
         if (field.isWordStorage()) {
             switch (SubstrateTarget.getWordKind()) {
@@ -1820,8 +1854,8 @@ public final class ResidentJDWP implements JDWP {
                         }
                     }
                     InterpreterToVM.setFieldObject(value, receiver, field);
-                    releaseDebuggerCreatedObject(referenceValue.objectId);
                 } finally {
+                    releaseDebuggerCreatedObject(referenceValue.objectId);
                     // Keep debugger-provided object values live through validation and the field write.
                     Reference.reachabilityFence(value);
                 }
@@ -2044,6 +2078,14 @@ public final class ResidentJDWP implements JDWP {
         }
     }
 
+    private static void writeTaggedDebuggerCreatedValue(Packet.Writer writer, Object value, JavaKind valueKind) {
+        if (valueKind == JavaKind.Object) {
+            writeTaggedDebuggerCreatedObject(writer, value);
+        } else {
+            writeTaggedValue(writer, value, valueKind);
+        }
+    }
+
     /**
      * Ensures that a given condition is true, throwing a {@link JDWPException} with the provided
      * {@link ErrorCode error code} otherwise. Before throwing the {@link JDWPException exception},
@@ -2090,9 +2132,9 @@ public final class ResidentJDWP implements JDWP {
         if (throwable != null) {
             writeTaggedObject(writer, null);
         } else {
-            writeTaggedValue(writer, value, returnValueKind);
+            writeTaggedDebuggerCreatedValue(writer, value, returnValueKind);
         }
-        writeTaggedObject(writer, throwable);
+        writeTaggedDebuggerCreatedObject(writer, throwable);
         return reply;
     }
 
@@ -2103,11 +2145,11 @@ public final class ResidentJDWP implements JDWP {
         Thread thread = readThread(reader);
         InterpreterResolvedJavaMethod method = readMethod(reader);
         Arguments args = readArguments(reader);
-        @SuppressWarnings("unused")
-        int options = reader.readInt();
-        assert reader.isEndOfInput();
-
         try {
+            @SuppressWarnings("unused")
+            int options = reader.readInt();
+            assert reader.isEndOfInput();
+
             require(thread == Thread.currentThread(), ErrorCode.ILLEGAL_ARGUMENT, "method invocation only supports current/same thread");
             require(method.isStatic(), ErrorCode.ILLEGAL_ARGUMENT, "method must be static %s", method);
             require(type.equals(method.getDeclaringClass()), ErrorCode.ILLEGAL_ARGUMENT, "method declaring type %s and type %s differ", method.getDeclaringClass(), type);
@@ -2127,11 +2169,11 @@ public final class ResidentJDWP implements JDWP {
         Thread thread = readThread(reader);
         InterpreterResolvedJavaMethod method = readMethod(reader);
         Arguments args = readArguments(reader);
-        @SuppressWarnings("unused")
-        int options = reader.readInt();
-        assert reader.isEndOfInput();
-
         try {
+            @SuppressWarnings("unused")
+            int options = reader.readInt();
+            assert reader.isEndOfInput();
+
             require(!method.isClassInitializer(), ErrorCode.ILLEGAL_ARGUMENT, "method cannot be a static initializer %s", method);
             require(method.isStatic(), ErrorCode.ILLEGAL_ARGUMENT, "method must be be static %s", method);
             require(type.equals(method.getDeclaringClass()), ErrorCode.ILLEGAL_ARGUMENT, "method declaring type %s and type %s differ", method.getDeclaringClass(), type);
@@ -2151,15 +2193,16 @@ public final class ResidentJDWP implements JDWP {
         Packet.Reader reader = packet.newDataReader();
         ReferenceValue receiverValue = readReferenceValue(reader);
         Object receiver = receiverValue.value;
-        Thread thread = readThread(reader);
-        @SuppressWarnings("unused")
-        InterpreterResolvedJavaType type = readType(reader);
-        InterpreterResolvedJavaMethod method = readMethod(reader);
-        Arguments argsWithoutReceiver = readArguments(reader);
-        int options = reader.readInt();
-        assert reader.isEndOfInput();
-
+        Arguments argsWithoutReceiver = null;
         try {
+            Thread thread = readThread(reader);
+            @SuppressWarnings("unused")
+            InterpreterResolvedJavaType type = readType(reader);
+            InterpreterResolvedJavaMethod method = readMethod(reader);
+            argsWithoutReceiver = readArguments(reader);
+            int options = reader.readInt();
+            assert reader.isEndOfInput();
+
             require(receiver != null, ErrorCode.ILLEGAL_ARGUMENT, "receiver is null");
             require(!method.isStatic(), ErrorCode.ILLEGAL_ARGUMENT, "method cannot be static %s", method);
             require(method.getDeclaringClass().isAssignableFrom(type), ErrorCode.ILLEGAL_ARGUMENT,
@@ -2173,7 +2216,9 @@ public final class ResidentJDWP implements JDWP {
         } finally {
             releaseDebuggerCreatedObject(receiverValue.objectId);
             Reference.reachabilityFence(receiver);
-            argsWithoutReceiver.releaseDebuggerCreatedObjects();
+            if (argsWithoutReceiver != null) {
+                argsWithoutReceiver.releaseDebuggerCreatedObjects();
+            }
         }
     }
 
@@ -2184,11 +2229,11 @@ public final class ResidentJDWP implements JDWP {
         Thread thread = readThread(reader);
         InterpreterResolvedJavaMethod method = readMethod(reader);
         Arguments argsWithoutReceiver = readArguments(reader);
-        @SuppressWarnings("unused")
-        int options = reader.readInt();
-        assert reader.isEndOfInput();
-
         try {
+            @SuppressWarnings("unused")
+            int options = reader.readInt();
+            assert reader.isEndOfInput();
+
             require(!type.isPrimitive(), ErrorCode.ILLEGAL_ARGUMENT, "invalid primitive type %s", type);
             require(!type.isArray(), ErrorCode.ILLEGAL_ARGUMENT, "invalid array type %s", type);
             require(!type.isAbstract(), ErrorCode.ILLEGAL_ARGUMENT, "invalid abstract type %s", type);

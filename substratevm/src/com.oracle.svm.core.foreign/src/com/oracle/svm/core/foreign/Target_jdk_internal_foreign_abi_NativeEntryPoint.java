@@ -27,9 +27,12 @@ package com.oracle.svm.core.foreign;
 import java.lang.invoke.MethodType;
 
 import org.graalvm.nativeimage.MissingForeignRegistrationError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -58,7 +61,8 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.Custom, declClass = DowncallAddressTransformer.class) //
     final CFunctionPointer downcallStubPointer;
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Inject //
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.Custom, declClass = CaptureMaskTransformer.class) //
     final int captureMask;
 
     @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.Custom, declClass = DowncallInvokerAddressTransformer.class) //
@@ -107,6 +111,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         return methodType;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static final class MethodTypeTransformer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -115,6 +120,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static final class DowncallAddressTransformer implements FieldValueTransformer {
         private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
 
@@ -141,6 +147,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static final class DowncallInvokerAddressTransformer implements FieldValueTransformer {
         private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
 
@@ -152,6 +159,18 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
             } catch (MissingForeignRegistrationError e) {
                 throw DowncallAddressTransformer.rethrowMissingForeignRegistrationError(e);
             }
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static final class CaptureMaskTransformer implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            assert receiver.getClass() == NativeEntryPoint.class;
+            JavaConstant nativeEntryPoint = GuestAccess.get().getSnippetReflection().forObject(receiver);
+            JavaConstant cacheKeyConstant = NativeEntryPointHelper.findCacheKey(nativeEntryPoint);
+            VMError.guarantee(cacheKeyConstant != null, "Cannot extract capture mask for NativeEntryPoint because it is not in NEP_CACHE");
+            return NativeEntryPointHelper.readCapturedStateMask(cacheKeyConstant);
         }
     }
 }

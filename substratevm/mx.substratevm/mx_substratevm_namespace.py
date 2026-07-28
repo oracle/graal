@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ qualify_with_namespace = {"swap", "CardTableBarrierSet", "G1BarrierSet", "tty", 
 
 # Some files must not have the namespace added, as they are included within a class definition. Normally includes
 # need to be outside the namespace, but the includes of these files need to be inside the namespace.
-ignore_files = {"copy_x86.hpp", "copy_aarch64.hpp", "osThread_linux.hpp"}
+ignore_files = {"copy_x86.hpp", "copy_aarch64.hpp", "copy_windows_x86.hpp"}
 ignore_includes = {"CPU_HEADER(copy)", "OS_HEADER(osThread)"}
 
 files_with_cpp_guard = {"sharedGCStructs.h", "g1GCStructs.h"}
@@ -82,6 +82,8 @@ def svm_add_namespace(args):
 
             if not os.path.isfile(file):
                 print(f"Skipping {file}. File does not exist.")
+            elif os.path.basename(file) in ignore_files:
+                print(f"Ignore file: {file}")
             else:
                 add_namespace_to_file(file, os.path.basename(file) in files_with_cpp_guard, namespaceName)
 
@@ -370,70 +372,43 @@ def svm_remove_namespace(args):
             if not os.path.isfile(file):
                 print(f"Skipping {file}. File does not exist.")
             else:
-                remove_namespace_from_file(file, os.path.basename(file) in files_with_cpp_guard, namespaceName)
+                remove_namespace_from_file(file, namespaceName)
 
 
 def remove_namespace(svmRootDirectory, namespaceName):
     for subdir, _, files in os.walk(svmRootDirectory):
         for file in files:
             if is_c_file(file):
-
-                if file not in ignore_files:
-                    print(f"Remove namespace from {os.path.join(subdir, file)}")
-                    remove_namespace_from_file(os.path.join(subdir, file), file in files_with_cpp_guard, namespaceName)
-
-                else:
-                    print(f"Ignore file: {os.path.join(subdir, file)}")
+                print(f"Remove namespace from {os.path.join(subdir, file)}")
+                remove_namespace_from_file(os.path.join(subdir, file), namespaceName)
 
 
-def remove_namespace_from_file(file, add_cpp_guard, namespaceName):
+def remove_namespace_from_file(file, namespaceName):
     with open(file, encoding='utf-8') as f:
         lines = f.readlines()
 
     namespace_open = False
-
-    if add_cpp_guard:
-        begin = f"  namespace {namespaceName} {{"
-        end = f"  }} // namespace {namespaceName}"
-    else:
-        begin = f"namespace {namespaceName} {{"
-        end = f"}} // namespace {namespaceName}"
+    namespace_depth = 0
+    allow_bare_end = os.path.basename(file) in ignore_files
+    begin = re.compile(rf"^\s*namespace\s+{re.escape(namespaceName)}\s*\{{\s*$")
+    end = re.compile(rf"^\s*}}\s*//\s*namespace\s+{re.escape(namespaceName)}\s*$")
 
     for i in range(len(lines)):
         if not namespace_open:
-            assert not lines[i].startswith(end)
-
-            if lines[i].startswith(begin):
+            if begin.match(lines[i]):
                 namespace_open = True
+                namespace_depth = 1
                 print(f"  start {i}", end="")
 
-                lines[i] = ""
-
-                if add_cpp_guard:
-                    lines[i - 1] = ""
-                    lines[i + 1] = ""
-                    lines[i - 2] = remove_if_newline(lines[i - 2])
-                    lines[i + 2] = remove_if_newline(lines[i + 2])
-                else:
-                    lines[i - 1] = remove_if_newline(lines[i - 1])
-                    lines[i + 1] = remove_if_newline(lines[i + 1])
+                remove_namespace_delimiter(lines, i)
         else:
-            assert not lines[i].startswith(begin)
-
-            if lines[i].startswith(end):
+            assert not begin.match(lines[i])
+            namespace_depth += lines[i].count("{") - lines[i].count("}")
+            if end.match(lines[i]) or (allow_bare_end and namespace_depth == 0):
                 namespace_open = False
                 print(f", end {i}")
 
-                lines[i] = ""
-
-                if add_cpp_guard:
-                    lines[i - 1] = ""
-                    lines[i + 1] = ""
-                    lines[i - 2] = remove_if_newline(lines[i - 2])
-                    lines[i + 2] = remove_if_newline(lines[i + 2])
-                else:
-                    lines[i - 1] = remove_if_newline(lines[i - 1])
-                    lines[i + 1] = remove_if_newline(lines[i + 1])
+                remove_namespace_delimiter(lines, i)
 
         pattern = re.compile(f"{namespaceName}::\\w")
         match = pattern.search(lines[i])
@@ -442,9 +417,29 @@ def remove_namespace_from_file(file, add_cpp_guard, namespaceName):
             lines[i] = lines[i][:match.start()] + lines[i][match.start() + len(namespaceName):]
             match = pattern.search(lines[i])
 
+    assert not namespace_open, f"Unclosed namespace {namespaceName} in {file}"
+
     with open(file, 'w', encoding='utf-8') as sf:
         for line in lines:
             sf.write(line)
+
+
+def remove_namespace_delimiter(lines, index):
+    lines[index] = ""
+
+    before = index - 1
+    after = index + 1
+    has_cpp_guard = before >= 0 and after < len(lines) and lines[before].strip() == "#ifdef __cplusplus" and lines[after].strip() == "#endif"
+    if has_cpp_guard:
+        lines[before] = ""
+        lines[after] = ""
+        before -= 1
+        after += 1
+
+    if before >= 0:
+        lines[before] = remove_if_newline(lines[before])
+    if after < len(lines):
+        lines[after] = remove_if_newline(lines[after])
 
 
 def remove_if_newline(line):

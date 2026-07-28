@@ -31,7 +31,7 @@ import org.graalvm.webimage.api.ThrownFromJavaScript;
 
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -46,7 +46,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 
 @AutomaticallyRegisteredImageSingleton(JSConversion.class)
 @Platforms(WebImageWasmGCPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WasmGCJSConversion extends JSConversion {
     public static final WasmForeignCallDescriptor SET_JS_NATIVE = new WasmForeignCallDescriptor("setJSNative", void.class, new Class<?>[]{JSValue.class, WasmExtern.class});
     public static final WasmForeignCallDescriptor EXTRACT_JS_NATIVE = new WasmForeignCallDescriptor("extractJSNative", WasmExtern.class, new Class<?>[]{JSValue.class});

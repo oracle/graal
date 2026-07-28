@@ -25,9 +25,12 @@
 package jdk.graal.compiler.phases.common.inlining.walker;
 
 import java.util.BitSet;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
+import jdk.graal.compiler.phases.common.inlining.DirectedInliningRules;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import jdk.graal.compiler.phases.common.inlining.policy.AbstractInliningPolicy;
 import org.graalvm.collections.EconomicSet;
@@ -40,6 +43,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * <p>
@@ -67,6 +71,16 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     private final LinkedList<Invoke> remainingInvokes;
     private final double probability;
     private final double relevance;
+    /**
+     * BCI of the invoke in the compilation root that produced {@link #graph}. This is inherited by
+     * every nested graph reached from this holder and is distinct from the BCI of invokes in
+     * {@link #remainingInvokes}.
+     */
+    private final int rootInvokeBci;
+    private final DirectedInliningRules.Callsite[] callsites;
+    private final ResolvedJavaMethod ruleMethod;
+    private final ResolvedJavaType receiverType;
+    private final ResolvedJavaMethod concreteMethod;
 
     /**
      * @see #getFixedParams()
@@ -76,11 +90,30 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     private final ToDoubleFunction<FixedNode> probabilities;
     private final ComputeInliningRelevance computeInliningRelevance;
 
-    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments, LinkedList<Invoke> invokes) {
+    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments,
+                    LinkedList<Invoke> invokes, int rootInvokeBci) {
+        this(graph, probability, relevance, freshlyInstantiatedArguments, invokes, rootInvokeBci, DirectedInliningRules.EMPTY_CALLSITES,
+                        graph.method(), null, graph.method());
+    }
+
+    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments,
+                    LinkedList<Invoke> invokes, int rootInvokeBci, DirectedInliningRules.Callsite[] callsites) {
+        this(graph, probability, relevance, freshlyInstantiatedArguments, invokes, rootInvokeBci, callsites,
+                        graph.method(), null, graph.method());
+    }
+
+    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments,
+                    LinkedList<Invoke> invokes, int rootInvokeBci, DirectedInliningRules.Callsite[] callsites,
+                    ResolvedJavaMethod ruleMethod, ResolvedJavaType receiverType, ResolvedJavaMethod concreteMethod) {
         assert graph != null;
         this.graph = graph;
         this.probability = probability;
         this.relevance = relevance;
+        this.rootInvokeBci = rootInvokeBci;
+        this.callsites = callsites;
+        this.ruleMethod = ruleMethod;
+        this.receiverType = receiverType;
+        this.concreteMethod = concreteMethod;
         this.fixedParams = fixedParamsAt(freshlyInstantiatedArguments);
         remainingInvokes = invokes == null ? new InliningIterator(graph).apply() : invokes;
         if (remainingInvokes.isEmpty()) {
@@ -131,6 +164,40 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
         return fixedParams;
     }
 
+    /**
+     * Returns the compilation-root invoke BCI for directed rule matching. For the root graph itself,
+     * this is the directed-inlining sentinel until a concrete root invoke is selected.
+     */
+    public int rootInvokeBci() {
+        return rootInvokeBci;
+    }
+
+    /**
+     * Returns the complete caller-edge path that produced this graph.
+     */
+    public DirectedInliningRules.Callsite[] callsites() {
+        return callsites;
+    }
+
+    public ResolvedJavaMethod callerMethod(Invoke invoke) {
+        return callsites.length == 0 ? DirectedInliningRules.callerMethod(invoke, method()) : method();
+    }
+
+    public int rootInvokeBci(Invoke invoke) {
+        return DirectedInliningRules.rootInvokeBci(invoke, rootInvokeBci);
+    }
+
+    public DirectedInliningRules.Callsite[] callsitePath(Invoke invoke) {
+        if (callsites.length == 0) {
+            return DirectedInliningRules.rootGraphCallsites(invoke, callerMethod(invoke));
+        }
+        return DirectedInliningRules.append(callsites, currentCallsite(invoke.bci()));
+    }
+
+    public DirectedInliningRules.Callsite currentCallsite(int bci) {
+        return new DirectedInliningRules.Callsite(ruleMethod, receiverType, concreteMethod, bci);
+    }
+
     public boolean repOK() {
         for (Invoke invoke : remainingInvokes) {
             if (!invoke.asNode().isAlive() || !containsInvoke(invoke)) {
@@ -161,6 +228,15 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
         return !remainingInvokes.isEmpty();
     }
 
+    public boolean hasRemainingInvokes(Predicate<Invoke> predicate) {
+        for (Invoke invoke : remainingInvokes) {
+            if (predicate.test(invoke)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public StructuredGraph graph() {
         return graph;
@@ -168,6 +244,18 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
 
     public Invoke popInvoke() {
         return remainingInvokes.removeFirst();
+    }
+
+    public Invoke popInvoke(Predicate<Invoke> predicate) {
+        Iterator<Invoke> iterator = remainingInvokes.iterator();
+        while (iterator.hasNext()) {
+            Invoke invoke = iterator.next();
+            if (predicate.test(invoke)) {
+                iterator.remove();
+                return invoke;
+            }
+        }
+        return null;
     }
 
     public void pushInvoke(Invoke invoke) {

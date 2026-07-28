@@ -55,7 +55,8 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
 
 /**
  * Defines a constant operand for an operation. Constant operands are supported for
- * {@link Operation}, {@link Instrumentation}, {@link Yield}, and {@link Prolog} operations.
+ * {@link Operation}, {@link Instrumentation}, {@link Yield}, {@link Return}, and {@link Prolog}
+ * operations.
  * <p>
  * Constant operands have a few benefits:
  * <ul>

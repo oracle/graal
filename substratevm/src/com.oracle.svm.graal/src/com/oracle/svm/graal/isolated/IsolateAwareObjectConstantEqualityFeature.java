@@ -88,11 +88,10 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.supportCompileInIsolates();
+        return SubstrateOptions.SupportCompileInIsolates.getValue();
     }
 
     @Override

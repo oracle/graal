@@ -22,32 +22,32 @@
  */
 package com.oracle.truffle.espresso.substitutions.standard;
 
-import com.oracle.truffle.espresso.substitutions.DisableSignals;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.substitutions.UseNativeThreadSubstitutions;
 
 @EspressoSubstitutions
 public final class Target_sun_nio_ch_NativeThread {
-    /*
-     * This doesn't exist on Windows, it just won't match
-     */
 
-    @Substitution(languageFilter = DisableSignals.StandardFilter.class)
+    /**
+     * This doesn't exist on Windows, it just won't match.
+     */
+    @Substitution(languageFilter = UseNativeThreadSubstitutions.InitFilter.class)
     public static void init() {
     }
 
-    @Substitution(languageFilter = DisableSignals.Version21orLaterFilter.class)
+    @Substitution(languageFilter = UseNativeThreadSubstitutions.Version21orLaterFilter.class)
     @SuppressWarnings("unused")
     public static boolean isNativeThread(long tid) {
         return false;
     }
 
-    @Substitution(languageFilter = DisableSignals.Version21orLaterFilter.class)
+    @Substitution(languageFilter = UseNativeThreadSubstitutions.Version21orLaterFilter.class)
     public static long current0() {
         return 0;
     }
 
-    @Substitution(languageFilter = DisableSignals.Version17orEarlierFilter.class)
+    @Substitution(languageFilter = UseNativeThreadSubstitutions.Version17orEarlierFilter.class)
     @SuppressWarnings("unused")
     public static void signal(long nt) {
     }

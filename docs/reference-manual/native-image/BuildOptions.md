@@ -30,7 +30,12 @@ For more information describing how to define and use these options, read the [`
 
 ## Build Options
 
-Run `native-image --print-options` to generate a table of the available options like this one below:
+Run `native-image --print-options` to generate a table of the available options like this one below.
+
+The `--enable-http`, `--enable-https`, and `--enable-url-protocols` options are deprecated.
+Use reachability metadata instead.
+These deprecated URL protocol options are omitted from the generated table; see [URL Protocols in Native Image](URLProtocols.md).
+
 <!-- BEGIN: build-options-table -->
 | Command | Type | Description | Default | Usage |
 |---------|------|-------------|---------|-------|
@@ -40,16 +45,13 @@ Run `native-image --print-options` to generate a table of the available options 
 | `--color` | String | color build output ('always', 'never', or 'auto') | None | `--color=color` |
 | `--emit` | String | emit additional data as a result of the build. Use 'build-report' to emit a detailed Build Report, for example: '--emit build-report' or '--emit build-report=/tmp/report.html' | None | `--emit=emit` |
 | `--enable-all-security-services` | String | add all security service classes to the generated image. | None | `--enable-all-security-services=enable-all-security-services` |
-| `--enable-http` | String | enable http support in the generated image | http | `--enable-http=enable-http` |
-| `--enable-https` | String | enable https support in the generated image | https | `--enable-https=enable-https` |
 | `--enable-monitoring` | String | enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', 'jmxserver' (experimental), 'jmxclient' (experimental), 'threaddump', 'nmt' (experimental), 'jcmd' (experimental), or 'all' (deprecated behavior: defaults to 'all' if no argument is provided). For example: '--enable-monitoring=heapdump,jfr'. | <deprecated-default> | `--enable-monitoring=enable-monitoring` |
 | `--enable-native-access` | String | a comma-separated list of modules that are permitted to perform restricted native operations. The module name can also be ALL-UNNAMED. | None | `--enable-native-access=enable-native-access` |
 | `--enable-sbom` | String | assemble a Software Bill of Materials (SBOM) for the executable or shared library based on the results from the static analysis. Comma-separated list can contain 'embed' to store the SBOM in data sections of the binary, 'export' to save the SBOM in the output directory, 'classpath' to include the SBOM as a Java resource on the classpath at 'META-INF/native-image/sbom.json', 'hashes' to include component hashes, 'strict' to abort the build if any type (such as a class, interface, or annotation) cannot be matched to an SBOM component or if a component hash could not be created, 'cyclonedx' (the only format currently supported), and 'class-level' to include class-level metadata. Defaults to embedding an SBOM: '--enable-sbom=embed'. To disable the SBOM feature, use '--enable-sbom=false' on the command line. | embed | `--enable-sbom=--enable-sbom` |
-| `--enable-url-protocols` | String | list of comma separated URL protocols to enable. | None | `--enable-url-protocols=enable-url-protocols` |
 | `--exact-reachability-metadata` | String | enables exact and user-friendly handling of reflection, resources, JNI, and serialization. |  | `--exact-reachability-metadata=exact-reachability-metadata` |
 | `--exact-reachability-metadata-path` | String | trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries. | None | `--exact-reachability-metadata-path=exact-reachability-metadata-path` |
 | `--features` | String | a comma-separated list of fully qualified Feature implementation classes | None | `--features=features` |
-| `--future-defaults` | String | enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles'. The preferred usage is '--future-defaults=all'. | <default-value> | `--future-defaults=future-defaults` |
+| `--future-defaults` | String | enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'. | <default-value> | `--future-defaults=future-defaults` |
 | `--initialize-at-build-time` | String | a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages. |  | `--initialize-at-build-time=initialize-at-build-time` |
 | `--initialize-at-run-time` | String | a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during image building. An empty string is currently not supported. |  | `--initialize-at-run-time=initialize-at-run-time` |
 | `--libc` | String | selects the libc implementation to use. Available implementations: glibc, musl, bionic | None | `--libc=libc` |
@@ -145,6 +147,9 @@ You can use `-H:Preserve` in the following ways:
 * `-H:Preserve=path=<cp-entry>`: preserves all elements from a given class-path entry
 * You can combine any of the previous uses by separating them with a comma (`,`). For example: `-H:Preserve=path=<cp-entry>,module=<module>,module=<module2>,package=<package>`
 
+Native Image also preserves the corresponding lambda proxy class when a lambda proxy class generated for a preserved capturing class is reached.
+It registers that proxy class for reflection and JNI access, like other preserved classes, and it registers serializable lambdas for Java serialization.
+
 You must explicitly configure multi-interface proxy classes, arrays of dimension 3 and higher, and _.class_ files as resources in the native image. Tooling-related Java modules are not included by default with `-H:Preserve=all` and must be added with `-H:Preserve=module=<module>` if needed.
 
 If you get errors related to `--initialize-at-build-time`, follow the suggestions in the error messages.
@@ -153,9 +158,15 @@ If you get errors related to `--initialize-at-build-time`, follow the suggestion
 
 For a practical demonstration, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
 
+You can combine `-H:Preserve` with [metadata tracing from a native image](AutomaticMetadataCollection.md#dynamic-metadata-collection-from-a-native-image) to collect reachability metadata from a representative run:
+```shell
+native-image -H:+UnlockExperimentalVMOptions -H:+MetadataTracingSupport -H:-UnlockExperimentalVMOptions -H:Preserve=package=com.example.library.* ...
+./application -XX:TraceMetadata=path=metadata-output -XX:TraceMetadataConditionPackages=com.example.application
+```
+
 #### Memory Requirements
 
-Native Image compilation is memory-intensive, particularly when building large projects or when using -`H:Preserve=all` or `--pgo-instrument`.
+Native Image compilation is memory-intensive, particularly when building large projects or when using `-H:Preserve=all` or `--pgo-instrument`.
 
 If you encounter `OutOfMemoryError: Java heap space` you can:
 

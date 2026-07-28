@@ -26,10 +26,10 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -37,20 +37,20 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -58,59 +58,56 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.core.common.NumUtil;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class WindowsPlatformThreads extends PlatformThreads {
     @Platforms(HOSTED_ONLY.class)
     WindowsPlatformThreads() {
     }
 
+    /** This method must not throw any exceptions. */
     @Override
-    protected boolean doStartThread(Thread thread, long stackSize) {
-        int threadStackSize = NumUtil.safeToUInt(stackSize);
+    protected IsolateThread doStartThread(Thread thread, long javaStackSize) {
+        assert StackOverflowCheck.singleton().isYellowZoneAvailable();
+
+        int nativeStackSize = NumUtil.safeToUInt(javaStackSize);
         int initFlag = 0;
-        // If caller specified a stack size, don't commit it all at once.
-        if (threadStackSize != 0) {
+        // If the caller requested a Java stack size, don't commit it all at once.
+        if (nativeStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
-
-        /*
-         * Prevent stack overflow errors so that starting the thread and reverting back to a safe
-         * state (in case of an error) works reliably.
-         */
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            return doStartThread0(thread, threadStackSize, initFlag);
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
-        }
+        return doStartThread0(thread, nativeStackSize, initFlag);
     }
 
-    /** Starts a thread to the point so that it is executing. */
-    private boolean doStartThread0(Thread thread, int threadStackSize, int initFlag) {
-        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
-        try {
-            WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, Word.nullPointer());
-            if (osThreadHandle.isNull()) {
-                undoPrepareStartOnError(thread, startData);
-                return false;
-            }
-            WinBase.CloseHandle(osThreadHandle);
-            return true;
-        } catch (Throwable e) {
-            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+    /**
+     * Starts a thread to the point so that it is executing. This method must not throw any
+     * exceptions.
+     */
+    private IsolateThread doStartThread0(Thread thread, int nativeStackSize, int initFlag) {
+        assert StackOverflowCheck.singleton().isYellowZoneAvailable();
+
+        IsolateThread isolateThread = prepareThreadStart(thread);
+        if (isolateThread.isNull()) {
+            return Word.nullPointer();
         }
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), nativeStackSize, threadStartRoutine.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
+        if (osThreadHandle.isNull()) {
+            undoPrepareStartOnError(thread, isolateThread);
+            return Word.nullPointer();
+        }
+        WinBase.CloseHandle(osThreadHandle);
+        return isolateThread;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize, boolean isJavaStackSize) {
         // _beginthreadex takes an unsigned int stack size; reject values that cannot be preserved.
         if (stackSize > 0xFFFF_FFFFL) {
             return Word.nullPointer();
         }
         int initFlag = 0;
 
-        // If caller specified a stack size, don't commit it all at once.
+        // If the caller requested a stack size, don't commit it all at once.
         if (stackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
@@ -222,7 +219,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5672-L5714")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5672-L5714")
     protected void park(boolean isAbsolute, long time) {
         assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
@@ -270,7 +267,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5716-L5719")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5716-L5719")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
@@ -290,7 +287,7 @@ class WindowsParker extends Parker {
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class WindowsParkerFactory implements ParkerFactory {
     @Override
     public Parker acquire() {

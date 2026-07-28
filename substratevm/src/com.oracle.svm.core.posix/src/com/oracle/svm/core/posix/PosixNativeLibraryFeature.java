@@ -37,7 +37,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
@@ -45,19 +44,18 @@ import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

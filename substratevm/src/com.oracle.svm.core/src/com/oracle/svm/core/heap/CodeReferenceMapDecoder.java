@@ -31,7 +31,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;

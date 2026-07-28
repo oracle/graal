@@ -36,14 +36,14 @@ import com.oracle.svm.hosted.webimage.codegen.heap.WebImageObjectInspector;
 import com.oracle.svm.hosted.webimage.codegen.long64.Long64Provider;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageJSProviders extends WebImageProviders {
 
     private final WebImageObjectInspector objectInspector;

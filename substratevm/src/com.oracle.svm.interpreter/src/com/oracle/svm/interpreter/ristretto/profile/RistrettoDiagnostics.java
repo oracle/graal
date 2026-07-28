@@ -34,9 +34,15 @@ public class RistrettoDiagnostics {
 
     public static final AtomicLong ReprofileRequested = new AtomicLong();
 
+    public static final AtomicLong SuccessfulCompiles = new AtomicLong();
+
+    public static final AtomicLong CompilerExceptionsSeen = new AtomicLong();
+
     public static void reset() {
         DeoptimizationsTaken.set(0);
         InvalidatedCode.set(0);
         ReprofileRequested.set(0);
+        SuccessfulCompiles.set(0);
+        CompilerExceptionsSeen.set(0);
     }
 }

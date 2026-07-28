@@ -217,6 +217,6 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
         if (buffer != null) {
             markRelocationSite(initialPos, kind, symbolName, offset);
         }
-        return initialPos + RelocationKind.getRelocationSize(kind);
+        return initialPos + kind.getRelocationSize();
     }
 }

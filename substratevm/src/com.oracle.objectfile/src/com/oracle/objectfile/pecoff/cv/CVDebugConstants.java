@@ -42,7 +42,6 @@ public abstract class CVDebugConstants {
     static final short S_CONSTANT = 0x1107; /* Constant. */
     static final short S_UDT = 0x1108; /* User defined type. */
     static final short S_LDATA32 = 0x110c; /* Local static. */
-    static final short S_GDATA32 = 0x110d; /* Global static. */
     static final short S_GPROC32 = 0x1110; /* Global procedure. */
     static final short S_REGREL32 = 0x1111;
     static final short S_COMPILE3 = 0x113c;

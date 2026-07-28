@@ -80,8 +80,13 @@ final class PreopenedDirectoryFd extends DirectoryFd {
 
     @Override
     public Errno prestatDirName(Node node, WasmMemory memory, int pathAddress, int pathLength) {
-        memory.writeString(node, virtualPath, pathAddress, pathLength);
-        return Errno.Success;
+        try {
+            FdUtils.validateU32MemoryRange(memory, pathAddress, pathLength);
+            memory.writeString(node, virtualPath, pathAddress, pathLength);
+            return Errno.Success;
+        } catch (IndexOutOfBoundsException e) {
+            return Errno.Fault;
+        }
     }
 
 }

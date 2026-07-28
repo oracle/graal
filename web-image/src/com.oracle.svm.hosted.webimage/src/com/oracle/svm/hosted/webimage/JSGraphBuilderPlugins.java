@@ -35,7 +35,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.hosted.webimage.wasm.WasmLMGraphBuilderPlugins;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     /**
      * The sentinel value for {@link IsolateThread} in Web Image, where there can be only a single

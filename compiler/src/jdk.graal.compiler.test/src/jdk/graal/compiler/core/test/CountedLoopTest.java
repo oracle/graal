@@ -634,7 +634,7 @@ public class CountedLoopTest extends GraalCompilerTest {
                 if (staticCheck != null) {
                     assert staticProperty != null;
                     if (staticCheck.test(inductionVariable)) {
-                        node = ConstantNode.forLong(staticProperty.get(inductionVariable), graph());
+                        node = ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), staticProperty.get(inductionVariable), graph());
                     }
                 }
                 if (node == null) {

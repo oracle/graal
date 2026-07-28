@@ -25,6 +25,8 @@
 package com.oracle.truffle.espresso.classfile.descriptors;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,12 +37,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class SymbolsImpl extends Symbols {
     // Set generous initial capacity, these are going to be hit a lot.
-    private final ConcurrentHashMap<ByteSequence, Symbol<?>> strongMap;
-    private final WeakHashMap<ByteSequence, WeakReference<Symbol<?>>> weakMap;
+    private ConcurrentHashMap<ByteSequence, Symbol<?>> strongMap;
+    private WeakHashMap<ByteSequence, WeakReference<Symbol<?>>> weakMap;
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     SymbolsImpl(int initialStrongSize, int initialWeakSize) {
-        if (initialWeakSize > 0) {
+        if (initialStrongSize > 0) {
             this.strongMap = new ConcurrentHashMap<>(initialStrongSize);
         } else {
             this.strongMap = new ConcurrentHashMap<>();
@@ -166,6 +168,26 @@ final class SymbolsImpl extends Symbols {
 
                             weakKeys.stream().allMatch(key -> isWeak((Symbol<?>) key)) &&
                             strongKeys.stream().noneMatch(key -> isWeak((Symbol<?>) key));
+        } finally {
+            readWriteLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public Collection<Symbol<?>> drainSymbols() {
+        readWriteLock.writeLock().lock();
+        try {
+            ArrayList<Symbol<?>> result = new ArrayList<>(strongMap.size() + weakMap.size());
+            result.addAll(strongMap.values());
+            weakMap.values().forEach(reference -> {
+                Symbol<?> symbol = reference.get();
+                if (symbol != null) {
+                    result.add(symbol);
+                }
+            });
+            strongMap = new ConcurrentHashMap<>();
+            weakMap = new WeakHashMap<>();
+            return result;
         } finally {
             readWriteLock.writeLock().unlock();
         }

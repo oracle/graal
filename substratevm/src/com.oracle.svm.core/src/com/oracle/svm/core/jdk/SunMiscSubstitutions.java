@@ -187,8 +187,8 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     private native int arrayIndexScale0(Class<?> arrayClass);
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/unsafe.cpp#L708-L712")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/unsafe.cpp#L649-L705")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/unsafe.cpp#L708-L712")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/unsafe.cpp#L649-L705")
     @SuppressWarnings("unused")
     private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
         // Note that if name is not null, it is a binary name in either / or .-form

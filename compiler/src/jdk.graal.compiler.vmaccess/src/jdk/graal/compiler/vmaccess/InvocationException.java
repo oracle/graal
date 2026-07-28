@@ -66,8 +66,8 @@ public class InvocationException extends RuntimeException {
     /**
      * Constructs an {@link InvocationException} for the given exception.
      *
-     * @param cause the host exception that was thrown in a {@linkplain VMAccess#createCallback
-     *            callback}.
+     * @param cause the host exception that was thrown through a
+     *            {@linkplain VMAccess#createHostProxy host proxy}.
      */
     public InvocationException(Throwable cause) {
         super(cause);
@@ -78,8 +78,9 @@ public class InvocationException extends RuntimeException {
     /**
      * Returns a {@link JavaConstant} representing the exception object that was thrown.
      * <p>
-     * If the exception was thrown in a {@linkplain VMAccess#createCallback callback} this might be
-     * null and the {@linkplain #getCause() cause} of this exception should be checked instead.
+     * If the exception was thrown through a {@linkplain VMAccess#createHostProxy host proxy} this
+     * might be null and the {@linkplain #getCause() cause} of this exception should be checked
+     * instead.
      */
     public JavaConstant getExceptionObject() {
         return exceptionObject;

@@ -26,10 +26,12 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_CALLER_SENSITIVE;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_HIDDEN_MEMBER;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_TRUSTED_FINAL;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
@@ -49,6 +51,9 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 import static com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic.InvokeGeneric;
 import static com.oracle.svm.interpreter.Interpreter.unbasic;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.ITBL_SELECTION_FAILURE;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodType;
@@ -61,6 +66,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,7 +85,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -91,14 +96,24 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.hub.registry.TypeIDs;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.JNIObjectHandles;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIObjectRefType;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -122,14 +137,17 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.constraints.LoadingConstraintViolationException;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
+import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.espresso.shared.resolver.CallSiteType;
 import com.oracle.svm.espresso.shared.resolver.ResolvedCall;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
-import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
+import com.oracle.svm.espresso.shared.vtable.TableEntry;
+import com.oracle.svm.espresso.shared.vtable.TableEntryRef;
 import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
@@ -147,8 +165,10 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -159,7 +179,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 @InternalVMMethod
 public class CremaSupportImpl implements CremaSupport {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
@@ -169,6 +189,18 @@ public class CremaSupportImpl implements CremaSupport {
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private CFunctionPointer enterDirectInterpreterStubEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVarargsVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodArrayVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVaListVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVarargsNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodArrayNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer cremaJNIMethodVaListNonVirtualWrapperEntryPoint;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
@@ -233,6 +265,8 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod, shouldRetainMethodCode(analysisMethod));
         if (!method.isAbstract()) {
             method.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(analysisMethod));
+        } else {
+            method.setNativeEntryPoint(InterpreterKnownCompiledEntryPoints.getThrowAbstractMethodErrorStub());
         }
         methods.add(method);
     }
@@ -307,10 +341,8 @@ public class CremaSupportImpl implements CremaSupport {
         boolean isSealed = isSealed(parsed);
         boolean declaresDefaultMethods = isInterface && declaresDefaultMethods(parsed);
         boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
-        boolean isLambdaFormHidden = false;
         boolean isProxyClass = false;
-        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
-                        isProxyClass);
+        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, hasDefaultMethods, declaresDefaultMethods, isSealed, false, false, isProxyClass);
 
         Object interfacesEncoding = getInterfaceEncodings(superInterfaces);
 
@@ -380,7 +412,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         /* Allocate DynamicHub. */
-        int hubNumVTableEntries = dispatchTable.cremaVTableLength(dispatchTransitiveSuperInterfaces);
+        int hubNumVTableEntries = dispatchTable.needsSvmVTable() ? dispatchTable.svmVTableLength(dispatchTransitiveSuperInterfaces) : 0;
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, hubFlags, classLoader, simpleBinaryName, module, UNINITIALIZED_DECLARING_CLASS_SENTINEL, classSignature,
                         typeID, interfaceID,
@@ -405,16 +437,18 @@ public class CremaSupportImpl implements CremaSupport {
 
         thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parsed));
 
-        dispatchTable.registerClass(thisType);
+        dispatchTable.registerClass(thisType, dispatchTransitiveSuperInterfaces);
 
         /*
          * Set vtable and methods. Compute the vtable first, because it will assign vtable indices
          * to methods.
          */
-        InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable(dispatchTransitiveSuperInterfaces).toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
-        assert completeVTable.length == hubNumVTableEntries;
-        thisType.setVtable(completeVTable, dispatchTable.vtableLength());
-        fillVTable(hub, completeVTable);
+        InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable().toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
+        assert completeVTable.length == hubNumVTableEntries || !dispatchTable.needsSvmVTable();
+        thisType.setVtable(completeVTable, dispatchTable.vtableLength(), dispatchTable.mirandaMethodsStart());
+        if (dispatchTable.needsSvmVTable()) {
+            fillVTable(hub, completeVTable);
+        }
 
         thisType.setDeclaredMethods(dispatchTable.declaredMethods());
 
@@ -427,6 +461,11 @@ public class CremaSupportImpl implements CremaSupport {
         }
         thisType.setAfterFieldsOffset(fieldLayout.afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
+
+        Class<?> dynamicNestHost = info.dynamicNest;
+        if (dynamicNestHost != null) {
+            thisType.setNestHost((InterpreterResolvedObjectType) DynamicHub.fromClass(dynamicNestHost).getInterpreterType());
+        }
 
         // Done
         hub.setInterpreterType(thisType);
@@ -584,14 +623,10 @@ public class CremaSupportImpl implements CremaSupport {
         CremaPartialType partialType = new CremaPartialType(parsed, loader, superClass, transitiveSuperInterfaces);
         try {
             if (Modifier.isInterface(parsed.getFlags())) {
-                return new CremaInterfaceDispatchTable(partialType);
+                var tables = VTable.create(partialType, false, false, true, false);
+                return new CremaInterfaceDispatchTable(tables, partialType);
             } else {
-                /*
-                 * GR-70607: once we handle vtable indicies better in crema we should enable
-                 * mirandas.
-                 */
-                boolean addMirandas = false;
-                var tables = VTable.create(partialType, false, false, addMirandas, false);
+                var tables = VTable.create(partialType, false, false, true, false);
                 return new CremaInstanceDispatchTable(tables, partialType);
             }
         } catch (MethodTableException e) {
@@ -623,7 +658,7 @@ public class CremaSupportImpl implements CremaSupport {
         DynamicHub superHub = DynamicHub.fromClass(Object.class);
         int javaModifiers = (componentHub.getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
         int jvmModifiers = (componentHub.getInterpreterType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
-        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, false, true, false);
+        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, true, false);
         ClassLoader loader = componentHub.getClassLoader();
         Module module = componentHub.getModule();
         int typeID = TypeIDs.singleton().nextTypeId();
@@ -693,7 +728,9 @@ public class CremaSupportImpl implements CremaSupport {
                         componentType, superType, interfaces, null,
                         DynamicHub.toClass(arrayHub), false);
 
-        thisType.setVtable(cremaVTable, objectArrayType.getClassVtableLength());
+        thisType.setVtable(cremaVTable, objectArrayType.getClassVtableLength(),
+                        // Cloneable and Serializable do not declare any method, the miranda list is thus empty.
+                        objectArrayType.getClassVtableLength());
         thisType.setDeclaredMethods(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
         thisType.setDeclaredFields(InterpreterResolvedJavaField.EMPTY_ARRAY);
         fillVTable(arrayHub, cremaVTable);
@@ -946,6 +983,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     static final class CremaPartialType implements PartialType<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
+
         private final ParserKlass parserKlass;
         private final ClassLoader loader;
         private final Symbol<Name> symbolicRuntimePackage;
@@ -953,6 +991,7 @@ public class CremaSupportImpl implements CremaSupport {
         private final InterpreterResolvedObjectType superType;
         private final List<InterpreterResolvedJavaMethod> parentTable;
         private final EconomicMap<InterpreterResolvedJavaType, List<InterpreterResolvedJavaMethod>> interfacesData = EconomicMap.create(Equivalence.IDENTITY);
+
         private InterpreterResolvedObjectType thisJavaType;
 
         @SuppressWarnings("this-escape")
@@ -1008,17 +1047,22 @@ public class CremaSupportImpl implements CremaSupport {
             return parserKlass.getName();
         }
 
-        InterpreterResolvedObjectType getThisJavaType() {
-            return thisJavaType;
-        }
-
         @Override
         public String toString() {
             return "CremaPartialType<" + getSymbolicName() + ">";
         }
 
         @Override
-        public PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature,
+        public int getModifiers() {
+            return parserKlass.getFlags() & Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+        }
+
+        InterpreterResolvedObjectType getThisJavaType() {
+            return thisJavaType;
+        }
+
+        @Override
+        public TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature,
                         boolean includePrivate) {
             for (CremaPartialMethod m : declared) {
                 if ((!m.isPrivate() || includePrivate) && !m.isStatic() && m.getSymbolicName() == name && m.getSymbolicSignature() == signature) {
@@ -1037,7 +1081,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
     }
 
-    static final class CremaPartialMethod implements PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
+    static final class CremaPartialMethod implements TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
         private final CremaPartialType partialType;
         private final ParserMethod m;
         private int vtableIndex = -1;
@@ -1050,27 +1094,10 @@ public class CremaSupportImpl implements CremaSupport {
             this.m = m;
         }
 
-        @Override
-        public CremaPartialMethod withVTableIndex(int index) {
-            assert vtableIndex == -1;
-            this.vtableIndex = index;
-            return this;
-        }
-
         public CremaPartialMethod withITableIndex(int index) {
             assert itableIndex == -1;
             this.itableIndex = index;
             return this;
-        }
-
-        @Override
-        public boolean isConstructor() {
-            return m.getName() == ParserSymbols.ParserNames._init_;
-        }
-
-        @Override
-        public boolean isClassInitializer() {
-            return m.isClassInitializer();
         }
 
         @Override
@@ -1088,25 +1115,38 @@ public class CremaSupportImpl implements CremaSupport {
             return m.getSignature();
         }
 
-        @Override
-        public InterpreterResolvedJavaMethod asMethodAccess() {
+        int getDispatchIndex() {
+            if (vtableIndex != VTBL_UNINITIALIZED) {
+                assert itableIndex == VTBL_UNINITIALIZED;
+                return vtableIndex;
+            } else if (itableIndex != VTBL_UNINITIALIZED) {
+                return itableIndex;
+            }
+            return VTBL_UNINITIALIZED;
+        }
+
+        void setVTableSlotIndex(int index) {
+            assert vtableIndex == VTBL_UNINITIALIZED || vtableIndex == index;
+            this.vtableIndex = index;
+        }
+
+        private InterpreterResolvedJavaMethod toMethodAccess() {
             if (resolved != null) {
                 return resolved;
             }
-            int dispatchIndex = InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
-            if (vtableIndex != -1) {
-                assert itableIndex == -1;
-                dispatchIndex = vtableIndex;
-            } else if (itableIndex != -1) {
-                dispatchIndex = itableIndex;
+            resolved = CremaResolvedJavaMethodImpl.create(partialType.getThisJavaType(), m, getDispatchIndex());
+            if (resolved.isAbstract()) {
+                resolved.setNativeEntryPoint(InterpreterKnownCompiledEntryPoints.getThrowAbstractMethodErrorStub());
             }
-            resolved = CremaResolvedJavaMethodImpl.create(partialType.getThisJavaType(), m, dispatchIndex);
             return resolved;
         }
     }
 
     private abstract static class AbstractCremaDispatchTable {
         protected final CremaPartialType partialType;
+        private final HashMap<FailingMethodKey, InterpreterResolvedJavaMethod> failingMethods = new HashMap<>();
+        private InterpreterResolvedJavaMethod[] declaredMethods;
+        private List<InterpreterResolvedJavaMethod> cremaVTable;
 
         AbstractCremaDispatchTable(CremaPartialType partialType) {
             this.partialType = partialType;
@@ -1116,59 +1156,189 @@ public class CremaSupportImpl implements CremaSupport {
 
         public abstract int itableLength(Class<?> iface);
 
-        public final void registerClass(InterpreterResolvedObjectType thisType) {
+        protected final boolean isTypeInitialized() {
+            return partialType.getThisJavaType() != null;
+        }
+
+        public final void registerClass(InterpreterResolvedObjectType thisType, Class<?>[] interfaces) {
+            assert !isTypeInitialized();
             partialType.thisJavaType = thisType;
+            assert isTypeInitialized();
+            /*
+             * Compute the dispatch table before materializing declared methods so resolved methods
+             * observe their final vtable/itable indices.
+             */
+            cremaVTable = createInterpreterVTable(interfaces);
+            declaredMethods = createDeclaredMethods();
         }
 
         public final InterpreterResolvedJavaMethod[] declaredMethods() {
-            InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
-            int i = 0;
-            for (var m : partialType.getDeclaredMethodsList()) {
-                result[i] = m.asMethodAccess();
-                i++;
-            }
-            return result;
+            assert isTypeInitialized();
+            return declaredMethods;
         }
 
-        protected static List<InterpreterResolvedJavaMethod> toSimpleTable(List<PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+        public final List<InterpreterResolvedJavaMethod> cremaVTable() {
+            assert isTypeInitialized();
+            return cremaVTable;
+        }
+
+        protected final List<InterpreterResolvedJavaMethod> toVTable(List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+            assert isTypeInitialized();
+            /*
+             * First pass over the vtable: Assign vtable indexes to our partial methods
+             */
+            for (int index = 0; index < table.size(); index++) {
+                TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = table.get(index).getEntry();
+                if (table.get(index).canUseVTableSlotIndex()) {
+                    assert entry instanceof CremaPartialMethod;
+                    ((CremaPartialMethod) entry).setVTableSlotIndex(index);
+                }
+            }
+            /*
+             * Second pass: create methods as necessary and construct the interpreter vtable.
+             */
             List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
-            for (var pm : table) {
-                result.add(pm.asMethodAccess());
+            for (int i = 0; i < table.size(); i++) {
+                TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = table.get(i);
+                result.add(toMethod(entry, i));
             }
             return result;
         }
 
-        public abstract int cremaVTableLength(Class<?>[] interfaces);
+        protected final List<InterpreterResolvedJavaMethod> toITable(List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+            assert isTypeInitialized();
+            List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
+            for (var entry : table) {
+                assert !entry.canUseVTableSlotIndex();
+                result.add(toMethod(entry, ITBL_SELECTION_FAILURE));
+            }
+            return result;
+        }
 
-        public abstract List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces);
+        private InterpreterResolvedJavaMethod failingMethod(InterpreterResolvedJavaMethod resolved, ErrorType errorType, int vtablePosForFailure) {
+            FailingMethodKey key = new FailingMethodKey(resolved.getSymbolicName(), resolved.getSymbolicSignature(), errorType);
+            return failingMethods.computeIfAbsent(key,
+                            _ -> resolved.forFailing(
+                                            partialType.getThisJavaType(),
+                                            InterpreterKnownCompiledEntryPoints.forErrorType(errorType),
+                                            InterpreterKnownCompiledEntryPoints.getStubSignature(),
+                                            vtablePosForFailure));
+        }
+
+        protected abstract InterpreterResolvedJavaMethod[] createDeclaredMethods();
+
+        /**
+         * Whether the dynamic hub needs to reserve memory to store the native svm vtable.
+         */
+        public abstract boolean needsSvmVTable();
+
+        /**
+         * The size of the actual svm VTable that will be put in the {@link DynamicHub}.
+         * <p>
+         * Said size include the regular VTable (ie: the table used for virtual dispatch), and the
+         * size of all the ITables (ie: the tables used for interface dispatch).
+         */
+        public abstract int svmVTableLength(Class<?>[] interfaces);
+
+        /**
+         * Creates the SVM VTable associated with {@link #partialType}. This table will ultimately
+         * correspond 1-to-1 to the vtable put in the {@link DynamicHub}.
+         * <p>
+         * The correspondence works as follows:
+         * <ul>
+         * <li>If at index {@code i} in the hub vtable is a {@link CFunctionPointer}, then</li>
+         * <li>The entry at index {@code i} in this constructed table contains the
+         * {@link InterpreterResolvedJavaMethod} corresponding to that function pointer.</li>
+         * </ul>
+         * <p>
+         * In particular, the returned table must be formed by the regular VTable, to which are
+         * concatenated all the ITables (Sorted by their {@code interfaceId}).
+         */
+        protected abstract List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces);
+
+        /**
+         * The index in the vtable at which the implicit interface methods started to be added.
+         */
+        public abstract int mirandaMethodsStart();
+
+        private record FailingMethodKey(Symbol<Name> name, Symbol<Signature> signature, ErrorType errorType) {
+        }
+
+        protected final InterpreterResolvedJavaMethod toMethod(TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> ref, int vtablePos) {
+            assert isTypeInitialized();
+            InterpreterResolvedJavaMethod resolved;
+            TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = ref.getEntry();
+            if (entry instanceof CremaPartialMethod partialMethod) {
+                assert partialMethod.getDispatchIndex() != VTBL_UNINITIALIZED;
+                resolved = partialMethod.toMethodAccess();
+            } else {
+                resolved = (InterpreterResolvedJavaMethod) entry;
+            }
+            if (ref.isSelectionFailure()) {
+                resolved = failingMethod(resolved, ErrorType.IncompatibleClassChangeError, vtablePos);
+            } else if (ref.isNonPublicInterfaceSelection()) {
+                resolved = failingMethod(resolved, ErrorType.IllegalAccessError, vtablePos);
+            }
+            return resolved;
+        }
     }
 
     private static final class CremaInterfaceDispatchTable extends AbstractCremaDispatchTable {
-        CremaInterfaceDispatchTable(CremaPartialType partialType) {
+        private final Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> table;
+        private final List<InterpreterResolvedJavaMethod> additionalDeclaredMethods = new ArrayList<>();
+
+        CremaInterfaceDispatchTable(Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> table, CremaPartialType partialType) {
             super(partialType);
+            this.table = table;
         }
 
         @Override
-        public int cremaVTableLength(Class<?>[] interfaces) {
-            int result = 0;
-            for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
-                if (VTable.isVirtualEntry(method)) {
-                    result++;
-                }
-            }
-            return result;
+        public boolean needsSvmVTable() {
+            return false;
         }
 
         @Override
-        public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
+        public int svmVTableLength(Class<?>[] interfaces) {
+            // No need to create a svm vtable in the dynamic hub of interfaces.
+            return 0;
+        }
+
+        @Override
+        protected List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces) {
             List<InterpreterResolvedJavaMethod> itable = new ArrayList<>();
             for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
                 if (VTable.isVirtualEntry(method)) {
-                    itable.add(method.withITableIndex(itable.size()).asMethodAccess());
+                    itable.add(method.withITableIndex(itable.size()).toMethodAccess());
                 }
             }
-            assert itable.size() == cremaVTableLength(interfaces);
+            for (TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry : table.getImplicitInterfaceMethods()) {
+                if (entry.isSelectionFailure()) {
+                    InterpreterResolvedJavaMethod failing = toMethod(entry, itable.size());
+                    itable.add(failing);
+                    additionalDeclaredMethods.add(failing);
+                }
+            }
             return itable;
+        }
+
+        @Override
+        protected InterpreterResolvedJavaMethod[] createDeclaredMethods() {
+            assert isTypeInitialized();
+            List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
+            for (CremaPartialMethod m : partialType.getDeclaredMethodsList()) {
+                assert (!VTable.isVirtualEntry(m) || m.itableIndex != VTBL_UNINITIALIZED);
+                result.add(m.toMethodAccess());
+            }
+            for (InterpreterResolvedJavaMethod method : additionalDeclaredMethods) {
+                assert method.isInternal();
+                result.add(method);
+            }
+            return result.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
+        }
+
+        @Override
+        public int mirandaMethodsStart() {
+            return InterpreterResolvedObjectType.VTableHolder.UNKNOWN;
         }
 
         @Override
@@ -1191,7 +1361,21 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
-        public int cremaVTableLength(Class<?>[] interfaces) {
+        public boolean needsSvmVTable() {
+            // Abstract classes do not need to materialize the SVM vtable, as they are never a
+            // receiver of virtual invocation.
+            return !partialType.isAbstract();
+        }
+
+        @Override
+        public int svmVTableLength(Class<?>[] interfaces) {
+            if (partialType.isAbstract()) {
+                return 0;
+            }
+            return concatenatedTableLength(interfaces);
+        }
+
+        private int concatenatedTableLength(Class<?>[] interfaces) {
             int result = table.getVtable().size();
             for (Class<?> intf : interfaces) {
                 result += getItableFor(intf).size();
@@ -1200,14 +1384,27 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
-        public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
-            List<InterpreterResolvedJavaMethod> vtable = toSimpleTable(table.getVtable());
+        protected List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces) {
+            List<InterpreterResolvedJavaMethod> vtable = toVTable(table.getVtable());
             List<InterpreterResolvedJavaMethod> result = new ArrayList<>(vtable);
             for (Class<?> intf : interfaces) {
-                List<InterpreterResolvedJavaMethod> itable = toSimpleTable(getItableFor(intf));
+                List<InterpreterResolvedJavaMethod> itable = toITable(getItableFor(intf));
                 result.addAll(itable);
             }
-            assert cremaVTableLength(interfaces) == result.size();
+            assert concatenatedTableLength(interfaces) == result.size();
+            return result;
+        }
+
+        @Override
+        protected InterpreterResolvedJavaMethod[] createDeclaredMethods() {
+            assert isTypeInitialized();
+            InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
+            int i = 0;
+            for (CremaPartialMethod m : partialType.getDeclaredMethodsList()) {
+                assert (!VTable.isVirtualEntry(m) || m.vtableIndex != VTBL_UNINITIALIZED);
+                result[i] = m.toMethodAccess();
+                i++;
+            }
             return result;
         }
 
@@ -1217,24 +1414,21 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
+        public int mirandaMethodsStart() {
+            return table.getImplicitInterfaceMethodsStart();
+        }
+
+        @Override
         public int itableLength(Class<?> iface) {
             var itable = getItableFor(iface);
             assert itable != null : "Missing itable for " + iface;
             return itable.size();
         }
 
-        private List<PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> getItableFor(Class<?> iface) {
+        private List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> getItableFor(Class<?> iface) {
             return table.getItables().get((InterpreterResolvedJavaType) DynamicHub.fromClass(iface).getInterpreterType());
         }
-    }
 
-    @Override
-    public Class<?> toClass(ResolvedJavaType resolvedJavaType) {
-        /*
-         * A resolved java type, at runtime, will always have a Java class. Hence, the below will
-         * never throw the implicit NPE as checked by getJavaClass().
-         */
-        return ((InterpreterResolvedJavaType) resolvedJavaType).getJavaClass();
     }
 
     @Override
@@ -1362,6 +1556,101 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
+    public ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic) {
+        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
+        assert !clazz.isPrimitive();
+
+        if (clazz.isArray()) {
+            return null;
+        }
+        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType();
+        Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
+        Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
+        if (fieldName == null || fieldType == null) {
+            return null;
+        }
+        return lookupInterpreterField(type, fieldName, fieldType, isStatic);
+    }
+
+    private static InterpreterResolvedJavaField lookupInterpreterField(InterpreterResolvedObjectType holder, Symbol<Name> name, Symbol<Type> type, boolean isStatic) {
+        for (InterpreterResolvedJavaField field : holder.getDeclaredFields()) {
+            if (name.equals(field.getSymbolicName()) && type.equals(field.getSymbolicType()) && field.isStatic() == isStatic) {
+                return field;
+            }
+        }
+        if (isStatic) {
+            for (InterpreterResolvedObjectType superInterface : holder.getInterfaces()) {
+                InterpreterResolvedJavaField field = lookupInterpreterField(superInterface, name, type, true);
+                if (field != null) {
+                    return field;
+                }
+            }
+        }
+        InterpreterResolvedObjectType superclass = holder.getSuperclass();
+        return superclass == null ? null : lookupInterpreterField(superclass, name, type, isStatic);
+    }
+
+    @Override
+    public CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic) {
+        if (clazz.isPrimitive() || !CremaJNIFieldIds.isCremaFieldId(fieldId)) {
+            return null;
+        }
+
+        ResolvedJavaField resolvedField = null;
+        if (isStatic) {
+            CremaResolvedObjectType type = (CremaResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+            resolvedField = type.findStaticFieldWithOffset(CremaJNIFieldIds.getStaticFieldOffset(fieldId), null);
+        } else {
+            Object interpreterType = DynamicHub.fromClass(clazz).getInterpreterType();
+            if (interpreterType instanceof CremaResolvedObjectType type) {
+                resolvedField = type.findInstanceFieldWithOffset(CremaJNIFieldIds.getInstanceFieldOffset(fieldId), null);
+            }
+        }
+        if (resolvedField instanceof CremaResolvedJavaField cremaField) {
+            return cremaField;
+        }
+        return null;
+    }
+
+    @Override
+    public Executable getCremaMethodExecutable(JNIMethodId methodId) {
+        if (JNIObjectHandles.getHandleType((JNIObjectHandle) methodId) != JNIObjectRefType.WeakGlobal) {
+            return null;
+        }
+        Object object = JNIObjectHandles.getObject((JNIObjectHandle) methodId);
+        if (object instanceof CremaResolvedJavaMethod method) {
+            return RuntimeReflectionMetadata.fromResolvedMethod(method);
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature) {
+        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
+
+        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
+        if (symbolicName == null) {
+            return null;
+        }
+        Symbol<Signature> symbolicDescriptor = SymbolsSupport.getSignatures().lookupValidSignature(signature);
+        if (symbolicDescriptor == null) {
+            return null;
+        }
+        try {
+            return ((InterpreterResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType()).lookupMethod(symbolicName, symbolicDescriptor);
+        } catch (LookupSuccessInvocationFailure e) {
+            return e.getResult();
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+        return type.getStaticStorage(primitive, DynamicImageLayerInfo.CREMA_LAYER_ID);
+    }
+
+    @Override
     public Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind) {
         InterpreterResolvedJavaMethod iMethod = (InterpreterResolvedJavaMethod) targetMethod;
         try {
@@ -1472,26 +1761,35 @@ public class CremaSupportImpl implements CremaSupport {
         return (T) CremaFieldAccess.toJVMCI(field);
     }
 
+    @Override
+    public int getExtraFieldMemberNameFlags(ResolvedJavaField field) {
+        return getExtraFieldMemberNameFlags((InterpreterResolvedJavaField) field);
+    }
+
+    @Override
+    public int getExtraMethodMemberNameFlags(ResolvedJavaMethod method) {
+        return getExtraMethodMemberNameFlags((InterpreterResolvedJavaMethod) method);
+    }
+
     private static void plantResolvedMethod(Target_java_lang_invoke_MemberName mn,
                     ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
-        int methodFlags = getMethodFlags(resolvedCall);
+        int methodFlags = getMethodMemberNameFlags(resolvedCall);
         InterpreterResolvedJavaMethod target = resolvedCall.getResolvedMethod();
         mn.resolved = target;
         mn.flags = methodFlags;
         mn.clazz = target.getDeclaringClass().getJavaClass();
     }
 
-    private static int getMethodFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
+    private static int getMethodMemberNameFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
         InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
         int flags = resolvedMethod.getModifiers();
-        if (resolvedMethod.isCallerSensitive()) {
-            flags |= MN_CALLER_SENSITIVE;
-        }
         if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
+            flags |= getExtraMethodMemberNameFlags(resolvedMethod);
             flags |= MN_IS_CONSTRUCTOR;
             flags |= (REF_newInvokeSpecial << MN_REFERENCE_KIND_SHIFT);
             return flags;
         }
+        flags |= getExtraMethodMemberNameFlags(resolvedMethod);
         flags |= MN_IS_METHOD;
         switch (resolvedCall.getCallKind()) {
             case STATIC:
@@ -1512,18 +1810,35 @@ public class CremaSupportImpl implements CremaSupport {
 
     private static void plantResolvedField(Target_java_lang_invoke_MemberName mn, InterpreterResolvedJavaField field, int refKind) {
         mn.resolved = field;
-        mn.flags = getFieldFlags(refKind, field);
+        mn.flags = getFieldMemberNameFlags(refKind, field);
         mn.clazz = field.getDeclaringClass().getJavaClass();
     }
 
-    private static int getFieldFlags(int refKind, InterpreterResolvedJavaField field) {
-        int res = field.getModifiers();
-        boolean isSetter = (refKind <= REF_putStatic) && !(refKind <= REF_getStatic);
-        res |= MN_IS_FIELD | ((field.isStatic() ? REF_getStatic : REF_getField) << MN_REFERENCE_KIND_SHIFT);
-        if (isSetter) {
-            res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
+    private static int getFieldMemberNameFlags(int refKind, InterpreterResolvedJavaField field) {
+        int flags = field.getModifiers();
+        assert refKind == REF_getField || refKind == REF_getStatic || refKind == REF_putField || refKind == REF_putStatic;
+        flags |= MN_IS_FIELD | (refKind << MN_REFERENCE_KIND_SHIFT);
+        flags |= getExtraFieldMemberNameFlags(field);
+        return flags;
+    }
+
+    private static int getExtraFieldMemberNameFlags(InterpreterResolvedJavaField field) {
+        int flags = 0;
+        if (field.isTrustedFinal()) {
+            flags |= MN_TRUSTED_FINAL;
         }
-        return res;
+        return flags;
+    }
+
+    private static int getExtraMethodMemberNameFlags(InterpreterResolvedJavaMethod method) {
+        int flags = 0;
+        if (method.isCallerSensitive()) {
+            flags |= MN_CALLER_SENSITIVE;
+        }
+        if (method.isHidden()) {
+            flags |= MN_HIDDEN_MEMBER;
+        }
+        return flags;
     }
 
     private static Symbol<Signature> lookupSignature(ByteSequence desc, SignaturePolymorphicIntrinsic iid) {
@@ -1555,7 +1870,7 @@ public class CremaSupportImpl implements CremaSupport {
         throw VMError.shouldNotReachHere("refKind: " + refKind);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/hotspot/share/prims/methodHandles.cpp#L735-L749")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/prims/methodHandles.cpp#L735-L749")
     private static SignaturePolymorphicIntrinsic getSignaturePolymorphicIntrinsicID(InterpreterResolvedObjectType resolutionKlass, int refKind, Symbol<Name> name) {
         SignaturePolymorphicIntrinsic mhMethodId = null;
         if (ParserKlass.isSignaturePolymorphicHolderType(resolutionKlass.getSymbolicType())) {
@@ -1784,8 +2099,37 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
+    public CFunctionPointer getCremaJNIMethodCallWrapperEntryPoint(CallVariant variant, boolean nonVirtual) {
+        CFunctionPointer result;
+        if (variant == CallVariant.VARARGS) {
+            result = nonVirtual ? cremaJNIMethodVarargsNonVirtualWrapperEntryPoint : cremaJNIMethodVarargsVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.ARRAY) {
+            result = nonVirtual ? cremaJNIMethodArrayNonVirtualWrapperEntryPoint : cremaJNIMethodArrayVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.VA_LIST) {
+            result = nonVirtual ? cremaJNIMethodVaListNonVirtualWrapperEntryPoint : cremaJNIMethodVaListVirtualWrapperEntryPoint;
+        } else {
+            throw VMError.shouldNotReachHereUnexpectedInput(variant);
+        }
+        VMError.guarantee(result.isNonNull(), "entry point for runtime JNI method call wrapper was not setup at build-time");
+        return result;
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint) {
         enterDirectInterpreterStubEntryPoint = stubEntryPoint;
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setCremaJNIMethodCallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
+                    CFunctionPointer arrayNonVirtual, CFunctionPointer vaListNonVirtual) {
+        cremaJNIMethodVarargsVirtualWrapperEntryPoint = varargsVirtual;
+        cremaJNIMethodArrayVirtualWrapperEntryPoint = arrayVirtual;
+        cremaJNIMethodVaListVirtualWrapperEntryPoint = vaListVirtual;
+        cremaJNIMethodVarargsNonVirtualWrapperEntryPoint = varargsNonVirtual;
+        cremaJNIMethodArrayNonVirtualWrapperEntryPoint = arrayNonVirtual;
+        cremaJNIMethodVaListNonVirtualWrapperEntryPoint = vaListNonVirtual;
     }
 
     @Override

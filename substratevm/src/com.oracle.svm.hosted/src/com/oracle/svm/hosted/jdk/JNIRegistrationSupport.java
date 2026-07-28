@@ -121,6 +121,11 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(JNIRegistrationSupport.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         jniRegistrationSupportSingleton = new JNIRegistrationSupportSingleton();
         ImageSingletons.add(JNIRegistrationSupportSingleton.class, jniRegistrationSupportSingleton);

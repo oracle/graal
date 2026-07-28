@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public class WebImageSVMSubstitutions {
@@ -68,7 +69,7 @@ final class Target_com_oracle_svm_core_deopt_Deoptimizer {
     }
 
     @Substitute
-    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sourceSp, SpeculationLog.SpeculationReason speculation, boolean reprofile) {
+    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sourceSp, SpeculationLog.SpeculationReason speculation, DeoptimizationReason reason, boolean reprofile) {
         throw new Error("Deoptimization not supported...");
     }
 

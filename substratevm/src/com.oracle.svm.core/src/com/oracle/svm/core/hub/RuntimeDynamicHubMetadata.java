@@ -29,6 +29,7 @@ import java.util.List;
 
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -114,11 +115,11 @@ public final class RuntimeDynamicHubMetadata implements DynamicHubMetadata {
         if (javaType instanceof UnresolvedJavaType unresolvedJavaType) {
             return CremaSupport.singleton().resolveOrNull(unresolvedJavaType, accessingType);
         } else /* resolved type */ {
-            return CremaSupport.singleton().toClass((ResolvedJavaType) javaType);
+            return InterpreterSupport.singleton().toClass((ResolvedJavaType) javaType);
         }
     }
 
     public Class<?> getNestHost() {
-        return CremaSupport.singleton().toClass(type.getNestHost());
+        return InterpreterSupport.singleton().toClass(type.getNestHost());
     }
 }

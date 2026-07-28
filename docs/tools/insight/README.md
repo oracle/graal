@@ -128,11 +128,11 @@ puts 'Hello from GraalVM Ruby!'
 ```
 3. Apply the JavaScript instrument to the Ruby program:
 ```shell
-./bin/ruby --polyglot --insight=source-trace.js helloworld.rb
+./bin/ruby --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
-It is necessary to start the Ruby launcher with the `--polyglot` parameter, as the _source-tracing.js_ script remains written in JavaScript.
+The Ruby launcher can run the JavaScript instrument because language launchers enable polyglot access by default.
 
 A user can instrument any language on top of GraalVM, but also the Insight scripts can be written in any of the GraalVM supported languages (implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md)).
 
@@ -148,7 +148,7 @@ puts 'Ruby: Hooks are ready!'
 
 2. Launch a Node.js application and instrument it with the Ruby script:
 ```shell
-./bin/node --polyglot --insight=source-tracing.rb -e "console.log('With Ruby: ' + 6 * 7)" | grep Ruby
+./bin/node --insight=source-tracing.rb -e "console.log('With Ruby: ' + 6 * 7)" | grep Ruby
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js

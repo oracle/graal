@@ -54,4 +54,9 @@ public class WebImageHost extends SVMHost {
         }
         return super.handleForeignCall(foreignCallDescriptor, foreignCallsProvider);
     }
+
+    @Override
+    protected boolean allowStringFormatFormatterFallback() {
+        return false;
+    }
 }

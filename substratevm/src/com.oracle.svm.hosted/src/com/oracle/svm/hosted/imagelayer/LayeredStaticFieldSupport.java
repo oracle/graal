@@ -42,7 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
@@ -61,7 +61,6 @@ import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
@@ -452,7 +451,6 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 class LayeredStaticFieldSupportBaseLayerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -477,7 +475,6 @@ class LayeredStaticFieldSupportBaseLayerFeature implements InternalFeature {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 class LayeredStaticFieldSupportAppLayerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

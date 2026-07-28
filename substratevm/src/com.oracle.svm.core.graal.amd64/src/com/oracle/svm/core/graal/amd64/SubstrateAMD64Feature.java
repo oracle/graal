@@ -40,7 +40,6 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.code.SubstrateVectorArchitectureFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -60,7 +59,6 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
 class SubstrateAMD64Feature implements InternalFeature {
@@ -114,8 +112,7 @@ class SubstrateAMD64LoweringProviderFactory extends SubstrateVectorArchitectureF
     public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
         VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(VectorAMD64::new, (AMD64) SubstrateTarget.getArchitecture(), !SubstrateOptions.useLLVMBackend(),
-                        ObjectLayout.singleton().getReferenceSize(), ReferenceAccess.singleton().haveCompressedReferences(),
-                        ObjectLayout.singleton().getAlignment());
+                        ObjectLayout.singleton().getReferenceSize(), ObjectLayout.singleton().getAlignment());
         return new SubstrateAMD64LoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, vectorArchitecture);
     }
 }

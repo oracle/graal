@@ -48,6 +48,7 @@ public class VerifyLoopInfo extends VerifyPhase<CoreProviders> {
         allowedCallers.add("getBodyIVEqualsLimitCheckedIV");
         allowedCallers.add("getBodyIVExitValue");
         allowedCallers.add("getBodyIVExtremum");
+        allowedCallers.add("toString");
     }
 
     @Override

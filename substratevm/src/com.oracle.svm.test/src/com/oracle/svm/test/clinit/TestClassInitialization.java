@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 
 import jdk.internal.misc.Unsafe;

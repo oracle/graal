@@ -81,7 +81,6 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
      */
     private static JavaConstant readObjectChecked(Constant baseConstant, long displacement, CompressEncoding compressedEncoding) {
         if (compressedEncoding != null) {
-            assert ReferenceAccess.singleton().haveCompressedReferences();
             if (!compressedEncoding.equals(ReferenceAccess.singleton().getCompressEncoding())) {
                 throw new IllegalArgumentException("Reading with non-default compression is not supported.");
             }

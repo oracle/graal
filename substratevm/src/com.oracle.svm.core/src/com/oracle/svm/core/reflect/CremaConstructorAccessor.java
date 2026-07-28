@@ -24,12 +24,20 @@
  */
 package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.Modifier;
+
+import com.oracle.svm.core.hub.DynamicHub;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CremaConstructorAccessor extends AbstractCremaConstructorAccessor {
 
+    private static boolean isAbstract(Class<?> declaringClass) {
+        return Modifier.isAbstract(DynamicHub.fromClass(declaringClass).getInterpreterType().getModifiers());
+    }
+
     public CremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
-        super(targetMethod, declaringClass, parameterTypes);
+        super(targetMethod, declaringClass, parameterTypes, isAbstract(declaringClass));
     }
 
     @Override

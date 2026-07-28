@@ -58,9 +58,8 @@ import java.util.function.BiFunction;
  * <p>
  * When the hash table needs to be constructed, the field {@link #hashArray} becomes a new hash
  * array where an entry of 0 means no hit and otherwise denotes the entry number in the
- * {@link #entries} array. The hash array is interpreted as an actual byte array if the indices fit
- * within 8 bit, or as an array of short values if the indices fit within 16 bit, or as an array of
- * integer values in other cases.
+ * {@link #entries} array. The hash array uses one-byte, two-byte, three-byte, or four-byte
+ * packed indices depending on the entry array capacity.
  * <p>
  * Hash collisions are handled by chaining a linked list of {@link CollisionLink} objects that take
  * the place of the values in the {@link #entries} array.
@@ -111,6 +110,11 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
      * Number of entries above which more than 2 bytes are necessary for the hash index.
      */
     private static final int VERY_LARGE_HASH_THRESHOLD = (LARGE_HASH_THRESHOLD << Byte.SIZE);
+
+    /**
+     * Number of entries above which more than 3 bytes are necessary for the hash index.
+     */
+    private static final int HUGE_HASH_THRESHOLD = (VERY_LARGE_HASH_THRESHOLD << Byte.SIZE);
 
     /**
      * Dummy value to associate with an object when used as set.
@@ -317,6 +321,9 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         } else if (entries.length < VERY_LARGE_HASH_THRESHOLD) {
             int adjustedIndex = index << 1;
             return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8);
+        } else if (entries.length < HUGE_HASH_THRESHOLD) {
+            int adjustedIndex = index * 3;
+            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16);
         } else {
             int adjustedIndex = index << 2;
             return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16) | ((hashArray[adjustedIndex + 3] & 0xFF) << 24);
@@ -330,6 +337,11 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             int adjustedIndex = index << 1;
             hashArray[adjustedIndex] = (byte) value;
             hashArray[adjustedIndex + 1] = (byte) (value >> 8);
+        } else if (entries.length < HUGE_HASH_THRESHOLD) {
+            int adjustedIndex = index * 3;
+            hashArray[adjustedIndex] = (byte) value;
+            hashArray[adjustedIndex + 1] = (byte) (value >> 8);
+            hashArray[adjustedIndex + 2] = (byte) (value >> 16);
         } else {
             int adjustedIndex = index << 2;
             hashArray[adjustedIndex] = (byte) value;
@@ -463,7 +475,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         System.arraycopy(entries, 0, newEntries, 0, entriesLength);
         entries = newEntries;
         if ((entriesLength < LARGE_HASH_THRESHOLD && newEntries.length >= LARGE_HASH_THRESHOLD) ||
-                        (entriesLength < VERY_LARGE_HASH_THRESHOLD && newEntries.length > VERY_LARGE_HASH_THRESHOLD)) {
+                        (entriesLength < VERY_LARGE_HASH_THRESHOLD && newEntries.length >= VERY_LARGE_HASH_THRESHOLD) ||
+                        (entriesLength < HUGE_HASH_THRESHOLD && newEntries.length >= HUGE_HASH_THRESHOLD)) {
             // Rehash in order to change number of bits reserved for hash indices.
             createHash();
         }
@@ -517,11 +530,46 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return newNextIndex;
     }
 
+    @Override
+    public void trimToSize() {
+        int remaining = size();
+        if (remaining == 0) {
+            clear();
+            return;
+        }
+        int compactEntriesLength = remaining << 1;
+        if (deletedEntries == 0 && entries.length == compactEntriesLength) {
+            return;
+        }
+
+        Object[] newEntries = new Object[compactEntriesLength];
+        int next = 0;
+        for (int i = 0; i < totalEntries; i++) {
+            Object key = getKey(i);
+            if (key != null) {
+                newEntries[next << 1] = key;
+                newEntries[(next << 1) + 1] = getValue(i);
+                next++;
+            }
+        }
+
+        entries = newEntries;
+        totalEntries = next;
+        deletedEntries = 0;
+        if (next <= getHashThreshold()) {
+            hashArray = null;
+        } else {
+            createHash();
+        }
+    }
+
     private int getHashTableSize() {
         if (entries.length < LARGE_HASH_THRESHOLD) {
             return hashArray.length;
         } else if (entries.length < VERY_LARGE_HASH_THRESHOLD) {
             return hashArray.length >> 1;
+        } else if (entries.length < HUGE_HASH_THRESHOLD) {
+            return hashArray.length / 3;
         } else {
             return hashArray.length >> 2;
         }
@@ -539,9 +587,12 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         // Give extra size to avoid collisions.
         size <<= 1;
 
-        if (this.entries.length >= VERY_LARGE_HASH_THRESHOLD) {
+        if (this.entries.length >= HUGE_HASH_THRESHOLD) {
             // Every entry has 4 bytes.
             size <<= 2;
+        } else if (this.entries.length >= VERY_LARGE_HASH_THRESHOLD) {
+            // Every entry has 3 bytes.
+            size *= 3;
         } else if (this.entries.length >= LARGE_HASH_THRESHOLD) {
             // Every entry has 2 bytes.
             size <<= 1;

@@ -76,7 +76,7 @@ public final class CEntryPointBuiltins {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.ATTACH_THREAD)
     public static IsolateThread attachThread(Isolate isolate) {
-        int status = CEntryPointActions.enterAttachThread(isolate, false, true);
+        int status = CEntryPointActions.enterAttachThread(isolate, true);
         if (status != 0) {
             return Word.nullPointer();
         }

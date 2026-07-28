@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,7 +36,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;

@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

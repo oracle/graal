@@ -29,9 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 
 /**
@@ -40,7 +37,6 @@ import com.oracle.svm.shared.util.LogUtils;
  * output.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class AnalyzeJavaHomeAccessFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.phases.common.inlining.info;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.graph.Node;
@@ -36,6 +37,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents an opportunity for inlining at a given invoke, with the given weight and level. The
@@ -62,6 +64,15 @@ public interface InlineInfo {
     int numberOfMethods();
 
     ResolvedJavaMethod methodAt(int index);
+
+    /**
+     * Returns the exact or profiled receiver type for {@link #methodAt(int)}, when this inlining
+     * candidate is tied to one receiver type.
+     */
+    default ResolvedJavaType receiverTypeAt(int index) {
+        assert index >= 0 : Assertions.errorMessage(index);
+        return null;
+    }
 
     Inlineable inlineableElementAt(int index);
 

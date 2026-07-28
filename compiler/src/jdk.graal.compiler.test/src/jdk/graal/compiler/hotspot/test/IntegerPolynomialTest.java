@@ -27,13 +27,22 @@ package jdk.graal.compiler.hotspot.test;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Random;
 
+import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
 import jdk.graal.compiler.test.AddExports;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.security.util.math.ImmutableIntegerModuloP;
 import sun.security.util.math.MutableIntegerModuloP;
 import sun.security.util.math.intpoly.Curve25519OrderField;
@@ -71,8 +80,17 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
 
         Random rnd = getRandomInstance();
 
-        InstalledCode intpolyAssign = getCode(getResolvedJavaMethod(IntegerPolynomial.class, "conditionalAssign"), null, true, true, GraalCompilerTest.getInitialOptions());
-        InstalledCode intpolyMontgomeryMultP256 = getCode(getResolvedJavaMethod(MontgomeryIntegerPolynomialP256.class, "mult"), null, true, true, GraalCompilerTest.getInitialOptions());
+        Assume.assumeTrue("IntegerPolynomialAssignNode not supported", IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(getArchitecture()));
+        Assume.assumeTrue("IntegerPolynomialP256MontgomeryMultNode not supported",
+                        IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(getArchitecture()));
+
+        ResolvedJavaMethod intpolyAssignMethod = getResolvedJavaMethod(IntegerPolynomial.class, "conditionalAssign");
+        ResolvedJavaMethod intpolyMontgomeryMultP256Method = getResolvedJavaMethod(MontgomeryIntegerPolynomialP256.class, "mult");
+        StructuredGraph intpolyAssignGraph = getIntrinsicGraph(intpolyAssignMethod, IntegerPolynomialAssignNode.class);
+        StructuredGraph intpolyMontgomeryMultP256Graph = getIntrinsicGraph(intpolyMontgomeryMultP256Method, IntegerPolynomialP256MontgomeryMultNode.class);
+
+        InstalledCode intpolyAssign = getCode(intpolyAssignMethod, intpolyAssignGraph, true, false, GraalCompilerTest.getInitialOptions());
+        InstalledCode intpolyMontgomeryMultP256 = getCode(intpolyMontgomeryMultP256Method, intpolyMontgomeryMultP256Graph, true, false, GraalCompilerTest.getInitialOptions());
 
         for (IntegerPolynomial field : testFields) {
             ImmutableIntegerModuloP aRef = field.getElement(new BigInteger(32 * 64, rnd));
@@ -91,5 +109,60 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
         assertTrue(intpolyMontgomeryMultP256.isValid());
         intpolyAssign.invalidate();
         intpolyMontgomeryMultP256.invalidate();
+    }
+
+    @Test
+    public void testAMD64FeaturePredicates() {
+        AMD64 minFeatures = amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA);
+        AMD64 maxFeatures = amd64With(IntegerPolynomialAssignNode.maxFeaturesAMD64());
+        AMD64 unsupportedFeatures = amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
+
+        assertTrue(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(minFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(minFeatures));
+        assertTrue(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(maxFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(maxFeatures));
+
+        assertFalse(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(unsupportedFeatures));
+        assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(unsupportedFeatures));
+        assertFalse(IntegerPolynomialAssignNode.isSupported(minFeatures));
+        assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupported(minFeatures));
+    }
+
+    @Test
+    public void testAMD64MaximumFeaturePredicate() {
+        Assert.assertEquals(EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL,
+                        AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F),
+                        IntegerPolynomialAssignNode.maxFeaturesAMD64());
+        Assert.assertEquals(IntegerPolynomialAssignNode.maxFeaturesAMD64(), IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
+        assertTrue(IntegerPolynomialAssignNode.isSupported(amd64With(IntegerPolynomialAssignNode.maxFeaturesAMD64())));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(amd64With(IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64())));
+    }
+
+    private static AMD64 amd64With(EnumSet<AMD64.CPUFeature> features) {
+        EnumSet<AMD64.CPUFeature> featureSet = EnumSet.of(AMD64.CPUFeature.SSE2);
+        featureSet.addAll(features);
+        return new AMD64(featureSet);
+    }
+
+    private static AMD64 amd64With(AMD64.CPUFeature... features) {
+        EnumSet<AMD64.CPUFeature> featureSet = EnumSet.of(AMD64.CPUFeature.SSE2);
+        for (AMD64.CPUFeature feature : features) {
+            featureSet.add(feature);
+        }
+        return new AMD64(featureSet);
+    }
+
+    private StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, Class<? extends Node> expectedNodeClass) {
+        StructuredGraph graph = getIntrinsicGraph(method);
+        assertTrue("missing intrinsic graph for " + method.format("%H.%n(%p)"), graph != null);
+        boolean found = false;
+        for (Node node : graph.getNodes()) {
+            if (expectedNodeClass.isInstance(node)) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue("expected node " + expectedNodeClass.getSimpleName(), found);
+        return graph;
     }
 }

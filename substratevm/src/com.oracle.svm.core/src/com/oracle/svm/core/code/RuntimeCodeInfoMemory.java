@@ -41,7 +41,7 @@ import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;

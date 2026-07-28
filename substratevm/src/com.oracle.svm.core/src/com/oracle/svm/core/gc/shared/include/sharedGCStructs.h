@@ -37,8 +37,8 @@ typedef struct CodeInfo CodeInfo;
 
 // data structures for frames that are currently on the stack
 struct StackFrame {
-  u_char *stack_pointer;
-  u_char *encoded_reference_map;
+  unsigned char *stack_pointer;
+  unsigned char *encoded_reference_map;
   size_t reference_map_index;
 };
 

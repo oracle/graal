@@ -1651,9 +1651,10 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def _config(self):
         # Save the path and timestamp of the JDK image so that graalvm-jimage
-        # is rebuilt if the JDK at JAVA_HOME is rebuilt. The JDK image file is
-        # always updated when the JDK is rebuilt.
-        src_jimage = mx.TimeStampFile(join(mx_sdk_vm.base_jdk().home, 'lib', 'modules'))
+        # is rebuilt if the JDK used for this stage is rebuilt. The JDK image
+        # file is always updated when the JDK is rebuilt.
+        stage1 = 'stage1' in self.subject.name
+        src_jimage = mx.TimeStampFile(join(mx_sdk_vm.base_jdk(stage1=stage1).home, 'lib', 'modules'))
         return [
             f'include sources: {_include_sources_str()}',
             f'vendor-version: {graalvm_vendor_version()}',

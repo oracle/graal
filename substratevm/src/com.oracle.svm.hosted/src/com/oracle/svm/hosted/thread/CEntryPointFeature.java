@@ -35,9 +35,6 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
@@ -45,7 +42,6 @@ import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class CEntryPointFeature implements InternalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

@@ -68,6 +68,7 @@ import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.memory.MultiMemorySuite;
 import org.graalvm.wasm.test.suites.memory.ThreadsSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
+import org.graalvm.wasm.test.suites.table.Table64Suite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
@@ -93,6 +94,7 @@ import org.junit.runners.Suite;
                 MemorySuite.class,
                 Memory64Suite.class,
                 TableSuite.class,
+                Table64Suite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
                 MultiValueSuite.class,

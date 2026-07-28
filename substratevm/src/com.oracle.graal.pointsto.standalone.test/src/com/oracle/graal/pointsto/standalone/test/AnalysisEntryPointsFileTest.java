@@ -32,7 +32,7 @@ import com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFile
 import com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase.C;
 
 /**
- * This test verifies reading analysis entry points from file via -H:AnalysisEntryPointsFile.
+ * This test verifies reading analysis entry points from the standalone entry-points-file option.
  */
 public class AnalysisEntryPointsFileTest extends StandaloneAnalysisTest {
     /**

@@ -32,7 +32,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -42,7 +42,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * For methods invoked through PLT/GOT, unless overridden explicitly, emits relocations that point
  * to the generated PLT stub.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class PLTGOTPointerRelocationProvider extends MethodPointerRelocationProvider {
 
     private final PLTSupport pltSupport;

@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
 import com.oracle.objectfile.LayoutDecision;
@@ -47,7 +49,6 @@ import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
 import com.oracle.objectfile.pecoff.cv.CVDebugInfo;
 import com.oracle.objectfile.pecoff.cv.CVSymbolSectionImpl;
 import com.oracle.objectfile.pecoff.cv.CVTypeSectionImpl;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * Represents a PECoff object file.
@@ -109,9 +110,9 @@ public class PECoffObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported) {
         PECoffSymtab st = createSymbolTable();
-        return st.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
+        return st.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode, isExported);
     }
 
     @Override

@@ -43,7 +43,7 @@ import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;

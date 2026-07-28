@@ -98,22 +98,30 @@ public final class JfrStackWalker {
     }
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
-    public static void walkCurrentThread(CodePointer initialIP, Pointer initialSP, boolean isAsync) {
+    public static boolean walkCurrentThread(CodePointer initialIP, Pointer initialSP, boolean isAsync) {
         SamplerSampleWriterData data = UnsafeStackValue.get(SamplerSampleWriterData.class);
         if (SamplerSampleWriterDataAccess.initialize(data, 0, false)) {
             SamplerSampleWriter.begin(data);
             int result = walkCurrentThread(data, initialIP, initialSP, isAsync);
 
             switch (result) {
-                case NO_ERROR, TRUNCATED -> SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
+                case NO_ERROR, TRUNCATED -> {
+                    SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
+                    return true;
+                }
                 case UNPARSEABLE_STACK -> {
                     VMError.guarantee(isAsync, "Only the async sampler may encounter an unparseable stack.");
                     JfrThreadLocal.increaseUnparseableStacks();
+                    return false;
                 }
-                case BUFFER_SIZE_EXCEEDED, SKIPPED -> JfrThreadLocal.increaseMissedSamples();
+                case BUFFER_SIZE_EXCEEDED, SKIPPED -> {
+                    JfrThreadLocal.increaseMissedSamples();
+                    return false;
+                }
                 default -> throw VMError.shouldNotReachHere("Unexpected return value");
             }
         }
+        return false;
     }
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
@@ -178,13 +186,13 @@ public final class JfrStackWalker {
                     int wordSize = SubstrateTarget.getWordSize();
                     if (isSPAligned(sp)) {
                         UnsignedWord topFrameSize = Word.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
-                        if (SubstrateOptions.hasFramePointer() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
+                        if (SubstrateOptions.hasFramePointerSlot() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
                             /*
-                             * If we have a frame pointer, then the stack pointer can be aligned
+                             * If we have a frame pointer slot, the stack pointer can be aligned
                              * while we are in the method prologue/epilogue (i.e., the frame pointer
-                             * and the return address are on top of the stack, but the actual stack
+                             * slot and return address are on top of the stack, but the actual stack
                              * frame is missing). We should reach the caller if we skip the
-                             * incomplete top frame (frame pointer and return address).
+                             * incomplete top frame (frame pointer slot and return address).
                              */
                             sp = sp.add(wordSize * 2);
                         } else {

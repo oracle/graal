@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -391,6 +391,90 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "merge.conditional$generic",
                         "c.Abs",
                         "return");
+    }
+
+    @Test
+    public void testConditionalMergeStabilizes() {
+        BoxingEliminationTestRootNode node = parseConditionalMerge();
+
+        assertEquals(42L, node.getCallTarget().call(true, 42L, false));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.argument$Long",
+                        "branch",
+                        "load.argument",
+                        "merge.conditional$Long",
+                        "return");
+
+        assertEquals(false, node.getCallTarget().call(false, 42L, false));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.argument",
+                        "branch",
+                        "load.argument",
+                        "merge.conditional$generic",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 8, 1);
+        assertStable(quickenings, node, true, 42L, false);
+        assertStable(quickenings, node, false, 42L, false);
+    }
+
+    @Test
+    public void testConditionalMergeLeftSideStabilizes() {
+        BoxingEliminationTestRootNode node = parseConditionalMerge();
+
+        assertEquals(42L, node.getCallTarget().call(true, 42L, false));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.argument$Long",
+                        "branch",
+                        "load.argument",
+                        "merge.conditional$Long",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 5, 1);
+        assertStable(quickenings, node, true, 42L, false);
+    }
+
+    @Test
+    public void testConditionalMergeRightSideStabilizes() {
+        BoxingEliminationTestRootNode node = parseConditionalMerge();
+
+        assertEquals(false, node.getCallTarget().call(false, 42L, false));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.argument",
+                        "branch",
+                        "load.argument$Boolean",
+                        "merge.conditional$Boolean",
+                        "return");
+        var quickenings = assertQuickenings(node, 5, 1);
+        assertStable(quickenings, node, false, 42L, false);
+    }
+
+    private static BoxingEliminationTestRootNode parseConditionalMerge() {
+        return parse(b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
     }
 
     @Test
@@ -2220,6 +2304,22 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, 123, 4.56f);
     }
 
+    @Test
+    public void testDuplicateObjectQuickeningName() {
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginDuplicateObjectQuickeningName();
+            b.emitLoadArgument(0);
+            b.endDuplicateObjectQuickeningName();
+            b.endReturn();
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals(42, node.getCallTarget().call(42));
+        assertEquals("42", node.getCallTarget().call("42"));
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
@@ -2703,6 +2803,25 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             @Specialization
             public static Object doFloatInt(float x, int y) {
                 return x + y;
+            }
+        }
+
+        @Operation
+        static final class DuplicateObjectQuickeningName {
+            /*
+             * Regression test: the manual quickening for doObject and the boxing-elimination
+             * quickening for doInt both normalize the dynamic operand to Object. The processor must
+             * de-duplicate them before creating instructions.
+             */
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            static int doInt(@SuppressWarnings("unused") Object value) throws UnexpectedResultException {
+                throw new UnexpectedResultException(value);
+            }
+
+            @ForceQuickening
+            @Specialization(replaces = "doInt")
+            static Object doObject(Object value) {
+                return value;
             }
         }
     }

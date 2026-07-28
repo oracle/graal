@@ -30,12 +30,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class ImageHeapCollectionFeature implements InternalFeature {
 
     @Override

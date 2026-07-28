@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -219,7 +220,7 @@ public class CounterTrackerList extends CounterTracker {
             bufDst = new int[MathUtil.ceilPowerOf2(size)];
             intArrays[bufferPointerDst] = bufDst;
         }
-        System.arraycopy(getBuffer(src, fixedData, intArrays), start, bufDst, 0, size);
+        ArrayUtils.arraycopy(getBuffer(src, fixedData, intArrays), start, bufDst, 0, size);
     }
 
     @Override

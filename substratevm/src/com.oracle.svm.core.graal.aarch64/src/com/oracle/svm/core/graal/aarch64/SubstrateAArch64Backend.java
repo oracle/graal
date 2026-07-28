@@ -37,6 +37,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -47,6 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -81,6 +83,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -342,7 +345,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "Memory access without isolates is not implemented");
             try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
                 Register immediateScratch = sc1.getRegister();
                 Register addressScratch = sc2.getRegister();
@@ -734,8 +736,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         @Override
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
@@ -743,27 +744,18 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
         @Override
         public void emitConvertNullToZero(AllocatableValue result, AllocatableValue value) {
-            if (useLinearPointerCompression()) {
-                append(new AArch64Move.ConvertNullToZeroOp(result, value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AArch64Move.ConvertNullToZeroOp(result, value));
         }
 
         @Override
         public void emitConvertZeroToNull(AllocatableValue result, Value value) {
-            if (useLinearPointerCompression()) {
-                append(new AArch64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AArch64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
         }
 
         @Override
@@ -1131,6 +1123,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 });
             }
 
+            makeFrameWithoutRuntimeCodeOffset(crb, masm, totalFrameSize, frameSize);
+        }
+
+        protected void makeFrameWithoutRuntimeCodeOffset(CompilationResultBuilder crb, AArch64MacroAssembler masm, int totalFrameSize, int frameSize) {
             boolean preserveFramePointer = ((SubstrateAArch64RegisterConfig) crb.frameMap.getRegisterConfig()).shouldPreserveFramePointer();
             // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
 
@@ -1340,7 +1336,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         @Override
         protected void emitObjectComparison(CompilationResultBuilder crb, AArch64MacroAssembler masm, Value keyValue, Register keyRegister, JavaConstant jc) {
-            if (ReferenceAccess.singleton().haveCompressedReferences() && jc instanceof CompressibleConstant constant && !jc.isNull()) {
+            if (jc instanceof CompressibleConstant constant && !jc.isNull()) {
                 /*
                  * Strategy-switch object keys are uncompressed hub references, so compressed object
                  * constants must be uncompressed before the pointer compare.
@@ -1359,13 +1355,11 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
     }
 
-    protected static class SubstrateAArch64MoveFactory extends AArch64MoveFactory {
-
+    private static class SubstrateAArch64MoveFactory extends AArch64MoveFactory {
         private final SharedMethod method;
         private final LIRKindTool lirKindTool;
 
-        protected SubstrateAArch64MoveFactory(SharedMethod method, LIRKindTool lirKindTool) {
-            super();
+        SubstrateAArch64MoveFactory(SharedMethod method, LIRKindTool lirKindTool) {
             this.method = method;
             this.lirKindTool = lirKindTool;
         }
@@ -1455,12 +1449,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             return super.createStackLoad(dst, src);
         }
 
-        protected AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
-            if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
-                return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
-            }
-            return new AArch64Move.LoadInlineConstant(constant, dst);
+        private AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
+            RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
+            return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
         }
     }
 
@@ -1558,7 +1549,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
+        Register uncompressedNullRegister = ReservedRegisters.singleton().getHeapBaseRegister();
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister, lir);
         crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
@@ -1615,10 +1606,11 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         return factory;
     }
 
-    protected static class SubstrateAArch64LIRKindTool extends AArch64LIRKindTool implements AArch64SimdLIRKindTool {
+    private static final class SubstrateAArch64LIRKindTool extends AArch64LIRKindTool implements AArch64SimdLIRKindTool {
         @Override
         public LIRKind getNarrowOopKind() {
-            return LIRKind.compressedReference(AArch64Kind.QWORD);
+            PlatformKind kind = SubstrateOptions.useCompressedReferences() ? AArch64Kind.DWORD : AArch64Kind.QWORD;
+            return LIRKind.compressedReference(kind);
         }
 
         @Override
@@ -1688,7 +1680,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
+        RegisterValue nullRegisterValue = ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD));
         AArch64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         AArch64MoveFactory moveFactory = createMoveFactory(lirGenRes);
         if (isVectorizationTarget()) {
@@ -1713,10 +1705,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         return new SubstrateAArch64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
-    protected static boolean useLinearPointerCompression() {
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
-
     @Override
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
@@ -1725,12 +1713,20 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new SubstrateAArch64MacroAssembler(getTarget());
+        PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
+        asm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(result));
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
+            if (cremaData != null) {
+                try (ScratchRegister enterDataScratch = asm.getScratchRegister()) {
+                    Register enterDataRegister = enterDataScratch.getRegister();
+                    emitCremaJNITrampoline(asm, result, methodIdArg, scratchRegister, enterDataRegister, cremaData);
+                }
+            }
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
             /*
              * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
@@ -1748,6 +1744,82 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
         return result;
+    }
+
+    private void emitCremaJNITrampoline(AArch64MacroAssembler asm, CompilationResult result, RegisterValue methodIdArg, Register scratchRegister, Register enterDataRegister,
+                    CremaJNITrampolineData cremaData) {
+        ResolvedJavaMethod wrapperMethod = cremaData.wrapperMethod();
+        boolean needsEnterData = cremaData.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN_AARCH64.class);
+        boolean needsCallerStackPointer = cremaData.callVariant() == CallVariant.VARARGS && Platform.includedIn(Platform.DARWIN_AARCH64.class);
+        Label imageHeapMethodId = new Label();
+        // Negative method IDs encode CremaResolvedJavaMethod instances.
+        asm.tbz(methodIdArg.getRegister(), 63, imageHeapMethodId);
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            /* Sign lr before the Crema path changes sp or saves the return address. */
+            asm.paciasp();
+        }
+        CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
+        AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
+        assert ValueUtil.isRegister(payloadArgument);
+        Register payloadRegister = asRegister(payloadArgument);
+        if (needsEnterData) {
+            emitCremaJNITrampolineEnterData(asm, scratchRegister, enterDataRegister, payloadRegister);
+        } else if (needsCallerStackPointer) {
+            /*
+             * AArch64 keeps the return address in lr instead of pushing it. This runs before the
+             * frame record below is created, so sp is still the JNI caller's stack-argument base.
+             */
+            asm.mov(64, payloadRegister, sp);
+        }
+        asm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * getTarget().wordSize));
+        asm.mov(64, fp, sp);
+        int before = asm.position();
+        asm.bl();
+        int after = asm.position();
+        var call = result.recordCall(before, after - before, wrapperMethod, null, true);
+        asm.postCallNop(call);
+        asm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * getTarget().wordSize));
+        if (needsEnterData) {
+            asm.add(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
+        }
+        /*
+         * The wrapper uses a uniform word-sized return type, so floating-point results arrive as raw
+         * bits in the general-purpose return register. Mirror those bits into the ABI floating-point
+         * return register without affecting integer or reference results.
+         */
+        asm.fmov(64, AArch64.v0, AArch64.r0);
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            /* sp is back at its entry value, so authenticate lr with the original modifier. */
+            asm.autiasp();
+        }
+        asm.ret(lr);
+        asm.bind(imageHeapMethodId);
+    }
+
+    private void emitCremaJNITrampolineEnterData(AArch64MacroAssembler asm, Register originalSp, Register enterData, Register payloadArgument) {
+        /* The return address is in lr, so the entry sp can be recorded without an adjustment. */
+        asm.mov(64, originalSp, sp);
+        asm.sub(64, sp, sp, AArch64InterpreterStubs.sizeOfInterpreterData());
+        asm.mov(64, enterData, sp);
+
+        SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) getCodeCache().getRegisterConfig();
+        List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+        List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+        asm.str(64, originalSp, createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiSpReg()));
+        for (int i = 0; i < gps.size(); i++) {
+            asm.str(64, gps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiGpArg(i)));
+        }
+
+        for (int i = 0; i < fps.size(); i++) {
+            asm.fstr(64, fps.get(i), createEnterDataAddress(enterData, AArch64InterpreterStubs.offsetAbiFpArg(i)));
+        }
+
+        asm.mov(64, payloadArgument, enterData);
+    }
+
+    private static AArch64Address createEnterDataAddress(Register enterData, int offset) {
+        return AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, enterData, offset);
     }
 
     @Override

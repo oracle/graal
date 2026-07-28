@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
@@ -35,13 +35,13 @@ import java.lang.ref.SoftReference;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;

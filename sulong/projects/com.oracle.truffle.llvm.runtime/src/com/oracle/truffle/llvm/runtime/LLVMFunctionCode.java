@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -106,7 +106,9 @@ public final class LLVMFunctionCode {
         }
 
         private static long tagSulongFunctionPointer(int id) {
-            return id | SULONG_FUNCTION_POINTER_TAG;
+            // Keep synthetic function pointers aligned. The Itanium C++ ABI uses bit 0 of a
+            // member function pointer to distinguish virtual functions from direct addresses.
+            return (Integer.toUnsignedLong(id) << 1) | SULONG_FUNCTION_POINTER_TAG;
         }
 
         @Override

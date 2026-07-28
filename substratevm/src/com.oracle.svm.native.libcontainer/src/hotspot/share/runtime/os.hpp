@@ -354,15 +354,15 @@ class os: AllStatic {
   // For example, on Linux, "available" memory (`MemAvailable` in `/proc/meminfo`) is greater
   // than "free" memory (`MemFree` in `/proc/meminfo`) because Linux can free memory
   // aggressively (e.g. clear caches) so that it becomes available.
-  static julong available_memory();
-  static julong used_memory();
-  static julong free_memory();
+  [[nodiscard]] static bool available_memory(physical_memory_size_type& value);
+  [[nodiscard]] static bool used_memory(physical_memory_size_type& value);
+  [[nodiscard]] static bool free_memory(physical_memory_size_type& value);
 
-  static jlong total_swap_space();
-  static jlong free_swap_space();
+  [[nodiscard]] static bool total_swap_space(physical_memory_size_type& value);
+  [[nodiscard]] static bool free_swap_space(physical_memory_size_type& value);
 #endif // !NATIVE_IMAGE
 
-  static julong physical_memory();
+  static physical_memory_size_type physical_memory();
 #ifndef NATIVE_IMAGE
   static bool has_allocatable_memory_limit(size_t* limit);
   static bool is_server_class_machine();
@@ -418,6 +418,8 @@ class os: AllStatic {
   static jint set_minimum_stack_sizes();
 
  public:
+  // get allowed minimum java stack size
+  static jlong get_minimum_java_stack_size();
   // Find committed memory region within specified range (start, start + size),
   // return true if found any
   static bool committed_in_range(address start, size_t size, address& committed_start, size_t& committed_size);
@@ -692,6 +694,8 @@ class os: AllStatic {
 #endif // !NATIVE_IMAGE
   static FILE* fopen(const char* path, const char* mode);
 #ifndef NATIVE_IMAGE
+  static int64_t ftell(FILE* file);
+  static int fseek(FILE* file, int64_t offset, int whence);
   static jlong lseek(int fd, jlong offset, int whence);
 #endif // !NATIVE_IMAGE
   static bool file_exists(const char* file);

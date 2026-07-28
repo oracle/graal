@@ -99,7 +99,7 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         // Preferred runtime-checked feature set. AVX_IFMA and AVX512_IFMA are alternative
         // instruction encodings, so this must not require both feature paths. The AVX512
         // version still emits AVX and AVX2 instructions.
-        return EnumSet.of(AVX, AVX2, AVX512_IFMA, AVX512VL, AVX512BW, AVX512F);
+        return EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL, AVX512_IFMA);
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {

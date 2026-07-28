@@ -46,9 +46,10 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 /** LLVM target-specific inline assembly snippets and information. */
 public interface LLVMTargetSpecific {
@@ -196,7 +197,6 @@ public interface LLVMTargetSpecific {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
@@ -211,7 +211,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMAMD64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMAMD64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {
@@ -324,7 +324,6 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;
@@ -339,7 +338,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMAArch64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMAArch64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {
@@ -487,7 +486,6 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.RISCV64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
     private static final int RISCV64_FP_IDX = 8;
     private static final int RISCV64_SP_IDX = 2;
@@ -502,7 +500,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMRISCV64TargetSpecific());
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMRISCV64TargetSpecific implements LLVMTargetSpecific {
         @Override
         public String getRegisterInlineAsm(String register) {
@@ -631,18 +629,22 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
 
         @Override
         public int getInstructionOffset(ByteBuffer buffer, int offset, LLVMSectionIteratorRef relocationsSectionIteratorRef, LLVMRelocationIteratorRef relocationIteratorRef) {
-            while (LLVM.LLVMIsRelocationIteratorAtEnd(relocationsSectionIteratorRef, relocationIteratorRef) == FALSE && offset != LLVM.LLVMGetRelocationOffset(relocationIteratorRef)) {
-                LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
+            while (LLVM.LLVMIsRelocationIteratorAtEnd(relocationsSectionIteratorRef, relocationIteratorRef) == FALSE) {
+                long relocationOffset = LLVM.LLVMGetRelocationOffset(relocationIteratorRef);
+                if (relocationOffset < offset) {
+                    LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
+                } else if (relocationOffset == offset) {
+                    LLVMSymbolIteratorRef firstSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
+                    LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
+                    VMError.guarantee(LLVM.LLVMIsRelocationIteratorAtEnd(relocationsSectionIteratorRef, relocationIteratorRef) == FALSE, "Stack map has only one relocation for offset %d", offset);
+                    VMError.guarantee(offset == LLVM.LLVMGetRelocationOffset(relocationIteratorRef), "Stack map relocation pair has mismatched offsets for offset %d", offset);
+                    LLVMSymbolIteratorRef secondSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
+                    return (int) (LLVM.LLVMGetSymbolAddress(firstSymbol) - LLVM.LLVMGetSymbolAddress(secondSymbol));
+                } else {
+                    break;
+                }
             }
-            if (offset == LLVM.LLVMGetRelocationOffset(relocationIteratorRef)) {
-                LLVMSymbolIteratorRef firstSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
-                LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
-                assert offset == LLVM.LLVMGetRelocationOffset(relocationIteratorRef);
-                LLVMSymbolIteratorRef secondSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
-                return (int) (LLVM.LLVMGetSymbolAddress(firstSymbol) - LLVM.LLVMGetSymbolAddress(secondSymbol));
-            } else {
-                throw shouldNotReachHere("Stack map has no relocation for offset " + offset);
-            }
+            return buffer.getInt(offset);
         }
 
         @Override

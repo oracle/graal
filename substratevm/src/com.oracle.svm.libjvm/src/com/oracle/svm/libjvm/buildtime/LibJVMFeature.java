@@ -27,20 +27,23 @@ package com.oracle.svm.libjvm.buildtime;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
-import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.core.libjvm.LibJVMSupport;
 
 public final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LibJVMSupport.class, new LibJVMSupport());
+    }
 
-        // Workaround for GR-71358
-        ImageSingletons.add(LibJVMMainMethodWrappers.class, new LibJVMMainMethodWrappers());
-        var libJVMMainMethodWrappersName = LibJVMMainMethodWrappers.class.getName();
-        JVMCIRuntimeJNIAccess.register(method(access, libJVMMainMethodWrappersName, "main", String[].class));
-        JVMCIRuntimeJNIAccess.register(method(access, libJVMMainMethodWrappersName, "main"));
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* The JDK test harness parses these properties with HotSpot-shaped expectations. */
+        RuntimeSystemProperties.register("java.vm.name", "Substrate 64-Bit Server VM");
+        RuntimeSystemProperties.register("java.vm.info", "mixed mode");
+        RuntimeSystemProperties.register("jdk.debug", "release");
     }
 }

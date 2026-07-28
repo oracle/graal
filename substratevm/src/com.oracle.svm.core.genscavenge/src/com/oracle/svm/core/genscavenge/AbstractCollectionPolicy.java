@@ -31,7 +31,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
@@ -39,7 +39,7 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -55,7 +55,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected static final int MIN_SPACE_SIZE_AS_NUMBER_OF_ALIGNED_CHUNKS = 8;
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L572-L575") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L572-L575") //
     static final int MAX_TENURING_THRESHOLD = 15;
 
     static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {
@@ -70,16 +70,16 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
      * Don't change these values individually without carefully going over their occurrences in
      * HotSpot source code, there are dependencies between them that are not handled in our code.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L413-L415") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L413-L415") //
     protected static final int INITIAL_SURVIVOR_RATIO = 8;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L409-L411") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L409-L411") //
     protected static final int MIN_SURVIVOR_RATIO = 3;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342") //
     protected static final int ADAPTIVE_TIME_WEIGHT = 25;
 
     /* Constants to compute defaults for values which can be set through existing options. */
     protected static final UnsignedWord INITIAL_HEAP_SIZE = Word.unsigned(128 * 1024 * 1024);
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L554-L556") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L554-L556") //
     protected static final int NEW_RATIO = 2;
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
@@ -286,9 +286,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         return sizes.getMinHeapSize();
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
     protected void computeSizeParameters(RawSizeParameters newParamsOnStack) {
         UnsignedWord minYoungSpaces = getMinYoungSpacesSize();
         UnsignedWord minAllSpaces = minYoungSpaces.add(minSpaceSize()); // old

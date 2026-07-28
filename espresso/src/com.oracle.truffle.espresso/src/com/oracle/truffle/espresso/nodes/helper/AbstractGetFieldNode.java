@@ -32,6 +32,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaKind;
@@ -95,6 +97,15 @@ public abstract class AbstractGetFieldNode extends EspressoNode {
         }
         return value;
     }
+
+    @ExplodeLoop
+    public BytecodeNode getBytecodeNode() {
+        Node parent = getParent();
+        while (!(parent instanceof BytecodeNode)) {
+            parent = parent.getParent();
+        }
+        return (BytecodeNode) parent;
+    }
 }
 
 abstract class IntGetFieldNode extends AbstractGetFieldNode {
@@ -112,12 +123,19 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
 
     abstract int executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    int doEspressoUnchecked(StaticObject receiver) {
+        return getField().getInt(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     int doEspresso(StaticObject receiver) {
         return getField().getInt(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     int doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -130,7 +148,9 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     int doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -167,12 +187,19 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
 
     abstract boolean executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    boolean doEspressoUnchecked(StaticObject receiver) {
+        return getField().getBoolean(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     boolean doEspresso(StaticObject receiver) {
         return getField().getBoolean(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     boolean doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -185,7 +212,9 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     boolean doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -222,12 +251,19 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
 
     abstract char executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    char doEspressoUnchecked(StaticObject receiver) {
+        return getField().getChar(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     char doEspresso(StaticObject receiver) {
         return getField().getChar(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     char doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -245,7 +281,9 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     char doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -282,12 +320,19 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
 
     abstract short executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    short doEspressoUnchecked(StaticObject receiver) {
+        return getField().getShort(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     short doEspresso(StaticObject receiver) {
         return getField().getShort(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     short doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -300,7 +345,9 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     short doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -337,12 +384,19 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
 
     abstract byte executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    byte doEspressoUnchecked(StaticObject receiver) {
+        return getField().getByte(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     byte doEspresso(StaticObject receiver) {
         return getField().getByte(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     byte doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -355,7 +409,9 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     byte doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -392,12 +448,19 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
 
     abstract long executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    long doEspressoUnchecked(StaticObject receiver) {
+        return getField().getLong(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     long doEspresso(StaticObject receiver) {
         return getField().getLong(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     long doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -410,7 +473,9 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     long doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -447,12 +512,19 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
 
     abstract float executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    float doEspressoUnchecked(StaticObject receiver) {
+        return getField().getFloat(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     float doEspresso(StaticObject receiver) {
         return getField().getFloat(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     float doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -465,7 +537,9 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     float doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -502,12 +576,19 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 
     abstract double executeGetField(StaticObject receiver);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    double doEspressoUnchecked(StaticObject receiver) {
+        return getField().getDouble(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     double doEspresso(StaticObject receiver) {
         return getField().getDouble(receiver);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "isValueField(meta)"})
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "isValueField(meta)"})
     double doForeignValue(StaticObject receiver,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
@@ -520,7 +601,9 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()",
+                    "receiver.isForeignObject()",
+                    "!isValueField(meta)"}, limit = "CACHED_LIBRARY_LIMIT")
     double doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
@@ -552,7 +635,6 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         StaticObject result = executeGetField(receiver);
-        root.checkNoForeignObjectAssumption(result);
         EspressoFrame.putObject(frame, at, result);
         return slotCount;
     }
@@ -564,12 +646,17 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
         return ToReference.createToReference(typeKlass, typeKlass.getMeta());
     }
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    StaticObject doEspressoUnchecked(StaticObject receiver) {
+        return field.getObject(receiver);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     StaticObject doEspresso(StaticObject receiver) {
         return field.getObject(receiver);
     }
 
-    @Specialization(guards = "receiver.isForeignObject()")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"})
     StaticObject doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,

@@ -38,7 +38,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 
 @CContext(CInterfaceDebugTestDirectives.class)
 public class CStructTests {

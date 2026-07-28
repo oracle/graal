@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

@@ -208,10 +208,14 @@ public interface PersistedAnalysisTypeData {
         interface Lambda {
             interface Writer {
                 void setCapturingClass(String value);
+
+                void setCaptureSite(String value);
             }
 
             interface Loader {
                 String getCapturingClass();
+
+                String getCaptureSite();
             }
         }
     }

@@ -133,8 +133,12 @@ final class PodFeature implements PodSupport, InternalFeature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void onRegistration(OnRegistrationAccess access) {
         ImageSingletons.add(PodSupport.class, this);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Pod.RuntimeSupport.class, new Pod.RuntimeSupport());
 
         registerSuperclass(Object.class, Supplier.class);

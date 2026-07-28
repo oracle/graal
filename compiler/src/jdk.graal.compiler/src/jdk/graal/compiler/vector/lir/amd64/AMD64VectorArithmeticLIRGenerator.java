@@ -30,6 +30,8 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPSHUFD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMADDUBSW;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMADDWD;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
@@ -69,6 +71,7 @@ import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertToFloatOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryRVMOp;
 import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
+import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdPairwiseMultiplyAddNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -187,6 +190,14 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return super.emitBinary(resultKind, op, a, b);
     }
 
+    public Variable emitVectorPairwiseMultiplyAdd(LIRKind resultKind, AMD64SimdPairwiseMultiplyAddNode.OpKind opKind, Value a, Value b) {
+        VexRVMOp opcode = switch (opKind) {
+            case SIGNED_SHORTS_TO_INTS -> VPMADDWD.encoding(getSimdEncoding());
+            case UNSIGNED_SIGNED_BYTES_TO_SHORTS_SATURATING -> VPMADDUBSW.encoding(getSimdEncoding());
+        };
+        return emitVectorBinary(resultKind, opcode, a, b);
+    }
+
     protected AMD64 getArchitecture() {
         return (AMD64) getLIRGen().target().arch;
     }
@@ -194,6 +205,50 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
     public boolean supports(CPUFeature feature) {
         TargetDescription target = getLIRGen().target();
         return ((AMD64) target.arch).getFeatures().contains(feature);
+    }
+
+    @Override
+    public Value emitSaturatingAdd(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPADDSB;
+            case WORD -> VexRVMOp.VPADDSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingSub(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPSUBSB;
+            case WORD -> VexRVMOp.VPSUBSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingUnsignedAdd(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPADDUSB;
+            case WORD -> VexRVMOp.VPADDUSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
+    }
+
+    @Override
+    public Value emitSaturatingUnsignedSub(Value a, Value b) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        VexRVMOp op = switch (kind.getScalar()) {
+            case BYTE -> VexRVMOp.VPSUBUSB;
+            case WORD -> VexRVMOp.VPSUBUSW;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
+        };
+        return emitVectorBinary(op.encoding(simdEncoding), a, b);
     }
 
     protected Variable emitShift(VexShiftOp op, Value a, Value b) {

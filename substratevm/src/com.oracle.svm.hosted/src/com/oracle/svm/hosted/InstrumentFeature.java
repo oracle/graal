@@ -42,10 +42,6 @@ import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.options.Option;
@@ -55,7 +51,6 @@ import jdk.graal.compiler.options.OptionStability;
  * This feature supports instrumentation in native image.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class InstrumentFeature implements InternalFeature {
     public static class Options {
         @Option(help = "Specify premain-class list. Multiple classes are separated by comma, and order matters. This is an experimental option.", stability = OptionStability.EXPERIMENTAL)//
@@ -108,7 +103,7 @@ public class InstrumentFeature implements InternalFeature {
     }
 
     /** Find the premain method from the given class. */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.instrument/share/classes/sun/instrument/InstrumentationImpl.java#L481-L548")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+25/src/java.instrument/share/classes/sun/instrument/InstrumentationImpl.java#L481-L548")
     private static Method findPremainMethod(String premainClass, Class<?> javaAgentClass) {
         try {
             return javaAgentClass.getDeclaredMethod("premain", String.class, Instrumentation.class);

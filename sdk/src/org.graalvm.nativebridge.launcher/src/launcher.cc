@@ -43,6 +43,7 @@
 #include<atomic>
 #include<cstdlib>
 #include<cstdint>
+#include<cstring>
 #include<string>
 #include<sstream>
 #include<iostream>
@@ -92,9 +93,15 @@ if (n != 0) {                 \
         ABORT(message)            \
     }
 
+#define LIBRARY_INDEX(n) ((n) + 1)
+#define ENTRY_POINT_CLASS_INDEX(n) ((n) + 2)
+#define ENTRY_POINT_ARGS_INDEX(n) ((n) + 3)
+
 struct ProcessIsolateOptions {
     std::string library_path;
     std::string entry_point_class;
+    int vm_args_count;
+    JavaVMOption* vm_args;
     int entry_point_args_count;
     char** entry_point_args;
 };
@@ -183,7 +190,7 @@ static int launch_jvm(const ProcessIsolateOptions& isolate_options) {
     }
     JavaVM* vm {};
     JNIEnv* env {};
-    JavaVMInitArgs vm_args {JNI_VERSION_21, 0, nullptr, false};
+    JavaVMInitArgs vm_args {JNI_VERSION_21, isolate_options.vm_args_count, isolate_options.vm_args, false};
     REQUIRE_0(createVm(&vm, reinterpret_cast<void**>(&env), &vm_args), "Failed to create VM")
     std::string entry_point_binary_name {isolate_options.entry_point_class};
     std::replace(entry_point_binary_name.begin(), entry_point_binary_name.end(), '.', '/');
@@ -253,12 +260,41 @@ static int launch_darwin(const ProcessIsolateOptions& options) {
 
 int main(int argc, char** argv) {
     if (argc < 3) {
-        ABORT("usage: launcher isolate_library_path entry_point_class isolate_option*")
+        ABORT("usage: launcher [vm_option ... --] isolate_library_path entry_point_class [entry_point_arg ...]")
     }
-    ProcessIsolateOptions options {argv[1], argv[2], argc - 3, argv + 3};
+    int vm_separator_index = 0;
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--")) {
+            vm_separator_index = i;
+            break;
+        }
+    }
+    if (vm_separator_index > 0 && vm_separator_index + 2 >= argc) {
+        ABORT("usage: launcher [vm_option ... --] isolate_library_path entry_point_class [entry_point_arg ...]")
+    }
+    JavaVMOption* vm_args {nullptr};
+    int vm_args_count {0};
+    if (vm_separator_index > 0) {
+        vm_args_count = vm_separator_index - 1;
+        vm_args = new JavaVMOption[vm_args_count]{};
+        for (int i = 1; i < vm_separator_index; i++) {
+            vm_args[i - 1].optionString = argv[i];
+        }
+    }
+    ProcessIsolateOptions options {
+        argv[LIBRARY_INDEX(vm_separator_index)],
+        argv[ENTRY_POINT_CLASS_INDEX(vm_separator_index)],
+        vm_args_count,
+        vm_args,
+        argc - ENTRY_POINT_ARGS_INDEX(vm_separator_index),
+        argv + ENTRY_POINT_ARGS_INDEX(vm_separator_index)
+    };
+    int result;
 #if defined (__APPLE__)
-    return launch_darwin(options);
+    result = launch_darwin(options);
 #else
-    return launch_jvm(options);
+    result = launch_jvm(options);
 #endif
+    delete[] vm_args;
+    return result;
 }

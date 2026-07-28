@@ -240,6 +240,20 @@ public abstract class VectorArchitecture {
     public abstract int getSupportedVectorArithmeticLength(Stamp stamp, int maxLength, ArithmeticOpTable.Op op);
 
     /**
+     * Checks whether this architecture supports a multiply-add operation that combines adjacent
+     * input lanes into one wider result lane. Each result lane is the sum of two products from
+     * adjacent input lanes.
+     *
+     * @param inputElementStamp the stamp of the narrower input elements
+     * @param resultElementStamp the stamp of the widened result elements
+     * @param resultLength the vector length of the widened result
+     * @param resultOp the arithmetic operation represented by the result graph
+     */
+    public boolean supportsPairwiseMultiplyAdd(Stamp inputElementStamp, Stamp resultElementStamp, int resultLength, ArithmeticOpTable.Op resultOp) {
+        return false;
+    }
+
+    /**
      * Get a natively supported vector length for a shift with scalar count.
      *
      * @param stamp the stamp of the individual vector elements

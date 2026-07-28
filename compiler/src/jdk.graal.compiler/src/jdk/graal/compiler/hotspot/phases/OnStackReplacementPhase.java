@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.loop.phases.LoopTransformations;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -68,7 +67,6 @@ import jdk.graal.compiler.nodes.extended.OSRStartNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
-import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -78,6 +76,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.common.util.OnStackReplacementUtils;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -127,10 +126,6 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement initial at bci %d", graph.getEntryBCI());
 
-        EntryMarkerNode osr;
-        int maxIterations = -1;
-        int iterations = 0;
-
         final EntryMarkerNode originalOSRNode = getEntryMarker(graph);
         final LoopBeginNode originalOSRLoop = osrLoop(originalOSRNode, providers);
         final boolean currentOSRWithLocks = osrWithLocks(originalOSRNode);
@@ -148,32 +143,11 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             throw new PermanentBailoutException("OSR with locks disabled.");
         }
 
-        do {
-            osr = getEntryMarker(graph);
-            LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
-            // Find the loop that contains the EntryMarker
-            CFGLoop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
-            if (l == null) {
-                break;
-            }
-
-            iterations++;
-            if (maxIterations == -1) {
-                maxIterations = l.getDepth();
-            } else if (iterations > maxIterations) {
-                throw GraalError.shouldNotReachHere(iterations + " " + maxIterations); // ExcludeFromJacocoGeneratedReport
-            }
-
-            l = l.getOutmostLoop();
-
-            Loop loop = loops.loop(l);
-            loop.loopBegin().markOsrLoop();
-            LoopTransformations.peel(loop);
-
-            osr.prepareDelete();
-            GraphUtil.removeFixedWithUnusedInputs(osr);
-            debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement loop peeling result");
-        } while (true); // TERMINATION ARGUMENT: bounded by max iterations
+        EntryMarkerNode osr = OnStackReplacementUtils.peelEntryLoops(graph, providers.getLoopsDataProvider(), () -> getEntryMarker(graph), loop -> {
+        },
+                        (iterations, maxIterations) -> {
+                            throw GraalError.shouldNotReachHere(iterations + " " + maxIterations); // ExcludeFromJacocoGeneratedReport
+                        }, "OnStackReplacement loop peeling result");
 
         StartNode start = graph.start();
         FrameState osrState = osr.stateAfter();

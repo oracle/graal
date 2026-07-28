@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -57,6 +58,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides functionality for scanning constant objects.
@@ -399,7 +401,7 @@ public class ObjectScanner {
         if (constant == null || constant.isNull()) {
             return "null";
         }
-        AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
+        ResolvedJavaType type = constant instanceof TypedConstant typedConstant ? typedConstant.getType() : bb.getMetaAccess().getWrapped().lookupJavaType(constant);
         JavaConstant hosted = constant;
         if (constant instanceof ImageHeapConstant heapConstant) {
             JavaConstant hostedObject = heapConstant.getHostedObject();
@@ -415,17 +417,31 @@ public class ObjectScanner {
             return hosted.toValueString();
         }
 
-        Object obj = constantAsObject(bb, hosted);
-        String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
+        /*
+         * The scan fast path only needs reachability. Guest-backed identityHashCode/toString are
+         * used exclusively for optional diagnostics such as reports and verifier messages, so this
+         * generic GuestAccess fallback stays off the main scanning path.
+         */
+        String str = type.toJavaName() + '@' + Integer.toHexString(originalIdentityHashCode(hosted));
         if (appendToString) {
             try {
-                str += ": " + limit(obj.toString(), 80).replace(System.lineSeparator(), "");
-            } catch (Throwable e) {
+                str += ": " + limit(originalToString(hosted), 80).replace(System.lineSeparator(), "");
+            } catch (Throwable ignored) {
                 // ignore any error in creating the string representation
             }
         }
 
         return str;
+    }
+
+    private static int originalIdentityHashCode(JavaConstant constant) {
+        return GuestAccess.get().getProviders().getConstantReflection().identityHashCode(constant);
+    }
+
+    private static String originalToString(JavaConstant constant) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant stringConstant = access.invoke(access.elements.java_lang_Object_toString, constant);
+        return access.asHostString(stringConstant);
     }
 
     public static String limit(String value, int length) {

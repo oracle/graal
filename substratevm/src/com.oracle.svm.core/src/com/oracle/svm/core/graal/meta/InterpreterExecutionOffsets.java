@@ -31,7 +31,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = BuiltinTraits.Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = BuiltinTraits.DisallowLayered.class)
 public final class InterpreterExecutionOffsets {
     private final int dynamicHubCompanionInterpreterTypeOffset;
     private final int interpreterResolvedObjectTypeVtableHolderOffset;

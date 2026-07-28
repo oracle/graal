@@ -45,6 +45,7 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -79,6 +80,7 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
@@ -89,6 +91,7 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.SignedDivNode;
@@ -111,6 +114,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.LoadHubOrNullNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
+import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
@@ -322,6 +326,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
+            } else if (n instanceof RemNode && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                lowerRemNode((RemNode) n, tool);
             } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
                 lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
@@ -330,6 +336,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n); // ExcludeFromJacocoGeneratedReport
             }
         }
+    }
+
+    protected void lowerRemNode(RemNode rem, LoweringTool tool) {
+        if (isDouble(rem.getX()) && isDouble(rem.getY()) && DoubleModStubNode.isSupported(tool.getLowerer().getTarget().arch)) {
+            FixedWithNextNode insertAfter = tool.lastFixedNode();
+            StructuredGraph graph = insertAfter.graph();
+            DoubleModStubNode fmod = graph.add(new DoubleModStubNode(rem.getX(), rem.getY()));
+            rem.replaceAtUsagesAndDelete(fmod);
+            graph.addAfterFixed(insertAfter, fmod);
+        }
+    }
+
+    private static boolean isDouble(ValueNode value) {
+        return value.stamp(NodeView.DEFAULT) instanceof FloatStamp floatStamp && floatStamp.getBits() == Double.SIZE;
     }
 
     protected void lowerFloatingIntegerDivRem(FloatingIntegerDivRemNode<?> divRem, LoweringTool tool) {
@@ -718,7 +738,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
-        n.stateAfter().replaceFirstInput(n, memoryRead);
+        n.stateAfter().replaceFirstInputWithoutCheckingInvariants(n, memoryRead);
         n.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(n, memoryRead);
     }
@@ -734,7 +754,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
-        n.stateAfter().replaceFirstInput(n, memoryRead);
+        n.stateAfter().replaceFirstInputWithoutCheckingInvariants(n, memoryRead);
         n.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(n, memoryRead);
     }
@@ -1088,6 +1108,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return false;
     }
 
+    private static boolean hasOSRMonitorEnter(MonitorIdNode lock) {
+        return lock.usages().filter(OSRMonitorEnterNode.class).isNotEmpty();
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1134,6 +1158,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
 
             for (MonitorIdNode lock : locks) {
                 if (!lock.isEliminated() && !newList.contains(lock)) {
+                    if (hasOSRMonitorEnter(lock)) {
+                        /*
+                         * OSR monitor enters represent locks already held by the interpreter at
+                         * the OSR entry. They must stay in the graph and keep their monitor ids
+                         * live.
+                         */
+                        continue;
+                    }
                     // lock is nested and eliminated
                     for (Node usage : lock.usages().snapshot()) {
                         if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
@@ -1143,6 +1175,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                     lock.setEliminated();
                 }
             }
+            newList.removeIf(DefaultJavaLoweringProvider::hasOSRMonitorEnter);
             locks = newList;
         }
 

@@ -44,14 +44,22 @@ import org.graalvm.jniutils.JNIEntryPoint;
 import org.graalvm.nativebridge.NativeIsolateConfig;
 import org.graalvm.nativebridge.NativeIsolateHandler;
 
+import java.util.List;
+
 final class PolyglotNativeIsolateHandler implements NativeIsolateHandler {
 
     static final String ISOLATION_DOMAIN = "IsolationDomain";
+    static final String ARGUMENTS = "arguments";
 
     @Override
+    @SuppressWarnings("unchecked")
     public long createIsolate(NativeIsolateConfig config) {
         int isolationDomain = (int) config.getNativeIsolateHandlerOption(ISOLATION_DOMAIN);
-        return createIsolate(isolationDomain);
+        List<String> args = (List<String>) config.getNativeIsolateHandlerOption(ARGUMENTS);
+        if (args == null) {
+            args = List.of();
+        }
+        return createIsolate(isolationDomain, args.toArray(new String[0]));
     }
 
     @Override
@@ -62,7 +70,7 @@ final class PolyglotNativeIsolateHandler implements NativeIsolateHandler {
     /**
      * Implemented by {@code com.oracle.svm.truffle.PolyglotIsolateCreateSupport}.
      */
-    private static native long createIsolate(int memoryProtectionDomain) throws PolyglotIsolateCreateException;
+    private static native long createIsolate(int memoryProtectionDomain, String[] args) throws PolyglotIsolateCreateException;
 
     /**
      * Implemented by {@code com.oracle.svm.truffle.PolyglotIsolateTearDownSupport}.

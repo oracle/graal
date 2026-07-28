@@ -68,6 +68,11 @@ public class BootstrapMethodConfiguration implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(BootstrapMethodConfiguration.class, this);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         MetaAccessProvider metaAccess = GuestAccess.get().getProviders().getMetaAccess();
         /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,11 @@ public class JavaFrames {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isAnyInterpreterLeaveStub(JavaFrame frame) {
+        return isInterpreterLeaveStub(frame) || isInterpreterJNILeaveStub(frame);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getTotalFrameSize(JavaFrame frame) {
         long size = CodeInfoQueryResult.getTotalFrameSize(frame.getEncodedFrameSize());
         assert size > 0;
@@ -93,6 +98,7 @@ public class JavaFrames {
         frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
         frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
         frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+        frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization and GC.", callerMustBe = true)
@@ -107,6 +113,7 @@ public class JavaFrames {
             frame.setEncodedFrameSize(deoptimizedFrame.getSourceEncodedFrameSize());
             frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
             frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+            frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
         } else {
             CodePointer returnAddress = ip;
             if (Deoptimizer.checkLazyDeoptimized(ip)) {
@@ -128,6 +135,7 @@ public class JavaFrames {
                 frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
                 frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
                 frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
+                frame.setFramePointerSaveAreaOffset(CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
             } else {
                 /* Encountered a normal Java frame. */
                 Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);

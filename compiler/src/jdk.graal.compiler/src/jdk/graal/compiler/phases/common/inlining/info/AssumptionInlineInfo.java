@@ -34,6 +34,7 @@ import jdk.graal.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents an inlining opportunity where the current class hierarchy leads to a monomorphic
@@ -44,7 +45,11 @@ public class AssumptionInlineInfo extends ExactInlineInfo {
     private final AssumptionResult<?> takenAssumption;
 
     public AssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, AssumptionResult<?> takenAssumption) {
-        super(invoke, concrete);
+        this(invoke, concrete, null, takenAssumption);
+    }
+
+    public AssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType receiverType, AssumptionResult<?> takenAssumption) {
+        super(invoke, concrete, receiverType);
         this.takenAssumption = takenAssumption;
     }
 

@@ -57,6 +57,11 @@ public class MaterializedConstantFields implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(MaterializedConstantFields.class, this);
+    }
+
+    @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         sealed = true;
     }

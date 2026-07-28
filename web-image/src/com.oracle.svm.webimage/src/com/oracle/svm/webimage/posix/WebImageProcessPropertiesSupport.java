@@ -34,15 +34,13 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = DisallowLayered.class)
 public class WebImageProcessPropertiesSupport extends BaseProcessPropertiesSupport {
     /**
      * Return some non-null value. The actual executable is not available in the virtual file system
@@ -106,7 +104,6 @@ public class WebImageProcessPropertiesSupport extends BaseProcessPropertiesSuppo
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class ImagePropertiesFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

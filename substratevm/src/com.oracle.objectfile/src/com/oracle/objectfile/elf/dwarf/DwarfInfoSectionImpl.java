@@ -629,9 +629,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 pos = writeClassLayoutTypeUnit(context, (ClassEntry) typeEntry, buffer, pos);
             }
             pos = writePointerTypeUnit(context, typeEntry, buffer, pos);
-            if (dwarfSections.useHeapBase()) {
-                pos = writePointerTypeUnitForCompressed(context, typeEntry, buffer, pos);
-            }
+            pos = writePointerTypeUnitForCompressed(context, typeEntry, buffer, pos);
         }
         return pos;
     }
@@ -2206,15 +2204,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /*
          * For an explanation of the conversion rules @see com.oracle.svm.core.heap.ReferenceAccess
          *
-         * n.b.
-         *
-         * The setting for option -H:+/-SpawnIsolates is determined by useHeapBase == true/false.
          * The setting for option -H:+/-UseCompressedReferences is determined by compressionShift >
-         * 0.
-         *
+         * 0. References are always relative to the heap base.
          */
 
-        boolean useHeapBase = dwarfSections.useHeapBase();
         int reservedHubBitsMask = dwarfSections.reservedHubBitsMask();
         int numReservedHubBits = dwarfSections.numReservedHubBits();
         int compressionShift = dwarfSections.compressionShift();
@@ -2240,16 +2233,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * ... END IF ..............................................................................
          * . END IF ................................................................................
          * END IF ..................................................................................
-         * IF useHeapBase ..........................................................................
-         * . IF compressionShift != 0 ..............................................................
+         * IF compressionShift != 0 ................................................................
          * ... push compressionShift .......................... (1 byte) ..... [offset, comp shift]
          * ... LSHL ........................................... (1 byte) ..... [offset] ............
-         * . END IF ................................................................................
-         * . push rheap+0 ..................................... (2 bytes) .... [offset, rheap] .....
-         * . ADD .............................................. (1 byte) ..... [oop] ...............
-         * ELSE ....................................................................................
-         * ................................................................... [offset == oop] .....
          * END IF ..................................................................................
+         * push rheap+0 ....................................... (2 bytes) .... [offset, rheap] .....
+         * ADD ................................................ (1 byte) ..... [oop] ...............
          * end: .............................................................. [oop] ...............
          */
 
@@ -2274,16 +2263,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 }
             }
         }
-        if (useHeapBase) {
-            if (compressionShift != 0) {
-                pos = writeExprOpcodeLiteral(compressionShift, buffer, pos);
-                pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shl, buffer, pos);
-            }
-            /* add the resulting offset to the heapbase register */
-            pos = writeExprOpcodeBReg(dwarfSections.getHeapbaseRegister(), buffer, pos);
-            pos = writeSLEB(0, buffer, pos); /* 1 byte. */
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_plus, buffer, pos);
+        if (compressionShift != 0) {
+            pos = writeExprOpcodeLiteral(compressionShift, buffer, pos);
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shl, buffer, pos);
         }
+        /* Add the resulting offset to the heap base register. */
+        pos = writeExprOpcodeBReg(dwarfSections.getHeapbaseRegister(), buffer, pos);
+        pos = writeSLEB(0, buffer, pos); /* 1 byte. */
+        pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_plus, buffer, pos);
 
         int exprSize = pos - exprStart;
         assert (exprSize >> 7) == 0; // expression length field should fit in one byte

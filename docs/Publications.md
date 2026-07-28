@@ -296,7 +296,7 @@ In _The Art, Science, and Engineering of Programming, vol. 2, no. 3, 2018, artic
 - T. Würthinger, C. Wimmer, C. Humer, A. Wöss, L. Stadler, C. Seaton, G. Duboscq, D. Simon, M. Grimmer
 [**Practical Partial Evaluation for High-Performance Dynamic Language Runtimes**](http://chrisseaton.com/rubytruffle/pldi17-truffle/pldi17-truffle.pdf)
 In _Proceedings of the Conference on Programming Language Design and Implementation (PLDI)_
-[Video recording](https://www.youtube.com/watch?v=8eff207KPkA&list=PLMTm6Ln7vQZZv6sQ0I4R7iaIjvSVhHXod&index=42)
+[Conference presentation and video](https://pldi17.sigplan.org/details/pldi-2017-papers/49/Practical-Partial-Evaluation-for-High-Performance-Dynamic-Language-Runtimes)
 [DOI: 10.1145/3062341.3062381](https://doi.org/10.1145/3062341.3062381)
 
 - Juan Fumero, Michel Steuwer, Lukas Stadler, Christophe Dubach

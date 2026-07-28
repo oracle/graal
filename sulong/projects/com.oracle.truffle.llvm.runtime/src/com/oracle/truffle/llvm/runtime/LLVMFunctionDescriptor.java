@@ -91,7 +91,9 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @CompilationFinal private long nativePointer;
 
     private static long tagSulongFunctionPointer(int id) {
-        return id | SULONG_FUNCTION_POINTER_TAG;
+        // Keep synthetic function pointers aligned. The Itanium C++ ABI uses bit 0 of a member
+        // function pointer to distinguish virtual functions from direct function addresses.
+        return (Integer.toUnsignedLong(id) << 1) | SULONG_FUNCTION_POINTER_TAG;
     }
 
     public LLVMFunction getLLVMFunction() {

@@ -58,14 +58,21 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.InternalResourceRoots.Root.Kind;
 
 final class InternalResourceRoots {
 
     private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
     private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
-    private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
+    private static final Map<AbstractClassLoaderSupplier, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
     private static final boolean TRACE_INTERNAL_RESOURCE_EVENTS = Boolean.getBoolean("polyglotimpl.TraceInternalResources");
+    private static final AbstractClassLoaderSupplier AOT_SUPPLIER = new AbstractClassLoaderSupplier(null) {
+        @Override
+        public ClassLoader get() {
+            return null;
+        }
+    };
 
     static String overriddenComponentRootProperty(String componentId) {
         StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
@@ -93,8 +100,8 @@ final class InternalResourceRoots {
     }
 
     static InternalResourceRoots getInstance() {
-        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = TruffleOptions.AOT ? List.of() : EngineAccessor.locatorOrDefaultLoaders();
-        InternalResourceRoots instance = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
+        AbstractClassLoaderSupplier classLoaderSupplier = TruffleOptions.AOT ? AOT_SUPPLIER : EngineAccessor.loader();
+        InternalResourceRoots instance = runtimeCaches.computeIfAbsent(classLoaderSupplier, (k) -> new InternalResourceRoots());
         /*
          * Calling ensureInitialized in the InternalResourceRoots constructor alone is insufficient
          * due to context pre-initialization. The roots are reset after context pre-initialization
@@ -197,8 +204,8 @@ final class InternalResourceRoots {
      */
     @SuppressWarnings("unused")
     private static void setTestCacheRoot(Path newRoot, boolean nativeImageRuntime) {
-        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = TruffleOptions.AOT ? List.of() : EngineAccessor.locatorOrDefaultLoaders();
-        InternalResourceRoots resourceRoots = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
+        AbstractClassLoaderSupplier classLoaderSupplier = TruffleOptions.AOT ? AOT_SUPPLIER : EngineAccessor.loader();
+        InternalResourceRoots resourceRoots = runtimeCaches.computeIfAbsent(classLoaderSupplier, (k) -> new InternalResourceRoots());
         if (resourceRoots.roots != null) {
             for (Root root : resourceRoots.roots) {
                 for (InternalResourceCache cache : root.resources()) {

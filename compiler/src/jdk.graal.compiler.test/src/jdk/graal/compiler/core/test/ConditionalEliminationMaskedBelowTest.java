@@ -27,6 +27,8 @@ package jdk.graal.compiler.core.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -36,6 +38,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Tests that conditional elimination (CE) folds masked bounds after proving the upper value is
@@ -59,6 +62,9 @@ import jdk.vm.ci.meta.DeoptimizationReason;
  * }</pre>
  */
 public class ConditionalEliminationMaskedBelowTest extends ConditionalEliminationTestBase {
+
+    private static final int ROW_LENGTH = 24;
+    private static final int LAST_ROW_INDEX = ROW_LENGTH - 1;
 
     public static Object arrayAccessProofSnippet(Object[] array, int index) {
         if (array.length > 0) {
@@ -111,6 +117,74 @@ public class ConditionalEliminationMaskedBelowTest extends ConditionalEliminatio
             } else {
                 sink2 = -2;
             }
+        }
+    }
+
+    public static void lowerAddendProofSnippet(Object[] array, int index) {
+        int length = array.length;
+        if (length > 1) {
+            int wrapped = index & (length - 2);
+            if (Integer.compareUnsigned(wrapped + 1, length) < 0) {
+                sink1 = 0;
+            } else {
+                sink2 = -2;
+            }
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    public static void upperAddendProofSnippet(Object[] array, int index) {
+        int length = array.length;
+        if (length > 1) {
+            int wrapped = index & (length - 2);
+            if (Integer.compareUnsigned(wrapped, length - 1) < 0) {
+                sink1 = 0;
+            } else {
+                sink2 = -2;
+            }
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    public static void lowerAndUpperAddendProofSnippet(Object[] array, int index) {
+        int length = array.length;
+        if (length > 3) {
+            int wrapped = index & (length - 4);
+            if (Integer.compareUnsigned(wrapped + 1, length - 2) < 0) {
+                sink1 = 0;
+            } else {
+                sink2 = -2;
+            }
+        } else {
+            sink0 = -1;
+        }
+    }
+
+    public static void maskedStoreBoundsSnippet(int[] array, int rowStart, int value) {
+        if (array.length > LAST_ROW_INDEX) {
+            int maskedRowStart = rowStart & (array.length - ROW_LENGTH);
+            array[maskedRowStart + LAST_ROW_INDEX] = value;
+        }
+    }
+
+    public static void maskedCopyBoundsSnippet(int[] source, int rowStart) {
+        int length = source.length;
+        if (length > LAST_ROW_INDEX) {
+            int sourceIndex = rowStart & (length - ROW_LENGTH);
+            int sourceUpper = length - ROW_LENGTH + 1;
+            if (sourceUpper > 0) {
+                if (Integer.compareUnsigned(sourceIndex, sourceUpper) < 0) {
+                    sink1 = 0;
+                } else {
+                    sink2 = -2;
+                }
+            } else {
+                sink2 = -2;
+            }
+        } else {
+            sink0 = -1;
         }
     }
 
@@ -169,6 +243,72 @@ public class ConditionalEliminationMaskedBelowTest extends ConditionalEliminatio
     @Test
     public void testDifferentArrayLengthProofDoesNotFold() {
         testConditionalElimination("differentArrayLengthProofSnippet", "differentArrayLengthProofSnippet", false, true);
+    }
+
+    /**
+     * Checks that CE handles a positive constant addend on the masked lower value.
+     */
+    @Test
+    public void testLowerAddendProofFolds() {
+        assertExplicitOutOfBoundsBranchFolds("lowerAddendProofSnippet");
+    }
+
+    /**
+     * Checks that CE handles a negative constant addend on the upper value.
+     */
+    @Test
+    public void testUpperAddendProofFolds() {
+        assertExplicitOutOfBoundsBranchFolds("upperAddendProofSnippet");
+    }
+
+    /**
+     * Checks that CE handles constant addends on both sides of the unsigned-below comparison.
+     */
+    @Test
+    public void testLowerAndUpperAddendProofFolds() {
+        assertExplicitOutOfBoundsBranchFolds("lowerAndUpperAddendProofSnippet");
+    }
+
+    /**
+     * Checks a masked row-store shape: a row start is masked with {@code array.length - rowLength}
+     * and then a constant row element offset is added before the array store.
+     */
+    @Test
+    public void testMaskedStoreBoundsCheckFolds() {
+        assertBoundsCheckFolds("maskedStoreBoundsSnippet");
+    }
+
+    /**
+     * Checks an {@code ArrayUtils.arraycopy}-style source region check with a masked row start.
+     */
+    @Test
+    public void testMaskedCopyBoundsCheckFolds() {
+        assertExplicitOutOfBoundsBranchFolds("maskedCopyBoundsSnippet");
+    }
+
+    private void assertExplicitOutOfBoundsBranchFolds(String snippet) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CoreProviders context = getProviders();
+
+        prepareGraph(graph, canonicalizer, context, true);
+        Assert.assertTrue(hasIntConstant(graph, -2));
+
+        new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
+        canonicalizer.apply(graph, context);
+        canonicalizer.apply(graph, context);
+
+        Assert.assertFalse(hasIntConstant(graph, -2));
+    }
+
+    private static boolean hasIntConstant(StructuredGraph graph, int value) {
+        for (Node node : graph.getNodes()) {
+            if (node instanceof ConstantNode constant && constant.hasUsages() && constant.asJavaConstant().getJavaKind() == JavaKind.Int &&
+                            constant.asJavaConstant().asInt() == value) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void assertBoundsCheckFolds(String snippet) {

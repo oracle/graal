@@ -62,7 +62,6 @@ import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.AMD64.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class AMD64HostedPatcherFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

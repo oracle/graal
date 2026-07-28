@@ -30,7 +30,10 @@ import static jdk.vm.ci.amd64.AMD64.rbx;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.r15;
+import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
@@ -40,7 +43,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -56,47 +58,48 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64MD5Op> TYPE = LIRInstructionClass.create(AMD64MD5Op.class);
 
-    @Alive({OperandFlag.REG}) private Value bufValue;
-    @Alive({OperandFlag.REG}) private Value stateValue;
-    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
-    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
+    @Use({OperandFlag.REG}) private Value bufValue;
+    @Use({OperandFlag.REG}) private Value stateValue;
+    @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
+    @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
 
-    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value bufTempValue;
-    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsTempValue;
+    @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value resultValue;
+
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value raxTempValue;
     @Temp({OperandFlag.REG}) private Value[] temps;
     private final boolean multiBlock;
 
-    public AMD64MD5Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue) {
-        this(tool, bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, false);
+    public AMD64MD5Op(AllocatableValue bufValue, AllocatableValue stateValue) {
+        this(bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AMD64MD5Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
-                    AllocatableValue limitValue, boolean multiBlock) {
+    public AMD64MD5Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
+                    AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
 
         this.bufValue = bufValue;
         this.stateValue = stateValue;
         this.ofsValue = ofsValue;
         this.limitValue = limitValue;
+        this.resultValue = resultValue;
 
         this.multiBlock = multiBlock;
 
+        GraalError.guarantee(asRegister(bufValue).equals(rdi), "expect bufValue at rdi, but was %s", bufValue);
+        GraalError.guarantee(asRegister(stateValue).equals(rsi), "expect stateValue at rsi, but was %s", stateValue);
+        GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(rdx), "expect ofsValue at rdx, but was %s", ofsValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(rcx), "expect limitValue at rcx, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(rax), "expect resultValue at rax, but was %s", resultValue);
+
+        this.raxTempValue = multiBlock ? Value.ILLEGAL : rax.asValue();
         this.temps = new Value[]{
-                        rax.asValue(),
                         rbx.asValue(),
                         rcx.asValue(),
                         rdi.asValue(),
                         rdx.asValue(),
+                        r8.asValue(),
                         rsi.asValue(),
         };
-
-        if (multiBlock) {
-            this.bufTempValue = tool.newVariable(bufValue.getValueKind());
-            this.ofsTempValue = tool.newVariable(ofsValue.getValueKind());
-        } else {
-            this.bufTempValue = Value.ILLEGAL;
-            this.ofsTempValue = Value.ILLEGAL;
-        }
     }
 
     private static void md5FF(AMD64MacroAssembler masm, Register buf, Register r1, Register r2, Register r3, Register r4, int k, int s, int t) {
@@ -153,30 +156,40 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
         GraalError.guarantee(bufValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid bufValue kind: %s", bufValue);
         GraalError.guarantee(stateValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid stateValue kind: %s", stateValue);
 
-        Register buf;
-        Register state = asRegister(stateValue);
-        Register ofs;
-        Register limit;
+        Register buf = r15;
+        Register state = r8;
+        AMD64Address stateSlot = null;
+        AMD64Address ofsSlot = null;
+        AMD64Address limitSlot = null;
+
+        masm.push(r15);
 
         if (multiBlock) {
             GraalError.guarantee(ofsValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid ofsValue kind: %s", ofsValue);
             GraalError.guarantee(limitValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid limitValue kind: %s", limitValue);
+            GraalError.guarantee(resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
 
-            buf = asRegister(bufTempValue);
-            ofs = asRegister(ofsTempValue);
-            limit = asRegister(limitValue);
+            masm.subq(rsp, 16);
+            stateSlot = new AMD64Address(rsp, 0);
+            ofsSlot = new AMD64Address(rsp, 8);
+            limitSlot = new AMD64Address(rsp, 12);
 
             masm.movq(buf, asRegister(bufValue));
-            masm.movl(ofs, asRegister(ofsValue));
+            masm.movq(stateSlot, asRegister(stateValue));
+            masm.movl(ofsSlot, asRegister(ofsValue));
+            masm.movl(limitSlot, asRegister(limitValue));
         } else {
-            buf = asRegister(bufValue);
-            ofs = Register.None;
-            limit = Register.None;
+            masm.movq(buf, asRegister(bufValue));
+            masm.movq(state, asRegister(stateValue));
         }
 
         Label loop0 = new Label();
 
-        masm.movq(rdi, state);
+        if (multiBlock) {
+            masm.movq(rdi, stateSlot);
+        } else {
+            masm.movq(rdi, state);
+        }
         masm.movl(rax, new AMD64Address(rdi, 0));
         masm.movl(rbx, new AMD64Address(rdi, 4));
         masm.movl(rcx, new AMD64Address(rdi, 8));
@@ -256,7 +269,11 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
         md5II(masm, buf, rcx, rdx, rax, rbx, 2, 15, 0x2ad7d2bb);
         md5II(masm, buf, rbx, rcx, rdx, rax, 9, 21, 0xeb86d391);
 
-        masm.movq(rdi, state);
+        if (multiBlock) {
+            masm.movq(rdi, stateSlot);
+        } else {
+            masm.movq(rdi, state);
+        }
         masm.addl(rax, new AMD64Address(rdi, 0));
         masm.movl(new AMD64Address(rdi, 0), rax);
         masm.addl(rbx, new AMD64Address(rdi, 4));
@@ -269,10 +286,18 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
         if (multiBlock) {
             // increment data pointer and loop if more to process
             masm.addq(buf, 64);
-            masm.addl(ofs, 64);
-            masm.movl(rsi, ofs);
-            masm.cmplAndJcc(rsi, limit, BelowEqual, loop0, false);
-            masm.movl(rax, rsi); // return ofs
+            masm.addl(ofsSlot, 64);
+            masm.movl(rsi, ofsSlot);
+            masm.cmplAndJcc(rsi, limitSlot, BelowEqual, loop0, false);
+            masm.movq(asRegister(resultValue), rsi); // return ofs
+            masm.addq(rsp, 16);
         }
+
+        masm.pop(r15);
+    }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
     }
 }

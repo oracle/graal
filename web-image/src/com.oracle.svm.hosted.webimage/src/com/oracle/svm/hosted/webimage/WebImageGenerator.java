@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.ANALY
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_METHODS;
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_TYPES;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,6 @@ import org.graalvm.webimage.api.JS;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.BarrierSetProvider;
@@ -49,6 +49,8 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.MainEntryPoint;
@@ -69,10 +71,14 @@ import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 import com.oracle.svm.hosted.webimage.logging.visualization.VisualizationSupport;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
+import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
@@ -110,10 +116,14 @@ public class WebImageGenerator extends NativeImageGenerator {
         LoggerContext.currentContext().saveCounters(scope, ANALYSIS_TYPES, HOSTED_TYPES, ANALYSIS_METHODS, HOSTED_METHODS);
     }
 
+    /**
+     * Runs the Web Image build while preserving the generic delayed Java-main support installation
+     * contract from {@link NativeImageGenerator#doRun}.
+     */
     @SuppressWarnings("try")
     @Override
     protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
-                    JavaMainWrapper.JavaMainSupport javaMainSupport, String imageName, AbstractImage.NativeImageKind k,
+                    ResolvedJavaMethod javaMainMethod, String imageName, AbstractImage.NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions) {
         OptionValues options = HostedOptionValues.singleton().get();
         setWebImageSystemProperties();
@@ -121,7 +131,7 @@ public class WebImageGenerator extends NativeImageGenerator {
             try (Timer.StopTimer ignoredTimer = TimerCollection.createTimerAndStart(WebImageTotalTime)) {
 
                 imageKind = k;
-                super.doRun(entryPoints, javaMainSupport, imageName, k, new JSSubstitutionProcessor());
+                super.doRun(entryPoints, javaMainMethod, imageName, k, new JSSubstitutionProcessor());
 
                 try (LoggerScope universeScope = LoggerContext.currentContext().scope(UNIVERSE_BUILD_SCOPE_NAME, WebImageGenerator::saveUniverseCounters)) {
                     LoggerContext.counter(ANALYSIS_TYPES).add(bb.getUniverse().getTypes().size());
@@ -131,6 +141,27 @@ public class WebImageGenerator extends NativeImageGenerator {
                 }
             }
             VisualizationSupport.get().visualize(WebImageOptions.compilerPrinter(options));
+        }
+    }
+
+    /**
+     * Installs the Web Image Java-main support implementation selected by the active backend.
+     * <p>
+     * Web Image keeps backend-specific subclasses because its entry points are not the C launcher
+     * entry points used by Native Image.
+     */
+    @Override
+    protected void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
+        Method originalMethod = (Method) OriginalMethodProvider.getJavaMethod(javaMainMethod);
+        try {
+            JavaMainSupport support = switch (WebImageOptions.getBackend(loader)) {
+                case JS -> new WebImageJSJavaMainSupport(originalMethod);
+                case WASM -> new WebImageWasmLMJavaMainSupport(originalMethod);
+                case WASMGC -> new WebImageWasmGCJavaMainSupport(originalMethod);
+            };
+            ImageSingletons.add(JavaMainSupport.class, support);
+        } catch (IllegalAccessException | IllegalArgumentException ex) {
+            throw UserError.abort(ex, "%s", ex.getMessage());
         }
     }
 

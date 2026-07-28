@@ -35,7 +35,7 @@ import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class RistrettoMetaAccess extends SubstrateMetaAccess {
     private final MetaAccessProvider decoratee;
 

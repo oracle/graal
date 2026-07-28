@@ -159,7 +159,7 @@ final class BytecodeTransitionImplElement extends AbstractElement {
 
         for (var instrumentation : parent.model.getInstrumentations()) {
             b.startIf().string(parent.configEncoder.checkInstrumentationEnabled("instrumentationMask", instrumentation.operation)).end().startBlock();
-            b.startStatement().string("classes[classesIndex++] = ").typeLiteral(instrumentation.operation.instruction.nodeType.asType()).end();
+            b.startStatement().string("classes[classesIndex++] = ").typeLiteral(instrumentation.operation.instruction().nodeType.asType()).end();
             b.end();
         }
 

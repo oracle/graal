@@ -37,7 +37,7 @@ import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;

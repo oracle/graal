@@ -94,7 +94,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             refKind = Modifier.isStatic(field.getModifiers()) ? Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic
                             : Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(field);
+                var resolved = CremaSupport.singleton().toJVMCI(field);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraFieldMemberNameFlags(resolved);
             }
         } else if (member instanceof Method) {
             Method method = (Method) member;
@@ -112,7 +114,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
             }
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(method);
+                var resolved = CremaSupport.singleton().toJVMCI(method);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraMethodMemberNameFlags(resolved);
             }
         } else if (member instanceof Constructor) {
             Constructor<?> constructor = (Constructor<?>) member;
@@ -123,7 +127,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
             refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
             if (RuntimeClassLoading.isSupported()) {
-                self.resolved = CremaSupport.singleton().toJVMCI(constructor);
+                var resolved = CremaSupport.singleton().toJVMCI(constructor);
+                self.resolved = resolved;
+                flags |= CremaSupport.singleton().getExtraMethodMemberNameFlags(resolved);
             }
         } else {
             throw new InternalError("Unknown member type: " + member.getClass());
@@ -309,6 +315,36 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     Object[] appendixResult);
 }
 
+@TargetClass(className = "java.lang.invoke.MutableCallSite", onlyWith = NoRuntimeClassLoading.class)
+final class Target_java_lang_invoke_MutableCallSite_NoRuntimeClassLoading {
+    @SuppressWarnings({"static-method", "unused"})
+    @Substitute
+    public void setTarget(MethodHandle newTarget) {
+        // Without runtime class loading this reaches the deleted normal call-site target update.
+        throw unsupportedFeature("MutableCallSite.setTarget()");
+    }
+}
+
+@TargetClass(className = "java.lang.invoke.VolatileCallSite", onlyWith = NoRuntimeClassLoading.class)
+final class Target_java_lang_invoke_VolatileCallSite_NoRuntimeClassLoading {
+    @SuppressWarnings({"static-method", "unused"})
+    @Substitute
+    public void setTarget(MethodHandle newTarget) {
+        // Without runtime class loading this reaches the deleted volatile call-site target update.
+        throw unsupportedFeature("VolatileCallSite.setTarget()");
+    }
+}
+
+@TargetClass(className = "java.lang.invoke.ConstantCallSite", onlyWith = NoRuntimeClassLoading.class)
+final class Target_java_lang_invoke_ConstantCallSite_NoRuntimeClassLoading {
+    @SuppressWarnings("unused")
+    @Substitute
+    protected Target_java_lang_invoke_ConstantCallSite_NoRuntimeClassLoading(MethodType targetType, MethodHandle createTarget) throws Throwable {
+        // This constructor delegates to the deleted CallSite(MethodType, MethodHandle) constructor.
+        throw unsupportedFeature("ConstantCallSite.<init>(MethodType, MethodHandle)");
+    }
+}
+
 /**
  * The method handles API looks up methods and fields in a different way than the reflection API.
  * The specified member is searched in the given declaring class and its superclasses and interfaces
@@ -490,6 +526,12 @@ final class Util_java_lang_invoke_MethodHandleNatives {
 
 @TargetClass(value = CallSite.class)
 final class Target_java_lang_invoke_CallSite {
+    @Delete
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
+    @SuppressWarnings("unused")
+    Target_java_lang_invoke_CallSite(MethodType targetType, MethodHandle createTarget) throws Throwable {
+    }
+
     @Alias
     static native long getTargetOffset();
 }

@@ -26,18 +26,24 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionKey;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
+/**
+ * Hosted options consumed by the standalone points-to entry point.
+ */
 public class StandaloneOptions {
 
-    @Option(help = "File system splitor separated classpath for the analysis target application.")//
-    public static final OptionKey<String> AnalysisTargetAppCP = new OptionKey<>(null);
+    @Option(help = "File-system-separator-separated classpath for the analysis target application.")//
+    public static final OptionKey<String> StandaloneAnalysisTargetAppCP = new OptionKey<>(null);
 
     @Option(help = """
                     Use a file to specify the analysis entry point methods.
@@ -49,12 +55,42 @@ public class StandaloneOptions {
                     Notice:
                     Although this option allows to specify any method, only direct methods can work as expected. Virtual call need allocation
                     information to bound to the actual implementations. But the allocation may be missed when the virtual call is the entry point.""")//
-    public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
+    public static final OptionKey<String> StandaloneAnalysisEntryPointsFile = new OptionKey<>(null);
 
     @Option(help = "Directory of analysis reports to be generated", type = OptionType.User)//
-    public static final OptionKey<String> ReportsPath = new OptionKey<>("./");
+    public static final OptionKey<String> StandaloneAnalysisReportsPath = new OptionKey<>("./");
+
+    /**
+     * Prints a standalone summary of guest class initializations that failed and then fell back to
+     * runtime handling during analysis.
+     */
+    @Option(help = "Prints standalone class-initialization failures that fall back to runtime handling, with the first stack trace per class.")//
+    public static final HostedOptionKey<Boolean> StandalonePrintClassInitializationFailures = new HostedOptionKey<>(true);
+
+    /**
+     * Additional exact class names that standalone should force to runtime handling instead of
+     * eager build-time initialization. Intended for standalone experiments and tests.
+     */
+    @Option(help = "Additional exact class names that standalone should keep runtime initialized for experiments.", type = OptionType.Debug)//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> StandaloneExtraRuntimeInitializedClasses = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    /**
+     * Additional package prefixes that standalone should force to runtime handling instead of
+     * eager build-time initialization. Intended for standalone experiments and tests.
+     */
+    @Option(help = "Additional package prefixes that standalone should keep runtime initialized for experiments.", type = OptionType.Debug)//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> StandaloneExtraRuntimeInitializedPackages = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    /**
+     * Controls whether standalone analysis should assume a closed type world for dispatch and
+     * saturation behavior.
+     */
+    @Option(help = "Controls whether standalone analysis uses closed-type-world assumptions for dispatch and flow saturation.")//
+    public static final HostedOptionKey<Boolean> StandaloneClosedTypeWorld = new HostedOptionKey<>(true);
 
     public static Path reportsPath(OptionValues options, String relativePath) {
-        return Paths.get(Paths.get(ReportsPath.getValue(options)).toString(), relativePath).normalize().toAbsolutePath();
+        return Paths.get(Paths.get(StandaloneAnalysisReportsPath.getValue(options)).toString(), relativePath).normalize().toAbsolutePath();
     }
 }

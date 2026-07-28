@@ -25,6 +25,7 @@
 package jdk.graal.compiler.libgraal.truffle;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CanBeInlined;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CountDirectCallNodes;
@@ -36,9 +37,11 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetFailedSpeculationsAddress;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuccessfulCompilationCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationSuccess;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.PrepareForCompilation;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
@@ -48,15 +51,11 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNICalls;
-import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
@@ -69,11 +68,6 @@ import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.word.impl.Word;
 
 final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
-
-    private static volatile JNIMethod prepareForCompilationNewMethod;
-    private static volatile JNIMethod getSuccessfulCompilationCountMethod;
-    private static volatile JNIMethod onCompilationSuccessMethod;
-    private static volatile JNIMethod canBeInlinedMethod;
 
     private final TruffleFromLibGraalCalls calls;
     /**
@@ -123,82 +117,19 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @TruffleFromLibGraal(PrepareForCompilation)
     @Override
     public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
-        JNIEnv env = JNIMethodScope.env();
-        JNIMethod newMethod = findPrepareForCompilationNewMethod(env);
-        if (newMethod != null) {
-            return callPrepareForCompilationNew(newMethod, env, getHandle(), rootCompilation, compilationTier, lastTier);
-        } else {
-            HSTruffleCompilableGen.callPrepareForCompilation(calls, env(), getHandle());
-            return true;
-        }
+        return HSTruffleCompilableGen.callPrepareForCompilation(calls, env(), getHandle(), rootCompilation, compilationTier, lastTier);
     }
 
-    private JNIMethod findPrepareForCompilationNewMethod(JNIEnv env) {
-        JNIMethod res = prepareForCompilationNewMethod;
-        if (res == null) {
-            res = calls.findJNIMethod(env, "prepareForCompilation", boolean.class, Object.class, boolean.class, int.class, boolean.class);
-            prepareForCompilationNewMethod = res;
-        }
-        return res.getJMethodID().isNonNull() ? res : null;
-    }
-
-    private boolean callPrepareForCompilationNew(JNIMethod method, JNIEnv env, JObject p0, boolean p1, int p2, boolean p3) {
-        JNI.JValue args = StackValue.get(4, JNI.JValue.class);
-        args.addressOf(0).setJObject(p0);
-        args.addressOf(1).setBoolean(p1);
-        args.addressOf(2).setInt(p2);
-        args.addressOf(3).setBoolean(p3);
-        return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
-    }
-
+    @TruffleFromLibGraal(GetSuccessfulCompilationCount)
     @Override
     public int getSuccessfulCompilationCount() {
-        JNIEnv env = JNIMethodScope.env();
-        JNIMethod method = findGetSuccessfulCompilationCountMethod(env);
-        if (method != null) {
-            return callGetSuccessfulCompilationCountMethod(method, env, getHandle());
-        }
-        return 0;
+        return HSTruffleCompilableGen.callGetSuccessfulCompilationCount(calls, env(), getHandle());
     }
 
-    private JNIMethod findGetSuccessfulCompilationCountMethod(JNIEnv env) {
-        JNIMethod res = getSuccessfulCompilationCountMethod;
-        if (res == null) {
-            res = calls.findJNIMethod(env, "getSuccessfulCompilationCount", int.class, Object.class);
-            getSuccessfulCompilationCountMethod = res;
-        }
-        return res.getJMethodID().isNonNull() ? res : null;
-    }
-
-    private int callGetSuccessfulCompilationCountMethod(JNIMethod method, JNIEnv env, JObject p0) {
-        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
-        args.addressOf(0).setJObject(p0);
-        return calls.getJNICalls().callStaticInt(env, calls.getPeer(), method, args);
-    }
-
+    @TruffleFromLibGraal(CanBeInlined)
     @Override
     public boolean canBeInlined() {
-        JNIEnv env = JNIMethodScope.env();
-        JNIMethod method = findCanBeInlinedMethod(env);
-        if (method != null) {
-            return callCanBeInlinedMethod(method, env, getHandle());
-        }
-        return true;
-    }
-
-    private JNIMethod findCanBeInlinedMethod(JNIEnv env) {
-        JNIMethod res = canBeInlinedMethod;
-        if (res == null) {
-            res = calls.findJNIMethod(env, "canBeInlined", boolean.class, Object.class);
-            canBeInlinedMethod = res;
-        }
-        return res.getJMethodID().isNonNull() ? res : null;
-    }
-
-    private boolean callCanBeInlinedMethod(JNIMethod method, JNIEnv env, JObject p0) {
-        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
-        args.addressOf(0).setJObject(p0);
-        return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
+        return HSTruffleCompilableGen.callCanBeInlined(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(IsTrivial)
@@ -232,26 +163,10 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         }
     }
 
+    @TruffleFromLibGraal(OnCompilationSuccess)
     @Override
     public void onCompilationSuccess(int compilationTier, boolean lastTier) {
-        JNIEnv env = JNIMethodScope.env();
-        JNICalls.JNIMethod methodOrNull = findOnCompilationSuccessMethod(env);
-        if (methodOrNull != null) {
-            JNI.JValue args = StackValue.get(3, JNI.JValue.class);
-            args.addressOf(0).setJObject(getHandle());
-            args.addressOf(1).setInt(compilationTier);
-            args.addressOf(2).setBoolean(lastTier);
-            calls.getJNICalls().callStaticVoid(env, calls.getPeer(), methodOrNull, args);
-        }
-    }
-
-    private JNIMethod findOnCompilationSuccessMethod(JNIEnv env) {
-        JNIMethod res = onCompilationSuccessMethod;
-        if (res == null) {
-            res = calls.findJNIMethod(env, "onCompilationSuccess", void.class, Object.class, int.class, boolean.class);
-            onCompilationSuccessMethod = res;
-        }
-        return res.getJMethodID().isNonNull() ? res : null;
+        HSTruffleCompilableGen.callOnCompilationSuccess(calls, env(), getHandle(), compilationTier, lastTier);
     }
 
     @Override

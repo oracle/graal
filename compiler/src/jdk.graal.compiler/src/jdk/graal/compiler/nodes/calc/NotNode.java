@@ -32,7 +32,6 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
@@ -78,7 +77,7 @@ public final class NotNode extends UnaryArithmeticNode<Not> implements Arithmeti
         }
         if (x instanceof NegateNode negateNode) {
             // ~(-x) == x - 1
-            ConstantNode one = ConstantNode.forIntegerStamp(x.stamp(NodeView.DEFAULT), 1);
+            ValueNode one = BinaryArithmeticNode.createIntegerConstant(x.stamp(NodeView.DEFAULT), 1);
             return SubNode.create(negateNode.getValue(), one, NodeView.DEFAULT);
         }
         if (x instanceof AddNode addNode && addNode.getY().isJavaConstant() && addNode.getY().asJavaConstant().asLong() == -1) {

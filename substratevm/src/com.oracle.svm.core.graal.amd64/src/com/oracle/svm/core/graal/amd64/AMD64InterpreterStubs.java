@@ -60,7 +60,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
@@ -202,7 +202,6 @@ public class AMD64InterpreterStubs {
         private static void emitInstalledCodeFastPath(AMD64MacroAssembler masm, Register interpreterMethod, boolean compressedInterpreterMethod, Register scratch) {
             Label slowPath = new Label();
 
-            boolean compressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             InterpreterExecutionOffsets executionOffsets = InterpreterExecutionOffsets.singleton();
 
@@ -216,10 +215,10 @@ public class AMD64InterpreterStubs {
             loadObjectObjectField(masm, scratch, interpreterMethod, executionOffsets.getInterpreterResolvedJavaMethodRistrettoMethodOffset(), compressedInterpreterMethod, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
 
-            loadObjectObjectField(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), compressedReferences, compressionShift);
+            loadObjectObjectField(masm, scratch, scratch, executionOffsets.getRistrettoMethodInstalledCodeOffset(), true, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
 
-            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), compressedReferences, compressionShift);
+            loadObjectWordField(masm, scratch, scratch, executionOffsets.getInstalledCodeEntryPointOffset(), true, compressionShift);
             goSlowPathIfNull(masm, scratch, slowPath);
             // Jump to the entry point of the method.
             masm.jmp(scratch);
@@ -235,7 +234,6 @@ public class AMD64InterpreterStubs {
          */
         private static void emitVTableInstalledCodeFastPath(AMD64MacroAssembler masm, Register receiver, Register vtableIndex, Register scratch1, Register scratch2) {
             ObjectLayout ol = ObjectLayout.singleton();
-            boolean compression = ReferenceAccess.singleton().haveCompressedReferences();
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
 
             DynamicHubOffsets hubOffsets = DynamicHubOffsets.singleton();
@@ -246,17 +244,15 @@ public class AMD64InterpreterStubs {
             loadHub(masm, receiver, scratch1, scratch2);
 
             // Extract the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, hubOffsets.getCompanionOffset(), true, compressionShift);
             // Extract the interpreter type of the companion.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getDynamicHubCompanionInterpreterTypeOffset(), true, compressionShift);
             // Extract the vtable holder of the interpreter type.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getInterpreterResolvedObjectTypeVtableHolderOffset(), true, compressionShift);
             // Extract the vtable.
-            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), compression, compressionShift);
+            loadObjectObjectField(masm, scratch1, scratch1, executionOffsets.getVtableHolderVtableOffset(), true, compressionShift);
 
-            if (compression) {
-                AMD64Move.UncompressPointerOp.emitUncompressWithBaseRegister(masm, scratch1, ReservedRegisters.singleton().getHeapBaseRegister(), compressionShift, true);
-            }
+            AMD64Move.UncompressPointerOp.emitUncompressWithBaseRegister(masm, scratch1, ReservedRegisters.singleton().getHeapBaseRegister(), compressionShift, true);
 
             goSlowPathIfIndexOutOfBounds(masm, scratch1, vtableIndex, scratch2, ol.getArrayLengthOffset(), slowPath);
 
@@ -268,7 +264,7 @@ public class AMD64InterpreterStubs {
             AMD64Assembler.AMD64RMOp.MOV.emit(masm, referenceOperandSize(), method,
                             new AMD64Address(scratch1, vtableIndex, Stride.fromLog2(CodeUtil.log2(ol.getReferenceSize())), ol.getArrayBaseOffset(JavaKind.Object)));
 
-            emitInstalledCodeFastPath(masm, method, compression, scratch1);
+            emitInstalledCodeFastPath(masm, method, true, scratch1);
             masm.bind(slowPath);
         }
 
@@ -323,13 +319,8 @@ public class AMD64InterpreterStubs {
         public void leave(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
 
-            /* rax is a pointer to InterpreterEnterData */
-
-            /* Move fp return value into ABI register */
-            masm.movq(xmm0, new AMD64Address(rax, offsetAbiFpRet()));
-
-            /* Move gp return value into ABI register */
-            masm.movq(rax, new AMD64Address(rax, offsetAbiGpRet()));
+            /* rax contains the raw result. Make it available in both ABI return registers. */
+            masm.movdq(xmm0, rax);
 
             super.leave(crb);
         }
@@ -698,7 +689,7 @@ public class AMD64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpRet");
     }
 
-    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = Disallowed.class)
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
     public static class AMD64InterpreterAccessStubData implements InterpreterAccessStubData {
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2144,6 +2144,9 @@ public class SharedInterop {
     public static boolean hasMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) {
+        if (receiver.isStaticStorage()) {
+            return true;
+        }
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.HasMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
@@ -2161,6 +2164,9 @@ public class SharedInterop {
     public static Object getMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
+        if (receiver.isStaticStorage()) {
+            return receiver.getKlass().getMeta().java_lang_Object.mirror();
+        }
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.GetMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {

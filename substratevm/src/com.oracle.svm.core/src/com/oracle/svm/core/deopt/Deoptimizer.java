@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfo;
@@ -70,11 +70,11 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
@@ -85,7 +85,7 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.VMError;
@@ -666,12 +666,9 @@ public final class Deoptimizer {
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
      * runtime compiled method, since there is no {@link InstalledCode} for AOT-compiled methods.
      */
-    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation, boolean reprofile) {
-        invalidateMethodOfFrame(thread, sp, speculation, null, reprofile);
-    }
-
     public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation, DeoptimizationReason reason, boolean reprofile) {
         VMError.guarantee(thread == CurrentIsolate.getCurrentThread());
+        DeoptimizationReason nonNullReason = reason != null ? reason : DeoptimizationReason.None;
 
         CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
         if (checkLazyDeoptimized(ip)) {
@@ -704,9 +701,7 @@ public final class Deoptimizer {
         }
         registerSpeculationFailure(installedCode, speculation);
         VMOperation.guaranteeNotInProgress("invalidateMethodOfFrame: running user code that can block");
-        if (reason != null) {
-            installedCode.recordDeoptimization(reason);
-        }
+        installedCode.recordDeoptimization(nonNullReason);
         if (reprofile) {
             installedCode.reprofile();
         }
@@ -813,18 +808,11 @@ public final class Deoptimizer {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isNonNullObjectValue(UnsignedWord pointer) {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            /*
-             * KnownIntrinsics.heapBase() can represent null objects, but we cannot convert the heap
-             * base value to an object.
-             */
-            return pointer != Word.nullPointer() && pointer != KnownIntrinsics.heapBase();
-        }
         /*
-         * With spawn isolates option disabled (which is a legacy mode), the heap base may represent
-         * a valid heap object.
+         * KnownIntrinsics.heapBase() can represent null objects, but we cannot convert the heap
+         * base value to an object.
          */
-        return pointer != Word.nullPointer();
+        return pointer != Word.nullPointer() && pointer != KnownIntrinsics.heapBase();
     }
 
     /**
@@ -955,7 +943,8 @@ public final class Deoptimizer {
 
         if (SubstrateOptions.useRistretto() && deoptFrame.getTargetTier() == DeoptimizedFrame.DeoptTargetTier.Interpreter) {
             VMError.guarantee(SubstrateOptions.useRistretto(), "Interpreter deopt target requires Ristretto");
-            return InterpreterSupport.singleton().continueInterpreterDeoptimization(deoptFrame, originalStackPointer, gpReturnValue, fpReturnValue, hasException);
+            UnsignedWord interpreterGpReturnValue = gpReturnValueObject == null ? gpReturnValue : Word.zero();
+            return InterpreterSupport.singleton().continueInterpreterDeoptimization(deoptFrame, originalStackPointer, interpreterGpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
         }
 
         VMError.guarantee(deoptFrame.getTargetTier() == DeoptTargetTier.BaselineCompiledCode && deoptFrame instanceof DeoptimizedBaselineCompiledFrame,
@@ -1051,7 +1040,7 @@ public final class Deoptimizer {
 
             if (SubstrateOptions.useRistretto() && frame.getTargetTier() == DeoptimizedFrame.DeoptTargetTier.Interpreter) {
                 VMError.guarantee(SubstrateOptions.useRistretto(), "Interpreter deopt target requires Ristretto");
-                return InterpreterSupport.singleton().continueInterpreterDeoptimization(frame, originalStackPointer, gpReturnValue, fpReturnValue, false);
+                return InterpreterSupport.singleton().continueInterpreterDeoptimization(frame, originalStackPointer, gpReturnValue, fpReturnValue, false, null);
             }
 
             VMError.guarantee(frame.getTargetTier() == DeoptTargetTier.BaselineCompiledCode && frame instanceof DeoptimizedBaselineCompiledFrame,
@@ -1122,7 +1111,7 @@ public final class Deoptimizer {
      */
     @Fold
     public static int savedBasePointerSize() {
-        if (SubstrateOptions.hasFramePointer()) {
+        if (SubstrateOptions.hasFramePointerSlot()) {
             return SubstrateTarget.getWordSize();
         } else {
             VMError.guarantee(Platform.includedIn(Platform.AMD64.class));
@@ -1148,21 +1137,24 @@ public final class Deoptimizer {
             return;
         }
 
-        FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
-
-        CFunctionPointer lazyStub = getLazyDeoptStub(frameInfo, pc, ignoreNonDeoptimizable);
+        CFunctionPointer lazyStub = getLazyDeoptStub(sourceChunk, pc, ignoreNonDeoptimizable);
         if (lazyStub.isNull()) {
             return;
         }
         installLazyDeoptStubReturnAddress(lazyStub, deoptState.sourceSp, deoptState.targetThread);
     }
 
-    private static CFunctionPointer getLazyDeoptStub(FrameInfoQueryResult frameInfo, CodePointer pc, boolean ignoreNonDeoptimizable) {
-        SharedRuntimeMethod interpreterDeoptTargetMethod = getInstalledCodeInterpreterDeoptTargetMethod(pc);
-        if (interpreterDeoptTargetMethod != null) {
-            return selectLazyDeoptStub(interpreterDeoptTargetMethod.getSignature().getReturnKind().isObject());
+    private static CFunctionPointer getLazyDeoptStub(CodeInfoQueryResult sourceChunk, CodePointer pc, boolean ignoreNonDeoptimizable) {
+        if (hasInstalledCodeInterpreterDeoptTarget(pc)) {
+            /*
+             * Runtime-compiled Ristretto code has no AOT deopt target method entry, but its
+             * CodeInfo still records whether this deopt entry leaves an object in the GP return
+             * register. The compiled method signature is too broad for non-call deopt entries.
+             */
+            return selectLazyDeoptStub(sourceChunk.getDeoptReturnValueIsObject());
         }
 
+        FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
         if (!hasAOTDeoptTargetMethod(frameInfo)) {
             if (ignoreNonDeoptimizable) {
                 return Word.nullPointer();
@@ -1174,16 +1166,16 @@ public final class Deoptimizer {
         return selectLazyDeoptStub(targetInfo.getDeoptReturnValueIsObject());
     }
 
-    private static SharedRuntimeMethod getInstalledCodeInterpreterDeoptTargetMethod(CodePointer pc) {
+    private static boolean hasInstalledCodeInterpreterDeoptTarget(CodePointer pc) {
         if (!SubstrateOptions.useRistretto()) {
-            return null;
+            return false;
         }
 
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(pc);
         if (installedCode != null && installedCode.getMethod() instanceof SharedRuntimeMethod sharedMethod && sharedMethod.getDeoptTargetTier() == DeoptTargetTier.Interpreter) {
-            return sharedMethod;
+            return true;
         }
-        return null;
+        return false;
     }
 
     private static CFunctionPointer selectLazyDeoptStub(boolean objectReturnValueIsObject) {
@@ -1193,7 +1185,7 @@ public final class Deoptimizer {
     }
 
     private DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        if (!hasAOTDeoptTargetMethod(sourceChunk.getFrameInfo()) && getInstalledCodeInterpreterDeoptTargetMethod(pc) == null) {
+        if (!hasAOTDeoptTargetMethod(sourceChunk.getFrameInfo()) && !hasInstalledCodeInterpreterDeoptTarget(pc)) {
             if (ignoreNonDeoptimizable) {
                 return null;
             } else {

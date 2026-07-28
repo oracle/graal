@@ -149,7 +149,7 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
          * NOTE: Windows does not support explicit addends, and inline addends are applied even
          * during dynamic linking.
          */
-        int length = ObjectFile.RelocationKind.getRelocationSize(k);
+        int length = k.getRelocationSize();
         /*
          * The addend is passed as a method parameter. The initial implicit addend value within the
          * instruction does not need to be read, as it is noise.

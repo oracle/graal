@@ -45,7 +45,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.shared.Uninterruptible;
 

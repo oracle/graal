@@ -28,8 +28,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.List;
-import java.util.stream.Stream;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -93,10 +93,10 @@ public interface VMAccess {
      * doesn't need to be prepended.</li>
      * </ul>
      * <p>
-     * If the method throws a {@code CallbackException} originating from a
-     * {@linkplain #createCallback callback}, the {@code CallbackException} wrapper will be removed
-     * and a {@link InvocationException} whose {@linkplain Throwable#getCause cause} is the original
-     * host exception will be thrown.
+     * If the method throws a {@code HostProxyException} originating from a host proxy created by
+     * {@link #createHostProxy}, the {@code HostProxyException} wrapper will be removed and a
+     * {@link InvocationException} whose {@linkplain Throwable#getCause cause} is the original host
+     * exception will be thrown.
      * <p>
      * Note that if the implementation is backed by an {@link Executable} object, this call will
      * ensure it is {@linkplain Executable#setAccessible(boolean) accessible} before attempting the
@@ -284,12 +284,6 @@ public interface VMAccess {
     ResolvedJavaPackage getPackage(ResolvedJavaType type);
 
     /**
-     * Returns a stream of the packages defined to the boot loader. See
-     * {@code jdk.internal.loader.BootLoader#packages()}.
-     */
-    Stream<ResolvedJavaPackage> bootLoaderPackages();
-
-    /**
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
      */
     ResolvedJavaModuleLayer bootModuleLayer();
@@ -336,8 +330,8 @@ public interface VMAccess {
      * Returns a value that implements the {@code guestType} interface by calling back to
      * {@code hostTarget} through its methods.
      * <p>
-     * The {@code hostTarget} and {@code guestType} interfaces must "match" in the following way:
-     * for each method in {@code guestType} (and its super-interfaces), there must exist a
+     * The {@code hostTarget} class and {@code guestType} interface must "match" in the following
+     * way: for each method in {@code guestType} (and its super-interfaces), there must exist a
      * "compatible" method in {@code hostTarget}'s class (or its super-class or super-interfaces).
      * <p>
      * A host method is "compatible" with a guest method if they have the same name, same number of
@@ -388,6 +382,13 @@ public interface VMAccess {
      * <td>The host type must be {@link ResolvedJavaMethod} exactly (e.g.,
      * {@link jdk.vm.ci.meta.JavaMethod} will not work).</td>
      * </tr>
+     * <tr>
+     * <td>{@link AnnotationValue}</td>
+     * <td>{@link java.lang.annotation.Annotation}</td>
+     * <td>Element values are converted recursively and annotation identity is not preserved through
+     * a round-trip. Defaults, absent required members, and standard deferred failures for malformed
+     * members retain JDK annotation semantics in the receiving context.</td>
+     * </tr>
      * </table>
      * <p>
      * If a host method throws an {@link InvocationException} with an attached
@@ -396,9 +397,9 @@ public interface VMAccess {
      * be thrown in the guest. Otherwise, if a host method throws an {@link InvocationException}
      * with no guest exception object, the {@linkplain Throwable#getCause() cause} of the
      * {@link InvocationException} will be wrapped in a
-     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} and thrown in the guest. Finally,
+     * {@code jdk.graal.compiler.vmaccess.guest.HostProxyException} and thrown in the guest. Finally,
      * if a host method throws any other type of exception, it will be wrapped in
-     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} and thrown in the guest.
+     * {@code jdk.graal.compiler.vmaccess.guest.HostProxyException} and thrown in the guest.
      * <p>
      * Note: generic type information is not considered, so for example if {@code hostTarget} has a
      * {@code void accept(T t)} method with {@code T} an unbounded class type parameter, the host
@@ -408,15 +409,15 @@ public interface VMAccess {
      * @param hostTarget the object that will be used as receiver when calling methods.
      * @param guestType the interface that should be implemented by the returned value.
      */
-    JavaConstant createCallback(Object hostTarget, ResolvedJavaType guestType);
+    JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType);
 
     /**
      * Gets the host exception wrapped the
-     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} encapsulated by {@code constant}.
+     * {@code jdk.graal.compiler.vmaccess.guest.HostProxyException} encapsulated by {@code constant}.
      * Returns {@code null} if the constant doesn't encapsulate a
-     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException}.
+     * {@code jdk.graal.compiler.vmaccess.guest.HostProxyException}.
      */
-    Throwable unwrapCallbackException(JavaConstant constant);
+    Throwable unwrapHostProxyException(JavaConstant constant);
 
     /**
      * A builder can be used to set a JVM context up and observe it through a {@link VMAccess}.

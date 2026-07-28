@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import java.io.PrintStream;
 
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;

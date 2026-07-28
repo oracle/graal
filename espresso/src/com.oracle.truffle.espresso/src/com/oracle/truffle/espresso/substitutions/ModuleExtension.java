@@ -83,6 +83,7 @@ public final class ModuleExtension {
                                     .build(),
                     new Builder("jdk.graal.compiler.espresso.vmaccess.guest", "espresso-vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
                                     .setAutoAdd(true)  //
+                                    .setRequiresConcealed(Map.of("java.base", List.of("sun.reflect.annotation")))  //
                                     .build(),
                     new Builder("jdk.graal.compiler.vmaccess.guest", "vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
                                     .setAutoAdd(true)  //

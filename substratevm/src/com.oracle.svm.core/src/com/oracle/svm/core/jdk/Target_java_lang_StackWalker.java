@@ -48,7 +48,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
@@ -70,6 +70,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport.InterpretedFrameData;
+import com.oracle.svm.core.interpreter.InterpreterSupport.StackWalkState;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
@@ -196,6 +197,7 @@ final class Target_java_lang_StackWalker {
         protected VirtualFrame deoptimizedVFrame;
         protected FrameInfoQueryResult vmLevelVFrame;
         protected FrameSourceInfo sourceLevelVFrame;
+        protected final StackWalkState interpreterStackWalkState = new StackWalkState();
 
         @Override
         public boolean tryAdvance(Consumer<? super StackFrame> action) {
@@ -384,19 +386,21 @@ final class Target_java_lang_StackWalker {
         protected FrameSourceInfo getSourceLevelVFrames(FrameInfoQueryResult vFrame, boolean deoptimizedFrame) {
             assert InterpreterSupport.isEnabled();
 
-            captureInterpretedFrameData(vFrame);
-            FrameSourceInfo result = JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, Word.nullPointer(), interpretedFrameData);
+            captureInterpreterStackWalkData(vFrame);
+            FrameSourceInfo result = JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, Word.nullPointer(), interpretedFrameData, interpreterStackWalkState);
             interpretedFrameData.clear();
             return result;
         }
 
         /**
-         * Captures stack-walking-related data for the given VM-level virtual frame in
-         * {@link #interpretedFrameData}. This needs to be done while in {@link Uninterruptible}
-         * code because a raw stack pointer is used to access the {@link StoredContinuation}.
+         * Captures stack-walking-related data for the given VM-level virtual frame. Root data is
+         * stored in {@link #interpretedFrameData}, while threaded-handler state is stored in
+         * {@link #interpreterStackWalkState}. This needs to be done while in
+         * {@link Uninterruptible} code because a raw stack pointer is used to access the
+         * {@link StoredContinuation}.
          */
         @Uninterruptible(reason = "StoredContinuation must not move.")
-        private void captureInterpretedFrameData(FrameInfoQueryResult vFrame) {
+        private void captureInterpreterStackWalkData(FrameInfoQueryResult vFrame) {
             assert InterpreterSupport.isEnabled();
             if (vFrame == null) {
                 return;
@@ -406,10 +410,7 @@ final class Target_java_lang_StackWalker {
             JavaStackWalker.updateStackPointerForContinuation(walk, stored);
             Pointer sp = getCurrentFrame().getSP();
 
-            InterpreterSupport support = InterpreterSupport.singleton();
-            if (support.isInterpreterRoot(vFrame)) {
-                support.captureInterpretedMethodFrameInfo(vFrame, sp, interpretedFrameData);
-            }
+            InterpreterSupport.singleton().captureStackWalkFrameData(vFrame, sp, interpretedFrameData, interpreterStackWalkState);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -493,7 +494,7 @@ final class Target_java_lang_StackWalker {
              * loudly if source-frame translation tries to use it.
              */
             Pointer sp = deoptimizedFrame ? Word.nullPointer() : getCurrentFrame().getSP();
-            return JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, sp, null);
+            return JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, sp, null, interpreterStackWalkState);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -610,8 +611,7 @@ final class StackWalkerUtil {
     /// [Method#invoke(Object, Object...)] and methods from the JDK's internal [MethodAccessor]
     /// implementations.
     static boolean skipFrame(FrameSourceInfo frameSourceInfo, boolean skipHiddenFrames, boolean skipReflectFrames, boolean skipMethodHandleFrames) {
-        // The reflection check is done differently here
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames, true)) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames)) {
             return true;
         }
         Class<?> clazz = frameSourceInfo.getSourceClass();

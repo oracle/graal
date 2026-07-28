@@ -40,18 +40,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
@@ -62,8 +56,14 @@ import com.oracle.svm.core.windows.headers.WinVer;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string constants. */
@@ -189,40 +189,6 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         libraryPath.append(";.");
 
         return libraryPath.toString();
-    }
-
-    @Override
-    protected String sunBootLibraryPathValue() {
-        /*
-         * HotSpot sets sun.boot.library.path to <java.home>\bin on Windows. For shared-library
-         * images, the loaded image can live outside the JDK, so prefer java.home if it was
-         * explicitly initialized. Otherwise derive the JDK home from the launcher. Standalone
-         * native images outside a JDK layout do not have a HotSpot boot library directory, so leave
-         * the property unset in that case.
-         */
-        String executableDirectory = executableDirectory();
-        VMError.guarantee(executableDirectory != null, "Could not determine value of sun.boot.library.path");
-        String javaHome = getInitialProperty("java.home", false);
-        if (javaHome == null) {
-            javaHome = findEnclosingJavaHome(executableDirectory, "bin", "java.dll");
-        }
-        if (javaHome != null) {
-            return childPath(javaHome, "bin");
-        }
-        return null;
-    }
-
-    @Override
-    protected boolean pathExists(String path) {
-        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(path)) {
-            WinBase.HANDLE handle = FileAPI.CreateFileW(wide.get(), FileAPI.GENERIC_READ(), FileAPI.FILE_SHARE_READ() | FileAPI.FILE_SHARE_WRITE() | FileAPI.FILE_SHARE_DELETE(),
-                            Word.nullPointer(), FileAPI.OPEN_EXISTING(), FileAPI.FILE_ATTRIBUTE_NORMAL(), Word.nullPointer());
-            if (handle.equal(WinBase.INVALID_HANDLE_VALUE())) {
-                return false;
-            }
-            WinBase.CloseHandle(handle);
-            return true;
-        }
     }
 
     static String toJavaString(WCharPointer wcString, int length) {
@@ -440,9 +406,13 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 class WindowsSystemPropertiesFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class,

@@ -162,9 +162,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
     public final boolean alwaysSafeConstructors = getFlag("AlwaysSafeConstructors", Boolean.class);
 
-    public final boolean avoidUnalignedAccesses = getFlag("AvoidUnalignedAccesses", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean avoidUnalignedAccesses = getFlag("AvoidUnalignedAccesses", Boolean.class, false, osArch.equals("aarch64") || osArch.equals("riscv64"));
     public final boolean useLSE = getFlag("UseLSE", Boolean.class, false, osArch.equals("aarch64"));
-    public final boolean useBlockZeroing = getFlag("UseBlockZeroing", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean useBlockZeroing = getFlag("UseBlockZeroing", Boolean.class, false, osArch.equals("aarch64") || osArch.equals("riscv64"));
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
     public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
 
@@ -454,13 +454,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_top", Integer.class, "HeapWord*");
 
-    public int threadTlabEndOffset() {
-        return threadTlabOffset + threadLocalAllocBufferEndOffset;
-    }
+    public final int threadTlabEndOffset = threadTlabOffset + threadLocalAllocBufferEndOffset;
 
-    public int threadTlabTopOffset() {
-        return threadTlabOffset + threadLocalAllocBufferTopOffset;
-    }
+    public final int threadTlabTopOffset = threadTlabOffset + threadLocalAllocBufferTopOffset;
 
     public final int zvaLength = access.getFieldValue("VM_Version::_zva_length", Integer.class, "int", 0);
 
@@ -471,21 +467,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long pollingPageReturnHandler = getFieldValue("CompilerToVM::Data::SharedRuntime_polling_page_return_handler", Long.class, "address");
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
-    public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
-
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
     public final long sha256ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address");
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
     public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address");
-
-    public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
-    public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
-
-    public final long galoisCounterModeCrypt = getFieldValue("StubRoutines::_galoisCounterMode_AESCrypt", Long.class, "address");
-
-    public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address");
-    public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address");
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("CompilerToVM::Data::SharedRuntime_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
@@ -518,21 +504,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
     public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address");
-
-    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address");
-    public final long stubDilithiumAlmostNtt = getFieldValue("StubRoutines::_dilithiumAlmostNtt", Long.class, "address");
-    public final long stubDilithiumAlmostInverseNtt = getFieldValue("StubRoutines::_dilithiumAlmostInverseNtt", Long.class, "address");
-    public final long stubDilithiumNttMult = getFieldValue("StubRoutines::_dilithiumNttMult", Long.class, "address");
-    public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address");
-    public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address");
-
-    public final long stubKyberNtt = getFieldValue("StubRoutines::_kyberNtt", Long.class, "address");
-    public final long stubKyberInverseNtt = getFieldValue("StubRoutines::_kyberInverseNtt", Long.class, "address");
-    public final long stubKyberNttMult = getFieldValue("StubRoutines::_kyberNttMult", Long.class, "address");
-    public final long stubKyberAddPoly2 = getFieldValue("StubRoutines::_kyberAddPoly_2", Long.class, "address");
-    public final long stubKyberAddPoly3 = getFieldValue("StubRoutines::_kyberAddPoly_3", Long.class, "address");
-    public final long stubKyber12To16 = getFieldValue("StubRoutines::_kyber12To16", Long.class, "address");
-    public final long stubKyberBarrettReduce = getFieldValue("StubRoutines::_kyberBarrettReduce", Long.class, "address");
 
     public final long stubArraySort = getFieldValue("StubRoutines::_array_sort", Long.class, "address");
     public final long stubArrayPartition = getFieldValue("StubRoutines::_array_partition", Long.class, "address");

@@ -42,9 +42,9 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.events.ShutdownEvent;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
@@ -65,13 +65,13 @@ import com.oracle.svm.core.jvmti.JvmtiEnvs;
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -83,6 +83,8 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.Utf8;
@@ -231,7 +233,7 @@ public final class JNIInvocationInterface {
         @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
         @Uninterruptible(reason = "No Java context")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/prims/jni.cpp#L3506-L3526")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/hotspot/share/prims/jni.cpp#L3506-L3526")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
             int ret = JNIVersion.isSupported(version, false) && version != JNIVersion.JNI_VERSION_1_1()
@@ -308,7 +310,18 @@ public final class JNIInvocationInterface {
         if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
             return JNIErrors.JNI_ERR();
         }
+
+        /* Keep this shutdown logic in sync with the shutdown logic in JavaMainWrapper. */
+        RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
+
         PlatformThreads.singleton().joinAllNonDaemonsInNative();
+        ShutdownEvent.emit("No remaining non-daemon Java threads", false);
+
+        try {
+            VMRuntime.shutdown();
+            /* Teardown hooks are executed by the epilogue. */
+        } catch (Throwable ignored) {
+        }
         return JNIErrors.JNI_OK();
     }
 
@@ -380,7 +393,7 @@ public final class JNIInvocationInterface {
              * case neither AttachCurrentThread nor this routine have any effect on the daemon
              * status of the thread."
              */
-            PlatformThreads.ensureCurrentAssigned(name, group, asDaemon);
+            PlatformThreads.ensureCurrentThreadHasThreadObject(name, group, asDaemon);
         }
 
         static void releaseCurrentThreadOwnedMonitors() {

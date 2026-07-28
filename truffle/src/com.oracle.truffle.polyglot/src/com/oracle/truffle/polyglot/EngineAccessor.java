@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,12 +74,11 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
-import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -119,10 +118,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.JDKAccessor;
-import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -168,43 +167,6 @@ final class EngineAccessor extends Accessor {
     static final PolyglotIsolateSupport ISOLATE = ACCESSOR.polyglotIsolateSupport();
     static final SandboxSupport SANDBOX = ACCESSOR.sandboxSupport();
 
-    private static List<AbstractClassLoaderSupplier> locatorLoaders() {
-        if (ImageInfo.inImageRuntimeCode()) {
-            return Collections.emptyList();
-        }
-        List<ClassLoader> loaders = TruffleLocator.loaders();
-        if (loaders == null) {
-            return null;
-        }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(2 + loaders.size());
-        ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
-        if (isValidLoader(systemClassLoader)) {
-            suppliers.add(new ModulePathLoaderSupplier(systemClassLoader));
-        }
-        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        if (isValidLoader(contextClassLoader)) {
-            suppliers.add(new WeakModulePathLoaderSupplier(contextClassLoader));
-        }
-        for (ClassLoader loader : loaders) {
-            if (isValidLoader(loader)) {
-                suppliers.add(new StrongClassLoaderSupplier(loader));
-            }
-        }
-        return suppliers;
-    }
-
-    private static AbstractClassLoaderSupplier defaultLoader() {
-        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
-        if (contextClassLoader != null && isValidLoader(contextClassLoader)) {
-            return new WeakClassLoaderSupplier(contextClassLoader);
-        } else if (isValidLoader(systemClassLoader)) {
-            return new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader());
-        } else {
-            return new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader());
-        }
-    }
-
     /**
      * Check that Truffle classes loaded by {@code loader} are the same as active Truffle runtime
      * classes.
@@ -218,20 +180,19 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static List<AbstractClassLoaderSupplier> locatorOrDefaultLoaders() {
-        List<AbstractClassLoaderSupplier> loaders = locatorLoaders();
-        if (loaders == null) {
-            loaders = List.of(defaultLoader());
+    static AbstractClassLoaderSupplier loader() {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
+        if (contextClassLoader != null && isValidLoader(contextClassLoader)) {
+            return new WeakClassLoaderSupplier(contextClassLoader);
+        } else if (isValidLoader(systemClassLoader)) {
+            return new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader());
+        } else {
+            return new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader());
         }
-        return loaders;
     }
 
     private EngineAccessor() {
-    }
-
-    @Override
-    protected void initializeNativeImageTruffleLocator() {
-        super.initializeNativeImageTruffleLocator();
     }
 
     static final class EngineImpl extends EngineSupport {
@@ -397,15 +358,14 @@ final class EngineAccessor extends Accessor {
         @SuppressWarnings("deprecation")
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
-            for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
-                ClassLoader loader = loaderSupplier.get();
-                if (loader != null) {
-                    // Lookup implementations of a module aware interface
-                    for (T service : ServiceLoader.load(type, loader)) {
-                        if (loaderSupplier.accepts(service.getClass())) {
-                            JDKSupport.exportTransitivelyTo(service.getClass().getModule());
-                            found.putIfAbsent(service.getClass(), service);
-                        }
+            AbstractClassLoaderSupplier loaderSupplier = EngineAccessor.loader();
+            ClassLoader loader = loaderSupplier.get();
+            if (loader != null) {
+                // Lookup implementations of a module aware interface
+                for (T service : ServiceLoader.load(type, loader)) {
+                    if (loaderSupplier.accepts(service.getClass())) {
+                        JDKSupport.exportTransitivelyTo(service.getClass().getModule());
+                        found.putIfAbsent(service.getClass(), service);
                     }
                 }
             }
@@ -1976,6 +1936,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean areStaticObjectSafetyChecksForced(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.ForceStaticObjectSafetyChecks);
+        }
+
+        @Override
         public String getStaticObjectStorageStrategy(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy).name();
         }
@@ -2447,6 +2412,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public OptionKey<Boolean> getWarnMethodScopingOption() {
+            return PolyglotEngineOptions.WarnMethodScoping;
+        }
+
+        @Override
         public boolean isIsolateMemoryProtection(OptionValues optionValues) {
             return PolyglotEngineOptions.isIsolateMemoryProtection(optionValues);
         }
@@ -2483,6 +2453,16 @@ final class EngineAccessor extends Accessor {
                 values.putAll(toValidate, true, null);
                 polyglot.presetOptions = Collections.unmodifiableMap(newDefaults);
             }
+        }
+
+        @Override
+        public Source getSourceReceiver(org.graalvm.polyglot.Source source) {
+            return (Source) PolyglotImpl.findInstance().getAPIAccess().getSourceReceiver(source);
+        }
+
+        @Override
+        public TruffleLogger getEngineLogger(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).getEngineLogger();
         }
     }
 
@@ -2566,18 +2546,6 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    private static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
-
-        ModulePathLoaderSupplier(ClassLoader classLoader) {
-            super(classLoader);
-        }
-
-        @Override
-        boolean accepts(Class<?> clazz) {
-            return clazz.getModule().isNamed();
-        }
-    }
-
     private static class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final Reference<ClassLoader> classLoaderRef;
@@ -2590,18 +2558,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoaderRef.get();
-        }
-    }
-
-    private static final class WeakModulePathLoaderSupplier extends WeakClassLoaderSupplier {
-
-        WeakModulePathLoaderSupplier(ClassLoader loader) {
-            super(loader);
-        }
-
-        @Override
-        boolean accepts(Class<?> clazz) {
-            return clazz.getModule().isNamed();
         }
     }
 

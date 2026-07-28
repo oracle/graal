@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -99,17 +100,21 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
             return;
         }
         MethodCallTargetNode callTargetNode = (MethodCallTargetNode) constructorInvoke.callTarget();
-        if (!(callTargetNode.receiver() instanceof NewInstanceNode)) {
+        FixedNode exceptionAllocationFixed;
+        if (callTargetNode.receiver() instanceof NewInstanceNode newInstance) {
+            exceptionAllocationFixed = newInstance;
+        } else if (callTargetNode.receiver() instanceof NewInstanceWithExceptionNode newInstanceWithException) {
+            exceptionAllocationFixed = newInstanceWithException;
+        } else {
             return;
         }
-        NewInstanceNode exceptionAllocation = (NewInstanceNode) callTargetNode.receiver();
 
         /*
          * Ensure that there is a simple control flow path from the constructor to the allocation of
          * the exception.
          */
         EconomicSet<FrameState> usagesToDelete = EconomicSet.create();
-        if (!hasSimpleControlFlow(constructorInvoke.predecessor(), exceptionAllocation, usagesToDelete)) {
+        if (!hasSimpleControlFlow(constructorInvoke.predecessor(), exceptionAllocationFixed, usagesToDelete)) {
             /*
              * No simple control flow path found. This can happen for example when a ...?...:...
              * conditional is used to construct the exception message. This case is not important
@@ -124,7 +129,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
          * either the UnwindNode of the graph, or a phi function that merges a simple control flow
          * path from the constructor.
          */
-        for (Node exceptionUsage : exceptionAllocation.usages()) {
+        for (Node exceptionUsage : exceptionAllocationFixed.usages()) {
             if (exceptionUsage == callTargetNode || exceptionUsage == constructorInvoke.stateAfter()) {
                 /* The constructor invocation that is going to be replaced. */
             } else if (exceptionUsage instanceof FrameState && usagesToDelete.contains((FrameState) exceptionUsage)) {
@@ -137,7 +142,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
             } else if (exceptionUsage instanceof PhiNode) {
                 PhiNode phi = (PhiNode) exceptionUsage;
                 for (int i = 0; i < phi.valueCount(); i++) {
-                    if (phi.valueAt(i) == exceptionAllocation && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asFixedNode(), null)) {
+                    if (phi.valueAt(i) == exceptionAllocationFixed && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asFixedNode(), null)) {
                         /* No simple control flow path found to the PhiNode. */
                         return;
                     }
@@ -159,7 +164,18 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
          */
 
         for (FrameState usageToDelete : usagesToDelete) {
-            usageToDelete.replaceAllInputs(exceptionAllocation, null);
+            usageToDelete.replaceAllInputs(exceptionAllocationFixed, null);
+        }
+
+        NewInstanceNode exceptionAllocation;
+        if (exceptionAllocationFixed instanceof NewInstanceWithExceptionNode newInstanceWithException) {
+            /*
+             * The assertion is being replaced by an implicit exception node, so the allocation's
+             * explicit OOME edge is no longer part of the final assertion path.
+             */
+            exceptionAllocation = (NewInstanceNode) newInstanceWithException.replaceWithNonThrowing();
+        } else {
+            exceptionAllocation = (NewInstanceNode) exceptionAllocationFixed;
         }
 
         /*

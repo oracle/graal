@@ -36,7 +36,7 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -264,6 +264,12 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setMethodTableFirstId(int methodId);
+
+    @RawField
+    int getMethodCount();
+
+    @RawField
+    void setMethodCount(int count);
 
     @RawField
     int getState();

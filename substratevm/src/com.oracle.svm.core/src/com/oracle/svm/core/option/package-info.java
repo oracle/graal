@@ -44,13 +44,13 @@
  *
  * <li>Runtime options: get their initial value during native image generation, using the prefix
  * <b>-R:</b> on the command line. Options are defined using fields of the class
- * {@link com.oracle.svm.core.option.RuntimeOptionKey}. The option values are maintained by
- * {@link com.oracle.svm.core.option.RuntimeOptionValues}. The most convenient access to the value
- * of a runtime option is {@link com.oracle.svm.core.option.RuntimeOptionKey#getValue()}.
+ * {@link com.oracle.svm.guest.staging.option.RuntimeOptionKey}. The option values are maintained by
+ * {@link com.oracle.svm.guest.staging.option.RuntimeOptionValues}. The most convenient access to the value
+ * of a runtime option is {@link com.oracle.svm.guest.staging.option.RuntimeOptionKey#getValue()}.
  * <p>
  * Runtime options can be changed at run time.
- * {@link com.oracle.svm.core.option.RuntimeOptionParser#parse} is a convenient helper to do option
- * parsing at run time.</li>
+ * {@link com.oracle.svm.guest.staging.option.RuntimeOptionParser#parseAndConsumeAllOptions} is a
+ * convenient helper to do option parsing at run time.</li>
  * </ul>
  *
  * Substrate VM re-uses much of the Graal option system for handling. However, Graal itself is
@@ -59,7 +59,7 @@
  * {@link jdk.graal.compiler.options.OptionKey#getValue(OptionValues)} requires to explicitly
  * specify one of the two option values of Substrate VM:
  * {@link com.oracle.svm.shared.option.HostedOptionValues#singleton()} or
- * {@link com.oracle.svm.core.option.RuntimeOptionValues#singleton()}.
+ * {@link com.oracle.svm.guest.staging.option.RuntimeOptionValues#singleton()}.
  */
 package com.oracle.svm.core.option;
 

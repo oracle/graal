@@ -28,15 +28,15 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jdk.SplittableRandomAccessors;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 /**
  * The abstract base class for all VM operations that are allocated on the Java heap. Allocating the
@@ -53,7 +53,6 @@ import org.graalvm.word.impl.Word;
  */
 public abstract class JavaVMOperation extends VMOperation {
     protected IsolateThread queuingThread;
-    private long queuingThreadId;
     private JavaVMOperation next;
     private volatile boolean finished;
 
@@ -86,11 +85,6 @@ public abstract class JavaVMOperation extends VMOperation {
     }
 
     @Override
-    protected long getQueuingThreadId(NativeVMOperationData data) {
-        return queuingThreadId;
-    }
-
-    @Override
     protected boolean isFinished(NativeVMOperationData data) {
         return finished;
     }
@@ -100,13 +94,11 @@ public abstract class JavaVMOperation extends VMOperation {
     protected void markAsQueued(NativeVMOperationData data) {
         finished = false;
         queuingThread = CurrentIsolate.getCurrentThread();
-        queuingThreadId = JavaThreads.getCurrentThreadIdOrZero();
     }
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
         queuingThread = Word.nullPointer();
-        queuingThreadId = 0;
         finished = true;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -418,11 +418,15 @@ public class BundleLauncher {
             inputDir = rootDir.resolve("input");
 
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
+                Path normalizedRootDir = rootDir.toAbsolutePath().normalize();
                 Enumeration<JarEntry> jarEntries = archive.entries();
                 while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
                     JarEntry jarEntry = jarEntries.nextElement();
-                    Path bundleEntry = rootDir.resolve(jarEntry.getName());
+                    Path bundleEntry = rootDir.resolve(jarEntry.getName()).toAbsolutePath().normalize();
                     try {
+                        if (!bundleEntry.startsWith(normalizedRootDir)) {
+                            throw new Error("Bundle entry '" + jarEntry.getName() + "' resolves outside of " + normalizedRootDir);
+                        }
                         Path bundleFileParent = bundleEntry.getParent();
                         if (bundleFileParent != null) {
                             Files.createDirectories(bundleFileParent);

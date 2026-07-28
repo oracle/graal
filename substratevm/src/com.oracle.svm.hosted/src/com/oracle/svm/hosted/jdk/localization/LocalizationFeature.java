@@ -223,6 +223,11 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(LocalizationFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         findClassByName = access::findClassByName;
         allLocales = processLocalesOption();

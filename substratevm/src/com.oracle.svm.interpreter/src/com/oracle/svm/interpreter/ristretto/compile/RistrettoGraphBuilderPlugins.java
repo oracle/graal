@@ -130,7 +130,7 @@ public final class RistrettoGraphBuilderPlugins {
         registration.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
-                if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
+                if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMetaAccessExtensionProvider(), b.getMethod())) {
                     return false;
                 }
                 // Build the lookup from the current parse caller, not from image-build metadata.

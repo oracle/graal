@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -98,13 +98,13 @@ suite = {
       "digest": "sha512:22569a011d207fb8f33e7e71162542a5748cc3daa67eec59cbdc2aeb0894c331dfb8b6100ea88529c6cea72672cbddd77ca6134ddf331685d68b3e72b4e0a914",
     },
 
-    "JCODINGS_1.0.63": {
-      "digest" : "sha512:280e989a1af7679da82bb9adb27a8c4e08c8da09f0bb93c380a36bfe7071c62bc9e7248b634d9e04f3ab275ec0672a44f8ab41dca8c10128c4351b6302275e84",
-      "sourceDigest" : "sha512:f6843609284be7dbfdbc7530e34c15e6aea7d3a45c4ee8e6836ee42fafbb9306f7234e20d8abbfc6a13e28d885eb5d743d69bfbbf738932db1fe42e031a835e3",
+    "JCODINGS_1.0.64": {
+      "digest" : "sha512:fea42afe82a43d2e71556a078150939c528907085b0880f60cb8e00e13ac3f688e2a7e5fdaba15acb73e48fd2727d3d4491c93506f37004b01da1cdc301cfe65",
+      "sourceDigest" : "sha512:521d21f985a6ffa208993c0360831fa1be5d8d2363248e8ac1adbae3f5d3397cbdeedb513dcaf1c571c713bf7ac41a4009d47009c04655fb12c941c8709371fe",
       "maven": {
         "groupId": "org.jruby.jcodings",
         "artifactId": "jcodings",
-        "version": "1.0.63",
+        "version": "1.0.64",
       },
       "license": ["MIT"],
     },
@@ -165,13 +165,13 @@ suite = {
       },
     },
 
-    "XZ-1.10" : {
-      "digest" : "sha512:af234bb2a5d42b355ea020c5b687268f0336e393eae69a05251677151d1e85b1e34999d5a6be6451e0b047e3cf13341dc227a5483553766252b0ea66025a44f9",
-      "sourceDigest" : "sha512:19439a7f83d34528a3b457baec1a352901eb311c38ffeeea6aed6f49d91417207cf9798572cdbd6eae1769944dab692629dd7668f7a3073b30ba5d242cf6a4b2",
+    "XZ-1.12" : {
+      "digest" : "sha512:a854dc65df5a07fbb026f624d2b10901f6f5d95a20091c52bfb64f88c14565ef1bb65733436ffd5b2a9d16329e523b650085fd4c36a1bb384d40788e727c1e60",
+      "sourceDigest" : "sha512:8c96e1d03b27af7d482cbae70136af45ae56403ba2bfe0355781ba931c84e15a2cd91a65453f30f2dfbde5789ce3529ee71b649cd22fa4887041f658ff5f1247",
       "maven" : {
         "groupId" : "org.tukaani",
         "artifactId" : "xz",
-        "version" : "1.10",
+        "version" : "1.12",
       },
     },
 
@@ -796,6 +796,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.staticobject",
+        "com.oracle.truffle.api.test",
         "TRUFFLE_API",
         "mx:JUNIT"
       ],
@@ -1284,19 +1285,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.graalvm.locator": {
-      "subDir": "src",
-      "sourceDirs": ["src"],
-      "dependencies": [
-        "truffle:TRUFFLE_API",
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "license": "GPLv2-CPE",
-      "jacoco" : "exclude",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "org.graalvm.shadowed.com.ibm.icu" : {
       # shaded ICU4J + ICU4J-CHARSET
       "subDir" : "src",
@@ -1342,6 +1330,7 @@ suite = {
           "com/ibm/icu/impl/ICUBinary.java" : {
             # we want to make this code unreachable in native image builds
             "addDataFilesFromPath\\(dataPath, icuDataFiles\\);" : "// \\g<0>",
+            "String dataPath = ICUConfig\\.get\\(ICUBinary\\.class\\.getName\\(\\) \\+ \".dataPath\"\\);" : "String dataPath = null;",
           },
           "com/ibm/icu/impl/ICUData.java" : {
             # [GR-47166] we load an absolute path from ICUData.class, to
@@ -1369,6 +1358,234 @@ suite = {
             # we want to make this code unreachable in native image builds
             "protected static URLHandler getDefault.*" : "\\g<0>\nif (Boolean.TRUE) {\nreturn null;\n}",
           },
+          "com/ibm/icu/impl/SoftCache.java" : {
+            "V value = createInstance\\(key, data\\);" : """\\g<0>
+            if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                return value;
+            }""",
+          },
+          "com/ibm/icu/impl/SimpleCache.java" : {
+            """Reference<Map<K, V>> ref = cacheRef;
+        Map<K, V> map = null;""" : """
+        if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+            return;
+        }
+        \\g<0>""",
+          },
+          "com/ibm/icu/impl/locale/LocaleObjectCache.java" : {
+            "CacheEntry<K, V> newEntry = new CacheEntry<K, V>\\(key, newVal, _queue\\);" : """
+            if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                return newVal;
+            }
+            \\g<0>""",
+          },
+          "com/ibm/icu/util/UResourceBundle.java" : {
+            "ROOT_CACHE\\.put\\(baseName, rootType\\);" : """
+            if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                \\g<0>
+            }""",
+          },
+
+          "com/ibm/icu/impl/coll/CollationRoot.java" : {
+            "private static final CollationTailoring rootSingleton;" : "private static CollationTailoring rootSingleton;",
+            "private static final RuntimeException exception;" : "private static RuntimeException exception;",
+            "(public static final CollationTailoring getRoot\\(\\) \\{)([\\s\\S]*\\})" : """\\g<1>
+        if (!rootLoaded) {
+            loadRoot();
+        }\\g<2>""",
+            """static \\{[^\n]*(\n[\\s\\S]*exception = e2;)\n    \\}""" : """
+    private static volatile boolean rootLoaded;
+    private static synchronized void loadRoot() {
+        if (rootLoaded) {
+            return;
+        }\\g<1>
+        rootLoaded = true;
+    }""",
+          },
+          "com/ibm/icu/impl/Norm2AllModes.java" : {
+            "NFCSingleton\\.INSTANCE" : "NFCSingleton.getInstance()",
+            "NFKCSingleton\\.INSTANCE" : "NFKCSingleton.getInstance()",
+            "NFKC_CFSingleton\\.INSTANCE" : "NFKC_CFSingleton.getInstance()",
+            "NFKC_SCFSingleton\\.INSTANCE" : "NFKC_SCFSingleton.getInstance()",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfc\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFCSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfc\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKCSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc_cf\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKC_CFSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc_cf\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc_scf\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKC_SCFSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc_scf\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+          },
+          "com/ibm/icu/impl/UCharacterName.java" : {
+            "public static final UCharacterName INSTANCE;" : "private static volatile UCharacterName INSTANCE;",
+            "static \\{([\\s\\S]*?)INSTANCE = new UCharacterName\\(\\);([\\s\\S]*?)\n    }" : """
+    public static UCharacterName getInstance() {
+        UCharacterName result = INSTANCE;
+        if (result == null) {
+            synchronized (UCharacterName.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    \\g<1>result = new UCharacterName();\\g<2>
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/impl/locale/LikelySubtags.java" : {
+            "public static final LikelySubtags INSTANCE = new LikelySubtags\\(Data\\.load\\(\\)\\);" : """
+    private static volatile LikelySubtags INSTANCE;
+    public static LikelySubtags getInstance() {
+        LikelySubtags result = INSTANCE;
+        if (result == null) {
+            synchronized (LikelySubtags.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    result = new LikelySubtags(Data.load());
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/impl/locale/LocaleDistance.java" : {
+            "public static final LocaleDistance INSTANCE = new LocaleDistance\\(Data\\.load\\(\\)\\);" : """
+    private static volatile LocaleDistance INSTANCE;
+    public static LocaleDistance getInstance() {
+        LocaleDistance result = INSTANCE;
+        if (result == null) {
+            synchronized (LocaleDistance.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    result = new LocaleDistance(Data.load());
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+          },
+          "com/ibm/icu/lang/UCharacter.java" : {
+            "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
+          },
+          "com/ibm/icu/text/DateTimePatternGenerator.java" : {
+            "LOCALE_TO_ALLOWED_HOUR\\.get" : "getLocaleToAllowedHour().get",
+            """static final Map<String, String\\[]> LOCALE_TO_ALLOWED_HOUR;
+    static \\{([\\s\\S]*?)LOCALE_TO_ALLOWED_HOUR = Collections.unmodifiableMap\\(temp\\);
+    }""" : """
+    static volatile Map<String, String[]> LOCALE_TO_ALLOWED_HOUR;
+    private static Map<String, String[]> getLocaleToAllowedHour() {
+        Map<String, String[]> result = LOCALE_TO_ALLOWED_HOUR;
+        if (result == null) {
+            synchronized (DateTimePatternGenerator.class) {
+                result = LOCALE_TO_ALLOWED_HOUR;
+                if (result == null) {
+                    \\g<1>
+                    result = Collections.unmodifiableMap(temp);
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        LOCALE_TO_ALLOWED_HOUR = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/text/NameUnicodeTransliterator.java" : {
+            "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
+          },
+          "com/ibm/icu/util/LocaleMatcher.java" : {
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+            "LocaleDistance\\.INSTANCE" : "LocaleDistance.getInstance()",
+          },
+          "com/ibm/icu/util/ULocale.java" : {
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+          },
+          "com/ibm/icu/text/Transliterator.java" : {
+            "(RB_RULE_BASED_IDS =\"RuleBasedTransliteratorIDs\";\n\\s*)static" : "\\g<1>private static synchronized void ensureInitialized()",
+            "registry = new TransliteratorRegistry\\(\\);" : "if (registry != null) return;\n        \\g<0>",
+            "String n = displayNameCache\\.get\\(new CaseInsensitiveString\\(ID\\)\\);" : "ensureInitialized();\n        \\g<0>",
+            "Transliterator t = registry\\.get\\(id, s\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(ID, transClass, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(ID, factory, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(trans\\.getID\\(\\), trans, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(trans\\.getID\\(\\), trans, visible\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(aliasID, realID, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "displayNameCache\\.remove\\(new CaseInsensitiveString\\(ID\\)\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableIDs\\(\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableSources\\(\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableTargets\\(source\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableVariants\\(source, target\\);" : "ensureInitialized();\n        \\g<0>",
+          },
         },
       },
       "description" : "ICU4J shaded library.",
@@ -1385,7 +1602,7 @@ suite = {
       "javaCompliance" : "17+",
       "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
-        "truffle:XZ-1.10",
+        "truffle:XZ-1.12",
       ],
       "class" : "ShadedLibraryProject",
       "shade" : {
@@ -1530,7 +1747,7 @@ suite = {
           "TRUFFLE_API"
       ],
       "shadedDependencies" : [
-        "truffle:JCODINGS_1.0.63",
+        "truffle:JCODINGS_1.0.64",
       ],
       "class" : "ShadedLibraryProject",
       "shade" : {
@@ -1779,7 +1996,6 @@ suite = {
           "com.oracle.truffle.runtime.hotspot to jdk.graal.compiler",
         ],
         "uses" : [
-          "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.jfr.EventFactory.Provider",
           "com.oracle.truffle.runtime.FloodControlHandler",
@@ -1877,7 +2093,6 @@ suite = {
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
           "java.nio.file.spi.FileTypeDetector",
-          "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
           "com.oracle.truffle.api.provider.InternalResourceProvider",
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
@@ -2475,25 +2690,6 @@ suite = {
       "layout" : {
         "native-image.properties" : "file:mx.truffle/language-xz.properties",
       },
-      "maven" : False,
-      "graalCompilerSourceEdition": "ignore",
-    },
-
-    "LOCATOR": {
-      "subDir": "src",
-      "moduleInfo" : {
-        "name" : "org.graalvm.locator",
-        "exports" : [
-          "com.oracle.graalvm.locator to jdk.graal.compiler.management",
-        ],
-        "requires": [
-          "org.graalvm.polyglot",
-        ],
-      },
-      "dependencies": ["com.oracle.graalvm.locator"],
-      "distDependencies": [
-        "truffle:TRUFFLE_API",
-      ],
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
     },

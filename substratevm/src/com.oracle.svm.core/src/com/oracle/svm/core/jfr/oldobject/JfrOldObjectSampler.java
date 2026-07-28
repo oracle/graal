@@ -34,9 +34,11 @@ import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.collections.UninterruptiblePriorityQueue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.OldObjectSampleEvent;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -148,11 +150,17 @@ final class JfrOldObjectSampler {
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
+        String vthreadName = null;
+        long vthreadEpochId = JfrEpoch.NO_EPOCH_ID;
+        if (JavaThreads.isVirtual(thread)) {
+            vthreadName = thread.getName();
+            vthreadEpochId = JfrThreadRepository.getVThreadEpochId(thread);
+        }
         long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample);
         UnsignedWord heapUsedAfterLastGC = Heap.getHeap().getUsedMemoryAfterLastGC();
 
         JfrOldObject sample = (JfrOldObject) freeList.pop();
-        sample.initialize(obj, span, allocatedSize, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+        sample.initialize(obj, span, allocatedSize, threadId, vthreadName, vthreadEpochId, stackTraceId, heapUsedAfterLastGC, arrayLength);
         queue.add(sample);
         usedList.append(sample);
         totalInQueue = totalInQueue.add(span);
@@ -178,11 +186,13 @@ final class JfrOldObjectSampler {
                 UnsignedWord objectSize = cur.getObjectSize();
                 long allocationTicks = cur.getAllocationTicks();
                 long threadId = cur.getThreadId();
+                String vthreadName = cur.getVthreadName();
+                long vthreadEpochId = cur.getVthreadEpochId();
                 long stackTraceId = cur.getStackTraceId();
                 UnsignedWord heapUsedAfterLastGC = cur.getHeapUsedAfterLastGC();
                 int arrayLength = cur.getArrayLength();
 
-                OldObjectSampleEvent.emit(startTicks, objectId, objectSize, allocationTicks, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+                OldObjectSampleEvent.emit(startTicks, objectId, objectSize, allocationTicks, threadId, vthreadName, vthreadEpochId, stackTraceId, heapUsedAfterLastGC, arrayLength);
             }
 
             cur = (JfrOldObject) cur.getNext();

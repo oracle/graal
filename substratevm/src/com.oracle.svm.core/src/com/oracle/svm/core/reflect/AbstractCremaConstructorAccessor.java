@@ -39,12 +39,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * construction.
  */
 abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor implements ConstructorAccessor {
+    private final boolean instantiationError;
 
     /**
      * Creates a constructor accessor with the reflected signature used for argument validation.
      */
-    protected AbstractCremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
+    protected AbstractCremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes, boolean instantiationError) {
         super(targetMethod, declaringClass, parameterTypes);
+        this.instantiationError = instantiationError;
     }
 
     /**
@@ -67,9 +69,13 @@ abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor im
     public Object newInstance(Object[] initialArguments) throws InstantiationException, InvocationTargetException {
         Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
         verifyArguments(args);
-        EnsureClassInitializedNode.ensureClassInitialized(getInstantiatedClass());
+        Class<?> instantiatedClass = getInstantiatedClass();
+        if (instantiationError) {
+            throw new InstantiationException(instantiatedClass.getName());
+        }
+        EnsureClassInitializedNode.ensureClassInitialized(instantiatedClass);
 
-        Object newReference = CremaSupport.singleton().allocateInstance(DynamicHub.fromClass(getInstantiatedClass()).getInterpreterType());
+        Object newReference = CremaSupport.singleton().allocateInstance(DynamicHub.fromClass(instantiatedClass).getInterpreterType());
         Object[] finalArgs = new Object[args.length + 1];
         finalArgs[0] = newReference;
         System.arraycopy(args, 0, finalArgs, 1, args.length);

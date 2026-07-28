@@ -193,7 +193,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         AnnotationValue handlerConfigAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(target);
         AnnotationValue enclosingHandlerConfigAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod);
         if (handlerConfigAnnotation == null ||
-                        !handlerConfigAnnotation.equals(enclosingHandlerConfigAnnotation)) {
+                        !sameInterpreterByAnnotation(handlerConfigAnnotation, enclosingHandlerConfigAnnotation)) {
             return false;
         }
         if (!hasTrailingArgumentsAfterAnnotatedPrefix(handlerConfigAnnotation, target)) {
@@ -214,6 +214,16 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
             registerHandlerInvoke(b, enclosingMethod, copyFromReturnInfo, arguments, PendingExceptionStateValueNode.Source.INFER);
         }
         return true;
+    }
+
+    /**
+     * Compares all {@code BytecodeInterpreterHandlerConfig} annotation fields except
+     * {@code secondarySwitch}, which does not affect whether two methods belong to the same
+     * interpreter.
+     */
+    private static boolean sameInterpreterByAnnotation(AnnotationValue first, AnnotationValue second) {
+        return second != null && first.getInt("maximumOperationCode") == second.getInt("maximumOperationCode") &&
+                        first.getList("arguments", AnnotationValue.class).equals(second.getList("arguments", AnnotationValue.class));
     }
 
     private static boolean hasTrailingArgumentsAfterAnnotatedPrefix(AnnotationValue handlerConfigAnnotation, ResolvedJavaMethod target) {

@@ -419,6 +419,88 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(target);
     }
 
+    @Test
+    public void testConditionalMergeStabilizes() {
+        assumeTrue(hasBoxingElimination());
+        BasicInterpreter root = parseNodeForCompilation(run, "conditionalMergeStabilizes", b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertEquals(42L, target.call(true, 42L, false));
+        target.compile(true);
+        assertCompiled(target);
+
+        assertEquals(false, target.call(false, 42L, false));
+        target.compile(true);
+        assertCompiled(target);
+
+        assertEquals(42L, target.call(true, 42L, false));
+        assertCompiled(target);
+        assertEquals(false, target.call(false, 42L, false));
+        assertCompiled(target);
+    }
+
+    @Test
+    public void testConditionalMergeLeftSideStabilizes() {
+        assumeTrue(hasBoxingElimination());
+        BasicInterpreter root = parseNodeForCompilation(run, "conditionalMergeLeftSideStabilizes", b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertEquals(42L, target.call(true, 42L, false));
+        target.compile(true);
+        assertCompiled(target);
+        assertEquals(42L, target.call(true, 42L, false));
+        assertCompiled(target);
+    }
+
+    @Test
+    public void testConditionalMergeRightSideStabilizes() {
+        assumeTrue(hasBoxingElimination());
+        BasicInterpreter root = parseNodeForCompilation(run, "conditionalMergeRightSideStabilizes", b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertEquals(false, target.call(false, 42L, false));
+        target.compile(true);
+        assertCompiled(target);
+        assertEquals(false, target.call(false, 42L, false));
+        assertCompiled(target);
+    }
+
     /**
      * When an root changes its local tags, compiled code should be invalidated.
      */

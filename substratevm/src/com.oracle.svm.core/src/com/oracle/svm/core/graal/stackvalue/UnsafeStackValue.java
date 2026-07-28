@@ -72,6 +72,15 @@ public final class UnsafeStackValue {
         throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
+    /**
+     * Reserves stack memory that shares a stack slot across all occurrences in the current
+     * compilation unit. This is only safe if the allocation is not recursively inlined.
+     */
+    @SuppressWarnings("unused")
+    public static <T extends PointerBase> T getShared(int size) {
+        throw new IllegalStateException("Cannot invoke method during native image generation");
+    }
+
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int numberOfElements, int elementSize) {
         throw new IllegalStateException("Cannot invoke method during native image generation");

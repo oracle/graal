@@ -27,23 +27,18 @@
 package com.oracle.graal.pointsto.standalone.heap;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.standalone.StandaloneObjectScanner;
-import com.oracle.graal.pointsto.util.CompletionExecutor;
 
+/**
+ * Heap verification for standalone analysis.
+ *
+ * Verification reuses the default heap traversal after the standalone hosted-values and heap-scanner
+ * layers decide static-field availability.
+ */
 public class StandaloneHeapSnapshotVerifier extends HeapSnapshotVerifier {
     public StandaloneHeapSnapshotVerifier(BigBang bb, ImageHeap imageHeap, ImageHeapScanner scanner) {
         super(bb, imageHeap, scanner);
-    }
-
-    @Override
-    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor, boolean skipReachableCheck) {
-        StandaloneImageHeapScanner standaloneImageHeapScanner = (StandaloneImageHeapScanner) this.scanner;
-        return new StandaloneObjectScanner(bb, executor, scannedObjects, new ScanningObserver(skipReachableCheck), standaloneImageHeapScanner.getShouldScanConstant(),
-                        standaloneImageHeapScanner.getShouldScanField());
     }
 }

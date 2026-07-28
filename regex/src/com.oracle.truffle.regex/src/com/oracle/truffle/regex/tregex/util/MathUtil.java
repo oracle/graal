@@ -52,7 +52,7 @@ public final class MathUtil {
     }
 
     public static int ceilPowerOf2(int size) {
-        return 1 << (log2ceil(size - 1));
+        return 1 << (log2ceil(size));
     }
 
     public static int saturatingInc(int x) {

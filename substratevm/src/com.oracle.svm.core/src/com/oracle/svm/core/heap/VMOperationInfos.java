@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -127,7 +127,6 @@ public final class VMOperationInfos {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 class VMOperationNamesFeatures implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

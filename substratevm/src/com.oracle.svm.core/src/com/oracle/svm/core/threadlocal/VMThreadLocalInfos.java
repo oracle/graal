@@ -36,13 +36,13 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;

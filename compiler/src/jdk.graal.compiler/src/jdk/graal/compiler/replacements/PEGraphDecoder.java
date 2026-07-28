@@ -46,6 +46,7 @@ import org.graalvm.collections.Pair;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -63,6 +64,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
+import jdk.graal.compiler.java.BytecodeParserOptions;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -80,6 +82,7 @@ import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invokable;
 import jdk.graal.compiler.nodes.Invoke;
@@ -116,6 +119,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
@@ -201,7 +205,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         protected PEMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                         int inliningDepth, ValueNode[] arguments) {
-            super(callerLoopScope, targetGraph, encodedGraph, loopExplosionKind(method, loopExplosionPlugin));
+            super(callerLoopScope, targetGraph, encodedGraph, loopExplosionKind(method, loopExplosionPlugin), PEGraphDecoder.this.decodeContext(method, caller, invokeData));
 
             this.caller = caller;
             this.method = method;
@@ -213,6 +217,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 /* Marker value to compute actual position lazily when needed the first time. */
                 sourceLanguagePosition = UnresolvedSourceLanguagePosition.INSTANCE;
             }
+        }
+
+        private static boolean invokeCatchesOOME(InvokeData invokeData) {
+            return invokeData != null && invokeData.invoke instanceof InvokeWithExceptionNode && invokeData.invoke.isInOOMETry();
+        }
+
+        private boolean hasOOMEPolicyScopeForDecode() {
+            return hasOOMEPolicyScope();
         }
 
         @Override
@@ -379,6 +391,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public boolean needsExplicitException() {
             return needsExplicitException;
+        }
+
+        /**
+         * PE graph-builder contexts inherit the decode scope of the method being materialized. This
+         * lets graph-builder plugins create allocation-with-exception nodes when their replacement
+         * IR is emitted while decoding a graph in OOME repair mode.
+         */
+        @Override
+        public boolean currentBlockCatchesOOME() {
+            return methodScope.hasOOMEPolicyScopeForDecode();
         }
 
         @Override
@@ -651,8 +673,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     exceptionEdgeConsumed = true;
                     WithExceptionNode withExceptionNode = (WithExceptionNode) fixedNode;
                     if (withExceptionNode.exceptionEdge() == null) {
-                        ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId);
-                        withExceptionNode.setExceptionEdge(exceptionEdge);
+                        prepareAppendedExceptionEdge(withExceptionNode);
                     }
                     if (withExceptionNode.next() == null) {
                         AbstractBeginNode nextBegin = graph.add(new BeginNode());
@@ -666,6 +687,28 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     lastInstr = null;
                 }
             }
+        }
+
+        /**
+         * Wires an exception edge produced by an invocation plugin replacement. If the replaced
+         * invoke had an encoded exception successor, this delegates to the normal encoded edge. If
+         * the edge is artificial because the invoke is being decoded in OOME repair mode, only
+         * allocation OOME edges may use the synthetic OOME exit.
+         */
+        private void prepareAppendedExceptionEdge(WithExceptionNode withExceptionNode) {
+            GraalError.guarantee(isParsingInvocationPlugin() && methodScope.caller != null && methodScope.invokeData != null,
+                            "appended exception edge repair is only supported for invocation-plugin replacements");
+            PEMethodScope exceptionScope = methodScope.caller;
+            LoopScope exceptionLoopScope = methodScope.callerLoopScope;
+            int exceptionOrderId = methodScope.invokeData.exceptionOrderId;
+            boolean missingEncodedExceptionEdge = exceptionOrderId <= GraphEncoder.NULL_ORDER_ID;
+            if (missingEncodedExceptionEdge && !exceptionScope.hasOOMEPolicyScopeForDecode()) {
+                throw GraalError.shouldNotReachHere(Assertions.errorMessage(methodScope, withExceptionNode, exceptionOrderId));
+            }
+            if (missingEncodedExceptionEdge && !(withExceptionNode instanceof AllocateWithExceptionNode)) {
+                throw GraalError.shouldNotReachHere(Assertions.errorMessage(methodScope, withExceptionNode, exceptionOrderId));
+            }
+            prepareExceptionEdge(exceptionScope, exceptionLoopScope, withExceptionNode, exceptionOrderId, withExceptionNode.asNode().getNodeSourcePosition());
         }
 
         @Override
@@ -908,6 +951,34 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
+    private DecodeContext decodeContext(ResolvedJavaMethod method, PEMethodScope caller, InvokeData invokeData) {
+        if (caller != null && shouldRepairOOMEExceptionEdges(method, caller, invokeData)) {
+            return DecodeContext.OOME_EXCEPTION_EDGES;
+        }
+        return DecodeContext.DEFAULT;
+    }
+
+    /**
+     * Returns whether this PE decoder is allowed to restore allocation OOME exception edges for
+     * {@code method}. Subclasses use this to restrict the generic decode policy to contexts where
+     * explicit OOME modelling is supported by the runtime and later analysis pipeline.
+     */
+    protected boolean supportsOOMEExceptionEdgeRepair(@SuppressWarnings("unused") ResolvedJavaMethod method, @SuppressWarnings("unused") PEMethodScope caller,
+                    @SuppressWarnings("unused") InvokeData invokeData) {
+        return false;
+    }
+
+    /**
+     * Mirrors {@link #decodeContext(ResolvedJavaMethod, PEMethodScope, InvokeData)} for call sites
+     * where the decoder has to decide before creating the callee method scope.
+     */
+    private boolean shouldRepairOOMEExceptionEdges(ResolvedJavaMethod method, PEMethodScope caller, InvokeData invokeData) {
+        if (!BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers.getValue(graph.getOptions())) {
+            return false;
+        }
+        return supportsOOMEExceptionEdgeRepair(method, caller, invokeData) && (PEMethodScope.invokeCatchesOOME(invokeData) || caller.hasOOMEPolicyScopeForDecode());
+    }
+
     @SuppressWarnings("try")
     public void decode(ResolvedJavaMethod method) {
         try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
@@ -936,6 +1007,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected PEMethodScope createMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                     int inliningDepth, ValueNode[] arguments) {
         return new PEMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
+    }
+
+    @Override
+    protected FrameState createOOMEExceptionStateAfter(MethodScope methodScope, MethodScope exceptionScope, ExceptionObjectNode exceptionObject) {
+        PEMethodScope peExceptionScope = (PEMethodScope) exceptionScope;
+        if (peExceptionScope.invokeData == null || peExceptionScope.invokeData.exceptionStateOrderId <= GraphEncoder.NULL_ORDER_ID) {
+            return createSyntheticOOMEExceptionState((PEMethodScope) methodScope, exceptionObject);
+        }
+        ensureExceptionStateDecoded(peExceptionScope);
+        if (!peExceptionScope.exceptionState.canProduceBytecodeFrame()) {
+            return createSyntheticOOMEExceptionState((PEMethodScope) methodScope, exceptionObject);
+        }
+        return peExceptionScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionObject, null);
     }
 
     @Override
@@ -1015,22 +1099,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected LoopScope handleInvokeWithCallTarget(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
         CallTargetNode callTarget = invokeData.callTarget;
+        InvokeData preparedInvokeData = invokeData;
         if (callTarget instanceof MethodCallTargetNode methodCall) {
+            preparedInvokeData = prepareInvoke(methodScope, loopScope, invokeData, null);
             if (methodCall.invokeKind().hasReceiver()) {
-                invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
+                preparedInvokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
             }
-            callTarget = trySimplifyCallTarget(methodScope, invokeData, methodCall);
+            callTarget = trySimplifyCallTarget(methodScope, preparedInvokeData, methodCall);
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             if (forceLink && targetMethod.getCodeSize() == -1) {
                 targetMethod.getDeclaringClass().link();
             }
-            LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
+            LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, preparedInvokeData, (MethodCallTargetNode) callTarget);
             if (inlineLoopScope != null) {
                 return inlineLoopScope;
             }
         }
 
-        handleNonInlinedInvoke(methodScope, loopScope, invokeData);
+        handleNonInlinedInvoke(methodScope, loopScope, preparedInvokeData);
         return loopScope;
     }
 
@@ -1133,6 +1219,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
             if (invocationPlugin == null) {
+                return false;
+            }
+            if (needsExplicitException && shouldRepairOOMEExceptionEdges(targetMethod, methodScope, invokeData)) {
+                /*
+                 * PE invocation plugins append all replacement nodes at the replaced invoke. The
+                 * append context can only wire one exception producer to that invoke's exception
+                 * successor. When this invoke would be decoded in an OOME repair scope, plugins may
+                 * emit explicit NPE/NASE checks before an allocation-with-exception node, which
+                 * would require multiple exception producers from one plugin expansion. Keep the
+                 * repaired invoke and let normal OOME-aware inlining/decoding handle it instead.
+                 */
                 return false;
             }
 
@@ -1341,11 +1438,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         int returnNodeCount = 0;
         int unwindNodeCount = 0;
         List<ControlSinkNode> returnAndUnwindNodes = inlineScope.returnAndUnwindNodes;
+        /*
+         * Synthetic OOME unwinds are registered before all decoded nodes are simplified. If
+         * simplification proves an allocation path unreachable, the list can still contain the dead
+         * unwind node, so only live entries participate in inline cleanup.
+         */
         for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
             FixedNode fixedNode = returnAndUnwindNodes.get(i);
+            if (!fixedNode.isAlive()) {
+                continue;
+            }
             if (fixedNode instanceof ReturnNode) {
                 returnNodeCount++;
-            } else if (fixedNode.isAlive()) {
+            } else {
                 assert fixedNode instanceof UnwindNode : Assertions.errorMessage(fixedNode, returnAndUnwindNodes);
                 unwindNodeCount++;
             }
@@ -1354,8 +1459,20 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (unwindNodeCount > 0) {
             FixedNode unwindReplacement;
             if (invoke instanceof InvokeWithExceptionNode) {
-                /* Decoding continues for the exception handler. */
-                unwindReplacement = makeStubNode(methodScope, loopScope, invokeData.exceptionNextOrderId);
+                if (invokeData.exceptionNextOrderId > GraphEncoder.NULL_ORDER_ID) {
+                    /* Decoding continues for the encoded exception handler. */
+                    unwindReplacement = makeStubNode(methodScope, loopScope, invokeData.exceptionNextOrderId);
+                } else if (inlineScope.hasOOMEPolicyScopeForDecode()) {
+                    /*
+                     * The invoke was converted while decoding in OOME mode. It has no encoded
+                     * exception successor, so propagate the inlinee exception through a caller-scope
+                     * synthetic unwind.
+                     */
+                    unwindReplacement = null;
+                } else {
+                    /* No exception handler available, so the only thing we can do is deoptimize. */
+                    unwindReplacement = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                }
             } else {
                 /* No exception handler available, so the only thing we can do is deoptimize. */
                 unwindReplacement = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
@@ -1363,8 +1480,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             if (unwindNodeCount == 1) {
                 /* Only one UnwindNode, we can use the exception directly. */
-                UnwindNode unwindNode = getSingleMatchingNode(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class);
+                UnwindNode unwindNode = getSingleAliveNodeOfType(returnAndUnwindNodes, UnwindNode.class);
                 exceptionValue = unwindNode.exception();
+                if (unwindReplacement == null) {
+                    unwindReplacement = createSyntheticOOMEUnwind(methodScope, loopScope, exceptionValue);
+                }
                 unwindNode.replaceAndDelete(unwindReplacement);
 
             } else {
@@ -1375,13 +1495,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * return values.
                  */
                 MergeNode unwindMergeNode = graph.add(new MergeNode());
-                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, getMatchingNodes(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class, unwindNodeCount),
+                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, getAliveNodesOfType(returnAndUnwindNodes, UnwindNode.class, unwindNodeCount),
                                 null, unwindNode -> unwindNode.exception());
+                if (unwindReplacement == null) {
+                    unwindReplacement = createSyntheticOOMEUnwind(methodScope, loopScope, exceptionValue);
+                    FrameState exceptionState = createSyntheticOOMEExceptionState(methodScope, exceptionValue);
+                    unwindMergeNode.setStateAfter(exceptionState);
+                } else {
+                    ensureExceptionStateDecoded(inlineScope);
+                    unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null));
+                }
                 unwindMergeNode.setNext(unwindReplacement);
-                ensureExceptionStateDecoded(inlineScope);
-                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null));
             }
-            if (invoke instanceof InvokeWithExceptionNode) {
+            if (invoke instanceof InvokeWithExceptionNode && invokeData.exceptionNextOrderId > GraphEncoder.NULL_ORDER_ID) {
                 /*
                  * Exceptionobject nodes are begin nodes, i.e., they can be used as guards/anchors
                  * thus we need to ensure nodes decoded later have a correct guarding/anchoring node
@@ -1407,7 +1533,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             returnValue = null;
             invokeNode.replaceAtUsages(null);
         } else if (returnNodeCount == 1) {
-            ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
+            ReturnNode returnNode = getSingleAliveNodeOfType(returnAndUnwindNodes, ReturnNode.class);
             returnValue = returnNode.result();
             BeginNode prevBegin = null;
             if (returnNode.predecessor() instanceof BeginNode) {
@@ -1427,7 +1553,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
-            returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
+            returnValue = InliningUtil.mergeReturns(merge, getAliveNodesOfType(returnAndUnwindNodes, ReturnNode.class, returnNodeCount));
             FixedNode next = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
             Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
             returnValue = returnAnchorPair.getLeft();
@@ -1440,7 +1566,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * orderId->Node table.
          */
         registerNode(loopScope, invokeData.orderId, returnValue, true, true);
-        if (invoke instanceof InvokeWithExceptionNode) {
+        if (invoke instanceof InvokeWithExceptionNode && invokeData.exceptionOrderId > GraphEncoder.NULL_ORDER_ID) {
             registerNode(loopScope, invokeData.exceptionOrderId, exceptionValue, true, true);
         }
         if (inlineScope.exceptionPlaceholderNode != null) {
@@ -1465,36 +1591,57 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T getSingleMatchingNode(List<ControlSinkNode> returnAndUnwindNodes, boolean hasNonMatchingEntries, Class<T> clazz) {
-        if (!hasNonMatchingEntries) {
-            assert returnAndUnwindNodes.size() == 1 : Assertions.errorMessage(returnAndUnwindNodes, hasNonMatchingEntries, clazz);
-            return (T) returnAndUnwindNodes.get(0);
-        }
+    private FixedNode createSyntheticOOMEUnwind(PEMethodScope methodScope, LoopScope loopScope, ValueNode exceptionValue) {
+        FixedAnchorNode anchor = graph.add(new FixedAnchorNode(exceptionValue));
+        FrameState exceptionState = createSyntheticOOMEExceptionState(methodScope, exceptionValue);
+        OOMEExceptionPath exceptionPath = appendOOMELoopExits(loopScope, anchor, exceptionValue, exceptionState);
+        UnwindNode unwind = graph.add(new UnwindNode(exceptionPath.exceptionValue));
+        exceptionPath.lastFixed.setNext(unwind);
+        methodScope.returnAndUnwindNodes.add(unwind);
+        return anchor;
+    }
 
+    private FrameState createSyntheticOOMEExceptionState(PEMethodScope methodScope, ValueNode exceptionValue) {
+        ResolvedJavaMethod method = graph.method() == null ? methodScope.method : graph.method();
+        Bytecode code = method == null ? null : new ResolvedJavaMethodBytecode(method);
+        return graph.add(new FrameState(null, code, BytecodeFrame.AFTER_EXCEPTION_BCI, List.of(exceptionValue), 0, 1, 0, FrameState.StackState.Rethrow, true, null, null, null));
+    }
+
+    /**
+     * Returns the only live control sink in {@code returnAndUnwindNodes} that has type
+     * {@code clazz}. Dead entries can remain in the list when synthetic OOME unwind paths are
+     * simplified away after being registered.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T getSingleAliveNodeOfType(List<ControlSinkNode> returnAndUnwindNodes, Class<T> clazz) {
+        T result = null;
         for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
             ControlSinkNode node = returnAndUnwindNodes.get(i);
-            if (clazz.isInstance(node)) {
-                return (T) node;
+            if (node.isAlive() && clazz.isInstance(node)) {
+                assert result == null : Assertions.errorMessage(returnAndUnwindNodes, clazz, result, node);
+                result = (T) node;
             }
+        }
+        if (result != null) {
+            return result;
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(clazz); // ExcludeFromJacocoGeneratedReport
     }
 
+    /**
+     * Returns all live control sinks in {@code returnAndUnwindNodes} that have type {@code clazz}.
+     * The expected count is computed before this call while filtering out dead entries.
+     */
     @SuppressWarnings("unchecked")
-    private static <T> List<T> getMatchingNodes(List<ControlSinkNode> returnAndUnwindNodes, boolean hasNonMatchingEntries, Class<T> clazz, int resultCount) {
-        if (!hasNonMatchingEntries) {
-            return (List<T>) returnAndUnwindNodes;
-        }
-
+    private static <T> List<T> getAliveNodesOfType(List<ControlSinkNode> returnAndUnwindNodes, Class<T> clazz, int resultCount) {
         List<T> result = new ArrayList<>(resultCount);
         for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
             ControlSinkNode node = returnAndUnwindNodes.get(i);
-            if (clazz.isInstance(node)) {
+            if (node.isAlive() && clazz.isInstance(node)) {
                 result.add((T) node);
             }
         }
-        assert result.size() == resultCount : Assertions.errorMessage(returnAndUnwindNodes, hasNonMatchingEntries, clazz, resultCount, result);
+        assert result.size() == resultCount : Assertions.errorMessage(returnAndUnwindNodes, clazz, resultCount, result);
         return result;
     }
 

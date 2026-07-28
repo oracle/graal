@@ -37,6 +37,7 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
+import jdk.internal.vm.annotation.Hidden;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @InternalVMMethod
@@ -116,12 +117,10 @@ public abstract class SubstrateAccessor {
     }
 
     /*
-     * This is considered @Hidden by `com.oracle.svm.core.jdk.StackTraceUtils#shouldShowFrame(Class,
-     * String, boolean, boolean)`. This is important as this is called as part of the method handle
+     * This is @Hidden. This is important as this is called as part of the method handle
      * implementation where this frame is not expected to appear.
-     *
-     * When @Hidden becomes available per-method (GR-76134) we should use that annotation instead.
      */
+    @Hidden
     public Object methodHandleInvokeSpecial(Object obj, Object[] args) {
         CFunctionPointer target = getDirectTarget();
         if (target.isNull()) {

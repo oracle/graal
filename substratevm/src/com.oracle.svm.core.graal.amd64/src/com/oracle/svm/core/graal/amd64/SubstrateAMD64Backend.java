@@ -56,7 +56,6 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -94,6 +93,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -162,7 +162,6 @@ import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMapBuilder;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
-import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
 import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ReadProcid;
@@ -252,10 +251,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this
-            return false;
-        }
-        if (!AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
-            // same CPU features as hosted
             return false;
         }
         var arch = (AMD64) target.arch;
@@ -413,8 +408,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "Memory access without isolates is not implemented");
-
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             Register computeRegister = asRegister(addressBase);
             AMD64BaseAssembler.OperandSize lastOperandSize = AMD64BaseAssembler.OperandSize.get(addressBase.getPlatformKind());
@@ -867,8 +860,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         @Override
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
@@ -876,27 +868,18 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
-            boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, true, getLIRKindTool()));
             return result;
         }
 
         @Override
         public void emitConvertNullToZero(AllocatableValue result, AllocatableValue value) {
-            if (useLinearPointerCompression()) {
-                append(new AMD64Move.ConvertNullToZeroOp(result, value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AMD64Move.ConvertNullToZeroOp(result, value));
         }
 
         @Override
         public void emitConvertZeroToNull(AllocatableValue result, Value value) {
-            if (useLinearPointerCompression()) {
-                append(new AMD64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
-            } else {
-                emitMove(result, value);
-            }
+            append(new AMD64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
         }
 
         @Override
@@ -1605,7 +1588,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         protected void emitObjectComparison(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register keyRegister, Register scratchRegister, JavaConstant jc) {
-            if (ReferenceAccess.singleton().haveCompressedReferences() && jc instanceof CompressibleConstant constant && !jc.isNull()) {
+            if (jc instanceof CompressibleConstant constant && !jc.isNull()) {
                 /*
                  * Strategy-switch object keys are uncompressed hub references, so compressed object
                  * constants must be uncompressed before the pointer compare.
@@ -1620,12 +1603,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
     }
 
-    protected static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
-
+    private class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
         private final SharedMethod method;
-        protected final LIRKindTool lirKindTool;
+        private final LIRKindTool lirKindTool;
 
-        protected SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool) {
+        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool) {
             super(backupSlotProvider);
             this.method = method;
             this.lirKindTool = lirKindTool;
@@ -1721,12 +1703,26 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return ReservedRegisters.singleton().getCodeBaseRegister();
         }
 
-        protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
-            if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
-                return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
+        @Override
+        public boolean canInlineConstant(Constant c) {
+            if (SubstrateOptions.useCompressedReferences()) {
+                if (CompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                    return true;
+                } else if (c instanceof CompressibleConstant) {
+                    return ((CompressibleConstant) c).isCompressed();
+                }
             }
-            return new MoveFromConstOp(dst, constant);
+            return super.canInlineConstant(c);
+        }
+
+        private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
+            ConstantReflectionProvider constantReflection = getProviders().getConstantReflection();
+            if (!constant.isCompressed() && AMD64ImageHeapAddressOptimizationPhase.canOptimize(constant, constantReflection)) {
+                return new LoadUncompressedImageHeapConstantOp(dst, constant);
+            }
+
+            RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
+            return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
         }
 
         /*
@@ -1968,10 +1964,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         return factory;
     }
 
-    protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool implements AMD64SimdLIRKindTool {
+    private static final class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool implements AMD64SimdLIRKindTool {
         @Override
         public LIRKind getNarrowOopKind() {
-            return LIRKind.compressedReference(AMD64Kind.QWORD);
+            PlatformKind kind = SubstrateOptions.useCompressedReferences() ? AMD64Kind.DWORD : AMD64Kind.QWORD;
+            return LIRKind.compressedReference(kind);
         }
 
         @Override
@@ -2042,7 +2039,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue() : null;
+        RegisterValue nullRegisterValue = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
         AMD64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         BackupSlotProvider backupSlotProvider = new BackupSlotProvider(lirGenRes.getFrameMapBuilder());
         AMD64MoveFactoryBase moveFactory = createMoveFactory(lirGenRes, backupSlotProvider);
@@ -2068,10 +2065,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         return new SubstrateAMD64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
-    protected static boolean useLinearPointerCompression() {
-        return SubstrateOptions.SpawnIsolates.getValue();
-    }
-
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
                     EntryPointDecorator entryPointDecorator) {
@@ -2094,7 +2087,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
         FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
         DebugContext debug = lir.getDebug();
-        Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
+        Register uncompressedNullRegister = ReservedRegisters.singleton().getHeapBaseRegister();
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         var sharedCompilationResult = (SharedCompilationResult) compilationResult;
@@ -2165,12 +2158,16 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
-
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         CompilationResult result = new CompilationResult(identifier);
-        AMD64Assembler asm = createAssembler(HostedOptionValues.singleton().get());
+        AMD64MacroAssembler asm = createAssembler(HostedOptionValues.singleton().get());
+        PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
+        asm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(result));
         if (SubstrateControlFlowIntegrity.enabled()) {
             asm.endbranch();
+        }
+        if (cremaData != null) {
+            emitCremaJNITrampoline(asm, result, methodIdArg, cremaData);
         }
         asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
         /*
@@ -2193,6 +2190,123 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(FrameAccess.returnAddressSize());
         return result;
+    }
+
+    private void emitCremaJNITrampoline(AMD64MacroAssembler asm, CompilationResult result, RegisterValue methodIdArg, CremaJNITrampolineData cremaData) {
+        ResolvedJavaMethod wrapperMethod = cremaData.wrapperMethod();
+        boolean needsEnterData = cremaData.callVariant() == CallVariant.VARARGS;
+        Label imageHeapMethodId = new Label();
+        // Negative method IDs encode CremaResolvedJavaMethod instances.
+        asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
+        asm.jcc(AMD64Assembler.ConditionFlag.GreaterEqual, imageHeapMethodId);
+        CallingConvention wrapperCallingConvention = CodeUtil.getCallingConvention(getCodeCache(), SubstrateCallingConventionKind.Native.toType(true), wrapperMethod, this);
+        AllocatableValue payloadArgument = wrapperCallingConvention.getArgument(wrapperMethod.getSignature().getParameterCount(false) - 1);
+        /*
+         * Prepare the outgoing native ABI frame for calling the JNIJavaCallInterpreterWrapperMethod.
+         * The calling convention describes the ABI-specific argument area, including Windows shadow
+         * space and stack-passed payload arguments. If the wrapper needs captured register data, the
+         * trampoline appends that data after the outgoing argument area.
+         */
+        int frameSize = cremaJNITrampolineFrameSize(needsEnterData, wrapperCallingConvention);
+        if (frameSize != 0) {
+            asm.subq(rsp, frameSize);
+        }
+        if (needsEnterData) {
+            emitCremaJNITrampolineEnterData(asm, wrapperCallingConvention, payloadArgument, frameSize);
+        } else if (ValueUtil.isStackSlot(payloadArgument)) {
+            emitCremaJNITrampolineCopyStackArgument(asm, ValueUtil.asStackSlot(payloadArgument), frameSize);
+        }
+        asm.call((before, after) -> {
+            var call = result.recordCall(before, after - before, wrapperMethod, null, true);
+            asm.postCallNop(call);
+        }, wrapperMethod);
+        if (frameSize != 0) {
+            asm.addq(rsp, frameSize);
+        }
+        /*
+         * The wrapper uses a uniform word-sized return type, so floating-point results arrive as raw
+         * bits in the general-purpose return register. Mirror those bits into the ABI floating-point
+         * return register without affecting integer or reference results.
+         */
+        asm.movdq(AMD64.xmm0, rax);
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            Register returnTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
+            asm.pop(returnTargetRegister);
+            asm.jmp(returnTargetRegister);
+        } else {
+            asm.ret(0);
+        }
+        asm.bind(imageHeapMethodId);
+    }
+
+    /**
+     * Returns the temporary frame size used by the Crema JNI trampoline. The frame contains the
+     * outgoing native ABI argument area described by {@code wrapperCallingConvention} and, if needed,
+     * the captured {@link AMD64InterpreterStubs.InterpreterDataAMD64}, rounded up so the frame size is
+     * aligned in the same way as {@link AMD64FrameMap} aligns normal frames.
+     */
+    private static int cremaJNITrampolineFrameSize(boolean cremaJNIMethodWrapperNeedsEnterData, CallingConvention wrapperCallingConvention) {
+        int frameSize = wrapperCallingConvention.getStackSize();
+        if (cremaJNIMethodWrapperNeedsEnterData) {
+            frameSize += AMD64InterpreterStubs.sizeOfInterpreterData();
+        }
+        return alignCremaJNITrampolineFrameSize(frameSize);
+    }
+
+    private static int alignCremaJNITrampolineFrameSize(int frameSize) {
+        /*
+         * The call instruction pushes the return address. Include that slot when aligning the
+         * wrapper's entry stack, but exclude it from the space allocated explicitly here.
+         */
+        return NumUtil.roundUp(frameSize + FrameAccess.returnAddressSize(), SubstrateTarget.singleton().stackAlignment) - FrameAccess.returnAddressSize();
+    }
+
+    private static void emitCremaJNITrampolineCopyStackArgument(AMD64Assembler asm, StackSlot payloadArgument, int frameSize) {
+        int payloadOffset = payloadArgument.getRawOffset();
+        /*
+         * At trampoline entry, stack arguments follow the return address pushed by the caller.
+         * Undo the temporary frame allocation and skip that return address to read the incoming
+         * argument, then copy it to the wrapper's outgoing stack slot.
+         */
+        asm.movq(AMD64.r10, new AMD64Address(rsp, frameSize + FrameAccess.returnAddressSize() + payloadOffset));
+        asm.movq(new AMD64Address(rsp, payloadOffset), AMD64.r10);
+    }
+
+    private void emitCremaJNITrampolineEnterData(AMD64Assembler asm, CallingConvention wrapperCallingConvention, AllocatableValue payloadArgument, int frameSize) {
+        Register originalSp = AMD64.r11;
+        Register enterData = AMD64.r10;
+        /*
+         * Recover rsp at trampoline entry after the temporary frame allocation. It should point at the
+         * return address pushed by the caller; AMD64 interpreter argument decoding accounts for
+         * that slot when accessing stack arguments.
+         */
+        asm.leaq(originalSp, new AMD64Address(rsp, frameSize));
+        /*
+         * The captured register data lies above the outgoing native argument area, including any
+         * Windows shadow space and stack-passed wrapper arguments.
+         */
+        asm.leaq(enterData, new AMD64Address(rsp, wrapperCallingConvention.getStackSize()));
+
+        SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) getCodeCache().getRegisterConfig();
+        List<Register> ngps = registerConfig.getNativeGeneralParameterRegs();
+        List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+        asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiSpReg()), originalSp);
+        /* Save fp argument registers */
+        for (int i = 0; i < fps.size(); i++) {
+            asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiFpArg(i)), fps.get(i));
+        }
+
+        /* Save gp argument registers */
+        for (int i = 0; i < ngps.size(); i++) {
+            asm.movq(new AMD64Address(enterData, AMD64InterpreterStubs.offsetAbiGp(i)), ngps.get(i));
+        }
+
+        if (isRegister(payloadArgument)) {
+            asm.movq(asRegister(payloadArgument), enterData);
+        } else {
+            asm.movq(new AMD64Address(rsp, ValueUtil.asStackSlot(payloadArgument).getRawOffset()), enterData);
+        }
     }
 
     /**

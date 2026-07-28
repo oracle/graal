@@ -33,9 +33,6 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import org.graalvm.collections.EconomicSet;
@@ -43,7 +40,6 @@ import org.graalvm.collections.EconomicSet;
 /**
  * @see InjectedInvokerRenamingSubstitutionProcessor
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 final class StableInjectedInvokerNameFeature implements InternalFeature {
 

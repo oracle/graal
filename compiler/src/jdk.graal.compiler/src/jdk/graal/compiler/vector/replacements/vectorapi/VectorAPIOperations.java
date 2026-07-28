@@ -177,6 +177,12 @@ public class VectorAPIOperations {
             CONSTANT_MAP.put("VECTOR_OP_COMPRESS_BITS", 33);
             CONSTANT_MAP.put("VECTOR_OP_EXPAND_BITS", 34);
 
+            // Saturating arithmetic operations
+            CONSTANT_MAP.put("VECTOR_OP_SADD", 119);
+            CONSTANT_MAP.put("VECTOR_OP_SSUB", 120);
+            CONSTANT_MAP.put("VECTOR_OP_SUADD", 121);
+            CONSTANT_MAP.put("VECTOR_OP_SUSUB", 122);
+
             // See src/hotspot/share/opto/subnode.hpp
             // struct BoolTest, and enclosed enum mask
             CONSTANT_MAP.put("BT_eq", 0);  // 0000
@@ -295,6 +301,10 @@ public class VectorAPIOperations {
             putOpCode(ops, vectorSupportConstants, "LSHIFT", arithmeticOpTable.getShl());
             putOpCode(ops, vectorSupportConstants, "URSHIFT", arithmeticOpTable.getUShr());
             putOpCode(ops, vectorSupportConstants, "RSHIFT", arithmeticOpTable.getShr());
+            putOpCode(ops, vectorSupportConstants, "SADD", arithmeticOpTable.getSAdd());
+            putOpCode(ops, vectorSupportConstants, "SSUB", arithmeticOpTable.getSSub());
+            putOpCode(ops, vectorSupportConstants, "SUADD", arithmeticOpTable.getSUAdd());
+            putOpCode(ops, vectorSupportConstants, "SUSUB", arithmeticOpTable.getSUSub());
             /*
              * We also have Rem, (U)MulHigh, and UMin/UMax operations which do not exist in
              * VectorSupport.

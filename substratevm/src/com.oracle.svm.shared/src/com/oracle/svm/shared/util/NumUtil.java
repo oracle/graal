@@ -65,4 +65,10 @@ public class NumUtil {
     public static int roundUp(int number, int mod) {
         return ((number + mod - 1) / mod) * mod;
     }
+
+    /** Rounds {@code number} up to the next multiple of {@code mod}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long roundUp(long number, long mod) {
+        return ((number + mod - 1L) / mod) * mod;
+    }
 }

@@ -44,8 +44,8 @@ import jdk.graal.compiler.core.common.NumUtil;
  * level via {@link jdk.jfr.internal.JVM}. The option values are stored here until they are
  * eventually used when first recording is created and JFR is initialized.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/jdk.jfr/share/classes/jdk/jfr/internal/Options.java#L48-L55")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/jdk.jfr/share/classes/jdk/jfr/internal/Options.java#L65-L69")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/jdk.jfr/share/classes/jdk/jfr/internal/Options.java#L48-L55")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/jdk.jfr/share/classes/jdk/jfr/internal/Options.java#L65-L69")
 public class JfrOptionSet {
     private static final int MEMORY_SIZE_BIT = 1;
     private static final int GLOBAL_BUFFER_SIZE_BIT = 2;

@@ -29,7 +29,6 @@ import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -58,6 +57,7 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -134,61 +134,23 @@ public class InvocationPlugins {
     }
 
     /**
-     * A symbol for an already resolved method.
+     * A symbol that is the raw, non-generic Java language name of a class
+     * for which {@link InvocationPlugin}s will be registered.
      */
-    public static class ResolvedJavaSymbol implements Type {
-        private final ResolvedJavaType resolved;
+    public static class TypeSymbol implements Type {
+        private final String typeName;
 
-        public ResolvedJavaSymbol(ResolvedJavaType type) {
-            this.resolved = type;
+        public TypeSymbol(ResolvedJavaType type) {
+            this.typeName = type.toJavaName();
         }
 
-        public ResolvedJavaType getResolved() {
-            return resolved;
+        public TypeSymbol(String typeName) {
+            this.typeName = typeName;
         }
 
         @Override
         public String toString() {
-            return resolved.toJavaName();
-        }
-    }
-
-    /**
-     * A symbol that is lazily {@linkplain OptionalLazySymbol#resolve() resolved} to a {@link Type}.
-     */
-    public static class OptionalLazySymbol implements Type {
-        private static final Class<?> MASK_NULL = OptionalLazySymbol.class;
-        private final String name;
-        private Class<?> resolved;
-
-        @SuppressWarnings("this-escape")
-        public OptionalLazySymbol(String name) {
-            this.name = name;
-            if (inBuildtimeCode()) {
-                resolve();
-            }
-        }
-
-        @Override
-        public String getTypeName() {
-            return name;
-        }
-
-        /**
-         * Gets the resolved {@link Class} corresponding to this symbol or {@code null} if
-         * resolution fails.
-         */
-        public Class<?> resolve() {
-            if (!inRuntimeCode() && resolved == null) {
-                Class<?> resolvedOrNull = resolveClass(name, true);
-                resolved = resolvedOrNull == null ? MASK_NULL : resolvedOrNull;
-            }
-            return resolved == MASK_NULL ? null : resolved;
-        }
-
-        @Override
-        public String toString() {
-            return name;
+            return typeName;
         }
     }
 
@@ -225,7 +187,7 @@ public class InvocationPlugins {
          */
         public Registration(InvocationPlugins plugins, String declaringClassName) {
             this.plugins = plugins;
-            this.declaringType = new OptionalLazySymbol(declaringClassName);
+            this.declaringType = new TypeSymbol(declaringClassName);
         }
 
         /**
@@ -279,7 +241,6 @@ public class InvocationPlugins {
 
             invocationPlugins.add(plugin);
             assert inRuntimeCode() || Checks.check(this.plugins, declaringType, plugin);
-            assert inRuntimeCode() || Checks.checkResolvable(declaringType, plugin);
         }
 
         @Override
@@ -338,6 +299,71 @@ public class InvocationPlugins {
          */
         final EconomicMap<String, InvocationPlugin> invocationPlugins = EconomicMap.create(Equivalence.DEFAULT);
 
+        /// Guards lazy checking of the plugins for the associated class.
+        private boolean checked;
+
+        /// Checks that all non-optional plugins in this object can be resolved to a constructor
+        /// or method declared in `declaringClass`. This check is performed exactly once
+        /// per [ClassPlugins] instance.
+        @LibGraalSupport.HostedOnly
+        private synchronized boolean checkResolvable(ResolvedJavaType declaringClass) {
+            if (!checked) {
+                MapCursor<String, InvocationPlugin> plugins = invocationPlugins.getEntries();
+                while (plugins.advance()) {
+                    for (InvocationPlugin plugin = plugins.getValue(); plugin != null; plugin = plugin.next) {
+                        if (resolveJavaMethod(declaringClass, plugin) == null && !plugin.isOptional()) {
+                            throw new AssertionError(format("Method not found: %s.%s", declaringClass.toJavaName(), plugin.getMethodNameWithArgumentsDescriptor()));
+                        }
+                    }
+                }
+                checked = true;
+            }
+            return true;
+        }
+
+        /// Resolves `plugin` to a method or constructor declared in `declaringClass`.
+        ///
+        /// If more than one method with the parameter types matching `plugin` is found and the
+        /// return types of all the matching methods form an inheritance chain, the one with the most
+        /// specific type is returned; otherwise [NoSuchMethodError] is thrown.
+        ///
+        /// @param declaringClass the class to search
+        /// @return the method (if any) in `declaringClass` matching `plugin`
+        private static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
+            if (plugin.name.equals("<init>")) {
+                for (ResolvedJavaMethod cons : declaringClass.getDeclaredConstructors(false)) {
+                    if (cons.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
+                        return cons;
+                    }
+                }
+                return null;
+            }
+
+            ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
+            ResolvedJavaMethod match = null;
+            for (ResolvedJavaMethod m : methods) {
+                if (plugin.matchesMethod(m)) {
+                    if (match == null) {
+                        match = m;
+                    } else {
+                        final ResolvedJavaType matchReturnType = (ResolvedJavaType) match.getSignature().getReturnType(declaringClass);
+                        final ResolvedJavaType mReturnType = (ResolvedJavaType) m.getSignature().getReturnType(declaringClass);
+                        if (matchReturnType.isAssignableFrom(mReturnType)) {
+                            // `m` has a more specific return type - choose it
+                            // (`match` is most likely a bridge method)
+                            match = m;
+                        } else {
+                            if (!mReturnType.isAssignableFrom(matchReturnType)) {
+                                throw new NoSuchMethodError(String.format(
+                                                "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
+                            }
+                        }
+                    }
+                }
+            }
+            return match;
+        }
+
         /**
          * Gets the invocation plugin for a given method.
          *
@@ -345,9 +371,11 @@ public class InvocationPlugins {
          */
         InvocationPlugin get(ResolvedJavaMethod method) {
             assert !method.isBridge();
+            assert inRuntimeCode() || checkResolvable(method.getDeclaringClass());
+
             InvocationPlugin plugin = invocationPlugins.get(method.getName());
             while (plugin != null) {
-                if (plugin.isSameType(method)) {
+                if (plugin.matchesMethod(method)) {
                     return plugin;
                 }
                 plugin = plugin.next;
@@ -370,7 +398,7 @@ public class InvocationPlugins {
         InvocationPlugin lookup(InvocationPlugin plugin) {
             InvocationPlugin registeredPlugin = invocationPlugins.get(plugin.name);
             while (registeredPlugin != null) {
-                if (registeredPlugin.isSameType(plugin)) {
+                if (registeredPlugin.matches(plugin)) {
                     return registeredPlugin;
                 }
                 registeredPlugin = registeredPlugin.next;
@@ -471,7 +499,7 @@ public class InvocationPlugins {
                             List<InvocationPlugin> testInvocationPlugins = testExtensions.get(internalName);
                             if (testInvocationPlugins != null) {
                                 for (InvocationPlugin testInvocationPlugin : testInvocationPlugins) {
-                                    if (testInvocationPlugin.isSameType(method)) {
+                                    if (testInvocationPlugin.matchesMethod(method)) {
                                         return testInvocationPlugin;
                                     }
                                 }
@@ -567,7 +595,7 @@ public class InvocationPlugins {
     private static int findInvocationPlugin(List<InvocationPlugin> list, InvocationPlugin key) {
         for (int i = 0; i < list.size(); i++) {
             InvocationPlugin invocationPlugin = list.get(i);
-            if (invocationPlugin.isSameType(key)) {
+            if (invocationPlugin.matches(key)) {
                 return i;
             }
         }
@@ -762,9 +790,10 @@ public class InvocationPlugins {
         }
         put(declaringClass, plugin, allowOverwrite);
         assert inRuntimeCode() || Checks.check(this, declaringClass, plugin);
-        assert inRuntimeCode() || Checks.checkResolvable(declaringClass, plugin);
     }
 
+    /// Finds the [ConditionalInvocationPlugin]s in this object whose [applicability checks][ConditionalInvocationPlugin#isApplicable]
+    /// are deferred until runtime.
     public void collectRuntimeCheckedPlugins(InvocationPlugins plugins, Architecture arch) {
         if (parent != null) {
             parent.collectRuntimeCheckedPlugins(plugins, arch);
@@ -1059,7 +1088,7 @@ public class InvocationPlugins {
                         sigs.set(sig.length - 3, sig);
                     }
                 }
-                assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
+                assert !sigs.contains(null) : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
                                 ValueNode.class.getSimpleName());
             }
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
@@ -1080,8 +1109,8 @@ public class InvocationPlugins {
             if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
                 return true;
             }
-            int arguments = plugin.getArgumentsSize();
-            assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments,
+            int parametersCount = plugin.getParametersCount();
+            assert parametersCount < SIGS.length : format("need to extend %s to support method with %d parameters: %s", InvocationPlugin.class.getSimpleName(), parametersCount,
                             plugin.getMethodNameWithArgumentsDescriptor());
 
             Class<?> klass = plugin.getClass();
@@ -1092,7 +1121,7 @@ public class InvocationPlugins {
                     }
                     if (m.getName().equals("apply")) {
                         Class<?>[] parameterTypes = m.getParameterTypes();
-                        if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+                        if (Arrays.equals(SIGS[parametersCount], parameterTypes)) {
                             return true;
                         }
                     }
@@ -1102,32 +1131,6 @@ public class InvocationPlugins {
             throw new AssertionError(format("graph builder plugin for %s not found. check that the plugin-method signature matches the target", plugin.getMethodNameWithArgumentsDescriptor()));
         }
 
-        static boolean checkResolvable(Type declaringType, InvocationPlugin plugin) {
-            if (declaringType instanceof ResolvedJavaSymbol) {
-                return checkResolvable(((ResolvedJavaSymbol) declaringType).getResolved(), plugin);
-            }
-            Class<?> declaringClass = resolveType(declaringType, plugin.isOptional());
-            if (declaringClass == null) {
-                return true;
-            }
-            if ("<init>".equals(plugin.name)) {
-                if (resolveConstructor(declaringClass, plugin) == null && !plugin.isOptional()) {
-                    throw new AssertionError(String.format("Constructor not found: %s%s", declaringClass.getName(), plugin.argumentsDescriptor));
-                }
-            } else {
-                if (resolveMethod(declaringClass, plugin) == null && !plugin.isOptional()) {
-                    throw new NoSuchMethodError(String.format("%s.%s", declaringClass.getName(), plugin.getMethodNameWithArgumentsDescriptor()));
-                }
-            }
-            return true;
-        }
-
-        private static boolean checkResolvable(ResolvedJavaType declaringType, InvocationPlugin plugin) {
-            if (resolveJavaMethod(declaringType, plugin) == null && !plugin.isOptional()) {
-                throw new AssertionError(String.format("Method not found: %s.%s", declaringType.toJavaName(), plugin.getMethodNameWithArgumentsDescriptor()));
-            }
-            return true;
-        }
     }
 
     /**
@@ -1142,142 +1145,6 @@ public class InvocationPlugins {
         if (parent != null) {
             parent.checkNewNodes(b, plugin, newNodes);
         }
-    }
-
-    /**
-     * Resolves a name to a class.
-     *
-     * @param className the name of the class to resolve
-     * @param optional if true, resolution failure returns null
-     * @return the resolved class or null if resolution fails and {@code optional} is true
-     */
-    public static Class<?> resolveClass(String className, boolean optional) {
-        try {
-            // Need to use the system class loader to handle classes
-            // loaded by the application class loader which is not
-            // delegated to by the JVMCI class loader.
-            ClassLoader cl = ClassLoader.getSystemClassLoader();
-            return Class.forName(className, false, cl);
-        } catch (ClassNotFoundException e) {
-            if (optional) {
-                return null;
-            }
-            throw new GraalError("Could not resolve type " + className);
-        }
-    }
-
-    /**
-     * Resolves a {@link Type} to a {@link Class}.
-     *
-     * @param type the type to resolve
-     * @param optional if true, resolution failure returns null
-     * @return the resolved class or null if resolution fails and {@code optional} is true
-     */
-    public static Class<?> resolveType(Type type, boolean optional) {
-        if (type instanceof Class) {
-            return (Class<?>) type;
-        }
-        if (type instanceof OptionalLazySymbol) {
-            return ((OptionalLazySymbol) type).resolve();
-        }
-        if (inRuntimeCode()) {
-            throw new GraalError("Unresolved type in native image image:" + type.getTypeName());
-        }
-        return resolveClass(type.getTypeName(), optional);
-    }
-
-    /**
-     * Resolves a given invocation plugin to a method in a given class. If more than one method with
-     * the parameter types matching {@code plugin} is found and the return types of all the matching
-     * methods form an inheritance chain, the one with the most specific type is returned; otherwise
-     * {@link NoSuchMethodError} is thrown.
-     *
-     * @param declaringClass the class to search for a method matching {@code plugin}
-     * @return the method (if any) in {@code declaringClass} matching {@code plugin}
-     */
-    public static Method resolveMethod(Class<?> declaringClass, InvocationPlugin plugin) {
-        if ("<init>".equals(plugin.name)) {
-            return null;
-        }
-        Method[] methods = declaringClass.getDeclaredMethods();
-        Method match = null;
-        for (Method m : methods) {
-            if (plugin.isSameType(m)) {
-                if (match == null) {
-                    match = m;
-                } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
-                    // `m` has a more specific return type - choose it
-                    // (`match` is most likely a bridge method)
-                    match = m;
-                } else {
-                    if (!m.getReturnType().isAssignableFrom(match.getReturnType())) {
-                        throw new NoSuchMethodError(String.format(
-                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
-                    }
-                }
-            }
-        }
-        return match;
-    }
-
-    /**
-     * Same as {@link #resolveMethod(Class, InvocationPlugin)} and
-     * {@link #resolveConstructor(Class, InvocationPlugin)} except in terms of
-     * {@link ResolvedJavaType} and {@link ResolvedJavaMethod}.
-     */
-    public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
-        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
-        if (plugin.name.equals("<init>")) {
-            for (ResolvedJavaMethod m : methods) {
-                if (m.getName().equals("<init>") && m.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
-                    return m;
-                }
-            }
-            return null;
-        }
-
-        ResolvedJavaMethod match = null;
-        for (int i = 0; i < methods.length; ++i) {
-            ResolvedJavaMethod m = methods[i];
-            if (plugin.isSameType(m)) {
-                if (match == null) {
-                    match = m;
-                } else {
-                    final ResolvedJavaType matchReturnType = (ResolvedJavaType) match.getSignature().getReturnType(declaringClass);
-                    final ResolvedJavaType mReturnType = (ResolvedJavaType) m.getSignature().getReturnType(declaringClass);
-                    if (matchReturnType.isAssignableFrom(mReturnType)) {
-                        // `m` has a more specific return type - choose it
-                        // (`match` is most likely a bridge method)
-                        match = m;
-                    } else {
-                        if (!mReturnType.isAssignableFrom(matchReturnType)) {
-                            throw new NoSuchMethodError(String.format(
-                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
-                        }
-                    }
-                }
-            }
-        }
-        return match;
-    }
-
-    /**
-     * Resolves a given invocation plugin to a constructor in a given class.
-     *
-     * @param declaringClass the class to search for a constructor matching {@code plugin}
-     * @return the constructor (if any) in {@code declaringClass} matching {@code plugin}
-     */
-    public static Constructor<?> resolveConstructor(Class<?> declaringClass, InvocationPlugin plugin) {
-        if (!"<init>".equals(plugin.name)) {
-            return null;
-        }
-        Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
-        for (Constructor<?> c : constructors) {
-            if (plugin.isSameType(c)) {
-                return c;
-            }
-        }
-        return null;
     }
 
     /**

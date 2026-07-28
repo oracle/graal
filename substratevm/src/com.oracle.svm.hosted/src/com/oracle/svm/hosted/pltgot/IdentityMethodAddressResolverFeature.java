@@ -44,7 +44,7 @@ import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -60,7 +60,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * appropriate GOT entry and is used for subsequent calls of the same method.
  *
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class IdentityMethodAddressResolverFeature implements InternalFeature {
 
     // Restrict segment names to 16 chars on Mach-O.
@@ -99,10 +99,10 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
                 offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, new MethodPointer(got[gotEntryNo], false));
             }
 
-            imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false);
-            imageObjectFile.createDefinedSymbol("__svm_methodtable_begin", offsetsSection, 0, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, methodTableExtent.endOffset(), wordSize, false,
-                            SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+            imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false, false);
+            boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+            imageObjectFile.createDefinedSymbol("__svm_methodtable_begin", offsetsSection, 0, wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
+            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, methodTableExtent.endOffset(), wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
         }
 
         @Override

@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.interpreter.ristretto.meta;
 
+import java.util.ArrayList;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.graal.meta.SubstrateField;
+import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -35,6 +37,14 @@ import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.Assumptions.CallSiteTargetValue;
+import jdk.vm.ci.meta.Assumptions.ConcreteMethod;
+import jdk.vm.ci.meta.Assumptions.ConcreteSubtype;
+import jdk.vm.ci.meta.Assumptions.LeafType;
+import jdk.vm.ci.meta.Assumptions.NoFinalizableSubclass;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -119,9 +129,118 @@ public final class RistrettoType extends SubstrateType {
     }
 
     @Override
+    public AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
+        AssumptionResult<ResolvedJavaType> result = interpreterType.findLeafConcreteSubtype();
+        if (result == null) {
+            return null;
+        }
+        ResolvedJavaType ristrettoResult = normalizeJVMCIType(result.getResult());
+        /*
+         * An assumption-free result is a closed fact in the current image, so there is no assumption
+         * object to translate into Ristretto metadata.
+         */
+        if (result.isAssumptionFree()) {
+            return new AssumptionResult<>(ristrettoResult);
+        }
+        return new AssumptionResult<>(ristrettoResult, toRistrettoAssumptions(result));
+    }
+
+    @Override
+    public ResolvedJavaType getSingleImplementor() {
+        ResolvedJavaType result = super.getSingleImplementor();
+        if (result instanceof SubstrateType sType) {
+            return RistrettoUtils.toRType(sType);
+        }
+        GraalError.guarantee(result == null, "Unexpected Ristretto single implementor type: %s", result);
+        return result;
+    }
+
+    private static ResolvedJavaType normalizeJVMCIType(ResolvedJavaType type) {
+        if (type instanceof InterpreterResolvedJavaType iType) {
+            return getOrCreate(iType);
+        }
+        if (type instanceof SubstrateType sType) {
+            return RistrettoUtils.toRType(sType);
+        }
+        return type;
+    }
+
+    /**
+     * Replays the original compiler assumptions into a temporary container, converts every JVMCI
+     * type and method reference to the corresponding Ristretto wrapper, and returns the translated
+     * assumption array for the new {@link AssumptionResult}.
+     */
+    private static Assumption[] toRistrettoAssumptions(AssumptionResult<?> result) {
+        Assumptions originalAssumptions = new Assumptions();
+        result.recordTo(originalAssumptions);
+
+        ArrayList<Assumption> ristrettoAssumptions = new ArrayList<>();
+        for (Assumption assumption : originalAssumptions) {
+            ristrettoAssumptions.add(toRistrettoAssumption(assumption));
+        }
+        return ristrettoAssumptions.toArray(new Assumption[0]);
+    }
+
+    /**
+     * Converts one assumption payload from image-resident JVMCI metadata to Ristretto metadata while
+     * preserving the assumption kind used by the compiler.
+     */
+    private static Assumption toRistrettoAssumption(Assumption assumption) {
+        if (assumption instanceof NoFinalizableSubclass noFinalizableSubclass) {
+            return new NoFinalizableSubclass(toRequiredRistrettoType(noFinalizableSubclass.receiverType));
+        } else if (assumption instanceof ConcreteSubtype concreteSubtype) {
+            return new ConcreteSubtype(toRequiredRistrettoType(concreteSubtype.context), toRequiredRistrettoType(concreteSubtype.subtype));
+        } else if (assumption instanceof LeafType leafType) {
+            return new LeafType(toRequiredRistrettoType(leafType.context));
+        } else if (assumption instanceof ConcreteMethod concreteMethod) {
+            return new ConcreteMethod(toRequiredRistrettoMethod(concreteMethod.method), toRequiredRistrettoType(concreteMethod.context), toRequiredRistrettoMethod(concreteMethod.impl));
+        } else if (assumption instanceof CallSiteTargetValue) {
+            return assumption;
+        }
+        throw GraalError.shouldNotReachHere("Unsupported Ristretto assumption: " + assumption);
+    }
+
+    private static RistrettoType toRequiredRistrettoType(ResolvedJavaType type) {
+        ResolvedJavaType ristrettoType = normalizeJVMCIType(type);
+        if (ristrettoType instanceof RistrettoType rType) {
+            return rType;
+        }
+        throw GraalError.shouldNotReachHere("Cannot map assumption type to Ristretto metadata: " + type);
+    }
+
+    private static RistrettoMethod toRequiredRistrettoMethod(ResolvedJavaMethod method) {
+        if (method instanceof RistrettoMethod rMethod) {
+            return rMethod;
+        }
+        if (method instanceof InterpreterResolvedJavaMethod iMethod) {
+            return RistrettoMethod.getOrCreate(iMethod);
+        }
+        if (method instanceof SubstrateMethod substrateMethod) {
+            RistrettoMethod rMethod = RistrettoUtils.toRMethodOrNull(substrateMethod);
+            if (rMethod != null) {
+                return rMethod;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Cannot map assumption method to Ristretto metadata: " + method);
+    }
+
+    @Override
     public SubstrateType getSuperclass() {
         DynamicHub superHub = getHub().getSuperHub();
+        if (superHub == null) {
+            return null;
+        }
         return RistrettoType.getOrCreate((InterpreterResolvedJavaType) superHub.getInterpreterType());
+    }
+
+    @Override
+    public ResolvedJavaType[] getInterfaces() {
+        ResolvedJavaType[] interfaces = super.getInterfaces();
+        ResolvedJavaType[] result = new ResolvedJavaType[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            result[i] = RistrettoUtils.toRType((SubstrateType) interfaces[i]);
+        }
+        return result;
     }
 
     @Override

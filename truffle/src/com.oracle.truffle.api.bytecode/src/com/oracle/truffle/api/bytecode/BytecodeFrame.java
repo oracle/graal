@@ -86,13 +86,16 @@ import com.oracle.truffle.api.nodes.RootNode;
  * </ul>
  * Copied frames do not observe updates made to the original frame.
  * <p>
- * Note: if the interpreter uses {@link GenerateBytecode#enableBlockScoping block scoping}, any
- * non-copied {@link BytecodeFrame} is only valid until the interpreter continues execution. The
- * frame <strong>must not</strong> be used after this point; doing so can cause undefined behaviour.
- * If you need to access the frame after execution continues, you should capture a copy or
- * explicitly {@link #copy()} the captured bytecode frame. This restriction also applies to frames
- * created by methods like {@link BytecodeFrame#get(TruffleStackTraceElement)}, which do not specify
- * whether they capture the original frame or a copy.
+ * Note: if the interpreter uses {@link GenerateBytecode#enableBlockScoping block scoping}, local
+ * offsets are location-dependent and physical frame slots may be reused for different locals as
+ * execution proceeds. After execution continues, a captured frame may therefore expose values
+ * belonging to a different lexical scope. Any non-copied {@link BytecodeFrame} is consequently
+ * only valid until the interpreter continues execution. The frame <strong>must not</strong> be used
+ * after this point; doing so can cause undefined behaviour. If you need to access the frame after
+ * execution continues, you should capture a copy or explicitly {@link #copy()} the captured
+ * bytecode frame. This restriction also applies to frames created by methods like
+ * {@link BytecodeFrame#get(TruffleStackTraceElement)}, which do not specify whether they capture
+ * the original frame or a copy.
  *
  * @since 25.1
  */

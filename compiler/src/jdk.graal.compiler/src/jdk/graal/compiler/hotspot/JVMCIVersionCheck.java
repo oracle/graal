@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,10 @@ import java.util.stream.Collectors;
 public final class JVMCIVersionCheck {
 
     public static final String DEFAULT_VENDOR_ENTRY = "*";
+    private static final String JAVA_SPECIFICATION_VERSION_PROPERTY = "java.specification.version";
+    private static final String JAVA_VM_VERSION_PROPERTY = "java.vm.version";
+    private static final String JAVA_VM_VENDOR_PROPERTY = "java.vm.vendor";
+    private static final String ORACLE_VM_VENDOR = "Oracle Corporation";
 
     /**
      * Minimum JVMCI version supported by Graal. This maps from {@code java.specification.version}
@@ -58,8 +62,8 @@ public final class JVMCIVersionCheck {
     // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25.0.3+9", "25.1", 18),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.3+9", "25.1", 18)));
+                                    ORACLE_VM_VENDOR, createLabsJDKVersion("25.0.4+7", "25.2", 20),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.4+7", "25.2", 20)));
     // Checkstyle: resume stable iteration order check
 
     private static final int NA = 0;
@@ -287,6 +291,14 @@ public final class JVMCIVersionCheck {
         }
     }
 
+    /**
+     * Checks whether {@code props} identifies an Oracle JDK build.
+     */
+    public static boolean isOracleJDK(Map<String, String> props) {
+        String vmVendor = getRequiredProperty(props, JAVA_VM_VENDOR_PROPERTY);
+        return ORACLE_VM_VENDOR.equals(vmVendor);
+    }
+
     public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk/releases";
 
     private final String javaSpecVersion;
@@ -309,8 +321,8 @@ public final class JVMCIVersionCheck {
     }
 
     public static Version getMinVersion(Map<String, String> props, Map<String, Map<String, Version>> jvmciMinVersions) {
-        String javaSpecVersion = getRequiredProperty(props, "java.specification.version");
-        String javaVmVendor = getRequiredProperty(props, "java.vm.vendor");
+        String javaSpecVersion = getRequiredProperty(props, JAVA_SPECIFICATION_VERSION_PROPERTY);
+        String javaVmVendor = getRequiredProperty(props, JAVA_VM_VENDOR_PROPERTY);
         Map<String, Version> versionMap = jvmciMinVersions.getOrDefault(javaSpecVersion, Collections.emptyMap());
         return versionMap.getOrDefault(javaVmVendor, versionMap.get(DEFAULT_VENDOR_ENTRY));
     }
@@ -341,8 +353,8 @@ public final class JVMCIVersionCheck {
     }
 
     private static JVMCIVersionCheck newJVMCIVersionCheck(Map<String, String> props) {
-        String javaSpecVersion = getRequiredProperty(props, "java.specification.version");
-        String javaVmVersion = getRequiredProperty(props, "java.vm.version");
+        String javaSpecVersion = getRequiredProperty(props, JAVA_SPECIFICATION_VERSION_PROPERTY);
+        String javaVmVersion = getRequiredProperty(props, JAVA_VM_VERSION_PROPERTY);
         return new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
     }
 
@@ -437,7 +449,7 @@ public final class JVMCIVersionCheck {
             Version v = Version.parse(vmVersion);
             if (v != null) {
                 if (format != null) {
-                    System.out.println(v.stripLTS().printFormat(format));
+                    printVersion(v, format, props);
                 }
                 try {
                     if (v.isLessThan(minVersion)) {
@@ -452,6 +464,15 @@ public final class JVMCIVersionCheck {
             }
             return String.format("The VM does not support the minimum JVMCI API version required by Graal.%n" +
                             "Cannot read JVMCI version from java.vm.version property: %s.", vmVersion);
+        }
+    }
+
+    private static void printVersion(Version version, PrintFormat format, Map<String, String> props) {
+        String value = version.stripLTS().printFormat(format);
+        if (format == PrintFormat.TUPLE) {
+            System.out.printf("%s,%s%n", value, isOracleJDK(props) ? "ee" : "ce");
+        } else {
+            System.out.println(value);
         }
     }
 
@@ -476,12 +497,12 @@ public final class JVMCIVersionCheck {
             }
         }
         if (minVersion) {
-            String javaSpecVersion = props.get("java.specification.version");
+            String javaSpecVersion = props.get(JAVA_SPECIFICATION_VERSION_PROPERTY);
             Version v = getMinVersion(props, JVMCI_MIN_VERSIONS);
             if (v == null) {
                 System.out.printf("No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
             } else {
-                System.out.println(v.printFormat(format));
+                printVersion(v, format, props);
             }
         } else {
             check(props, true, format);

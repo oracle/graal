@@ -95,4 +95,9 @@ public abstract class AbstractStackValueNode extends AbstractStateSplit implemen
         String name = method.asStackTraceElement(bci).toString();
         return new StackSlotIdentity(name, false);
     }
+
+    protected static StackSlotIdentity createSharedStackSlotIdentity(ResolvedJavaMethod method, int bci) {
+        String name = method.asStackTraceElement(bci).toString();
+        return new StackSlotIdentity(name, true);
+    }
 }

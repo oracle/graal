@@ -135,13 +135,21 @@ final class PolyglotEngineOptions {
                     "Warn that the virtual thread support is experimental (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnVirtualThreadSupport = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Warn when an isolated context uses host access without host method scoping (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
+    static final OptionKey<Boolean> WarnMethodScoping = new OptionKey<>(true);
+
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
+                    "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts", usageSyntax = "true|false")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, help = "" +
+                    "On property accesses, the Static Object Model always performs safety checks, overriding engine.RelaxStaticObjectSafetyChecks and builder-level safety check configuration.", usageSyntax = "true|false")//
+    static final OptionKey<Boolean> ForceStaticObjectSafetyChecks = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.")//

@@ -466,11 +466,21 @@ record LambdaWriterAdapter(WrappedType.Lambda.Builder delegate) implements Persi
     public void setCapturingClass(String value) {
         delegate.setCapturingClass(value);
     }
+
+    @Override
+    public void setCaptureSite(String value) {
+        delegate.setCaptureSite(value);
+    }
 }
 
 record LambdaLoaderAdapter(WrappedType.Lambda.Reader delegate) implements PersistedAnalysisTypeData.WrappedType.Lambda.Loader {
     @Override
     public String getCapturingClass() {
         return delegate.getCapturingClass().toString();
+    }
+
+    @Override
+    public String getCaptureSite() {
+        return delegate.getCaptureSite().toString();
     }
 }

@@ -45,7 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
 import com.oracle.svm.core.encoder.SymbolEncoder;

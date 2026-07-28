@@ -89,6 +89,17 @@ public class StackValueNode extends AbstractStackValueNode {
      * must follow the API specification.
      */
     public static ValueNode create(long numElements, long elementSize, GraphBuilderContext b, boolean disallowVirtualThread) {
+        int sizeInBytes = computeSizeInBytes(numElements, elementSize);
+        return create(sizeInBytes, b.getGraph().method(), b.bci(), disallowVirtualThread);
+    }
+
+    public static ValueNode createShared(long numElements, long elementSize, GraphBuilderContext b, boolean disallowVirtualThread) {
+        int sizeInBytes = computeSizeInBytes(numElements, elementSize);
+        StackSlotIdentity slotIdentity = createSharedStackSlotIdentity(b.getGraph().method(), b.bci());
+        return create(sizeInBytes, slotIdentity, needsVirtualThreadCheck(b.getGraph().method(), disallowVirtualThread));
+    }
+
+    private static int computeSizeInBytes(long numElements, long elementSize) {
         /*
          * Do a careful overflow check, ensuring that the multiplication does not overflow to a
          * small value that seems to be in range.
@@ -97,8 +108,7 @@ public class StackValueNode extends AbstractStackValueNode {
             throw new PermanentBailoutException("Stack value has illegal size " + numElements + " * " + elementSize);
         }
 
-        int sizeInBytes = NumUtil.safeToInt(numElements * elementSize);
-        return create(sizeInBytes, b.getGraph().method(), b.bci(), disallowVirtualThread);
+        return NumUtil.safeToInt(numElements * elementSize);
     }
 
     public static StackValueNode create(int sizeInBytes, ResolvedJavaMethod method, int bci, boolean disallowVirtualThread) {

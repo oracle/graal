@@ -508,7 +508,6 @@ public class SourceCache {
  * callback.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @SuppressWarnings("unused")
 class SourceCacheFeature implements InternalFeature {
 

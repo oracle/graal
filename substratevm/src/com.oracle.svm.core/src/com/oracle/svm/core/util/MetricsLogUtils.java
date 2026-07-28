@@ -26,7 +26,8 @@ package com.oracle.svm.core.util;
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.util.TimeUtils;
 import org.graalvm.word.impl.Word;
 
 /** Utility class for logging metrics. */

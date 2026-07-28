@@ -393,23 +393,13 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {
-        LogicNode otherLogic = other;
-        boolean otherNegated = false;
-        while (otherLogic instanceof LogicNegationNode) {
-            otherLogic = ((LogicNegationNode) otherLogic).getValue();
-            otherNegated = !otherNegated;
+        if (other instanceof CompareNode compare) {
+            TriState result = impliesCompare(compare, thisNegated);
+            if (result.isKnown()) {
+                return result;
+            }
         }
-        if (this == otherLogic) {
-            return TriState.get(thisNegated == otherNegated);
-        }
-        TriState result = TriState.UNKNOWN;
-        if (otherLogic instanceof CompareNode) {
-            result = impliesCompare((CompareNode) otherLogic, thisNegated);
-        }
-        if (result.isUnknown()) {
-            result = super.implies(thisNegated, otherLogic);
-        }
-        return result.isUnknown() || !otherNegated ? result : TriState.get(!result.toBoolean());
+        return super.implies(thisNegated, other);
     }
 
     private TriState impliesCompare(CompareNode otherCompare, boolean thisNegated) {
@@ -466,7 +456,10 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         return TriState.UNKNOWN;
     }
 
-    private static boolean sameValue(ValueNode v1, ValueNode v2) {
+    /**
+     * Checks whether the values are identical, equal constants, or Pi aliases of the same value.
+     */
+    protected static boolean sameValue(ValueNode v1, ValueNode v2) {
         if (v1 == v2) {
             return true;
         }

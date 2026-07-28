@@ -36,11 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
-
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
@@ -57,6 +52,9 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.site.Call;
@@ -233,7 +231,6 @@ public class LLVMObjectFileReader {
         private final long codeSize;
         private final Map<Integer, String> offsetToSymbol = new TreeMap<>();
         private final Map<String, Integer> symbolToOffset = new HashMap<>();
-        private final List<Integer> sortedMethodOffsets;
 
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
@@ -244,7 +241,6 @@ public class LLVMObjectFileReader {
                     symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
                 }
             }
-            this.sortedMethodOffsets = computeSortedMethodOffsets();
         }
 
         public long getCodeSize() {
@@ -257,32 +253,6 @@ public class LLVMObjectFileReader {
 
         public int getOffset(String methodName) {
             return symbolToOffset.get(SYMBOL_PREFIX + methodName);
-        }
-
-        public int getNextOffset(int offset) {
-            return sortedMethodOffsets.get(sortedMethodOffsets.indexOf(offset) + 1);
-        }
-
-        private List<Integer> computeSortedMethodOffsets() {
-            List<Integer> sortedOffsets = offsetToSymbol.keySet().stream().distinct().sorted().collect(Collectors.toList());
-
-            /*
-             * Functions added by the LLVM backend have to be removed before computing function
-             * offsets, because as they are not linked to a function known to Native Image, keeping
-             * them would create gaps in the CodeInfoTable. Removing these offsets includes them as
-             * part of the previously defined function instead. Stack walking will never see an
-             * address belonging to one of these LLVM functions, as these are executing in native
-             * mode, so this will not cause incorrect queries at runtime.
-             */
-            symbolToOffset.forEach((symbol, offset) -> {
-                if (symbol.startsWith(SYMBOL_PREFIX + LLVMGenerator.JNI_WRAPPER_BASE_NAME)) {
-                    sortedOffsets.remove(offset);
-                }
-            });
-
-            sortedOffsets.add(NumUtil.safeToInt(codeSize));
-
-            return sortedOffsets;
         }
     }
 }

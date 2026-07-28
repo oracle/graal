@@ -32,7 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.shared.Uninterruptible;

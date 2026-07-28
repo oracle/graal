@@ -734,6 +734,10 @@ public class SimdStamp extends ArithmeticStamp {
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
+                    null,
                     new ArithmeticOpTable.ReinterpretOp() {
                         @Override
                         public Constant foldConstant(Stamp resultStamp, Constant constant) {

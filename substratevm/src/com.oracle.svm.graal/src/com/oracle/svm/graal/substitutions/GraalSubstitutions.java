@@ -55,7 +55,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;

@@ -33,6 +33,17 @@
 
 #define BitsPerByte 8
 
+void* __svm_find_builtin_symbol(const char* name);
+
+#if defined(_MSC_VER)
+  #pragma comment(linker, "/alternatename:__svm_find_builtin_symbol=__svm_find_builtin_symbol_default")
+#endif
+
+void* __svm_find_builtin_symbol_default(const char* name) {
+    (void) name;
+    return NULL;
+}
+
 #ifdef JNI_VERSION_9
     #define JVM_INTERFACE_VERSION 6
 #else
@@ -212,7 +223,7 @@ JNIEXPORT jboolean JNICALL JVM_IsSupportedJNIVersion(jint version) {
 }
 
 /* Used by Java_jdk_internal_loader_NativeLibraries_load. */
-// TODO GR-75585: add and handle second function parameter throwException
+// TODO GR-76023: add and handle second function parameter throwException
 JNIEXPORT void* JNICALL JVM_LoadLibrary(const char* name) {
     if (name == NULL) {
         return NULL;
@@ -229,8 +240,12 @@ JNIEXPORT void JNICALL JVM_UnloadLibrary(void* handle) {
 
 /* Java_jdk_internal_loader_NativeLibraries_findBuiltinLib calls findJniFunction which uses JVM_FindLibraryEntry. */
 JNIEXPORT void* JNICALL JVM_FindLibraryEntry(void* handle, const char* name) {
-    if (handle == NULL || name == NULL) {
+    if (name == NULL) {
         return NULL;
+    }
+    void* result = __svm_find_builtin_symbol(name);
+    if (result != NULL) {
+        return result;
     }
     return (void*) GetProcAddress((HMODULE) handle, name);
 }

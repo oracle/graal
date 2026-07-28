@@ -33,17 +33,12 @@ import com.oracle.svm.core.c.CIsolateDataStorage;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
 /** See {@link CIsolateData} and {@link CIsolateDataStorage}. */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class CIsolateDataFeature implements InternalFeature {
 
     private final Map<String, CIsolateData<?>> usedEntries = new ConcurrentIdentityHashMap<>();

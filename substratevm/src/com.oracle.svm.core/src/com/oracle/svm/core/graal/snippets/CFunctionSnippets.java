@@ -49,9 +49,6 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -174,7 +171,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addBeforeFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             ResolvedJavaMethod target = prologue.getMethod();
-            Stamp returnStamp = StampFactory.forKind(target.getSignature().getReturnKind());
+            Stamp returnStamp = SubstrateTarget.getWordStamp();
             StructuredGraph graph = node.graph();
             final Supplier<SnippetTemplate> templateSupplier = new Supplier<>() {
                 @Override
@@ -204,7 +201,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 return;
             }
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
-            ResolvedJavaMethod target = prologue.getMethod();
+            ResolvedJavaMethod target = epilogue.getMethod();
             Stamp returnStamp = StampFactory.forKind(target.getSignature().getReturnKind());
             StructuredGraph graph = node.graph();
             Supplier<SnippetTemplate> templateSupplier = new Supplier<>() {
@@ -284,7 +281,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
  * deoptimization could destroy stack allocated {@link JavaFrameAnchor} structs when rewriting the
  * stack.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {

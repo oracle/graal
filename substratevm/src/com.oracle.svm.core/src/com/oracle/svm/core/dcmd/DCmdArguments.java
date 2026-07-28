@@ -40,7 +40,7 @@ public class DCmdArguments {
         return value != null;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticArgument.cpp#L54-L68")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticArgument.cpp#L54-L68")
     public void set(DCmdOption<?> option, Object value) {
         if (hasBeenSet(option)) {
             throw new IllegalArgumentException("Duplicates in diagnostic command arguments");

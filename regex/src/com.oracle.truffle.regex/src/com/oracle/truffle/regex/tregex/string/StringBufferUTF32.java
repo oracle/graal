@@ -53,6 +53,11 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
         this.encoding = encoding;
     }
 
+    public StringBufferUTF32(StringBufferUTF32 copy) {
+        super(copy);
+        this.encoding = copy.encoding;
+    }
+
     @Override
     public Encoding getEncoding() {
         return encoding;
@@ -83,6 +88,21 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
             bytes[(i << 2) + 3] = (byte) c;
         }
         return bytes;
+    }
+
+    @Override
+    public AbstractStringBuffer copy() {
+        return new StringBufferUTF32(this);
+    }
+
+    @Override
+    public long prefixHash(int maxLength) {
+        int prefixLength = Math.min(length(), maxLength);
+        long hash = prefixLength;
+        for (int i = 0; i < prefixLength; i++) {
+            hash = Long.rotateLeft(hash, 5) ^ buf[i];
+        }
+        return hash;
     }
 
     @Override

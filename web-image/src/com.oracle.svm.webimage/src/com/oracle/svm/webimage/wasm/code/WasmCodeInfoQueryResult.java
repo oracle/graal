@@ -28,7 +28,7 @@ package com.oracle.svm.webimage.wasm.code;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 

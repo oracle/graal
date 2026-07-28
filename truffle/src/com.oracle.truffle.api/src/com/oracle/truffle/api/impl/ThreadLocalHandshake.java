@@ -181,6 +181,9 @@ public abstract class ThreadLocalHandshake {
         if (current == null) {
             return t;
         }
+        if (current == t) {
+            return current;
+        }
         if (t instanceof ThreadDeath) {
             t.addSuppressed(current);
             return t;

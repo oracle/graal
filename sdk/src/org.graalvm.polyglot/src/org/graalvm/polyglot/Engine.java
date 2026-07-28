@@ -425,6 +425,20 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 25.3
+     */
+    @Override
+    public String toString() {
+        try {
+            return dispatch.toString(receiver, System.identityHashCode(this), null);
+        } finally {
+            Reference.reachabilityFence(creatorEngine);
+        }
+    }
+
+    /**
      * Creates a new engine instance with default configuration. This method is a shortcut for
      * {@link #newBuilder(String...) newBuilder().build()}.
      *
@@ -950,6 +964,57 @@ public final class Engine implements AutoCloseable {
         public Builder spawnIsolate(boolean value) {
             spawnIsolate = value;
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("Engine.newBuilder(");
+            String separator = "";
+            for (String language : permittedLanguages) {
+                b.append(separator);
+                b.append(ToStringSupport.quote(language));
+                separator = ", ";
+            }
+            b.append(')');
+            if (out != System.out) {
+                ToStringSupport.appendCall(b, "out", out);
+            }
+            if (err != System.err) {
+                ToStringSupport.appendCall(b, "err", err);
+            }
+            if (in != null) {
+                ToStringSupport.appendCall(b, "in", in);
+            }
+            for (Map.Entry<String, String> entry : options.entrySet()) {
+                ToStringSupport.appendCall(b, "option", ToStringSupport.quote(entry.getKey()), ToStringSupport.quote(entry.getValue()));
+            }
+            if (allowExperimentalOptions) {
+                ToStringSupport.appendCall(b, "allowExperimentalOptions", true);
+            }
+            if (!useSystemProperties) {
+                ToStringSupport.appendCall(b, "useSystemProperties", false);
+            }
+            if (sandboxPolicy != SandboxPolicy.TRUSTED) {
+                ToStringSupport.appendCall(b, "sandbox", "SandboxPolicy." + sandboxPolicy);
+            }
+            if (messageTransport != null) {
+                ToStringSupport.appendCall(b, "serverTransport", messageTransport);
+            }
+            if (exceptionHandler != null) {
+                ToStringSupport.appendCall(b, "exceptionHandler", exceptionHandler);
+            }
+            if (customLogHandler != null) {
+                ToStringSupport.appendCall(b, "logHandler", customLogHandler);
+            }
+            if (spawnIsolate != null) {
+                ToStringSupport.appendCall(b, "spawnIsolate", spawnIsolate);
+            }
+            return b.toString();
         }
 
         /**
@@ -2181,5 +2246,84 @@ public final class Engine implements AutoCloseable {
          * @since 25.1
          */
         boolean shouldCancel();
+    }
+
+    static final class ToStringSupport {
+
+        private ToStringSupport() {
+        }
+
+        static void appendCall(StringBuilder b, String methodName, Object... arguments) {
+            b.append('\n');
+            b.append("  .");
+            b.append(methodName);
+            b.append('(');
+            String separator = "";
+            for (Object argument : arguments) {
+                b.append(separator);
+                b.append(String.valueOf(argument));
+                separator = ", ";
+            }
+            b.append(')');
+        }
+
+        static String quote(String value) {
+            if (value == null) {
+                return "null";
+            }
+            StringBuilder b = new StringBuilder(value.length() + 2);
+            b.append('"');
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                switch (c) {
+                    case '\\':
+                        b.append("\\\\");
+                        break;
+                    case '"':
+                        b.append("\\\"");
+                        break;
+                    case '\n':
+                        b.append("\\n");
+                        break;
+                    case '\r':
+                        b.append("\\r");
+                        break;
+                    case '\t':
+                        b.append("\\t");
+                        break;
+                    case '\b':
+                        b.append("\\b");
+                        break;
+                    case '\f':
+                        b.append("\\f");
+                        break;
+                    default:
+                        if (Character.isISOControl(c)) {
+                            b.append(String.format("\\u%04x", (int) c));
+                        } else {
+                            b.append(c);
+                        }
+                }
+            }
+            b.append('"');
+            return b.toString();
+        }
+
+        static String stringArray(String[] values) {
+            StringBuilder b = new StringBuilder("new String[]{");
+            String separator = "";
+            for (String value : values) {
+                b.append(separator);
+                b.append(quote(value));
+                separator = ", ";
+            }
+            b.append('}');
+            return b.toString();
+        }
+
+        static String classLiteral(Class<?> type) {
+            String name = type.getSimpleName();
+            return (name.isEmpty() ? type.getName() : name) + ".class";
+        }
     }
 }

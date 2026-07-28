@@ -31,11 +31,10 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
 import com.oracle.svm.core.sampler.SamplerStackTraceSerializer;
@@ -43,10 +42,7 @@ import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -85,7 +81,7 @@ import jdk.jfr.internal.jfc.JFC;
  * <li>When the active chunk exceeds a certain threshold, then it is necessary to start a new chunk
  * (and maybe a new file), see {@link JfrChunkWriter}. Before doing that, some metadata and all
  * thread-local/global data that is currently in flight must be flushed to the old file. This
- * operation needs a safepoint and also changes the JFR epoch, see {@link JfrTraceIdEpoch}.</li>
+ * operation needs a safepoint and also changes the JFR epoch, see {@link JfrEpoch}.</li>
  * </ul>
  *
  * A lot of the JFR infrastructure is {@link Uninterruptible} and uses native memory instead of the
@@ -98,7 +94,6 @@ import jdk.jfr.internal.jfc.JFC;
  * </ul>
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class JfrFeature implements InternalFeature {
     /*
      * Note that we could initialize the native part of JFR at image build time and that the native
@@ -166,7 +161,7 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations, true));
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
-        ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
+        ImageSingletons.add(JfrEpoch.class, new JfrEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
         ImageSingletons.add(JfrExecutionSamplerSupported.class, new JfrExecutionSamplerSupported());
         ImageSingletons.add(SamplerStackTraceSerializer.class, new SamplerJfrStackTraceSerializer());
@@ -202,6 +197,6 @@ public class JfrFeature implements InternalFeature {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
         runtime.addInitializationHook(JfrManager.initializationHook());
         runtime.addStartupHook(JfrManager.startupHook());
-        runtime.addShutdownHook(JfrManager.shutdownHook());
+        runtime.addTearDownHook(JfrManager.teardownHook());
     }
 }

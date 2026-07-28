@@ -35,7 +35,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
 @TargetClass(java.lang.System.class)

@@ -26,7 +26,7 @@ package com.oracle.svm.core.c;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 /**

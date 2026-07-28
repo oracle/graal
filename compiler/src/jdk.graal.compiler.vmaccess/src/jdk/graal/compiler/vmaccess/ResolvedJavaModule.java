@@ -33,6 +33,12 @@ import java.util.Set;
  */
 public interface ResolvedJavaModule {
     /**
+     * Returns the layer that contains this module, or {@code null} if this module is not in a
+     * layer. See {@link Module#getLayer()}.
+     */
+    ResolvedJavaModuleLayer getLayer();
+
+    /**
      * Returns the module name or {@code null} if this module is an unnamed module. See
      * {@link Module#getName()}.
      */

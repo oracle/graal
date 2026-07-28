@@ -145,6 +145,10 @@ final class ForeignContext implements ForeignObject {
         }
     }
 
+    synchronized boolean isDisposed() {
+        return disposed;
+    }
+
     synchronized void releaseReference(long handle) {
         if (!disposed) {
             guestObjectReflection.releaseReference(handle);

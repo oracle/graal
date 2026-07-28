@@ -218,6 +218,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             this.bootstrapMethodHandler = new BootstrapMethodHandler();
         }
 
+        /**
+         * Enables parser-created allocation OOME exception edges only when the current block is
+         * inside a supported OOME-catching region and the current method can support those edges. For
+         * more information, see {@link OOMEExceptionEdgePolicy}.
+         */
+        @Override
+        public boolean currentBlockCatchesOOME() {
+            return OOMEExceptionEdgePolicy.supportsOOMEExceptionEdges(method) && super.currentBlockCatchesOOME();
+        }
+
         @Override
         protected BciBlockMapping generateBlockMap() {
             if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {

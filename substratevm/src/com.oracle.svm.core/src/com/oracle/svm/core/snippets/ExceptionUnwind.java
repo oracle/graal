@@ -45,7 +45,7 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;

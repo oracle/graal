@@ -86,5 +86,15 @@ public class Fcntl {
             return result;
         }
 
+        @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
+        public static int restartableOpenat(int fd, @CConst CCharPointer filename, int flags, int mode) {
+            int result;
+            do {
+                result = openat(fd, filename, flags, mode);
+            } while (result == -1 && LibC.errno() == Errno.EINTR());
+
+            return result;
+        }
+
     }
 }

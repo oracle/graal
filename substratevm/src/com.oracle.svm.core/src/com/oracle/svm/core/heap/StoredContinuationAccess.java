@@ -37,7 +37,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -58,7 +58,7 @@ import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
@@ -118,6 +118,17 @@ public final class StoredContinuationAccess {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Pointer getOriginalCarrierSP(StoredContinuation s) {
+        return s.originalCarrierSP;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setOriginalCarrierSP(StoredContinuation s, Pointer sp) {
+        assert sp.isNonNull();
+        s.originalCarrierSP = sp;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isInitialized(StoredContinuation s) {
         return s.ip.isNonNull();
     }
@@ -136,6 +147,7 @@ public final class StoredContinuationAccess {
     private static void fillUninterruptibly(StoredContinuation stored, CodePointer ip, Pointer sp, int size) {
         UnmanagedMemoryUtil.copyWordsForward(sp, getFramesStart(stored), Word.unsigned(size));
         setIP(stored, ip);
+        setOriginalCarrierSP(stored, sp);
         afterFill(stored);
     }
 
@@ -161,6 +173,7 @@ public final class StoredContinuationAccess {
     private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone, Object preparedData) {
         CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone, preparedData);
         setIP(clone, ip);
+        setOriginalCarrierSP(clone, StoredContinuationAccess.getOriginalCarrierSP(cont));
         afterFill(clone);
         return clone;
     }

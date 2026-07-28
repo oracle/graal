@@ -67,6 +67,10 @@ public final class CFunctionLinkages {
         });
     }
 
+    public boolean isFunctionLinkage(CGlobalDataInfo dataInfo) {
+        return dataInfo.isSymbolReference() && nameToFunction.get(dataInfo.getData().symbolName) == dataInfo;
+    }
+
     private static String linkageName(ResolvedJavaMethod method) {
         String annotationLinkageName = getLinkageNameFromAnnotation(method);
         if (annotationLinkageName != null && !annotationLinkageName.isEmpty()) {

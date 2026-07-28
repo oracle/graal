@@ -35,7 +35,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -61,7 +61,7 @@ class SubstrateRISCV64Feature implements InternalFeature {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 class SubstrateRISCV64RegisterConfigFactory implements SubstrateRegisterConfigFactory {
     @Override
     public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {

@@ -35,7 +35,6 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -93,7 +92,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         int numMinReservedHubBits = 3;
         VMError.guarantee(numMinReservedHubBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
         if (isIdentityHashFieldOptional()) {
-            VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
             numReservedHubBits = numMinReservedHubBits + 2;
             VMError.guarantee(numReservedHubBits <= numAlignmentBits || hasShift(),
                             "With no shift, forwarding references are stored directly in the header (with 64-bit, must be) and we cannot use non-alignment header bits");
@@ -119,14 +117,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Pointer extractPotentialDynamicHubFromHeader(Word header) {
-        if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord hubBits = header.unsignedShiftRight(numReservedHubBits);
-            UnsignedWord baseRelativeBits = hubBits.shiftLeft(numAlignmentBits);
-            return KnownIntrinsics.heapBase().add(baseRelativeBits);
-        } else {
-            UnsignedWord pointerBits = clearBits(header);
-            return (Pointer) pointerBits;
-        }
+        UnsignedWord hubBits = header.unsignedShiftRight(numReservedHubBits);
+        UnsignedWord baseRelativeBits = hubBits.shiftLeft(numAlignmentBits);
+        return KnownIntrinsics.heapBase().add(baseRelativeBits);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -277,11 +270,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        Word result = Word.objectToUntrackedWord(hub);
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            result = result.subtract(KnownIntrinsics.heapBase());
-            result = result.shiftLeft(numReservedExtraHubBits);
-        }
+        Word result = Word.objectToUntrackedWord(hub).subtract(KnownIntrinsics.heapBase()).shiftLeft(numReservedExtraHubBits);
         if (rememberedSet) {
             result = result.or(REMSET_OR_MARKED1_BIT);
         }
@@ -293,15 +282,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Override
     public long encodeAsTLABObjectHeader(long hubOffsetFromHeapBase) {
-        assert SubstrateOptions.SpawnIsolates.getValue();
         return hubOffsetFromHeapBase << numReservedExtraHubBits;
     }
 
     @Override
     public int constantHeaderSize() {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            return -1;
-        }
         return getReferenceSize();
     }
 
@@ -453,19 +438,15 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
-        if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            if (hasShift()) {
-                // References compressed with shift have no bits to spare, so the forwarding
-                // reference is stored separately, after the object header
-                ObjectLayout layout = ObjectLayout.singleton();
-                assert layout.isAligned(getHubOffset()) && (2 * getReferenceSize()) <= layout.getAlignment() : "Forwarding reference must fit after hub";
-                int forwardRefOffset = getHubOffset() + getReferenceSize();
-                return ReferenceAccess.singleton().readObjectAt(ptr.add(forwardRefOffset), true);
-            } else {
-                return ReferenceAccess.singleton().uncompressReference(clearBits(header));
-            }
+        if (hasShift()) {
+            // References compressed with shift have no bits to spare, so the forwarding
+            // reference is stored separately, after the object header
+            ObjectLayout layout = ObjectLayout.singleton();
+            assert layout.isAligned(getHubOffset()) && (2 * getReferenceSize()) <= layout.getAlignment() : "Forwarding reference must fit after hub";
+            int forwardRefOffset = getHubOffset() + getReferenceSize();
+            return ReferenceAccess.singleton().readObjectAt(ptr.add(forwardRefOffset), true);
         } else {
-            return ((Pointer) clearBits(header)).toObject();
+            return ReferenceAccess.singleton().uncompressReference(clearBits(header));
         }
     }
 
@@ -473,7 +454,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getForwardedObjectOriginalSizeInlineInGC(Pointer p, UnsignedWord header) {
         assert isForwardedHeader(header);
-        if (ReferenceAccess.singleton().haveCompressedReferences() && hasShift()) {
+        if (hasShift()) {
             return header.and(ESSENTIAL_BITS.not());
         }
         assert !isIdentityHashFieldOptional() : "object size can have changed when copying";
@@ -500,26 +481,22 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord encodeForwardWord(Object original, Object copy) {
         UnsignedWord result;
-        if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord compressedCopy = ReferenceAccess.singleton().getCompressedRepresentation(copy);
-            if (hasShift()) {
-                /*
-                 * Compression with a shift uses all bits of a reference, so store the forwarding
-                 * pointer in the location following the hub pointer.
-                 *
-                 * Optional identity hash codes are supported in this mode, so we encode the
-                 * object's original size before it is copied and forwarded in the header. This size
-                 * is typically needed for sweeping and compaction.
-                 */
-                UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(original);
-                result = compressedCopy.shiftLeft(32);
-                assert result.and(originalSize).equal(0);
-                result = result.or(originalSize);
-            } else {
-                result = compressedCopy;
-            }
+        UnsignedWord compressedCopy = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+        if (hasShift()) {
+            /*
+             * Compression with a shift uses all bits of a reference, so store the forwarding
+             * pointer in the location following the hub pointer.
+             *
+             * Optional identity hash codes are supported in this mode, so we encode the object's
+             * original size before it is copied and forwarded in the header. This size is typically
+             * needed for sweeping and compaction.
+             */
+            UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(original);
+            result = compressedCopy.shiftLeft(32);
+            assert result.and(originalSize).equal(0);
+            result = result.or(originalSize);
         } else {
-            result = Word.objectToUntrackedPointer(copy);
+            result = compressedCopy;
         }
 
         assert result.and(ESSENTIAL_BITS).equal(0);

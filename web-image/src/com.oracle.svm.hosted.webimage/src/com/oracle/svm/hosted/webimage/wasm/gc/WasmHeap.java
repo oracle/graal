@@ -48,13 +48,13 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -68,7 +68,7 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
  * Reuses the logic for image heaps (see {@link ImageHeapInfo}, {@link ImageHeapWalker}), but is
  * otherwise independent from {@link HeapImpl}.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WasmHeap extends Heap {
 
     private final WasmObjectHeader objectHeader = new WasmObjectHeader();

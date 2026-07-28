@@ -33,18 +33,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.jfr.Recording;
 import org.graalvm.word.impl.Word;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObject;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.test.jfr.AbstractJfrTest;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.jfr.Recording;
 
 public class TestOldObjectProfiler extends AbstractJfrTest {
 
@@ -198,12 +196,6 @@ public class TestOldObjectProfiler extends AbstractJfrTest {
     }
 
     private static List<TinyObject> sampleObjects(JfrOldObjectProfiler profiler, int initialValue, int count) {
-        if (!HasJfrSupport.get()) {
-            /* Prevent that the code below is reachable on platforms that don't support JFR. */
-            Assert.fail("JFR is not supported on this platform.");
-            return null;
-        }
-
         ArrayList<TinyObject> result = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             int value = initialValue + i;

@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.resolver.CallKind;
-import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
+import com.oracle.truffle.espresso.shared.vtable.TableEntry;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
@@ -43,7 +43,26 @@ import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F>, Signed, PartialMethod<C, M, F> {
+public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F>, Signed, TableEntry<C, M, F> {
+    /**
+     * @return {@code true} if this method represents an instance initialization method (its
+     *         {@link #getSymbolicName() name} is {@code "<init>"}, and it is
+     *         {@link #isStatic()}), {@code false} otherwise.
+     */
+    default boolean isConstructor() {
+        return ParserMethod.isConstructor(getModifiers(), getSymbolicName());
+    }
+
+    /**
+     * @return {@code true} if this method represents a class initialization method (its
+     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, its
+     *         {@link #getSymbolicSignature() signature} is {@code ()V}, and it is {@link #isStatic()
+     *         static}), {@code false} otherwise.
+     */
+    default boolean isClassInitializer() {
+        return ParserMethod.isClassInitializer(getModifiers(), getSymbolicName(), getSymbolicSignature());
+    }
+
     /**
      * Obtains the parsed signature for this method.
      * <p>
@@ -72,10 +91,12 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * For {@linkplain Bytecodes#isInvoke invoke bytecodes} call-sites, the declared holder is the
      * class referenced in the constant pool by the {@code CONSTANT_MethodRef_info} this call-site
      * references (see jvms-4.4.2).
+     * <p>
+     * This method is always called for methods whose declaring class is an interface.
      *
-     * @implNote A simple implementation is checking that this method has an initialized virtual
-     *           dispatch index, and that the entry in the virtual table of {@code symbolicReceiver}
-     *           at that index represents this method.
+     * @implNote A simple implementation is checking whether this method can be found in
+     *           {@code symbolicReceiver}'s virtual table: if it is, this method can return
+     *           {@code false}, as a virtual dispatch would be enough.
      */
     boolean requiresInterfaceDispatch(C symbolicReceiver);
 

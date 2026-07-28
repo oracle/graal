@@ -36,7 +36,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -68,7 +68,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleTierConfiguration;
 import jdk.vm.ci.meta.JavaConstant;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class TruffleSupport {
 
     public static TruffleSupport singleton() {
@@ -100,7 +100,7 @@ public class TruffleSupport {
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
         SubstrateTruffleCompiler compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community", getOptimizedCallTargetInvokeMethod()));
-        if (SubstrateOptions.supportCompileInIsolates()) {
+        if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             compiler = new IsolateAwareTruffleCompiler((SubstrateTruffleCompilerImpl) compiler);
         }
         return compiler;

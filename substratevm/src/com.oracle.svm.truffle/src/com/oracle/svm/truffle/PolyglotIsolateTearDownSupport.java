@@ -41,12 +41,12 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 final class PolyglotIsolateTearDownSupport {
 
     private final CGlobalData<DetachAllThreadsAndTearDownIsolate> detachAllThreadsAndTearDownIsolateFunction;

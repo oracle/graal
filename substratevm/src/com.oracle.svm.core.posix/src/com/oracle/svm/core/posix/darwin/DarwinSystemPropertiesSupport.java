@@ -48,7 +48,6 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 
@@ -144,7 +143,6 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override

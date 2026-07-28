@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 

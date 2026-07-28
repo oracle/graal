@@ -53,6 +53,11 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
         this.encoding = encoding;
     }
 
+    public StringBufferUTF16(StringBufferUTF16 copy) {
+        super(copy);
+        this.encoding = copy.encoding;
+    }
+
     @Override
     public Encoding getEncoding() {
         return encoding;
@@ -111,6 +116,21 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
             bytes[(i << 1) + 1] = (byte) c;
         }
         return bytes;
+    }
+
+    @Override
+    public AbstractStringBuffer copy() {
+        return new StringBufferUTF16(this);
+    }
+
+    @Override
+    public long prefixHash(int maxLength) {
+        int prefixLength = Math.min(length(), maxLength);
+        long hash = prefixLength;
+        for (int i = 0; i < prefixLength; i++) {
+            hash = Long.rotateLeft(hash, 5) ^ buf[i];
+        }
+        return hash;
     }
 
     @Override

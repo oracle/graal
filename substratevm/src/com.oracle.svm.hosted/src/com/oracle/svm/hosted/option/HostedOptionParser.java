@@ -37,7 +37,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;

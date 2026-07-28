@@ -52,7 +52,7 @@ import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -134,19 +134,17 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 // Mask registers are handled separately
                 calleeSavedMaskRegisters.add(register);
             }
-            if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+            if (isXMM && isRuntimeCompilationEnabled) {
                 // we might need to save the full 512 bit vector register
                 reservedSize = AMD64Kind.V512_QWORD.getSizeInBytes();
-            } else if (isMask && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+            } else if (isMask && isRuntimeCompilationEnabled) {
                 // we might need to save the full 64 bit mask register
                 reservedSize = AMD64Kind.MASK64.getSizeInBytes();
             } else if (target.arch.getLargestStorableKind(category) != null) {
                 reservedSize = target.arch.getLargestStorableKind(category).getSizeInBytes();
             } else {
                 // Mask registers are not present without AVX512
-                VMError.guarantee(
-                                isMask && !target.arch.getFeatures().contains(CPUFeature.AVX512F) &&
-                                                !(isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()),
+                VMError.guarantee(isMask && !target.arch.getFeatures().contains(CPUFeature.AVX512F) && !isRuntimeCompilationEnabled,
                                 "unexpected register without largest storable kind: %s", register);
             }
             /*
@@ -290,7 +288,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         @SuppressWarnings("unlikely-arg-type")
         public void emit() {
             assert isRuntimeCompilationEnabled == RuntimeCompilation.isEnabled() : "JIT compilation enabled after registering singleton?";
-            if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+            if (isRuntimeCompilationEnabled) {
                 // JIT compilation is enabled -> need dynamic checks
                 Label end = new Label();
                 try {

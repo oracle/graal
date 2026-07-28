@@ -64,6 +64,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
+import com.oracle.graal.pointsto.standalone.StandaloneHost;
+import com.oracle.graal.pointsto.standalone.StandaloneOptions;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -78,8 +80,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public abstract class StandaloneAnalysisTest {
 
-    private static final String ANALYSIS_ENTRY_POINTS_FILE_OPTION = "-H:AnalysisEntryPointsFile=";
-    private static final String ANALYSIS_TARGET_APP_CP_OPTION = "-H:AnalysisTargetAppCP=";
+    private static final String ANALYSIS_ENTRY_POINTS_FILE_OPTION = "-H:" + StandaloneOptions.StandaloneAnalysisEntryPointsFile.getName() + "=";
+    private static final String ANALYSIS_TARGET_APP_CP_OPTION = "-H:" + StandaloneOptions.StandaloneAnalysisTargetAppCP.getName() + "=";
+    private static final String EXTERNAL_ANALYSIS_OPTION_COUNT_PROPERTY = "com.oracle.graal.pointsto.standalone.test.analysis.option.count";
+    private static final String EXTERNAL_ANALYSIS_OPTION_PROPERTY_PREFIX = "com.oracle.graal.pointsto.standalone.test.analysis.option.";
     private static final String[] NO_OPTIONS = new String[0];
 
     private final List<String> configuredOptions = new ArrayList<>();
@@ -263,6 +267,22 @@ public abstract class StandaloneAnalysisTest {
     }
 
     /**
+     * Asserts that the analyzed field state is empty.
+     */
+    protected final void assertEmptyFieldTypes(AnalysisField field) {
+        assertFieldTypes(field);
+    }
+
+    /**
+     * Asserts that the analyzed field has been folded and therefore no longer contributes normal
+     * field flow.
+     */
+    protected static void assertFieldFolded(AnalysisField field) {
+        assertTrue("Expected field to be folded: " + field, field.isFolded());
+        assertFalse("Expected folded field to stay unaccessed: " + field, field.isAccessed());
+    }
+
+    /**
      * Asserts that the analyzed parameter state contains exactly the supplied concrete types.
      */
     protected final void assertParameterTypes(AnalysisMethod method, int idx, Class<?>... classes) {
@@ -294,6 +314,29 @@ public abstract class StandaloneAnalysisTest {
         assertNotNull("Expected return flow for method " + method, returnFlow);
         assertFalse("Flow " + returnFlow + " should not be saturated.", methodFlow.isSaturated(analysis(), returnFlow));
         assertExactMatch(methodFlow.foldTypeFlow(analysis(), returnFlow), classes);
+    }
+
+    /**
+     * Asserts properties of the analyzed return-state type flow.
+     */
+    protected final void assertResultState(AnalysisMethod method, java.util.function.Consumer<TypeState> resultStateChecker) {
+        PointsToAnalysisMethod pointsToMethod = asPointsToMethod(method);
+        var methodFlow = pointsToMethod.getTypeFlow();
+        var returnFlow = methodFlow.getReturn();
+        assertNotNull("Expected return flow for method " + method, returnFlow);
+        assertFalse("Flow " + returnFlow + " should not be saturated.", methodFlow.isSaturated(analysis(), returnFlow));
+        resultStateChecker.accept(methodFlow.foldTypeFlow(analysis(), returnFlow));
+    }
+
+    /**
+     * Asserts that the analyzed return-state flow is saturated.
+     */
+    protected final void assertResultSaturated(AnalysisMethod method) {
+        PointsToAnalysisMethod pointsToMethod = asPointsToMethod(method);
+        var methodFlow = pointsToMethod.getTypeFlow();
+        var returnFlow = methodFlow.getReturn();
+        assertNotNull("Expected return flow for method " + method, returnFlow);
+        assertTrue("Expected return flow to be saturated for method " + method, methodFlow.isSaturated(analysis(), returnFlow));
     }
 
     /**
@@ -329,6 +372,40 @@ public abstract class StandaloneAnalysisTest {
     protected static void assertNotReachable(AnalysisElement element) {
         if (element != null) {
             assertFalse("Expected analysis element to be unreachable: " + element, element.isReachable());
+        }
+    }
+
+    /**
+     * Asserts that the supplied method is implementation-invoked.
+     */
+    protected static void assertImplementationInvoked(AnalysisMethod method) {
+        assertNotNull("Expected analysis method to be present.", method);
+        assertTrue("Expected method to be implementation invoked: " + method, method.isImplementationInvoked());
+    }
+
+    /**
+     * Asserts that the supplied method is absent or not implementation-invoked.
+     */
+    protected static void assertNotImplementationInvoked(AnalysisMethod method) {
+        if (method != null) {
+            assertFalse("Expected method to stay non implementation-invoked: " + method, method.isImplementationInvoked());
+        }
+    }
+
+    /**
+     * Asserts that the supplied analyzed type is instantiated.
+     */
+    protected static void assertInstantiated(AnalysisType type) {
+        assertNotNull("Expected analysis type to be present.", type);
+        assertTrue("Expected type to be instantiated: " + type, type.isInstantiated());
+    }
+
+    /**
+     * Asserts that the supplied analyzed type is absent or not instantiated.
+     */
+    protected static void assertNotInstantiated(AnalysisType type) {
+        if (type != null) {
+            assertFalse("Expected type to stay non-instantiated: " + type, type.isInstantiated());
         }
     }
 
@@ -408,10 +485,23 @@ public abstract class StandaloneAnalysisTest {
     private List<String> createCommonArguments(Class<?> classPathRoot, String... extraOptions) {
         List<String> arguments = new ArrayList<>();
         arguments.add(ANALYSIS_TARGET_APP_CP_OPTION + getClassPath(classPathRoot));
+        arguments.addAll(getExternalAnalysisOptions());
         arguments.addAll(Arrays.asList(extraOptions()));
         arguments.addAll(configuredOptions);
         arguments.addAll(Arrays.asList(extraOptions));
         return arguments;
+    }
+
+    private static List<String> getExternalAnalysisOptions() {
+        int optionCount = Integer.getInteger(EXTERNAL_ANALYSIS_OPTION_COUNT_PROPERTY, 0);
+        List<String> options = new ArrayList<>(optionCount);
+        for (int i = 0; i < optionCount; i++) {
+            String option = System.getProperty(EXTERNAL_ANALYSIS_OPTION_PROPERTY_PREFIX + i);
+            if (option != null && !option.isBlank()) {
+                options.add(option);
+            }
+        }
+        return options;
     }
 
     /**
@@ -432,9 +522,17 @@ public abstract class StandaloneAnalysisTest {
     /**
      * Returns the current standalone points-to analysis instance.
      */
-    private PointsToAnalysis analysis() {
+    protected final PointsToAnalysis analysis() {
         assertAnalysisWasRun();
         return analysis;
+    }
+
+    /**
+     * Returns the standalone host from the current analysis run.
+     */
+    protected final StandaloneHost standaloneHost() {
+        assertAnalysisWasRun();
+        return (StandaloneHost) analysis.getHostVM();
     }
 
     /**
@@ -462,7 +560,7 @@ public abstract class StandaloneAnalysisTest {
     /**
      * Looks up a parameter flow and delegates detailed validation of its propagated type state.
      */
-    private void assertParameterState(AnalysisMethod method, int idx, java.util.function.Consumer<TypeState> parameterStateChecker) {
+    protected final void assertParameterState(AnalysisMethod method, int idx, java.util.function.Consumer<TypeState> parameterStateChecker) {
         PointsToAnalysisMethod pointsToMethod = asPointsToMethod(method);
         var methodFlow = pointsToMethod.getTypeFlow();
         var parameterFlow = methodFlow.getParameter(idx);

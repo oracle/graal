@@ -40,6 +40,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
@@ -125,6 +126,23 @@ public abstract class FrameAccess {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Pointer unsafeReturnAddressLocation(Pointer sourceSp) {
         return sourceSp.subtract(returnAddressSize());
+    }
+
+    /**
+     * Do not use this method unless absolutely necessary as it does not perform any verification.
+     * It is very easy to accidentally access a native frame, which can result in hard-to-debug
+     * transient failures.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Pointer unsafePreservedFramePointerLocation(Pointer sourceSp) {
+        /*
+         * Note that even without PreserveFramePointer, frames can have a frame pointer *slot*, but
+         * it contains just an arbitrary callee-saved register value.
+         */
+        VMError.guarantee(SubstrateOptions.PreserveFramePointer.getValue());
+
+        VMError.guarantee(!SubstrateOptions.useLLVMBackend(), "unsupported: LLVM frame layouts can deviate");
+        return unsafeReturnAddressLocation(sourceSp).subtract(SubstrateTarget.getWordSize());
     }
 
     @Fold

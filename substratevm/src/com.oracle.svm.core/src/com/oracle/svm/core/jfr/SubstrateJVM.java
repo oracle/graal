@@ -45,8 +45,8 @@ import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.sampler.SamplerStatistics;
@@ -85,8 +85,9 @@ import jdk.jfr.internal.LogTag;
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class SubstrateJVM {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L569") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L553") //
     private static final String OUT_OF_MEMORY = "Out of Memory";
+
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
@@ -226,6 +227,15 @@ public class SubstrateJVM {
     @Fold
     public static JfrEventThrottling getEventThrottling() {
         return get().eventThrottler;
+    }
+
+    @Fold
+    public static boolean shouldRegisterVThreadsEagerly() {
+        /*
+         * In a signal handler, we can only execute async-signal-safe code. Registering vthreads
+         * in the thread repository is therefore impossible, and we need to do that eagerly.
+         */
+        return HasJfrSupport.get() && JfrOptions.SignalHandlerBasedExecutionSampler.getValue();
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
@@ -534,9 +544,9 @@ public class SubstrateJVM {
         JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, Word.unsigned(uncommittedSize), requestedSize);
         if (newBuffer.isNull()) {
             /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
-            JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
+            JfrEventWriterAccess.updateBuffer(writer, oldBuffer, 0, false);
         } else {
-            JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
+            JfrEventWriterAccess.updateBuffer(writer, newBuffer, uncommittedSize, true);
         }
 
         /*
@@ -770,22 +780,24 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L559-L572")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/service/jfrRecorderService.cpp#L510-L526")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.1-b18/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L546-L556")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/service/jfrRecorderService.cpp#L510-L526")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     public void dumpOnOutOfMemoryError() {
         if (!recording || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
+
         // Hotspot emits GC root paths, but we don't support that yet. So cutoff = 0.
         emitOldObjectSamples(0, false, false);
         DumpReasonEvent.emit(OUT_OF_MEMORY, -1);
+
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
             if (!existingFile) {
                 // If no chunkfile is open, create one. This case is very unlikely.
-                RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkFile();
                 if (RawFileOperationSupport.bigEndian().isValid(fd)) {
                     chunkWriter.openFile(fd);
                 }
@@ -798,7 +810,6 @@ public class SubstrateJVM {
             chunkWriter.unlock();
         }
         JfrEmergencyDumpSupport.singleton().onVmError();
-
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
@@ -811,7 +822,7 @@ public class SubstrateJVM {
             SubstrateJVM.getOldObjectProfiler().reset();
             JfrAllocationEvents.reset();
 
-            JfrTraceIdEpoch.getInstance().changeEpoch();
+            JfrEpoch.getInstance().changeEpoch();
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
             SubstrateJVM.getThreadRepo().registerRunningThreads();

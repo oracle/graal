@@ -34,6 +34,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.ProviderNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,6 +45,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
+import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;
+import com.oracle.svm.core.jdk.BootLoaderPackageAccess;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -67,6 +72,11 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
                       This can be done as a run-time command line argument `-Djava.home=`, or programmatically with `System.setProperty("java.home", ...`""".replace("\n", System.lineSeparator());
     private static final Object NO_JRT_FS = new Object();
     private volatile Object jrtFS;
+
+    /// Maps loaded boot-append package names in internal form (e.g. `org/example`) to the
+    /// `-Xbootclasspath/a:` entry (e.g. `/path/to/boot-append.jar`) that supplied the first
+    /// successfully defined class in the package.
+    private static final ConcurrentHashMap<String, String> loadedBootAppendPackageLocations = new ConcurrentHashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public BootClassRegistry() {
@@ -105,17 +115,25 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
     // synchronized until parallel class loading is implemented (GR-62338)
     @Override
     public synchronized Class<?> doLoadClass(Symbol<Type> type) {
-        String pkg = packageFromType(type);
+        String internalPackageName = packageFromType(type);
         try {
-            byte[] bytes = pkg == null ? null : loadFromJImage(type, pkg);
+            byte[] bytes = internalPackageName == null ? null : loadFromJImage(type, internalPackageName);
+            ClassFileBytes classFileBytes = null;
             if (bytes == null) {
                 /* Preserve boot class path append semantics by looking there after the jimage. */
-                bytes = loadFromAppendedBootClassPathBytes(type);
+                classFileBytes = loadFromAppendedBootClassPathBytes(type);
+                bytes = classFileBytes == null ? null : classFileBytes.bytes();
             }
             if (bytes == null) {
                 return null;
             }
             Class<?> loaded = defineClass(type, bytes, 0, bytes.length, ClassDefinitionInfo.EMPTY);
+            if (classFileBytes != null) {
+                recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
+            } else {
+                Module module = ModuleLayer.boot().findModule(BootLoaderPackageAccess.bootModuleNameForPackage(internalPackageName)).orElseThrow();
+                BootLoaderPackageAccess.ensureNamedPackageExists(internalPackageName, module);
+            }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
             return loaded;
         } catch (IOException e) {
@@ -123,8 +141,8 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         }
     }
 
-    private byte[] loadFromJImage(Symbol<Type> type, String pkg) throws IOException {
-        String moduleName = ClassRegistries.getBootModuleForPackage(pkg);
+    private byte[] loadFromJImage(Symbol<Type> type, String internalPackageName) throws IOException {
+        String moduleName = BootLoaderPackageAccess.bootModuleNameForPackage(internalPackageName);
         if (moduleName == null) {
             return null;
         }
@@ -140,16 +158,46 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         return Files.readAllBytes(classPath);
     }
 
-    private static byte[] loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
-        return BootLoaderClassPathSupport.getResourceBytes(TypeSymbols.typeToName(type) + ".class");
+    private static ClassFileBytes loadFromAppendedBootClassPathBytes(Symbol<Type> type) throws IOException {
+        return BootLoaderClassPathSupport.getClassBytes(TypeSymbols.typeToName(type).toString());
     }
 
+    /// Returns the boot loader package location in the format expected by `BootLoader.PackageHelper`.
+    ///
+    /// @param internalPackageName package name in internal form (e.g. `org/foo/impl`)
+    public static String getSystemPackageLocation(String internalPackageName) {
+        String module = BootLoaderPackageAccess.definedBootModuleNameForPackage(internalPackageName);
+        if (module != null) {
+            return "jrt:/" + module;
+        }
+        return loadedBootAppendPackageLocations.get(internalPackageName);
+    }
+
+    /// Records the package source for `internalClassName` after a boot-append class has loaded.
+    private static void recordBootAppendPackageLocation(String internalClassName, String location) {
+        int lastSlash = internalClassName.lastIndexOf('/');
+        if (lastSlash != -1 && location != null) {
+            loadedBootAppendPackageLocations.putIfAbsent(internalClassName.substring(0, lastSlash), location);
+        }
+    }
+
+    /// Returns boot loader package names in internal form, matching `BootLoader.getSystemPackageNames`.
+    public static String[] getSystemPackageNames() {
+        Set<String> systemPackageNames = new HashSet<>();
+        BootLoaderPackageAccess.addSystemPackageNames(systemPackageNames);
+        systemPackageNames.addAll(loadedBootAppendPackageLocations.keySet());
+        return systemPackageNames.toArray(String[]::new);
+    }
+
+    /**
+     * Extracts an internal package name from a type descriptor.
+     */
     private static String packageFromType(Symbol<Type> type) {
         int lastSlash = type.lastIndexOf((byte) '/');
         if (lastSlash == -1) {
             return null;
         }
-        return type.subSequence(1, lastSlash).toString().replace('/', '.');
+        return type.subSequence(1, lastSlash).toString();
     }
 
     @Override

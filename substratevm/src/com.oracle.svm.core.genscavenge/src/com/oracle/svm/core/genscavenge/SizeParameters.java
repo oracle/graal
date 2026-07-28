@@ -34,8 +34,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;

@@ -40,6 +40,7 @@ import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MultiReturnNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -250,8 +251,19 @@ public final class BytecodeHandlerStubHelper {
 
         ParameterNode[] stubParameters = collectParameterNodes(handlerConfig, kit);
         ValueNode[] handlerArguments = createHandlerArguments(handlerConfig, targetMethod, kit, stubParameters);
-        ValueNode handlerInvocation = kit.startInvokeWithException(targetMethod, invokeKind(targetMethod), frameStateBuilder, bci, handlerArguments);
-        ValueNode handlerResult = targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()).getJavaKind() == JavaKind.Void ? null : handlerInvocation;
+        InvokeWithExceptionNode handlerInvocation = kit.startInvokeWithException(targetMethod, invokeKind(targetMethod), frameStateBuilder, bci,
+                        handlerArguments);
+        if (unwindPathSupplier != null) {
+            /*
+             * SVM bytecode-handler stubs preserve pending state on the handler exception path. Mark
+             * this invoke so decoded allocations in an inlined handler can restore OOME exception
+             * edges and unwind through that path without relying on generic catch-all/finally
+             * classification.
+             */
+            handlerInvocation.setInOOMETry(true);
+        }
+        ValueNode handlerResult = targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()).getJavaKind() == JavaKind.Void ? null
+                        : handlerInvocation;
 
         kit.noExceptionPart();
         kit.append(new ControlFlowAnchorNode());

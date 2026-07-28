@@ -32,13 +32,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -158,7 +159,7 @@ public class VMErrorSubstitutions {
     @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(CodePointer callerIP, String msg, Throwable ex) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, msg, ex);
+        Log log = CoreLogSupport.enterFatalContext(logHandler, callerIP, msg, ex);
         if (log != null) {
             try {
                 /*

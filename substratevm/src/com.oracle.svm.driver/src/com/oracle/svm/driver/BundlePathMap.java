@@ -210,8 +210,27 @@ final class BundlePathMap {
      * Prints a path mapping entry using the portable on-disk bundle schema.
      */
     static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative) throws IOException {
-        PortablePath srcPath = sourcePath(entry.getKey(), sourceStyle);
-        PortablePath dstPath = destinationIsBundleRelative ? bundlePath(entry.getValue()) : sourcePath(entry.getValue(), sourceStyle);
+        printPathMapping(entry, writer, sourceStyle, destinationIsBundleRelative, false);
+    }
+
+    static void printPortablePathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative) throws IOException {
+        printPathMapping(entry, writer, sourceStyle, destinationIsBundleRelative, true);
+    }
+
+    private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative, boolean entryIsPortable) throws IOException {
+        PortablePath srcPath;
+        PortablePath dstPath;
+        if (entryIsPortable) {
+            srcPath = portablePath(entry.getKey(), sourceStyle);
+            dstPath = portablePath(entry.getValue(), destinationIsBundleRelative ? PathStyle.BundleRelative : sourceStyle);
+        } else {
+            srcPath = sourcePath(entry.getKey(), sourceStyle);
+            dstPath = destinationIsBundleRelative ? bundlePath(entry.getValue()) : sourcePath(entry.getValue(), sourceStyle);
+        }
+        printPathMapping(srcPath, dstPath, writer);
+    }
+
+    private static void printPathMapping(PortablePath srcPath, PortablePath dstPath, JsonWriter writer) throws IOException {
         writer.append('{').quote(srcField).append(':');
         printPortablePath(srcPath, writer);
         writer.append(',').quote(dstField).append(':');
@@ -229,6 +248,14 @@ final class BundlePathMap {
         return StreamSupport.stream(path.spliterator(), false)
                         .map(Path::toString)
                         .collect(Collectors.joining("/"));
+    }
+
+    private static PortablePath portablePath(Path path, PathStyle style) {
+        return new PortablePath(style, toPortablePathText(path));
+    }
+
+    private static String toPortablePathText(Path path) {
+        return path.toString().replace('\\', '/');
     }
 
     private static final class WindowsPortablePathCodec {

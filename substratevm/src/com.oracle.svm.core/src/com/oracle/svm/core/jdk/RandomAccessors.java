@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 /**
  * RandomAccessors initializes a seeder at run time, on first access. The mechanism is used by both

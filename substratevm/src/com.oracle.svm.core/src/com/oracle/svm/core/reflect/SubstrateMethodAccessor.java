@@ -39,6 +39,7 @@ import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunction
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
+import jdk.internal.vm.annotation.Hidden;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor {
@@ -118,19 +119,22 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     }
 
     /**
-     * This variant of {@link #invoke(Object, Object[])} is considered @Hidden by
-     * {@link com.oracle.svm.core.jdk.StackTraceUtils#shouldShowFrame(Class, String, boolean, boolean)}.
-     * This is important when this is called as part of the method handle implementation where this
-     * frame is not expected to appear.
-     *
-     * When @Hidden becomes available per-method (GR-76134) we should use that annotation instead.
+     * This variant of {@link #invoke(Object, Object[], Class)} is @Hidden. This is important when
+     * this is called as part of the method handle implementation where this frame is not expected
+     * to appear.
      */
-    public Object methodHandleInvoke(Object obj, Object[] args) {
+    @Hidden
+    public Object methodHandleInvoke(Object obj, Object[] args, Class<?> caller) {
         if (callerSensitiveAdapter) {
-            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+            if (caller == null) {
+                throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+            }
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) getExpandSignature()).invoke(obj, args, invokeTarget(obj), caller);
+        } else {
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
         }
-        preInvoke(obj);
-        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override
@@ -145,6 +149,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     }
 
     @Override
+    @Hidden
     public Object methodHandleInvokeSpecial(Object obj, Object[] args) {
         if (callerSensitiveAdapter) {
             throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");

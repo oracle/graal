@@ -66,10 +66,11 @@ public class InterpreterStubTable {
         tableBufferImpl = new BasicProgbitsSectionImpl(tableBuffer.getBackingArray());
         ObjectFile.Section tableSection = objectFile.newProgbitsSection(section.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), true, false, tableBufferImpl);
 
-        objectFile.createDefinedSymbol(SYMBOL_NAME, tableSection, 0, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+        boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+        objectFile.createDefinedSymbol(SYMBOL_NAME, tableSection, 0, 0, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
 
         // Store an additional blob of bytes to verify the interpreter metadata integrity.
-        objectFile.createDefinedSymbol(DebuggerSupport.IMAGE_INTERP_HASH_SYMBOL_NAME, tableSection, offsetHash, 0, true, true);
+        objectFile.createDefinedSymbol(DebuggerSupport.IMAGE_INTERP_HASH_SYMBOL_NAME, tableSection, offsetHash, 0, true, true, true);
 
         ObjectFile.RelocationKind relocationKind = ObjectFile.RelocationKind.getDirect(wordSize);
         for (InterpreterResolvedJavaMethod method : methods) {

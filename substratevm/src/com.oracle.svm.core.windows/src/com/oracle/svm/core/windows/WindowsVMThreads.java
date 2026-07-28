@@ -40,7 +40,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.core.thread.OSThreadId;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -48,7 +47,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class WindowsVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

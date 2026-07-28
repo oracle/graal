@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -479,7 +479,15 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             /* Check for unsupported usages of vector values outside the connected component. */
             if (!isSink && component.canExpand && !isNullConstant && !isUnboxInput) {
                 for (Node usage : node.usages()) {
-                    if (unionFind.find(usage) == representative) {
+                    if (node instanceof ValueNode value && shouldBox(value, usage, context)) {
+                        /*
+                         * Some usages are scalar fallbacks around an expandable component. Box
+                         * them before checking the component representative. A fallback usage may
+                         * also be connected to the component through its result.
+                         */
+                        component.boxes.add(value);
+                        continue;
+                    } else if (unionFind.find(usage) == representative) {
                         /*
                          * The usage is in the same connected component, so it will be expanded to
                          * SIMD code iff this node is expanded.
@@ -491,11 +499,14 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                          * deoptimization, this will materialize the SIMD value as a vector object
                          * on the heap.
                          */
-                        continue;
-                    } else if (node instanceof ValueNode value && shouldBox(value, usage, context)) {
-                        // Manually box the vector node to disconnect the unexpected usage from the
-                        // ConnectedComponent
-                        component.boxes.add(value);
+                        ResolvedJavaType type = StampTool.typeOrNull((ValueNode) node);
+                        VectorAPIType vectorType = type == null ? null : VectorAPIType.ofType(type, context);
+                        if (vectorType == null) {
+                            graph.getDebug().log(DebugContext.DETAILED_LEVEL, "frame state usage %s for node %s prevents SIMD expansion because its Vector API type cannot be resolved",
+                                            usage, node);
+                            component.canExpand = false;
+                            break;
+                        }
                         continue;
                     } else {
                         /*
@@ -710,6 +721,8 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                         useCloned = graph.addOrUniqueWithInputs(useCloned);
                         fixedSuccessor.replaceAllInputs(use, useCloned);
                     }
+                    GraalError.guarantee(use.hasNoUsages(), "all users of the original call target must have been replaced: %s", use);
+                    use.safeDelete();
                 } else if (use instanceof ValuePhiNode phi) {
                     for (int i = 0; i < phi.valueCount(); i++) {
                         ValueNode phiValue = phi.valueAt(i);
@@ -757,6 +770,15 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
              * payload field. Box the value so these payload reads don't block SIMD expansion.
              */
             return loadField.field().getName().equals("payload") && VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
+        } else if (use instanceof VectorAPILoadMaskedNode loadMasked && loadMasked.getMask() == value) {
+            /*
+             * A scalar fallback masked load consumes a mask object. If the mask is a phi that is
+             * expanded as part of a SIMD component, provide an object value at this scalar use.
+             */
+            return value instanceof ValuePhiNode &&
+                            loadMasked.vectorStamp() != null &&
+                            shouldUseScalarMaskedFallback(loadMasked, VectorAPIUtils.vectorArchitecture(providers), providers) &&
+                            VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
         } else if (use instanceof VectorAPIStoreMaskedNode storeMasked) {
             /*
              * If a masked store must stay scalar, keep the store as a fallback call and box the
@@ -1037,6 +1059,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
              * same component, and all nodes in the component are replaced.
              */
             node.replaceAtUsages(null, usage -> component.simdStamps.containsKey((ValueNode) usage));
+            GraalError.guarantee(node.hasNoUsages(), "unexpected remaining usage %s of expanded Vector API node %s", node.usages().first(), node);
             if (node instanceof FixedWithNextNode fixedNode) {
                 if (replacement instanceof FixedWithNextNode fixedReplacement && fixedReplacement.next() != null) {
                     /*
@@ -1044,7 +1067,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                      * unboxing operations, which expand to multiple fixed nodes that we add to the
                      * control flow during unboxing.
                      */
-                    fixedNode.replaceAtUsages(replacement);
                     graph.removeFixed(fixedNode);
                 } else {
                     graph.replaceFixed(fixedNode, replacement);
@@ -1052,7 +1074,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             } else if (node instanceof MacroWithExceptionNode macroWithExceptionNode) {
                 AbstractBeginNode exceptionEdge = macroWithExceptionNode.exceptionEdge();
                 if (replacement instanceof FixedWithNextNode fixedReplacement && fixedReplacement.next() != null) {
-                    macroWithExceptionNode.replaceAtUsages(replacement);
                     graph.removeSplit(macroWithExceptionNode, macroWithExceptionNode.getPrimarySuccessor());
                 } else {
                     graph.replaceSplit(macroWithExceptionNode, replacement, macroWithExceptionNode.getPrimarySuccessor());
@@ -1179,7 +1200,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                                      */
                                     continue;
                                 }
-                                newCondition = graph.addOrUnique(newCondition);
+                                newCondition = graph.addOrUniqueWithInputs(newCondition);
                                 FixedGuardNode newGuard = graph.add(new FixedGuardNode(newCondition, guard.getReason(), guard.getAction(), hoistingSpeculation, guard.isNegated(),
                                                 guard.getNoDeoptSuccessorPosition()));
                                 graph.addBeforeFixed(phi.merge().phiPredecessorAt(i), newGuard);

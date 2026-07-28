@@ -30,16 +30,12 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.Counter.Group;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class CounterFeature implements InternalFeature {
 
     @Override
@@ -65,7 +61,7 @@ public class CounterFeature implements InternalFeature {
         if (enabledGroups.size() > 0) {
             enabledGroups.sort(Comparator.comparing(g -> g.name));
             ImageSingletons.add(CounterSupport.class, new CounterSupport(enabledGroups.toArray(new Group[0])));
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(CounterSupport.shutdownHook());
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(CounterSupport.teardownHook());
         }
     }
 }

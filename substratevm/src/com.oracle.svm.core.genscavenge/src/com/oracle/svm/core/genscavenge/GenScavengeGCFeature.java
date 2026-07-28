@@ -33,9 +33,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSnippets;
@@ -59,18 +58,15 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.OSCommittedMemoryProvider;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
@@ -78,7 +74,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -103,7 +98,9 @@ class GenScavengeGCFeature implements InternalFeature {
         if (RuntimeClassLoading.isSupported()) {
             MetaspaceImpl metaspace = new MetaspaceImpl();
             ImageSingletons.add(Metaspace.class, metaspace);
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(new MetaspaceImpl.ShutdownHook(metaspace));
+            if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+                RuntimeSupport.getRuntimeSupport().addTearDownHook(new MetaspaceImpl.TeardownHook(metaspace));
+            }
         }
     }
 
@@ -216,9 +213,6 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static CommittedMemoryProvider createCommittedMemoryProvider() {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            return new AddressRangeCommittedMemoryProvider();
-        }
-        return new OSCommittedMemoryProvider();
+        return new AddressRangeCommittedMemoryProvider();
     }
 }

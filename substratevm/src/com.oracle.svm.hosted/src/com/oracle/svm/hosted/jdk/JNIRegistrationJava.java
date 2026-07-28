@@ -39,9 +39,6 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -50,7 +47,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature {
 
@@ -130,7 +126,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
         if (isWindows()) {
             /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
+            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_provider_NativeSeedGenerator");
         }
         if (isDarwin()) {
             List<ResolvedJavaMethod> darwinMethods = Arrays.asList(
@@ -150,6 +146,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
                             method(a, "sun.net.spi.DefaultProxySelector", "init")));
 
             a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
+
         }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));

@@ -48,7 +48,7 @@ import com.oracle.svm.core.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.graal.isolated.ImageHeapObjects;
 import com.oracle.svm.graal.isolated.ImageHeapRef;
 import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
@@ -70,7 +70,7 @@ import jdk.graal.compiler.truffle.phases.TruffleTier;
 public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     private static final ComparableWord ISOLATE_INITIALIZING = Word.signed(-1);
 
-    private final UninterruptibleUtils.AtomicWord<Isolate> sharedIsolate = new UninterruptibleUtils.AtomicWord<>();
+    private final UninterruptibleAtomicUtils.AtomicWord<Isolate> sharedIsolate = new UninterruptibleAtomicUtils.AtomicWord<>();
 
     protected final SubstrateTruffleCompilerImpl delegate;
     private final AtomicBoolean firstCompilation;

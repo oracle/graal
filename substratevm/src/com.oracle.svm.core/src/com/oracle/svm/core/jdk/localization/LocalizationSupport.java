@@ -56,7 +56,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -275,9 +275,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName) {
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
-        var registered = registeredBundles.putIfAbsent(baseName, dynamicAccessMetadata);
-        (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
+        registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(registeredBundles.get(baseName), condition, false));
     }
 
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {

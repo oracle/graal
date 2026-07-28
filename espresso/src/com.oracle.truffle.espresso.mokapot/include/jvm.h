@@ -101,6 +101,10 @@ JVM_InternString(JNIEnv *env, jstring str);
 /*
  * java.lang.System
  */
+
+JNIEXPORT jboolean JNICALL
+JVM_AOTEndRecording(JNIEnv *env);
+
 JNIEXPORT jlong JNICALL
 JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored);
 

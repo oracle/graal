@@ -28,14 +28,14 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;

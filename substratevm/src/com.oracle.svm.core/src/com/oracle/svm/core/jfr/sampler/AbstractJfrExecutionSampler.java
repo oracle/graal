@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrStackWalker;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
@@ -72,8 +72,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     private static final FastThreadLocalInt samplerState = FastThreadLocalFactory.createInt("JfrSampler.samplerState");
     private static final FastThreadLocalInt isDisabledForCurrentThread = FastThreadLocalFactory.createInt("JfrSampler.isDisabledForCurrentThread");
 
-    private final UninterruptibleUtils.AtomicInteger isSignalHandlerDisabledGlobally = new UninterruptibleUtils.AtomicInteger(0);
-    private final UninterruptibleUtils.AtomicInteger threadsInSignalHandler = new UninterruptibleUtils.AtomicInteger(0);
+    private final UninterruptibleAtomicUtils.AtomicInteger isSignalHandlerDisabledGlobally = new UninterruptibleAtomicUtils.AtomicInteger(0);
+    private final UninterruptibleAtomicUtils.AtomicInteger threadsInSignalHandler = new UninterruptibleAtomicUtils.AtomicInteger(0);
 
     private volatile boolean isSampling;
     private long curIntervalMillis;
@@ -89,7 +89,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     }
 
     @Fold
-    protected static UninterruptibleUtils.AtomicInteger threadsInSignalHandler() {
+    protected static UninterruptibleAtomicUtils.AtomicInteger threadsInSignalHandler() {
         return singleton().threadsInSignalHandler;
     }
 
@@ -174,23 +174,24 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "This method executes during signal handling.", callerMustBe = true)
-    protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
+    protected static boolean tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
         /*
          * To prevent races, it is crucial that the thread count is incremented before we do any
          * other checks.
          */
         threadsInSignalHandler().incrementAndGet();
         try {
-            if (isExecutionSamplingAllowedInCurrentThread()) {
-                /* Prevent recursive sampler invocations during the stack walk. */
-                JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
-                try {
-                    JfrStackWalker.walkCurrentThread(ip, sp, isAsync);
-                } finally {
-                    JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
-                }
-            } else {
+            if (!isExecutionSamplingAllowedInCurrentThread()) {
                 JfrThreadLocal.increaseMissedSamples();
+                return false;
+            }
+
+            /* Prevent recursive sampler invocations during the stack walk. */
+            JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
+            try {
+                return JfrStackWalker.walkCurrentThread(ip, sp, isAsync);
+            } finally {
+                JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
             }
         } finally {
             threadsInSignalHandler().decrementAndGet();

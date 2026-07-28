@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.impl.BarrieredAccess;
 
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;

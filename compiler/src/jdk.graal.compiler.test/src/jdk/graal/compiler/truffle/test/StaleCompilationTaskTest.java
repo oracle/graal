@@ -27,8 +27,10 @@ package jdk.graal.compiler.truffle.test;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -144,6 +146,61 @@ public class StaleCompilationTaskTest {
         }
     }
 
+    /**
+     * Performs one regular background compilation before installing the scenario listener that
+     * blocks compiler threads.
+     * <p>
+     * A fresh subprocess may need to initialize the Truffle compiler on the first submitted
+     * compilation, and that can take longer than the short {@link #TIMEOUT_SECONDS} used by the
+     * stale-queue assertions. Waiting for this warmup target to compile keeps compiler
+     * initialization latency out of the actual stale-task scenario, where the only long-running
+     * compilation should be the deliberately blocked target.
+     */
+    private static void warmupCompiler() throws Exception {
+        AtomicBoolean success = new AtomicBoolean();
+        CountDownLatch finished = new CountDownLatch(1);
+        OptimizedTruffleRuntime runtime = getOptimizedRuntime();
+        String warmupName = "warmup";
+        OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
+            @Override
+            public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task,
+                            TruffleCompilerListener.GraphInfo graph,
+                            TruffleCompilerListener.CompilationResultInfo result) {
+                if (matchesName(target, warmupName)) {
+                    success.set(true);
+                    finished.countDown();
+                }
+            }
+
+            @Override
+            public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+                if (matchesName(target, warmupName)) {
+                    success.set(false);
+                    finished.countDown();
+                }
+            }
+
+            @Override
+            public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
+                if (matchesName(target, warmupName)) {
+                    success.set(false);
+                    finished.countDown();
+                }
+            }
+        };
+        runtime.addListener(listener);
+        try (Context context = contextBuilder(0).build()) {
+            Source warmup = Source.newBuilder(InstrumentationTestLanguage.ID, "CONSTANT(0)", warmupName).build();
+            evalN(context, warmup, THRESHOLD);
+            Assert.assertTrue("Compiler warmup did not finish", finished.await(2, TimeUnit.MINUTES));
+            if (!success.get()) {
+                throw new AssertionError("Warmup failed");
+            }
+        } finally {
+            runtime.removeListener(listener);
+        }
+    }
+
     private static void awaitCompilationStarted(Context context, Source source, CountDownLatch startedLatch, String failureMessage) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
         while (System.nanoTime() < deadline) {
@@ -208,6 +265,7 @@ public class StaleCompilationTaskTest {
     }
 
     private static void testInactiveTaskIsDequeuedAsStaleImpl() throws Exception {
+        warmupCompiler();
         OptimizedTruffleRuntime runtime = getOptimizedRuntime();
 
         ScenarioState state = new ScenarioState();
@@ -249,6 +307,7 @@ public class StaleCompilationTaskTest {
     }
 
     private static void testActiveTaskCompilesWithStaleDetectionEnabledImpl() throws Exception {
+        warmupCompiler();
         OptimizedTruffleRuntime runtime = getOptimizedRuntime();
 
         ScenarioState state = new ScenarioState();
@@ -288,6 +347,7 @@ public class StaleCompilationTaskTest {
     }
 
     private static void testInactiveTaskCompilesWhenStaleDetectionIsDisabledImpl() throws Exception {
+        warmupCompiler();
         OptimizedTruffleRuntime runtime = getOptimizedRuntime();
 
         ScenarioState state = new ScenarioState();

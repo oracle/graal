@@ -94,6 +94,9 @@ public final class ThreadsCollector {
     void suspendAllBut(ThreadRef ignored) {
         long[] suspendedThreadIDs = new long[2]; // Threads that are suspended already.
         int lastIndex = 0;
+        if (ignored != null) {
+            suspendedThreadIDs[lastIndex++] = ignored.getThreadId();
+        }
         // Block start of new threads that can emerge during VM suspend
         notifyVMSuspended();
         Lock lock = rwLock.writeLock();

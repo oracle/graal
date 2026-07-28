@@ -39,7 +39,7 @@ public final class Utf8 {
     private Utf8() {
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L479-L488")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L479-L488")
     private static int utf8Size(char c) {
         if ((0x0001 <= c) && (c <= 0x007F)) {
             // ASCII character
@@ -63,7 +63,7 @@ public final class Utf8 {
      * @param endIndex index at the end of the region, exclusive
      * @return the length as {@code long} in bytes of the UTF8 representation of the string
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L502-L509")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L502-L509")
     public static long utf8LengthAsLong(String s, int beginIndex, int endIndex) {
         if (beginIndex < 0 || endIndex > s.length() || beginIndex > endIndex) {
             throw new StringIndexOutOfBoundsException();
@@ -90,7 +90,7 @@ public final class Utf8 {
      * @return the length as {@code int} in bytes of the UTF8 representation of the string. Might
      *         return a truncated size if the value does not fit into {@code int} (see JDK-8328877).
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L511-L526")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L511-L526")
     public static int utf8Length(String s, int beginIndex, int endIndex) {
         if (beginIndex < 0 || endIndex > s.length() || beginIndex > endIndex) {
             throw new StringIndexOutOfBoundsException();

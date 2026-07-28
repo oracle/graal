@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package org.graalvm.polyglot;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import org.graalvm.polyglot.Engine.ToStringSupport;
 
 /**
  * Represents resource limits configuration that is used to configure contexts. Resource limit
@@ -98,6 +100,16 @@ public final class ResourceLimits {
      */
     public static Builder newBuilder() {
         return EMPTY.new Builder();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 25.3
+     */
+    @Override
+    public String toString() {
+        return receiver.toString();
     }
 
     /**
@@ -171,6 +183,23 @@ public final class ResourceLimits {
         public Builder onLimit(@SuppressWarnings("hiding") Consumer<ResourceLimitEvent> onLimit) {
             this.onLimit = onLimit;
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("ResourceLimits.newBuilder()");
+            if (statementLimit != 0 || statementLimitSourceFilter != null) {
+                ToStringSupport.appendCall(b, "statementLimit", statementLimit, statementLimitSourceFilter);
+            }
+            if (onLimit != null) {
+                ToStringSupport.appendCall(b, "onLimit", onLimit);
+            }
+            return b.toString();
         }
 
         /**

@@ -1,0 +1,8 @@
+[[rule]]
+files = "VerifyReflectionUsage.java"
+all = [
+    "josef.eisl@oracle.com",
+    "doug.simon@oracle.com",
+]
+any = [
+]

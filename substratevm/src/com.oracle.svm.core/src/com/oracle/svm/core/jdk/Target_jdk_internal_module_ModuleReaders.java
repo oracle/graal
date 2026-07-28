@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -79,7 +81,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L421-L427")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L421-L427")
     Optional<URI> find(String name) throws IOException {
         Objects.requireNonNull(name);
         if (closed) {
@@ -99,7 +101,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L445-L452")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/SystemModuleFinders.java#L445-L452")
     Optional<ByteBuffer> read(String name) throws IOException {
         Objects.requireNonNull(name);
         if (closed) {
@@ -146,7 +148,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L246-L255")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L246-L255")
     static JarFile newJarFile(String path) {
         /*
          * A baked ModuleReferences.newJarModule() supplier can lazily create its JarModuleReader at
@@ -162,7 +164,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L247-L250")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L247-L250")
     Target_jdk_internal_module_ModuleReferences_JarModuleReader(String path, URI uri) {
         SubstrateUtil.cast(this, Target_jdk_internal_module_ModuleReferences_SafeCloseModuleReader.class).constructor();
         JarFile jarFile = newJarFile(path);
@@ -172,7 +174,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L252-L254")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L252-L254")
     JarEntry getEntry(String name) {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         return jarFile.getJarEntry(Objects.requireNonNull(name));
@@ -180,7 +182,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L258-L270")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L258-L270")
     Optional<URI> implFind(String name) {
         Objects.requireNonNull(name);
         String embeddedModuleName = ResourceBasedModuleReaderSupport.getRuntimeModuleName(this);
@@ -198,7 +200,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L273-L280")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L273-L280")
     Optional<InputStream> implOpen(String name) throws IOException {
         Objects.requireNonNull(name);
         String embeddedModuleName = ResourceBasedModuleReaderSupport.getRuntimeModuleName(this);
@@ -216,7 +218,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L283-L288")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L283-L288")
     Stream<String> implList() {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         if (jarFile == null) {
@@ -233,7 +235,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L291-L293")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/module/ModuleReferences.java#L291-L293")
     void implClose() throws IOException {
         JarFile jarFile = ResourceBasedModuleReaderSupport.getJfFieldVolatile(this);
         if (jarFile != null) {
@@ -258,6 +260,15 @@ final class Target_jdk_internal_jimage_ImageReader_ModuleReaders {
 final class Target_jdk_internal_jimage_ImageLocation_ModuleReaders {
 }
 
+/// Shares the runtime support used by the substituted JDK module readers in this file.
+/// This helper has three related responsibilities:
+/// 1. Serve module resources that were embedded into the image so they appear through the normal
+/// JDK module-reader APIs.
+/// 2. Restore build-time module readers whose original jar locations were redacted in the image
+/// heap by reconnecting them to matching jars from the runtime module path.
+/// 3. Compare restored runtime locations for redacted module references so boot-layer augmentation
+/// can distinguish a representable runtime module-path module from an incompatible module coming
+/// from some other source such as `--upgrade-module-path`.
 final class ResourceBasedModuleReaderSupport {
 
     private ResourceBasedModuleReaderSupport() {
@@ -416,6 +427,10 @@ final class ResourceBasedModuleReaderSupport {
         }
     }
 
+    /// Gets the runtime `--module-path` resolved location for `moduleName`.
+    ///
+    /// This is the location used to restore a redacted build-time module reader back to a concrete
+    /// runtime jar when the module is present on the runtime module path.
     static Optional<URI> getRuntimeModuleLocation(String moduleName) {
         return findRuntimeModuleReference(moduleName).flatMap(ModuleReference::location);
     }
@@ -435,7 +450,7 @@ final class ResourceBasedModuleReaderSupport {
     }
 
     private static ModuleFinder createRuntimeModulePathFinder() {
-        ModuleFinder finder = Target_jdk_internal_module_ModuleBootstrap.finderFor(RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY);
+        ModuleFinder finder = Target_jdk_internal_module_ModuleBootstrap.finderFor(MODULE_PATH_PROPERTY);
         return finder == null ? EMPTY_RUNTIME_MODULE_PATH_FINDER : finder;
     }
 

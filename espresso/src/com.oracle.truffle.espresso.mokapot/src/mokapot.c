@@ -192,6 +192,10 @@ JNIEXPORT jstring JNICALL JVM_InternString(JNIEnv *env, jstring str) {
   return (*getEnv())->JVM_InternString(env, str);
 }
 
+JNIEXPORT jboolean JNICALL JVM_AOTEndRecording(JNIEnv *env) {
+  return JNI_FALSE;
+}
+
 JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored) {
   IMPLEMENTED(JVM_CurrentTimeMillis);
   return (*getEnv())->JVM_CurrentTimeMillis(env, ignored);

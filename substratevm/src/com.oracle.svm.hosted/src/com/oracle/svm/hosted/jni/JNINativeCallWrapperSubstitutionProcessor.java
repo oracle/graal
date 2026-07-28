@@ -58,6 +58,24 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
         if (method.getDeclaringClass().equals(trampolinesType)) {
             return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(originalMetaAccess, method.getName());
         }
-        return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
+        JNINativeCallWrapperMethod wrapper = callWrappers.get(method);
+        if (wrapper != null) {
+            return wrapper;
+        }
+
+        wrapper = new JNINativeCallWrapperMethod(method);
+        JNINativeCallWrapperMethod existing = callWrappers.putIfAbsent(method, wrapper);
+        if (existing != null) {
+            return existing;
+        }
+
+        /*
+         * Registering the reachability handler can ask the analysis universe to look up this
+         * wrapper, which can re-enter this substitution processor. The wrapper must already be
+         * visible in callWrappers so the recursive lookup returns it instead of creating another
+         * wrapper.
+         */
+        JNIAccessFeature.singleton().registerNativeCallWrapperReachabilityHandler(wrapper);
+        return wrapper;
     }
 }

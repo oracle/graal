@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -77,9 +78,9 @@ import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
@@ -119,7 +120,7 @@ import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -181,7 +182,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * some use cases (such as Truffle compilations), it is necessary to customize the feature code
  * below, see calls to {@link RuntimeCompiledMethodSupport}.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class RuntimeCompilationFeature implements Feature, RuntimeCompilationCallbacks {
 
     public static class Options {
@@ -230,7 +231,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             NO_DECISION
         }
 
-        InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target);
+        InlineDecision allowInlining(GraphBuilderContext builder, AnalysisMethod root, ResolvedJavaMethod target);
     }
 
     private GraalGraphObjectReplacer objectReplacer;
@@ -254,7 +255,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
     private HostedProviders analysisProviders = null;
-    private AllowInliningPredicate allowInliningPredicate = (_, _) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+    private AllowInliningPredicate allowInliningPredicate = (_, _, _) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
     private boolean allowInliningPredicateUpdated = false;
     private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
     private Consumer<CallTreeInfo> blocklistChecker = _ -> {
@@ -398,6 +399,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     }
 
     @Override
+    public void onRegistration(Feature.OnRegistrationAccess access) {
+        ImageSingletons.add(RuntimeCompilationFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
         ImageSingletons.add(SVMParsingSupport.class, new RuntimeCompilationParsingSupport());
         ImageSingletons.add(HostVM.MethodVariantsAnalysisPolicy.class, new RuntimeCompilationAnalysisPolicy());
@@ -491,7 +497,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         objectReplacer.setGraalRuntime(graalRuntime);
         objectReplacer.setAnalysisAccess(config);
         ImageSingletons.add(GraalRuntime.class, graalRuntime);
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(new GraalSupport.GraalShutdownHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(new GraalSupport.GraalTeardownHook());
 
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
@@ -696,7 +702,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private final class RuntimeCompilationParsingSupport implements SVMParsingSupport {
         RuntimeCompilationInlineBeforeAnalysisPolicy runtimeInlineBeforeAnalysisPolicy = null;
 
@@ -1007,8 +1013,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
-            if (allowInliningPredicate.allowInlining(b, method) != AllowInliningPredicate.InlineDecision.INLINE) {
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod rootMethod, AnalysisMethod method, ValueNode[] args) {
+            if (allowInliningPredicate.allowInlining(b, rootMethod, method) != AllowInliningPredicate.InlineDecision.INLINE) {
                 return false;
             }
             if (isRuntimeCheckedInvocationPlugin(b, method)) {
@@ -1117,7 +1123,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         return (T) runtimeMethod;
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private final class RuntimeCompilationAnalysisPolicy implements HostVM.MethodVariantsAnalysisPolicy {
 
         @Override
@@ -1288,6 +1294,11 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled(ResolvedJavaMethod method) {
+        return AnalysisMetaAccessExtensionProvider.isLambdaFormCompiledMethod(method);
     }
 
     @Override

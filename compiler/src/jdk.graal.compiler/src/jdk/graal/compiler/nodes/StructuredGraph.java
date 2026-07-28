@@ -954,6 +954,24 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    /**
+     * Like {@link #replaceFixedWithFixed(FixedWithNextNode, FixedWithNextNode)}, but skips replacement
+     * invariant checks while replacing usages.
+     *
+     * Use this only when the caller already checked or updated all usages that require those
+     * invariants.
+     */
+    public void replaceFixedWithFixedWithoutCheckingInvariants(FixedWithNextNode node, FixedWithNextNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        FixedNode next = node.next();
+        node.setNext(null);
+        replacement.setNext(next);
+        node.replaceAndDeleteWithoutCheckingInvariants(replacement);
+        if (node == start) {
+            setStart((StartNode) replacement);
+        }
+    }
+
     @SuppressWarnings("static-method")
     public void replaceFixedWithFloating(FixedWithNextNode node, ValueNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;

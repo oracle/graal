@@ -168,7 +168,7 @@ public final class TRegexCompilationRequest {
         }
         LiteralRegexExecNode literal = LiteralRegexEngine.createNode(language, ast);
         if (literal != null) {
-            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using literal matcher " + literal.getClass().getSimpleName());
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using literal matcher " + literal.getImplName());
             return literal;
         }
         if (ast.canTransformToDFA()) {
@@ -196,6 +196,7 @@ public final class TRegexCompilationRequest {
         if (source.getOptions().isForceLinearExecution()) {
             throw new UnsupportedRegexException("regex cannot be executed in linear time", source);
         }
+        Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using backtracking NFA matcher");
         return TRegexExecNode.create(ast, nfa, TRegexExecNode.NFARegexSearchNode.create(language, compileBacktrackingExecutor()));
     }
 

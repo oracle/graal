@@ -50,7 +50,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -290,12 +290,10 @@ public class HeapVerifier {
 
         assert aChunk.isNonNull() ^ uChunk.isNonNull();
         HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
-        if (HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-            HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
-            if (chunk.notEqual(enclosingHeapChunk)) {
-                Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
-                return false;
-            }
+        HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
+        if (chunk.notEqual(enclosingHeapChunk)) {
+            Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
+            return false;
         }
 
         Pointer chunkStart = HeapChunk.asPointer(chunk);

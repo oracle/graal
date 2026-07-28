@@ -35,7 +35,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;

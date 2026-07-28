@@ -29,8 +29,8 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
 /** Basic/legacy garbage collection policies. */

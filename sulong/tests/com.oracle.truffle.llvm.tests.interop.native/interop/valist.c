@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -96,5 +96,5 @@ int test_maybe_va_ptr(int (*callback)(char *)) {
     char **chr_chr_ptr = alloca(sizeof(char *));
     chr_chr_ptr = &chr_ptr;
 
-    return callback(chr_chr_ptr);
+    return callback((char *) chr_chr_ptr);
 }

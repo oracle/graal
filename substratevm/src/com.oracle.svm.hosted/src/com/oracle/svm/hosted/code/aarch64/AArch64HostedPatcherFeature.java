@@ -61,7 +61,6 @@ import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.AARCH64.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class AArch64HostedPatcherFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

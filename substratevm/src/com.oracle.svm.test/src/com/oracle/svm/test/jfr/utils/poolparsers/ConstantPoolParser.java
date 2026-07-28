@@ -59,6 +59,10 @@ public abstract class ConstantPoolParser {
         assertFalse("ID " + id + " is reserved and must not be found in " + this + " constant pool.", reservedIds.contains(id));
     }
 
+    public boolean hasFoundId(long id) {
+        return foundIds.contains(id);
+    }
+
     protected void addExpectedId(JfrType typeId, long id) {
         ConstantPoolParser poolParser = parser.getSupportedConstantPools().get(typeId.getId());
         poolParser.expectedIds.add(id);

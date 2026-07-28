@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 
 public class PrettyPrinterTest {
 

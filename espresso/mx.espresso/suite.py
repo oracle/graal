@@ -300,6 +300,11 @@ suite = {
             "dependencies": [
                 "sdk:VMACCESS_GUEST",
             ],
+            "requiresConcealed": {
+                "java.base": [
+                    "sun.reflect.annotation",
+                ],
+            },
             "javaCompliance": "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },

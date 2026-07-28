@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -32,7 +34,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

@@ -247,6 +247,30 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testTableInitDeclarativeElementSegmentSecondInstantiation() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 1
+        // table.init 0 0
+        // i32.const 0
+        //
+        // (elem declare func 0)
+        final byte[] binary = getDefaultTableInitBuilder("41 00 41 00 41 01 FC 0C 00 00 41 00 0B").addElements("03 00 01 00").build();
+        runParserTest(binary, (context, source) -> {
+            Value module = context.eval(source);
+            module.newInstance();
+            Value main = module.newInstance().getMember("exports").getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expect out of bounds error", e.getMessage().contains("out of bounds table access"));
+            }
+        });
+    }
+
+    @Test
     public void testCallNullValueAfterTableInit() throws IOException {
         // main:
         // i32.const 0
@@ -527,6 +551,26 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
             } catch (PolyglotException e) {
                 Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem segment"));
             }
+        });
+    }
+
+    @Test
+    public void testTableInitActiveElementSegmentZeroLength() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 0
+        // table.init 2 0
+        // i32.const 0
+        //
+        // (elem (i32.const 0) func)
+        // (elem func 0)
+        // (elem (table 0) (i32.const 0) func)
+        final byte[] binary = getDefaultTableInitBuilder("41 00 41 00 41 00 FC 0C 02 00 41 00 0B").addElements("00 41 00 0B 00").addElements("01 00 01 00").addElements("02 00 41 00 0B 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 0, result.asInt());
         });
     }
 

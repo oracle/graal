@@ -44,7 +44,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /**

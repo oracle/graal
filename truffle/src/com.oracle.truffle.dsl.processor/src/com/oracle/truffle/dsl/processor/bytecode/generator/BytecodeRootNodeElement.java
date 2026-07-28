@@ -96,6 +96,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIlle
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateWidth;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
@@ -314,7 +315,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             dataClasses.add(createCachedDataClass(instr, consts));
         }
         if (model.epilogExceptional != null) {
-            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
+            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction(), consts));
         }
         consts.addElementsTo(this);
 
@@ -758,23 +759,23 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * transition, and on continuation resumption (if enabled). The encoding is as follows:
      *
      * <pre>
-     * 00000000 00000000 SSSSSSSS SSSSSSSS BBBBBBBBB BBBBBBBBB BBBBBBBBB BBBBBBBBB
+     * SSSSSSSS SSSSSSSS SSSSSSSS SSSSSSSS BBBBBBBBB BBBBBBBBB BBBBBBBBB BBBBBBBBB
      * </pre>
      *
      * Where {@code B} represents the bci and {@code S} represents the sp.
      */
     static String encodeState(String bci, String sp) {
-        return String.format("((%s & 0xFFFFL) << 32) | (%s & 0xFFFFFFFFL)", sp, bci);
+        return String.format("((%s & 0xFFFFFFFFL) << 32) | (%s & 0xFFFFFFFFL)", sp, bci);
     }
 
     static final String RETURN_BCI = "0xFFFFFFFF";
 
     static String encodeReturnState(String sp) {
-        return String.format("((%s & 0xFFFFL) << 32) | %sL", sp, RETURN_BCI);
+        return String.format("((%s & 0xFFFFFFFFL) << 32) | %sL", sp, RETURN_BCI);
     }
 
     static String encodeNewBci(String bci, String state) {
-        return String.format("(%s & 0xFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
+        return String.format("(%s & 0xFFFFFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
     }
 
     static String decodeBci(String state) {
@@ -782,7 +783,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static String decodeSp(String state) {
-        return String.format("(short) (%s >>> 32)", state);
+        return String.format("((int) (%s >>> 32))", state);
     }
 
     CodeTreeBuilder emitCastBytecodeIndexToInt(CodeTreeBuilder b) {
@@ -1775,7 +1776,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
         Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                        .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+                        .sorted(Comparator.comparing(InstructionModel::getName)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
 
         List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
                         .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
@@ -1988,7 +1989,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             // we share execute methods with return type quickenings.
             return executeMethodName(instruction.quickeningBase, tier);
         }
-        return "execute" + instruction.getQualifiedQuickeningName() + (tier.isUncached() ? "$uncached" : "");
+        return "execute" + instruction.getQuickeningName() + (tier.isUncached() ? "$uncached" : "");
     }
 
     /**
@@ -2219,7 +2220,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             List<InstructionModel> topLevelInstructions = new ArrayList<>();
             List<InstructionModel> partitionableInstructions = new ArrayList<>();
             for (InstructionModel instruction : instructions) {
-                if (instruction.kind != InstructionKind.CUSTOM || instruction.operation.kind == OperationKind.CUSTOM_YIELD) {
+                if (instruction.kind != InstructionKind.CUSTOM || instruction.operation.kind == OperationKind.CUSTOM_YIELD ||
+                                instruction.operation.kind == OperationKind.CUSTOM_RETURN) {
                     topLevelInstructions.add(instruction);
                 } else {
                     partitionableInstructions.add(instruction);
@@ -2320,6 +2322,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return String.format("safeCastShort(%s)", value);
     }
 
+    static String safeCastUnsignedShort(String value) {
+        return String.format("safeCastUnsignedShort(%s)", value);
+    }
+
     // Helpers to generate common strings
     static CodeTree readInstruction(String bc, String bci) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -2363,7 +2369,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             case CONSTANT_LONG, CONSTANT_INT, CONSTANT_SHORT -> value;
             case CONSTANT_DOUBLE -> CodeTreeBuilder.createBuilder().startCall("Double.longBitsToDouble").tree(value).end().build();
             case CONSTANT_FLOAT -> CodeTreeBuilder.createBuilder().startCall("Float.intBitsToFloat").tree(value).end().build();
-            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParantheses().tree(value).string(" + " + (1 << 15)).end(2).build();
+            case CONSTANT_CHAR -> CodeTreeBuilder.createBuilder().startGroup().cast(type(char.class)).startParentheses().tree(value).string(" + " + (1 << 15)).end(2).build();
             case CONSTANT_BYTE -> CodeTreeBuilder.createBuilder().startGroup().cast(type(byte.class)).tree(value).end().build();
             case CONSTANT_BOOL -> CodeTreeBuilder.createBuilder().startGroup().tree(value).string(" != 0").end().build();
             default -> {
@@ -2372,18 +2378,41 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         };
     }
 
+    static CodeTree decodeRelativeBytecodeIndex(String bci, String rawOffset) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startGroup();
+        b.string(rawOffset);
+        b.string(" == (byte) 0xff ? -1 : ");
+        b.string(bci);
+        b.string(" - ((0xff & ");
+        b.string(rawOffset);
+        b.string(") << 1)");
+        b.end();
+        return b.build();
+    }
+
     static CodeTree readImmediate(String bc, String bci, InstructionImmediate immediate) {
         return readImmediateWithOffset(bc, bci, immediate, immediate.offset());
     }
 
     static CodeTree readImmediateWithOffset(String bc, String bci, InstructionImmediate immediate, int offset) {
+        if (immediate.fixedValue().isPresent()) {
+            return immediate.fixedValue().get().tree();
+        }
+        if (!immediate.isEncoded()) {
+            throw new AssertionError("Tried to read an immediate that is neither fixed nor encoded in the instruction: " + immediate);
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         String accessor = switch (immediate.kind().width) {
+            case NONE -> throw new AssertionError("Non-encoded immediates cannot be read.");
             case BYTE -> "getByte";
             case SHORT -> "getShort";
             case INT -> "getIntUnaligned";
             case LONG -> "getLongUnaligned";
         };
+        if (immediate.kind().isUnsigned()) {
+            b.startParentheses();
+        }
         b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
@@ -2397,6 +2426,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.startComment().string(" imm ", immediate.name(), " ").end();
         b.end();
         b.end();
+        if (immediate.kind().isUnsigned()) {
+            b.string(" & 0xffff");
+            b.end();
+        }
         return b.build();
     }
 
@@ -2413,8 +2446,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static CodeTree writeImmediate(String bc, String bci, CodeTree value, InstructionImmediateEncoding immediate) {
+        if (immediate.width() == ImmediateWidth.NONE) {
+            throw new AssertionError("Non-encoded immediates cannot be written.");
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         String accessor = switch (immediate.width()) {
+            case NONE -> throw new AssertionError("Non-encoded immediates cannot be written.");
             case BYTE -> "putByte";
             case SHORT -> "putShort";
             case INT -> "putInt";
@@ -2485,6 +2522,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     static String readShortSafe(String array, String index) {
         return String.format("SAFE_BYTES.getShort(%s, %s)", array, index);
+    }
+
+    static String readUnsignedShortSafe(String array, String index) {
+        return String.format("(SAFE_BYTES.getShort(%s, %s) & 0xffff)", array, index);
     }
 
     static String readByteSafe(String array, String index) {
@@ -2731,7 +2772,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     CodeTree hasContinuationFrame(String frameName) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-            b.startParantheses();
+            b.startParentheses();
         }
         b.startCall(frameName, "isObject").string(BytecodeRootNodeElement.CONTINUATION_FRAME_INDEX).end();
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
@@ -2827,7 +2868,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                     b.startNew("LocalVariableImpl");
                     b.tree(localBytecodeNode);
                     b.startGroup();
-                    b.startParantheses().tree(localIndex).end();
+                    b.startParentheses().tree(localIndex).end();
                     b.string(" * LOCALS_LENGTH");
                     b.end();
                     b.end();
@@ -2849,8 +2890,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return switch (instr.kind) {
             case RETURN, YIELD, TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
             case CUSTOM -> {
-                if (instr.operation.kind == OperationKind.CUSTOM_YIELD) {
-                    // custom yield always needs to set the bci
+                if (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN) {
+                    // custom yield/return always need to set the bci
                     yield true;
                 }
                 CustomOperationModel custom = instr.operation.customModel;

@@ -94,9 +94,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/prims/upcallLinker.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/prims/upcallLinker.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+17/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
 
@@ -224,7 +224,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          */
         assert !savedRegisters.contains(registers.methodHandleOrReceiver());
         assert !savedRegisters.contains(registers.isolate());
-        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
+        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
                         ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));

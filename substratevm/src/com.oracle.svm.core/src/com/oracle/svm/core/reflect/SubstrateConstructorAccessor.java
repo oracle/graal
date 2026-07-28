@@ -35,6 +35,7 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 
 import jdk.internal.reflect.ConstructorAccessor;
+import jdk.internal.vm.annotation.Hidden;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class SubstrateConstructorAccessor extends SubstrateAccessor implements ConstructorAccessor {
@@ -68,13 +69,11 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
     }
 
     /**
-     * This variant of {@link #newInstance(Object[])} is considered @Hidden by
-     * {@link com.oracle.svm.core.jdk.StackTraceUtils#shouldShowFrame(Class, String, boolean, boolean)}.
-     * This is important when this is called as part of the method handle implementation where this
-     * frame is not expected to appear.
-     *
-     * When @Hidden becomes available per-method (GR-76134) we should use that annotation instead.
+     * This variant of {@link #newInstance(Object[])} is @Hidden. This is important when this is
+     * called as part of the method handle implementation where this frame is not expected to
+     * appear.
      */
+    @Hidden
     public Object methodHandleNewInstance(Object[] args) {
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
@@ -91,6 +90,7 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
     }
 
     @Override
+    @Hidden
     public Object methodHandleInvokeSpecial(Object obj, Object[] args) {
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));

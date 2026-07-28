@@ -787,7 +787,8 @@ public abstract class Instruction {
         @SuppressWarnings("dangling-doc-comments")
         public record BranchProfile(
                         /**
-                         * The index of the profile for the branch profile table.
+                         * The index of the profile for the branch profile table, or {@code -1} if
+                         * no profile is associated with the instruction.
                          *
                          * @since 24.2
                          */

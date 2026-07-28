@@ -5,16 +5,16 @@ permalink: /support/
 
 # Support
 
+Oracle GraalVM publishes feature releases monthly on the innovation release line to preview new capabilities and collect early feedback before they are considered for a future LTS release.
+For planned release dates, see the [Oracle GraalVM release calendar](https://docs.oracle.com/en/graalvm/release-calendar.html).
+
 ## Available Distributions
 
-Oracle GraalVM 25 is based on Oracle JDK 25.
-Each release of Oracle GraalVM 25 includes all Oracle Java critical patch updates (CPUs), which are provided on a regular schedule to remedy defects and known vulnerabilities.
-
-Oracle GraalVM 25 is available for Linux and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
+Oracle GraalVM innovation release is available for Linux and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
 
 ## Certified Platforms
 
-Oracle GraalVM 25 is certified on the following platforms:
+Oracle GraalVM innovation release is certified on the following platforms:
 
 **Linux**
 
@@ -23,11 +23,9 @@ Oracle GraalVM 25 is certified on the following platforms:
 | Oracle Linux 10                 | AArch64, x64        |
 | Oracle Linux 9                  | AArch64, x64        |
 | Oracle Linux 8                  | AArch64, x64        |
-| Oracle Linux 7                  | x64                 |
 | Red Hat Enterprise Linux 10     | AArch64, x64        |
 | Red Hat Enterprise Linux 9      | AArch64, x64        |
 | Red Hat Enterprise Linux 8      | AArch64, x64        |
-| Red Hat Enterprise Linux 7      | x64                 |
 | Ubuntu Linux 24.10              | x64                 |
 | Ubuntu Linux 24.04 LTS          | x64                 |
 
@@ -35,6 +33,7 @@ Oracle GraalVM 25 is certified on the following platforms:
 
 | Platform | CPU Architecture(s) |
 |----------|---------------------|
+| macOS 26 | AArch64             |
 | macOS 15 | AArch64             |
 | macOS 14 | AArch64             |
 | macOS 13 | AArch64             |
@@ -52,7 +51,7 @@ Oracle GraalVM 25 is certified on the following platforms:
 
 ## Related Technologies
 
-Additional open source language runtimes designed for use with Oracle GraalVM 25 are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
+Additional open source language runtimes designed for use with Oracle GraalVM innovation release are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
 
 ## Licensing
 

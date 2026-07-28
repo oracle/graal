@@ -62,7 +62,9 @@ public @interface TruffleToLibGraal {
      */
     // Please keep sorted
     enum Id {
+        CompilerOptionExists,
         DoCompile,
+        GetCompilationId,
         GetCompilerConfigurationFactoryName,
         GetCompilerVersion,
         GetDataPatchesCount,
@@ -73,22 +75,20 @@ public @interface TruffleToLibGraal {
         GetNodeCount,
         GetNodeTypes,
         GetSuppliedString,
-        GetCompilationId,
         GetTargetCodeSize,
         GetTotalFrameSize,
-        InitializeIsolate,
         InitializeCompiler,
-        RegisterRuntime,
-        ListCompilerOptions,
-        CompilerOptionExists,
-        ValidateCompilerOption,
+        InitializeIsolate,
         InitializeRuntime,
         InstallTruffleCallBoundaryMethod,
         InstallTruffleReservedOopMethod,
+        ListCompilerOptions,
         NewCompiler,
         PendingTransferToInterpreterOffset,
         PurgePartialEvaluationCaches,
-        Shutdown;
+        RegisterRuntime,
+        Shutdown,
+        ValidateCompilerOption;
 
         public String getMethodName() {
             return Character.toLowerCase(name().charAt(0)) + name().substring(1);

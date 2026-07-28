@@ -33,7 +33,7 @@ import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -121,6 +121,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         /**
          * Returns the type of the value, describing how to access the value.
          */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public ValueType getType() {
             return type;
         }
@@ -220,7 +221,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
     /* These are used only for constructing/encoding the code and frame info, or as cache. */
     private ResolvedJavaMethod sourceMethod;
 
-    private int sourceMethodModifiers;
     private String sourceMethodSignature;
 
     public FrameInfoQueryResult() {
@@ -245,7 +245,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         sourceMethodId = 0;
         sourceMethod = null;
         sourceMethodSignature = Encoders.INVALID_METHOD_SIGNATURE;
-        sourceMethodModifiers = Encoders.INVALID_METHOD_MODIFIERS;
     }
 
     /**
@@ -393,13 +392,13 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "Identity comparison against sentinel string value")
-    void setSourceFields(Class<?> clazz, String methodName, String signature, int modifiers) {
+    void setSourceFields(Class<?> clazz, String methodName, String signature, int flags) {
         assert sourceClass == Encoders.INVALID_CLASS && sourceMethodName == Encoders.INVALID_METHOD_NAME && sourceMethodSignature == Encoders.INVALID_METHOD_SIGNATURE &&
-                        sourceMethodModifiers == Encoders.INVALID_METHOD_MODIFIERS;
+                        sourceMethodFlags == Encoders.INVALID_METHOD_MODIFIERS;
         this.sourceClass = clazz;
         this.sourceMethodName = methodName;
         this.sourceMethodSignature = signature;
-        this.sourceMethodModifiers = modifiers;
+        this.sourceMethodFlags = flags;
     }
 
     ResolvedJavaMethod getSourceMethod() {
@@ -421,12 +420,6 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getSourceMethodId() {
         return sourceMethodId;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public int getSourceMethodModifiers() {
-        fillSourceFieldsIfMissing();
-        return sourceMethodModifiers;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

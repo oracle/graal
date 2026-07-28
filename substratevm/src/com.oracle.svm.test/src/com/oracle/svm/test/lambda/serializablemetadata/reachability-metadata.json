@@ -1,0 +1,37 @@
+{
+  "reflection": [
+    {
+      "type": {
+        "lambda": {
+          "declaringClass": "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$LambdaFactory",
+          "declaringMethod": {
+            "name": "createLambda",
+            "parameterTypes": []
+          },
+          "interfaces": [
+            "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$SerializableFunction"
+          ]
+        }
+      },
+      "serializable": true
+    },
+    {
+      "type": {
+        "lambda": {
+          "declaringClass": "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$LambdaFactory",
+          "declaringMethod": {
+            "name": "createCapturedLambda",
+            "parameterTypes": [
+              "int",
+              "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$CapturedValue"
+            ]
+          },
+          "interfaces": [
+            "com.oracle.svm.test.lambda.SerializableLambdaReachabilityMetadataTest$SerializableFunction"
+          ]
+        }
+      },
+      "serializable": true
+    }
+  ]
+}

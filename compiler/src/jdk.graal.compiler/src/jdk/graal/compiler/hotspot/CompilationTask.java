@@ -36,6 +36,8 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -168,6 +170,44 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         @Override
         protected void exitHostVM(int status) {
             HotSpotGraalServices.exit(status, jvmciRuntime);
+        }
+
+        @Override
+        protected boolean requestExitVMOnCompilationFailure() {
+            /*
+             * Request VM exit with status -1 from a separate thread before normal VM shutdown can
+             * finish with status 0. The new thread reaches HotSpotGraalRuntime.shutdown() and
+             * waits in outputDirectory.close() while the current compiler thread writes failure
+             * diagnostics inside the caller's diagnostics output scope. Closing that scope lets the
+             * thread running HotSpotGraalServices.exit archive and delete the diagnostics
+             * directory after those files are complete.
+             */
+            CountDownLatch exitStarted = new CountDownLatch(1);
+            AtomicBoolean exitRequested = new AtomicBoolean();
+            Thread exitThread = new HotSpotGraalServiceThread(() -> {
+                exitRequested.set(true);
+                exitStarted.countDown();
+                HotSpotGraalServices.exit(-1, jvmciRuntime);
+            }) {
+                @Override
+                protected void onAttachError(InternalError error) {
+                    exitStarted.countDown();
+                    super.onAttachError(error);
+                }
+            };
+            exitThread.setName("GraalExitVMOnCompilationFailure");
+            exitThread.setDaemon(false);
+            try {
+                exitThread.start();
+            } catch (Throwable t) {
+                return false;
+            }
+            try {
+                exitStarted.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return exitRequested.get();
         }
 
         @Override

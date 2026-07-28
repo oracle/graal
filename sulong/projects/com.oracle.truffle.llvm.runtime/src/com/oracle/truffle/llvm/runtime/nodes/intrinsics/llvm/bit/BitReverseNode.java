@@ -1,0 +1,122 @@
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit;
+
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI1NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.BitReverseNodeFactory.BitReverseVectorNodeGen;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+
+public abstract class BitReverseNode {
+
+    public static TypedBuiltinFactory getFactory(PrimitiveKind type) {
+        if (type == null) {
+            return null;
+        }
+        switch (type) {
+            case I1:
+                return TypedBuiltinFactory.simple1(BitReverseI1NodeGen::create);
+            case I32:
+                return TypedBuiltinFactory.vector1(BitReverseI32NodeGen::create, BitReverseVectorNodeGen::create);
+            case I64:
+                return TypedBuiltinFactory.vector1(BitReverseI64NodeGen::create, BitReverseVectorNodeGen::create);
+            default:
+                return null;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseI1Node extends LLVMBuiltin {
+
+        @Specialization
+        protected boolean doI1(boolean value) {
+            return value;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseI32Node extends LLVMBuiltin {
+
+        @Specialization
+        protected int doI32(int value) {
+            return Integer.reverse(value);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseI64Node extends LLVMBuiltin {
+
+        @Specialization
+        protected long doI64(long value) {
+            return Long.reverse(value);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class BitReverseVectorNode extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        BitReverseVectorNode(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doI32(LLVMI32Vector value) {
+            assert value.getLength() == vectorLength;
+            int[] result = new int[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Integer.reverse(value.getValue(i));
+            }
+            return LLVMI32Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doI64(LLVMI64Vector value) {
+            assert value.getLength() == vectorLength;
+            long[] result = new long[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Long.reverse(value.getValue(i));
+            }
+            return LLVMI64Vector.create(result);
+        }
+    }
+}

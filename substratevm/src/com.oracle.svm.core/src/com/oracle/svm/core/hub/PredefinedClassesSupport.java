@@ -53,7 +53,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -159,12 +159,26 @@ public final class PredefinedClassesSupport {
          */
         if (Serializable.class.isAssignableFrom(lambdaClass) &&
                         SerializationSupport.currentLayer().isLambdaCapturingClassRegistered(LambdaUtils.capturingClass(lambdaClass.getName()))) {
-            try {
-                Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
-                RuntimeReflection.register(serializeLambdaMethod);
-            } catch (NoSuchMethodException e) {
-                throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
+            registerLambdaWriteReplaceForSerialization(lambdaClass);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerSerializableLambdasForCapturingClass(String lambdaCapturingClass) {
+        for (Class<?> clazz : singleton().predefinedClassesByHash.getValues()) {
+            if (LambdaUtils.isLambdaClass(clazz) && Serializable.class.isAssignableFrom(clazz) && LambdaUtils.capturingClass(clazz.getName()).equals(lambdaCapturingClass)) {
+                registerLambdaWriteReplaceForSerialization(clazz);
             }
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void registerLambdaWriteReplaceForSerialization(Class<?> lambdaClass) {
+        try {
+            Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
+            RuntimeReflection.register(serializeLambdaMethod);
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
         }
     }
 

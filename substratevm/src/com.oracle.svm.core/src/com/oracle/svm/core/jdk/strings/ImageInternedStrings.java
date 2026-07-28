@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.core.jdk.strings;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
@@ -94,7 +93,6 @@ public class ImageInternedStrings {
  * already registered.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class ImageInternedStringsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

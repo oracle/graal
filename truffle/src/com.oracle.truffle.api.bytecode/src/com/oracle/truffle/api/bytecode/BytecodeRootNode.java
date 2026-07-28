@@ -45,6 +45,9 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -79,6 +82,45 @@ public interface BytecodeRootNode {
      * @since 24.2
      */
     Object execute(VirtualFrame frame);
+
+    /**
+     * Optional hook invoked to convert a value received from tag instrumentation before it resumes
+     * guest-language execution. Instruments can introduce values by returning a non-{@code null}
+     * value from an unwind callback such as
+     * {@link ExecutionEventNode#onUnwind(VirtualFrame, Object)} or
+     * {@link ExecutionEventListener#onUnwind(EventContext, VirtualFrame, Object)}. Such values are
+     * interop values and may need to be converted to a representation supported by the guest
+     * language.
+     *
+     * @param value the interop value received from tag instrumentation
+     * @return the value to resume execution with
+     * @see EventContext#createUnwind(Object)
+     * @since 25.2
+     */
+    @SuppressWarnings("unused")
+    default Object interceptIncomingValue(Object value) {
+        return value;
+    }
+
+    /**
+     * Optional hook invoked to convert every guest-language value before it is exposed to tag
+     * instrumentation. This can be used to replace an internal representation with an
+     * interop-capable value. The original value continues to be used for guest-language execution.
+     * <p>
+     * The returned value must be an interop value or {@code null}. For values reported after
+     * successful execution of a standard tag, this requirement is checked when Java assertions are
+     * enabled, and a violation results in a {@link ClassCastException}. Values not subject to this
+     * check are passed to tag instrumentation unchanged. The hook is not invoked when the
+     * instrumented operation does not produce a value.
+     *
+     * @param value the guest-language value being exposed to tag instrumentation
+     * @return the interop value to report to tag instrumentation
+     * @since 25.2
+     */
+    @SuppressWarnings("unused")
+    default Object interceptOutgoingValue(Object value) {
+        return value;
+    }
 
     /**
      * Optional hook invoked when a {@link ControlFlowException} is thrown during execution. This

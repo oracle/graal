@@ -145,7 +145,7 @@ public class LLVMSymtab extends LLVMSection implements SymbolTable {
     }
 
     @Override
-    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
+    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode, boolean isExported) {
         assert referencedSection != null;
         return addEntry(new Entry(name, referencedOffset, size, (LLVMSection) referencedSection));
     }

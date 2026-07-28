@@ -29,7 +29,7 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HE
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.VARIABLY_SIZED_DATA;
-import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
+import static com.oracle.svm.shared.util.UnsignedUtils.roundUp;
 import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.word.Pointer;
@@ -39,7 +39,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.shared.Uninterruptible;

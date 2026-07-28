@@ -50,7 +50,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
@@ -60,10 +60,6 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -100,7 +96,6 @@ import sun.invoke.util.Wrapper;
  * {@code Target_java_lang_invoke_MethodHandleNatives}).
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 @SuppressWarnings("unused")
 public class MethodHandleFeature implements InternalFeature {
 

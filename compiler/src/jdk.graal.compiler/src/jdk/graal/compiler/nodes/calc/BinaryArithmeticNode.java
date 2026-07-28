@@ -53,6 +53,8 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
+import jdk.graal.compiler.vector.nodes.simd.SimdBroadcastNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.meta.Constant;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
@@ -78,6 +80,21 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         ArithmeticOpTable table = getArithmeticOpTable(forX);
         assert table.equals(getArithmeticOpTable(forY)) : Assertions.errorMessage("Invalid table ops", forX, table, forY, getArithmeticOpTable(forY));
         return getOp(table);
+    }
+
+    /**
+     * Creates an integer constant compatible with either a scalar integer stamp or a SIMD stamp with
+     * integer lanes.
+     */
+    public static ValueNode createIntegerConstant(Stamp stamp, long value) {
+        if (stamp instanceof IntegerStamp) {
+            return ConstantNode.forIntegerStamp(stamp, value);
+        } else if (stamp instanceof SimdStamp simdStamp) {
+            Stamp componentStamp = simdStamp.getComponent(0);
+            GraalError.guarantee(componentStamp instanceof IntegerStamp, "expected integer SIMD component stamp: %s", componentStamp);
+            return new SimdBroadcastNode(ConstantNode.forIntegerStamp(componentStamp, value), simdStamp.getVectorLength());
+        }
+        throw GraalError.shouldNotReachHereUnexpectedValue(stamp); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -166,6 +183,14 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return umax(v1, v2, view);
         } else if (IntegerStamp.OPS.getUMin().equals(op)) {
             return umin(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSAdd().equals(op)) {
+            return SaturatingAddNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSSub().equals(op)) {
+            return SaturatingSubNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSUAdd().equals(op)) {
+            return SaturatingUAddNode.create(v1, v2, view);
+        } else if (IntegerStamp.OPS.getSUSub().equals(op)) {
+            return SaturatingUSubNode.create(v1, v2, view);
         } else if (Arrays.asList(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryIntegerOp is not implemented yet", op));
         } else {
@@ -585,6 +610,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof UnsignedMaxNode) {
             // Re-association from "umax(x, umax(y, C))" to "umax(umax(x, y), C)"
             return UnsignedMaxNode.create(matchValue, UnsignedMaxNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof SaturatingUAddNode) {
+            return SaturatingUAddNode.create(matchValue, SaturatingUAddNode.create(otherValue1, otherValue2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node); // ExcludeFromJacocoGeneratedReport
         }
@@ -702,6 +729,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return UnsignedMaxNode.create(a, UnsignedMaxNode.create(m1, m2, view), view);
         } else if (node instanceof UnsignedMinNode) {
             return UnsignedMinNode.create(a, UnsignedMinNode.create(m1, m2, view), view);
+        } else if (node instanceof SaturatingUAddNode) {
+            return SaturatingUAddNode.create(a, SaturatingUAddNode.create(m1, m2, view), view);
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node); // ExcludeFromJacocoGeneratedReport
         }

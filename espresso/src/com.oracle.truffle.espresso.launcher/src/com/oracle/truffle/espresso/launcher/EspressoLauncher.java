@@ -183,6 +183,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
+        boolean isEnableImplicitInteropSet = false;
         int javaAgentIndex = 0;
         boolean heapDumpOnOutOfMemoryError = false;
         String heapDumpPath = null;
@@ -310,6 +311,11 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     unrecognized.add(args.getArg());
                     break;
 
+                case "--java.EnableImplicitInterop":
+                    isEnableImplicitInteropSet = true;
+                    unrecognized.add(args.getArg());
+                    break;
+
                 case "--enable-preview":
                     espressoOptions.put("java.EnablePreview", "true");
                     break;
@@ -427,6 +433,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             // checks and can use unsafe casts. Cmd line args have precedence over this default
             // value.
             espressoOptions.put("engine.RelaxStaticObjectSafetyChecks", "true");
+        }
+
+        if (!isEnableImplicitInteropSet) {
+            // Disable implicit interop by default to improve performance. Cmd line args can
+            // override this
+            espressoOptions.put("java.EnableImplicitInterop", "false");
         }
 
         if (heapDumpOnOutOfMemoryError) {

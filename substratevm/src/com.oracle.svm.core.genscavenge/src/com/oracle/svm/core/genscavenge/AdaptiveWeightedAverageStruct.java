@@ -34,7 +34,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /**
  * This class provides a raw structure implementation of {@link AdaptiveWeightedAverage}. For

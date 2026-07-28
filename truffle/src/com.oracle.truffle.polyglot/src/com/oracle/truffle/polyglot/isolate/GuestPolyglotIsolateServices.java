@@ -47,11 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.nativebridge.Peer;
@@ -81,16 +77,6 @@ import com.oracle.truffle.polyglot.isolate.GuestPolyglotIsolateServices.GuestPol
 @CContext(value = GuestPolyglotIsolateServicesDirective.class)
 final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
 
-    // Mapping of standard HotSpot X options into SVM options
-    private static final Map<String, String> XOPTIONS;
-    static {
-        Map<String, String> m = new HashMap<>();
-        m.put("Xms", "MinHeapSize");
-        m.put("Xmx", "MaxHeapSize");
-        m.put("Xmn", "MaxNewSize");
-        m.put("Xss", "StackSize");
-        XOPTIONS = m;
-    }
     private static final String HEAP_DUMP_PREFIX = "polyglotisolate-heapdump-";
     private static final String HEAP_DUMP_EXT = ".hprof";
 
@@ -135,12 +121,6 @@ final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
 
     @Override
     public void initialize(PolyglotHostServices polyglotHostServices, String internalResources) {
-        /*
-         * Explicitly deactivate signal handling as it is done by Hotspot - required for espresso,
-         * which does not use a LanguageLibraryConfig
-         */
-        RuntimeOptions.set("EnableSignalHandling", false);
-        RuntimeOptions.set("InstallSegfaultHandler", false);
         if (internalResources != null) {
             System.setProperty("polyglot.engine.resourcePath", internalResources);
         }
@@ -160,7 +140,7 @@ final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
         Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, systemPropertiesOptions, useSystemProperties, allowExperimentalOptions, boundEngine,
                         true, messageInterceptor, logHandler, hostLanguage, false, false, polyglotHostService, null);
         Object engineReceiver = polyglot.getAPIAccess().getEngineReceiver(engine);
-        setVMOptions(sandboxPolicy, engineReceiver);
+        verifySandboxVMOptions(engineReceiver);
         GuestEngine guestEngine = new GuestEngine(engine);
         long handle = ReferenceHandles.create(guestEngine);
         guestEngine.setHandle(handle);
@@ -168,44 +148,35 @@ final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
         return handle;
     }
 
-    private static void setVMOptions(SandboxPolicy sandboxPolicy, Object engineReceiver) {
+    private static void verifySandboxVMOptions(Object engineReceiver) {
         OptionValues engineOptionValues = PolyglotIsolateAccessor.ENGINE.getEngineOptionValues(engineReceiver);
-        Set<Map.Entry<String, String>> vmOptions = engineOptionValues.get(PolyglotIsolateAccessor.ENGINE.getIsolateOptionOption()).entrySet();
-        assert SandboxPolicy.CONSTRAINED.isStricterOrEqual(sandboxPolicy) || vmOptions.isEmpty() : "SandboxPolicy ISOLATED or UNTRUSTED must not have vm options.";
-        if (!vmOptions.isEmpty()) {
-            for (Map.Entry<String, String> vmOption : vmOptions) {
-                String givenOptionName = vmOption.getKey();
-                String useOptionName = XOPTIONS.getOrDefault(givenOptionName, givenOptionName);
-
-                RuntimeOptions.Descriptor optionDescriptor = RuntimeOptions.getDescriptor(useOptionName);
-                if (optionDescriptor == null) {
-                    List<String> supportedOptions = new ArrayList<>();
-                    RuntimeOptions.listDescriptors().forEach((d) -> supportedOptions.add(d.name()));
-                    throw new IllegalArgumentException(String.format("Unknown option %s. Supported options: %s", useOptionName, String.join(", ", supportedOptions)));
-                }
-                Object optionValue;
-                try {
-                    optionValue = optionDescriptor.convertValue(vmOption.getValue());
-                } catch (IllegalArgumentException ia) {
-                    throw new IllegalArgumentException(String.format("Failed to parse %s option. %s", givenOptionName, ia.getMessage()));
-                }
-                RuntimeOptions.set(useOptionName, optionValue);
-            }
-        }
-        long xmX = engineOptionValues.get(PolyglotIsolateAccessor.ENGINE.getMaxIsolateMemoryOption());
-        if (xmX != -1) {
-            RuntimeOptions.set("MaxHeapSize", xmX);
+        long maxIsolateMemory = engineOptionValues.get(PolyglotIsolateAccessor.ENGINE.getMaxIsolateMemoryOption());
+        long maxHeapSize = RuntimeOptions.get("MaxHeapSize");
+        if (maxIsolateMemory != -1 && maxHeapSize != maxIsolateMemory) {
+            throw new IllegalStateException(String.format("The runtime option 'MaxHeapSize' is %d, but 'engine.MaxIsolateMemory' requires %d.", maxHeapSize, maxIsolateMemory));
         }
         Enum<?> untrustedCodePolicy = engineOptionValues.get(PolyglotIsolateAccessor.ENGINE.getUntrustedCodeMitigationOption());
         if (PolyglotIsolateAccessor.ENGINE.isUntrustedCodeMitigationPolicySoftware(untrustedCodePolicy)) {
             // memory masking is only implemented on AMD64
             if (Platform.includedIn(Platform.AMD64.class)) {
-                RuntimeOptions.set("MemoryMaskingAndFencing", true);
+                if (!RuntimeOptions.<Boolean> get("MemoryMaskingAndFencing")) {
+                    throw new IllegalStateException("The runtime option 'MemoryMaskingAndFencing' must be enabled when 'engine.UntrustedCodeMitigation=software' is set.");
+                }
             } else {
-                RuntimeOptions.set("SpectrePHTBarriers", SpectrePHTMitigations.GUARD_TARGETS);
+                Object spectrePHTBarriers = RuntimeOptions.get("SpectrePHTBarriers");
+                if (spectrePHTBarriers != SpectrePHTMitigations.GUARD_TARGETS) {
+                    throw new IllegalStateException(String.format(
+                                    "The runtime option 'SpectrePHTBarriers' is '%s', but must be 'GuardTargets' when 'engine.UntrustedCodeMitigation=software' is set.", spectrePHTBarriers));
+                }
             }
-            RuntimeOptions.set("BlindConstants", true);
-            RuntimeOptions.set("MaxRuntimeCodeOffset", 128);
+            if (!RuntimeOptions.<Boolean> get("BlindConstants")) {
+                throw new IllegalStateException("The runtime option 'BlindConstants' must be enabled when 'engine.UntrustedCodeMitigation=software' is set.");
+            }
+            int maxRuntimeCodeOffset = RuntimeOptions.get("MaxRuntimeCodeOffset");
+            if (maxRuntimeCodeOffset < 128) {
+                throw new IllegalStateException(String.format(
+                                "The runtime option 'MaxRuntimeCodeOffset' is %d, but must be at least 128 when 'engine.UntrustedCodeMitigation=software' is set.", maxRuntimeCodeOffset));
+            }
         }
     }
 

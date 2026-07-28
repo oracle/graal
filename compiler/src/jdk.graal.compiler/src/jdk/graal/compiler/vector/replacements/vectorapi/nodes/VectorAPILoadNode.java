@@ -76,6 +76,9 @@ public class VectorAPILoadNode extends VectorAPIMacroNode implements Canonicaliz
     private static final int VMCLASS_ARG_INDEX = 0;
     private static final int ECLASS_ARG_INDEX = 1;
     private static final int LENGTH_ARG_INDEX = 2;
+    private static final int BASE_ARG_INDEX = 3;
+    private static final int FROM_SEGMENT_ARG_INDEX = 5;
+    private static final int CONTAINER_ARG_INDEX = 6;
 
     protected VectorAPILoadNode(MacroParams p, SimdStamp loadStamp, VectorAPIType loadType, AddressNode address, LocationIdentity location, FrameState stateAfter) {
         super(TYPE, p, null /* can't constant fold loads */);
@@ -86,9 +89,11 @@ public class VectorAPILoadNode extends VectorAPIMacroNode implements Canonicaliz
         this.stateAfter = stateAfter;
     }
 
-    public static VectorAPILoadNode create(MacroParams params, VectorAPIType loadType, AddressNode address, LocationIdentity location, CoreProviders providers) {
+    public static VectorAPILoadNode create(MacroParams params, VectorAPIType loadType, AddressNode address, CoreProviders providers) {
         SimdStamp loadStamp = improveVectorStamp(null, params.arguments, VMCLASS_ARG_INDEX, ECLASS_ARG_INDEX, LENGTH_ARG_INDEX, providers);
-        return new VectorAPILoadNode(params, loadStamp, loadType, address, location, null);
+        AddressNode newAddress = improveAddress(address);
+        LocationIdentity location = VectorAPIUtils.memoryLocationIdentity(params.arguments[BASE_ARG_INDEX], params.arguments[CONTAINER_ARG_INDEX], params.arguments[FROM_SEGMENT_ARG_INDEX]);
+        return new VectorAPILoadNode(params, loadStamp, loadType, newAddress, location, null);
     }
 
     @Override
@@ -112,10 +117,11 @@ public class VectorAPILoadNode extends VectorAPIMacroNode implements Canonicaliz
         ObjectStamp newSpeciesStamp = improveSpeciesStamp(tool, VMCLASS_ARG_INDEX);
         SimdStamp newLoadStamp = improveVectorStamp(loadStamp, toArgumentArray(), VMCLASS_ARG_INDEX, ECLASS_ARG_INDEX, LENGTH_ARG_INDEX, tool);
         AddressNode newAddress = improveAddress(address);
-        if (newSpeciesStamp != speciesStamp || newLoadStamp != loadStamp || newAddress != address) {
+        LocationIdentity newLocation = VectorAPIUtils.memoryLocationIdentity(getArgument(BASE_ARG_INDEX), getArgument(CONTAINER_ARG_INDEX), getArgument(FROM_SEGMENT_ARG_INDEX));
+        if (newSpeciesStamp != speciesStamp || newLoadStamp != loadStamp || newAddress != address || !newLocation.equals(location)) {
             ValueNode vmClass = arguments.get(VMCLASS_ARG_INDEX);
             VectorAPIType newLoadType = VectorAPIType.ofConstant(vmClass, tool);
-            return new VectorAPILoadNode(copyParamsWithImprovedStamp(newSpeciesStamp), newLoadStamp, newLoadType, newAddress, location, stateAfter());
+            return new VectorAPILoadNode(copyParamsWithImprovedStamp(newSpeciesStamp), newLoadStamp, newLoadType, newAddress, newLocation, stateAfter());
         }
         return this;
     }

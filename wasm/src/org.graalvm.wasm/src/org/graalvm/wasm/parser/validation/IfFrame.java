@@ -106,6 +106,7 @@ class IfFrame extends ControlFrame {
                 labelFixup.patch(location);
             }
         }
+        registerDelegateContinuationFixups(state, -1);
     }
 
     @Override

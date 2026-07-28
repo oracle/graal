@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Integer.highestOneBit;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.abs;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.max;

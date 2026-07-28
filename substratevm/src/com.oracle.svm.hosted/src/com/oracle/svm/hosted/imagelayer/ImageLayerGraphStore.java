@@ -57,8 +57,12 @@ public final class ImageLayerGraphStore {
         }
     }
 
-    public static ImageLayerGraphStore openForReading(FileChannel channel) {
-        return new ImageLayerGraphStore(channel, null);
+    public static ImageLayerGraphStore openForReading(Path snapshotGraphsPath) {
+        try {
+            return new ImageLayerGraphStore(FileChannel.open(snapshotGraphsPath), null);
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("Error opening layer snapshot graphs file " + snapshotGraphsPath, e);
+        }
     }
 
     public String write(byte[] encodedGraph) {

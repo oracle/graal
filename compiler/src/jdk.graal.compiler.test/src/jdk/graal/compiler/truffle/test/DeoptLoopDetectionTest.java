@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -49,11 +55,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -548,6 +557,342 @@ public class DeoptLoopDetectionTest {
             }
         }, 0, 1));
         Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
+    }
+
+    private static final class ConcurrentSpecializationRace {
+        final CountDownLatch staleWriterEntered = new CountDownLatch(1);
+        final CountDownLatch releaseStaleWriter = new CountDownLatch(1);
+        final AtomicInteger cacheInitializations = new AtomicInteger();
+    }
+
+    @GenerateInline(false)
+    abstract static class ConcurrentCachedNode extends Node {
+        final ConcurrentSpecializationRace race = new ConcurrentSpecializationRace();
+
+        abstract int execute(Object value);
+
+        @Specialization(guards = "cachedValue.value == value", limit = "1")
+        static int doInt(int value,
+                        @Bind Node node,
+                        @Cached("initialize(node, value)") CachedValue cachedValue) {
+            return cachedValue.value;
+        }
+
+        @Specialization(guards = "awaitStaleWriterRelease(node)")
+        static int doString(String value,
+                        @Bind Node node) {
+            return value.length();
+        }
+
+        static CachedValue initialize(Node node, int value) {
+            ((ConcurrentCachedNode) node).race.cacheInitializations.incrementAndGet();
+            return new CachedValue(value);
+        }
+
+        @NonIdempotent
+        @CompilerDirectives.TruffleBoundary
+        static boolean awaitStaleWriterRelease(Node node) {
+            ConcurrentSpecializationRace race = ((ConcurrentCachedNode) node).race;
+            race.staleWriterEntered.countDown();
+            try {
+                if (!race.releaseStaleWriter.await(10, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Timed out waiting to release stale state writer");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+            return true;
+        }
+    }
+
+    static final class ConcurrentGuard extends Node {
+        boolean execute(int value, @SuppressWarnings("unused") int guardIndex) {
+            return value == 42;
+        }
+
+        static ConcurrentGuard create() {
+            return new ConcurrentGuard();
+        }
+    }
+
+    @GenerateInline(false)
+    abstract static class ConcurrentGuardNode extends Node {
+        final ConcurrentSpecializationRace race = new ConcurrentSpecializationRace();
+
+        abstract int execute(Object value);
+
+        @Specialization(guards = "value == 0")
+        static int doStale(int value,
+                        @Bind Node node,
+                        @SuppressWarnings("unused") @Cached(value = "awaitStaleWriterRelease(node)", neverDefault = false) int cached) {
+            return value;
+        }
+
+        @Specialization(guards = {
+                        "guard.execute(value, 0)",
+                        "guard.execute(value, 1)",
+                        "guard.execute(value, 2)",
+                        "guard.execute(value, 3)",
+                        "guard.execute(value, 4)",
+                        "guard.execute(value, 5)",
+                        "guard.execute(value, 6)",
+                        "guard.execute(value, 7)",
+                        "guard.execute(value, 8)",
+                        "guard.execute(value, 9)",
+                        "guard.execute(value, 10)",
+                        "guard.execute(value, 11)",
+                        "guard.execute(value, 12)",
+                        "guard.execute(value, 13)",
+                        "guard.execute(value, 14)",
+                        "guard.execute(value, 15)",
+                        "guard.execute(value, 16)",
+                        "guard.execute(value, 17)",
+                        "guard.execute(value, 18)",
+                        "guard.execute(value, 19)",
+                        "guard.execute(value, 20)",
+                        "guard.execute(value, 21)",
+                        "guard.execute(value, 22)",
+                        "guard.execute(value, 23)",
+                        "guard.execute(value, 24)",
+                        "guard.execute(value, 25)",
+                        "guard.execute(value, 26)",
+                        "guard.execute(value, 27)",
+                        "guard.execute(value, 28)",
+                        "guard.execute(value, 29)"})
+        static int doGuarded(int value,
+                        @Shared("guard") @Cached(neverDefault = false) ConcurrentGuard guard) {
+            return value;
+        }
+
+        @Specialization(guards = "value == 41")
+        static int doShared(int value,
+                        @SuppressWarnings("unused") @Shared("guard") @Cached(neverDefault = false) ConcurrentGuard guard) {
+            return value;
+        }
+
+        @Fallback
+        static int doFallback(Object value) {
+            return (int) value;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        static int awaitStaleWriterRelease(Node node) {
+            ConcurrentSpecializationRace race = ((ConcurrentGuardNode) node).race;
+            race.staleWriterEntered.countDown();
+            try {
+                if (!race.releaseStaleWriter.await(10, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Timed out waiting to release stale state writer");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+            return 0;
+        }
+    }
+
+    @GenerateInline(false)
+    abstract static class ConcurrentSpecializationParentNode extends Node {
+        final ConcurrentSpecializationRace race = new ConcurrentSpecializationRace();
+
+        abstract int execute(Object value);
+
+        @Specialization
+        static int doInt(int value,
+                        @Bind Node node,
+                        @Cached ConcurrentSpecializationNode cachedNode) {
+            if (value == 0) {
+                return value;
+            }
+            return cachedNode.execute(node, value);
+        }
+
+        @Specialization(guards = "awaitStaleWriterRelease(node)")
+        static int doString(String value,
+                        @Bind Node node) {
+            return value.length();
+        }
+
+        @NonIdempotent
+        @CompilerDirectives.TruffleBoundary
+        static boolean awaitStaleWriterRelease(Node node) {
+            ConcurrentSpecializationRace race = ((ConcurrentSpecializationParentNode) node).race;
+            race.staleWriterEntered.countDown();
+            try {
+                if (!race.releaseStaleWriter.await(10, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Timed out waiting to release stale state writer");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+            return true;
+        }
+    }
+
+    @GenerateCached(false)
+    @GenerateInline
+    abstract static class ConcurrentSpecializationNode extends Node {
+        abstract int execute(Node node, int v);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "cachedValue.value == v", limit = "1")
+        static int doCached(Node node, int v,
+                        @Cached("initialize(node, v)") CachedValue cachedValue) {
+            return cachedValue.value;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(replaces = "doCached")
+        static int doGeneric(Node node, int v) {
+            return v;
+        }
+
+        static CachedValue initialize(Node node, int v) {
+            ((ConcurrentSpecializationParentNode) node).race.cacheInitializations.incrementAndGet();
+            return new CachedValue(v);
+        }
+    }
+
+    static final class CachedValue {
+        final int value;
+
+        CachedValue(int value) {
+            this.value = value;
+        }
+    }
+
+    @Test
+    public void testConcurrentCachedStateStabilizes() throws Exception {
+        ConcurrentCachedNode node = DeoptLoopDetectionTestFactory.ConcurrentCachedNodeGen.create();
+        ConcurrentSpecializationRace race = node.race;
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Integer> staleWriter = null;
+        try {
+            /*
+             * Pause the String specialization after it snapshots the node state. Publish the
+             * cached Integer specialization, then let the stale String writer erase only its
+             * activation bit. The separately published cached value remains installed.
+             */
+            staleWriter = executor.submit(() -> node.execute("x"));
+            assertTrue("Stale state writer did not reach its guard", race.staleWriterEntered.await(10, TimeUnit.SECONDS));
+            assertEquals(42, node.execute(42));
+            race.releaseStaleWriter.countDown();
+            assertEquals(1, staleWriter.get(10, TimeUnit.SECONDS).intValue());
+            assertEquals(1, race.cacheInitializations.get());
+
+            AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new BaseRootNode() {
+
+                @Child ConcurrentCachedNode cachedNode = node;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return cachedNode.execute(42);
+                }
+
+            }, "concurrentCachedState", (target) -> {
+                assertEquals(42, ((Integer) target.call()).intValue());
+                assertEquals(1, race.cacheInitializations.get());
+            }, 0, 1));
+            Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
+        } finally {
+            race.releaseStaleWriter.countDown();
+            if (staleWriter != null) {
+                staleWriter.cancel(true);
+            }
+            executor.shutdownNow();
+            assertTrue("Stale state writer did not terminate", executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    public void testConcurrentGuardStateStabilizes() throws Exception {
+        ConcurrentGuardNode node = DeoptLoopDetectionTestFactory.ConcurrentGuardNodeGen.create();
+        ConcurrentSpecializationRace race = node.race;
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Integer> staleWriter = null;
+        try {
+            /*
+             * Pause a specialization after it snapshots the first state word. Initialize the
+             * cached guards, then let the stale specialization erase their active state. The
+             * fallback activation is stored in a different state word and cannot repair it.
+             */
+            staleWriter = executor.submit(() -> node.execute(0));
+            assertTrue("Stale state writer did not reach its guard", race.staleWriterEntered.await(10, TimeUnit.SECONDS));
+            assertEquals(42, node.execute(42));
+            race.releaseStaleWriter.countDown();
+            assertEquals(0, staleWriter.get(10, TimeUnit.SECONDS).intValue());
+            assertEquals(43, node.execute(43));
+
+            AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new BaseRootNode() {
+
+                @Child ConcurrentGuardNode guardNode = node;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return guardNode.execute(43);
+                }
+
+            }, "concurrentGuardState", (target) -> {
+                assertEquals(43, ((Integer) target.call()).intValue());
+            }, 0, 1));
+            Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
+        } finally {
+            race.releaseStaleWriter.countDown();
+            if (staleWriter != null) {
+                staleWriter.cancel(true);
+            }
+            executor.shutdownNow();
+            assertTrue("Stale state writer did not terminate", executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    public void testConcurrentInlinedStateStabilizes() throws Exception {
+        ConcurrentSpecializationParentNode parentNode = DeoptLoopDetectionTestFactory.ConcurrentSpecializationParentNodeGen.create();
+        ConcurrentSpecializationRace race = parentNode.race;
+        assertEquals(0, parentNode.execute(0));
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Integer> staleWriter = null;
+        try {
+            /*
+             * Pause the String specialization after it snapshots the parent state. Specialize the
+             * inlined node, then let the stale parent writer erase only the inlined activation bit.
+             * The separately published cached value remains installed.
+             */
+            staleWriter = executor.submit(() -> parentNode.execute("x"));
+            assertTrue("Stale state writer did not reach its guard", race.staleWriterEntered.await(10, TimeUnit.SECONDS));
+            assertEquals(42, parentNode.execute(42));
+            race.releaseStaleWriter.countDown();
+            assertEquals(1, staleWriter.get(10, TimeUnit.SECONDS).intValue());
+            assertEquals(1, race.cacheInitializations.get());
+
+            AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new BaseRootNode() {
+
+                @Child ConcurrentSpecializationParentNode node = parentNode;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return node.execute(42);
+                }
+
+            }, "concurrentInlinedState", (target) -> {
+                assertEquals(42, ((Integer) target.call()).intValue());
+                assertEquals(1, race.cacheInitializations.get());
+            }, 0, 1));
+            Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
+        } finally {
+            race.releaseStaleWriter.countDown();
+            if (staleWriter != null) {
+                staleWriter.cancel(true);
+            }
+            executor.shutdownNow();
+            assertTrue("Stale state writer did not terminate", executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
     }
 
     private static final int MAX_EXECUTIONS = 1024;

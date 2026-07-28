@@ -48,9 +48,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
@@ -61,7 +58,7 @@ import jdk.internal.misc.Unsafe;
  */
 
 @TargetClass(java.nio.charset.CharsetEncoder.class)
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/charset/Charset-X-Coder.java.template")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/charset/Charset-X-Coder.java.template")
 final class Target_java_nio_charset_CharsetEncoder {
     @Alias @RecomputeFieldValue(kind = Reset) //
     private WeakReference<CharsetDecoder> cachedDecoder;
@@ -212,7 +209,6 @@ final class AtomicFieldUpdaterAccessCheck {
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

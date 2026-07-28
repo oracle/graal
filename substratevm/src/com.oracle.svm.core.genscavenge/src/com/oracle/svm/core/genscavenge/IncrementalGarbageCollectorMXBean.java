@@ -35,7 +35,7 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.sun.management.GcInfo;
 
 import sun.management.Util;

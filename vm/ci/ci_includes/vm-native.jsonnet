@@ -13,7 +13,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     timelimit: '35:00',
     name: 'gate-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
     logs+: [
-      "*/call_tree.txt.gz"
+      "*/call_tree.txt.gz",
+      "*/inverted_call_tree.txt.gz"
     ]
   },
 

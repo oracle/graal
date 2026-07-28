@@ -48,6 +48,23 @@ public class RistrettoConstants {
     public static final int COMPILE_STATE_COMPILED = 2;
 
     /**
+     * Marker value indicating that compilation hit a permanent bailout and must not be retried.
+     */
+    public static final int COMPILE_STATE_PERMANENT_BAILOUT = 3;
+
+    /**
+     * Marker value indicating that compilation consumed its bounded retry budget and must not be
+     * retried.
+     */
+    public static final int COMPILE_STATE_MAX_ATTEMPTS_REACHED = 4;
+
+    /**
+     * Maximum number of invocation-entry or per-OSR-target compilation submissions allowed for one
+     * method state.
+     */
+    public static final int COMPILE_STATE_MAX_ATTEMPTS = 255;
+
+    /**
      * Marker value indicating that we are currently initializing profile data for a given
      * {@link RistrettoCompilationRequest}.
      */

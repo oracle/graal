@@ -51,6 +51,7 @@ import org.graalvm.nativebridge.Isolate;
 import org.graalvm.nativebridge.IsolateDeathException;
 import org.graalvm.nativebridge.IsolateDeathHandler;
 import org.graalvm.nativebridge.IsolateThread;
+import org.graalvm.nativebridge.Peer;
 import org.graalvm.nativebridge.ReceiverMethod;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -75,6 +76,34 @@ abstract class ForeignContextDispatch extends AbstractContextDispatch {
         this.apiAccess = impl.getAPIAccess();
         this.explicitIsolateStack = new ThreadLocal<>();
     }
+
+    @Override
+    public final String toString(Object receiver, int identityHash, String isolateDescription) {
+        ForeignContext foreignContext = (ForeignContext) receiver;
+        Peer peer = foreignContext.getPeer();
+        synchronized (foreignContext) {
+            if (!foreignContext.isDisposed()) {
+                Isolate<?> isolate = peer.getIsolate();
+                try {
+                    IsolateThread isolateThread = isolate.tryEnter();
+                    if (isolateThread != null) {
+                        try {
+                            return toStringImpl(receiver, identityHash, ForeignEngineDispatch.formatIsolate(peer, false));
+                        } finally {
+                            isolateThread.leave();
+                        }
+                    }
+                } catch (IsolateDeathException isolateDeath) {
+                    // Fall through and return unavailable.
+                }
+            }
+            return ForeignEngineDispatch.unavailableToString("Context", identityHash, peer);
+        }
+    }
+
+    @ReceiverMethod("toString")
+    @IsolateDeathHandler(IsolateDeathHandlerSupport.KeepIsolateDeathException.class)
+    abstract String toStringImpl(Object receiver, int identityHash, String isolate);
 
     @Override
     public final void setContextAPIReference(Object receiver, Reference<Context> key) {

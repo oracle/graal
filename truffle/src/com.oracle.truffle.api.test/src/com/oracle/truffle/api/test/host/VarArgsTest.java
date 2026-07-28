@@ -174,17 +174,17 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
             result = INTEROP.invokeMember(container, "withPorts", 80);
             Assert.assertEquals(container, result);
             result = INTEROP.invokeMember(container, "getPorts");
-            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, result));
 
             result = INTEROP.invokeMember(container, "withPorts", new ListBasedTO(Arrays.asList(80)));
             Assert.assertEquals(container, result);
             result = INTEROP.invokeMember(container, "getPorts");
-            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, result));
 
             result = INTEROP.invokeMember(container, "withPorts", asTruffleObject(new int[]{80}));
             Assert.assertEquals(container, result);
             result = INTEROP.invokeMember(container, "getPorts");
-            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, result));
         }
     }
 

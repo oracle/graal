@@ -54,7 +54,6 @@ import com.oracle.svm.core.jdk.UserSystemProperty;
 import com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRunTimeInitSupport;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -133,7 +132,6 @@ public final class FileSystemProviderBuildTimeInitSupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
 
     @Override
@@ -321,10 +319,10 @@ class UnixFileSystemAccessors {
         that.injectedRootDirectory = value;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystem.java#L44-L46")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystemProvider.java#L45-L47")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystemProvider.java#L75-L77")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystem.java#L78-L108")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystem.java#L44-L46")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystemProvider.java#L45-L47")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystemProvider.java#L75-L77")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystem.java#L78-L108")
     private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
             /* Field initialized is volatile, so double-checked locking is OK. */

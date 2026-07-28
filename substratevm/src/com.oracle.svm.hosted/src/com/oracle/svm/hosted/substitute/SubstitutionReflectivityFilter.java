@@ -82,6 +82,11 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(SubstitutionReflectivityFilter.class, this);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         hostVM = access.getHostVM();

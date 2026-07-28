@@ -59,15 +59,11 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class DisallowedImageHeapObjectFeature implements InternalFeature {
 
     private ClassInitializationSupport classInitialization;

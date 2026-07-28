@@ -42,7 +42,7 @@ import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.monitor.MonitorSupport;

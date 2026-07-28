@@ -1,0 +1,18 @@
+{
+  "resources": [
+    {
+      "condition": {
+        "typeReached": "hello.ResourceConditionA"
+      },
+      "module": "moduletests.hello.app",
+      "glob": "conditional-duplicate-resource.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "hello.ResourceConditionB"
+      },
+      "module": "moduletests.hello.app",
+      "glob": "conditional-duplicate-resource.txt"
+    }
+  ]
+}

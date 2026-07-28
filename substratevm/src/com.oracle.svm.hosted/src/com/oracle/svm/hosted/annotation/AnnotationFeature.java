@@ -35,9 +35,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
@@ -49,7 +46,6 @@ import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
  * every reachable {@link Annotation} object in the heap and then checking if it is an annotation
  * that was materialized by the JDK, i.e., it is a {@link Proxy}.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 public class AnnotationFeature implements InternalFeature {
 

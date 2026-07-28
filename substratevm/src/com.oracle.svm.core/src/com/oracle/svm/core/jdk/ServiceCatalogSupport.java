@@ -95,5 +95,20 @@ public class ServiceCatalogSupport {
             SymbolEncoder encoder = SymbolEncoder.singleton();
             return providers.stream().map(encoder::encodeClass).toList();
         });
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "requires");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "exports");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "opens");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "provides");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "packages");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerModuleDescriptorSetTransformer(Feature.BeforeAnalysisAccess access, Class<?> clazz, String fieldName) {
+        access.registerAsInHeap(Set.of().getClass());
+        access.registerAsInHeap(Set.of("", "x").getClass());
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(clazz, fieldName), (_, original) -> {
+            Set<Object> set = (Set<Object>) original;
+            return Set.copyOf(set);
+        });
     }
 }

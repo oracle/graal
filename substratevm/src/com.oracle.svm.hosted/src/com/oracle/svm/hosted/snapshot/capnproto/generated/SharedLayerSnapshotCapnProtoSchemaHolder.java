@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 @SuppressWarnings("all")
 public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   public static class PersistedAnalysisType {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -363,6 +363,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(7,0);
         _setIntField(8,0);
         _clearPointerField(12);
+        _clearPointerField(13);
   return new PersistedAnalysisType.WrappedType.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
@@ -551,7 +552,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
     }
 
     public static class WrappedType {
-      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
       public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -621,6 +622,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         public final Lambda.Builder initLambda() {
           _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.LAMBDA.ordinal());
           _clearPointerField(12);
+          _clearPointerField(13);
   return new PersistedAnalysisType.WrappedType.Lambda.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
@@ -694,7 +696,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _NOT_IN_SCHEMA,
       }
       public static class SerializationGenerated {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -756,7 +758,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class Lambda {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -798,6 +800,21 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           public final com.oracle.svm.shaded.org.capnproto.Text.Builder initCapturingClass(int size) {
             return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, size);
           }
+          public final boolean hasCaptureSite() {
+            return !_pointerFieldIsNull(13);
+          }
+          public final com.oracle.svm.shaded.org.capnproto.Text.Builder getCaptureSite() {
+            return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 13, null, 0, 0);
+          }
+          public final void setCaptureSite(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+            _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 13, value);
+          }
+          public final void setCaptureSite(String value) {
+            _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 13, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+          }
+          public final com.oracle.svm.shaded.org.capnproto.Text.Builder initCaptureSite(int size) {
+            return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 13, size);
+          }
         }
 
         public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -810,6 +827,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
           public com.oracle.svm.shaded.org.capnproto.Text.Reader getCapturingClass() {
             return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
+          }
+
+          public boolean hasCaptureSite() {
+            return !_pointerFieldIsNull(13);
+          }
+          public com.oracle.svm.shaded.org.capnproto.Text.Reader getCaptureSite() {
+            return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 13, null, 0, 0);
           }
 
         }

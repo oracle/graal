@@ -79,31 +79,31 @@ public final class Target_java_lang_Module {
     public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/classfile/modules.cpp#L279-L474")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/classfile/modules.cpp#L279-L474")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         ModuleNative.defineModule(module, isOpen, pns);
     }
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L763-L799")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L763-L799")
     private static void addReads0(Module from, Module to) {
         ModuleNative.addReads(from, to);
     }
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L753-L761")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L753-L761")
     private static void addExports0(Module from, String pn, Module to) {
         ModuleNative.addExports(from, pn, to);
     }
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L686-L750")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L686-L750")
     private static void addExportsToAll0(Module from, String pn) {
         ModuleNative.addExportsToAll(from, pn);
     }
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L869-L918")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L869-L918")
     private static void addExportsToAllUnnamed0(Module from, String pn) {
         ModuleNative.addExportsToAllUnnamed(from, pn);
     }

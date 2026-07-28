@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,12 +91,17 @@ class StaticObjectModelTest {
         final Context context;
 
         TestEnvironment(TestConfiguration config) {
-            this.arrayBased = config.arrayBased;
-            this.relaxChecks = config.relaxChecks;
+            this(config.arrayBased, config.relaxChecks, false);
+        }
+
+        TestEnvironment(boolean arrayBased, boolean relaxChecks, boolean forceChecks) {
+            this.arrayBased = arrayBased;
+            this.relaxChecks = relaxChecks;
             context = Context.newBuilder(TestLanguage.TEST_LANGUAGE_ID).//
                             allowExperimentalOptions(true).//
                             option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
                             option("engine.RelaxStaticObjectSafetyChecks", this.relaxChecks ? "true" : "false").//
+                            option("engine.ForceStaticObjectSafetyChecks", forceChecks ? "true" : "false").//
                             build();
             context.initialize(TestLanguage.TEST_LANGUAGE_ID);
             context.enter();
@@ -170,4 +175,5 @@ class StaticObjectModelTest {
             }
         }
     }
+
 }

@@ -38,13 +38,11 @@ import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -180,7 +178,6 @@ public class VMLockSupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class VMLockFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

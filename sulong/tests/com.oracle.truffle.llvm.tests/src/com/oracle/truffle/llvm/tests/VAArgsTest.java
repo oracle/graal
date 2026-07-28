@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,6 +65,7 @@ public final class VAArgsTest extends BaseSulongOnlyHarness {
         runs.put(Paths.get(TEST_DIR, "vaargs04.c.dir", testSuffix), new RunConfiguration(0, String.format("1.000000%n2.000000%n3.000000%n4.000000%n5.000000%n")));
         runs.put(Paths.get(TEST_DIR, "vaargs05.c.dir", testSuffix), new RunConfiguration(0,
                         String.format("1.000000%n2%n3%n4%n5.000000%n1.000000%n2%n3%n4%n5.000000%n1.000000%n2%n3%n4%n5.000000%n1.000000%n2%n3%n4%n5.000000%n1.000000%n2%n3%n4%n5.000000%n1.000000%n2%n3%n4%n5.000000%n")));
+        runs.put(Paths.get(TEST_DIR, "vaargs06.c.dir", testSuffix), new RunConfiguration(0, null));
 
         Path other = Paths.get(TEST_DIST_ROOT);
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), other.relativize(k.getParent()).toString()}).collect(Collectors.toList());

@@ -99,7 +99,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         verifyEnvironmentVariablesCompatibility(previousEnvironmentVariables, parseEnvVariables(), strict);
 
         List<PathDigestEntry> previousPathDigestEntries = loadBuildEntries(getBuildPathDigestsFilePath(), PathDigestEntry::of, "build path digests");
-        verifyBuildPathDigestsCompatibility(previousPathDigestEntries, classLoaderSupport.computePathEntryDigests(), strict);
+        verifyBuildPathDigestsCompatibility(previousPathDigestEntries, classLoaderSupport.getPathEntryDigests(), strict);
     }
 
     private static boolean verifyBuilderArgumentsCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,

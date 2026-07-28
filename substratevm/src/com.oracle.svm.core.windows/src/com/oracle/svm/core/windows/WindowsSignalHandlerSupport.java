@@ -44,13 +44,13 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(SignalHandlerSupport.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class WindowsSignalHandlerSupport implements SignalHandlerSupport {
     private static final int NEAR_MAX_PRIORITY = Thread.MAX_PRIORITY - 1;
 

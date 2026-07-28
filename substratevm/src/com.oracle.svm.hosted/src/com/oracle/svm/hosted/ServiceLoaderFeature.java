@@ -42,18 +42,14 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -90,7 +86,6 @@ import sun.util.locale.provider.LocaleDataMetaInfo;
  * single file combines all the individual files that can come from different .jar files.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ServiceLoaderFeature implements InternalFeature {
 
     public static class Options {
@@ -174,31 +169,29 @@ public class ServiceLoaderFeature implements InternalFeature {
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             Collection<String> providersToSkip = providers;
             try {
-                /*
-                 * The following will throw an `UnsupportedPlatformException` if the service is not
-                 * supported.
-                 */
-                ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
-                boolean skipService = false;
-                /*
-                 * If the service should not end up in the image, we remove all the providers with
-                 * it.
-                 */
-                if (servicesToSkip.contains(serviceName)) {
-                    skipService = true;
-                } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
-                    skipService = true;
-                } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
-                    skipService = true;
-                } else {
-                    providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
-                    if (!providersToSkip.isEmpty()) {
+                if (!servicesToSkip.contains(serviceName)) {
+                    /*
+                     * The following will throw an `UnsupportedPlatformException` if the service is not
+                     * supported.
+                     * If the service should not end up in the image, we remove all the providers with
+                     * it.
+                     */
+                    boolean skipService = false;
+                    ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
+                    if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
                         skipService = true;
+                    } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+                        skipService = true;
+                    } else {
+                        providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
+                        if (!providersToSkip.isEmpty()) {
+                            skipService = true;
+                        }
                     }
-                }
-                if (!skipService) {
-                    access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
-                    return;
+                    if (!skipService) {
+                        access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
+                        return;
+                    }
                 }
             } catch (UnsupportedPlatformException e) {
                 // Service class is not supported - skipping
@@ -224,7 +217,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.toClassName(), registeredProviders);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         /* Make provider reflectively instantiable */
@@ -302,7 +295,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     private static ResolvedJavaMethod findNullaryConstructor(ResolvedJavaType providerClass) {
         ResolvedJavaMethod nullaryConstructor = null;
         try {
@@ -316,7 +309,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         return nullaryConstructor;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     private static ResolvedJavaMethod findProviderMethod(ResolvedJavaType providerClass) {
         ResolvedJavaMethod nullaryProviderMethod = null;
         try {

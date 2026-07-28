@@ -30,7 +30,7 @@ import static org.junit.Assert.assertSame;
 import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -62,7 +62,7 @@ public class StackTraceTests {
         @NeverInline("Starting a stack walk in the caller frame.")
         public static void c(Type type) {
             if (type == Type.GET_CALLER_CLASS) {
-                Class<?> callerClass = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true, false);
+                Class<?> callerClass = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
                 assertSame(B.class, callerClass);
             }
             if (type == Type.GET_STACKTRACE) {

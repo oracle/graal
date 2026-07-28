@@ -44,7 +44,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -70,7 +70,7 @@ import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -351,7 +351,7 @@ public final class ThreadLocalAllocation {
         return formatArrayLikeObject(memory, hub, length, false, FillContent.WITH_ZEROES, podReferenceMap);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L333-L341")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L333-L341")
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemory(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         Pointer memory = TlabSupport.allocateRawMemoryInTlabSlow(size);
@@ -361,7 +361,7 @@ public final class ThreadLocalAllocation {
         return allocateRawMemoryOutsideTlab(size, allocatedOutsideTlab);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L239-L251")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L239-L251")
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         allocatedOutsideTlab.write(true);

@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.r1;
+import static jdk.vm.ci.aarch64.AArch64.r2;
+import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v10;
@@ -68,7 +72,6 @@ import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -83,10 +86,10 @@ public final class AArch64SHA256Op extends AArch64LIRInstruction {
 
     public static final LIRInstructionClass<AArch64SHA256Op> TYPE = LIRInstructionClass.create(AArch64SHA256Op.class);
 
-    @Alive({REG}) private Value bufValue;
-    @Alive({REG}) private Value stateValue;
-    @Alive({REG, ILLEGAL}) private Value ofsValue;
-    @Alive({REG, ILLEGAL}) private Value limitValue;
+    @Use({REG}) private Value bufValue;
+    @Use({REG}) private Value stateValue;
+    @Use({REG, ILLEGAL}) private Value ofsValue;
+    @Use({REG, ILLEGAL}) private Value limitValue;
 
     @Def({REG, ILLEGAL}) private Value resultValue;
 
@@ -97,13 +100,19 @@ public final class AArch64SHA256Op extends AArch64LIRInstruction {
 
     private final boolean multiBlock;
 
-    public AArch64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue) {
-        this(tool, bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
+    public AArch64SHA256Op(AllocatableValue bufValue, AllocatableValue stateValue) {
+        this(bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AArch64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
+    public AArch64SHA256Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
                     AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
+
+        GraalError.guarantee(asRegister(bufValue).equals(r0), "expect bufValue at r0, but was %s", bufValue);
+        GraalError.guarantee(asRegister(stateValue).equals(r1), "expect stateValue at r1, but was %s", stateValue);
+        GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(r2), "expect ofsValue at r2, but was %s", ofsValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(r3), "expect limitValue at r3, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(r0), "expect resultValue at r0, but was %s", resultValue);
 
         this.bufValue = bufValue;
         this.stateValue = stateValue;
@@ -114,8 +123,8 @@ public final class AArch64SHA256Op extends AArch64LIRInstruction {
         this.multiBlock = multiBlock;
 
         if (multiBlock) {
-            this.bufTempValue = tool.newVariable(bufValue.getValueKind());
-            this.ofsTempValue = tool.newVariable(ofsValue.getValueKind());
+            this.bufTempValue = bufValue;
+            this.ofsTempValue = ofsValue;
         } else {
             this.bufTempValue = Value.ILLEGAL;
             this.ofsTempValue = Value.ILLEGAL;
@@ -186,15 +195,12 @@ public final class AArch64SHA256Op extends AArch64LIRInstruction {
         Register limit;
 
         if (multiBlock) {
-            GraalError.guarantee(ofsValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid ofsValue kind: %s", ofsValue);
-            GraalError.guarantee(limitValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid limitValue kind: %s", limitValue);
+            GraalError.guarantee(ofsValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid ofsValue kind: %s", ofsValue);
+            GraalError.guarantee(limitValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid limitValue kind: %s", limitValue);
 
             buf = asRegister(bufTempValue);
             ofs = asRegister(ofsTempValue);
             limit = asRegister(limitValue);
-
-            masm.mov(64, buf, asRegister(bufValue));
-            masm.mov(32, ofs, asRegister(ofsValue));
         } else {
             buf = asRegister(bufValue);
             ofs = Register.None;
@@ -272,12 +278,12 @@ public final class AArch64SHA256Op extends AArch64LIRInstruction {
         masm.neon.addVVV(FullReg, ElementSize.Word, v1, v1, v3);
 
         if (multiBlock) {
-            masm.add(32, ofs, ofs, 64);
-            masm.cmp(32, ofs, limit);
+            masm.add(64, ofs, ofs, 64);
+            masm.cmp(64, ofs, limit);
             masm.branchConditionally(LE, labelSHA256Loop);
 
             GraalError.guarantee(resultValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
-            masm.mov(32, asRegister(resultValue), ofs); // return ofs
+            masm.mov(64, asRegister(resultValue), ofs); // return ofs
         }
 
         // We have marked v8-v11 as @Temp. The register allocator will take care of the spilling.

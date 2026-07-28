@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractFrame;
 import com.oracle.svm.hosted.dynamicaccessinference.dataflow.DataFlowAnalysisException;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Holds information on constant expressions as inferred by {@link ConstantExpressionAnalyzer}.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class ConstantExpressionRegistry {
 
     public static ConstantExpressionRegistry singleton() {

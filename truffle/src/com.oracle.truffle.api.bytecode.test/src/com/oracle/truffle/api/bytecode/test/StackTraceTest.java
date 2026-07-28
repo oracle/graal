@@ -535,6 +535,8 @@ public class StackTraceTest extends AbstractInstructionTest {
         InteropLibrary lib = InteropLibrary.getUncached();
         assertFalse(lib.hasBytecodeIndex(guestObject));
         assertThrows(UnsupportedMessageException.class, () -> lib.getBytecodeIndex(guestObject));
+        assertFalse(lib.hasSourceLocation(guestObject));
+        assertThrows(UnsupportedMessageException.class, () -> lib.getSourceLocation(guestObject));
     }
 
     private StackTraceTestRootNode[] chainCalls(int depth, BytecodeParser<StackTraceTestRootNodeBuilder> innerParser, boolean includeLocation, boolean includeSources) {

@@ -2,7 +2,20 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.3
+* GR-57730: Improved descriptive `toString()` output for Polyglot API objects and builders.
+* GR-73530: Added `StaticShape.Builder.safetyChecks(boolean)` to let language implementations configure safety checks for individual static shapes. Added `engine.ForceStaticObjectSafetyChecks` to enable safety checks for all static shapes, overriding the builder setting.
+
+## Version 25.2
+* GR-77583: Bytecode DSL: Added `BytecodeRootNode.interceptIncomingValue(Object)` and `BytecodeRootNode.interceptOutgoingValue(Object)` to convert values exchanged with tag instrumentation.
+* GR-75459: Bytecode DSL: Added multi-operand support for `@Yield` operations.
+* GR-75438: Bytecode DSL: Added `@Return` for user-defined return operations that customize the value returned from a bytecode root node.
+* GR-77108: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig#secondarySwitch()` to prevent handler outlining when a secondary bytecode interpreter switch is compiled separately.
+## Version 25.3.4
+* GR-54730: Setting `sandbox.MaxCPUTime` to a zero duration now disables the CPU time limit instead of enforcing a zero-duration limit.
+
 ## Version 25.1
+* GR-76434: Added `engine.DynamicCompilationThresholdsHighLoadSlope` to tune dynamic compilation threshold scaling under high compilation queue load. The default value of `engine.DynamicCompilationThresholdsMinNormalLoad` is now `0`, which disables low-load threshold reduction by default.
 * GR-71645: Host adapter instances created with `TruffleLanguage.Env#createHostAdapter` now delegate unresolved direct member operations to the original guest object, while Java host members and the special `super` and `this` adapter members take precedence.
 * GR-75236: Added engine option `engine.CompilerThreadStackSize` to set the requested stack size of Truffle compiler threads. By default compiler threads use `640KB` stack space. The requested size is rounded up to implementation-specific minima and page sizes as needed.
 * GR-73900: Added `Engine.persistCache(Engine.CancellationCallback)` to persist the auxiliary engine cache into an in-memory `ByteBuffer` with callback-based cancellation support.
@@ -11,7 +24,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached SomeNode helper` expressions are now suppressed if the helper node class is explicitly annotated with `@GenerateInline(false)`, or is not a DSL node. This avoids unnecessary warnings if inlining for a node was explicitly disabled, and makes it possible to remove `@Cached(inline = false)` in most cases.
 * GR-68165: `DynamicObjectLibrary#setDynamicType` transitions are now weak, like `DynamicObjectLibrary#putConstant` transitions.
 * GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
-* GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached` expressions are now suppressed if the inlined node is explicitly annotated with `@GenerateInline(false)`. This avoids unnecessary warnings if inlining for a node was explicitly disabled.
 * GR-66310: Added support for passing arrays of primitive types to native code through the Truffle NFI Panama backend.
 * GR-61292: Specialization DSL: Single specialization nodes no longer specialize on first execution unless they use assumptions, cached state, or multiple instances. This was done to improve the interpreter performance and memory footprint of such nodes. As a result, these nodes no longer invalidate on first execution, which means they can no longer be used as an implicit branch profile. Language implementations are encouraged to check whether they are relying on this behavior and insert explicit branch profiles instead (see `BranchProfile` or `InlinedBranchProfile`).
 * GR-64005: Bytecode DSL: `@Operation` annotated classes can now inherit specializations and methods from super classes which are also declared in the same bytecode root node class. Language implementations no longer need to use operation proxies to use specialization inheritance.
@@ -20,8 +32,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-67146: Bytecode DSL: Added support for user-defined yield operations using `@Yield`. These operations behave like the built-in yield but allow you to customize the yield result or perform custom logic on yield.
 * GR-69495: Bytecode DSL: Added a new `storeBytecodeIndex` attribute to all operation annotations to configure whether the bytecode index needs to be stored. When `@GenerateBytecode(storeBytecodeIndexInFrame = true)` is set and the attribute is left at its default, the DSL will emit a warning recommending explicit configuration. Additionally, introduced the `@StoreBytecodeIndex` annotation, which lets you specify bytecode index updates for individual specializations or fallbacks.
 * GR-69853: TruffleStrings: Added explicit little-endian and big-endian methods to `ReadCharUTF16Node`.
-* GR-68916: Added `TruffleString.MaterializeLazySubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
-* GR-68916: Added `TruffleString.MaterializeSubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
+* GR-68916: Added `TruffleString.MaterializeLazySubstringNode` and `TruffleString.MaterializeSubstringNode`. Use these nodes to free any unnecessary memory held by lazy substrings.
 * GR-8251: Added `DebuggerSession.disposeStepping(Thread)` to the debugger API to allow disposal of any pending step on a thread.
 * GR-8251: Pending steps are no longer removed when no debugging action is prepared on a `SuspendedEvent`. In practice, this means that the lifecycle of steps is now independent of breakpoint hits.
 * GR-8251: `DebuggerSession.resumeThread(Thread)` no longer cancels ongoing step operations. Stepping is now independent of other debugger actions to enhance flexibility.
@@ -63,13 +74,14 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements. 
 * GR-71870 Truffle DSL no longer supports mixed exclusive and shared inlined caches. Sharing will now be disabled if mixing was used. To resolve the new warnings it is typically necessary to use either `@Exclusive` or `@Shared` for all caches.
 * GR-71887: Bytecode DSL: Added a `ClearLocal` operation for fast clearing of local values.
-* GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements.
 * GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
 * GR-71402: Added `InteropLibrary#hasStaticScope` and `InteropLibrary#getStaticScope` returning the static scope representing static or class-level members associated with the given meta object.
 * GR-72022 `AtomicLongFieldUpdater`, `AtomicIntegerFieldUpdater` and `AtomicReferenceFieldUpdater` can now be used on partially evaluated code paths when the updater is a PE constant and the compiler can prove receiver and value correctness during partial evaluation, otherwise compilation permanently bails out.
 * GR-44829: Added `TruffleString.CodePointAtIndexUTF32Node` for better interpreter performance of UTF-32 strings.
 * GR-44829: `TruffleString` nodes no longer profile the `expectedEncoding` parameter for interpreter performance reasons. Languages with non-constant string encodings should profile the encoding before passing it to `TruffleString` nodes.
 * GR-75002: Specialization DSL: Handwritten `inline(InlineTarget)` methods are now preferred over synthesized generated inline signatures when resolving inlined caches. Generated inline metadata now preserves public node subtypes for `ReferenceField`-backed fields, while non-public or generated helper node types continue to use generic `Node`/`Node[]` types. If you need stable inline APIs, you can continue to pin `ReferenceField` requirements to a stable public supertype such as `Node` in a handwritten `inline` method.
+* GR-57579: Added `TruffleString.ByteIndexOfStringSetNode` for fast multi-string searches.
+
 * GR-61161: Bytecode DSL: Added support for basic instruction rewriting. At bytecode build time, the builder can perform peephole optimization to remove redundant loads. This new optimization can be configured using `@GenerateBytecode(enableInstructionRewriting=true|false)`.
 * GR-71765: Bytecode DSL: Added support for specifying an illegal local exception via `@GenerateBytecode(illegalLocalException=SomeException.class)`. This configures the interpreter to throw a custom exception when loading a cleared local, as an alternative to the default behaviour (throwing a `FrameSlotTypeException`). This option is mutually exclusive with the default local value option (`@GenerateBytecode(defaultLocalValue = "someValue")`).
 * GR-69499 Added `HostCompilerDirectives.BytecodeInterpreterHandler` annotation, enabling one compilation per bytecode handler in the Truffle bytecode interpreter while maintaining performance statistics. Introduced support for tail call threading among bytecode handlers in native image. See the [One Compilation per Bytecode Handler documentation](https://github.com/oracle/graal/blob/master/truffle/docs/OneCompilationPerBytecodeHandler.md) for more details.
@@ -95,6 +107,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-73872: Added support for constant options via the `constant` attribute on `@Option`, together with `ConstantOptionKey<T>`. When `@Option(constant = true)` is used on a `static final ConstantOptionKey<T>` field, the option value is fixed before runtime initialization (from `-Dpolyglot.<option-name>=<value>` or the declared default) and cannot be changed at runtime. Calls to `ConstantOptionKey.getConstantValue()` are partial-evaluation final, enabling dead-branch elimination in Truffle interpreters. In native image, these constants can be folded statically at image build time. On HotSpot, such static folding is not guaranteed due to class initialization timing.
 * GR-73872: Added support for native-image preset options. Polyglot options provided during native-image build are captured as preset defaults at image build time, then applied at runtime as defaults.
 * GR-75360: Bytecode DSL: Generated root nodes now support delegation to parent implementations of `RootNode.isInstrumentable()`, `RootNode.prepareForCall()`, and `RootNode.prepareForInstrumentation(tags)`, when available.
+* GR-76069: Added `ArrayUtils.arraycopy(int[], int, int[], int, int)`, a specialized variant of `System.arraycopy`.
+* GR-75854: Bytecode DSL: `@EpilogReturn` instructions are now associated with the source sections and local scopes active at the return.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

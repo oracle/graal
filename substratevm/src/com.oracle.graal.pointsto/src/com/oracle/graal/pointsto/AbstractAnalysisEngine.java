@@ -438,7 +438,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         ResolvedJavaMethod[] methods = tryApply(type, t -> t.getDeclaredMethods(false), NO_METHODS);
         for (ResolvedJavaMethod method : methods) {
             if (method.isNative()) {
-                if (getHostVM().isSupportedOriginalMethod(this, method)) {
+                if (classInclusionPolicy.isOriginalNativeMethodIncluded(method)) {
                     classInclusionPolicy.includeMethod(method);
                 }
             }

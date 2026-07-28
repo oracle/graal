@@ -30,7 +30,7 @@ import com.oracle.objectfile.ObjectFile.Symbol;
 public interface SymbolTable extends Iterable<Symbol> {
     Symbol getSymbol(String name);
 
-    Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode);
+    Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode, boolean isExported);
 
     Symbol newUndefinedEntry(String name, boolean isCode);
 

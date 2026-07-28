@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,6 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.nativeimage.ImageInfo;
-import sun.misc.Unsafe;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -54,6 +48,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.nativeimage.ImageInfo;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+
+import sun.misc.Unsafe;
 
 /**
  * A StaticShape is an immutable descriptor of the layout of a static object and is a good entry
@@ -212,6 +214,7 @@ public abstract class StaticShape<T> {
         private final String storageClassName;
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
         private final TruffleLanguage<?> language;
+        private Boolean safetyChecks;
         boolean hasLongPropertyId = false;
         boolean isActive = true;
 
@@ -259,6 +262,35 @@ public abstract class StaticShape<T> {
             checkStatus();
             property.init(type, storeAsFinal);
             staticProperties.put(validateAndGetId(property), property);
+            return this;
+        }
+
+        /**
+         * Configures whether {@link StaticProperty} accesses to the {@link StaticShape} built by
+         * this builder perform safety checks.
+         *
+         * <p>
+         * Disable safety checks only when every access to a property of this shape is guaranteed to use a
+         * receiver with a compatible shape. This can be established by static analysis or by equivalent
+         * checks in the language implementation. Otherwise, accesses may operate on incompatible storage
+         * and cause memory corruption. Before disabling safety checks, a detailed security review should
+         * verify that this invariant is maintained.
+         *
+         * <p>
+         * If this method is not called, the static shape uses the engine-level
+         * {@code engine.RelaxStaticObjectSafetyChecks} option. The engine-level
+         * {@code engine.ForceStaticObjectSafetyChecks} option takes precedence over this builder
+         * configuration and always enables safety checks.
+         *
+         * @param enabled {@code true} to enable safety checks, or {@code false} to disable them
+         * @return the Builder instance
+         * @throws IllegalStateException if this method is invoked after building a static shape
+         * @since 25.3
+         */
+        public Builder safetyChecks(boolean enabled) {
+            CompilerAsserts.neverPartOfCompilation();
+            checkStatus();
+            safetyChecks = enabled;
             return this;
         }
 
@@ -356,8 +388,10 @@ public abstract class StaticShape<T> {
             CompilerAsserts.neverPartOfCompilation();
             checkStatus();
             Map<String, StaticProperty> properties = hasLongPropertyId ? defaultPropertyIds(staticProperties) : staticProperties;
-            boolean safetyChecks = !SomAccessor.ENGINE.areStaticObjectSafetyChecksRelaxed(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language));
-            StaticShape<T> shape = sg.generateShape(parentShape, properties, safetyChecks, storageClassName);
+            Object polyglotLanguageInstance = SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language);
+            boolean useSafetyChecks = SomAccessor.ENGINE.areStaticObjectSafetyChecksForced(polyglotLanguageInstance) ||
+                            (safetyChecks != null ? safetyChecks : !SomAccessor.ENGINE.areStaticObjectSafetyChecksRelaxed(polyglotLanguageInstance));
+            StaticShape<T> shape = sg.generateShape(parentShape, properties, useSafetyChecks, storageClassName);
             for (StaticProperty staticProperty : properties.values()) {
                 staticProperty.initShape(shape);
             }

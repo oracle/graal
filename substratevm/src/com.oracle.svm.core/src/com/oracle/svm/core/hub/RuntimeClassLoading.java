@@ -92,14 +92,6 @@ public class RuntimeClassLoading {
             if (!optionKey.getValue()) {
                 return;
             }
-            if (!SubstrateOptions.SpawnIsolates.getValue()) {
-                /*
-                 * A metaspace is only supported if there is a contiguous address space, which is
-                 * only the case with isolate support enabled.
-                 */
-                throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
-                                "Requires isolate support, please use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+"));
-            }
             if (SubstrateOptions.ClosedTypeWorld.getValue()) {
                 throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
                                 "Requires an open type world, please use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.ClosedTypeWorld, "-"));

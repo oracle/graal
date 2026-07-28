@@ -25,12 +25,14 @@
 
 package com.oracle.svm.webimage.threads;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
@@ -43,13 +45,14 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
  */
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @Platforms(WebImagePlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageJSJavaThreads extends PlatformThreads {
 
+    /** This method must not throw any exceptions. */
     @Override
-    protected boolean doStartThread(Thread thread, long stackSize) {
+    protected IsolateThread doStartThread(Thread thread, long javaStackSize) {
         // Not supported
-        return false;
+        return Word.nullPointer();
     }
 
     @Override

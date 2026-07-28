@@ -43,9 +43,6 @@ package com.oracle.truffle.tck;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -843,55 +840,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.28
      */
     public static com.oracle.truffle.api.source.Source getSourceImpl(Source source) {
-        return (com.oracle.truffle.api.source.Source) getField(source, "receiver");
-    }
-
-    // Copied from ReflectionUtils.
-    private static Object getField(Object value, String name) {
-        try {
-            Field f = value.getClass().getDeclaredField(name);
-            setAccessible(f, true);
-            return f.get(value);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    private static void setAccessible(Field field, boolean flag) {
-        openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
-        field.setAccessible(flag);
-    }
-
-    /**
-     * Opens {@code declaringClass}'s package to allow a method declared in {@code accessor} to call
-     * {@link AccessibleObject#setAccessible(boolean)} on an {@link AccessibleObject} representing a
-     * field or method declared by {@code declaringClass}.
-     */
-    private static void openForReflectionTo(Class<?> declaringClass, Class<?> accessor) {
-        try {
-            Method getModule = Class.class.getMethod("getModule");
-            Class<?> moduleClass = getModule.getReturnType();
-            Class<?> modulesClass = Class.forName("jdk.internal.module.Modules");
-            Method addOpens = maybeGetAddOpensMethod(moduleClass, modulesClass);
-            if (addOpens != null) {
-                Object moduleToOpen = getModule.invoke(declaringClass);
-                Object accessorModule = getModule.invoke(accessor);
-                if (moduleToOpen != accessorModule) {
-                    addOpens.invoke(null, moduleToOpen, declaringClass.getPackage().getName(), accessorModule);
-                }
-            }
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    private static Method maybeGetAddOpensMethod(Class<?> moduleClass, Class<?> modulesClass) {
-        try {
-            return modulesClass.getDeclaredMethod("addOpens", moduleClass, String.class, moduleClass);
-        } catch (NoSuchMethodException e) {
-            // This method was introduced by JDK-8169069
-            return null;
-        }
+        return TruffleTCKAccessor.ENGINE.getSourceReceiver(source);
     }
 
     private void putEvent(Object event) {

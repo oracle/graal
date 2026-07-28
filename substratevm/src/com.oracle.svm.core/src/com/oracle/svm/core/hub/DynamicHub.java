@@ -92,14 +92,11 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
-import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
-import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -143,6 +140,8 @@ import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPo
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -388,23 +387,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** Is this a VM-internal class that should be hidden from stack traces. */
     private static final int IS_VM_INTERNAL_FLAG_BIT = 8;
     /**
-     * Is this a lambda form hidden class that should be hidden from stack traces in some
-     * circumstances.
-     */
-    private static final int IS_LAMBDA_FORM_HIDDEN_BIT = 9;
-    /**
      * Indicates this Class was linked during build time. Accessing an unlinked class during run
      * time will throw an error.
      */
-    private static final int IS_BUILD_TIME_LINKED_BIT = 10;
+    private static final int IS_BUILD_TIME_LINKED_BIT = 9;
     /**
      * Indicates whether the class is a proxy class according to
      * {@link java.lang.reflect.Proxy#isProxyClass}.
      */
-    private static final int IS_PROXY_CLASS_BIT = 11;
+    private static final int IS_PROXY_CLASS_BIT = 10;
 
     /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int ADDITIONAL_FLAGS_INSTANTIATED_BIT = 0;
+    /** Indicates whether this type is accessible through JNI class lookup. */
+    private static final int ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT = 1;
 
     /**
      * The hub for the component type of an array, or null if this hub is not an array hub.
@@ -544,7 +540,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAllow(false);
         companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(componentHub != null, hasClassInitializer);
-        byte additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true));
+        byte additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true) | makeFlag(ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT, true));
         writeByte(companion, dynamicHubOffsets.getCompanionAdditionalFlagsOffset(), additionalFlags);
 
         assert !isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
@@ -653,7 +649,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return finishInitialization(hub, companion);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Class.java#L3435-L3446")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Class.java#L3435-L3446")
     private final class EnumConstantsSupplier implements Supplier<Object[]> {
         @Override
         public Object[] get() {
@@ -689,7 +685,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public static short makeFlags(boolean isPrimitive, boolean isInterface, boolean isHidden, boolean isRecord, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, boolean isProxyClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLinked, boolean isProxyClass) {
         return NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, isPrimitive) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, isInterface) |
                         makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
@@ -698,7 +694,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
                         makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
-                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
                         makeFlag(IS_BUILD_TIME_LINKED_BIT, isLinked) |
                         makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
     }
@@ -740,8 +735,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         VMError.guarantee(NumUtil.isInt(referenceMapIndex), "Reference map index not within integer range");
         this.referenceMapIndex = (int) referenceMapIndex;
 
-        assert companion.additionalFlags == 0;
-        companion.additionalFlags = NumUtil.safeToUByte(makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, isInstantiated));
+        assert !isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_INSTANTIATED_BIT);
+        companion.additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, isInstantiated));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setJNIAccessible() {
+        companion.additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT, true));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -1118,6 +1118,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_INSTANTIATED_BIT);
     }
 
+    public boolean isJNIAccessible() {
+        return isJNIAccessibleFlagSet(companion.additionalFlags);
+    }
+
+    static boolean isJNIAccessibleFlagSet(byte additionalFlags) {
+        return isFlagSet(additionalFlags, ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT);
+    }
+
     public boolean canUnsafeInstantiateAsInstanceFastPath() {
         return companion.canUnsafeAllocate != null && companion.canUnsafeAllocate.fastPathSatisfied();
     }
@@ -1153,7 +1161,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setCanUnsafeAllocate() {
-        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.createHosted(AccessCondition.unconditional(), false);
+        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
     }
 
     public boolean isPreservedForUnsafeAllocation() {
@@ -1447,11 +1455,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isVMInternal() {
         return isFlagSet(flags, IS_VM_INTERNAL_FLAG_BIT);
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isLambdaFormHidden() {
-        return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
     }
 
     private boolean isBuildTimeLinked() {
@@ -1993,9 +1996,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @CallerSensitiveAdapter
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
     private static Class<?> forName0(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws ClassNotFoundException {
         // this accepts dot-names and arrays types (`[...`), it refuses slash-names
         if (name.contains("/")) {
@@ -2210,18 +2213,23 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (clazz == void.class || (clazz.isArray() && SubstrateUtil.arrayTypeDimension(clazz) >= 255)) {
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
-        if (MetadataTracer.enabled()) {
+        boolean followReflectionConfiguration = ClassLoadingSupport.singleton().followReflectionConfiguration();
+        if (MetadataTracer.enabled() && followReflectionConfiguration) {
             MetadataTracer.singleton().traceReflectionArrayType(clazz);
         }
         DynamicHub arrayHub = getArrayHub();
-        assert RuntimeClassLoading.isSupported() || arrayHub != null ||
-                        !ClassRegistries.isRegisteredClassName(ClassNameSupport.getArrayReflectionName(getName())) : "There must be no metadata if the array was never registered";
-
-        var dynamicAccessMetadata = arrayHub == null ? null : arrayHub.getDynamicAccessMetadata();
-        if (arrayHub == null || (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()))) {
-            // Fail in Native Image, or if Crema follows reflection-access restrictions
-            if (!RuntimeClassLoading.isSupported() || ClassLoadingSupport.singleton().followReflectionConfiguration()) {
-                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]", dynamicAccessMetadata);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
+        // this access is validated even if the array hub exists
+        if (RuntimeClassLoading.isSupported()) {
+            if (throwMissingRegistrationErrors() &&
+                            followReflectionConfiguration &&
+                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+            }
+        } else {
+            if (followReflectionConfiguration && (arrayHub == null || (throwMissingRegistrationErrors() &&
+                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())))) {
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
             }
         }
 

@@ -325,9 +325,9 @@ objectInputStream.setObjectInputFilter(filter);
   "reflection": [
     {
       "type": {
-        "proxy": ["com.example.IFoo"],
-        "serializable": true
-      }
+        "proxy": ["com.example.IFoo"]
+      },
+      "serializable": true
     }
   ]
 }

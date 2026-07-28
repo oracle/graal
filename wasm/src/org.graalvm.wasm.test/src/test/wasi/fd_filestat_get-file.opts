@@ -1,3 +1,4 @@
 enable-io=true
 zero-memory=true
 skip-on-windows=true
+async-iterations=10000

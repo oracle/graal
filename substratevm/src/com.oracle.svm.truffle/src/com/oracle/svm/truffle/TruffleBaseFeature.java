@@ -85,8 +85,8 @@ import org.graalvm.polyglot.Engine;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -103,7 +103,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.hosted.runtimecompilation.GraalGraphObjectReplacer;
@@ -120,7 +120,7 @@ import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -177,7 +177,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link TruffleFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to the
  * {@link DefaultTruffleRuntime}.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class TruffleBaseFeature implements InternalFeature {
 
     private static final MethodHandle VERSION_GET_COMPONENT = findVersionGetComponent();
@@ -199,7 +199,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * When modifying the version values defined below, ensure that the corresponding version fields
      * in {@code TruffleVersions} are also updated accordingly to maintain consistency.
      */
-    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 2);
+    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 4);
     private static final int MAX_JDK_VERSION = 26;
 
     @Override
@@ -268,6 +268,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     private AnalysisMetaAccess metaAccess;
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final EconomicSet<Class<?>> registeredClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> registeredExportLibraryClasses = EconomicSet.create();
+    private final Set<Class<?>> pendingExportLibraryReceiverClasses = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
     private Field uncachedDispatchField;
@@ -295,8 +297,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState",
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
-        invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "initializeNativeImageState",
-                        Collections.emptyList());
     }
 
     private static void initializeHomeFinder() {
@@ -349,6 +349,11 @@ public final class TruffleBaseFeature implements InternalFeature {
                 throw VMError.shouldNotReachHere(ex);
             }
         }
+    }
+
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(TruffleBaseFeature.class, this);
     }
 
     @Override
@@ -503,8 +508,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "resetNativeImageState", List.of());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine",
-                        Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState",
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
                         Collections.emptyList());
@@ -813,6 +816,14 @@ public final class TruffleBaseFeature implements InternalFeature {
             initializeTruffleLibrariesAtBuildTime(access, type);
             initializeDynamicObjectLayouts(type);
         }
+        /* Resolve reachable export subclasses once they are known to be instantiated. */
+        for (Class<?> receiverClass : pendingExportLibraryReceiverClasses) {
+            AnalysisType type = access.getMetaAccess().lookupJavaType(receiverClass);
+            if (type.isInstantiated() && pendingExportLibraryReceiverClasses.remove(receiverClass)) {
+                initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                a.requireAnalysisIteration();
+            }
+        }
         access.rescanRoot(layoutInfoMapField, scanReason);
         access.rescanRoot(layoutMapField, scanReason);
         access.rescanRoot(libraryFactoryCacheField, scanReason);
@@ -978,10 +989,38 @@ public final class TruffleBaseFeature implements InternalFeature {
             access.rescanField(factory, uncachedDispatchField, scanReason);
         }
         if (AnnotationUtil.isAnnotationPresent(type, ExportLibrary.class) || AnnotationUtil.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
-            /* Eagerly resolve receiver type. */
-            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
-                            Collections.singleton(Class.class), type.getJavaClass());
+            Class<?> receiverClass = type.getJavaClass();
+            if (registeredExportLibraryClasses.add(receiverClass)) {
+                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                if (hasExplicitReceiverExport(type)) {
+                    /*
+                     * Exports with an explicit receiver can be used as dynamic dispatch targets
+                     * without the export class being instantiated.
+                     */
+                    initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                }
+            }
         }
+    }
+
+    private static boolean hasExplicitReceiverExport(AnalysisType type) {
+        for (ExportLibrary export : AnnotationUtil.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
+            if (export.receiverType() != Void.class) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
+        if (!Modifier.isAbstract(receiverClass.getModifiers())) {
+            pendingExportLibraryReceiverClasses.add(receiverClass);
+        }
+    }
+
+    private static void initializeTruffleLibraryReceiverAtBuildTime(Class<?> receiverClass) {
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
+                        Collections.singleton(Class.class), receiverClass);
     }
 
     private final EconomicSet<Class<?>> dynamicObjectClasses = EconomicSet.create();

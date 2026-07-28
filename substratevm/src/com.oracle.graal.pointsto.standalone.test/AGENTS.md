@@ -13,7 +13,14 @@ If instructions conflict for standalone tests, this file takes precedence.
 
 ## Primary test gate
 
-- `mx -p /abs/path/graal/substratevm standalone-pointsto-unittest host`
+- Preferred integrated-validation flow when a wrapper suite root is available:
+  - `mx -p <same-suite-root> --dy /espresso-compiler-stub build -f`
+  - `mx -p <same-suite-root> --dy /espresso-compiler-stub standalone-pointsto-unittest host`
+  - `mx -p <same-suite-root> --dy /espresso-compiler-stub standalone-pointsto-unittest espresso`
+
+- CE-local equivalent when working only in `graal/substratevm`:
+  - `mx -p /abs/path/graal/substratevm build -f`
+  - `mx -p /abs/path/graal/substratevm standalone-pointsto-unittest host`
 
 Espresso variant:
 
@@ -23,12 +30,26 @@ Important:
 
 - Rebuild before running either gate.
 - Keep the exact same `mx` context between build and test.
+- If a wrapper suite root is used, also run the standalone wrappers from that same suite root. Do
+  not build in one suite root and test in another.
+- For Espresso-backed standalone tests, keep `--dy /espresso-compiler-stub` on both the build and
+  the test command.
+- Use the optional `test-spec` argument to narrow reruns when debugging, for example:
+  `mx -p <same-suite-root> --dy /espresso-compiler-stub standalone-pointsto-unittest 'com.oracle.graal.pointsto.standalone.test.LargeReachabilityTest#testReachabilityOver5000Methods'`
 - Host flow:
   - `mx -p /abs/path/graal/substratevm build -f`
   - `mx -p /abs/path/graal/substratevm standalone-pointsto-unittest host`
 - Espresso flow:
   - `mx -p /abs/path/graal/substratevm --dy /espresso-compiler-stub build -f`
   - `mx -p /abs/path/graal/substratevm --dy /espresso-compiler-stub standalone-pointsto-unittest espresso`
+
+## Workflow choice
+
+- Use the wrapper-suite flow for integrated validation, especially when Terminus or
+  Espresso-in-standalone wiring is involved.
+- Use the `graal/substratevm` flow for faster local iteration when the change is clearly confined to
+  CE standalone points-to code.
+- In both cases, the build command must finish before the wrapper tests start.
 
 Suite wiring reference:
 

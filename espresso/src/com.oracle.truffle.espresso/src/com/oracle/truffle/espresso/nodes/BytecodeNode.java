@@ -481,7 +481,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
-        this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
+        this.noForeignObjects = getLanguage().isImplicitInteropEnabled() ? Truffle.getRuntime().createAssumption("noForeignObjects") : Assumption.ALWAYS_VALID;
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = methodVersion.getLivenessAnalysis();
         /*
@@ -493,6 +493,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         : TRIVIAL_NO;
 
         this.branchInfos = initializeBranchInfos(code);
+    }
+
+    public Assumption getNoForeignObjectsAssumption() {
+        return noForeignObjects;
     }
 
     public FrameDescriptor getFrameDescriptor() {
@@ -610,7 +614,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // endregion continuation
 
     public void checkNoForeignObjectAssumption(StaticObject object) {
-        if (noForeignObjects.isValid() && object.isForeignObject()) {
+        if (getLanguage().isImplicitInteropEnabled() && noForeignObjects.isValid() && object.isForeignObject()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             noForeignObjects.invalidate();
         }

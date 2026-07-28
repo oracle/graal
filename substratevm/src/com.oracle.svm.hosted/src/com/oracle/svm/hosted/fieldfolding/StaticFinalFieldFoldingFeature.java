@@ -154,6 +154,11 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(StaticFinalFieldFoldingFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(StaticFinalFieldFoldingSingleton.class, new StaticFinalFieldFoldingSingleton());

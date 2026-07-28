@@ -49,7 +49,7 @@ import org.junit.BeforeClass;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 
 import jdk.jfr.Configuration;
@@ -136,9 +136,7 @@ public abstract class AbstractJfrTest {
     }
 
     protected static void flushAllThreads() {
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.get().flush();
-        }
+        SubstrateJVM.get().flush();
     }
 
     protected static void waitUntilTrue(BooleanSupplier supplier) throws InterruptedException {

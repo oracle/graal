@@ -28,6 +28,7 @@ import jdk.graal.compiler.lir.GeneratedStubsHolder;
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.Adler32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
@@ -52,14 +53,36 @@ import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
+import jdk.graal.compiler.replacements.nodes.DoubleKeccakNode;
+import jdk.graal.compiler.replacements.nodes.DoubleModStubNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialAssignNode;
+import jdk.graal.compiler.replacements.nodes.IntegerPolynomialP256MontgomeryMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
@@ -67,6 +90,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
+                Adler32UpdateBytesNode.class,
                 AESNode.class,
                 ArrayCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,
@@ -92,15 +116,37 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 CountPositivesNode.class,
                 CRC32CUpdateBytesNode.class,
                 CRC32UpdateBytesNode.class,
+                DilithiumAlmostInverseNttNode.class,
+                DilithiumAlmostNttNode.class,
+                DilithiumDecomposePolyNode.class,
+                DilithiumMontMulByConstantNode.class,
+                DilithiumNttMultNode.class,
+                DoubleKeccakNode.class,
+                DoubleModStubNode.class,
                 ElectronicCodeBookAESNode.class,
                 EncodeArrayNode.class,
+                GaloisCounterModeAESNode.class,
                 GHASHProcessBlocksNode.class,
                 IndexOfZeroNode.class,
+                IntegerPolynomialAssignNode.class,
+                IntegerPolynomialP256MontgomeryMultNode.class,
+                KyberNttNode.class,
+                KyberInverseNttNode.class,
+                KyberNttMultNode.class,
+                KyberAddPoly2Node.class,
+                KyberAddPoly3Node.class,
+                Kyber12To16Node.class,
+                KyberBarrettReduceNode.class,
+                MD5MultiBlockNode.class,
                 MD5Node.class,
                 Poly1305ProcessBlocksNode.class,
+                SHA1MultiBlockNode.class,
                 SHA1Node.class,
+                SHA256MultiBlockNode.class,
                 SHA256Node.class,
+                SHA3MultiBlockNode.class,
                 SHA3Node.class,
+                SHA512MultiBlockNode.class,
                 SHA512Node.class,
                 StringCodepointIndexToByteIndexNode.class,
                 StringLatin1InflateNode.class,

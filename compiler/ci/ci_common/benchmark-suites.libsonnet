@@ -24,21 +24,25 @@
 
   // suite definitions
   // *****************
-  awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
-    local is_xint = std.objectHasAll(self.environment, "JVM_CONFIG") && utils.contains(self.environment["JVM_CONFIG"], "xint"),
+  awfy_template(capture_crema_libjvm_size=false):: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
+    local is_interpreter_only = std.objectHasAll(self.environment, "JVM_CONFIG") &&
+                    (utils.contains(self.environment["JVM_CONFIG"], "xint") || utils.contains(self.environment["JVM_CONFIG"], "no-profiling")),
     // Required for Havlak in interpreter mode to avoid a stack overflow.
-    local awfy_vm_args = self.extra_vm_args + (if is_xint then ["-Xss16m"] else []),
-    local awfy_run_args = if is_xint then ["--", "-i", "5"] else [],
+    local awfy_vm_args = self.extra_vm_args + (if is_interpreter_only then ["-Xss16m"] else []),
+    local awfy_run_args = if is_interpreter_only then ["--", "-i", "5"] else [],
+    local crema_libjvm_file_size_run = if capture_crema_libjvm_size then [self.crema_libjvm_file_size_cmd] else [],
     suite:: "awfy",
     run+: [
       self.benchmark_cmd + [self.suite + ":*", "--"] + awfy_vm_args + awfy_run_args
-    ],
+    ] + crema_libjvm_file_size_run,
     timelimit: "1:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
+
+  awfy: self.awfy_template(),
 
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
@@ -95,7 +99,7 @@
 
   barista_template(suite_version=null, suite_name="barista", max_jdk_version=null, cmd_app_prefix=["hwloc-bind --cpubind node:0.core:0-3.pu:0 --membind node:0"], non_prefix_barista_args=[]):: cc.compiler_benchmark + {
     suite:: suite_name,
-    local barista_version = "0.6.5",
+    local barista_version = "0.7.8",
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     local prefix_barista_arg = if std.length(cmd_app_prefix) > 0 then [std.format("--cmd-app-prefix=%s", std.join(" ", cmd_app_prefix))] else [],
     local all_barista_args = prefix_barista_arg + non_prefix_barista_args,
@@ -103,7 +107,7 @@
     downloads+: {
       "WRK": { "name": "wrk", "version": "a211dd5", platformspecific: true},
       "WRK2": { "name": "wrk2", "version": "2.2", platformspecific: true},
-      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.5.1"}
+      "BARISTA_BENCHMARKS": { "name": "barista", "version": barista_version}
     },
     packages+: {
       maven: "==3.8.6",
@@ -129,7 +133,7 @@
     max_jdk_version:: max_jdk_version,
     forks_batches:: 3,
     bench_forks_per_batch:: 4,
-    forks_timelimit:: "4:30:00"
+    forks_timelimit:: "5:30:00"
   },
 
   barista: self.barista_template(),

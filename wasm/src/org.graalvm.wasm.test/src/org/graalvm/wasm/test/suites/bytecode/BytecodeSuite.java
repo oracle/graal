@@ -710,60 +710,66 @@ public class BytecodeSuite {
     public void testElemHeaderMinU8OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[0];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                        byteArrayConcat(new byte[]{0x44, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x41, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMaxU8OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[255];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                        byteArrayConcat(new byte[]{0x44, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x41, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMinU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[256];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                        byteArrayConcat(new byte[]{0x48, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x01}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x42, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x01}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMaxU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65535];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                        byteArrayConcat(new byte[]{0x48, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x42, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMinI32OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65536];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                        byteArrayConcat(new byte[]{0x4C, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x43, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMinU8OffsetAddress() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 0), new byte[]{0x41, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 0), new byte[]{0x49, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00});
     }
 
     @Test
     public void testElemHeaderMaxU8OffsetAddress() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 255), new byte[]{0x41, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 255), new byte[]{0x49, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF});
     }
 
     @Test
     public void testElemHeaderMinU16OffsetAddress() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 256), new byte[]{0x42, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x01});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 256), new byte[]{0x4A, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x01});
     }
 
     @Test
     public void testElemHeaderMaxU16OffsetAddress() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 65535), new byte[]{0x42, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 65535), new byte[]{0x4A, 0x10, WasmType.FUNCREF_TYPE, 0x00, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testElemHeaderMinI32OffsetAddress() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 65536), new byte[]{0x43, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x00, 0x01, 0x00});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 65536), new byte[]{0x4B, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x00, 0x01, 0x00});
+    }
+
+    @Test
+    public void testElemHeaderMinI64OffsetAddress() {
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, 4294967296L),
+                        new byte[]{0x4C, 0x10, WasmType.FUNCREF_TYPE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
     }
 
     @Test

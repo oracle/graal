@@ -177,7 +177,7 @@ Users can override the defaults to experiment with upcoming features or opt out 
 * `--wasm.ExtendedConstExpressions`: Enable support for the [extended constant expressions feature](https://github.com/WebAssembly/extended-const/blob/main/proposals/extended-const/Overview.md), adding limited support for arithmetic instructions inside constant expressions.
   Defaults to `true`.
 
-* `--wasm.Memory64`: Enable support for the [Memory64 feature](https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md), letting memories be larger than 4 GiB.
+* `--wasm.Memory64`: Enable support for the [Memory64 feature](https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md), letting memories and tables use 64-bit indices.
   Defaults to `false`.
 
 * `--wasm.MultiMemory`: Enable support for the [multiple memories feature](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md), allowing modules to have multiple memories.

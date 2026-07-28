@@ -25,7 +25,9 @@
 
 package jdk.graal.compiler.truffle.phases;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -213,10 +215,12 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    private static ValueNode transformInputValue(StructuredGraph graph, ValueNode value, UnaryNode transformation, EconomicSet<ValueNode> nodes, EconomicSetNodeEventListener ec) {
+    private static ValueNode transformInputValue(StructuredGraph graph, ValueNode value, UnaryNode transformation, EconomicSet<ValueNode> nodes,
+                    EconomicMap<ValueNode, ValueNode> duplicates, EconomicSetNodeEventListener ec) {
         ValueNode newValue;
         if (nodes.contains(value)) {
-            newValue = value;
+            newValue = duplicates.get(value);
+            GraalError.guarantee(newValue != null, "missing transformed duplicate for %s", value);
         } else {
             if (transformation instanceof NarrowNode) {
                 NarrowNode narrow = (NarrowNode) transformation;
@@ -232,6 +236,28 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             ec.changed(NodeEvent.INPUT_CHANGED, newValue);
         }
         return newValue;
+    }
+
+    private static void replaceValidStateUsagesAndDelete(ValueNode oldValue, ValueNode newValue, ResolvedJavaType longClass) {
+        for (Node usage : oldValue.usages()) {
+            GraalError.guarantee(isValidStateUsage(usage, longClass), "expected only virtual state usages of a long array: %s", usage);
+        }
+        oldValue.replaceAtUsagesAndDeleteWithoutCheckingInvariants(newValue);
+    }
+
+    private static boolean isTransformationUsage(Node usage) {
+        return usage instanceof NarrowNode || usage instanceof ReinterpretNode || usage instanceof AnyNarrowNode;
+    }
+
+    /**
+     * Replaces all conversion usages of {@code target} with {@code duplicate}.
+     */
+    private static void replaceTransformationUsages(ValueNode target, ValueNode duplicate) {
+        for (Node usage : target.usages().snapshot()) {
+            if (usage.isAlive() && isTransformationUsage(usage)) {
+                usage.replaceAtUsagesAndDelete(duplicate);
+            }
+        }
     }
 
     private static boolean checkTransformedNode(StructuredGraph graph, EconomicSetNodeEventListener ec, ResolvedJavaType longClass, Node node) {
@@ -283,8 +309,8 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             assert transformation instanceof NarrowNode || transformation instanceof ReinterpretNode : transformation;
 
             // collect all nodes in this cluster and ensure that all their usages are valid
-            EconomicSet<ValueNode> nodes = EconomicSet.create();
-            ValidTransformation valid = collectNodes((ValueNode) node, nodes, transformation, longClass);
+            EconomicSet<ValueNode> originalNodes = EconomicSet.create();
+            ValidTransformation valid = collectNodes((ValueNode) node, originalNodes, transformation, longClass);
             if (valid == ValidTransformation.Invalid) {
                 return false;
             } else if (valid == ValidTransformation.WithState && narrowUsage) {
@@ -301,15 +327,15 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             }
 
             // check that all inputs are valid
-            for (ValueNode target : nodes) {
+            for (ValueNode target : originalNodes) {
                 if (target.getClass() == ValuePhiNode.class) {
                     for (ValueNode value : ((ValuePhiNode) target).values()) {
-                        if (!isValidInput(value, transformation, valid == ValidTransformation.WithState, nodes)) {
+                        if (!isValidInput(value, transformation, valid == ValidTransformation.WithState, originalNodes)) {
                             return false;
                         }
                     }
                 } else {
-                    if (!isValidInput(((ValueProxyNode) target).value(), transformation, valid == ValidTransformation.WithState, nodes)) {
+                    if (!isValidInput(((ValueProxyNode) target).value(), transformation, valid == ValidTransformation.WithState, originalNodes)) {
                         return false;
                     }
                 }
@@ -319,49 +345,71 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
 
             // initialize with unrestricted stamp and let the canonicalizer deal with it:
             Stamp stamp = transformation.stamp(NodeView.DEFAULT).unrestricted();
-            for (ValueNode target : EconomicSet.create(nodes)) {
-                ValueNode duplicate;
+            EconomicMap<ValueNode, ValueNode> duplicates = EconomicMap.create(Equivalence.IDENTITY);
+            for (ValueNode target : originalNodes) {
                 if (target.getClass() == ValuePhiNode.class) {
                     ValuePhiNode phi = (ValuePhiNode) target;
+                    duplicates.put(target, graph.addWithoutUnique(new ValuePhiNode(stamp, phi.merge())));
+                }
+            }
+            boolean changed;
+            do {
+                changed = false;
+                for (ValueNode target : originalNodes) {
+                    if (target instanceof ValueProxyNode proxy && duplicates.get(target) == null) {
+                        ValueNode proxyValue = proxy.value();
+                        if (originalNodes.contains(proxyValue) && duplicates.get(proxyValue) == null) {
+                            GraalError.guarantee(proxyValue instanceof ValueProxyNode, "expected missing duplicate only while resolving a proxy chain: %s -> %s",
+                                            proxy, proxyValue);
+                            continue;
+                        }
+                        duplicates.put(target, graph.addWithoutUnique(
+                                        new ValueProxyNode(stamp, transformInputValue(graph, proxyValue, transformation, originalNodes, duplicates, ec), proxy.proxyPoint())));
+                        changed = true;
+                    }
+                }
+            } while (changed);
+            for (ValueNode target : originalNodes) {
+                ValueNode duplicate = duplicates.get(target);
+                GraalError.guarantee(duplicate != null, "missing transformed duplicate for %s", target);
+                if (target.getClass() == ValuePhiNode.class) {
+                    ValuePhiNode phi = (ValuePhiNode) target;
+                    ValuePhiNode duplicatePhi = (ValuePhiNode) duplicate;
                     NodeInputList<ValueNode> phiValues = phi.values();
-                    ValueNode[] values = new ValueNode[phiValues.count()];
                     for (int i = 0; i < phiValues.count(); i++) {
-                        values[i] = transformInputValue(graph, phiValues.get(i), transformation, nodes, ec);
-                    }
-                    ValuePhiNode duplicatePhi = graph.addWithoutUnique(new ValuePhiNode(stamp, phi.merge(), values));
-                    nodes.add(duplicatePhi);
-                    duplicate = duplicatePhi;
-                } else {
-                    ValueProxyNode proxy = (ValueProxyNode) target;
-                    duplicate = graph.addWithoutUnique(new ValueProxyNode(stamp, transformInputValue(graph, proxy.value(), transformation, nodes, ec), proxy.proxyPoint()));
-                }
-                nodes.add(duplicate);
-                // now replace all usages of the original phi/proxy
-                for (Node usage : target.usages()) {
-                    if (usage instanceof NarrowNode || usage instanceof ReinterpretNode || usage instanceof AnyNarrowNode) {
-                        usage.replaceAtUsagesAndDelete(duplicate);
-                        // assumption: there's at most one such usage, so we can break
-                        break;
+                        duplicatePhi.addInput(transformInputValue(graph, phiValues.get(i), transformation, originalNodes, duplicates, ec));
                     }
                 }
-                target.replaceAndDelete(duplicate);
+                replaceTransformationUsages(target, duplicate);
+            }
+            /*
+             * The originalNodes can now be deleted: disconnect them from each other and delete.
+             * Because the conversion usages were replaced above and collectNodes rejected all other
+             * external usages, all remaining usages after the disconnection below are valid state
+             * usages.
+             */
+            for (ValueNode target : originalNodes) {
+                target.replaceAtUsages(null, usage -> usage instanceof ValueNode && originalNodes.contains((ValueNode) usage));
+            }
+            for (ValueNode target : originalNodes) {
+                replaceValidStateUsagesAndDelete(target, duplicates.get(target), longClass);
             }
             return true;
         } else if (node.getClass() == AnyExtendNode.class) {
             AnyExtendNode extend = (AnyExtendNode) node;
             if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
-                node.replaceAtUsagesAndDelete(extend.getValue());
+                replaceValidStateUsagesAndDelete(extend, extend.getValue(), longClass);
                 return true;
             }
         } else if (node.getClass() == ReinterpretNode.class) {
             if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
-                node.replaceAtUsagesAndDelete(((ReinterpretNode) node).getValue());
+                replaceValidStateUsagesAndDelete((ValueNode) node, ((ReinterpretNode) node).getValue(), longClass);
                 return true;
             }
         } else if (node.getClass() == AnyNarrowNode.class) {
             AnyNarrowNode narrow = (AnyNarrowNode) node;
             if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
-                node.replaceAtUsagesAndDelete(narrow.getValue());
+                replaceValidStateUsagesAndDelete(narrow, narrow.getValue(), longClass);
                 return true;
             }
         }

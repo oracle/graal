@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,17 +138,17 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
         }
         DispatchSupportImpl dispatchSupport = new DispatchSupportImpl(throwableMarshaller, dispatchHandlers);
         ProcessIsolateThreadSupport processIsolateThreadSupport;
+        List<String> commandLine = new ArrayList<>();
+        commandLine.add(config.getLauncher().toString());
+        commandLine.addAll(config.getLauncherArguments());
         Process process;
         try {
             processIsolateThreadSupport = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).setLocalAddress(config.getInitiatorAddress()).buildInitiator();
-            List<String> commandLine = new ArrayList<>();
-            commandLine.add(config.getLauncher().toString());
-            commandLine.addAll(config.getLauncherArguments());
             ProcessBuilder builder = new ProcessBuilder(commandLine);
             builder.inheritIO();
             process = builder.start();
         } catch (IOException e) {
-            throw new IsolateCreateException(e);
+            throw new IsolateCreateException("Failed to start polyglot isolate subprocess with command line '" + String.join(" ", commandLine) + "'", e);
         }
         long pid = process.pid();
         ProcessIsolate processIsolate = new ProcessIsolate(pid, processIsolateThreadSupport, releaseObjectHandle,
@@ -168,7 +168,8 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
             } catch (TimeoutException timeout) {
                 if (!alive) {
                     connected.cancel(true);
-                    throw new IsolateCreateException("Failed to start isolate subprocess: the subprocess exited with a non-zero exit code (" + process.exitValue() + ").");
+                    throw new IsolateCreateException("Failed to start polyglot isolate subprocess with command line '" + String.join(" ", commandLine) +
+                                    "', the subprocess exited with a non-zero exit code (" + process.exitValue() + ").");
                 }
             } catch (InterruptedException | CancellationException interruptedException) {
                 throw new IsolateCreateException(interruptedException);

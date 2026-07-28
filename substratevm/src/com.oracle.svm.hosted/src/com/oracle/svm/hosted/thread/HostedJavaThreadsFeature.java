@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -47,8 +47,6 @@ import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
@@ -57,7 +55,6 @@ import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class HostedJavaThreadsFeature extends JavaThreadsFeature {
 
     /**

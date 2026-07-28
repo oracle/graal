@@ -29,6 +29,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /**
  * Utility methods on Pointers.

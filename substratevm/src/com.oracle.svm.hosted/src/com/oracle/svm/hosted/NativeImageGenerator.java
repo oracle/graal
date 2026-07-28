@@ -33,6 +33,7 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -77,6 +78,7 @@ import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
+import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
@@ -95,7 +97,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -116,11 +117,11 @@ import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.BuildPhaseProviderImpl;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -128,7 +129,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.c.libc.BionicLibC;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
@@ -166,16 +170,22 @@ import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.option.SharedLayerRuntimeOptionsValues;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
-import com.oracle.svm.core.util.LayeredImageHeapMapStore;
-import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserErrorSupportImpl;
+import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.JavaMainSupport;
+import com.oracle.svm.guest.staging.config.SubstrateGuestLibC;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.option.SharedLayerRuntimeOptionsValues;
+import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
+import com.oracle.svm.guest.staging.util.LayeredImageHeapMapStore;
+import com.oracle.svm.guest.staging.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -232,8 +242,8 @@ import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
+import com.oracle.svm.hosted.imagelayer.AccessImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
@@ -266,6 +276,8 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
+import com.oracle.svm.shared.c.libc.LibCKind;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -284,7 +296,6 @@ import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
@@ -332,6 +343,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.internal.loader.ClassLoaders;
@@ -346,12 +358,12 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.riscv64.RISCV64;
 
 public class NativeImageGenerator {
+    private static final String WINDOWS_ARGS_SUPPORT_CLASS_NAME = "com.oracle.svm.core.windows.WindowsJavaMainWrapperArgsSupport";
 
     protected final FeatureHandler featureHandler;
     protected final ImageClassLoader loader;
@@ -485,7 +497,7 @@ public class NativeImageGenerator {
          * also intentionally do not mark this singleton as a LayerImageSingleton to prevent
          * circular dependency complications.
          */
-        ImageSingletons.add(ImageLayerBuildingSupport.class, support);
+        ImageSingletons.add(ImageLayerBuildingSupportProvider.class, support);
 
         EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
         if (support.getSingletonLoader() != null) {
@@ -547,7 +559,7 @@ public class NativeImageGenerator {
      * Executes the image build. Only one image can be built with this generator.
      */
     public void run(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
-                    JavaMainSupport javaMainSupport, String imageName,
+                    ResolvedJavaMethod javaMainMethod, String imageName,
                     NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     EconomicSet<String> allOptionNames, TimerCollection timerCollection) {
@@ -568,10 +580,9 @@ public class NativeImageGenerator {
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
         var tempDirectoryOptionValue = NativeImageOptions.TempDirectory.getValue(hostedOptionValues.get()).lastValue().orElse(null);
-        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
-            var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
-            HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
-
+        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue);
+                        HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader,
+                                        tempDirectoryProvider.getTemporaryBuildDirectory())) {
             loader.initBuilderModules();
 
             installSingletonRegistries(imageLayerSupport);
@@ -586,6 +597,16 @@ public class NativeImageGenerator {
             ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
             ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
             ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
+            if (ImageLayerBuildingSupport.firstImageBuild()) {
+                RuntimeSupport runtimeSupport = new RuntimeSupport();
+                /*
+                 * GR-76880 tracks whether guest/staging should support automatic singleton registration.
+                 * Use @AutomaticallyRegisteredImageSingleton here if that support becomes available.
+                 */
+                ImageSingletons.add(VMRuntimeSupport.class, runtimeSupport);
+                ImageSingletons.add(RuntimeSupport.class, runtimeSupport);
+                ImageSingletons.add(RuntimeOptionValidationSupport.class, new RuntimeOptionValidationSupport());
+            }
             if (ImageLayerBuildingSupport.lastImageBuild()) {
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
             } else {
@@ -593,7 +614,7 @@ public class NativeImageGenerator {
             }
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
 
-            doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
+            doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
         } finally {
             reporter.ensureCreationStageEndCompleted();
         }
@@ -626,14 +647,21 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, String imageName, NativeImageKind k, SubstitutionProcessor harnessSubstitutions) {
+    /**
+     * Executes the image build after top-level image builder setup has completed.
+     *
+     * @param javaMainMethod application Java main method to install before analysis, or {@code null}
+     *            when the selected entry point already is a C entry point
+     */
+    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod, String imageName, NativeImageKind k,
+                    SubstitutionProcessor harnessSubstitutions) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton().get();
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
+            setupNativeImage(options, entryPoints, javaMainMethod, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -661,7 +689,7 @@ public class NativeImageGenerator {
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                                 bb.getUnsupportedFeatures()).build(debug);
 
-                BuildPhaseProvider.markHostedUniverseBuilt();
+                BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
                 runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
@@ -716,7 +744,7 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
-            BuildPhaseProvider.markReadyForCompilation();
+            BuildPhaseProviderImpl.markReadyForCompilation();
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
@@ -726,7 +754,7 @@ public class NativeImageGenerator {
                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
                 compileQueue.finish(debug);
-                BuildPhaseProvider.markCompileQueueFinished();
+                BuildPhaseProviderImpl.markCompileQueueFinished();
 
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
@@ -742,7 +770,7 @@ public class NativeImageGenerator {
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
                                 runtimeConfiguration, nativeLibraries);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
-                BuildPhaseProvider.markCompilationFinished();
+                BuildPhaseProviderImpl.markCompilationFinished();
             }
 
             /* Re-run shadow heap verification after compilation. */
@@ -763,7 +791,7 @@ public class NativeImageGenerator {
                         verifyAndSealShadowHeap(codeCache, debug, heap);
 
                         ImageHeapLayoutInfo heapLayout = buildNativeImageHeap(heap, codeCache);
-                        BuildPhaseProvider.markHeapLayoutFinished();
+                        BuildPhaseProviderImpl.markHeapLayoutFinished();
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, heapLayout, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
@@ -902,7 +930,7 @@ public class NativeImageGenerator {
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().sealConfiguration();
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                    ImageSingletons.lookup(LoadImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
+                    ImageSingletons.lookup(AccessImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
                     if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                         HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
                     }
@@ -921,7 +949,7 @@ public class NativeImageGenerator {
                         HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
                     }
                     /* All pre-analysis set-up is done and the fixed-point analysis can start. */
-                    BuildPhaseProvider.markAnalysisStarted();
+                    BuildPhaseProviderImpl.markAnalysisStarted();
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
@@ -953,7 +981,7 @@ public class NativeImageGenerator {
                  */
                 nativeLibraries.processAnnotated();
 
-                BuildPhaseProvider.markAnalysisFinished();
+                BuildPhaseProviderImpl.markAnalysisFinished();
                 AfterAnalysisAccessImpl postConfig = new AfterAnalysisAccessImpl(featureHandler, loader, bb, debug);
                 featureHandler.forEachFeature(feature -> feature.afterAnalysis(postConfig));
 
@@ -1003,7 +1031,11 @@ public class NativeImageGenerator {
         }
     }
 
-    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
+    /**
+     * Installs image-builder state, including Java-main support when {@code javaMainMethod} is not
+     * {@code null}, before analysis starts.
+     */
+    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod,
                     String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent _ = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
@@ -1016,8 +1048,9 @@ public class NativeImageGenerator {
                 ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
                                 DiagnosticsMode.getValue() ? DiagnosticsDir.getValue().lastValue().get() : Path.of("reports")));
                 FutureDefaultsOptions.parseAndVerifyOptions();
-                if (javaMainSupport != null) {
-                    ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
+                installArgsSupport();
+                if (javaMainMethod != null) {
+                    installJavaMainSupport(javaMainMethod);
                 }
 
                 Providers originalProviders = GuestAccess.get().getProviders();
@@ -1056,13 +1089,14 @@ public class NativeImageGenerator {
                     }
                 }
 
-                /* Init the BuildPhaseProvider before any features need it. */
-                BuildPhaseProvider.init();
+                /* Init the BuildPhaseProviderImpl before any features need it. */
+                BuildPhaseProviderImpl.init();
+                UserErrorSupportImpl.init();
 
                 AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
 
                 featureHandler.registerFeatures(loader, originalMetaAccess, debug);
-                BuildPhaseProvider.markFeatureRegistrationFinished();
+                BuildPhaseProviderImpl.markFeatureRegistrationFinished();
 
                 loader.initCoreModules();
 
@@ -1073,6 +1107,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 DynamicAccessSupport.setRegistrationSealed();
                 setDefaultLibCIfMissing();
+                if (Platform.includedIn(Platform.LINUX.class)) {
+                    setupGuestLibC();
+                }
                 MainEntryPoint accessMainEntryPoint = access.getMainEntryPoint();
                 if (accessMainEntryPoint != null) {
                     setAndVerifyMainEntryPoint(accessMainEntryPoint, entryPoints);
@@ -1095,7 +1132,8 @@ public class NativeImageGenerator {
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                     HostedImageLayerBuildingSupport imageLayerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
-                    SVMImageLayerLoader imageLayerLoader = HostedConfiguration.instance().createSVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, useSharedLayerGraphs);
+                    SVMImageLayerLoader imageLayerLoader = HostedConfiguration.instance().createSVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport,
+                                    useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
                     imageLayerBuildingSupport.setLoader(imageLayerLoader);
                     CGlobalDataFeature.singleton().getAppLayerCGlobalTracking().initializePriorLayerCGlobals();
                 }
@@ -1196,7 +1234,7 @@ public class NativeImageGenerator {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
-                BuildPhaseProvider.markSetupFinished();
+                BuildPhaseProviderImpl.markSetupFinished();
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
@@ -1217,6 +1255,83 @@ public class NativeImageGenerator {
         }
     }
 
+    /**
+     * Installs the guest-staging argument support singleton after the image singleton registries
+     * have been installed.
+     * <p>
+     * {@link ArgsSupport} is used by runtime code in guest staging, so fully isolated builds need
+     * the singleton instance in the guest registry. The implementation object is therefore created
+     * in the guest context and registered through {@link GuestImageSingletonSupport}. The singleton
+     * keeps the {@code InitialLayerOnly} layer contract by following the same loaded-key check as
+     * automatic singleton registration: if layer loading already handled the key, setup does not
+     * create or register a replacement object. GR-76716 tracks direct guest-staging support for
+     * automatic singleton registration, which would let this become an ordinary guest-staging
+     * registration. GR-76886 tracks moving the Windows-specific implementation into guest staging
+     * once the required platform bindings and platform-specific registration selection are
+     * guest-staging owned.
+     */
+    private static void installArgsSupport() {
+        if (ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class).handledDuringLoading(ArgsSupport.class)) {
+            return;
+        }
+
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType argsSupportType = access.lookupType(ArgsSupport.class);
+        ResolvedJavaType implementationType = getArgsSupportImplementationType(access);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(implementationType);
+        JavaConstant argsSupport;
+        try {
+            argsSupport = access.invoke(ctor, null);
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating Java argument support in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(argsSupportType, argsSupport);
+    }
+
+    /**
+     * Returns the guest type that should implement the {@link ArgsSupport} singleton for the target
+     * platform.
+     */
+    private static ResolvedJavaType getArgsSupportImplementationType(GuestAccess access) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            return access.lookupType(WINDOWS_ARGS_SUPPORT_CLASS_NAME);
+        }
+        return access.lookupType(ArgsSupport.class);
+    }
+
+    /**
+     * Installs Java-main state after the image singleton registries have been installed.
+     * <p>
+     * {@link NativeImageGeneratorRunner} resolves the application Java main method. This method runs
+     * in the generator setup phase that has active builder and guest singleton registries. The
+     * {@link JavaMainSupport} object is constructed in the guest context because it owns method
+     * handles for guest methods, then registered through {@link GuestImageSingletonSupport} so the
+     * builder-side code path performs all guest singleton registration consistently.
+     *
+     * @param javaMainMethod the application Java main method resolved by
+     *            {@link NativeImageGeneratorRunner}
+     */
+    protected void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant executable = access.asExecutableConstant(javaMainMethod);
+        if (executable == null) {
+            throw UserError.abort("Cannot install Java main support because no reflective executable is available for %s.", javaMainMethod.format("%H.%n(%p)"));
+        }
+
+        ResolvedJavaType javaMainSupportType = access.lookupType(JavaMainSupport.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), javaMainSupportType, Method.class);
+        JavaConstant javaMainSupport;
+        try {
+            javaMainSupport = access.invoke(ctor, null, executable);
+        } catch (InvocationException ex) {
+            if (ex.getCause() instanceof IllegalArgumentException iae) {
+                throw UserError.abort(iae, "%s", iae.getMessage());
+            }
+            throw VMError.shouldNotReachHere("Error creating Java main support in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(javaMainSupportType, javaMainSupport);
+    }
+
     private static JavaConstant fromEnum(Enum<?> kind) {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType enumType = access.getProviders().getMetaAccess().lookupJavaType(kind.getDeclaringClass());
@@ -1226,6 +1341,9 @@ public class NativeImageGenerator {
         return access.invoke(valueOf, null, enumName);
     }
 
+    /**
+     * Installs the image singleton registries used during image generation.
+     */
     private void installSingletonRegistries(HostedImageLayerBuildingSupport imageLayerSupport) {
         /* The callbacks need be installed early, before any singleton is registered. */
         var registrationCallback = imageLayerSupport.createSingletonRegistrationCallback();
@@ -1239,7 +1357,15 @@ public class NativeImageGenerator {
         if (GuestAccess.get().isFullyIsolated()) {
             /* Install a second singleton registry in the guest context. */
             GuestImageSingletonSupport.install();
+            registerGuestImageLayerBuildingSupport(imageLayerSupport);
         }
+    }
+
+    private static void registerGuestImageLayerBuildingSupport(HostedImageLayerBuildingSupport imageLayerSupport) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
+        JavaConstant hostProxy = access.createHostProxy(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
     }
 
     private static void setupGuestTargetDescription(SubstrateTarget target) {
@@ -1252,6 +1378,27 @@ public class NativeImageGenerator {
         JavaConstant guestTargetDescription = access.invoke(ctor, null, wordKind, wordSize, byteOrder);
 
         GuestImageSingletonSupport.add(SubstrateGuestTarget.class, guestTargetDescription);
+    }
+
+    /**
+     * Installs the guest-owned target Linux libc identity derived from the authoritative builder
+     * selection. Only the enum name crosses the context boundary; the enum value and singleton are
+     * created in the guest context. The singleton is used only while folding guest queries during
+     * image building; the folded boolean constants are what remain in runtime code.
+     */
+    @Platforms(Platform.LINUX.class)
+    private static void setupGuestLibC() {
+        GuestAccess access = GuestAccess.get();
+        LibCKind kind = switch (LibCBase.singleton()) {
+            case GLibC _ -> LibCKind.GLIBC;
+            case MuslLibC _ -> LibCKind.MUSL;
+            case BionicLibC _ -> LibCKind.BIONIC;
+            case NoLibC _ -> LibCKind.NONE;
+            case LibCBase libC -> throw VMError.shouldNotReachHere("Unknown target libc implementation: " + libC.getClass().getName());
+        };
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestLibC.class, String.class);
+        JavaConstant guestLibC = access.invoke(ctor, null, access.asGuestString(kind.name()));
+        GuestImageSingletonSupport.add(SubstrateGuestLibC.class, guestLibC);
     }
 
     /**
@@ -1937,24 +2084,7 @@ public class NativeImageGenerator {
     }
 
     private void checkUniverse() {
-        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
-            for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isReachable()) && AnnotationUtil.getAnnotation(method, Fold.class) == null) {
-                    checkName(bb, method);
-                }
-            }
-            for (AnalysisField field : aUniverse.getFields()) {
-                if (field.isAccessed()) {
-                    checkName(bb, field);
-                }
-            }
-            for (AnalysisType type : aUniverse.getTypes()) {
-                if (type.isReachable()) {
-                    checkName(bb, type);
-                }
-            }
-        }
-
+        NamingConventionVerifier.checkUniverse(bb, aUniverse);
         checkForInvalidCallsToEntryPoints();
     }
 
@@ -1980,62 +2110,6 @@ public class NativeImageGenerator {
         }
 
         // the unsupported features are reported after checkUniverse is invoked
-    }
-
-    public static void checkName(BigBang bb, AnalysisMethod method) {
-        String format = method.format("%H.%n(%p)");
-        checkName(bb, method, format);
-    }
-
-    public static void checkName(BigBang bb, ResolvedJavaField field) {
-        String format = field.format("%H.%n");
-        checkName(bb, null, format);
-    }
-
-    public static void checkName(BigBang bb, ResolvedJavaType type) {
-        String format = type.toJavaName(true);
-        checkName(bb, null, format);
-    }
-
-    /**
-     * These are legit elements from the JDK that have hotspot in their name.
-     */
-    private static final Set<String> CHECK_NAMING_EXCEPTIONS = Set.of(
-                    "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
-                    "sun.lwawt.macosx.CCustomCursor.fHotspot",
-                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
-                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
-
-    private static void checkName(BigBang bb, AnalysisMethod method, String name) {
-        /*
-         * We do not want any parts of the native image generator in the generated image. Therefore,
-         * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "host VM" elements, which come from the hosting VM, unless they are
-         * JDK internal types.
-         */
-        String lcName = name.toLowerCase(Locale.ROOT);
-        if (!CHECK_NAMING_EXCEPTIONS.contains(name)) {
-            if (lcName.contains("hosted")) {
-                report(bb, name, method, "Hosted element used at run time: " + name + namingConventionsErrorMessageSuffix("hosted"));
-            } else if (!lcName.startsWith("jdk.internal") && lcName.contains("hotspot")) {
-                report(bb, name, method, "Element with HotSpot in its name used at run time: " + name + namingConventionsErrorMessageSuffix("HotSpot"));
-            }
-        }
-    }
-
-    private static String namingConventionsErrorMessageSuffix(String elementType) {
-        return """
-
-                        If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
-                        If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
-    }
-
-    private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
-        if (bb != null) {
-            bb.getUnsupportedFeatures().addMessage(key, method, message);
-        } else {
-            throw new UnsupportedFeatureException(message);
-        }
     }
 
     protected void processNativeLibraryImports(NativeLibraries nativeLibs, ClassInitializationSupport classInitializationSupport) {

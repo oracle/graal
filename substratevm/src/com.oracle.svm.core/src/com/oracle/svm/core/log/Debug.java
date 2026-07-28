@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.guest.staging.log.Log;
+
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;

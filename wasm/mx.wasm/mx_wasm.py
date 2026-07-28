@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -101,11 +101,9 @@ def graalwasm_standalone_deps():
 def libwasmvm_dynamic_build_args():
     image_build_args = []
     if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25"):
-        image_build_args.extend([
-            '-H:+UnlockExperimentalVMOptions',
-            '-H:+VectorAPISupport',
-            '--add-modules=jdk.incubator.vector',
-        ])
+        image_build_args.append('--add-modules=jdk.incubator.vector')
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25.2"):
+            image_build_args.extend(['-H:+UnlockExperimentalVMOptions', '-H:+VectorAPISupport'])
     return image_build_args
 
 #

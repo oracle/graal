@@ -69,6 +69,12 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
+    public ResolvedJavaType receiverTypeAt(int index) {
+        assert index == 0 : index;
+        return type;
+    }
+
+    @Override
     public Inlineable inlineableElementAt(int index) {
         assert index == 0 : index;
         return inlineableElement;

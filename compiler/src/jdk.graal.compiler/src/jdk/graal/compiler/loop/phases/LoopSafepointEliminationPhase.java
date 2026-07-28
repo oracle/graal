@@ -304,18 +304,19 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     public static boolean loopIsInIterationRange(Loop loop, long distance) {
         final Stamp limitStamp = loop.counted().getTripCountLimit().stamp(NodeView.DEFAULT);
-        if (limitStamp instanceof IntegerStamp) {
-            final IntegerStamp limitIStamp = (IntegerStamp) limitStamp;
-            final long upperBoundLimit = limitIStamp.upperBound();
+        if (limitStamp instanceof IntegerStamp limitIStamp) {
             final Stamp startStamp = loop.counted().getBodyIVStart().stamp(NodeView.DEFAULT);
-            if (startStamp instanceof IntegerStamp) {
-                final IntegerStamp startIStamp = (IntegerStamp) startStamp;
-                final long lowerBoundStart = startIStamp.lowerBound();
-                if (IntegerStamp.subtractionOverflows(upperBoundLimit, lowerBoundStart, 64)) {
+            if (startStamp instanceof IntegerStamp startIStamp) {
+                final boolean ascending = loop.counted().getDirection() == InductionVariable.Direction.Up;
+                final IntegerStamp lowerStamp = ascending ? startIStamp : limitIStamp;
+                final IntegerStamp upperStamp = ascending ? limitIStamp : startIStamp;
+                final long lowerBound = lowerStamp.lowerBound();
+                final long upperBound = upperStamp.upperBound();
+                if (IntegerStamp.subtractionOverflows(upperBound, lowerBound, 64)) {
                     return false;
                 }
                 try {
-                    final long startToLimitDistance = NumUtil.safeAbs(upperBoundLimit - lowerBoundStart);
+                    final long startToLimitDistance = NumUtil.safeAbs(upperBound - lowerBound);
 
                     /*
                      * Divide the distance by the absolute value of the stride. For non-constant

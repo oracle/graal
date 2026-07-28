@@ -26,7 +26,7 @@ package com.oracle.svm.core.foreign;
 
 import java.io.FileDescriptor;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

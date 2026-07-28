@@ -509,10 +509,9 @@ public final class LinkResolver {
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringClass().isFinalFlagSet() || resolved.isPrivate()) {
                     callKind = CallKind.DIRECT;
-                } else if (resolved.requiresInterfaceDispatch(symbolicHolder)) {
-                    // This case can only happen if implicit interface methods are not added to the
-                    // vtables.
-                    assert resolved.getDeclaringClass().isInterface();
+                } else if (resolved.getDeclaringClass().isInterface() && resolved.requiresInterfaceDispatch(symbolicHolder)) {
+                    // This may happen if a virtual call-site resolves its method to an interface
+                    // method, and the symbolic holder does not have that method in its vtable.
                     callKind = CallKind.ITABLE_LOOKUP;
                 } else {
                     callKind = CallKind.VTABLE_LOOKUP;

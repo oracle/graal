@@ -36,12 +36,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -140,17 +139,13 @@ public abstract class Heap {
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
 
-    /**
-     * Returns the alignment in bytes that the heap base must adhere to at runtime. Note that this
-     * alignment is not enforced if {@link SubstrateOptions#SpawnIsolates} is disabled.
-     */
+    /** Returns the alignment in bytes that the heap base must adhere to at runtime. */
     @Fold
     public abstract int getHeapBaseAlignment();
 
     /**
      * Returns the alignment in bytes that each image heap and any auxiliary images must adhere to
-     * at runtime. Note that this alignment is not enforced if
-     * {@link SubstrateOptions#SpawnIsolates} is disabled.
+     * at runtime.
      */
     @Fold
     public abstract int getImageHeapAlignment();

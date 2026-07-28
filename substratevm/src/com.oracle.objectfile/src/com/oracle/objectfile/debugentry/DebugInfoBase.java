@@ -118,12 +118,6 @@ public abstract class DebugInfoBase {
      */
     private final List<CompiledMethodEntry> compiledMethods = new ArrayList<>();
 
-    /**
-     * Flag set to true if heap references are stored as addresses relative to a heap base register
-     * otherwise false.
-     */
-    private boolean useHeapBase;
-
     private boolean isRuntimeCompilation;
     /**
      * Number of bits oops are left shifted by when using compressed oops.
@@ -178,7 +172,6 @@ public abstract class DebugInfoBase {
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
-        this.useHeapBase = true;
         this.reservedHubBitsMask = 0;
         this.numReservedHubBits = 0;
         this.compressionShift = 0;
@@ -202,11 +195,6 @@ public abstract class DebugInfoBase {
          * (DebugTypeInfo debugTypeInfo : typeInfoProvider) { install types }
          */
         debugInfoProvider.installDebugInfo();
-
-        /*
-         * Track whether we need to use a heap base register.
-         */
-        useHeapBase = debugInfoProvider.useHeapBase();
 
         this.isRuntimeCompilation = debugInfoProvider.isRuntimeCompilation();
 
@@ -370,10 +358,6 @@ public abstract class DebugInfoBase {
      */
     public int debugLineStringIndex(String string) {
         return lineStringTable.debugStringIndex(string);
-    }
-
-    public boolean useHeapBase() {
-        return useHeapBase;
     }
 
     public boolean isRuntimeCompilation() {

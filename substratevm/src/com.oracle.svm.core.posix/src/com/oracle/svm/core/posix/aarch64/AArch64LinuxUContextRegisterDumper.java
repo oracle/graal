@@ -34,14 +34,14 @@ import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.mcontext_linux_aarch64_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
@@ -50,7 +50,7 @@ import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 @Platforms(Platform.LINUX_AARCH64_BASE.class)
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     AArch64LinuxUContextRegisterDumper() {
         VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER));

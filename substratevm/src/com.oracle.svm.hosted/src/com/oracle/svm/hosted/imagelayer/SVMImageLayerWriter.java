@@ -77,6 +77,7 @@ import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.jni.JNIJavaCallVariantWrapperMethod;
 import com.oracle.svm.hosted.lambda.LambdaProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -106,6 +107,7 @@ import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.SingletonInfo
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.LambdaUtils;
@@ -343,6 +345,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         } else if (LambdaUtils.isLambdaType(type)) {
             WrappedType.Lambda.Writer b = builder.getWrappedType().initLambda();
             b.setCapturingClass(LambdaUtils.capturingClass(type.toJavaName()));
+            b.setCaptureSite(LambdaParser.findLambdaCaptureSite(OriginalClassProvider.getJavaClass(type)));
         } else if (ProxyRenamingSubstitutionProcessor.isProxyType(type)) {
             builder.getWrappedType().setProxyType();
         }

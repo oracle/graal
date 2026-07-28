@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,12 +37,12 @@ import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(LibCSupport.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class WindowsLibCSupport implements LibCSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -108,6 +108,12 @@ class WindowsLibCSupport implements LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void exit(int status) {
         WindowsLibC.exit(status);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void abort() {
+        WindowsLibC.abort();
     }
 
     @Override

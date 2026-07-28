@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,6 +69,53 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         throw new IllegalStateException("abstract node LLVMToVarINode used");
     }
 
+    /**
+     * Converts the integral part of an IEEE-754 value directly to its two's-complement bit
+     * representation. Using a Java integer cast here would first restrict the result to 64 bits,
+     * while BigInteger is not available on Sulong's runtime-compilation path.
+     */
+    protected LLVMIVarBit floatingPointToIVar(double from) {
+        long raw = Double.doubleToRawLongBits(from);
+        int encodedExponent = (int) ((raw >>> 52) & 0x7ff);
+        if (encodedExponent == 0x7ff) {
+            // Converting NaN, infinity, or an out-of-range value is poison in LLVM IR.
+            return LLVMIVarBit.fromLong(getBits(), 0);
+        }
+
+        long significand = raw & 0x000f_ffff_ffff_ffffL;
+        int exponent;
+        if (encodedExponent == 0) {
+            exponent = -1022;
+        } else {
+            significand |= 0x0010_0000_0000_0000L;
+            exponent = encodedExponent - 1023;
+        }
+
+        byte[] bytes = new byte[(getBits() + Byte.SIZE - 1) / Byte.SIZE];
+        int shift = exponent - 52;
+        for (int i = 0; i <= 52; i++) {
+            int targetBit = i + shift;
+            if (targetBit >= 0 && targetBit < getBits() && (significand & (1L << i)) != 0) {
+                int byteIndex = bytes.length - 1 - targetBit / Byte.SIZE;
+                bytes[byteIndex] |= (byte) (1 << (targetBit % Byte.SIZE));
+            }
+        }
+
+        if (raw < 0 && significand != 0) {
+            int carry = 1;
+            for (int i = bytes.length - 1; i >= 0; i--) {
+                int value = (~bytes[i] & 0xff) + carry;
+                bytes[i] = (byte) value;
+                carry = value >>> Byte.SIZE;
+            }
+            int unusedBits = bytes.length * Byte.SIZE - getBits();
+            if (unusedBits != 0) {
+                bytes[0] &= (byte) (0xff >>> unusedBits);
+            }
+        }
+        return LLVMIVarBit.create(getBits(), bytes, getBits(), false);
+    }
+
     @Specialization(guards = "!isRecursive")
     protected LLVMIVarBit doPointer(LLVMPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
@@ -114,6 +161,16 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         @Specialization
         protected LLVMIVarBit doI64(long from) {
             return LLVMIVarBit.fromLong(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doFloat(float from) {
+            return floatingPointToIVar(from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doDouble(double from) {
+            return floatingPointToIVar(from);
         }
 
         @Specialization
@@ -174,6 +231,16 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         @Specialization
         protected LLVMIVarBit doI64(long from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doFloat(float from) {
+            return floatingPointToIVar(from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doDouble(double from) {
+            return floatingPointToIVar(from);
         }
 
         @Specialization

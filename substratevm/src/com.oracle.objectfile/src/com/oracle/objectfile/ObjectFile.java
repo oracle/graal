@@ -45,6 +45,8 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
@@ -52,7 +54,6 @@ import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.graalvm.collections.EconomicSet;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -170,16 +171,20 @@ public abstract class ObjectFile {
 
     public abstract void setByteOrder(ByteOrder byteOrder);
 
-    // FIXME: replace OS string with enum (or just get rid of the concept,
-    // perhaps merging with getFilenameSuffix).
-    private static String getHostOS() {
+    private enum HostOS {
+        LINUX,
+        MAC_OS_X,
+        WINDOWS
+    }
+
+    private static HostOS getHostOS() {
         final String osName = GraalServices.getSavedProperty("os.name");
         if (osName.startsWith("Linux")) {
-            return "Linux";
+            return HostOS.LINUX;
         } else if (osName.startsWith("Mac OS X")) {
-            return "Mac OS X";
+            return HostOS.MAC_OS_X;
         } else if (osName.startsWith("Windows")) {
-            return "Windows";
+            return HostOS.WINDOWS;
         } else {
             throw new IllegalStateException("Unsupported OS: " + osName);
         }
@@ -207,91 +212,98 @@ public abstract class ObjectFile {
     }
 
     public static Format getNativeFormat() {
-        switch (getHostOS()) {
-            case "Linux":
-                return Format.ELF;
-            case "Mac OS X":
-                return Format.MACH_O;
-            case "Windows":
-                return Format.PECOFF;
-            default:
-                throw new AssertionError("Unreachable"); // we must handle any output of getHostOS()
-        }
+        return switch (getHostOS()) {
+            case LINUX -> Format.ELF;
+            case MAC_OS_X -> Format.MACH_O;
+            case WINDOWS -> Format.PECOFF;
+        };
     }
 
-    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
+    public static ObjectFile getNativeObjectFile(int pageSize) {
         return switch (ObjectFile.getNativeFormat()) {
-            case ELF -> new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
+            case ELF -> new ELFObjectFile(pageSize, true);
             case MACH_O -> new MachOObjectFile(pageSize);
             case PECOFF -> new PECoffObjectFile(pageSize);
             case LLVM -> throw new AssertionError("Unsupported NativeObjectFile for format " + ObjectFile.getNativeFormat());
         };
     }
 
-    public static ObjectFile getNativeObjectFile(int pageSize) {
-        return getNativeObjectFile(pageSize, true);
-    }
-
     public static ObjectFile createRuntimeDebugInfo(int pageSize) {
-        return getNativeObjectFile(pageSize, true);
+        return getNativeObjectFile(pageSize);
     }
 
     /*
      * Abstract notions of relocation.
      */
     public enum RelocationKind {
-
-        UNKNOWN,
+        UNKNOWN(-1),
         /**
          * The relocation's symbol provides an address whose absolute value (plus addend) supplies
          * the fixup bytes.
          */
-        DIRECT_1,
-        DIRECT_2,
-        DIRECT_4,
-        DIRECT_8,
+        DIRECT_1(1),
+        DIRECT_2(2),
+        DIRECT_4(4),
+        DIRECT_8(8),
         /**
          * The relocation's symbol provides an address whose image-base-relative value (plus addend)
          * supplies the fixup bytes.
          */
-        ADDR32NB_4,
+        ADDR32NB_4(4),
         /**
          * The index of the object file section containing the relocation's symbol supplies the
          * fixup bytes. (used in CodeView debug information)
          */
-        SECTION_2,
+        SECTION_2(2),
         /**
          * The address of the object file section containing the relocation's symbol (plus addend)
          * supplies the fixup bytes. (used in CodeView debug information)
          */
-        SECREL_4,
+        SECREL_4(4),
         /**
          * The relocation's symbol provides an address whose PC-relative value (plus addend)
          * supplies the fixup bytes.
          */
-        PC_RELATIVE_1,
-        PC_RELATIVE_2,
-        PC_RELATIVE_4,
-        PC_RELATIVE_8,
+        PC_RELATIVE_1(1),
+        PC_RELATIVE_2(2),
+        PC_RELATIVE_4(4),
+        PC_RELATIVE_8(8),
         /**
-         * AArch64-specific relocation types.
+         * AArch64-specific relocation types (instructions are 4 bytes).
          */
-        AARCH64_R_MOVW_UABS_G0,
-        AARCH64_R_MOVW_UABS_G0_NC,
-        AARCH64_R_MOVW_UABS_G1,
-        AARCH64_R_MOVW_UABS_G1_NC,
-        AARCH64_R_MOVW_UABS_G2,
-        AARCH64_R_MOVW_UABS_G2_NC,
-        AARCH64_R_MOVW_UABS_G3,
-        AARCH64_R_AARCH64_ADR_PREL_PG_HI21,
-        AARCH64_R_AARCH64_ADD_ABS_LO12_NC,
-        AARCH64_R_LD_PREL_LO19,
-        AARCH64_R_GOT_LD_PREL19,
-        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST64_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST32_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST16_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC;
+        AARCH64_R_MOVW_UABS_G0(4),
+        AARCH64_R_MOVW_UABS_G0_NC(4),
+        AARCH64_R_MOVW_UABS_G1(4),
+        AARCH64_R_MOVW_UABS_G1_NC(4),
+        AARCH64_R_MOVW_UABS_G2(4),
+        AARCH64_R_MOVW_UABS_G2_NC(4),
+        AARCH64_R_MOVW_UABS_G3(4),
+        AARCH64_R_AARCH64_ADR_PREL_PG_HI21(4),
+        AARCH64_R_AARCH64_ADD_ABS_LO12_NC(4),
+        AARCH64_R_LD_PREL_LO19(4),
+        AARCH64_R_GOT_LD_PREL19(4),
+        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST64_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST32_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST16_ABS_LO12_NC(4),
+        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC(4);
+
+        private final int size;
+
+        RelocationKind(int size) {
+            this.size = size;
+        }
+
+        /**
+         * The number of bytes affected by this relocation,  e.g., the size of an instruction for
+         * which an immediate is patched (even if that immediate itself is smaller).
+         */
+        public int getRelocationSize() {
+            if (size < 0) {
+                throw new UnsupportedOperationException();
+            }
+            return size;
+        }
 
         public static RelocationKind getDirect(int relocationSize) {
             switch (relocationSize) {
@@ -359,36 +371,6 @@ public abstract class ObjectFile {
                     return true;
             }
             return false;
-        }
-
-        public static int getRelocationSize(RelocationKind kind) {
-            switch (kind) {
-                case DIRECT_1:
-                case PC_RELATIVE_1:
-                    return 1;
-                case DIRECT_2:
-                case PC_RELATIVE_2:
-                case SECTION_2:
-                    return 2;
-                case DIRECT_4:
-                case PC_RELATIVE_4:
-                case ADDR32NB_4:
-                case SECREL_4:
-                    return 4;
-                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
-                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
-                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
-                    // AArch64 instructions are 4 bytes
-                    return 4;
-                case DIRECT_8:
-                case PC_RELATIVE_8:
-                    return 8;
-            }
-            // other types should not be queried
-            throw new IllegalArgumentException("Invalid RelocationKind provided: " + kind);
         }
     }
 
@@ -578,12 +560,44 @@ public abstract class ObjectFile {
     }
 
     public static int nextIntegerMultipleWithCongruence(int start, int multipleOf, int congruentTo, int modulo) {
-        // FIXME: this is a stupid solution; improvements wanted (some maths is required)
-        int candidate = start;
-        while (candidate % modulo != congruentTo % modulo) {
-            candidate = nextIntegerMultiple(candidate + 1, multipleOf);
+        int remainder = Math.floorMod(congruentTo - start, modulo);
+        if (remainder == 0) {
+            return start;
         }
-        return candidate;
+        int alignedStart = nextIntegerMultiple(start + 1, multipleOf);
+        remainder = Math.floorMod(congruentTo - alignedStart, modulo);
+        if (remainder == 0) {
+            return alignedStart;
+        }
+        int congruenceDivisor = greatestCommonDivisor(multipleOf, modulo);
+        if (remainder % congruenceDivisor != 0) {
+            throw new IllegalArgumentException("No integer multiple satisfies the congruence");
+        }
+        int normalizedMultiple = multipleOf / congruenceDivisor;
+        int normalizedModulo = modulo / congruenceDivisor;
+        int normalizedRemainder = remainder / congruenceDivisor;
+        int multiplier = Math.floorMod(normalizedRemainder * modularInverse(normalizedMultiple, normalizedModulo), normalizedModulo);
+        return alignedStart + multiplier * multipleOf;
+    }
+
+    private static int modularInverse(int value, int modulo) {
+        int previousRemainder = modulo;
+        int remainder = Math.floorMod(value, modulo);
+        int previousCoefficient = 0;
+        int coefficient = 1;
+        while (remainder != 0) {
+            int quotient = previousRemainder / remainder;
+
+            int nextRemainder = previousRemainder - quotient * remainder;
+            previousRemainder = remainder;
+            remainder = nextRemainder;
+
+            int nextCoefficient = previousCoefficient - quotient * coefficient;
+            previousCoefficient = coefficient;
+            coefficient = nextCoefficient;
+        }
+        assert previousRemainder == 1;
+        return Math.floorMod(previousCoefficient, modulo);
     }
 
     protected static int greatestCommonDivisor(int arg1, int arg2) {
@@ -796,11 +810,9 @@ public abstract class ObjectFile {
     }
 
     public static int defaultGetOrDecideOffset(Map<Element, LayoutDecisionMap> alreadyDecided, Element el, int offsetHint) {
-        // FIXME: in this implementation, we must not have decided the vaddr already!
-        // We should instead support both cases, and if the vaddr is decided, apply
-        // the modulo constraint (if necessary) here!
-        assert (alreadyDecided.get(el).getDecision(LayoutDecision.Kind.VADDR) == null || !alreadyDecided.get(el).getDecision(LayoutDecision.Kind.VADDR).isTaken());
-        // now we are free to worry about the modulo constraint during vaddr assignment only
+        LayoutDecision vaddrDecision = alreadyDecided.get(el).getDecision(LayoutDecision.Kind.VADDR);
+        assert vaddrDecision == null || !vaddrDecision.isTaken() : "Pre-decided virtual addresses require reverse offset/virtual-address constraint handling";
+        // Now we are free to worry about the modulo constraint during vaddr assignment only.
 
         // we take the hint, but bumped up to proper alignment
         return defaultGetOrDecide(alreadyDecided, el, LayoutDecision.Kind.OFFSET, nextIntegerMultiple(offsetHint, el.getAlignment()));
@@ -970,11 +982,9 @@ public abstract class ObjectFile {
          * so there is no such complicated delegation relationship (hence the 'transitive closure'
          * case above).
          *
-         * FIXME: there is some tidying-up to do: we could define, say, ELFBuiltinSection to gather
-         * up the common delegations to ObjectFile, rather than repeating them in each class. Same
-         * goes for Mach-O once I have coded up all that stuff. In the case of non-builtin sections,
-         * we include this delegation in BasicElementImpl, but the ELF builtin sections do not
-         * derive from that (they use up their superclass slot by deriving from ELFSection).
+         * Format-specific built-in sections repeat the common delegations to ObjectFile because
+         * they use their superclass slot for the format-specific section base class. Non-built-in
+         * sections avoid this repetition by delegating through BasicElementImpl.
          */
 
         private final String name;
@@ -1195,27 +1205,21 @@ public abstract class ObjectFile {
     protected Iterable<Element> elementsMappedOnPage(long vaddr, Map<Element, LayoutDecisionMap> alreadyDecided) {
         final long vaddrRoundedDown = (vaddr >> getPageSizeShift()) << getPageSizeShift();
 
-        // FIXME: use FilteringIterator instead of copying
-        ArrayList<Element> ss = new ArrayList<>();
+        return () -> StreamSupport.stream(decisionsByKind(LayoutDecision.Kind.VADDR, alreadyDecided).spliterator(), false)
+                        .filter(decision -> elementOverlapsPage(decision, vaddrRoundedDown, alreadyDecided))
+                        .map(LayoutDecision::getElement)
+                        .iterator();
+    }
 
-        for (LayoutDecision d : decisionsByKind(LayoutDecision.Kind.VADDR, alreadyDecided)) {
-            Element s = d.getElement();
-            assert d.getKind() == LayoutDecision.Kind.VADDR;
-            int va = (int) d.getValue();
-            int sizeInMemory = d.getElement().getMemSize(alreadyDecided);
-            assert sizeInMemory != -1;
-            // if it begins before the end of this page
-            // and doesn't end before the start,
-            // it overlaps the page.
-            int mappingBegin = va;
-            int mappingEnd = va + sizeInMemory;
-            long pageBegin = vaddrRoundedDown;
-            long pageEnd = vaddrRoundedDown + getPageSize();
-            if (mappingBegin < pageEnd && mappingEnd > pageBegin) {
-                ss.add(s);
-            }
-        }
-        return ss;
+    private boolean elementOverlapsPage(LayoutDecision decision, long pageBegin, Map<Element, LayoutDecisionMap> alreadyDecided) {
+        assert decision.getKind() == LayoutDecision.Kind.VADDR;
+        int vaddr = (int) decision.getValue();
+        int sizeInMemory = decision.getElement().getMemSize(alreadyDecided);
+        assert sizeInMemory != -1;
+        int mappingBegin = vaddr;
+        int mappingEnd = vaddr + sizeInMemory;
+        long pageEnd = pageBegin + getPageSize();
+        return mappingBegin < pageEnd && mappingEnd > pageBegin;
     }
 
     public interface Segment extends List<Element> {
@@ -1405,9 +1409,6 @@ public abstract class ObjectFile {
             decisionsByElement.put(e, m);
 
             // assert that we have at least the minimum expected decision set
-            // FIXME: arguably nobits/bss/zerofill sections should not have an offset,
-            // and removing this would simplify the maximum offset/vaddr calculation
-            // (because there would always be a unique section occupying the max offset/vaddr)
             assert decisionsByElement.containsKey(e);
             assert decisionsByElement.get(e).containsKey(LayoutDecision.Kind.CONTENT);
             assert decisionsByElement.get(e).containsKey(LayoutDecision.Kind.SIZE);
@@ -1623,11 +1624,7 @@ public abstract class ObjectFile {
         }
 
         /*
-         * Take decisions in the topsorted order. FIXME: in the case where some decisions have been
-         * explicitly "taken" by the FileLayout, we should be able to simplify the graph at this
-         * point. Also, these decisions should be put into decisionsTake *here* rather than at the
-         * point where they were scheduled. In fact, let's take them out of the schedule and remove
-         * their dependencies.
+         * Take decisions in the topsorted order.
          */
         for (LayoutDecision d : buildOrder) {
             Element e = d.getElement();
@@ -1699,6 +1696,11 @@ public abstract class ObjectFile {
 
         int totalSize = getMinimumFileSize();
         for (Element e : sortedObjectFileElements) {
+            /*
+             * Non-file-backed sections such as ELF NOBITS and Mach-O zerofill currently still
+             * participate in the generic file-offset layout. Revisit this if their offsets become
+             * observable outside this package's internal layout model.
+             */
             totalSize = Math.max(totalSize, (int) decisionsTaken.get(e).getDecision(LayoutDecision.Kind.OFFSET).getValue() + (int) decisionsTaken.get(e).getDecidedValue(LayoutDecision.Kind.SIZE));
         }
         return totalSize;
@@ -1806,7 +1808,7 @@ public abstract class ObjectFile {
         boolean isGlobal();
     }
 
-    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);
+    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported);
 
     public abstract Symbol createUndefinedSymbol(String name, boolean isCode);
 

@@ -54,6 +54,10 @@ import jdk.vm.ci.meta.JavaKind;
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class GraalCompilerFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(GraalCompilerFeature.class, this);
+    }
 
     public static final class IsEnabled implements BooleanSupplier {
         @Override

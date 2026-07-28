@@ -201,6 +201,7 @@ suite = {
                 ],
                 "requiresConcealed": {
                     "jdk.graal.compiler": [
+                        "jdk.graal.compiler.annotation",
                         "jdk.graal.compiler.api.replacements",
                         "jdk.graal.compiler.core.common.spi",
                         "jdk.graal.compiler.debug",

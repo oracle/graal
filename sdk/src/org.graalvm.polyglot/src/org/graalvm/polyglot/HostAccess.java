@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.polyglot.Engine.ToStringSupport;
 
 /**
  * Represents the host access policy of a polyglot context. The host access policy specifies which
@@ -611,7 +612,31 @@ public final class HostAccess {
      */
     @Override
     public String toString() {
-        return name == null ? super.toString() : name;
+        if (name != null) {
+            return name;
+        }
+        return "HostAccess[allowPublicAccess=" + allowPublic +
+                        ", allowAllInterfaceImplementations=" + allowAllInterfaceImplementations +
+                        ", allowAllClassImplementations=" + allowAllClassImplementations +
+                        ", allowArrayAccess=" + allowArrayAccess +
+                        ", allowListAccess=" + allowListAccess +
+                        ", allowBufferAccess=" + allowBufferAccess +
+                        ", allowIterableAccess=" + allowIterableAccess +
+                        ", allowIteratorAccess=" + allowIteratorAccess +
+                        ", allowMapAccess=" + allowMapAccess +
+                        ", allowBigIntegerNumberAccess=" + allowBigIntegerNumberAccess +
+                        ", allowAccessInheritance=" + allowAccessInheritance +
+                        ", accessAnnotations=" + accessAnnotations +
+                        ", implementableAnnotations=" + implementableAnnotations +
+                        ", excludedTypes=" + excludeTypes +
+                        ", implementableTypes=" + implementableTypes +
+                        ", members=" + members +
+                        ", targetMappings=" + targetMappings +
+                        ", mutableTargetMappings=" + Arrays.toString(allowMutableTargetMappings) +
+                        ", methodScoping=" + methodScopingDefault +
+                        ", disableMethodScopingAnnotations=" + disableMethodScopingAnnotations +
+                        ", disableMethodScoping=" + disableMethodScoping +
+                        ", methodLookup=" + methodLookup + "]";
     }
 
     private static boolean hasAnnotation(AnnotatedElement member, Class<? extends Annotation> annotationType) {
@@ -1366,6 +1391,110 @@ public final class HostAccess {
             }
             methodLookup = lookup;
             return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 25.3
+         */
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("HostAccess.newBuilder()");
+            if (accessAnnotations != null) {
+                for (Class<? extends Annotation> annotation : accessAnnotations) {
+                    ToStringSupport.appendCall(b, "allowAccessAnnotatedBy", ToStringSupport.classLiteral(annotation));
+                }
+            }
+            if (implementationAnnotations != null) {
+                for (Class<? extends Annotation> annotation : implementationAnnotations) {
+                    ToStringSupport.appendCall(b, "allowImplementationsAnnotatedBy", ToStringSupport.classLiteral(annotation));
+                }
+            }
+            if (excludeTypes != null) {
+                MapCursor<Class<?>, Boolean> cursor = excludeTypes.getEntries();
+                while (cursor.advance()) {
+                    ToStringSupport.appendCall(b, "denyAccess", ToStringSupport.classLiteral(cursor.getKey()), cursor.getValue());
+                }
+            }
+            if (implementableTypes != null) {
+                for (Class<?> type : implementableTypes) {
+                    ToStringSupport.appendCall(b, "allowImplementations", ToStringSupport.classLiteral(type));
+                }
+            }
+            if (members != null) {
+                for (AnnotatedElement member : members) {
+                    ToStringSupport.appendCall(b, "allowAccess", member);
+                }
+            }
+            if (targetMappings != null) {
+                for (Object mapping : targetMappings) {
+                    ToStringSupport.appendCall(b, "targetTypeMapping", mapping);
+                }
+            }
+            if (allowPublic) {
+                ToStringSupport.appendCall(b, "allowPublicAccess", true);
+            }
+            if (allowAllImplementations) {
+                ToStringSupport.appendCall(b, "allowAllImplementations", true);
+            }
+            if (allowAllClassImplementations) {
+                ToStringSupport.appendCall(b, "allowAllClassImplementations", true);
+            }
+            if (allowArrayAccess) {
+                ToStringSupport.appendCall(b, "allowArrayAccess", true);
+            }
+            if (allowListAccess) {
+                ToStringSupport.appendCall(b, "allowListAccess", true);
+            }
+            if (allowBufferAccess) {
+                ToStringSupport.appendCall(b, "allowBufferAccess", true);
+            }
+            if (allowIterableAccess) {
+                ToStringSupport.appendCall(b, "allowIterableAccess", true);
+            }
+            if (allowIteratorAccess) {
+                ToStringSupport.appendCall(b, "allowIteratorAccess", true);
+            }
+            if (allowMapAccess) {
+                ToStringSupport.appendCall(b, "allowMapAccess", true);
+            }
+            if (!allowBigIntegerNumberAccess) {
+                ToStringSupport.appendCall(b, "allowBigIntegerNumberAccess", false);
+            }
+            if (allowAccessInheritance) {
+                ToStringSupport.appendCall(b, "allowAccessInheritance", true);
+            }
+            if (!Arrays.equals(allowMutableTargetMappings, MutableTargetMapping.values())) {
+                StringBuilder mappings = new StringBuilder();
+                String separator = "";
+                if (allowMutableTargetMappings != null) {
+                    for (MutableTargetMapping mapping : allowMutableTargetMappings) {
+                        mappings.append(separator);
+                        mappings.append("MutableTargetMapping.");
+                        mappings.append(mapping);
+                        separator = ", ";
+                    }
+                }
+                ToStringSupport.appendCall(b, "allowMutableTargetMappings", mappings);
+            }
+            if (methodScopingDefault) {
+                ToStringSupport.appendCall(b, "methodScoping", true);
+            }
+            if (disableMethodScopingAnnotations != null) {
+                for (Class<? extends Annotation> annotation : disableMethodScopingAnnotations) {
+                    ToStringSupport.appendCall(b, "disableMethodScopingAnnotatedBy", ToStringSupport.classLiteral(annotation));
+                }
+            }
+            if (disableMethodScoping != null) {
+                for (Executable executable : disableMethodScoping) {
+                    ToStringSupport.appendCall(b, "disableMethodScoping", executable);
+                }
+            }
+            if (methodLookup != null) {
+                ToStringSupport.appendCall(b, "useModuleLookup", methodLookup);
+            }
+            return b.toString();
         }
 
         /**

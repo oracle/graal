@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
@@ -38,9 +38,6 @@ import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
@@ -50,7 +47,6 @@ import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ClassLoaderFeature implements InternalFeature {
 
     private static final String APP_PACKAGE_KEY_NAME = "ClassLoader.Packages#App";

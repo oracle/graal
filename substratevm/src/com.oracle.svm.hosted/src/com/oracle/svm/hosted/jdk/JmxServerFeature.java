@@ -38,26 +38,22 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 public class JmxServerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -72,7 +68,7 @@ public class JmxServerFeature implements InternalFeature {
         beforeAnalysisAccess.getNativeLibraries().addStaticJniLibrary("management_agent");
         // Resolve calls to jdk_internal_agent* as builtIn. For calls to native method
         // isAccessUserOnly0.
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("jdk_internal_agent");
+        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("jdk_internal_agent");
     }
 
     @Override

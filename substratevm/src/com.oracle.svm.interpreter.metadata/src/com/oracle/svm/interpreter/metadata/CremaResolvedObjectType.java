@@ -24,19 +24,24 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
-import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
 import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
@@ -52,6 +57,7 @@ import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -65,15 +71,30 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 /**
  * A runtime-loaded, classfile-backed specialization of {@link InterpreterResolvedObjectType}.
  */
-public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, AttributedElement {
-    // GR-70288: Only keep a subset of the parsed attributes.
+public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, FilteredAttributedElement {
+    private static final Object JNI_FIELD_ID_CREATION_LOCK = new Object();
+    private static final Set<Symbol<Name>> RETAINED_ATTRIBUTES = Set.of(
+                    BootstrapMethodsAttribute.NAME,
+                    RecordAttribute.NAME,
+                    InnerClassesAttribute.NAME,
+                    NestHostAttribute.NAME,
+                    NestMembersAttribute.NAME,
+                    EnclosingMethodAttribute.NAME,
+                    // Raw attributes
+                    ParserSymbols.ParserNames.RuntimeVisibleAnnotations,
+                    ParserSymbols.ParserNames.RuntimeVisibleTypeAnnotations
+    // SourceFile and Signature are passed to the DynamicHub on creation.
+    );
+
     private final Attribute[] attributes;
 
     private final byte[] primitiveStatics;
     private final Object[] referenceStatics;
 
-    // GR-70720: Allow AOT types as nest host.
-    private CremaResolvedObjectType host;
+    // GR-70720: The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
+    private InterpreterResolvedObjectType host;
+
+    private CremaJNIStaticFieldId jniStaticFieldIds;
 
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
@@ -83,13 +104,26 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
                         permittedSubclassNames(parserKlass));
         this.primitiveStatics = new byte[staticPrimitiveFieldsSize];
         this.referenceStatics = new Object[staticReferenceFields];
-        this.attributes = parserKlass.getAttributes();
+        this.attributes = filterAttributes(parserKlass.getAttributes());
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object getStaticStorage(boolean primitives, int layerNum) {
         assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
         return primitives ? primitiveStatics : referenceStatics;
+    }
+
+    public JNIFieldId jniStaticFieldIdFor(int offset) {
+        CremaJNIStaticFieldId probe;
+        synchronized (JNI_FIELD_ID_CREATION_LOCK) {
+            probe = jniStaticFieldIds == null ? null : jniStaticFieldIds.findStaticFieldId(offset);
+            if (probe == null) {
+                probe = CremaJNIStaticFieldId.allocate(DynamicHub.fromClass(getJavaClass()), offset, jniStaticFieldIds);
+                jniStaticFieldIds = probe;
+            }
+        }
+        return CremaJNIFieldIds.forStaticField(probe);
     }
 
     public BootstrapMethodsAttribute getBootstrapMethodsAttribute() {
@@ -106,7 +140,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         // filter out constructors
         ArrayList<CremaResolvedJavaMethod> result = new ArrayList<>();
         for (InterpreterResolvedJavaMethod declaredMethod : getDeclaredMethods()) {
-            if (!declaredMethod.isConstructor()) {
+            if (!declaredMethod.isConstructor() && !declaredMethod.isInternal()) {
                 result.add((CremaResolvedJavaMethod) declaredMethod);
             }
         }
@@ -142,7 +176,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1666-L1673")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1666-L1673")
     public ResolvedJavaMethod getClassInitializer() {
         /*
          * Note: According to JVMS25 2.9.2:
@@ -263,11 +297,16 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedObjectType getNestHost() {
+    public InterpreterResolvedObjectType getNestHost() {
         if (host == null) {
             host = resolveHost();
         }
         return host;
+    }
+
+    public void setNestHost(InterpreterResolvedObjectType nestHost) {
+        assert host == null;
+        host = nestHost;
     }
 
     @Override
@@ -276,14 +315,18 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
          * This method is not called for VM operations, only for reflection. No need to cache the
          * result as this is a rare operation.
          */
-        CremaResolvedObjectType nestHost = getNestHost();
+        InterpreterResolvedObjectType nestHost = getNestHost();
         if (this != nestHost) {
-            return resolveNestMembers(nestHost);
+            if (nestHost instanceof CremaResolvedObjectType cremaNestHost) {
+                return resolveNestMembers(cremaNestHost);
+            }
+            // GR-70720: For non-Crema hosts, report the host itself; hidden nestmates are not listed as nest members.
+            return new InterpreterResolvedObjectType[]{nestHost};
         }
         return resolveNestMembers(this);
     }
 
-    private CremaResolvedObjectType resolveHost() {
+    private InterpreterResolvedObjectType resolveHost() {
         NestHostAttribute nestHostAttribute = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
         if (nestHostAttribute == null) {
             return this;
@@ -384,7 +427,18 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         return attributes;
     }
 
-    static final class CremaRecordComponent extends AbstractAnnotated implements CremaResolvedJavaRecordComponent, AttributedElement {
+    @Override
+    public Set<Symbol<Name>> getRetainedAttributes() {
+        return RETAINED_ATTRIBUTES;
+    }
+
+    static final class CremaRecordComponent extends AbstractAnnotated implements CremaResolvedJavaRecordComponent, FilteredAttributedElement {
+        private static final Set<Symbol<Name>> RETAINED_ATTRIBUTES = Set.of(
+                        ParserSymbols.ParserNames.Signature,
+                        // Raw attributes
+                        ParserSymbols.ParserNames.RuntimeVisibleAnnotations,
+                        ParserSymbols.ParserNames.RuntimeVisibleTypeAnnotations);
+
         private final CremaResolvedObjectType declaringRecord;
         private final String name;
         private final JavaType type;
@@ -395,17 +449,17 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         @SuppressWarnings("unchecked")
         CremaRecordComponent(CremaResolvedObjectType declaringRecord, RecordComponentInfo component, int index) {
             this.declaringRecord = declaringRecord;
-            this.attributes = component.getAttributes();
+            this.attributes = filterAttributes(component.getAttributes());
             this.index = index;
 
             InterpreterConstantPool constantPool = declaringRecord.getConstantPool();
             this.name = constantPool.utf8At(component.getNameIndex(), "record component name").toString();
             this.type = CremaMethodAccess.toJavaType((Symbol<Type>) constantPool.utf8At(component.getDescriptorIndex(), "record component descriptor"));
-            this.signature = extractSignature(constantPool, component);
+            this.signature = extractSignature(constantPool);
         }
 
-        private static String extractSignature(InterpreterConstantPool constantPool, RecordComponentInfo component) {
-            SignatureAttribute signatureAttribute = component.getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
+        private String extractSignature(InterpreterConstantPool constantPool) {
+            SignatureAttribute signatureAttribute = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (signatureAttribute == null) {
                 return null;
             }
@@ -447,6 +501,11 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
         @Override
         public Attribute[] getAttributes() {
             return attributes;
+        }
+
+        @Override
+        public Set<Symbol<Name>> getRetainedAttributes() {
+            return RETAINED_ATTRIBUTES;
         }
 
         @Override

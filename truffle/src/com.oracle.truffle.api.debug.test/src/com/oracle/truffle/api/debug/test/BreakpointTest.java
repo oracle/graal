@@ -1281,6 +1281,7 @@ public class BreakpointTest extends AbstractDebugTest {
         tester.close();
         tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        tester.close();
         // Source without content, with a relative source path
         tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".SourceRoot", "a_relative/path"));
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID, URI.create("a_relative/path"));

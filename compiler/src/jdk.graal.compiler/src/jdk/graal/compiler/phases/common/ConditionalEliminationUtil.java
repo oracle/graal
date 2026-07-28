@@ -59,10 +59,11 @@ import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.TernaryNode;
-import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.calc.UnaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
 
@@ -428,23 +429,58 @@ public class ConditionalEliminationUtil {
     }
 
     /**
-     * Checks whether {@code candidate} is {@code upper - 1}.
+     * Checks whether {@code lower + lowerAddendOuter} is strictly below {@code upper}. Optional
+     * constant addends are stripped from {@code lower} and {@code upper}; the proof always requires
+     * both resulting bases to be the same value and then checks whether
+     * {@code lowerAddend + lowerAddendOuter < upperAddend}.
      */
-    private static boolean isUpperMinusOne(ValueNode candidate, ValueNode upper) {
-        if (candidate instanceof AddNode add && add.getX() == upper) {
-            ValueNode value = add.getY();
-            return value.isJavaConstant() && value.asJavaConstant().asLong() == -1L;
+    private static boolean isStrictlyBelowAfterAdd(ValueNode lower, long lowerAddendOuter, ValueNode upper) {
+        ValueNode lowerBase = lower;
+        long lowerAddend = 0;
+        if (lower instanceof AddNode add && add.getY().isJavaConstant() && add.getY().stamp(NodeView.DEFAULT).isIntegerStamp()) {
+            lowerBase = add.getX();
+            lowerAddend = add.getY().asJavaConstant().asLong();
         }
-        return false;
+
+        ValueNode upperBase = upper;
+        long upperAddend = 0;
+        if (upper instanceof AddNode add && add.getY().isJavaConstant() && add.getY().stamp(NodeView.DEFAULT).isIntegerStamp()) {
+            upperBase = add.getX();
+            upperAddend = add.getY().asJavaConstant().asLong();
+        }
+
+        if (lowerAddendOuter < 0 || upperAddend > 0 || lowerBase != upperBase) {
+            return false;
+        }
+        try {
+            long lowerAddendSum = LoopUtility.addExact(((IntegerStamp) lower.stamp(NodeView.DEFAULT)).getBits(), lowerAddend, lowerAddendOuter);
+            return lowerAddendSum < upperAddend;
+        } catch (ArithmeticException e) {
+            return false;
+        }
     }
 
     /**
-     * Proves a masked unsigned-below check after proving that the upper value is positive.
+     * Proves a masked unsigned-below check after proving that the mask value is non-negative and
+     * strictly below the upper bound. The basic pattern is:
      *
      * <pre>{@code
      * if (upper > 0) {
      *     int lower = index & (upper - 1);
      *     if (Integer.compareUnsigned(lower, upper) < 0) {
+     *         inBounds();
+     *     }
+     * }
+     * }</pre>
+     *
+     * This also handles constant addends on the masked lower value, the mask value, and the upper
+     * value, as long as the mask and upper value have the same base and the resulting mask plus the
+     * lower addend is still strictly below the upper value:
+     *
+     * <pre>{@code
+     * if (base + upperAddend > 0) {
+     *     int lower = (index & (base + maskAddend)) + lowerAddend;
+     *     if (Integer.compareUnsigned(lower, base + upperAddend) < 0) {
      *         inBounds();
      *     }
      * }
@@ -460,18 +496,28 @@ public class ConditionalEliminationUtil {
             return false;
         }
         ValueNode upper = integerBelowNode.getY();
-        // Check that lower is index & (upper - 1).
         ValueNode lower = integerBelowNode.getX();
-        if (!(lower instanceof AndNode and && (isUpperMinusOne(and.getX(), upper) || isUpperMinusOne(and.getY(), upper)))) {
+        ValueNode lowerBase = lower;
+        long lowerAddend = 0;
+        if (lower instanceof AddNode add && add.getY().isJavaConstant() && add.getY().stamp(NodeView.DEFAULT).isIntegerStamp()) {
+            lowerBase = add.getX();
+            lowerAddend = add.getY().asJavaConstant().asLong();
+        }
+        if (!(lowerBase instanceof AndNode and)) {
             return false;
         }
-        InfoElement infoElement = infoElementProvider.infoElements(upper);
-        while (infoElement != null) {
-            // Check that upper is positive.
-            if (infoElement.getStamp() instanceof IntegerStamp integerStamp && integerStamp.lowerBound() > 0) {
-                return rewireGuards(infoElement.getGuard(), true, infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
-            }
-            infoElement = infoElementProvider.nextElement(infoElement);
+        ValueNode mask = null;
+        if (isStrictlyBelowAfterAdd(and.getX(), lowerAddend, upper)) {
+            mask = and.getX();
+        } else if (isStrictlyBelowAfterAdd(and.getY(), lowerAddend, upper)) {
+            mask = and.getY();
+        }
+        if (mask == null) {
+            return false;
+        }
+        Pair<InfoElement, Stamp> foldedMask = recursiveFoldStampFromInfo(infoElementProvider, mask);
+        if (foldedMask != null && foldedMask.getRight() instanceof IntegerStamp integerStamp && integerStamp.lowerBound() >= 0) {
+            return rewireGuards(foldedMask.getLeft().getGuard(), true, foldedMask.getLeft().getProxifiedInput(), foldedMask.getRight(), rewireGuardFunction);
         }
         return false;
     }

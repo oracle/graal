@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
 
@@ -80,6 +81,8 @@ public class NativeImageResourceUtils {
             RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE, SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_1.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_2.getBytes(StandardCharsets.UTF_8));
+            RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class);
+            RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class.getDeclaredConstructors());
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {

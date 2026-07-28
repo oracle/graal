@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -163,8 +164,6 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUnsignedCastToFloatNode extends LLVMToFloatNode {
 
-        private static final float LEADING_BIT = 0x1.0p63f;
-
         protected LLVMUnsignedCastToFloatNode() {
         }
 
@@ -203,11 +202,7 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         }
 
         public static float doI64(long from) {
-            float val = from & Long.MAX_VALUE;
-            if (from < 0) {
-                val += LEADING_BIT;
-            }
-            return val;
+            return ExactMath.unsignedToFloat(from);
         }
 
         @Specialization

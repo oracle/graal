@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
@@ -45,11 +45,11 @@ import org.graalvm.word.impl.Word;
  * the owner of the lock, before acquiring it.
  */
 class SamplerSpinLock {
-    private final UninterruptibleUtils.AtomicPointer<IsolateThread> owner;
+    private final UninterruptibleAtomicUtils.AtomicPointer<IsolateThread> owner;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SamplerSpinLock() {
-        this.owner = new UninterruptibleUtils.AtomicPointer<>();
+        this.owner = new UninterruptibleAtomicUtils.AtomicPointer<>();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

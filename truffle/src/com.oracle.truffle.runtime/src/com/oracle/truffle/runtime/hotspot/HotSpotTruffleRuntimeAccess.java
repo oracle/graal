@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.runtime.hotspot;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -74,7 +79,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         return 0;
     }
 
-    protected static TruffleRuntime createRuntime() {
+    private static TruffleRuntime createRuntime() {
         if (TruffleVersions.isVersionCheckEnabled()) {
             /*
              * Check the JDK version before checking compilerModule or jvmci to improve usability.
@@ -168,7 +173,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             if (TruffleVersions.isVersionCheckEnabled()) {
                 Version truffleVersion = TruffleVersions.TRUFFLE_API_VERSION;
                 Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
-                Version compilerVersion = getCompilerVersion(compilationSupport);
+                Version compilerVersion = getCompilerVersion(compilationSupport, compilerModule);
                 Version compilerMajorMinorVersion = stripUpdateVersion(compilerVersion);
                 int jdkFeatureVersion = Runtime.version().feature();
                 if (compilerMajorMinorVersion.compareTo(truffleMajorMinorVersion) > 0) {
@@ -187,6 +192,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                                     """, Runtime.version(), compilerVersion, truffleVersion, jdkFeatureVersion));
                 }
             }
+            LibGraalTruffleCompilationSupport.verifyNativeMethodLinkage();
         } else {
             // try jar graal
             try {
@@ -207,7 +213,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 if (TruffleVersions.isVersionCheckEnabled()) {
                     Version truffleVersion = TruffleVersions.TRUFFLE_API_VERSION;
                     Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
-                    Version compilerVersion = getCompilerVersion(compilationSupport);
+                    Version compilerVersion = getCompilerVersion(compilationSupport, compilerModule);
                     Version compilerMajorMinorVersion = stripUpdateVersion(compilerVersion);
                     String jvmciVersionCheckError = verifyJVMCIVersion(compilationSupport.getClass());
                     if (jvmciVersionCheckError != null) {
@@ -272,10 +278,29 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
      * Retrieves the compiler version from the provided {@link TruffleCompilationSupport} instance
      * using reflection. If the method is unavailable, a fallback version of 23.1.1 is returned.
      */
-    public static Version getCompilerVersion(TruffleCompilationSupport compilationSupport) {
-        Version version = null;
+    public static Version getCompilerVersion(TruffleCompilationSupport compilationSupport, Module compilerModule) {
+        Version version;
         try {
-            version = Version.parse(compilationSupport.getCompilerVersion());
+            String versionString = compilationSupport.getCompilerVersion();
+            if (versionString == null && compilerModule != null) {
+                String resource = "META-INF/graalvm/jdk.graal.compiler/version";
+                ClassLoader loader = compilerModule.getClassLoader();
+                InputStream in = loader != null ? loader.getResourceAsStream(resource) : ClassLoader.getSystemResourceAsStream(resource);
+                if (in != null) {
+                    try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                        versionString = r.readLine();
+                    } catch (IOException ioe) {
+                        throw new InternalError(ioe);
+                    }
+                }
+            }
+            /*
+             * If old libgraal cannot report its compiler version and no version resource is
+             * available, use the oldest possible compiler version for this supported JDK line. This
+             * forces the MIN_COMPILER_VERSION check to produce the compatibility fallback before
+             * native linkage verification can fail on mismatched entry points.
+             */
+            version = versionString != null ? Version.parse(versionString) : Version.create(25, 0, 0);
         } catch (NoSuchMethodError noMethod) {
             /*
              * The TruffleCompilationSupport is present in both the maven artifact

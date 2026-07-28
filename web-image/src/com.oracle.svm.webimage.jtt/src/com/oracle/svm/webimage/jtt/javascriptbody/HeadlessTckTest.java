@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.netbeans.html.json.tck.JavaScriptTCK;
 import org.netbeans.html.json.tck.KOTest;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 
 import net.java.html.js.tests.ExposedPropertiesTest;

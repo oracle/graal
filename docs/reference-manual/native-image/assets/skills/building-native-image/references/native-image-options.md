@@ -146,15 +146,24 @@ native-image --trace-object-instantiation=com.example.MyClass <class>
 
 ## Network support
 
-**If the binary needs HTTP/HTTPS:**
-```bash
-native-image --enable-http --enable-https <class>
+**If the binary needs JDK URL protocol handlers such as HTTP or HTTPS:**
+```json
+{
+  "reflection": [
+    {
+      "type": "sun.net.www.protocol.http.Handler",
+      "methods": [{"name": "<init>", "parameterTypes": []}]
+    },
+    {
+      "type": "sun.net.www.protocol.https.Handler",
+      "methods": [{"name": "<init>", "parameterTypes": []}]
+    }
+  ]
+}
 ```
 
-**If the binary needs specific URL protocols:**
-```bash
-native-image --enable-url-protocols=http,https <class>
-```
+The `--enable-http`, `--enable-https`, and `--enable-url-protocols` options are deprecated.
+Use reachability metadata instead.
 
 ## Monitoring and observability
 

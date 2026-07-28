@@ -182,12 +182,15 @@ public final class OptimizedRuntimeOptions {
                     usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> DynamicCompilationThresholdsMaxNormalLoad = new OptionKey<>(90);
 
-    @Option(help = "The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).", //
-                    usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Integer> DynamicCompilationThresholdsMinNormalLoad = new OptionKey<>(10);
+    @Option(help = "The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 0).", //
+                    usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> DynamicCompilationThresholdsMinNormalLoad = new OptionKey<>(0);
 
     @Option(help = "The minimal scale the compilation thresholds can be reduced to (default: 0.1).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);
+
+    @Option(help = "The slope used to increase compilation thresholds when compilation queue load is above DynamicCompilationThresholdsMaxNormalLoad (default: 0.09).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Double> DynamicCompilationThresholdsHighLoadSlope = new OptionKey<>(0.09);
 
     @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //

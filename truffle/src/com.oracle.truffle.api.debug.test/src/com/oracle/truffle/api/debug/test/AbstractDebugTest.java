@@ -145,7 +145,11 @@ public abstract class AbstractDebugTest {
     }
 
     protected final void popContext() {
-        tester.close();
+        DebuggerTester current = tester;
+        tester = null;
+        if (current != null) {
+            current.close();
+        }
         if (!sessionStack.isEmpty()) {
             tester = sessionStack.pop();
         }

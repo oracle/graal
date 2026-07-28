@@ -30,7 +30,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
@@ -77,6 +77,21 @@ public abstract class AbstractClassRegistry {
         Object maybeClass = runtimeClasses.get(name);
         if (maybeClass instanceof Class<?> entry) {
             return entry;
+        }
+        return null;
+    }
+
+    public final Class<?> findLoadedClass(ByteSequence typeBytes) {
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (type != null) {
+            return findLoadedClass(type);
+        }
+        if (runtimeClasses != null) {
+            for (Symbol<Type> runtimeType : runtimeClasses.keySet()) {
+                if (runtimeType.hashCode() == typeBytes.hashCode() && runtimeType.contentEquals(typeBytes)) {
+                    return findLoadedClass(runtimeType);
+                }
+            }
         }
         return null;
     }

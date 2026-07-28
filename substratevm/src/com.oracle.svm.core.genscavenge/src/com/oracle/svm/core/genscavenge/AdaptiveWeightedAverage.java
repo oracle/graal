@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
@@ -40,8 +40,8 @@ import com.oracle.svm.shared.Uninterruptible;
  *
  * This serves as our best estimate of a future unknown.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.hpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.cpp")
 class AdaptiveWeightedAverage {
     static final int OLD_THRESHOLD = 100;
 

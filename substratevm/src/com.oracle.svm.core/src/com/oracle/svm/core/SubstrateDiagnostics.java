@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.Arrays;
 
@@ -72,10 +72,10 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
@@ -88,17 +88,18 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
-import com.oracle.svm.core.util.AbstractImageHeapList;
+import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
-import com.oracle.svm.core.util.ImageHeapList;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.guest.staging.util.ImageHeapList;
+import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -141,6 +142,11 @@ public class SubstrateDiagnostics {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isFatalErrorHandlingThread() {
         return fatalErrorState().diagnosticThread.get() == CurrentIsolate.getCurrentThread();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean canUnsafelyWalkOtherThreadStacks() {
+        return Options.UnsafeDumpOtherThreadStacksOnFatalError.getValue() && isFatalErrorHandlingThread();
     }
 
     public static int maxInvocations() {
@@ -871,9 +877,8 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
-            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (RuntimeCompilation.isEnabled()) {
-                log.string("Supports isolated compilation: ").bool(SubstrateOptions.supportCompileInIsolates()).newline();
+                log.string("Supports isolated compilation: ").bool(SubstrateOptions.SupportCompileInIsolates.getValue()).newline();
             }
             log.string("Container support: ").bool(Container.isSupported()).newline();
             log.string("Object reference size: ").signed(ObjectLayout.singleton().getReferenceSize()).newline();
@@ -1107,10 +1112,11 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (VMOperation.isInProgressAtSafepoint()) {
+            if (VMOperation.isInProgressAtSafepoint() || (canUnsafelyWalkOtherThreadStacks() && invocationCount == 1)) {
                 /*
                  * Iterate all threads without checking if current thread holds the ThreadsLock.
-                 * Most likely, we are at a safepoint anyway, but there is no guarantee.
+                 * This is safe at a safepoint. Otherwise, it is permitted only for fatal
+                 * diagnostics when DumpOtherThreadStacksOnFatalError is enabled.
                  */
                 int printed = 0;
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
@@ -1157,7 +1163,7 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            String[] args = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class).mainArgs;
+            String[] args = ImageSingletons.lookup(JavaMainSupport.class).mainArgs;
             if (args != null) {
                 log.string("Command line: ");
                 for (String arg : args) {
@@ -1327,7 +1333,7 @@ public class SubstrateDiagnostics {
             thunks.add(new VMLockSupport.DumpVMMutexes());
             thunks.add(new DumpBuildTimeInfo());
             thunks.add(new DumpRuntimeInfo());
-            if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
+            if (ImageSingletons.contains(JavaMainSupport.class)) {
                 thunks.add(new DumpCommandLine());
             }
             if (CounterSupport.isEnabled()) {
@@ -1398,6 +1404,9 @@ public class SubstrateDiagnostics {
     }
 
     public static class Options {
+        @Option(help = "Unsafely try to print stack traces of other threads after a fatal error. Stack traces can be entirely incorrect.", type = OptionType.Debug) //
+        public static final RuntimeOptionKey<Boolean> UnsafeDumpOtherThreadStacksOnFatalError = new RuntimeOptionKey<>(false);
+
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
         public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
 
@@ -1411,7 +1420,6 @@ public class SubstrateDiagnostics {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class SubstrateDiagnosticsFeature implements InternalFeature {
     @Override

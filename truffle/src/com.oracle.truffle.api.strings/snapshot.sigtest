@@ -130,6 +130,7 @@ meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.s
 meth public final int charIndexOfAnyCharUTF16Uncached(int,int,char[])
 meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
+meth public final int codePointAtIndexUTF32Uncached(int)
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int codePointIndexToByteIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -155,6 +156,7 @@ meth public final java.lang.Object getInternalNativePointerUncached(com.oracle.t
 meth public final java.lang.String toJavaStringUncached()
 meth public final java.lang.String toString()
 meth public final java.lang.String toStringDebug()
+meth public final long byteIndexOfStringSetUncached(int,int,com.oracle.truffle.api.strings.TruffleString$StringSet)
 meth public final long parseLongUncached() throws com.oracle.truffle.api.strings.TruffleString$NumberFormatException
 meth public final long parseLongUncached(int) throws com.oracle.truffle.api.strings.TruffleString$NumberFormatException
 meth public final void copyToByteArrayNodeUncached(int,byte[],int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -305,6 +307,7 @@ innr public abstract static ByteIndexOfAnyByteNode
 innr public abstract static ByteIndexOfCodePointNode
 innr public abstract static ByteIndexOfCodePointSetNode
 innr public abstract static ByteIndexOfStringNode
+innr public abstract static ByteIndexOfStringSetNode
 innr public abstract static ByteIndexToCodePointIndexNode
 innr public abstract static ByteLengthOfCodePointNode
 innr public abstract static CharIndexOfAnyCharUTF16Node
@@ -371,6 +374,7 @@ innr public final static !enum ErrorHandling
 innr public final static CodePointSet
 innr public final static IllegalByteArrayLengthException
 innr public final static NumberFormatException
+innr public final static StringSet
 innr public final static WithMask
 meth public com.oracle.truffle.api.strings.TruffleString asNativeUncached(com.oracle.truffle.api.strings.NativeAllocator,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean,boolean)
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -448,6 +452,17 @@ meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleStri
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringSetNode
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public abstract long execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$StringSet)
+meth public static boolean resultIsMatch(long)
+meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringSetNode create()
+meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringSetNode getUncached()
+meth public static int unpackResultByteIndex(long)
+meth public static int unpackResultPatternIndex(long)
+supr com.oracle.truffle.api.nodes.Node
+hfds NO_MATCH
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexToCodePointIndexNode
  outer com.oracle.truffle.api.strings.TruffleString
@@ -1012,6 +1027,14 @@ meth public static com.oracle.truffle.api.strings.TruffleString$RepeatNode creat
 meth public static com.oracle.truffle.api.strings.TruffleString$RepeatNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final static com.oracle.truffle.api.strings.TruffleString$StringSet
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public boolean isIntrinsicCandidate(com.oracle.truffle.api.strings.TruffleString$CodeRange)
+meth public static com.oracle.truffle.api.strings.TruffleString$StringSet fromArray(com.oracle.truffle.api.strings.AbstractTruffleString[],com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public static com.oracle.truffle.api.strings.TruffleString$StringSet fromArray(com.oracle.truffle.api.strings.TruffleString$WithMask[],com.oracle.truffle.api.strings.TruffleString$Encoding)
+supr java.lang.Object
+hfds encoding,indexOfOps,isUTF16Or32
+
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$SubstringByteIndexNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
@@ -1230,7 +1253,7 @@ CLSS public final com.oracle.truffle.api.strings.TruffleStringFactory
 cons public init()
 innr public final static WithMaskFactory
 supr java.lang.Object
-hcls AsManagedNodeGen,AsNativeNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfCodePointSetNodeGen,ByteIndexOfStringNodeGen,ByteIndexToCodePointIndexNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointAtIndexUTF32NodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromByteArrayWithCompactionUTF32NodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,FromNativePointerWithCompactionUTF32NodeGen,FromZeroTerminatedNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeImpreciseNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,GetStringCompactionLevelNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,InternalAsTruffleStringNodeGen,InternalCopyToByteArrayNodeGen,InternalSwitchEncodingNodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,MaterializeSubstringNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToJavaStringNodeGen,ToValidStringNodeGen
+hcls AsManagedNodeGen,AsNativeNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfCodePointSetNodeGen,ByteIndexOfStringNodeGen,ByteIndexOfStringSetNodeGen,ByteIndexToCodePointIndexNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointAtIndexUTF32NodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromByteArrayWithCompactionUTF32NodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,FromNativePointerWithCompactionUTF32NodeGen,FromZeroTerminatedNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeImpreciseNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,GetStringCompactionLevelNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,InternalAsTruffleStringNodeGen,InternalCopyToByteArrayNodeGen,InternalSwitchEncodingNodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,MaterializeSubstringNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToJavaStringNodeGen,ToValidStringNodeGen
 
 CLSS public final static com.oracle.truffle.api.strings.TruffleStringFactory$WithMaskFactory
  outer com.oracle.truffle.api.strings.TruffleStringFactory

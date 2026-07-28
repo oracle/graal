@@ -61,15 +61,21 @@ public final class ExceptionTable {
         this.handlers = handlers;
     }
 
+    int handlerCount() {
+        return handlers.length;
+    }
+
     void generateExceptionTable(RuntimeBytecodeGen bytecode) {
         assert to >= from : "Invalid exception table range " + from + ":" + to;
         for (ExceptionHandler handler : handlers) {
+            final int target = handler.target();
+            assert target != -1 : "Exception handler target has not been assigned";
             if (handler.tag() == -1) {
                 // from (4 byte) | to (4 byte) | type (1 byte) | 0x0000_0000 | target (4 byte)
-                bytecode.addExceptionHandler(from, to, handler.type(), 0, handler.target());
+                bytecode.addExceptionHandler(from, to, handler.type(), 0, target);
             } else {
                 // from (4 byte) | to (4 byte) | type (1 byte) | tag (4 byte) | target (4 byte)
-                bytecode.addExceptionHandler(from, to, handler.type(), handler.tag(), handler.target());
+                bytecode.addExceptionHandler(from, to, handler.type(), handler.tag(), target);
             }
         }
     }

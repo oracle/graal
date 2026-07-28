@@ -70,7 +70,7 @@ public interface PinnedObject extends AutoCloseable {
      * If this method returns {@code false}, {@link #create(Object)} will throw an
      * {@link UnsupportedOperationException}.
      *
-     * @since 25.1.0
+     * @since 25.1.3
      */
     static boolean isSupported() {
         return ImageSingletons.contains(PinnedObjectSupport.class);

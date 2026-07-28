@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,21 +25,32 @@
 package com.oracle.svm.core.jni.access;
 
 import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
+import static com.oracle.svm.core.libjvm.WhiteBoxEntryPoints.WHITEBOX_REGISTER_NATIVES;
+import static com.oracle.svm.core.libjvm.WhiteBoxEntryPoints.WHITEBOX_REGISTER_NATIVES_SYMBOL;
 
+import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.libjvm.LibJVMSupport;
+import com.oracle.svm.shared.BuildPhaseProvider;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -50,8 +61,10 @@ public final class JNINativeLinkage {
 
     private PointerBase entryPoint = Word.nullPointer();
 
-    private final Class<?> declaringClassObject;
-    private final CharSequence declaringClass;
+    @UnknownObjectField(availability = BuildPhaseProvider.AfterAnalysis.class) //
+    @Stable //
+    private DynamicHub declaringClass;
+    private final CharSequence declaringClassName;
     private final CharSequence name;
     private final CharSequence descriptor;
 
@@ -60,28 +73,38 @@ public final class JNINativeLinkage {
     /**
      * Creates an object for linking the address of a native method.
      *
-     * @param declaringClass the {@linkplain JavaType#getName() name} of the class declaring the
-     *            native method
+     * @param declaringClass the class declaring the native method
      * @param name the name of the native method
      * @param descriptor the {@linkplain Signature#toMethodDescriptor() descriptor} of the native
      *            method
      */
-    public JNINativeLinkage(CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
-        this(null, declaringClass, name, descriptor);
-    }
-
-    public JNINativeLinkage(Class<?> declaringClassObject, CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
-        this.declaringClassObject = declaringClassObject;
+    public JNINativeLinkage(DynamicHub declaringClass, CharSequence name, CharSequence descriptor) {
+        assert declaringClass != null;
         this.declaringClass = declaringClass;
+        this.declaringClassName = MetaUtil.toInternalName(declaringClass.getName());
         this.name = name;
         this.descriptor = descriptor;
     }
 
-    public String getDeclaringClassName() {
-        return (String) declaringClass;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JNINativeLinkage(ResolvedJavaType declaringClass, CharSequence name, CharSequence descriptor) {
+        this.declaringClassName = MetaUtil.toInternalName(declaringClass.toClassName());
+        this.name = name;
+        this.descriptor = descriptor;
     }
 
-    public String getName() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setDeclaringClass(DynamicHub declaringClass) {
+        assert this.declaringClass == null;
+        assert MetaUtil.toInternalName(declaringClass.getName()).equals(getDeclaringClassName());
+        this.declaringClass = declaringClass;
+    }
+
+    public String getDeclaringClassName() {
+        return (String) declaringClassName;
+    }
+
+    public String getMethodName() {
         return (String) name;
     }
 
@@ -90,13 +113,13 @@ public final class JNINativeLinkage {
     }
 
     public boolean isBuiltInFunction() {
-        return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
+        return PlatformNativeLibrarySupport.singleton().isBuiltinNative(getShortSymbol());
     }
 
     public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
         assert isBuiltInFunction();
         if (builtInAddress == null) {
-            builtInAddress = createSymbol.apply(getShortName());
+            builtInAddress = createSymbol.apply(getShortSymbol());
         }
         return builtInAddress;
     }
@@ -118,7 +141,7 @@ public final class JNINativeLinkage {
 
     @Override
     public int hashCode() {
-        return (((name.hashCode() * 31) + descriptor.hashCode()) * 31) + declaringClass.hashCode();
+        return (((name.hashCode() * 31) + descriptor.hashCode()) * 31) + declaringClassName.hashCode();
     }
 
     /**
@@ -127,10 +150,9 @@ public final class JNINativeLinkage {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof JNINativeLinkage) {
-            JNINativeLinkage that = (JNINativeLinkage) obj;
+        if (obj instanceof JNINativeLinkage that) {
             return (that == this) ||
-                            (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClass, that.declaringClass) &&
+                            (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClassName, that.declaringClassName) &&
                                             WRAPPED_CSTRING_EQUIVALENCE.equals(name, that.name) &&
                                             WRAPPED_CSTRING_EQUIVALENCE.equals(descriptor, that.descriptor));
         }
@@ -139,55 +161,94 @@ public final class JNINativeLinkage {
 
     @Override
     public String toString() {
-        String shortName = getShortName();
         return MetaUtil.internalNameToJava(getDeclaringClassName(), true, false) + "." + name + descriptor +
-                        " [symbol: " + shortName + " or " + shortName + "__" + getSignature() + "]";
+                        " [symbol: " + getShortSymbol() + " or " + getLongSymbol() + "]";
 
     }
 
-    /**
-     * Gets the native address for the {@code native} method represented by this object, attempting
-     * to resolve it if it is currently 0.
-     */
+    /// Native methods whose implementation is a method in the VM annotated by `CEntryPoint`.
+    /// These methods have no symbols in an external library that would be processed by
+    /// `JNILibraryLoadFeature`. Furthermore, this table only contains entries for
+    /// classes not known at build-time as build-time classes will have
+    /// `JNINativeCallWrapperMethod`s generated for their native methods.
+    ///
+    /// This is similar to the `lookup_special_native_methods` table in
+    /// the HotSpot source file.
+    private static final Map<String, CEntryPointLiteral<?>> VM_IMPLEMENTED_NATIVE_METHODS = ImageSingletons.contains(LibJVMSupport.class)
+                    ? Map.of(WHITEBOX_REGISTER_NATIVES_SYMBOL, WHITEBOX_REGISTER_NATIVES)
+                    : Map.of();
+
+    /// Gets the native address for the `native` method represented by this object.
+    ///
+    /// If the entry point has not been resolved yet, this method asks the declaring class loader.
     public PointerBase getOrFindEntryPoint() {
         if (entryPoint.isNull()) {
-            Class<?> classObject = getDeclaringClassObject();
-            ClassLoader classLoader = classObject == null ? null : DynamicHub.fromClass(classObject).getClassLoader();
-            String shortName = getShortName();
-            entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortName, getName()));
+            Class<?> classObject = null;
+            ClassLoader classLoader = null;
+            /*
+             * When class loaders are ignored, NativeLibraries.find is substituted with a global
+             * NativeLibrarySupport lookup, so neither the declaring class nor its loader is needed.
+             */
+            if (ClassRegistries.respectClassLoader()) {
+                classObject = DynamicHub.toClass(declaringClass);
+                classLoader = declaringClass.getClassLoader();
+            }
+            String shortSymbol = getShortSymbol();
+
+            // If the loader is null, this is a lookup for a system class, so look
+            // for an internally implemented method.
+            if (classLoader == null) {
+                CEntryPointLiteral<?> val = VM_IMPLEMENTED_NATIVE_METHODS.get(shortSymbol);
+                if (val != null) {
+                    entryPoint = val.getFunctionPointer();
+                }
+            }
+
             if (entryPoint.isNull()) {
-                String longName = shortName + "__" + getSignature();
-                entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longName, getName()));
+                entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortSymbol, getMethodName()));
                 if (entryPoint.isNull()) {
-                    throw new UnsatisfiedLinkError(toString());
+                    String longSymbol = getLongSymbol();
+                    entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longSymbol, getMethodName()));
+                    if (entryPoint.isNull()) {
+                        throw new UnsatisfiedLinkError(toString());
+                    }
                 }
             }
         }
         return entryPoint;
     }
 
-    private Class<?> getDeclaringClassObject() {
-        if (ClassRegistries.respectClassLoader()) {
-            if (declaringClassObject != null) {
-                return declaringClassObject;
-            }
-            return JNIReflectionDictionary.getClassObjectByName(getDeclaringClassName());
-        }
-        return null;
+    /// Gets the native method's JNI-mangled qualified name without a signature suffix.
+    ///
+    /// For example, `java.lang.Object.registerNatives()` maps to
+    /// `Java_java_lang_Object_registerNatives`.
+    public String getShortSymbol() {
+        return getShortSymbol(getDeclaringClassName(), getMethodName());
     }
 
-    private String getShortName() {
+    public static String getShortSymbol(String declaringClassName, String methodName) {
         StringBuilder sb = new StringBuilder("Java_");
-        mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
+        mangleName(declaringClassName, 1, declaringClassName.length() - 1, sb);
         sb.append('_');
-        mangleName(getName(), 0, name.length(), sb);
+        mangleName(methodName, 0, methodName.length(), sb);
         return sb.toString();
     }
 
-    private String getSignature() {
-        int closing = getDescriptor().indexOf(')');
-        assert getDescriptor().startsWith("(") && getDescriptor().indexOf(')') == closing && closing != -1;
-        return mangleName(getDescriptor(), 1, closing, new StringBuilder()).toString();
+    /// Gets the native method's JNI-mangled qualified name with a signature suffix.
+    ///
+    /// For example, `pkg.Native.method(int)` maps to `Java_pkg_Native_method__I`.
+    public String getLongSymbol() {
+        return getLongSymbol(getDeclaringClassName(), getMethodName(), getDescriptor());
+    }
+
+    public static String getLongSymbol(String declaringClassName, String methodName, String descriptor) {
+        return getShortSymbol(declaringClassName, methodName) + "__" + getSignature(descriptor);
+    }
+
+    private static String getSignature(String descriptor) {
+        int closing = descriptor.indexOf(')');
+        assert descriptor.startsWith("(") && descriptor.indexOf(')') == closing && closing != -1;
+        return mangleName(descriptor, 1, closing, new StringBuilder()).toString();
     }
 
     private static StringBuilder mangleName(String name, int beginIndex, int endIndex, StringBuilder sb) {
@@ -213,9 +274,8 @@ public final class JNINativeLinkage {
                     default: // _0xxxx, where xxxx is lower-case hexadecimal Unicode value
                         sb.append('_');
                         String hex = Integer.toHexString(c);
-                        for (int j = hex.length(); j < 5; j++) {
-                            sb.append('0'); // padding
-                        }
+                        // padding
+                        sb.repeat("0", 5 - hex.length());
                         sb.append(hex);
                         break;
                 }

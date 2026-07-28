@@ -26,31 +26,37 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.shared.Uninterruptible;
+
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 public class ExecuteVMOperationEvent {
-    public static void emit(VMOperation vmOperation, long requestingThreadId, long startTicks) {
+    public static void emit(VMOperation vmOperation, IsolateThread requestingThread, long startTicks) {
         if (!HasJfrSupport.get()) {
             return;
         }
 
-        emit0(vmOperation, requestingThreadId, startTicks);
+        emit0(vmOperation, requestingThread, startTicks);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(VMOperation vmOperation, long requestingThreadId, long startTicks) {
+    private static void emit0(VMOperation vmOperation, IsolateThread requestingThread, long startTicks) {
         long duration = JfrTicks.duration(startTicks);
         if (JfrEvent.ExecuteVMOperation.shouldEmit(duration)) {
+            Thread thread = getThreadObject(requestingThread);
+
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
@@ -61,9 +67,31 @@ public class ExecuteVMOperationEvent {
             JfrNativeEventWriter.putLong(data, vmOperation.getId() + 1); // id starts with 1
             JfrNativeEventWriter.putBoolean(data, vmOperation.getCausesSafepoint());
             JfrNativeEventWriter.putBoolean(data, vmOperation.isBlocking());
-            JfrNativeEventWriter.putThread(data, requestingThreadId);
+            JfrNativeEventWriter.putThread(data, thread);
             JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.singleton().getSafepointId().rawValue() : 0);
             JfrNativeEventWriter.endSmallEvent(data);
         }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static Thread getThreadObject(IsolateThread requestingThread) {
+        if (requestingThread.isNull()) {
+            /*
+             * VM operations are blocking, so the queuing thread can't exit. However, there are
+             * scenarios where VM operations are queued by unattached threads.
+             */
+            return null;
+        }
+
+        Thread thread = PlatformThreads.fromVMThreadUnsafe(requestingThread);
+        if (thread == null) {
+            return null;
+        }
+
+        Thread mountedVThread = PlatformThreads.getMountedVirtualThread(thread);
+        if (mountedVThread != null) {
+            return mountedVThread;
+        }
+        return thread;
     }
 }

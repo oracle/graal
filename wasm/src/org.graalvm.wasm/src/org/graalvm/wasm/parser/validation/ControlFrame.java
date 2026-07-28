@@ -41,11 +41,13 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.bytecode.BytecodeFixup;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
-import java.util.BitSet;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -60,6 +62,7 @@ public abstract class ControlFrame {
     private boolean unreachable;
     private final int commonResultType;
     protected BitSet initializedLocals;
+    private ArrayList<BytecodeFixup> delegateFixups;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
@@ -156,17 +159,23 @@ public abstract class ControlFrame {
 
     /**
      * Adds a fixup used by legacy {@code delegate} to target this control frame. The fixup is
-     * patched with the bytecode location where exception dispatch should continue once control is
-     * delegated to this frame.
-     *
-     * For most frame kinds, delegation resumes at the same location as ordinary control transfer to
-     * the frame label, so the default implementation forwards to
-     * {@link #addLabelFixup(BytecodeFixup)}. Frames whose delegate target differs from their normal
-     * label target override this method.
+     * patched with the exception-table location where exception dispatch should continue once
+     * control is delegated to this frame.
      *
      * @param fixup The fixup to patch with this frame's delegate continuation location.
      */
     void addDelegateFixup(BytecodeFixup fixup) {
-        addLabelFixup(fixup);
+        if (delegateFixups == null) {
+            delegateFixups = new ArrayList<>();
+        }
+        delegateFixups.add(fixup);
+    }
+
+    protected void registerDelegateContinuationFixups(ParserState state, int tableIndex) {
+        if (delegateFixups != null) {
+            for (BytecodeFixup fixup : delegateFixups) {
+                state.addExceptionTableContinuationFixup(tableIndex, fixup);
+            }
+        }
     }
 }

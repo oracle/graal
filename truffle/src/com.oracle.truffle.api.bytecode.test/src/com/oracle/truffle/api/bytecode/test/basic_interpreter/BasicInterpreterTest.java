@@ -2344,7 +2344,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.beginRoot();
                 b.beginBlock();
 
-                for (int i = 0; i < Short.MAX_VALUE; i++) {
+                for (int i = 0; i <= 0xffff; i++) {
                     b.createLocal();
                 }
                 BytecodeLocal x = b.createLocal();
@@ -2359,6 +2359,38 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.endRoot();
             });
         });
+    }
+
+    @Test
+    public void testLargeStackPointer() {
+        BasicInterpreter node = parseNode("largeStackPointer", b -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            BytecodeLocal x = b.createLocal();
+            int localCount = 0x10000 - run.getFrameBaseSlots();
+            for (int i = 1; i < localCount; i++) {
+                b.createLocal();
+            }
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            // The operand stack begins above the maximum unsigned-short frame index. This
+            // expression must not overwrite the low-index local.
+            b.beginVariadicOperation();
+            for (int i = 0; i < 4; i++) {
+                b.emitLoadConstant(0L);
+            }
+            b.endVariadicOperation();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
@@ -3564,6 +3596,93 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.argument",
                         "c.AddConstantOperationAtEnd",
                         "return");
+    }
+
+    @Test
+    public void testNegativeRelativeBytecodeIndex() {
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("relativeChildBytecodeIndexUnavailableWhenOffsetTooLarge", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadConstant(1L);
+            emitNestedConditionalExpression(b, 0, 16);
+            b.endAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(1L, node.getCallTarget().call(0L));
+        assertEquals(6L, node.getCallTarget().call(5L));
+        assertEquals(17L, node.getCallTarget().call(16L));
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+
+        List<Instruction> addInstr = node.getBytecodeNode().getInstructionsAsList().stream().filter((i) -> i.getName().equals("c.Add$AddInts#AddLongs")).toList();
+        assertEquals(1, addInstr.size());
+
+        for (Argument argument : addInstr.get(0).getArguments()) {
+            if (argument.getKind() == Kind.BYTECODE_INDEX && argument.getName().equals("child0")) {
+                assertEquals(-1, argument.asBytecodeIndex());
+                return;
+            }
+        }
+        fail("Relative child BCI wasn't -1 for the final ADD instruction");
+    }
+
+    private static void emitNestedConditionalExpression(BasicInterpreterBuilder b, int value, int fallbackValue) {
+        b.beginConditional();
+        b.beginLess();
+        b.emitLoadArgument(0);
+        b.emitLoadConstant((long) value + 1);
+        b.endLess();
+        b.emitLoadConstant((long) value);
+        if (value + 1 == fallbackValue) {
+            b.emitLoadConstant((long) fallbackValue);
+        } else {
+            emitNestedConditionalExpression(b, value + 1, fallbackValue);
+        }
+        b.endConditional();
+    }
+
+    @Test
+    public void testNegativeRelativeBytecodeIndexStoreLocal() {
+        // Regression test for mishandling of negative childBci in StoreLocal.
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("negativeRelativeBytecodeIndexStoreLocal", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            // Short-circuit operations with multiple operands pass the short-circuit instruction bci.
+            // TODO GR-77456: replace the nested conditional with a simpler expression once multi-operand short-circuit ops pass -1.
+            b.beginScAnd();
+            b.emitLoadConstant(1L);
+            emitNestedConditionalExpression(b, 0, 16);
+            b.endScAnd();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(1L, node.getCallTarget().call(1L));
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+
+        List<Instruction> storeLocalInstr = node.getBytecodeNode().getInstructionsAsList().stream().filter((i) -> i.getName().equals("store.local$generic")).toList();
+        assertEquals(1, storeLocalInstr.size());
+
+        for (Argument argument : storeLocalInstr.get(0).getArguments()) {
+            if (argument.getKind() == Kind.BYTECODE_INDEX && argument.getName().equals("child0")) {
+                assertEquals(-1, argument.asBytecodeIndex());
+                return;
+            }
+        }
+        fail("Relative child BCI wasn't -1 for the StoreLocal instruction");
     }
 
     /**

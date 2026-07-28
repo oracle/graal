@@ -35,12 +35,11 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.windows.WindowsUtils.WCharPointerHolder;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -50,24 +49,20 @@ import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ClassRegistries.respectClassLoader()) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
 @AutomaticallyRegisteredImageSingleton(PlatformNativeLibrarySupport.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
@@ -106,12 +101,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         } else {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        /* libextnet on Windows (introduced in Java 19) does not contain an OnLoad method,
-         * so we dynamically load it if we respect classloaders.
-         */
-        if (!ClassRegistries.respectClassLoader()) {
-            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
         System.loadLibrary("extnet");
     }
 

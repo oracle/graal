@@ -37,7 +37,6 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
-import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -46,14 +45,15 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -70,7 +70,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * This singleton is not fully layer aware because the {@link MetaspaceImpl#space} should be either
  * always relinked or properly duplicated for each layer.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class MetaspaceImpl implements Metaspace {
     private final Space space = new Space("Metaspace", "M", true, getAge());
     private final ChunkedMetaspaceMemory memory = new ChunkedMetaspaceMemory(space);
@@ -134,6 +134,11 @@ public class MetaspaceImpl implements Metaspace {
     }
 
     @Override
+    public CremaJNIStaticFieldId allocateCremaJNIStaticFieldId() {
+        return allocator.allocateCremaJNIStaticFieldId();
+    }
+
+    @Override
     public void walkObjects(ObjectVisitor visitor) {
         assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         space.walkObjects(visitor);
@@ -176,21 +181,6 @@ public class MetaspaceImpl implements Metaspace {
         space.tearDown();
     }
 
-    public static final class ShutdownHook implements RuntimeSupport.Hook {
-        private final MetaspaceImpl metaspace;
-
-        public ShutdownHook(MetaspaceImpl metaspace) {
-            this.metaspace = metaspace;
-        }
-
-        @Override
-        public void execute(boolean isFirstIsolate) {
-            if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
-                metaspace.logUsageAndStats();
-            }
-        }
-    }
-
     private void logUsageAndStats() {
         Log log = Log.log();
         logUsage(log);
@@ -201,6 +191,19 @@ public class MetaspaceImpl implements Metaspace {
         log.string("Metaspace allocation stats:").indent(true);
         allocator.logStats(log);
         log.indent(false);
+    }
+
+    public static final class TeardownHook implements RuntimeSupport.Hook {
+        private final MetaspaceImpl metaspace;
+
+        public TeardownHook(MetaspaceImpl metaspace) {
+            this.metaspace = metaspace;
+        }
+
+        @Override
+        public void execute(boolean isFirstIsolate) {
+            metaspace.logUsageAndStats();
+        }
     }
 
     private static final class DumpMetaspaceInfo extends SubstrateDiagnostics.DiagnosticThunk {

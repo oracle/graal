@@ -62,6 +62,16 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private volatile SoftReference<Map<String, List<URL>>> resourceCache;
 
+    /// Maps package names to the JDK metadata for the module that owns the package.
+    ///
+    /// `ModuleLayerFeature` transforms this static JDK field to a Native Image owned map and rebuilds
+    /// it while synthesizing the runtime boot layer. The final rebuild clears the prototype state seen
+    /// during analysis and inserts `LoadedModule` values created from the runtime built-in loader and
+    /// the selected `ModuleReference`s, so runtime boot package lookup uses the synthesized module
+    /// layer instead of the image builder's transient loader state.
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
+    static Map<String, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule> packageToModule;
+
     @Alias
     public native ModuleReference findModule(String name);
 
@@ -145,7 +155,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
     private URL findResourceOnClassPath(String name) {
         ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
         URL url = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceURL(loader, name) : null;
@@ -164,7 +174,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L497-L504")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L497-L504")
     private Enumeration<URL> findResourcesOnClassPath(String name) throws IOException {
         ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
         List<URL> embeddedResources = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceListURLs(loader, name) : List.of();
@@ -196,4 +206,14 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, innerClass = "LoadedModule")
 final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
+
+    @Alias
+    Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule(@SuppressWarnings("unused") Target_jdk_internal_loader_BuiltinClassLoader loader, @SuppressWarnings("unused") ModuleReference mref) {
+    }
+
+    @Alias
+    native String name();
+
+    @Alias
+    native Target_jdk_internal_loader_BuiltinClassLoader loader();
 }

@@ -215,15 +215,40 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
     }
 
     @Override
-    protected boolean checkReplaceAtUsagesInvariants(Node other) {
+    protected boolean checkReplaceAtUsagesBeforeReplacementInvariants(Node other) {
+        checkReplaceInputInvariants(other);
+        return true;
+    }
+
+    @Override
+    protected boolean checkReplaceInputInvariants(Node other) {
+        if (other == null && this.hasUsages() && this.stamp(NodeView.DEFAULT) == null) {
+            /*
+             * We normally enforce the invariant that value nodes have stamps. But there is a
+             * special case during inline-before-analysis when we bail out in the middle of graph
+             * decoding. Some nodes can be incompletely initialized and have null stamps. They will
+             * be prepared for deletion via replaceAtUsages(null). In this particular case it's OK
+             * for the node to have a null stamp.
+             */
+            return true;
+        }
+        if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
+            Stamp thisStamp = stamp(NodeView.DEFAULT);
+            Stamp otherStamp = ((ValueNode) other).stamp(NodeView.DEFAULT);
+            GraalError.guarantee(thisStamp.isCompatible(otherStamp), "stamps have to be compatible: %s %s -> %s %s", this, thisStamp, other, otherStamp);
+        }
+        return true;
+    }
+
+    @Override
+    protected boolean checkReplaceAtUsagesAfterReplacementInvariants(Node other) {
         assert other == null || other instanceof ValueNode : Assertions.errorMessage(this, other);
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
             Stamp thisStamp = stamp(NodeView.DEFAULT);
             Stamp otherStamp = ((ValueNode) other).stamp(NodeView.DEFAULT);
-            assert thisStamp.isCompatible(otherStamp) : "stamp have to be compatible";
+            GraalError.guarantee(thisStamp.isCompatible(otherStamp), "stamps have to be compatible: %s %s -> %s %s", this, thisStamp, other, otherStamp);
             boolean morePrecise = otherStamp.join(thisStamp).equals(otherStamp);
-            assert morePrecise : "stamp can only get more precise " + toString(Verbosity.All) + " " +
-                            other.toString(Verbosity.All);
+            GraalError.guarantee(morePrecise, "stamp can only get more precise: %s %s", toString(Verbosity.All), other.toString(Verbosity.All));
         }
         return true;
     }

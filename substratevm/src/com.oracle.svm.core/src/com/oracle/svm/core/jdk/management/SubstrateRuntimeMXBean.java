@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -64,8 +64,8 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public List<String> getInputArguments() {
-        if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
-            return ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class).getInputArguments();
+        if (ImageSingletons.contains(JavaMainSupport.class)) {
+            return ImageSingletons.lookup(JavaMainSupport.class).getInputArguments();
         }
         return Collections.emptyList();
     }

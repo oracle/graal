@@ -112,7 +112,7 @@ public class WasmOptions {
     @Option(help = "Enable bulk-memory operations and support for reference types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(true);
 
-    @Option(help = "Enable support for 64-bit memory addresses", //
+    @Option(help = "Enable support for 64-bit memory and table addresses", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
 

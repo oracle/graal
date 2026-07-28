@@ -101,7 +101,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * shift.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class VarHandleFeature implements InternalFeature {
 
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)

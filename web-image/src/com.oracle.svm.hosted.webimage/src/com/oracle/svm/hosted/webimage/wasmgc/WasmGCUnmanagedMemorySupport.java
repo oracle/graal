@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -42,7 +42,7 @@ import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 // GR-60261 Support unmanaged memory
 @AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
 @Platforms(WebImageWasmGCPlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = DisallowLayered.class)
 public class WasmGCUnmanagedMemorySupport implements UnmanagedMemorySupport {
     @Override
     public <T extends PointerBase> T malloc(UnsignedWord size) {

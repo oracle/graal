@@ -51,7 +51,6 @@ import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -63,9 +62,10 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.Loggers;
 import com.oracle.svm.core.log.NoopLog;
+import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -81,11 +81,8 @@ import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionValues;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
@@ -96,10 +93,12 @@ import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.fs.FileSystemInitializer;
 import com.oracle.svm.webimage.fs.WebImageNIOFileSystemProvider;
+import com.oracle.svm.webimage.fs.WebImageRawFileOperationSupport;
 import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 import com.oracle.svm.webimage.jni.WebImageNativeLibrarySupport;
 import com.oracle.svm.webimage.longemulation.Long64;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
+import com.oracle.svm.webimage.print.WebImageLogHandler;
 import com.oracle.svm.webimage.print.WebImageOutErrPrinters;
 import com.oracle.svm.webimage.print.WebImagePrintStream;
 import com.oracle.svm.webimage.substitute.WebImageHttpHandlerSubstitutions;
@@ -115,7 +114,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 @Platforms(WebImagePlatform.class)
 public class WebImageFeature implements InternalFeature {
@@ -265,9 +263,15 @@ public class WebImageFeature implements InternalFeature {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new WebImageNativeLibrarySupport());
 
         switch (WebImageOptions.getBackend()) {
-            case JS, WASMGC -> Loggers.setRealLog(new NoopLog());
-            case WASM -> Log.finalizeDefaultLogHandler(new WasmLogHandler());
+            case JS, WASMGC -> {
+                Loggers.setRealLog(new NoopLog());
+                CoreLogSupport.finalizeDefaultLogHandler(new WebImageLogHandler());
+            }
+            case WASM -> CoreLogSupport.finalizeDefaultLogHandler(new WasmLogHandler());
         }
+
+        var rawFileOperations = new WebImageRawFileOperationSupport();
+        ImageSingletons.add(RawFileOperationSupportHolder.class, new RawFileOperationSupportHolder(rawFileOperations, rawFileOperations, rawFileOperations));
 
         /*
          * We do not support Java calls from VM code yet. We do not support JNI parameters yet.

@@ -35,8 +35,8 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/hotspot/share/prims/jvmti.xml")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+11/src/hotspot/share/prims/jvmtiH.xsl")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+23/src/hotspot/share/prims/jvmti.xml")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+11/src/hotspot/share/prims/jvmtiH.xsl")
 class JvmtiDirectives implements CContext.Directives {
     private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
 

@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.APP_LAYER_ONLY_TRAIT;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -42,10 +41,10 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.AARCH64;
-import org.graalvm.nativeimage.Platform.AMD64;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.DARWIN_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AARCH64;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
+import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -53,10 +52,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -67,6 +66,7 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.hosted.snapshot.capnproto.CapnProtoSharedLayerSnapshotFormat;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotFormat;
+import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
@@ -77,7 +77,7 @@ import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.HostedManagement.SingletonRegistration;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.DisallowedSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.DisallowLayeredSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
@@ -87,7 +87,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -96,11 +95,10 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsContainer;
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
+public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport implements AutoCloseable {
 
     private static String layerCreatePossibleOptions() {
         return "[" + IncludeOptionsSupport.possibleExtendedOptions() + "]";
@@ -112,7 +110,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
     private final ImageClassLoader imageClassLoader;
     private final SharedLayerSnapshotData.Loader snapshot;
-    private final List<FileChannel> graphsChannels;
     private final WriteLayerArchiveSupport writeLayerArchiveSupport;
     private final LoadLayerArchiveSupport loadLayerArchiveSupport;
     /**
@@ -132,13 +129,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private static final String DIGEST_IGNORE = "digest-ignore";
 
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
-                    SharedLayerSnapshotData.Loader snapshot, List<FileChannel> graphsChannels,
+                    SharedLayerSnapshotData.Loader snapshot,
                     boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
                     WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
         this.imageClassLoader = imageClassLoader;
         this.snapshot = snapshot;
-        this.graphsChannels = graphsChannels;
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
         this.singletonTraitInjector = singletonTraitInjector;
@@ -154,7 +150,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
-        return (HostedImageLayerBuildingSupport) ImageSingletons.lookup(ImageLayerBuildingSupport.class);
+        return (HostedImageLayerBuildingSupport) ImageSingletons.lookup(ImageLayerBuildingSupportProvider.class);
     }
 
     public SVMImageLayerSingletonLoader getSingletonLoader() {
@@ -202,8 +198,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return snapshot;
     }
 
-    public FileChannel getGraphsChannel() {
-        return graphsChannels.getFirst();
+    @Override
+    public void close() {
+        if (loader != null) {
+            loader.close();
+        }
     }
 
     public Class<?> lookupClass(boolean optional, String className) {
@@ -267,30 +266,30 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public BiConsumer<SingletonRegistration, ImageSingletonsSupportImpl.SingletonTraitMap> createSingletonValidationCallback() {
-        return (singletonRegistration, traitMap) -> {
-            Class<?> key = singletonRegistration.key();
-            Object value = singletonRegistration.value();
-            if (buildingImageLayer) {
-                var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
-                installationTrait.ifPresent(t -> {
-                    if (forbiddenInstallationKinds.contains(t.metadata())) {
-                        if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
-                            throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
-                        }
+        return this::validateSingletonRegistration;
+    }
+
+    private void validateSingletonRegistration(SingletonRegistration singletonRegistration, ImageSingletonsSupportImpl.SingletonTraitMap traitMap) {
+        Class<?> key = singletonRegistration.key();
+        Object value = singletonRegistration.value();
+        if (buildingImageLayer) {
+            var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
+            installationTrait.ifPresent(t -> {
+                if (forbiddenInstallationKinds.contains(t.metadata())) {
+                    if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
+                        throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
                     }
-                });
-                traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
-                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
-                });
-            }
-            GuestAccess guestAccess = GuestAccess.get();
-            ResolvedJavaType singletonType = guestAccess.lookupType(value.getClass());
-            ResolvedJavaModule singletonModule = guestAccess.getModule(singletonType);
-            if (traitMap.isEmpty() && imageClassLoader.getBuilderModules().contains(singletonModule)) {
-                throw VMError.shouldNotReachHere("All singletons should be annotated with @%s. Singleton of value %s with key of %s is not annotated",
-                                guestAccess.lookupType(SingletonTraits.class).toJavaName(), value.getClass(), key);
-            }
-        };
+                }
+            });
+            traitMap.getTrait(DisallowLayeredSingletonTrait.class).ifPresent(_ -> {
+                throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build: key=%s value=%s", SingletonTraitKind.DISALLOW_LAYERED, key, value);
+            });
+        }
+        Module singletonModule = value.getClass().getModule();
+        if (traitMap.isEmpty() && imageClassLoader.getBuilderModules().contains(singletonModule)) {
+            throw VMError.shouldNotReachHere("All singletons should be annotated with @%s. Singleton of value %s with key of %s is not annotated",
+                            SingletonTraits.class.getTypeName(), value.getClass(), key);
+        }
     }
 
     public Function<Class<?>, SingletonTrait<?>[]> getSingletonTraitInjector() {
@@ -350,7 +349,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
 
-        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
+        if (isLayeredImageBuild(hostedOptions)) {
             enableConservativeUnsafeAccess(values);
 
             /*
@@ -410,12 +409,16 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
+    public static boolean isLayeredImageBuild(OptionValues values) {
+        return isLayerCreateOptionEnabled(values) || isLayerUseOptionEnabled(values);
+    }
+
     /**
-     * Currently layered images are only supported on {@link LINUX}, {@link DARWIN}, {@link AMD64}
-     * and {@link AARCH64}.
+     * Currently layered images are supported on Linux AMD64/AArch64, Darwin AArch64, and
+     * Windows AMD64.
      */
     private static boolean supportedPlatform(Platform platform) {
-        return (platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64);
+        return platform instanceof LINUX_AMD64 || platform instanceof LINUX_AARCH64 || platform instanceof DARWIN_AARCH64 || platform instanceof WINDOWS_AMD64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
@@ -454,7 +457,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
         SharedLayerSnapshotData.Loader snapshot = null;
-        List<FileChannel> graphs = List.of();
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values.get());
             boolean enableLogging = LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredArchiving.getValue(values.get());
@@ -462,12 +464,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             boolean strict = LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue(values.get());
             boolean verbose = LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerificationVerbose.getValue(values.get());
             loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict, verbose);
-            try {
-                graphs = List.of(FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath()));
-            } catch (IOException e) {
-                throw AnalysisError.shouldNotReachHere("Error during image layer snapshot graphs loading " + loadLayerArchiveSupport.getSnapshotGraphsPath(), e);
-            }
-
             SharedLayerSnapshotFormat sharedLayerSnapshotFormat = new CapnProtoSharedLayerSnapshotFormat();
             try {
                 snapshot = sharedLayerSnapshotFormat.load(loadLayerArchiveSupport.getSnapshotPath());
@@ -488,7 +484,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             };
         }
 
-        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, graphs, buildingImageLayer,
+        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, buildingImageLayer,
                         buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport, singletonTraitInjector);
 
         if (buildingExtensionLayer) {
@@ -524,6 +520,22 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
         nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
         String libName = archiveSupport.getSharedLibraryBaseName();
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            /*
+             * On Windows, the linker doesn't auto-prepend "lib" like Unix linkers do (-lfoo finds
+             * libfoo.so). Use the full layer name so the linker finds the import library.
+             */
+            libName = LayerArchiveSupport.SHARED_LIB_NAME_PREFIX + libName;
+            /*
+             * The import library (.lib) is not included in the .nil archive - only the DLL is. Add
+             * the directory containing the .nil file as a library path so the linker can find the
+             * import library that was generated alongside the layer file.
+             */
+            Path nilDir = archiveSupport.getLayerFileDirectory();
+            if (nilDir != null) {
+                nativeLibs.getLibraryPaths().add(nilDir.toString());
+            }
+        }
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }

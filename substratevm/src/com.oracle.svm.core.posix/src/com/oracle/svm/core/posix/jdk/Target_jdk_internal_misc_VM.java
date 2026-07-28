@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.PlatformTimeUtils.SecondsNanos;
 final class Target_jdk_internal_misc_VM {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/share/prims/jvm.cpp#L258-L291")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/share/prims/jvm.cpp#L258-L291")
     public static long getNanoTimeAdjustment(long offsetInSeconds) {
         long maxDiffSecs = 0x0100000000L;
         long minDiffSecs = -maxDiffSecs;

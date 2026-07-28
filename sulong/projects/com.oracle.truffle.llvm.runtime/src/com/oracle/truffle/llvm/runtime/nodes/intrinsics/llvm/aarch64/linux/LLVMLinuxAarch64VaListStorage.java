@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLV
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -140,11 +141,51 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         int usedGpArea = 0;
         for (int i = 0; i < numberOfExplicitArguments && usedGpArea < Aarch64BitVarArgs.GP_LIMIT; i++) {
             if (getVarArgArea(realArguments[i]) == VarArgArea.GP_AREA) {
-                usedGpArea += Aarch64BitVarArgs.GP_STEP;
+                usedGpArea = alignGpArea(usedGpArea, realArguments[i]);
+                usedGpArea += getGpAreaSize(realArguments[i]);
             }
         }
 
-        return usedGpArea;
+        return Math.min(usedGpArea, Aarch64BitVarArgs.GP_LIMIT);
+    }
+
+    private static int alignGpArea(int offset, Object arg) {
+        return isIVarBit(arg) && getIVarBitBytes(arg).length == 16 ? (offset + 15) & -16 : offset;
+    }
+
+    private static int alignGpArea(int offset, Type type) {
+        return type instanceof com.oracle.truffle.llvm.runtime.types.VariableBitWidthType && ((com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) type).getBitSize() == 128
+                        ? (offset + 15) & -16
+                        : offset;
+    }
+
+    private static int getGpAreaSize(Object arg) {
+        if (isIVarBit(arg)) {
+            return (getIVarBitBytes(arg).length + Aarch64BitVarArgs.GP_STEP - 1) & -Aarch64BitVarArgs.GP_STEP;
+        }
+        return Aarch64BitVarArgs.GP_STEP;
+    }
+
+    private static int getGpAreaSize(Type type) {
+        if (type instanceof com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) {
+            int bytes = (int) ((((com.oracle.truffle.llvm.runtime.types.VariableBitWidthType) type).getBitSize() + Byte.SIZE - 1) / Byte.SIZE);
+            return (bytes + Aarch64BitVarArgs.GP_STEP - 1) & -Aarch64BitVarArgs.GP_STEP;
+        }
+        return Aarch64BitVarArgs.GP_STEP;
+    }
+
+    private static long alignOverflowArea(long offset, Object arg) {
+        if (isIVarBit(arg) && getIVarBitBytes(arg).length == 16) {
+            return (offset + 15) & -16L;
+        }
+        return offset;
+    }
+
+    private static long getOverflowAreaSize(Object arg, int expansionLength) {
+        if (isIVarBit(arg)) {
+            return getIVarBitBytes(arg).length;
+        }
+        return arg instanceof LLVMVarArgCompoundValue ? ((LLVMVarArgCompoundValue) arg).getSize() : (long) expansionLength * Aarch64BitVarArgs.STACK_STEP;
     }
 
     /**
@@ -357,7 +398,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             int fpUsage = calculateUsedFpArea(vaList.realArguments, numOfExpArgs);
             vaList.fpOffset = fpUsage - Aarch64BitVarArgs.FP_LIMIT;
 
-            int[] gpIdx = new int[vaList.realArguments.length];
+            int[] gpIdx = new int[Aarch64BitVarArgs.GP_LIMIT / Aarch64BitVarArgs.GP_STEP];
             Arrays.fill(gpIdx, -1);
             int[] fpIdx = new int[vaList.realArguments.length];
             Arrays.fill(fpIdx, -1);
@@ -394,21 +435,22 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
                 final VarArgArea area = getVarArgArea(arg);
                 if (area == VarArgArea.GP_AREA) {
-                    if (gp + remainingExpLength * Aarch64BitVarArgs.GP_STEP <= 0) {
-                        gpIdx[(Aarch64BitVarArgs.GP_LIMIT + gp) / Aarch64BitVarArgs.GP_STEP] = i;
-                        gp += Aarch64BitVarArgs.GP_STEP;
+                    gp = alignGpArea(gp, arg);
+                    int gpAreaSize = getGpAreaSize(arg);
+                    if (gp + Math.max(remainingExpLength * Aarch64BitVarArgs.GP_STEP, gpAreaSize) <= 0) {
+                        for (int offset = 0; offset < gpAreaSize; offset += Aarch64BitVarArgs.GP_STEP) {
+                            gpIdx[(Aarch64BitVarArgs.GP_LIMIT + gp + offset) / Aarch64BitVarArgs.GP_STEP] = i;
+                        }
+                        gp += gpAreaSize;
                     } else {
                         if (remainingExpLength == expansionLength) {
                             // update the overflow area at the expansion start only
                             gp = 0; // Terminate the GP save area
+                            overflowArea = alignOverflowArea(overflowArea, args[ei]);
                             overflowAreaArgOffsets[oi] = overflowArea;
                             overflowArgs[oi++] = args[ei]; // add the unexpanded arg
 
-                            if (args[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowArea += ((LLVMVarArgCompoundValue) args[ei]).getSize();
-                            } else {
-                                overflowArea += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowArea += getOverflowAreaSize(args[ei], expansionLength);
                         }
                     }
                 } else if (area == VarArgArea.FP_AREA) {
@@ -419,28 +461,33 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         if (remainingExpLength == expansionLength) {
                             // update the overflow area at the expansion start only
                             fp = 0; // Terminate the FP save area
+                            overflowArea = alignOverflowArea(overflowArea, args[ei]);
                             overflowAreaArgOffsets[oi] = overflowArea;
                             overflowArgs[oi++] = args[ei]; // add the unexpanded arg
 
-                            if (args[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowArea += ((LLVMVarArgCompoundValue) args[ei]).getSize();
-                            } else {
-                                overflowArea += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowArea += getOverflowAreaSize(args[ei], expansionLength);
                         }
                     }
                 } else if (area != VarArgArea.OVERFLOW_AREA) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
                     overflowAreaArgOffsets[oi] = overflowArea;
                     overflowArea += Aarch64BitVarArgs.STACK_STEP;
                     overflowArgs[oi++] = arg;
                 } else if (arg instanceof LLVM80BitFloat) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
                     overflowAreaArgOffsets[oi] = overflowArea;
                     overflowArea += 16;
                     overflowArgs[oi++] = arg;
                 } else if (arg instanceof LLVMVarArgCompoundValue) {
                     LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
+                    overflowArea = alignOverflowArea(overflowArea, arg);
                     overflowAreaArgOffsets[oi] = overflowArea;
                     overflowArea += obj.getSize();
+                    overflowArgs[oi++] = arg;
+                } else if (isIVarBit(arg)) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
+                    overflowAreaArgOffsets[oi] = overflowArea;
+                    overflowArea += getOverflowAreaSize(arg, expansionLength);
                     overflowArgs[oi++] = arg;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -473,6 +520,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                        @Cached.Exclusive @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                         @Cached LLVMI32OffsetStoreNode gpOffsetStore,
@@ -499,8 +547,8 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                             vaList.overflowArgAreaBaseNativePtr.increment(vaList.overflowArgArea.getOffset()), vaList.gpSaveAreaNativePtr, vaList.fpSaveAreaNativePtr);
             initNativeAreas(vaList.realArguments, vaList.originalArgs, vaList.expansions, vaList.numberOfExplicitArguments, vaList.gpOffset, vaList.fpOffset,
                             LLVMNativePointer.cast(vaList.gpSaveAreaNativePtr), LLVMNativePointer.cast(vaList.fpSaveAreaNativePtr), LLVMNativePointer.cast(vaList.overflowArgAreaBaseNativePtr),
-                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                            pointerOverflowArgAreaStore, memMove);
+                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                            fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
             vaList.nativized = true;
         }
 
@@ -520,6 +568,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                     @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                    @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     @Cached NativeProfiledMemMoveToNative memMove,
@@ -557,7 +606,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         initNativeAreas(this.realArguments, this.originalArgs, this.expansions, this.numberOfExplicitArguments, this.gpOffset, this.fpOffset, LLVMNativePointer.cast(gpSaveAreaNativePtr),
                         LLVMNativePointer.cast(fpSaveAreaNativePtr), LLVMNativePointer.cast(overflowArgAreaBaseNativePtr), i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore,
-                        pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
+                        pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
@@ -590,6 +639,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                     LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                     LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                    LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                     LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                     NativeProfiledMemMoveToNative memMove) {
@@ -626,48 +676,50 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                 final VarArgArea area = getVarArgArea(object);
 
                 if (area == VarArgArea.GP_AREA) {
-                    if (gp + remainingExpLength * Aarch64BitVarArgs.GP_STEP <= 0) {
-                        storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
+                    gp = alignGpArea(gp, object);
+                    int gpAreaSize = getGpAreaSize(object);
+                    if (gp + Math.max(remainingExpLength * Aarch64BitVarArgs.GP_STEP, gpAreaSize) <= 0) {
+                        storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8OverflowArgAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
                                         Aarch64BitVarArgs.STACK_STEP);
-                        gp += Aarch64BitVarArgs.GP_STEP;
+                        gp += gpAreaSize;
                     } else {
                         if (remainingExpLength == expansionLength) {
                             // update the overflow area at the expansion start only
                             gp = 0;
+                            overflowOffset = alignOverflowArea(overflowOffset, originalArguments[ei]);
                             storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                             fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, originalArguments[ei], Aarch64BitVarArgs.STACK_STEP);
 
-                            if (originalArguments[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowOffset += ((LLVMVarArgCompoundValue) originalArguments[ei]).getSize();
-                            } else {
-                                overflowOffset += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowOffset += getOverflowAreaSize(originalArguments[ei], expansionLength);
                         }
                     }
                 } else if (area == VarArgArea.FP_AREA) {
                     if (fp + remainingExpLength * Aarch64BitVarArgs.FP_STEP <= 0) {
-                        storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
+                        storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, i8OverflowArgAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object,
                                         Aarch64BitVarArgs.STACK_STEP);
                         fp += Aarch64BitVarArgs.FP_STEP;
                     } else {
                         if (remainingExpLength == expansionLength) {
                             // update the overflow area at the expansion start only
                             fp = 0;
+                            overflowOffset = alignOverflowArea(overflowOffset, originalArguments[ei]);
                             storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                            i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                             fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, originalArguments[ei], Aarch64BitVarArgs.STACK_STEP);
 
-                            if (originalArguments[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowOffset += ((LLVMVarArgCompoundValue) originalArguments[ei]).getSize();
-                            } else {
-                                overflowOffset += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowOffset += getOverflowAreaSize(originalArguments[ei], expansionLength);
                         }
                     }
                 } else if (object instanceof LLVMVarArgCompoundValue) {
+                    overflowOffset = alignOverflowArea(overflowOffset, object);
                     overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
-                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
+                } else if (isIVarBit(object)) {
+                    overflowOffset = alignOverflowArea(overflowOffset, object);
+                    overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
+                                    i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
                                     fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                 }
             }
@@ -793,7 +845,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             case GP_AREA:
                 regSaveAreaOffs = Aarch64BitVarArgs.GP_SAVE_AREA;
                 regSaveOffs = Aarch64BitVarArgs.GP_OFFSET;
-                regSaveStep = Aarch64BitVarArgs.GP_STEP;
+                regSaveStep = getGpAreaSize(type);
                 regSaveArea = gpSaveArea;
                 break;
 
@@ -813,7 +865,10 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             regAreaProfile.enter();
 
             int offs = readLib.readI32(this, regSaveOffs);
-            if (offs < 0) {
+            if (varArgArea == VarArgArea.GP_AREA) {
+                offs = alignGpArea(offs, type);
+            }
+            if (offs + regSaveStep <= 0) {
                 // The va shift logic for GP/FP regsave areas is done by updating the gp/fp offset
                 // field in va_list
                 writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
@@ -826,13 +881,21 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                 } else {
                     return loadFromArea.execute(this.vaListStackPtr, regSaveAreaOffs, offs, 0, type);
                 }
+            } else if (varArgArea == VarArgArea.GP_AREA && offs < 0) {
+                writeLib.writeI32(this, regSaveOffs, 0);
             }
         }
 
         // overflow area
         if (isNativizedProfile.profile(isNativized())) {
-            assert regSaveStep == 8;
-            return loadFromArea.execute(vaListStackPtr, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, 0, 8, type);
+            int offset = 0;
+            int step = Math.max(regSaveStep, Aarch64BitVarArgs.STACK_STEP);
+            if (step == 2 * Aarch64BitVarArgs.STACK_STEP) {
+                LLVMPointer overflowArea = readLib.readPointer(this, Aarch64BitVarArgs.OVERFLOW_ARG_AREA);
+                offset = getAlignmentOffset(overflowArea, 2 * Aarch64BitVarArgs.STACK_STEP);
+                step += offset;
+            }
+            return loadFromArea.execute(vaListStackPtr, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, offset, step, type);
         } else {
             Object currentArg = this.overflowArgArea.getCurrentArg();
             this.overflowArgArea.shift(1);
@@ -895,6 +958,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                        @Cached.Exclusive @Cached LLVMI8OffsetStoreNode i8OverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                         @Shared("overflowAreaStore") @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
@@ -940,16 +1004,15 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                 final VarArgArea area = getVarArgArea(arg);
 
                 if (area == VarArgArea.GP_AREA) {
-                    if (gp + remainingExpLength * Aarch64BitVarArgs.GP_STEP <= 0) {
-                        gp += Aarch64BitVarArgs.GP_STEP;
+                    gp = alignGpArea(gp, arg);
+                    int gpAreaSize = getGpAreaSize(arg);
+                    if (gp + Math.max(remainingExpLength * Aarch64BitVarArgs.GP_STEP, gpAreaSize) <= 0) {
+                        gp += gpAreaSize;
                     } else {
                         gp = 0; // Terminate the GP save area
                         if (remainingExpLength == expansionLength) {
-                            if (originalArgs[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowArea += ((LLVMVarArgCompoundValue) originalArgs[ei]).getSize();
-                            } else {
-                                overflowArea += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowArea = alignOverflowArea(overflowArea, originalArgs[ei]);
+                            overflowArea += getOverflowAreaSize(originalArgs[ei], expansionLength);
                         }
                     }
                 } else if (area == VarArgArea.FP_AREA) {
@@ -958,18 +1021,18 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     } else {
                         fp = 0; // Terminate the FP save area
                         if (remainingExpLength == expansionLength) {
-                            if (originalArgs[ei] instanceof LLVMVarArgCompoundValue) {
-                                overflowArea += ((LLVMVarArgCompoundValue) originalArgs[ei]).getSize();
-                            } else {
-                                overflowArea += expansionLength * Aarch64BitVarArgs.STACK_STEP;
-                            }
+                            overflowArea = alignOverflowArea(overflowArea, originalArgs[ei]);
+                            overflowArea += getOverflowAreaSize(originalArgs[ei], expansionLength);
                         }
                     }
                 } else if (arg instanceof LLVM80BitFloat) {
                     overflowArea += 16;
                 } else if (arg instanceof LLVMVarArgCompoundValue) {
-                    LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
-                    overflowArea += obj.getSize();
+                    overflowArea = alignOverflowArea(overflowArea, arg);
+                    overflowArea += getOverflowAreaSize(arg, expansionLength);
+                } else if (isIVarBit(arg)) {
+                    overflowArea = alignOverflowArea(overflowArea, arg);
+                    overflowArea += getOverflowAreaSize(arg, expansionLength);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
@@ -989,8 +1052,8 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, gpSaveAreaStore, fpSaveAreaStore, nativeVAListPtr, initGPOffset, initFPOffset, overflowArgAreaBaseNativePtr,
                             gpSaveAreaNativePtr, fpSaveAreaNativePtr);
             initNativeAreas(realArguments, originalArgs, expansions, numberOfExplicitArguments, initGPOffset, initFPOffset, gpSaveAreaNativePtr, fpSaveAreaNativePtr, overflowArgAreaBaseNativePtr,
-                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                            pointerOverflowArgAreaStore, memMove);
+                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, i8OverflowArgAreaStore,
+                            fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
         }
 
         @ExportMessage

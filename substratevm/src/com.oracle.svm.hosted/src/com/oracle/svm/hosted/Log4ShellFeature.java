@@ -46,9 +46,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -62,7 +59,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * If a vulnerable version is detected, the feature will then check whether any vulnerable methods
  * are reachable.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 public class Log4ShellFeature implements InternalFeature {
     private static final String log4jClassName = "org.apache.logging.log4j.Logger";

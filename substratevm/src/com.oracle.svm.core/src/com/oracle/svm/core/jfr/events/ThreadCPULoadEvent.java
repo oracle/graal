@@ -39,7 +39,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import static com.oracle.svm.core.thread.PlatformThreads.fromVMThread;
 

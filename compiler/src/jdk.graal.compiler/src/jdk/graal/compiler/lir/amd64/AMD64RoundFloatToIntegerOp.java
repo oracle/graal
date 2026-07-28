@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.AllocatableValue;
  * {@link Math#round} algorithm for details.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L9390-L9486",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/58853f39377ea6168c4570327347294899d51f95/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L9402-L9498",
           sha1 = "9e13c7375bbb35809ad79ebd6a9cc19e66f57aa1")
 @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L596-L767",
           sha1 = "3b5a811373c3fc9555f9fac0253b5a3a3d094223")
@@ -85,8 +85,102 @@ public class AMD64RoundFloatToIntegerOp extends AMD64LIRInstruction {
     private static final long DOUBLE_SIGNIF_BIT_MASK = 0x000FFFFFFFFFFFFFL;
     private static final long DOUBLE_SIGN_BIT_MASK = 0x8000000000000000L;
 
+    private static final boolean USE_LLVM_ROUNDING = true;
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        if (USE_LLVM_ROUNDING) {
+            emitLLVMRounding(masm);
+        } else {
+            emitHotSpotRounding(masm);
+        }
+    }
+
+    private void emitLLVMRounding(AMD64MacroAssembler masm) {
+        Label labelSpecialCase = new Label();
+        Label labelBlock1 = new Label();
+        Label labelExit = new Label();
+
+        Register rtmp = asRegister(tmp);
+        Register dst = asRegister(result);
+        Register src = asRegister(input);
+
+        if (input.getPlatformKind() == AMD64Kind.SINGLE) {
+            masm.movdl(rtmp, src);
+            masm.movl(dst, rtmp);
+            masm.shrl(dst, FLOAT_SIGNIFICAND_WIDTH - 1);
+            masm.andl(dst, FLOAT_EXP_BIT_MASK >>> (FLOAT_SIGNIFICAND_WIDTH - 1));
+            masm.movl(AMD64.rcx, FLOAT_SIGNIFICAND_WIDTH - 2 + FLOAT_EXP_BIAS);
+            masm.subl(AMD64.rcx, dst);
+            masm.testlAndJcc(AMD64.rcx, -32, ConditionFlag.NotEqual, labelSpecialCase, true);
+            masm.movl(dst, rtmp);
+            masm.andl(dst, FLOAT_SIGNIF_BIT_MASK);
+            masm.orl(dst, FLOAT_SIGNIF_BIT_MASK + 1);
+            masm.testlAndJcc(rtmp, rtmp, ConditionFlag.GreaterEqual, labelBlock1, true);
+            masm.negl(dst);
+            masm.bind(labelBlock1);
+            masm.sarl(dst);
+            masm.addl(dst, 0x1);
+            masm.sarl(dst, 0x1);
+            masm.jmpb(labelExit);
+
+            masm.bind(labelSpecialCase);
+            masm.cvttss2sil(dst, src);
+            masm.cmplAndJcc(dst, FLOAT_SIGN_BIT_MASK, ConditionFlag.NotEqual, labelExit, true);
+
+            // NaN -> 0
+            masm.xorl(dst, dst);
+            masm.ucomiss(src, src);
+            masm.jcc(ConditionFlag.Parity, labelExit);
+
+            // signed ? Integer.MIN_VALUE : Integer.MAX_VALUE
+            masm.testl(rtmp, rtmp);
+            masm.movl(dst, Integer.MIN_VALUE);
+            masm.movl(rtmp, Integer.MAX_VALUE);
+            masm.cmovl(ConditionFlag.Positive, dst, rtmp);
+        } else {
+            assert input.getPlatformKind() == AMD64Kind.DOUBLE : input;
+            masm.movdq(rtmp, src);
+            masm.movq(dst, rtmp);
+            masm.shrq(dst, DOUBLE_SIGNIFICAND_WIDTH - 1);
+            masm.andl(dst, (int) (DOUBLE_EXP_BIT_MASK >>> (DOUBLE_SIGNIFICAND_WIDTH - 1)));
+            masm.movl(AMD64.rcx, DOUBLE_SIGNIFICAND_WIDTH - 2 + DOUBLE_EXP_BIAS);
+            masm.subq(AMD64.rcx, dst);
+            masm.testAndJcc(OperandSize.QWORD, AMD64.rcx, -64, ConditionFlag.NotEqual, labelSpecialCase, true);
+            masm.movq(dst, rtmp);
+            masm.shlq(dst, Long.SIZE - DOUBLE_SIGNIFICAND_WIDTH + 1);
+            masm.shrq(dst, Long.SIZE - DOUBLE_SIGNIFICAND_WIDTH + 1);
+            masm.btsq(dst, DOUBLE_SIGNIFICAND_WIDTH - 1);
+            masm.testqAndJcc(rtmp, rtmp, ConditionFlag.GreaterEqual, labelBlock1, true);
+            masm.negq(dst);
+            masm.bind(labelBlock1);
+            masm.sarq(dst);
+            masm.incrementq(dst, 0x1);
+            masm.sarq(dst, 0x1);
+            masm.jmp(labelExit);
+
+            masm.bind(labelSpecialCase);
+            masm.cvttsd2siq(dst, src);
+            masm.movq(rtmp, DOUBLE_SIGN_BIT_MASK);
+            masm.cmpqAndJcc(dst, rtmp, ConditionFlag.NotEqual, labelExit, true);
+
+            // NaN -> 0
+            masm.xorl(dst, dst);
+            masm.ucomisd(src, src);
+            masm.jcc(ConditionFlag.Parity, labelExit);
+
+            // signed ? Long.MIN_VALUE : Long.MAX_VALUE
+            masm.movdq(rtmp, src);
+            masm.testq(rtmp, rtmp);
+            masm.movq(dst, Long.MIN_VALUE);
+            masm.movq(rtmp, Long.MAX_VALUE);
+            masm.cmovq(ConditionFlag.Positive, dst, rtmp);
+        }
+
+        masm.bind(labelExit);
+    }
+
+    private void emitHotSpotRounding(AMD64MacroAssembler masm) {
         Label labelSpecialCase = new Label();
         Label labelBlock1 = new Label();
         Label labelExit = new Label();
@@ -126,7 +220,7 @@ public class AMD64RoundFloatToIntegerOp extends AMD64LIRInstruction {
             masm.xorl(dst, dst);
             masm.cmplAndJcc(rtmp, FLOAT_EXP_BIT_MASK, ConditionFlag.Greater, labelExit, true);
 
-            // signed ? Long.MIN_VALUE : Long.MAX_VALUE
+            // signed ? Integer.MIN_VALUE : Integer.MAX_VALUE
             masm.movdl(rtmp, src);
             masm.testl(rtmp, rtmp);
             masm.movl(dst, Integer.MIN_VALUE);

@@ -39,9 +39,12 @@ import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.r14;
+import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm17;
@@ -74,6 +77,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -92,16 +96,19 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
     @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
     @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
 
+    @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value resultValue;
+
     @Temp({OperandFlag.REG}) private Value[] gprTemps;
     @Temp({OperandFlag.REG}) private Value[] xmmTemps;
 
     private final boolean multiBlock;
 
     public AMD64SHA3Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue blockSizeValue) {
-        this(bufValue, stateValue, blockSizeValue, Value.ILLEGAL, Value.ILLEGAL, false);
+        this(bufValue, stateValue, blockSizeValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AMD64SHA3Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue blockSizeValue, AllocatableValue ofsValue, AllocatableValue limitValue, boolean multiBlock) {
+    public AMD64SHA3Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue blockSizeValue, AllocatableValue ofsValue, AllocatableValue limitValue, AllocatableValue resultValue,
+                    boolean multiBlock) {
         super(TYPE);
 
         this.bufValue = bufValue;
@@ -109,17 +116,22 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         this.blockSizeValue = blockSizeValue;
         this.ofsValue = ofsValue;
         this.limitValue = limitValue;
+        this.resultValue = resultValue;
 
         this.multiBlock = multiBlock;
+
+        GraalError.guarantee(asRegister(bufValue).equals(rdi), "expect bufValue at rdi, but was %s", bufValue);
+        GraalError.guarantee(asRegister(stateValue).equals(rsi), "expect stateValue at rsi, but was %s", stateValue);
+        GraalError.guarantee(asRegister(blockSizeValue).equals(rdx), "expect blockSizeValue at rdx, but was %s", blockSizeValue);
+        GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(rcx), "expect ofsValue at rcx, but was %s", ofsValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(r8), "expect limitValue at r8, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(rax), "expect resultValue at rax, but was %s", resultValue);
+        GraalError.guarantee(!multiBlock || resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
 
         // r12-r14 will be restored
         if (multiBlock) {
             // For modified value, ensure they are mapped to fixed registers and kill with @Temp
-            GraalError.guarantee(asRegister(bufValue).equals(rdi), "expect bufValue at rdi, but was %s", bufValue);
-            GraalError.guarantee(asRegister(ofsValue).equals(rcx), "expect ofsValue at rcx, but was %s", ofsValue);
-
             this.gprTemps = new Value[]{
-                            rax.asValue(),
                             rcx.asValue(),
                             rdi.asValue(),
                             r10.asValue(),
@@ -390,6 +402,10 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         masm.pop(r14);
         masm.pop(r13);
         masm.pop(r12);
+
+        if (multiBlock) {
+            masm.movl(asRegister(resultValue), rax);
+        }
     }
 
     @Override

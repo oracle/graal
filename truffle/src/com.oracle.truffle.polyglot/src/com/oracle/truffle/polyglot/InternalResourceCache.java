@@ -88,7 +88,7 @@ import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 final class InternalResourceCache {
 
     private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
-    private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
+    private static final Map<AbstractClassLoaderSupplier, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
     private static final Map<String, Map<String, Supplier<InternalResourceCache>>> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
 
     /**
@@ -344,7 +344,7 @@ final class InternalResourceCache {
      */
     static void initializeNativeImageState(ClassLoader nativeImageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(collectOptionalResources(List.of(new EngineAccessor.StrongClassLoaderSupplier(nativeImageClassLoader))));
+        nativeImageCache.putAll(collectOptionalResources(new EngineAccessor.StrongClassLoaderSupplier(nativeImageClassLoader)));
     }
 
     /**
@@ -502,12 +502,12 @@ final class InternalResourceCache {
     }
 
     static Collection<String> getEngineResourceIds() {
-        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.loader()).get(PolyglotEngineImpl.ENGINE_ID);
         return engineResources != null ? engineResources.keySet() : List.of();
     }
 
     static Collection<InternalResourceCache> getEngineResources() {
-        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.loader()).get(PolyglotEngineImpl.ENGINE_ID);
         if (engineResources != null) {
             return engineResources.values().stream().map(Supplier::get).collect(Collectors.toList());
         } else {
@@ -516,35 +516,32 @@ final class InternalResourceCache {
     }
 
     static InternalResourceCache getEngineResource(String resourceId) {
-        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.loader()).get(PolyglotEngineImpl.ENGINE_ID);
         Supplier<InternalResourceCache> resourceSupplier = engineResources != null ? engineResources.get(resourceId) : null;
         return resourceSupplier != null ? resourceSupplier.get() : null;
     }
 
-    static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(List<AbstractClassLoaderSupplier> suppliers) {
+    static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(AbstractClassLoaderSupplier classLoaderSupplier) {
         if (TruffleOptions.AOT) {
             assert nativeImageCache != null;
             return nativeImageCache;
         }
         synchronized (InternalResourceCache.class) {
-            Map<String, Map<String, Supplier<InternalResourceCache>>> cache = optionalInternalResourcesCaches.get(suppliers);
+            Map<String, Map<String, Supplier<InternalResourceCache>>> cache = optionalInternalResourcesCaches.get(classLoaderSupplier);
             if (cache == null) {
-                cache = collectOptionalResources(suppliers);
-                optionalInternalResourcesCaches.put(suppliers, cache);
+                cache = collectOptionalResources(classLoaderSupplier);
+                optionalInternalResourcesCaches.put(classLoaderSupplier, cache);
             }
             return cache;
         }
     }
 
-    private static Map<String, Map<String, Supplier<InternalResourceCache>>> collectOptionalResources(List<AbstractClassLoaderSupplier> suppliers) {
+    private static Map<String, Map<String, Supplier<InternalResourceCache>>> collectOptionalResources(AbstractClassLoaderSupplier classLoaderSupplier) {
         Map<String, Map<String, Supplier<InternalResourceCache>>> cache = new HashMap<>();
-        for (EngineAccessor.AbstractClassLoaderSupplier supplier : suppliers) {
-            ClassLoader loader = supplier.get();
-            if (loader == null) {
-                continue;
-            }
+        ClassLoader loader = classLoaderSupplier.get();
+        if (loader != null) {
             for (InternalResourceProvider p : ServiceLoader.load(InternalResourceProvider.class, loader)) {
-                if (supplier.accepts(p.getClass())) {
+                if (classLoaderSupplier.accepts(p.getClass())) {
                     JDKSupport.exportTransitivelyTo(p.getClass().getModule());
                     String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
                     String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);

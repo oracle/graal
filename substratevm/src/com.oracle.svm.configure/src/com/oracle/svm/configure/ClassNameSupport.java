@@ -156,11 +156,11 @@ public class ClassNameSupport {
         return isValidWrappingArraySyntaxName(name, '.');
     }
 
-    public static boolean isValidJNIName(String name) {
+    public static boolean isValidJNIName(CharSequence name) {
         return isValidWrappingArraySyntaxName(name, '/');
     }
 
-    private static boolean isValidWrappingArraySyntaxName(String name, char packageSeparator) {
+    private static boolean isValidWrappingArraySyntaxName(CharSequence name, char packageSeparator) {
         int arrayDimension = wrappingArrayDimension(name);
         if (arrayDimension > 0) {
             return isValidWrappingArrayElementType(name, arrayDimension, packageSeparator);
@@ -168,7 +168,7 @@ public class ClassNameSupport {
         return isValidFullyQualifiedClassName(name, 0, name.length(), packageSeparator);
     }
 
-    private static boolean isValidWrappingArrayElementType(String name, int startIndex, char packageSeparator) {
+    private static boolean isValidWrappingArrayElementType(CharSequence name, int startIndex, char packageSeparator) {
         if (startIndex == name.length()) {
             return false;
         }
@@ -180,7 +180,7 @@ public class ClassNameSupport {
         };
     }
 
-    private static boolean isValidFullyQualifiedClassName(String name, int startIndex, int endIndex, char packageSeparator) {
+    private static boolean isValidFullyQualifiedClassName(CharSequence name, int startIndex, int endIndex, char packageSeparator) {
         if (name.isEmpty()) {
             return false;
         }
@@ -205,7 +205,7 @@ public class ClassNameSupport {
         return true;
     }
 
-    private static int wrappingArrayDimension(String name) {
+    private static int wrappingArrayDimension(CharSequence name) {
         int arrayDimension = 0;
         while (arrayDimension < name.length() && name.charAt(arrayDimension) == '[') {
             arrayDimension++;

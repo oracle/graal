@@ -194,9 +194,9 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             // ~x & ~y |-> ~(x | y)
             return new NotNode(OrNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view));
         }
-        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX && rawXStamp instanceof IntegerStamp) {
+        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
             // x & ~x |-> 0
-            return ConstantNode.forIntegerStamp(rawXStamp, 0L);
+            return BinaryArithmeticNode.createIntegerConstant(rawXStamp, 0L);
         }
         return self != null ? self : new AndNode(forX, forY).maybeCommuteInputs();
     }

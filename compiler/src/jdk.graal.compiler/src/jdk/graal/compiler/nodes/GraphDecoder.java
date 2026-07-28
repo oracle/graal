@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.util.TypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 import jdk.graal.compiler.debug.Assertions;
@@ -63,6 +64,19 @@ import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
+import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
+import jdk.graal.compiler.nodes.java.DynamicNewArrayWithExceptionNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.virtual.EscapeObjectState;
 import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
@@ -70,6 +84,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -86,6 +101,371 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * during decoding, as well as method inlining during decoding.
  */
 public class GraphDecoder {
+
+    /**
+     * Selects optional adaptations while decoding an encoded graph. {@link #DEFAULT} recreates the
+     * encoded graph as-is; other values are explicit opt-ins for callers that know the decoded graph
+     * must be adapted before it is used.
+     * <p>
+     * OOME edge repair is intentionally performed while an encoded graph is decoded for a particular
+     * inline site, before the invoke boundary is removed by inlining. If an encoded callee contains a
+     * plain allocation and is inlined into a caller whose invoke can catch {@link OutOfMemoryError},
+     * the inlinee must expose an unwind before inlining so the existing inlining machinery can connect
+     * that unwind to the caller's concrete exception successor. A later generic compiler phase would
+     * have to reconstruct the correct handler instance after inlining from bytecode metadata, frame
+     * states, or source positions, which is not reliable for duplicated inline scopes. The
+     * SVM-specific policy that selects this context is documented in
+     * {@code com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy}.
+     */
+    public enum DecodeContext {
+        /** Decode the encoded graph without changing its shape. */
+        DEFAULT,
+        /**
+         * Restore explicit OOME exception edges for allocation nodes. This is used when an encoded
+         * graph is materialized for inlining into a call site whose caller can catch an escaping
+         * {@link OutOfMemoryError}.
+         */
+        OOME_EXCEPTION_EDGES
+    }
+
+    /**
+     * Per-{@link MethodScope} state used by a {@link DecodePolicy}. The default policy does not need
+     * any state, but non-default policies can use this object to carry information across hooks while
+     * a single encoded method is being decoded.
+     */
+    protected static class DecodeScopeData {
+        protected boolean isOOMEPolicyScope() {
+            return false;
+        }
+    }
+
+    /**
+     * Defines optional graph-shape adaptations performed while an encoded graph is decoded.
+     * <p>
+     * The base policy is deliberately a no-op and preserves the encoded graph shape. Subclasses
+     * customize only the decode points where the encoded shape can be insufficient for the caller
+     * context:
+     * <ul>
+     * <li>invokes, after their call target has been decoded but before successors are connected,</li>
+     * <li>exception edges, when a {@link WithExceptionNode} successor is materialized, and</li>
+     * <li>fixed nodes, before subclass-specific simplification sees the decoded node.</li>
+     * </ul>
+     * Policies must preserve the order-id mapping for any node they replace, because later decode
+     * steps and inlining cleanup use those ids to reconnect control and data flow.
+     */
+    protected class DecodePolicy {
+        /**
+         * Creates decode-policy state for {@code methodScope}. If the new method is decoded as part
+         * of an existing policy scope, {@code inheritedScopeData} gives the policy a chance to share
+         * state across nested decoded methods.
+         */
+        protected DecodeScopeData createScopeData(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") DecodeScopeData inheritedScopeData) {
+            return null;
+        }
+
+        /**
+         * Gives the policy a chance to replace or annotate an invoke before normal and exceptional
+         * successors are connected.
+         *
+         * @param callTarget the decoded call target, or {@code null} in paths where the caller has not
+         *            materialized the call-target node yet
+         * @return the invoke data to use for the rest of invoke decoding
+         */
+        protected InvokeData prepareInvoke(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") LoopScope loopScope, InvokeData invokeData,
+                        @SuppressWarnings("unused") CallTargetNode callTarget) {
+            return invokeData;
+        }
+
+        /**
+         * Connects the exception edge for a decoded {@link WithExceptionNode}. The default expects an
+         * encoded exception successor and is therefore only valid for exception edges that were already
+         * present in the encoded graph.
+         */
+        protected void prepareExceptionEdge(MethodScope methodScope, LoopScope loopScope, WithExceptionNode withException, int exceptionOrderId, NodeSourcePosition sourcePosition) {
+            if (exceptionOrderId <= GraphEncoder.NULL_ORDER_ID) {
+                throw GraalError.shouldNotReachHere(Assertions.errorMessage(methodScope, loopScope, withException, exceptionOrderId, sourcePosition));
+            }
+            withException.setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, exceptionOrderId));
+        }
+
+        /**
+         * Prepares a decoded fixed node before subclass-specific fixed-node handling. Policies may
+         * return a replacement node. Callers that continue processing the node must use the returned
+         * value.
+         */
+        protected FixedNode prepareFixedNode(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") LoopScope loopScope, @SuppressWarnings("unused") int nodeOrderId,
+                        FixedNode node) {
+            return node;
+        }
+    }
+
+    /**
+     * Policy used by {@link DecodeContext#OOME_EXCEPTION_EDGES}. It restores the exception-edge
+     * structure that an encoded graph may have lost for allocation OOMEs.
+     * <p>
+     * The policy intentionally does not affect default decoding. When selected for a particular
+     * materialization site, it converts plain allocation nodes to their {@link AllocateWithExceptionNode}
+     * variants, synthesizes an exception object and unwind exit for OOME paths, and converts decoded
+     * plain invokes to {@link InvokeWithExceptionNode}s when a non-inlined child call must also be able
+     * to throw through the caller's OOME handler.
+     * <p>
+     * The restored allocation node keeps a normal {@code stateBefore}. The actual exceptional state
+     * is carried by the synthetic {@link ExceptionObjectNode}, and the synthetic unwind/merge state
+     * is created from that exception value.
+     */
+    protected final class OOMEDecodePolicy extends DecodePolicy {
+        /**
+         * Owner for synthetic OOME exits created while decoding one scope. A decoder can explicitly
+         * pass inherited scope data to share this owner with nested scopes. PE inlining normally lets
+         * each decoded inlinee own its synthetic exits and forwards them during inline cleanup, which
+         * preserves intermediate OOME handlers.
+         */
+        private final class OOMEOwnerData {
+            final MethodScope methodScope;
+            OOMEExceptionExit exceptionExit;
+
+            OOMEOwnerData(MethodScope methodScope) {
+                this.methodScope = methodScope;
+            }
+        }
+
+        /**
+         * Scope-local policy state. Multiple scopes can point at the same {@link OOMEOwnerData} when a
+         * caller deliberately provides inherited OOME scope data.
+         */
+        private final class OOMEScopeData extends DecodeScopeData {
+            final OOMEOwnerData owner;
+
+            OOMEScopeData(MethodScope methodScope) {
+                this.owner = new OOMEOwnerData(methodScope);
+            }
+
+            OOMEScopeData(OOMEOwnerData owner) {
+                this.owner = owner;
+            }
+
+            @Override
+            protected boolean isOOMEPolicyScope() {
+                return true;
+            }
+        }
+
+        /**
+         * The synthetic OOME exit for an owner scope. The first restored OOME edge can connect
+         * directly to {@link #unwind}; subsequent edges lazily introduce {@link #merge} and
+         * {@link #exceptionPhi}.
+         */
+        private final class OOMEExceptionExit {
+            UnwindNode unwind;
+            MergeNode merge;
+            ValuePhiNode exceptionPhi;
+            FrameState exceptionState;
+        }
+
+        /**
+         * Inherit the owner only when the embedding decoder explicitly supplies inherited OOME scope
+         * data. Otherwise, the current scope owns its synthetic OOME exits.
+         */
+        @Override
+        protected DecodeScopeData createScopeData(MethodScope methodScope, DecodeScopeData inheritedScopeData) {
+            if (inheritedScopeData instanceof OOMEScopeData oomeScopeData) {
+                return new OOMEScopeData(oomeScopeData.owner);
+            }
+            return new OOMEScopeData(methodScope);
+        }
+
+        /**
+         * A decoded invoke in an OOME-protected context must be a real exception split if it is not
+         * inlined later. Marking the invoke as in-OOME-try is useful for propagation, but the
+         * exception successor is what lets exceptions from a non-inlined child call reach the caller's
+         * handler.
+         */
+        @Override
+        protected InvokeData prepareInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData, CallTargetNode callTarget) {
+            invokeData.invoke.setInOOMETry(true);
+            if (invokeData.invoke instanceof InvokeNode invokeNode && (callTarget == null || callTarget instanceof MethodCallTargetNode)) {
+                CallTargetNode replacementCallTarget = callTarget != null && callTarget.isAlive() ? callTarget : null;
+                return invokeData.copyWithInvoke(createInvokeWithException(loopScope, invokeData, replacementCallTarget, invokeNode));
+            }
+            return invokeData;
+        }
+
+        /**
+         * Encoded allocation nodes normally do not have an exception successor. In OOME mode, missing
+         * exception successors are repaired by adding a synthetic exception object and unwind.
+         */
+        @Override
+        protected void prepareExceptionEdge(MethodScope methodScope, LoopScope loopScope, WithExceptionNode withException, int exceptionOrderId, NodeSourcePosition sourcePosition) {
+            if (exceptionOrderId <= GraphEncoder.NULL_ORDER_ID) {
+                addSyntheticExceptionEdge(methodScope, loopScope, withException, sourcePosition);
+            } else {
+                super.prepareExceptionEdge(methodScope, loopScope, withException, exceptionOrderId, sourcePosition);
+            }
+        }
+
+        /**
+         * Restores allocation OOME modelling for decoded plain allocation nodes. If the node already
+         * has an exception edge, or is not an allocation kind handled by
+         * {@link #createAllocationWithException(FixedNode)}, the encoded node is left unchanged.
+         */
+        @Override
+        protected FixedNode prepareFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+            if (node instanceof WithExceptionNode) {
+                return node;
+            }
+
+            AllocateWithExceptionNode replacement = createAllocationWithException(node);
+            if (replacement == null) {
+                return node;
+            }
+
+            replacement.setNodeSourcePosition(node.getNodeSourcePosition());
+            graph.add(replacement);
+            replaceAllocationNode(methodScope, loopScope, nodeOrderId, (FixedWithNextNode) node, replacement);
+            return replacement;
+        }
+
+        /**
+         * Adds the synthetic exception object for one restored OOME edge and registers it with the
+         * owner unwind path. The exception object's state describes the exceptional value for the
+         * restored OOME path.
+         */
+        private void addSyntheticExceptionEdge(MethodScope methodScope, LoopScope loopScope, WithExceptionNode withException, NodeSourcePosition sourcePosition) {
+            ExceptionObjectNode exceptionObject = createOOMEExceptionObject();
+            exceptionObject.setNodeSourcePosition(sourcePosition);
+            OOMEScopeData scopeData = oomeScopeData(methodScope);
+            exceptionObject.setStateAfter(createOOMEExceptionStateAfter(methodScope, scopeData.owner.methodScope, exceptionObject));
+            withException.setExceptionEdge(exceptionObject);
+            addUnwind(scopeData.owner, loopScope, exceptionObject);
+        }
+
+        /**
+         * Returns the OOME policy state for {@code methodScope}. This is only valid in OOME decode
+         * mode and deliberately asserts that the scope was created with matching policy state.
+         */
+        private OOMEScopeData oomeScopeData(MethodScope methodScope) {
+            assert methodScope.decodeScopeData instanceof OOMEScopeData : Assertions.errorMessage(methodScope, methodScope.decodeContext);
+            return (OOMEScopeData) methodScope.decodeScopeData;
+        }
+
+        /**
+         * Splices {@code replacement} into the normal control-flow path and adds a synthetic
+         * exception path that unwinds to the nearest OOME-catching inline scope.
+         */
+        private void replaceAllocationNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedWithNextNode node, AllocateWithExceptionNode replacement) {
+            AbstractBeginNode next = createReplacementNext(node);
+
+            node.replaceAtPredecessor(replacement);
+            replacement.setNext(next);
+            addSyntheticExceptionEdge(methodScope, loopScope, replacement, node.getNodeSourcePosition());
+            node.replaceAtUsagesAndDelete(replacement);
+            registerNode(loopScope, nodeOrderId, replacement, true, false);
+        }
+
+        /**
+         * Detaches the original normal successor and ensures the replacement's normal successor
+         * starts at an {@link AbstractBeginNode}, as required for split nodes with a distinct
+         * exception edge.
+         */
+        private AbstractBeginNode createReplacementNext(FixedWithNextNode node) {
+            FixedNode next = node.next();
+            node.setNext(null);
+            return BeginNode.begin(next);
+        }
+
+        /**
+         * Adds {@code exceptionObject} to a synthetic OOME unwind path. Multiple allocation
+         * exception edges are merged into a single {@link UnwindNode}, matching the shape expected by
+         * graph-copy inlining.
+         */
+        private void addUnwind(OOMEOwnerData ownerData, LoopScope loopScope, ExceptionObjectNode exceptionObject) {
+            OOMEExceptionExit exit = ownerData.exceptionExit;
+            if (exit != null && !isOOMEExceptionExitUsable(exit)) {
+                ownerData.methodScope.returnAndUnwindNodes.remove(exit.unwind);
+                ownerData.exceptionExit = null;
+                exit = null;
+            }
+
+            OOMEExceptionPath exceptionPath = appendOOMELoopExits(loopScope, exceptionObject);
+            if (exit == null) {
+                exit = new OOMEExceptionExit();
+                exit.unwind = graph.add(new UnwindNode(exceptionPath.exceptionValue));
+                exit.exceptionState = exceptionPath.exceptionState;
+                exceptionPath.lastFixed.setNext(exit.unwind);
+                ownerData.exceptionExit = exit;
+                ownerData.methodScope.returnAndUnwindNodes.add(exit.unwind);
+                return;
+            }
+
+            if (exit.merge == null) {
+                UnwindNode unwind = exit.unwind;
+                ValueNode firstException = unwind.exception();
+                FixedWithNextNode beforeUnwind = (FixedWithNextNode) unwind.predecessor();
+                EndNode oldEnd = graph.add(new EndNode());
+                beforeUnwind.setNext(null);
+                beforeUnwind.setNext(oldEnd);
+
+                exit.merge = graph.add(new MergeNode());
+                exit.merge.addForwardEnd(oldEnd);
+                exit.merge.setNext(unwind);
+                exit.exceptionPhi = graph.addWithoutUnique(new ValuePhiNode(firstException.stamp(NodeView.DEFAULT).unrestricted(), exit.merge));
+                exit.exceptionPhi.addInput(firstException);
+                unwind.setException(exit.exceptionPhi);
+                exit.merge.setStateAfter(createOOMEUnwindMergeStateAfter(ownerData, exit.exceptionPhi));
+            }
+
+            EndNode newEnd = graph.add(new EndNode());
+            exceptionPath.lastFixed.setNext(newEnd);
+            exit.exceptionPhi.addInput(exceptionPath.exceptionValue);
+            exit.merge.addForwardEnd(newEnd);
+        }
+
+        /**
+         * Creates the frame state for the merge introduced when several synthetic OOME edges unwind
+         * from the same owner scope.
+         */
+        protected FrameState createOOMEUnwindMergeStateAfter(OOMEOwnerData ownerData, ValueNode exceptionValue) {
+            return ownerData.exceptionExit.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null);
+        }
+
+        /**
+         * A synthetic OOME exit can become stale while decoding with simplification: the allocation
+         * whose exception edge first created the exit may be canonicalized away immediately after
+         * {@link #prepareFixedNode(MethodScope, LoopScope, int, FixedNode)} returns. In that case
+         * the cached direct unwind no longer has a predecessor, so the next restored OOME edge must
+         * create a fresh exit instead of trying to merge into the detached one.
+         */
+        private boolean isOOMEExceptionExitUsable(OOMEExceptionExit exit) {
+            if (exit.unwind == null || !exit.unwind.isAlive()) {
+                return false;
+            }
+            if (exit.merge == null) {
+                return exit.unwind.predecessor() instanceof FixedWithNextNode;
+            }
+            return exit.merge.isAlive() && exit.exceptionPhi != null && exit.exceptionPhi.isAlive() && exit.unwind.predecessor() == exit.merge;
+        }
+    }
+
+    private final DecodePolicy defaultDecodePolicy = new DecodePolicy();
+    private final DecodePolicy oomeDecodePolicy = new OOMEDecodePolicy();
+
+    /**
+     * Maps a public decode context to the policy that implements it. Subclasses should prefer
+     * overriding the policy hooks over adding new conditionals to the main decode loop.
+     */
+    protected DecodePolicy decodePolicy(DecodeContext decodeContext) {
+        return decodeContext == DecodeContext.OOME_EXCEPTION_EDGES ? oomeDecodePolicy : defaultDecodePolicy;
+    }
+
+    /**
+     * Lets subclasses delegate exception-edge creation to the decode policy selected for
+     * {@code methodScope}. The default policy wires encoded exception successors, while specialized
+     * policies can synthesize missing exception exits for context-specific decoding.
+     */
+    protected void prepareExceptionEdge(MethodScope methodScope, LoopScope loopScope, WithExceptionNode withException, int exceptionOrderId,
+                    NodeSourcePosition sourcePosition) {
+        methodScope.decodePolicy.prepareExceptionEdge(methodScope, loopScope, withException, exceptionOrderId, sourcePosition);
+    }
 
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
@@ -110,6 +490,21 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionPlugin.LoopExplosionKind loopExplosion;
+
+        /**
+         * Context-sensitive behavior requested for this method materialization. The value is fixed
+         * when the scope is created so all node preparation in the scope uses one coherent policy.
+         */
+        public final DecodeContext decodeContext;
+
+        /** Policy selected from {@link #decodeContext}. */
+        protected final DecodePolicy decodePolicy;
+
+        /**
+         * Policy-owned scope state. The base decoder treats this as opaque and only passes it back to
+         * policy hooks.
+         */
+        protected final DecodeScopeData decodeScopeData;
 
         /** All return nodes encountered during decoding. */
         public final List<ControlSinkNode> returnAndUnwindNodes;
@@ -145,12 +540,25 @@ public class GraphDecoder {
          */
         public InliningLogCodec.InliningLogDecoder inliningLogDecoder;
 
-        @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionPlugin.LoopExplosionKind loopExplosion) {
+            this(callerLoopScope, graph, encodedGraph, loopExplosion, DecodeContext.DEFAULT);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionPlugin.LoopExplosionKind loopExplosion, DecodeContext decodeContext) {
+            this(callerLoopScope, graph, encodedGraph, loopExplosion, decodeContext, null);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionPlugin.LoopExplosionKind loopExplosion, DecodeContext decodeContext,
+                        DecodeScopeData inheritedDecodeScopeData) {
             this.callerLoopScope = callerLoopScope;
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
+            this.decodeContext = decodeContext;
+            this.decodePolicy = decodePolicy(decodeContext);
+            this.decodeScopeData = decodePolicy.createScopeData(this, inheritedDecodeScopeData);
             this.returnAndUnwindNodes = new ArrayList<>(2);
 
             if (encodedGraph != null) {
@@ -207,6 +615,15 @@ public class GraphDecoder {
 
         public boolean isInlinedMethod() {
             return false;
+        }
+
+        /**
+         * Returns whether this method scope participates in OOME edge repair. This is intentionally
+         * phrased in terms of policy scope rather than {@link #decodeContext} so inherited policy
+         * state in nested decodes is accounted for.
+         */
+        protected boolean hasOOMEPolicyScope() {
+            return decodeScopeData != null && decodeScopeData.isOOMEPolicyScope();
         }
 
         public NodeSourcePosition getCallerNodeSourcePosition() {
@@ -682,6 +1099,15 @@ public class GraphDecoder {
                             from.stateAfterOrderId, from.nextOrderId, from.exceptionOrderId, from.exceptionStateOrderId, from.exceptionNextOrderId);
         }
 
+        InvokeData copyWithInvoke(Invoke replacement) {
+            InvokeData copy = new InvokeData(replacement, contextType, orderId, callTargetOrderId, intrinsifiedMethodHandle,
+                            stateAfterOrderId, nextOrderId, exceptionOrderId, exceptionStateOrderId, exceptionNextOrderId);
+            copy.constantReceiver = constantReceiver;
+            copy.callTarget = callTarget;
+            copy.invokePredecessor = invokePredecessor;
+            return copy;
+        }
+
         public final int callTargetOrderId;
         public final boolean intrinsifiedMethodHandle;
 
@@ -705,7 +1131,6 @@ public class GraphDecoder {
     protected final StructuredGraph graph;
     protected final OptionValues options;
     protected final DebugContext debug;
-
     private final EconomicMap<NodeClass<?>, ArrayDeque<Node>> reusableFloatingNodes;
 
     public GraphDecoder(Architecture architecture, StructuredGraph graph) {
@@ -717,14 +1142,33 @@ public class GraphDecoder {
     }
 
     public final void decode(EncodedGraph encodedGraph) {
-        decode(encodedGraph, null);
+        decode(encodedGraph, null, DecodeContext.DEFAULT);
+    }
+
+    /**
+     * Decodes {@code encodedGraph} with an explicit materialization context. Use
+     * {@link DecodeContext#DEFAULT} unless the caller has already established that the decoded graph
+     * must be adapted for the use site.
+     */
+    public final void decode(EncodedGraph encodedGraph, DecodeContext decodeContext) {
+        decode(encodedGraph, null, decodeContext);
     }
 
     @SuppressWarnings("try")
     public final void decode(EncodedGraph encodedGraph, Iterable<EncodedGraph.EncodedNodeReference> nodeReferences) {
+        decode(encodedGraph, nodeReferences, DecodeContext.DEFAULT);
+    }
+
+    /**
+     * Decodes {@code encodedGraph} and optionally materializes context-sensitive graph variants.
+     * {@code nodeReferences}, when present, are resolved against the graph shape after policy
+     * preparation, so policies that replace nodes must keep order-id registration up to date.
+     */
+    @SuppressWarnings("try")
+    public final void decode(EncodedGraph encodedGraph, Iterable<EncodedGraph.EncodedNodeReference> nodeReferences, DecodeContext decodeContext) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
             recordGraphElements(encodedGraph);
-            MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionPlugin.LoopExplosionKind.NONE);
+            MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionPlugin.LoopExplosionKind.NONE, decodeContext);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
             decode(loopScope);
             cleanupGraph(methodScope);
@@ -1156,12 +1600,24 @@ public class GraphDecoder {
     }
 
     protected void appendInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData, CallTargetNode callTarget) {
-        if (invokeData.invoke instanceof InvokeWithExceptionNode) {
-            ((InvokeWithExceptionNode) invokeData.invoke).setCallTarget(callTarget);
+        InvokeData data = prepareInvoke(methodScope, loopScope, invokeData, callTarget);
+        if (data.invoke instanceof InvokeWithExceptionNode withException) {
+            if (withException.callTarget() != callTarget) {
+                withException.setCallTarget(callTarget);
+            }
         } else {
-            ((InvokeNode) invokeData.invoke).setCallTarget(callTarget);
+            ((InvokeNode) data.invoke).setCallTarget(callTarget);
         }
-        appendInvokable(methodScope, loopScope, invokeData);
+        appendInvokable(methodScope, loopScope, data);
+    }
+
+    /**
+     * Applies context-sensitive invoke preparation before the invoke is wired into decoded control
+     * flow. The returned {@link InvokeData} can refer to a replacement invoke, so callers must use the
+     * return value for all subsequent invoke handling.
+     */
+    protected InvokeData prepareInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData, CallTargetNode callTarget) {
+        return methodScope.decodePolicy.prepareInvoke(methodScope, loopScope, invokeData, callTarget);
     }
 
     private <T extends Invokable & StateSplit> void appendInvokable(MethodScope methodScope, LoopScope loopScope, InvokableData<T> invokeData) {
@@ -1172,10 +1628,36 @@ public class GraphDecoder {
 
         FixedNode next = makeStubNode(methodScope, loopScope, invokeData.nextOrderId);
         if (invokeData.invoke instanceof WithExceptionNode withException) {
-            withException.setNext((AbstractBeginNode) next);
-            withException.setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, invokeData.exceptionOrderId));
+            withException.setNext(BeginNode.begin(next));
+            methodScope.decodePolicy.prepareExceptionEdge(methodScope, loopScope, withException, invokeData.exceptionOrderId, invokeData.invoke.asNode().getNodeSourcePosition());
         } else {
             ((FixedWithNextNode) invokeData.invoke).setNext(next);
+        }
+    }
+
+    /**
+     * Converts a decoded plain invoke into an {@link InvokeWithExceptionNode} for contexts where an
+     * exception successor is required but the encoded graph did not contain one. The replacement keeps
+     * the original invoke's state and metadata, and it is registered under the same order id so later
+     * decode references find the replacement.
+     */
+    private InvokeWithExceptionNode createInvokeWithException(LoopScope loopScope, InvokeData invokeData, CallTargetNode callTarget, InvokeNode invokeNode) {
+        try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph.getInliningLog(), invokeNode)) {
+            assert updateScope != null;
+            InvokeWithExceptionNode replacement = graph.add(new InvokeWithExceptionNode(callTarget, null, invokeNode.bci(), invokeNode.stamp(NodeView.DEFAULT)));
+            replacement.setStateAfter(invokeNode.stateAfter());
+            replacement.setStateDuring(invokeNode.stateDuring());
+            replacement.setInlineControl(invokeNode.getInlineControl());
+            replacement.setPolymorphic(invokeNode.isPolymorphic());
+            replacement.setInOOMETry(true);
+            if (invokeNode.classInit() != null) {
+                replacement.setClassInit(invokeNode.classInit());
+            }
+            replacement.setNodeSourcePosition(invokeNode.getNodeSourcePosition());
+            invokeNode.setNext(null);
+            invokeNode.replaceAndDelete(replacement);
+            registerNode(loopScope, invokeData.orderId, replacement, true, false);
+            return replacement;
         }
     }
 
@@ -1328,6 +1810,104 @@ public class GraphDecoder {
      * @param node The node to be simplified.
      */
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        prepareFixedNode(methodScope, loopScope, nodeOrderId, node);
+    }
+
+    /**
+     * Performs shared fixed-node preparation before subclass-specific handling. Subclasses that
+     * override {@link #handleFixedNode(MethodScope, LoopScope, int, FixedNode)} and continue
+     * processing the node must use the returned node because preparation can replace the original
+     * decoded node. The base implementation calls this method and ignores the result because it does
+     * not do any additional processing after preparation.
+     */
+    protected FixedNode prepareFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        return methodScope.decodePolicy.prepareFixedNode(methodScope, loopScope, nodeOrderId, node);
+    }
+
+    /**
+     * Creates the with-exception allocation variant for the plain allocation node, preserving the
+     * allocation inputs and pre-state. The replacement is restored from an encoded plain allocation,
+     * so it deliberately does not require a {@code stateAfter}; a valid parser-created
+     * post-allocation state cannot be reconstructed here. Non-allocation fixed nodes return
+     * {@code null}. Note that {@link NewMultiArrayNode} is allocation-like but is not an
+     * {@code AbstractNewObjectNode}, so the supported shapes are listed explicitly.
+     */
+    private static AllocateWithExceptionNode createAllocationWithException(FixedNode node) {
+        if (node instanceof NewInstanceNode newInstance) {
+            return new NewInstanceWithExceptionNode(newInstance.instanceClass(), newInstance.fillContents(), newInstance.stateBefore(), false);
+        } else if (node instanceof NewArrayNode newArray) {
+            return new NewArrayWithExceptionNode(newArray.elementType(), newArray.length(), newArray.fillContents(), newArray.stateBefore(), false);
+        } else if (node instanceof NewMultiArrayNode newMultiArray) {
+            return new NewMultiArrayWithExceptionNode(newMultiArray.type(), newMultiArray.dimensions(), newMultiArray.stateBefore(), false);
+        } else if (node instanceof DynamicNewInstanceNode dynamicNewInstance) {
+            return new DynamicNewInstanceWithExceptionNode(dynamicNewInstance.getInstanceType(), dynamicNewInstance.fillContents(), dynamicNewInstance.isOriginUnsafeAllocateInstance(),
+                            dynamicNewInstance.stateBefore(), false);
+        } else if (node instanceof DynamicNewArrayNode dynamicNewArray) {
+            DynamicNewArrayWithExceptionNode replacement = new DynamicNewArrayWithExceptionNode(dynamicNewArray.getElementType(), dynamicNewArray.length(), dynamicNewArray.fillContents(),
+                            dynamicNewArray.stateBefore(), false);
+            if (dynamicNewArray.getVoidClass() != null) {
+                replacement.setVoidClass(dynamicNewArray.getVoidClass());
+            }
+            return replacement;
+        }
+        return null;
+    }
+
+    /**
+     * Creates the state for a synthetic OOME exception object. Subclasses can override this to use
+     * a more precise caller exception state.
+     */
+    protected FrameState createOOMEExceptionStateAfter(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") MethodScope exceptionScope,
+                    ExceptionObjectNode exceptionObject) {
+        return graph.add(new FrameState(BytecodeFrame.AFTER_EXCEPTION_BCI, exceptionObject));
+    }
+
+    /**
+     * Creates the synthetic OOME exception object. Subclasses with an active provider set can override
+     * this to stamp the exception with the provider's type universe.
+     */
+    protected ExceptionObjectNode createOOMEExceptionObject() {
+        return graph.add(new ExceptionObjectNode(StampFactory.objectNonNull()));
+    }
+
+    /**
+     * Synthetic OOME unwinds leave the decoded method, so an allocation inside decoded loops must
+     * pass through the same loop-exit structure as a normal exceptional exit. Without these
+     * {@link LoopExitNode}s, later CFG construction sees control flow that exits a loop without a
+     * loop-exit marker.
+     */
+    private OOMEExceptionPath appendOOMELoopExits(LoopScope loopScope, ExceptionObjectNode exceptionObject) {
+        return appendOOMELoopExits(loopScope, exceptionObject, exceptionObject, exceptionObject.stateAfter());
+    }
+
+    protected OOMEExceptionPath appendOOMELoopExits(LoopScope loopScope, FixedWithNextNode firstFixed, ValueNode initialExceptionValue, FrameState initialExceptionState) {
+        FixedWithNextNode last = firstFixed;
+        ValueNode exceptionValue = initialExceptionValue;
+        FrameState exceptionState = initialExceptionState;
+        for (LoopScope current = loopScope; current != null && current.loopDepth > 0; current = current.outer) {
+            Node loopBeginNode = lookupNode(current, current.loopBeginOrderId);
+            if (loopBeginNode instanceof LoopBeginNode loopBegin) {
+                LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
+                last.setNext(loopExit);
+                exceptionValue = graph.addOrUnique(new ValueProxyNode(exceptionValue, loopExit));
+                exceptionState = exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null);
+                loopExit.setStateAfter(exceptionState);
+                last = loopExit;
+            }
+        }
+        return new OOMEExceptionPath(last, exceptionValue, exceptionState);
+    }
+
+    protected static final class OOMEExceptionPath {
+        public final FixedWithNextNode lastFixed;
+        public final ValueNode exceptionValue;
+        public final FrameState exceptionState;
+
+        private OOMEExceptionPath(FixedWithNextNode lastFixed, ValueNode exceptionValue, FrameState exceptionState) {
+            this.lastFixed = lastFixed;
+            this.exceptionValue = exceptionValue;
+            this.exceptionState = exceptionState;
+        }
     }
 
     /**

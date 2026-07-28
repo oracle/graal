@@ -26,35 +26,55 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
+
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.espresso.classfile.ExceptionHandler;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
-import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
 import com.oracle.svm.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.svm.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod implements CremaResolvedJavaMethod, AttributedElement {
+public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod implements CremaResolvedJavaMethod, FilteredAttributedElement {
+    private static final Set<Symbol<Name>> RETAINED_ATTRIBUTES = Set.of(
+                    CodeAttribute.NAME,
+                    ExceptionsAttribute.NAME,
+                    MethodParametersAttribute.NAME,
+                    SignatureAttribute.NAME,
+                    // Raw attributes
+                    ParserSymbols.ParserNames.AnnotationDefault,
+                    ParserSymbols.ParserNames.RuntimeVisibleAnnotations,
+                    ParserSymbols.ParserNames.RuntimeVisibleParameterAnnotations,
+                    ParserSymbols.ParserNames.RuntimeVisibleTypeAnnotations);
+
     private final ExceptionHandler[] rawExceptionHandlers;
-    // GR-70288: Only keep a subset of the parsed attributes.
     private final Attribute[] attributes;
-    private PreparedSignature jniPreparedSignature;
-    private JNINativeLinkage jniNativeLinkage;
+
+    private static final Map<CremaResolvedJavaMethodImpl, Long> methodIds = Collections.synchronizedMap(new WeakHashMap<>());
 
     private CremaResolvedJavaMethodImpl(InterpreterResolvedObjectType declaringClass, ParserMethod parserMethod, int vtableIndex) {
         super(declaringClass, parserMethod, vtableIndex);
@@ -64,30 +84,47 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
         } else {
             this.rawExceptionHandlers = null;
         }
-        this.attributes = parserMethod.getAttributes();
-        if (Modifier.isNative(getFlags())) {
-            this.jniPreparedSignature = InterpreterSupport.singleton().prepareJNISignature(getSignature(), !Modifier.isStatic(getFlags()), declaringClass);
-            this.jniNativeLinkage = new JNINativeLinkage(getDeclaringClass().getJavaClass(), getDeclaringClass().getName(), getName(), getSignature().toMethodDescriptor());
-        }
+        this.attributes = filterAttributes(parserMethod.getAttributes());
     }
 
     public static InterpreterResolvedJavaMethod create(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
+        if (Modifier.isNative(m.getFlags())) {
+            return new CremaResolvedNativeJavaMethod(declaringClass, m, vtableIndex);
+        }
         return new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
     }
 
     @Override
-    public PreparedSignature getJNIPreparedSignature() {
-        return jniPreparedSignature;
+    public JNIMethodId getOrCreateJNIMethodId() {
+        synchronized (methodIds) {
+            Long existing = methodIds.get(this);
+            if (existing == null) {
+                JNIObjectHandle globalHandle = JNIObjectHandles.newWeakGlobalRef(JNIObjectHandles.createLocal(this));
+                existing = globalHandle.rawValue();
+                methodIds.put(this, existing);
+            }
+            return Word.pointer(existing);
+        }
+    }
+
+    @Override
+    public PreparedSignature getJNIDowncallPreparedSignature() {
+        throw VMError.shouldNotReachHere("Call only allowed on native subclass.");
     }
 
     @Override
     public JNINativeLinkage getJNINativeLinkage() {
-        return jniNativeLinkage;
+        throw VMError.shouldNotReachHere("Call only allowed on native subclass.");
     }
 
     @Override
     public Attribute[] getAttributes() {
         return attributes;
+    }
+
+    @Override
+    public Set<Symbol<Name>> getRetainedAttributes() {
+        return RETAINED_ATTRIBUTES;
     }
 
     @Override
@@ -216,5 +253,26 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
             return null;
         }
         return getDeclaringClass().getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
+    }
+
+    private static final class CremaResolvedNativeJavaMethod extends CremaResolvedJavaMethodImpl {
+        private final PreparedSignature jniDowncallPreparedSignature;
+        private final JNINativeLinkage jniNativeLinkage;
+
+        private CremaResolvedNativeJavaMethod(InterpreterResolvedObjectType declaringClass, ParserMethod parserMethod, int vtableIndex) {
+            super(declaringClass, parserMethod, vtableIndex);
+            this.jniDowncallPreparedSignature = InterpreterSupport.singleton().prepareJNIDowncallSignature(getSignature(), !Modifier.isStatic(getFlags()), declaringClass);
+            this.jniNativeLinkage = new JNINativeLinkage(getDeclaringClass().getHub(), getName(), getSignature().toMethodDescriptor());
+        }
+
+        @Override
+        public PreparedSignature getJNIDowncallPreparedSignature() {
+            return jniDowncallPreparedSignature;
+        }
+
+        @Override
+        public JNINativeLinkage getJNINativeLinkage() {
+            return jniNativeLinkage;
+        }
     }
 }

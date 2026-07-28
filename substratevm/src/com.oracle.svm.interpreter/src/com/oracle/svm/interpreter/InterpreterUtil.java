@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.shared.util.VMError;

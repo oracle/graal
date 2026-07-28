@@ -49,7 +49,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
+import com.oracle.svm.guest.staging.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.SubstrateGraalUtils;

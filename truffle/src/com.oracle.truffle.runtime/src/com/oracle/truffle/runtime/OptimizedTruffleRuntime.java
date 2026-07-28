@@ -43,10 +43,7 @@ package com.oracle.truffle.runtime;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
 import java.io.PrintStream;
-import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.Buffer;
@@ -88,13 +85,9 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.HostCompilerDirectives.InliningRoot;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -118,8 +111,6 @@ import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
@@ -132,10 +123,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationSupport;
 import com.oracle.truffle.compiler.TruffleCompiler;
@@ -151,15 +139,12 @@ import com.oracle.truffle.runtime.debug.TraceCompilationPolymorphismListener;
 import com.oracle.truffle.runtime.debug.TraceSplittingListener;
 import com.oracle.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -171,50 +156,6 @@ import jdk.vm.ci.services.Services;
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
-
-    private static final class Lazy {
-        /**
-         * True if the {@link InliningRoot} annotation is supported by the compiler.
-         */
-        private static final boolean INLINING_ROOT_SUPPORTED = findInliningRootSupported();
-        private static final MethodHandle GET_ANNOTATION = findGetAnnotation();
-
-        @SuppressWarnings("deprecation")
-        private static boolean findInliningRootSupported() {
-            try {
-                HostMethodInfo.class.getDeclaredConstructor(boolean.class, boolean.class, boolean.class, boolean.class, boolean.class);
-                return true;
-            } catch (NoSuchMethodException e) {
-                return false;
-            }
-        }
-
-        private static MethodHandle findGetAnnotation() {
-            /*
-             * In JDK versions prior to 25.1, ResolvedJavaType implemented AnnotatedElement, and the
-             * Graal compiler queried the Truffle runtime to retrieve annotation values.
-             *
-             * Starting with JDK 25.1, ResolvedJavaType no longer implements AnnotatedElement.
-             * Instead, the Graal compiler directly reads annotation values using the
-             * jdk.graal.compiler.annotation API.
-             *
-             * As a result, on JDK 25.1 and later, the Truffle runtime is never queried by the Graal
-             * compiler to obtain annotation values. For compatibility, getAnnotation is still
-             * supported when Truffle runs on GraalVM versions older than 25.1.
-             */
-            if (AnnotatedElement.class.isAssignableFrom(ResolvedJavaType.class)) {
-                try {
-                    Method method = AnnotatedElement.class.getDeclaredMethod("getAnnotation", Class.class);
-                    return MethodHandles.lookup().unreflect(method);
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    throw new InternalError(e);
-                }
-            } else {
-                return null;
-            }
-        }
-
-    }
 
     /**
      * Used only to reset state for native image compilation.
@@ -404,48 +345,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return bestFactory;
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        if (getAnnotation(Child.class, field) != null) {
-            return ConstantFieldInfo.CHILD;
-        }
-        if (getAnnotation(Children.class, field) != null) {
-            return ConstantFieldInfo.CHILDREN;
-        }
-        CompilationFinal cf = getAnnotation(CompilationFinal.class, field);
-        if (cf != null) {
-            int dimensions = actualStableDimensions(field, cf.dimensions());
-            return ConstantFieldInfo.forDimensions(dimensions);
-        }
-        return null;
-    }
-
-    private static int actualStableDimensions(ResolvedJavaField field, int dimensions) {
-        if (dimensions == 0) {
-            return 0;
-        }
-        int arrayDim = getArrayDimensions(field.getType());
-        if (dimensions < 0) {
-            if (dimensions != -1) {
-                throw new IllegalArgumentException("Negative @CompilationFinal dimensions");
-            }
-            return arrayDim;
-        }
-        if (dimensions > arrayDim) {
-            throw new IllegalArgumentException(String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field));
-        }
-        return dimensions;
-    }
-
-    private static int getArrayDimensions(JavaType type) {
-        int dimensions = 0;
-        for (JavaType componentType = type; componentType.isArray(); componentType = componentType.getComponentType()) {
-            dimensions++;
-        }
-        return dimensions;
-    }
-
     @SuppressWarnings("deprecation")
     private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
@@ -612,104 +511,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        if (Lazy.INLINING_ROOT_SUPPORTED) {
-            return new HostMethodInfo(isTruffleBoundary(method),
-                            isBytecodeInterpreterSwitch(method),
-                            isBytecodeInterpreterSwitchBoundary(method),
-                            isInliningCutoff(method),
-                            isInliningRoot(method));
-        } else {
-            return new HostMethodInfo(isTruffleBoundary(method),
-                            isBytecodeInterpreterSwitch(method),
-                            isBytecodeInterpreterSwitchBoundary(method),
-                            isInliningCutoff(method));
-        }
-    }
-
-    private static boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
-        return getAnnotation(BytecodeInterpreterSwitch.class, method) != null;
-    }
-
-    private static boolean isInliningCutoff(ResolvedJavaMethod method) {
-        return getAnnotation(InliningCutoff.class, method) != null;
-    }
-
-    private static boolean isInliningRoot(ResolvedJavaMethod method) {
-        return getAnnotation(InliningRoot.class, method) != null;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
-        return getAnnotation(com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class, method) != null;
-    }
-
-    private static boolean isTruffleBoundary(ResolvedJavaMethod method) {
-        return getAnnotation(TruffleBoundary.class, method) != null;
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, method);
-        TruffleCallBoundary truffleCallBoundary = getAnnotation(TruffleCallBoundary.class, method);
-        return new PartialEvaluationMethodInfo(getLoopExplosionKind(method),
-                        getInlineKind(truffleBoundary, truffleCallBoundary, method, true),
-                        getInlineKind(truffleBoundary, truffleCallBoundary, method, false),
-                        method.canBeInlined(),
-                        isSpecializationMethod(method));
-    }
-
-    private static boolean isSpecializationMethod(ResolvedJavaMethod method) {
-        return getAnnotation(Specialization.class, method) != null;
-    }
-
-    private static LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
-        ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
-        if (explodeLoop == null) {
-            return LoopExplosionKind.NONE;
-        }
-        switch (explodeLoop.kind()) {
-            case FULL_UNROLL:
-                return LoopExplosionKind.FULL_UNROLL;
-            case FULL_UNROLL_UNTIL_RETURN:
-                return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
-            case FULL_EXPLODE:
-                return LoopExplosionKind.FULL_EXPLODE;
-            case FULL_EXPLODE_UNTIL_RETURN:
-                return LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
-            case MERGE_EXPLODE:
-                return LoopExplosionKind.MERGE_EXPLODE;
-            default:
-                throw new InternalError(String.format("Unknown Truffle LoopExplosionKind %s", explodeLoop.kind()));
-        }
-    }
-
-    private static InlineKind getInlineKind(TruffleBoundary truffleBoundary, TruffleCallBoundary truffleCallBoundary, ResolvedJavaMethod method, boolean duringPartialEvaluation) {
-        if (truffleBoundary != null) {
-            if (duringPartialEvaluation) {
-                // Since this method is invoked by the bytecode parser plugins, which can be invoked
-                // by the partial evaluator, we want to prevent inlining across the boundary during
-                // partial evaluation,
-                // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (truffleBoundary.transferToInterpreterOnException()) {
-                    return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
-                } else {
-                    return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-                }
-            } else if (!truffleBoundary.allowInlining()) {
-                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-            }
-        } else if (truffleCallBoundary != null) {
-            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        } else if (JFRListener.isInstrumented(method)) {
-            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        }
-        return InlineKind.INLINE;
-    }
-
     public final void initializeKnownMethods(MetaAccessProvider metaAccess) {
         knownMethods = new KnownMethods(metaAccess);
     }
@@ -730,15 +531,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
         return OptimizedOSRLoopNode.create(repeatingNode);
-    }
-
-    /**
-     * @deprecated do not use just here for compatibility with older SubstrateTruffleRuntime.
-     */
-    @SuppressWarnings("static-method")
-    @Deprecated
-    protected final LoopNodeFactory getLoopNodeFactory() {
-        return null;
     }
 
     public final EngineCacheSupport getEngineCacheSupport() {
@@ -1039,14 +831,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation, CompilationTask.SubmissionReason submissionReason) {
         BackgroundCompileQueue compileQueue = getCompileQueue();
-        if (compileQueue == null) {
-            /*
-             * Binary compatibility for Substrate runtimes that only override the legacy 2-arg
-             * submit method. This occurs with older GraalVM 21 runtime mixes where hosted mode and
-             * single-threaded runtime execution do not initialize a background compile queue.
-             */
-            return submitForCompilation(optimizedCallTarget, lastTierCompilation);
-        }
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
         return compileQueue.submitCompilation(priority, optimizedCallTarget, submissionReason);
     }
@@ -1175,11 +959,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
-    public boolean isValueType(ResolvedJavaType type) {
-        return getAnnotation(CompilerDirectives.ValueType.class, type) != null;
-    }
-
-    @Override
     public void log(String loggerId, TruffleCompilable compilable, String message) {
         TruffleLogger logger = ((OptimizedCallTarget) compilable).engine.getLogger(loggerId);
         // The logger can be null if the engine is closed.
@@ -1216,55 +995,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("unused")
     final boolean isSuppressedCompilationFailure(Throwable throwable) {
         return compilationSupport.isSuppressedCompilationFailure(throwable);
-    }
-
-    // https://bugs.openjdk.java.net/browse/JDK-8209535
-
-    private static BailoutException handleAnnotationFailure(NoClassDefFoundError e, String attemptedAction) {
-        throw new BailoutException(e, "Error while %s. " +
-                        "This usually means that the unresolved type is in the signature of some other " +
-                        "method or field in the same class. This can be resolved by modifying the relevant class path " +
-                        "or module path such that it includes the missing type.",
-                        attemptedAction);
-    }
-
-    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {
-        validateLegacyJVMCI();
-        try {
-            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(method, (AnnotatedElement) annotationClass));
-        } catch (NoClassDefFoundError e) {
-            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", method.format("%H.%n(%p)"), annotationClass.getName()));
-        } catch (Throwable t) {
-            throw new InternalError(t);
-        }
-    }
-
-    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaField field) {
-        validateLegacyJVMCI();
-        try {
-            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(field, (AnnotatedElement) annotationClass));
-        } catch (NoClassDefFoundError e) {
-            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", field.format("%H.%n(%p)"), annotationClass.getName()));
-        } catch (Throwable t) {
-            throw new InternalError(t);
-        }
-    }
-
-    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaType type) {
-        validateLegacyJVMCI();
-        try {
-            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(type, (AnnotatedElement) annotationClass));
-        } catch (NoClassDefFoundError e) {
-            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", type.toJavaName(), annotationClass.getName()));
-        } catch (Throwable t) {
-            throw new InternalError(t);
-        }
-    }
-
-    private static void validateLegacyJVMCI() {
-        if (Lazy.GET_ANNOTATION == null) {
-            throw new AssertionError("Must not be called on graalvm 25.1 or newer.");
-        }
     }
 
     /**

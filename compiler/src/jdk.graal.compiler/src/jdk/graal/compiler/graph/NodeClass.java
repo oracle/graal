@@ -1321,7 +1321,16 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
         assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
-        return replaceFirstEdge(node, key, replacement, this.inputs.getIterationMask(), inputs);
+        return replaceFirstEdge(node, key, replacement, this.inputs.getIterationMask(), inputs, true);
+    }
+
+    /**
+     * Like {@link #replaceFirstInput(Node, Node, Node)}, but assumes that replacement invariants
+     * were already checked or are intentionally bypassed by the caller.
+     */
+    boolean replaceFirstInputWithoutCheckingInvariants(Node node, Node key, Node replacement) {
+        assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
+        return replaceFirstEdge(node, key, replacement, this.inputs.getIterationMask(), inputs, false);
     }
 
     /**
@@ -1334,10 +1343,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
         assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
-        return replaceFirstEdge(node, key, replacement, this.successors.getIterationMask(), successors);
+        return replaceFirstEdge(node, key, replacement, this.successors.getIterationMask(), successors, false);
     }
 
-    private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
+    private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges, boolean checkInputInvariants) {
         int index = 0;
         long myMask = mask;
         while (myMask != 0) {
@@ -1345,13 +1354,23 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Object curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode == key) {
+                    if (checkInputInvariants && key != null && ((InputEdges) edges).getInputType(index) == InputType.Value) {
+                        key.checkReplaceInputInvariants(replacement);
+                    }
                     edges.putNodeUnsafeChecked(node, offset, replacement, index);
                     return true;
                 }
             } else {
                 NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
-                if (list != null && list.replaceFirst(key, replacement)) {
-                    return true;
+                if (list != null) {
+                    int listIndex = list.indexOf(key);
+                    if (listIndex != -1) {
+                        if (checkInputInvariants && key != null && ((InputEdges) edges).getInputType(index) == InputType.Value) {
+                            key.checkReplaceInputInvariants(replacement);
+                        }
+                        list.nodes[listIndex] = replacement;
+                        return true;
+                    }
                 }
             }
             myMask >>>= NEXT_EDGE;

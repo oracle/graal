@@ -53,7 +53,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
@@ -160,7 +160,7 @@ public class LLVMExceptionUnwind {
         return new LLVMExceptionUnwindHandler();
     }
 
-    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class LLVMExceptionUnwindHandler extends ExceptionUnwind {
         @Override
         @Uninterruptible(reason = "Code that is fully uninterruptible may throw and catch exceptions. Therefore, the exception handling must be fully uninterruptible as well.")

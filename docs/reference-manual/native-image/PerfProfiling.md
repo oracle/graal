@@ -92,9 +92,12 @@ This requires post-processing of the perf data to inject the runtime compilation
    ```bash
    native-image -g -H:+PreserveFramePointer -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump ...
    ```
-   
-   At image-runtime, the jitdump file _<jitdump_dir>/jit-<pid>.dump_ is created, and runtime compilation metadata is written to it.
+
+   This includes jitdump support in the image and enables writing by default.
+   Use `-R:-RuntimeJitdump` to include jitdump support while making writing disabled by default for the image.
    The output directory can be configured with `-R:RuntimeJitdumpDir=<jitdump_dir>` (defaults to _./jitdump_).
+   If the image default disables jitdump, pass `-XX:+RuntimeJitdump` to enable it for a run.
+   If the image default enables jitdump, pass `-XX:-RuntimeJitdump` to disable it for a run.
 
 2. Record with perf:
 

@@ -61,6 +61,7 @@ jobs:
   build-and-test-spring:
     name: Native Tests
     needs: build-graalvm
+    timeout-minutes: 60
     runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:

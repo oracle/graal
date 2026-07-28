@@ -151,51 +151,52 @@ public class ThreadsEventsTest {
 
     @Test
     public void testContextThreads() throws Exception {
-        Engine engine = Engine.create();
-        Instrument testThreadsInstrument = engine.getInstruments().get("testThreadsInstrument");
-        TestThreadsInstrument test = testThreadsInstrument.lookup(TestThreadsInstrument.class);
-        final List<ThreadEvent> events = test.events;
-        Source source = Source.create(InstrumentationTestLanguage.ID, "STATEMENT()");
+        try (Engine engine = Engine.create()) {
+            Instrument testThreadsInstrument = engine.getInstruments().get("testThreadsInstrument");
+            TestThreadsInstrument test = testThreadsInstrument.lookup(TestThreadsInstrument.class);
+            final List<ThreadEvent> events = test.events;
+            Source source = Source.create(InstrumentationTestLanguage.ID, "STATEMENT()");
 
-        int numThreads = 10;
-        Thread[] threads = new Thread[numThreads];
-        for (int i = 0; i < numThreads; i++) {
-            threads[i] = new Thread() {
-                @Override
-                public void run() {
-                    try (Context context = Context.newBuilder().engine(engine).build()) {
-                        context.eval(source);
+            int numThreads = 10;
+            Thread[] threads = new Thread[numThreads];
+            for (int i = 0; i < numThreads; i++) {
+                threads[i] = new Thread() {
+                    @Override
+                    public void run() {
+                        try (Context context = Context.newBuilder().engine(engine).build()) {
+                            context.eval(source);
+                        }
                     }
-                }
-            };
-        }
-        for (int i = 0; i < numThreads; i++) {
-            threads[i].start();
-        }
-        for (int i = 0; i < numThreads; i++) {
-            threads[i].join();
-        }
-
-        assertEquals(2 * numThreads, events.size());
-        List<ThreadEvent> startEvents = new ArrayList<>(numThreads);
-        for (ThreadEvent event : events) {
-            if (event.isNew) {
-                startEvents.add(event);
+                };
             }
+            for (int i = 0; i < numThreads; i++) {
+                threads[i].start();
+            }
+            for (int i = 0; i < numThreads; i++) {
+                threads[i].join();
+            }
+
+            assertEquals(2 * numThreads, events.size());
+            List<ThreadEvent> startEvents = new ArrayList<>(numThreads);
+            for (ThreadEvent event : events) {
+                if (event.isNew) {
+                    startEvents.add(event);
+                }
+            }
+            assertEquals(numThreads, startEvents.size());
+            // Verify that we got all threads in the events:
+            Set<Thread> allThreads = new HashSet<>(Arrays.asList(threads));
+            for (int i = 0; i < numThreads; i++) {
+                assertTrue(allThreads.remove(startEvents.get(i).thread));
+            }
+            assertTrue(allThreads.toString(), allThreads.isEmpty());
+            // Verify that we got 'numThreads' number of contexts:
+            Set<TruffleContext> distinctContexts = new HashSet<>();
+            for (ThreadEvent event : events) {
+                distinctContexts.add(event.context);
+            }
+            assertEquals(numThreads, distinctContexts.size());
         }
-        assertEquals(numThreads, startEvents.size());
-        // Verify that we got all threads in the events:
-        Set<Thread> allThreads = new HashSet<>(Arrays.asList(threads));
-        for (int i = 0; i < numThreads; i++) {
-            assertTrue(allThreads.remove(startEvents.get(i).thread));
-        }
-        assertTrue(allThreads.toString(), allThreads.isEmpty());
-        // Verify that we got 'numThreads' number of contexts:
-        Set<TruffleContext> distinctContexts = new HashSet<>();
-        for (ThreadEvent event : events) {
-            distinctContexts.add(event.context);
-        }
-        assertEquals(numThreads, distinctContexts.size());
     }
 
     @Test

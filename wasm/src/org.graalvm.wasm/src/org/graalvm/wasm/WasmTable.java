@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,8 @@
  */
 package org.graalvm.wasm;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
@@ -56,12 +57,12 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
     /**
      * @see #declaredMinSize()
      */
-    private final int declaredMinSize;
+    private final long declaredMinSize;
 
     /**
      * @see #declaredMaxSize()
      */
-    private final int declaredMaxSize;
+    private final long declaredMaxSize;
 
     /**
      * @see #elemType()
@@ -71,7 +72,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
     /**
      * @see #minSize()
      */
-    private int currentMinSize;
+    private long currentMinSize;
 
     /**
      * The maximum practical size of this table instance.
@@ -84,33 +85,38 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      */
     private final int maxAllowedSize;
 
+    private final boolean indexType64;
+
     private Object[] elements;
 
     private Object embedderData = WasmConstant.VOID;
 
     @TruffleBoundary
-    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, ReferenceType elemType, Object initialValue) {
+    private WasmTable(long declaredMinSize, long declaredMaxSize, int initialSize, int maxAllowedSize, ReferenceType elemType, Object initialValue,
+                    boolean indexType64) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
-        assert compareUnsigned(declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
+        assert Integer.compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
+        assert !indexType64 || compareUnsigned(declaredMaxSize, MAX_TABLE_64_DECLARATION_SIZE) <= 0;
+        assert indexType64 || Integer.compareUnsigned((int) declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
         this.maxAllowedSize = maxAllowedSize;
+        this.indexType64 = indexType64;
         this.currentMinSize = declaredMinSize;
-        this.elements = new Object[declaredMinSize];
+        this.elements = new Object[initialSize];
         Arrays.fill(this.elements, initialValue);
         this.elemType = elemType;
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, ReferenceType elemType) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL);
+    public WasmTable(long declaredMinSize, long declaredMaxSize, int maxAllowedSize, ReferenceType elemType, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, (int) declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL, indexType64);
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, ReferenceType elemType, Object initialValue) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue);
+    public WasmTable(long declaredMinSize, long declaredMaxSize, int maxAllowedSize, ReferenceType elemType, Object initialValue) {
+        this(declaredMinSize, declaredMaxSize, (int) declaredMinSize, maxAllowedSize, elemType, initialValue, false);
     }
 
     /**
@@ -122,7 +128,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      */
     @TruffleBoundary
     public void reset() {
-        elements = new Object[declaredMinSize];
+        elements = new Object[(int) declaredMinSize];
         Arrays.fill(elements, WasmConstant.NULL);
         currentMinSize = declaredMinSize;
     }
@@ -137,7 +143,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
     /**
      * The minimum size of this table as declared in the binary.
      */
-    public int declaredMinSize() {
+    public long declaredMinSize() {
         return declaredMinSize;
     }
 
@@ -149,7 +155,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      * <p>
      * This is different from internal max allowed size, which can be lower.
      */
-    public int declaredMaxSize() {
+    public long declaredMaxSize() {
         return declaredMaxSize;
     }
 
@@ -167,13 +173,20 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
 
     /**
      * The current minimum size of the table. The size can change based on calls to
-     * {@link #grow(int, Object)}.
+     * {@link #grow(long, Object)}.
      * <p>
      * This is a lower bound on this table's size. This table can only be imported with a lower or
      * equal minimum size.
      */
-    public int minSize() {
+    public long minSize() {
         return currentMinSize;
+    }
+
+    /**
+     * @return Whether the index type (addressing mode) is 64-bit or 32-bit.
+     */
+    public boolean hasIndexType64() {
+        return indexType64;
     }
 
     public Object[] elements() {
@@ -243,16 +256,16 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      * @return The previous size if the growing succeeded, -1 otherwise.
      */
     @TruffleBoundary
-    public int grow(int delta, Object value) {
+    public long grow(long delta, Object value) {
         final int size = size();
-        final int targetSize = size + delta;
-        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
+        if (compareUnsigned(delta, Integer.toUnsignedLong(maxAllowedSize - size)) <= 0) {
+            final int targetSize = size + (int) delta;
             elements = Arrays.copyOf(elements, targetSize);
             Arrays.fill(elements, size, targetSize, value);
-            currentMinSize += targetSize;
+            currentMinSize = targetSize;
             return size;
         }
-        return -1;
+        return -1L;
     }
 
     @Override

@@ -32,6 +32,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents an inlining opportunity where the compiler can statically determine a monomorphic
@@ -40,11 +41,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ExactInlineInfo extends AbstractInlineInfo {
 
     protected final ResolvedJavaMethod concrete;
+    protected final ResolvedJavaType receiverType;
     private Inlineable inlineableElement;
 
     public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
+        this(invoke, concrete, null);
+    }
+
+    public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType receiverType) {
         super(invoke);
         this.concrete = concrete;
+        this.receiverType = receiverType;
         assert concrete != null;
     }
 
@@ -67,6 +74,12 @@ public class ExactInlineInfo extends AbstractInlineInfo {
     public ResolvedJavaMethod methodAt(int index) {
         assert index == 0 : index;
         return concrete;
+    }
+
+    @Override
+    public ResolvedJavaType receiverTypeAt(int index) {
+        assert index == 0 : index;
+        return receiverType;
     }
 
     @Override

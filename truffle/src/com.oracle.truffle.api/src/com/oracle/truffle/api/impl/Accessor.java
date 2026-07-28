@@ -153,10 +153,6 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
-    protected void initializeNativeImageTruffleLocator() {
-        TruffleLocator.initializeNativeImageTruffleLocator();
-    }
-
     abstract static class Support {
 
         Support(String onlyAllowedClassName) {
@@ -720,6 +716,8 @@ public abstract class Accessor {
 
         public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
 
+        public abstract boolean areStaticObjectSafetyChecksForced(Object polyglotLanguageInstance);
+
         public abstract String getStaticObjectStorageStrategy(Object polyglotLanguageInstance);
 
         public abstract Object getHostContext(Object valueContext);
@@ -874,11 +872,17 @@ public abstract class Accessor {
 
         public abstract OptionKey<OptionMap<String>> getIsolateOptionOption();
 
+        public abstract OptionKey<Boolean> getWarnMethodScopingOption();
+
         public abstract boolean isIsolateMemoryProtection(OptionValues optionValues);
 
         public abstract boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy);
 
         public abstract void collectNativeImagePresetOptions();
+
+        public abstract Source getSourceReceiver(org.graalvm.polyglot.Source source);
+
+        public abstract TruffleLogger getEngineLogger(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1727,7 +1731,8 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.isolate.PolyglotIsolateAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.tck.TruffleTCKAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);

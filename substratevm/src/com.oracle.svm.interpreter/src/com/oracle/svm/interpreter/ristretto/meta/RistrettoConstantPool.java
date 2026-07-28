@@ -262,11 +262,8 @@ public final class RistrettoConstantPool implements ConstantPool {
             return lookupInvokeDynamicAppendix(rawIndex);
         }
         if (opcode == Bytecodes.INVOKEVIRTUAL) {
-            Object cachedEntry = interpreterConstantPool.peekCachedEntry(rawIndex);
-            if (cachedEntry instanceof InterpreterResolvedInvokeGenericJavaMethod invokeGenericMethod) {
-                Object appendix = invokeGenericMethod.getAppendix();
-                return appendix == null ? null : SubstrateObjectConstant.forObject(appendix);
-            }
+            Object appendix = interpreterConstantPool.peekInvokeAppendix(rawIndex, opcode);
+            return appendix == null ? null : SubstrateObjectConstant.forObject(appendix);
         }
         return null;
     }

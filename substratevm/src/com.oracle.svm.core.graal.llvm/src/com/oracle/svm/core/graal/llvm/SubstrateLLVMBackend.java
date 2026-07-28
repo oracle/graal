@@ -29,6 +29,11 @@ import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
+import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
+import com.oracle.svm.shared.util.VMError;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.CounterKey;
@@ -46,11 +51,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 import jdk.graal.compiler.phases.util.Providers;
-
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
-import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
@@ -78,7 +78,9 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+        // GR-77614: Crema methodIDs should be handled here
+        VMError.guarantee(cremaData == null);
 
         CompilationResult result = new CompilationResult(identifier);
         result.setMethods(method, Collections.emptySet());

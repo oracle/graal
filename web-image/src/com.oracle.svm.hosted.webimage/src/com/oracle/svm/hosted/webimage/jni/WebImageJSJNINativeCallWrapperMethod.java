@@ -35,11 +35,9 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.jni.JNIMethodSupport;
-import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.hosted.jni.AbstractJNINativeCallWrapperMethod;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -53,22 +51,17 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 // TODO(GR-35288): Implement proper JNI call support.
-public class WebImageJSJNINativeCallWrapperMethod extends CustomSubstitutionMethod {
-    private final JNINativeLinkage linkage;
-
+public class WebImageJSJNINativeCallWrapperMethod extends AbstractJNINativeCallWrapperMethod {
     public WebImageJSJNINativeCallWrapperMethod(ResolvedJavaMethod original) {
-        super(original);
-        this.linkage = createLinkage(original);
+        super(original, unwrapMethod(original));
     }
 
-    private static JNINativeLinkage createLinkage(ResolvedJavaMethod method) {
+    private static ResolvedJavaMethod unwrapMethod(ResolvedJavaMethod method) {
         ResolvedJavaMethod unwrapped = method;
         while (unwrapped instanceof WrappedJavaMethod) {
             unwrapped = ((WrappedJavaMethod) unwrapped).getWrapped();
         }
-        String className = unwrapped.getDeclaringClass().getName();
-        String descriptor = unwrapped.getSignature().toMethodDescriptor();
-        return JNIAccessFeature.singleton().makeLinkage(className, unwrapped.getName(), descriptor);
+        return unwrapped;
     }
 
     @Override

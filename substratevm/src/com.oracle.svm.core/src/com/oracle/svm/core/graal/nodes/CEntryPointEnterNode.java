@@ -51,6 +51,7 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
     public enum EnterAction {
         CreateIsolate,
         AttachThread,
+        AttachNewlyStartedThread,
         Enter,
         EnterByIsolate,
     }
@@ -58,30 +59,32 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
     protected final EnterAction enterAction;
 
     @OptionalInput protected ValueNode parameter;
-    private final boolean startedByIsolate;
     private final boolean ensureJavaThread;
 
     public static CEntryPointEnterNode createIsolate(ValueNode parameters) {
-        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false, false);
+        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false);
     }
 
-    public static CEntryPointEnterNode attachThread(ValueNode isolate, boolean startedByIsolate, boolean ensureJavaThread) {
-        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, startedByIsolate, ensureJavaThread);
+    public static CEntryPointEnterNode attachThread(ValueNode isolate, boolean ensureJavaThread) {
+        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, ensureJavaThread);
+    }
+
+    public static CEntryPointEnterNode attachNewlyStartedThread(ValueNode thread) {
+        return new CEntryPointEnterNode(EnterAction.AttachNewlyStartedThread, thread, false);
     }
 
     public static CEntryPointEnterNode enter(ValueNode isolateThread) {
-        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false, false);
+        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false);
     }
 
     public static CEntryPointEnterNode enterByIsolate(ValueNode isolate) {
-        return new CEntryPointEnterNode(EnterAction.EnterByIsolate, isolate, false, false);
+        return new CEntryPointEnterNode(EnterAction.EnterByIsolate, isolate, false);
     }
 
-    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean startedByCurrentIsolate, boolean ensureJavaThread) {
+    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean ensureJavaThread) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.enterAction = enterAction;
         this.parameter = parameter;
-        this.startedByIsolate = startedByCurrentIsolate;
         this.ensureJavaThread = ensureJavaThread;
     }
 
@@ -91,10 +94,6 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
 
     public ValueNode getParameter() {
         return parameter;
-    }
-
-    public boolean getStartedByIsolate() {
-        return startedByIsolate;
     }
 
     public boolean getEnsureJavaThread() {

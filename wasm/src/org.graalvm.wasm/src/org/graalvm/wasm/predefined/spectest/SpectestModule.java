@@ -69,7 +69,10 @@ public class SpectestModule extends BuiltinModule {
         defineGlobal(module, "global_i64", I64_TYPE, Mutability.CONSTANT, 666L);
         defineGlobal(module, "global_f32", F32_TYPE, Mutability.CONSTANT, 666.6f);
         defineGlobal(module, "global_f64", F64_TYPE, Mutability.CONSTANT, 666.6);
-        defineTable(context, module, "table", 10, 20, WasmType.FUNCREF_TYPE);
+        defineTable(context, module, "table", 10, 20, false, WasmType.FUNCREF_TYPE);
+        if (context.getContextOptions().supportMemory64()) {
+            defineTable(context, module, "table64", 10, 20, true, WasmType.FUNCREF_TYPE);
+        }
         defineMemory(context, module, "memory", 1, 2, false, false);
         if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {
             defineMemory(context, module, "shared_memory", 1, 2, false, true);

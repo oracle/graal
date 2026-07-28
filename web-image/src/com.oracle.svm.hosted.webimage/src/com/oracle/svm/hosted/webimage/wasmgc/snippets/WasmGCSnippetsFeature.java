@@ -34,10 +34,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WebImageWasmArithmeticSnippets;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 import jdk.graal.compiler.graph.Node;
@@ -46,7 +42,6 @@ import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmGCPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmGCSnippetsFeature implements InternalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {

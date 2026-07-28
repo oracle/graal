@@ -26,8 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Map;
 
-import com.oracle.svm.core.JavaMainWrapper.ArgsSupport;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.ArgsSupport;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
@@ -57,12 +57,15 @@ public final class Target_jdk_internal_misc_VM {
 
     @Substitute
     public static String[] getRuntimeArguments() {
-        /**
+        /*
          * This method is called by SourceLauncher to find arguments that the java launcher usually
          * gives to the JVM rather than the application (--add-exports, --add-opens, etc).
          */
         return ArgsSupport.singleton().getInitialArgs();
     }
+
+    @Alias
+    public static native boolean isBooted();
 
     /*
      * Finalizers are not supported, but we still do not want to inherit any counters from the image

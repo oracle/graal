@@ -33,9 +33,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * Feature to configure {@link HijrahChronology} at build time. All {@link HijrahChronology} object
@@ -45,7 +42,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * {@link HijrahChronology} for configuration option.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HijrahChronologyFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

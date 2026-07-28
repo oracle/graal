@@ -31,44 +31,36 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Mirror of org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess using JVMCI types.
+ * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess} using JVMCI types.
  */
 public interface JVMCIReflectiveAccess {
     /**
-     * See org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition,
-     * Class...).
+     * See {@code ReflectiveAccess#register(AccessCondition, Class...)}.
      */
     void register(AccessCondition condition, ResolvedJavaType... types);
 
     /**
-     * See org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition,
-     * Executable...).
+     * See {@code ReflectiveAccess#register(AccessCondition, Executable...)}.
      */
     void register(AccessCondition condition, ResolvedJavaMethod... methods);
 
     /**
-     * See org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition,
-     * Field...).
+     * See {@code ReflectiveAccess#register(AccessCondition, Field...)}.
      */
     void register(AccessCondition condition, ResolvedJavaField... fields);
 
     /**
-     * See
-     * org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerForSerialization(AccessCondition,
-     * Class...).
+     * See {@code ReflectiveAccess#registerForSerialization(AccessCondition, Class...)}.
      */
     void registerForSerialization(AccessCondition condition, ResolvedJavaType... types);
 
     /**
-     * See org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerProxy(AccessCondition,
-     * Class...).
+     * See {@code ReflectiveAccess#registerProxy(AccessCondition, Class...)}.
      */
-    Class<?> registerProxy(AccessCondition condition, ResolvedJavaType... interfaces);
+    ResolvedJavaType registerProxy(AccessCondition condition, ResolvedJavaType... interfaces);
 
     /**
-     * See
-     * org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerForUnsafeAllocation(AccessCondition,
-     * Class...).
+     * See {@code ReflectiveAccess#registerForUnsafeAllocation(AccessCondition, Class...)}.
      */
     void registerForUnsafeAllocation(AccessCondition condition, ResolvedJavaType... types);
 }

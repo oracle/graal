@@ -119,4 +119,6 @@ public interface SharedType extends ResolvedJavaType {
          */
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
+
+    boolean isInternalVMMethods();
 }

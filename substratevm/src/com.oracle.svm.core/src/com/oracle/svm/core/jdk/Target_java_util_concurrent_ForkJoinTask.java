@@ -31,9 +31,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
-@TargetClass(java.util.concurrent.ForkJoinTask.class)
+/**
+ * OpenJDK variant of the ForkJoinTask substitution. Keep fixes here aligned with the OracleJDK
+ * variant in
+ * {@code com.oracle.svm.enterprise.core.jdk.Target_java_util_concurrent_ForkJoinTask_OracleJDK}.
+ */
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = OpenJDK.class)
 final class Target_java_util_concurrent_ForkJoinTask {
     @Alias private transient volatile Target_java_util_concurrent_ForkJoinTask_Aux aux;
 
@@ -52,29 +55,21 @@ final class Target_java_util_concurrent_ForkJoinTask {
      */
     @Substitute
     @SuppressWarnings("all")
-    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "Check for @TargetClass")
     private Throwable getException(boolean asExecutionException) {
         // @formatter:off   Code copied from the original JDK method
         // Checkstyle: stop
         int s; Throwable ex; Target_java_util_concurrent_ForkJoinTask_Aux a;
         if ((s = status) >= 0 || (s & ABNORMAL) == 0)
             return null;
-        else if ((s & THROWN) == 0 || (a = aux) == null || (ex = a.ex) == null) {
-            ex = new CancellationException();
-            if (!asExecutionException || !((Object) this instanceof Target_java_util_concurrent_ForkJoinTask_InterruptibleTask))
-                return ex;
-        }
+        if ((s & THROWN) == 0 || (a = aux) == null || (ex = a.ex) == null)
+            return new CancellationException();
         return (asExecutionException) ? new ExecutionException(ex) : ex;
         // Checkstyle: resume
         // @formatter:on
     }
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "Aux")
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "Aux", onlyWith = OpenJDK.class)
 final class Target_java_util_concurrent_ForkJoinTask_Aux {
     @Alias Throwable ex;
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "InterruptibleTask")
-final class Target_java_util_concurrent_ForkJoinTask_InterruptibleTask {
 }

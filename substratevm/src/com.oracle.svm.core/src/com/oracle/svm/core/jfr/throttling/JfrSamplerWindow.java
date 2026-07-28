@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.jfr.JfrTicks;
 
 /**
@@ -38,8 +38,8 @@ import com.oracle.svm.core.jfr.JfrTicks;
  */
 class JfrSamplerWindow {
     private final JfrSamplerParams params = new JfrSamplerParams();
-    private final UninterruptibleUtils.AtomicLong endTicks = new UninterruptibleUtils.AtomicLong(0);
-    private final UninterruptibleUtils.AtomicLong measuredPopulationSize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong endTicks = new UninterruptibleAtomicUtils.AtomicLong(0);
+    private final UninterruptibleAtomicUtils.AtomicLong measuredPopulationSize = new UninterruptibleAtomicUtils.AtomicLong(0);
 
     private long samplingInterval;
     private long projectedPopulationSize;
@@ -69,7 +69,7 @@ class JfrSamplerWindow {
         this.params.initializeFrom(other);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L104-L108")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L104-L108")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean sample() {
         long ordinal = measuredPopulationSize.incrementAndGet();
@@ -101,25 +101,25 @@ class JfrSamplerWindow {
         projectedPopulationSize = value;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L285-L287")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L285-L287")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getAccumulatedDebt() {
         return projectedPopulationSize == 0 ? 0 : (params.samplePointsPerWindow - getMaxSampleSize()) + getDebt();
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L289-L291")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L289-L291")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long getDebt() {
         return projectedPopulationSize == 0 ? 0 : getSampleSize() - params.samplePointsPerWindow;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L271-L273")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L271-L273")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long getMaxSampleSize() {
         return projectedPopulationSize / samplingInterval;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L276-L279")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L276-L279")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long getSampleSize() {
         long size = getPopulationSize();

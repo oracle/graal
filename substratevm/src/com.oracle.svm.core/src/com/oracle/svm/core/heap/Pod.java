@@ -48,11 +48,11 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.BarrieredAccess;
@@ -284,7 +284,7 @@ public final class Pod<T> {
         }
     }
 
-    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     public static final class RuntimeSupport {
         @Fold
         public static boolean isPresent() {

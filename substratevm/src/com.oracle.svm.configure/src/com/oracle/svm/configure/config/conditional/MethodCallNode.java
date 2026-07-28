@@ -109,7 +109,7 @@ public final class MethodCallNode {
             configuration = getConfiguration().copyAndMerge(other.getConfiguration());
         }
         for (MethodCallNode child : other.calledMethods.values()) {
-            calledMethods.compute(child.methodInfo, (key, value) -> {
+            calledMethods.compute(child.methodInfo, (_, value) -> {
                 if (value == null) {
                     return child;
                 } else {

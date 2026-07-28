@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         this.nodePlugins = nodePlugins;
     }
 
-    protected abstract boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args);
+    protected abstract boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod rootMethod, AnalysisMethod method, ValueNode[] args);
 
     protected abstract InlineInfo createInvokeInfo(AnalysisMethod method);
 
@@ -107,7 +107,7 @@ public abstract class InlineBeforeAnalysisPolicy {
     public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod rootMethod, AnalysisMethod method, ValueNode[] args) {
             return false;
         }
 

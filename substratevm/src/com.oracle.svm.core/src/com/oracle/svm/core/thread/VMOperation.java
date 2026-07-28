@@ -36,7 +36,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.ExecuteVMOperationEvent;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.VMOperationControl.OpInProgress;
 import com.oracle.svm.shared.util.VMError;
 
@@ -113,7 +113,7 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
-            ExecuteVMOperationEvent.emit(this, getQueuingThreadId(data), startTicks);
+            ExecuteVMOperationEvent.emit(this, requestingThread, startTicks);
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread, false);
         }
     }
@@ -198,8 +198,6 @@ public abstract class VMOperation {
     protected abstract void markAsFinished(NativeVMOperationData data);
 
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);
-
-    protected abstract long getQueuingThreadId(NativeVMOperationData data);
 
     protected abstract boolean isFinished(NativeVMOperationData data);
 

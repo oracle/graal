@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,6 +79,8 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         }
     }
 
+    private static final long FLAG_SIZE_IS_METADATA = 0x2;
+
     private static final int ARGINDEX_38_TAG = 1;
     private static final int ARGINDEX_38_NAME = 2;
     private static final int ARGINDEX_38_FILE = 3;
@@ -92,14 +94,15 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_38_EXTRADATA = 11;
 
     public static MDDerivedType create38(long[] args, MetadataValueList md) {
+        final boolean sizeIsMetadata = (args[0] & FLAG_SIZE_IS_METADATA) != 0;
         final long tag = args[ARGINDEX_38_TAG];
         final long line = args[ARGINDEX_38_LINE];
-        final long size = args[ARGINDEX_38_SIZE];
         final long align = args[ARGINDEX_38_ALIGN];
-        final long offset = args[ARGINDEX_38_OFFSET];
         final long flags = args[ARGINDEX_38_FLAGS];
 
-        final MDDerivedType derivedType = new MDDerivedType(tag, line, size, align, offset, flags);
+        final MDDerivedType derivedType = new MDDerivedType(tag, line, 0, align, 0, flags);
+        derivedType.setSize(getMetadataOrConstant(args[ARGINDEX_38_SIZE], sizeIsMetadata, md, derivedType::setSize));
+        derivedType.setOffset(getMetadataOrConstant(args[ARGINDEX_38_OFFSET], sizeIsMetadata, md, derivedType::setOffset));
 
         derivedType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], derivedType);
         derivedType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], derivedType);

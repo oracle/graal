@@ -228,7 +228,7 @@ public class DeoptState {
             VectorAPIDeoptimizationSupport.PayloadLayout payloadLayout = deoptSupport.getLayout(DynamicHub.toClass(hub));
             if (payloadLayout != null) {
                 Object payloadArray = deoptSupport.materializePayload(this, payloadLayout, encodings[curIdx], sourceFrame);
-                JavaConstant arrayConstant = SubstrateObjectConstant.forObject(payloadArray, ReferenceAccess.singleton().haveCompressedReferences());
+                JavaConstant arrayConstant = SubstrateObjectConstant.forObject(payloadArray, true);
                 Deoptimizer.writeValueInMaterializedObj(obj, curOffset, arrayConstant, sourceFrame);
                 return obj;
             }

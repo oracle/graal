@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 import org.graalvm.nativebridge.ByLocalReference;
 import org.graalvm.nativebridge.ByRemoteReference;
@@ -68,8 +69,10 @@ import org.graalvm.nativebridge.Peer;
 import org.graalvm.nativebridge.ProcessPeer;
 import org.graalvm.nativebridge.ReceiverMethod;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -104,6 +107,56 @@ abstract class ForeignEngineDispatch extends AbstractEngineDispatch {
 
     @Override
     public abstract @ByRemoteReference(ForeignOptionDescriptors.class) OptionDescriptors getOptions(Object receiver);
+
+    @Override
+    public final String toString(Object receiver, int identityHash, String isolateDescription) {
+        ForeignEngine foreignEngine = (ForeignEngine) receiver;
+        Peer peer = foreignEngine.getPeer();
+        synchronized (foreignEngine) {
+            if (!foreignEngine.isClosed()) {
+                Isolate<?> isolate = peer.getIsolate();
+                try {
+                    IsolateThread isolateThread = isolate.tryEnter();
+                    if (isolateThread != null) {
+                        try {
+                            return toStringImpl(receiver, identityHash, formatIsolate(peer, false));
+                        } finally {
+                            isolateThread.leave();
+                        }
+                    }
+                } catch (IsolateDeathException isolateDeath) {
+                    // Fall through and return unavailable.
+                }
+            }
+            return unavailableToString("Engine", identityHash, peer);
+        }
+    }
+
+    @ReceiverMethod("toString")
+    @IsolateDeathHandler(IsolateDeathHandlerSupport.KeepIsolateDeathException.class)
+    abstract String toStringImpl(Object receiver, int identityHash, String isolate);
+
+    static String unavailableToString(String type, int identityHash, Peer peer) {
+        return type + "[id=" + Integer.toHexString(identityHash) + ", isolate=" + formatIsolate(peer, true) + "]";
+    }
+
+    static String formatIsolate(Peer peer, boolean unavailable) {
+        Isolate<?> isolate = peer.getIsolate();
+        StringBuilder b = new StringBuilder();
+        if (peer instanceof ProcessPeer) {
+            b.append("EXTERNAL[pid=");
+            b.append(isolate.getIsolateId());
+        } else {
+            b.append("INTERNAL[id=0x");
+            b.append(Long.toHexString(isolate.getIsolateId()));
+        }
+        if (unavailable) {
+            b.append(", state=");
+            b.append(isolate.isDisposed() ? "DISPOSED" : "CLOSING");
+        }
+        b.append("]");
+        return b.toString();
+    }
 
     @Override
     public final void close(Object receiver, @Null Object apiObject, boolean cancelIfExecuting) {
@@ -151,6 +204,17 @@ abstract class ForeignEngineDispatch extends AbstractEngineDispatch {
         Engine localEngine = foreignEngine.getLocalEngine();
         AbstractEngineDispatch dispatch = apiAccess.getEngineDispatch(localEngine);
         Object engineReceiver = apiAccess.getEngineReceiver(localEngine);
+        if (hostAccess != HostAccess.NONE && !apiAccess.isMethodScopingEnabled(hostAccess)) {
+            OptionValues engineOptions = PolyglotIsolateAccessor.ENGINE.getEngineOptionValues(engineReceiver);
+            if (engineOptions.get(PolyglotIsolateAccessor.ENGINE.getWarnMethodScopingOption())) {
+                String warningMessage = """
+                                An isolated polyglot context uses host access without host method scoping. Guest values passed to host methods may create cross-heap reference cycles that might not be reclaimable.
+                                To resolve this, enable method scoping using HostAccess.Builder.methodScoping(true).
+                                To disable this warning use the '--engine.WarnMethodScoping=false' option or the '-Dpolyglot.engine.WarnMethodScoping=false' system property.
+                                """;
+                PolyglotIsolateAccessor.ENGINE.getEngineLogger(engineReceiver).log(Level.WARNING, warningMessage);
+            }
+        }
         Context localContext = dispatch.createContext(engineReceiver, localEngine, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, apiAccess.getPolyglotAccessAll(), allowNativeAccess,
                         allowCreateThread,
                         allowHostClassLoading,

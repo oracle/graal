@@ -38,6 +38,9 @@ import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -46,6 +49,7 @@ import jdk.graal.compiler.debug.DebugContext;
 /**
  * The accessor for a {@link GdbJitHandle}.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class GdbJitHandleAccessor implements InstalledCodeObserver.InstalledCodeObserverHandleAccessor {
 
     @Fold

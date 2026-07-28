@@ -24,18 +24,13 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
     @Override
@@ -43,7 +38,7 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
         access.registerReachabilityHandler(this::linkManagementExt, type(access, "com.sun.management.internal.OperatingSystemImpl"));
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_management_internal_OperatingSystemImpl");
+        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_management_internal_OperatingSystemImpl");
     }
 
     private void linkManagementExt(DuringAnalysisAccess access) {

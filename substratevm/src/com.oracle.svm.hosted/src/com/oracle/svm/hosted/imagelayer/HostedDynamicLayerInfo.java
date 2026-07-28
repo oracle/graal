@@ -40,7 +40,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
@@ -102,6 +102,10 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
 
     public static HostedDynamicLayerInfo singleton() {
         return (HostedDynamicLayerInfo) ImageSingletons.lookup(DynamicImageLayerInfo.class);
+    }
+
+    public boolean isDelayedMethodSymbol(String symbolName) {
+        return symbolName != null && (previousLayerDelayedMethodSymbols.contains(symbolName) || (delayedMethodSymbols != null && delayedMethodSymbols.containsKey(symbolName)));
     }
 
     private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, List<String> libNames,

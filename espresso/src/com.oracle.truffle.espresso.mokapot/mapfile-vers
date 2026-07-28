@@ -368,6 +368,7 @@ SUNWprivate_1.1 {
                 JVM_TakeVirtualThreadListToUnblock;
                 JVM_IsStaticallyLinked;
                 JVM_CreateThreadSnapshot;
+                JVM_AOTEndRecording;
 
                 # JDK 26
                 JVM_ReferenceGet;

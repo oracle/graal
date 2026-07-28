@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
@@ -42,10 +42,10 @@ import com.oracle.svm.core.thread.VMOperation;
  * This also applies to usages within {@link VMOperation}s as a GC can also be triggered there.
  */
 public class CodeInfoTether {
-    private final UninterruptibleUtils.AtomicInteger count;
+    private final UninterruptibleAtomicUtils.AtomicInteger count;
 
     public CodeInfoTether(boolean acquired) {
-        this.count = (SubstrateUtil.HOSTED || CodeInfoAccess.haveAssertions()) ? new UninterruptibleUtils.AtomicInteger(acquired ? 1 : 0) : null;
+        this.count = (SubstrateUtil.HOSTED || CodeInfoAccess.haveAssertions()) ? new UninterruptibleAtomicUtils.AtomicInteger(acquired ? 1 : 0) : null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

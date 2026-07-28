@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -870,7 +870,12 @@ public class GraphUtil {
 
             } else if (current instanceof ValuePhiNode phi) {
                 if (visitedPhiInputMap == null) {
-                    visitedPhiInputMap = EconomicMap.create();
+                    /*
+                     * We may look up array lengths during canonicalization of nodes that aren't
+                     * part of the graph yet. We must use the system hashcode for those,
+                     * Node.hashCode must only be called on nodes that are part of the graph.
+                     */
+                    visitedPhiInputMap = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
                 }
                 return filterArrayLengthResult(phiArrayLength(phi, mode, constantReflection, visitedPhiInputMap), allowOnlyConstantResult);
 
@@ -934,7 +939,8 @@ public class GraphUtil {
             if (i == 0) {
                 assert singleLength == null;
                 singleLength = length;
-            } else if (singleLength == length) {
+            } else if (singleLength == length ||
+                            (singleLength.isJavaConstant() && length.isJavaConstant() && singleLength.asJavaConstant().equals(length.asJavaConstant()))) {
                 /* Nothing to do, still having a single length. */
             } else {
                 return null;

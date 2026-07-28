@@ -74,6 +74,7 @@ import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -96,32 +97,36 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
     @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value ofsValue;
     @Use({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value limitValue;
 
+    @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value resultValue;
+
     @Temp({OperandFlag.REG}) private Value[] temps;
 
     private final boolean multiBlock;
 
     public AMD64SHA512Op(AllocatableValue bufValue, AllocatableValue stateValue) {
-        this(bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, false);
+        this(bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AMD64SHA512Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue, AllocatableValue limitValue, boolean multiBlock) {
+    public AMD64SHA512Op(AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue, AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
 
         GraalError.guarantee(asRegister(bufValue).equals(rdi), "expect bufValue at rdi, but was %s", bufValue);
         GraalError.guarantee(asRegister(stateValue).equals(rsi), "expect stateValue at rsi, but was %s", stateValue);
         GraalError.guarantee(!multiBlock || asRegister(ofsValue).equals(rdx), "expect ofsValue at rdx, but was %s", ofsValue);
-        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(rcx), "expect limitValue at rdx, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(limitValue).equals(rcx), "expect limitValue at rcx, but was %s", limitValue);
+        GraalError.guarantee(!multiBlock || asRegister(resultValue).equals(rax), "expect resultValue at rax, but was %s", resultValue);
+        GraalError.guarantee(!multiBlock || resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
 
         this.bufValue = bufValue;
         this.stateValue = stateValue;
         this.ofsValue = ofsValue;
         this.limitValue = limitValue;
+        this.resultValue = resultValue;
 
         this.multiBlock = multiBlock;
 
         // rbp, rbx, r12-r15 will be restored. vzeroupper clears upper bits of xmm0-xmm15.
-        this.temps = new Value[]{
-                        rax.asValue(),
+        this.temps = multiBlock ? new Value[]{
                         rcx.asValue(),
                         rdx.asValue(),
                         rsi.asValue(),
@@ -146,7 +151,34 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
                         xmm13.asValue(),
                         xmm14.asValue(),
                         xmm15.asValue(),
-        };
+        }
+                        : new Value[]{
+                                        rax.asValue(),
+                                        rcx.asValue(),
+                                        rdx.asValue(),
+                                        rsi.asValue(),
+                                        rdi.asValue(),
+                                        r8.asValue(),
+                                        r9.asValue(),
+                                        r10.asValue(),
+                                        r11.asValue(),
+                                        xmm0.asValue(),
+                                        xmm1.asValue(),
+                                        xmm2.asValue(),
+                                        xmm3.asValue(),
+                                        xmm4.asValue(),
+                                        xmm5.asValue(),
+                                        xmm6.asValue(),
+                                        xmm7.asValue(),
+                                        xmm8.asValue(),
+                                        xmm9.asValue(),
+                                        xmm10.asValue(),
+                                        xmm11.asValue(),
+                                        xmm12.asValue(),
+                                        xmm13.asValue(),
+                                        xmm14.asValue(),
+                                        xmm15.asValue(),
+                        };
     }
 
     static ArrayDataPointerConstant k512W = pointerConstant(16, new long[]{
@@ -629,6 +661,7 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
             masm.addq(rax, 128);
             masm.jmpb(labelComputeSize);
             masm.bind(labelComputeSizeEnd);
+            masm.movl(asRegister(resultValue), rax);
         }
     }
 

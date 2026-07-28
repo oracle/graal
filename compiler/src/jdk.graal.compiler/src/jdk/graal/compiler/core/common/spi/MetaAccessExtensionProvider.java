@@ -61,6 +61,12 @@ public interface MetaAccessExtensionProvider {
     boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect);
 
     /**
+     * Returns true if the provided method has the {@code java.lang.invoke.LambdaForm.Compiled}
+     * property.
+     */
+    boolean isLambdaFormCompiled(ResolvedJavaMethod method);
+
+    /**
      * Returns true if the partial escape analysis is allowed to virtualize object allocations of a
      * given type.
      */

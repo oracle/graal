@@ -340,7 +340,7 @@ public final class NativeLibraries {
         try {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
-            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
+            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltinLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
@@ -496,20 +496,6 @@ public final class NativeLibraries {
         List<String> sortedList = dependencyGraph.sort();
 
         for (String staticLibraryName : sortedList) {
-            Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
-            if (libraryPath == null) {
-                continue;
-            }
-            staticLibs.add(libraryPath);
-        }
-        return staticLibs;
-    }
-
-    public Collection<Path> getStaticJniLibrariesAndDependencies() {
-        Map<Path, Path> allStaticLibs = getAllStaticLibs();
-        List<Path> staticLibs = new ArrayList<>();
-
-        for (String staticLibraryName : jniStaticLibrariesAndDependencies) {
             Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
             if (libraryPath == null) {
                 continue;

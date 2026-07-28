@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,14 @@
 #
 
 import os
+import re
 import shutil
+import subprocess
+
+GRAALVM_VERSION_POMS = [
+  "simplelanguage/pom.xml",
+  "simpletool/pom.xml",
+]
 
 def delete_directory(directory):
   if os.path.exists(directory):
@@ -49,6 +56,28 @@ def delete_directory(directory):
 def copytree(src, dest):
   delete_directory(dest)
   shutil.copytree(src, dest)
+
+def graalvm_version():
+  output = subprocess.check_output(["mx", "graalvm-version"], text=True)
+  version_pattern = re.compile(r"^\d+\.\d+\.\d+(?:-[A-Za-z0-9_.-]+)?$")
+  versions = [line.strip() for line in output.splitlines() if version_pattern.match(line.strip())]
+  if len(versions) != 1:
+      raise ValueError("Could not parse GraalVM version from mx graalvm-version output: " + repr(output))
+  return versions[0]
+
+def update_graalvm_version(pom, version):
+  with open(pom, "r", encoding="UTF-8") as f:
+      content = f.read()
+  content, count = re.subn(r"(<graalvm\.version>)[^<]+(</graalvm\.version>)", r"\g<1>" + version + r"\2", content)
+  if count != 1:
+      raise ValueError("Expected exactly one graalvm.version property in " + pom + ", found " + str(count))
+  with open(pom, "w", encoding="UTF-8") as f:
+      f.write(content)
+
+def update_graalvm_versions():
+  version = graalvm_version()
+  for pom in GRAALVM_VERSION_POMS:
+      update_graalvm_version(pom, version)
 
 # Populate simplelanguage
 copytree("../src/com.oracle.truffle.sl/src/com", "simplelanguage/language/src/main/java/com")
@@ -63,3 +92,5 @@ copytree("../src/com.oracle.truffle.sl.tck/src/com/oracle/truffle/sl/tck/resourc
 # Populate simpletool
 copytree("../src/com.oracle.truffle.st/src/com/", "simpletool/src/main/java/com")
 copytree("../src/com.oracle.truffle.st.test/src/com/", "simpletool/src/test/java/com")
+
+update_graalvm_versions()

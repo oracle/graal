@@ -303,12 +303,10 @@ As you can see that _application-pgo-optimized.nib_ contains _default.iprof_ in 
 The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_ and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
 For now, look at the diff in _build.json_:
 ```
-@@ -4,5 +4,6 @@
-   "--no-fallback",
+@@ -4,4 +4,5 @@
    "-H:Name=application",
-   "-H:Class=example.com.Application",
--  "--no-fallback"
-+  "--no-fallback",
+-  "-H:Class=example.com.Application"
++  "-H:Class=example.com.Application",
 +  "--pgo"
 ```
 

@@ -25,7 +25,10 @@
 package jdk.graal.compiler.phases.common.inlining.info;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -148,6 +151,44 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
+    public ResolvedJavaType receiverTypeAt(int index) {
+        assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
+        ResolvedJavaType receiverType = null;
+        for (int i = 0; i < typesToConcretes.size(); i++) {
+            if (typesToConcretes.get(i) == index) {
+                if (receiverType != null) {
+                    return null;
+                }
+                receiverType = ptypes.get(i).getType();
+            }
+        }
+        return receiverType;
+    }
+
+    /**
+     * Returns the number of profiled receiver types represented by this polymorphic inline info.
+     */
+    public int numberOfReceiverTypes() {
+        return ptypes.size();
+    }
+
+    /**
+     * Returns the receiver type for the profiled dispatch entry at {@code index}.
+     */
+    public ResolvedJavaType receiverTypeAtProfileIndex(int index) {
+        assert index >= 0 && index < ptypes.size() : Assertions.errorMessageContext("index", index, "ptypes", ptypes);
+        return ptypes.get(index).getType();
+    }
+
+    /**
+     * Returns the concrete method reached by the profiled dispatch entry at {@code index}.
+     */
+    public ResolvedJavaMethod methodAtProfileIndex(int index) {
+        assert index >= 0 && index < ptypes.size() : Assertions.errorMessageContext("index", index, "ptypes", ptypes);
+        return concretes.get(typesToConcretes.get(index));
+    }
+
+    @Override
     public Inlineable inlineableElementAt(int index) {
         assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
         return inlineableElements[index];
@@ -167,6 +208,64 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     public void setInlinableElement(int index, Inlineable inlineableElement) {
         assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
         inlineableElements[index] = inlineableElement;
+    }
+
+    /**
+     * Returns inline information for the subset of concrete dispatch targets selected by
+     * {@code includeMethod}. Profiled receiver types that map to excluded methods are folded into
+     * the fallback probability, preserving the original virtual/interface invoke for those receiver
+     * types.
+     */
+    public MultiTypeGuardInlineInfo filterMethods(Predicate<ResolvedJavaMethod> includeMethod) {
+        return filterTargets((method, receiverType) -> includeMethod.test(method));
+    }
+
+    /**
+     * Returns inline information for the subset of profiled receiver dispatches selected by
+     * {@code includeTarget}. Profiled receiver types that are excluded are folded into the fallback
+     * probability, preserving the original virtual/interface invoke for those receiver types.
+     */
+    public MultiTypeGuardInlineInfo filterTargets(BiPredicate<ResolvedJavaMethod, ResolvedJavaType> includeTarget) {
+        int[] oldToNewConcrete = new int[concretes.size()];
+        Arrays.fill(oldToNewConcrete, -1);
+        ArrayList<ResolvedJavaMethod> filteredConcretes = new ArrayList<>();
+        ArrayList<ProfiledType> filteredTypes = new ArrayList<>();
+        ArrayList<Integer> filteredTypesToConcretes = new ArrayList<>();
+        double filteredNotRecordedTypeProbability = notRecordedTypeProbability;
+        boolean matchedAll = true;
+        for (int i = 0; i < ptypes.size(); i++) {
+            int oldConcrete = typesToConcretes.get(i);
+            ProfiledType ptype = ptypes.get(i);
+            ResolvedJavaMethod concrete = concretes.get(oldConcrete);
+            if (includeTarget.test(concrete, ptype.getType())) {
+                int filteredConcrete = oldToNewConcrete[oldConcrete];
+                if (filteredConcrete < 0) {
+                    filteredConcrete = filteredConcretes.size();
+                    oldToNewConcrete[oldConcrete] = filteredConcrete;
+                    filteredConcretes.add(concrete);
+                }
+                filteredTypes.add(ptypes.get(i));
+                filteredTypesToConcretes.add(filteredConcrete);
+            } else {
+                filteredNotRecordedTypeProbability += ptypes.get(i).getProbability();
+                matchedAll = false;
+            }
+        }
+
+        if (filteredTypes.isEmpty()) {
+            return null;
+        } else if (matchedAll) {
+            return this;
+        }
+
+        MultiTypeGuardInlineInfo filtered = new MultiTypeGuardInlineInfo(invoke, filteredConcretes, filteredTypes, filteredTypesToConcretes, filteredNotRecordedTypeProbability,
+                        speculationFailed, speculation);
+        for (int i = 0; i < oldToNewConcrete.length; i++) {
+            if (oldToNewConcrete[i] >= 0) {
+                filtered.setInlinableElement(oldToNewConcrete[i], inlineableElements[i]);
+            }
+        }
+        return filtered;
     }
 
     @Override

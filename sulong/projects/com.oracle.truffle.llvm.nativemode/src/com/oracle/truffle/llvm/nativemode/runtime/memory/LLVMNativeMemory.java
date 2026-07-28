@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -222,10 +222,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
 
     @Override
     public LLVMIVarBit getIVarBit(Node location, LLVMNativePointer addr, int bitWidth) {
-        if (bitWidth % Byte.SIZE != 0) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
-        int bytes = bitWidth / Byte.SIZE;
+        int bytes = (bitWidth + Byte.SIZE - 1) / Byte.SIZE;
         byte[] loadedBytes = new byte[bytes];
         long currentAddressPtr = addr.asNative();
         for (int i = loadedBytes.length - 1; i >= 0; i--) {

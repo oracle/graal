@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,6 +58,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
@@ -94,6 +97,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLV
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -102,6 +106,7 @@ import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -136,6 +141,8 @@ public class LLVMVaListStorage implements TruffleObject {
             return VarArgArea.GP_AREA;
         } else if (arg instanceof LLVM80BitFloat) {
             return VarArgArea.OVERFLOW_AREA;
+        } else if (isIVarBit(arg)) {
+            return VarArgArea.GP_AREA;
         } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
             return VarArgArea.FP_AREA;
         } else {
@@ -166,6 +173,8 @@ public class LLVMVaListStorage implements TruffleObject {
         } else if (isFloatArrayWithMaxTwoElems(type)) {
             return VarArgArea.FP_AREA;
         } else if (type instanceof PointerType) {
+            return VarArgArea.GP_AREA;
+        } else if (type instanceof VariableBitWidthType && ((VariableBitWidthType) type).getBitSize() <= 128) {
             return VarArgArea.GP_AREA;
         } else {
             return VarArgArea.OVERFLOW_AREA;
@@ -227,8 +236,27 @@ public class LLVMVaListStorage implements TruffleObject {
         return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
 
-    public static long storeArgument(LLVMNativePointer ptr, long offset, NativeProfiledMemMoveToNative memmove, LLVMI64OffsetStoreNode storeI64Node,
-                    LLVMI32OffsetStoreNode storeI32Node, LLVM80BitFloatOffsetStoreNode storeFP80Node, LLVMPointerOffsetStoreNode storePointerNode, Object object, int stackStep) {
+    protected static boolean isIVarBit(Object value) {
+        return value instanceof LLVMIVarBitSmall || value instanceof LLVMIVarBitLarge;
+    }
+
+    protected static byte[] getIVarBitBytes(Object value) {
+        if (value instanceof LLVMIVarBitSmall) {
+            return ((LLVMIVarBitSmall) value).getBytes();
+        } else if (value instanceof LLVMIVarBitLarge) {
+            return ((LLVMIVarBitLarge) value).getBytes();
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw CompilerDirectives.shouldNotReachHere(String.valueOf(value));
+    }
+
+    protected static int getAlignmentOffset(LLVMPointer pointer, int alignment) {
+        long address = LLVMNativePointer.isInstance(pointer) ? LLVMNativePointer.cast(pointer).asNative() : LLVMManagedPointer.cast(pointer).getOffset();
+        return (int) (-address & (alignment - 1));
+    }
+
+    public static long storeArgument(LLVMNativePointer ptr, long offset, NativeProfiledMemMoveToNative memmove, LLVMI64OffsetStoreNode storeI64Node, LLVMI32OffsetStoreNode storeI32Node,
+                    LLVMI8OffsetStoreNode storeI8Node, LLVM80BitFloatOffsetStoreNode storeFP80Node, LLVMPointerOffsetStoreNode storePointerNode, Object object, int stackStep) {
         if (object instanceof Number) {
             return doPrimitiveWrite(ptr, offset, storeI64Node, object, stackStep);
         } else if (object instanceof LLVMVarArgCompoundValue) {
@@ -242,6 +270,13 @@ public class LLVMVaListStorage implements TruffleObject {
         } else if (object instanceof LLVM80BitFloat) {
             storeFP80Node.executeWithTarget(ptr, offset, (LLVM80BitFloat) object);
             return 16;
+        } else if (isIVarBit(object)) {
+            LLVMNativePointer currentPtr = ptr.increment(offset);
+            byte[] bytes = getIVarBitBytes(object);
+            for (int i = 0; i < bytes.length; i++) {
+                storeI8Node.executeWithTarget(currentPtr, i, bytes[bytes.length - 1 - i]);
+            }
+            return bytes.length;
         } else if (object instanceof LLVMFloatVector) {
             final LLVMFloatVector floatVec = (LLVMFloatVector) object;
             for (int i = 0; i < floatVec.getLength(); i++) {
@@ -694,9 +729,16 @@ public class LLVMVaListStorage implements TruffleObject {
                 return I32_ARG_TYPE;
             } else if (arg instanceof LLVMVarArgCompoundValue) {
                 LLVMVarArgCompoundValue compVal = (LLVMVarArgCompoundValue) arg;
-                return LLVMInteropType.ValueKind.I64.type.toArray(compVal.getSize() / 8);
+                long size = compVal.getSize();
+                if (size % Long.BYTES == 0) {
+                    return LLVMInteropType.ValueKind.I64.type.toArray(size / Long.BYTES);
+                } else {
+                    return LLVMInteropType.ValueKind.I8.type.toArray(size);
+                }
             } else if (arg instanceof LLVM80BitFloat) {
                 return F80_ARG_TYPE;
+            } else if (isIVarBit(arg)) {
+                return LLVMInteropType.ValueKind.I8.type.toArray(getIVarBitBytes(arg).length);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
@@ -877,6 +919,18 @@ public class LLVMVaListStorage implements TruffleObject {
         byte float80Conversion(LLVM80BitFloat x, int offset) {
             assert offset < 10;
             return x.getBytes()[offset];
+        }
+
+        @Specialization
+        byte varBitConversion(LLVMIVarBitSmall x, int offset) {
+            byte[] bytes = x.getBytes();
+            return bytes[bytes.length - 1 - offset];
+        }
+
+        @Specialization
+        byte varBitConversion(LLVMIVarBitLarge x, int offset) {
+            byte[] bytes = x.getBytes();
+            return bytes[bytes.length - 1 - offset];
         }
 
         @Specialization
@@ -1371,6 +1425,14 @@ public class LLVMVaListStorage implements TruffleObject {
                 }
             } else if (type instanceof PointerType) {
                 return loadPointer.executeWithTargetGeneric(areaPtr, offsetInArea);
+            } else if (type instanceof VariableBitWidthType) {
+                int bitWidth = (int) ((VariableBitWidthType) type).getBitSize();
+                byte[] bytes = new byte[(bitWidth + Byte.SIZE - 1) / Byte.SIZE];
+                long offset = offsetInArea;
+                for (int i = bytes.length - 1; i >= 0; i--) {
+                    bytes[i] = loadI8.executeWithTarget(areaPtr, offset++);
+                }
+                return LLVMIVarBit.create(bitWidth, bytes, bitWidth, false);
             } else {
                 throw CompilerDirectives.shouldNotReachHere("not implemented");
             }

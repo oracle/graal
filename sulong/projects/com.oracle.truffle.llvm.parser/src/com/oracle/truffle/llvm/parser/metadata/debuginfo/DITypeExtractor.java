@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -217,7 +217,7 @@ final class DITypeExtractor implements MetadataVisitor {
                         if (elemNode instanceof MDSubprogram) {
                             MDSubprogram mdSubprogram = (MDSubprogram) elemNode;
                             final String methodName = ((MDString) mdSubprogram.getName()).getString();
-                            if (mdSubprogram.getLinkageName() instanceof MDString) {
+                            if (mdSubprogram.getLinkageName() instanceof MDString && !methodName.equals(name)) {
                                 final String methodLinkageName = ((MDString) mdSubprogram.getLinkageName()).getString();
                                 final LLVMSourceFunctionType llvmSourceFunctionType = (LLVMSourceFunctionType) parsedTypes.get(mdSubprogram);
                                 final long virtualIndex = mdSubprogram.getVirtuality() > 0 ? mdSubprogram.getVirtualIndex() : -1L;

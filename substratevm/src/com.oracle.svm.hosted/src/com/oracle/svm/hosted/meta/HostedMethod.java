@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
@@ -368,6 +369,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public boolean needSafepointCheck() {
         return SubstrateSafepointInsertionPhase.needSafepointCheck(wrapped);
+    }
+
+    @Override
+    public boolean isLambdaFormCompiled() {
+        return AnalysisMetaAccessExtensionProvider.isLambdaFormCompiledMethod(this);
     }
 
     @Override

@@ -49,6 +49,10 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
         super(capacity);
     }
 
+    public StringBufferUTF8(StringBufferUTF8 copy) {
+        super(copy);
+    }
+
     @Override
     public Encoding getEncoding() {
         return Encoding.UTF_8;
@@ -146,6 +150,21 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
                 set(--i, (byte) (c1 ^ c2));
         }
         // Checkstyle: resume
+    }
+
+    @Override
+    public AbstractStringBuffer copy() {
+        return new StringBufferUTF8(this);
+    }
+
+    @Override
+    public long prefixHash(int maxLength) {
+        int prefixLength = Math.min(length(), maxLength);
+        long hash = prefixLength;
+        for (int i = 0; i < prefixLength; i++) {
+            hash = Long.rotateLeft(hash, 5) ^ Byte.toUnsignedInt(buf[i]);
+        }
+        return hash;
     }
 
     @Override

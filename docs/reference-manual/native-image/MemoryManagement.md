@@ -203,12 +203,12 @@ native-image -R:MinHeapSize=2m -R:MaxHeapSize=10m -R:MaxNewSize=1m HelloWorld
 
 ## Compressed References
 
-Oracle GraalVM supports compressed references to Java objects that use 32-bit instead of 64-bit.
+GraalVM supports compressed references to Java objects that are 32 bits in size instead of 64 bits.
 Compressed references are enabled by default and can have a large impact on the memory footprint.
 However, they limit the maximum Java heap size to 32 GB of memory.
 If more than 32 GB are needed, compressed references need to be disabled.
 
-* `-H:±UseCompressedReferences` (can only be specified at image build time) - determines if 32-bit instead of 64-bit references to Java objects are used.
+* `-H:±UseCompressedReferences` (can only be specified at image build time) - determines if 32-bit references instead of 64-bit references to Java objects are used.
 
 ## Native Memory
 

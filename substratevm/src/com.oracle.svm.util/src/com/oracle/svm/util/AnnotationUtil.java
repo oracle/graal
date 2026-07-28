@@ -37,8 +37,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
-import com.oracle.svm.shared.util.ModuleSupport;
-
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;
@@ -64,7 +62,6 @@ public final class AnnotationUtil {
         static final AnnotatedObjectAccess instance;
         static final Throwable initLocation;
         static {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
             instance = new AnnotatedObjectAccess();
             initLocation = new Throwable("Lazy.instance created here:");
         }

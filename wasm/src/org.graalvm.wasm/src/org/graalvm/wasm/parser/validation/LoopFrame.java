@@ -41,10 +41,10 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.BitSet;
+
 import org.graalvm.wasm.parser.bytecode.BytecodeFixup;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
-
-import java.util.BitSet;
 
 /**
  * Representation of a wasm loop during module validation.
@@ -64,6 +64,7 @@ class LoopFrame extends ControlFrame {
 
     @Override
     void exit(ParserState state, RuntimeBytecodeGen bytecode) {
+        registerDelegateContinuationFixups(state, -1);
     }
 
     @Override

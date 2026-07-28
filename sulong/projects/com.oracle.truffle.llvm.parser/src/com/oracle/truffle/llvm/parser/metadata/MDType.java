@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,21 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import java.util.function.LongConsumer;
+
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
 public abstract class MDType extends MDName {
 
     private final DwarfTag tag;
 
-    private final long size;
+    private long size;
     private final long align;
-    private final long offset;
+    private long offset;
     private final long line;
     private final long flags;
 
@@ -63,6 +71,14 @@ public abstract class MDType extends MDName {
         return offset;
     }
 
+    void setSize(long size) {
+        this.size = size;
+    }
+
+    void setOffset(long offset) {
+        this.offset = offset;
+    }
+
     public MDBaseNode getFile() {
         return file;
     }
@@ -81,6 +97,40 @@ public abstract class MDType extends MDName {
 
     public void setFile(MDBaseNode file) {
         this.file = file;
+    }
+
+    static long getMetadataOrConstant(long value, boolean isMetadata, MetadataValueList md, LongConsumer onForwardReference) {
+        if (!isMetadata) {
+            return value;
+        }
+        if (value == 0) {
+            return 0;
+        }
+        /*
+         * LLVM 22 can emit metadata references for DI type sizes and offsets before the
+         * referenced metadata value. Do not use getNullable here:
+         * a null dependent would be recorded in ValueList and dereferenced when the
+         * forward reference resolves. onParse registers only the callback needed to
+         * update this scalar field.
+         */
+        MDBaseNode node = md.getOrNull((int) value - 1);
+        if (MDValue.getIfInstance(node) == null && onForwardReference != null) {
+            md.onParse((int) value - 1, resolved -> onForwardReference.accept(getIntegerConstant(resolved)));
+            return 0;
+        }
+        return getIntegerConstant(node);
+    }
+
+    private static long getIntegerConstant(MDBaseNode node) {
+        SymbolImpl symbol = MDValue.getIfInstance(node);
+        if (symbol instanceof IntegerConstant) {
+            return ((IntegerConstant) symbol).getValue();
+        } else if (symbol instanceof BigIntegerConstant) {
+            return ((BigIntegerConstant) symbol).getValue().longValueExact();
+        } else if (symbol instanceof NullConstant) {
+            return 0;
+        }
+        throw new LLVMParserException("Expected integer metadata constant for DIType size or offset");
     }
 
     @Override

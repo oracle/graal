@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,9 +51,6 @@ import com.oracle.svm.core.jdk.VectorAPISupport;
 import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -65,7 +62,6 @@ import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class VectorAPIFeature implements InternalFeature {
     // JVMCI migration blocked by GR-72591: Migrate VectorAPIFeature to terminus
 
@@ -81,20 +77,11 @@ public class VectorAPIFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        boolean vectorAPIEnabled = VectorAPIEnabled.getValue();
-        boolean vectorAPIAvailable = access.findClassByName(VECTOR_API_PACKAGE_NAME + ".VectorShape") != null;
-
-        if (vectorAPIEnabled && !vectorAPIAvailable) {
-            // If vectorAPIEnabled becomes the default, this warning should be removed.
+        if (SubstrateOptions.VectorAPISupport.hasBeenSet() && SubstrateOptions.VectorAPISupport.getValue() && !VectorAPIEnabled.isVectorAPIModulePresent()) {
             LogUtils.warning("Native image option %s was used, but the application does not have access to the Vector API module. Did you forget to add '--add-modules %s'?",
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.VectorAPISupport, "+"), VECTOR_API_PACKAGE_NAME);
         }
-        if (!vectorAPIEnabled && vectorAPIAvailable) {
-            LogUtils.warning("The application has access to the Vector API module %s. Consider using %s to optimize Vector API operations.",
-                            VECTOR_API_PACKAGE_NAME, SubstrateOptionsParser.commandArgument(SubstrateOptions.VectorAPISupport, "+"));
-        }
-
-        return vectorAPIEnabled && vectorAPIAvailable;
+        return VectorAPIEnabled.getValue();
     }
 
     @Override

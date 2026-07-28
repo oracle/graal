@@ -58,7 +58,8 @@ public class NativeImageClassLoaderOptions {
     @APIOption(name = "enable-native-access", launcherOption = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
     @Option(help = "A comma-separated list of modules that are permitted to perform restricted native operations." +
                     " The module name can also be ALL-UNNAMED.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableNativeAccess = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableNativeAccess = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-modules")//
     @Option(help = "List observable modules and exit.")//

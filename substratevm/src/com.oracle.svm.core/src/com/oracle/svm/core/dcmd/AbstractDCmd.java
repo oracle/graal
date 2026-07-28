@@ -79,8 +79,8 @@ public abstract class AbstractDCmd implements DCmd {
 
     protected abstract String execute(DCmdArguments args) throws Throwable;
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L189-L220")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L234-L253")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L189-L220")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L234-L253")
     private DCmdArguments parse(String input) {
         DCmdArguments result = new DCmdArguments();
         DCmdArgCursor cursor = new DCmdArgCursor(input, ' ');
@@ -146,7 +146,7 @@ public abstract class AbstractDCmd implements DCmd {
         return null;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/services/diagnosticArgument.cpp#L141-L171")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+26/src/hotspot/share/services/diagnosticArgument.cpp#L141-L171")
     private static Object parseValue(DCmdOption<?> option, String valueString) {
         Class<?> type = option.type();
         if (type == Boolean.class) {
@@ -165,7 +165,7 @@ public abstract class AbstractDCmd implements DCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L255-L299")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L255-L299")
     public String getHelp() {
         String lineBreak = System.lineSeparator();
         StringBuilder sb = new StringBuilder();
@@ -259,7 +259,7 @@ public abstract class AbstractDCmd implements DCmd {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.hpp#L102-L121")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.hpp#L102-L121")
     private static class DCmdArgCursor {
         private final String input;
         private final int length;
@@ -291,7 +291,7 @@ public abstract class AbstractDCmd implements DCmd {
             return input.substring(valuePos, valuePos + valueLength);
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L67-L145")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L67-L145")
         private boolean advance() {
             /* Skip delimiters. */
             while (cursor < length - 1 && input.charAt(cursor) == delimiter) {

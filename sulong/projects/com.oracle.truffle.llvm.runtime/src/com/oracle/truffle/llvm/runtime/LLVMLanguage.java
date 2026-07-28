@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -115,6 +115,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
+    public static final int ROUNDING_MODE_TOWARD_ZERO = 0;
+    public static final int ROUNDING_MODE_NEAREST_TIES_TO_EVEN = 1;
+    public static final int ROUNDING_MODE_TOWARD_POSITIVE = 2;
+    public static final int ROUNDING_MODE_TOWARD_NEGATIVE = 3;
+    public static final int ROUNDING_MODE_NEAREST_TIES_AWAY = 4;
+    public static final int DEFAULT_ROUNDING_MODE = ROUNDING_MODE_NEAREST_TIES_TO_EVEN;
 
     @CompilationFinal public boolean singleContext = true;
 
@@ -224,6 +230,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final LLDBSupport lldbSupport = new LLDBSupport();
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
+    private final Assumption defaultRoundingModeAssumption = Truffle.getRuntime().createAssumption("default rounding mode");
 
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
@@ -247,6 +254,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
          * proper class loader by the time compilation starts.
          */
         noCommonHandleAssumption.isValid();
+        defaultRoundingModeAssumption.isValid();
 
     }
 
@@ -291,6 +299,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
+        int roundingMode = DEFAULT_ROUNDING_MODE;
         LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
         List<LLVMUserException> exceptionStack = new ArrayList<>();
@@ -343,6 +352,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public void removeThreadLocalStorage() {
             localStorage = LLVMNativePointer.createNull();
+        }
+
+        public int getRoundingMode() {
+            return roundingMode;
+        }
+
+        public void setRoundingMode(int roundingMode) {
+            this.roundingMode = roundingMode;
         }
 
         public LLVMStack getLLVMStack() {
@@ -459,6 +476,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public Assumption getNoDerefHandleAssumption() {
         return noDerefHandleAssumption;
+    }
+
+    /**
+     * This assumption remains valid until a non-default floating-point rounding mode is selected.
+     */
+    public Assumption getDefaultRoundingModeAssumption() {
+        return defaultRoundingModeAssumption;
+    }
+
+    public void setRoundingMode(int roundingMode) {
+        if (roundingMode != DEFAULT_ROUNDING_MODE) {
+            defaultRoundingModeAssumption.invalidate();
+        }
+        contextThreadLocal.get().setRoundingMode(roundingMode);
+    }
+
+    public int getRoundingMode() {
+        return contextThreadLocal.get().getRoundingMode();
     }
 
     public final String getLLVMLanguageHome() {

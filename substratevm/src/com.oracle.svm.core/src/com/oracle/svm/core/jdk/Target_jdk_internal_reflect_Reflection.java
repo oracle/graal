@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -41,7 +41,7 @@ public final class Target_jdk_internal_reflect_Reflection {
     @NeverInline("Starting a stack walk in the caller frame")
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Class<?> getCallerClass() {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
     }
 
     @Substitute

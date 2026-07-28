@@ -184,6 +184,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
         assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
+        checkProhibitedPackage(parsed);
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;
             if (Modifier.isInterface(parsed.getFlags())) {
@@ -212,6 +213,12 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             registerStrongHiddenClass(clazz);
         }
         return clazz;
+    }
+
+    private void checkProhibitedPackage(ParserKlass parsed) {
+        if (!loaderIsBootOrPlatform() && parsed.getName().toString().startsWith("java/")) {
+            throw new SecurityException("Define class in prohibited package name: " + parsed.getName());
+        }
     }
 
     private ParserKlass parseClass(Symbol<Type> typeOrNull, ClassDefinitionInfo info, byte[] data) {

@@ -235,17 +235,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return isDeleted(metaAccess.lookupJavaField(field));
     }
 
+    /**
+     * A field is deleted when it was recorded directly in {@link #deleteAnnotations}, or when its
+     * declaring type is deleted. In report-at-runtime mode, deleted types are also expanded into
+     * member deletions. In fail-fast mode, the type-level entry is the only representation. Fields
+     * whose declaring type is fully substituted are also implicitly deleted when no replacement
+     * field was provided.
+     */
     public boolean isDeleted(ResolvedJavaField field) {
-        if (deleteAnnotations.get(field) != null) {
-            return true;
-        }
-        if (isAnnotationPresent(field, Delete.class)) {
-            return true;
-        }
-        if (isImplicitlyDeleted(field)) {
-            return true;
-        }
-        return false;
+        return deleteAnnotations.get(field) != null || isDeleted(field.getDeclaringClass()) || isImplicitlyDeleted(field);
     }
 
     /**
@@ -266,10 +264,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     public boolean hasInjectAccessors(ResolvedJavaField field) {
-        return isAnnotationPresent(field, InjectAccessors.class);
+        return isAnnotationPresentOnSubstitutionField(field, InjectAccessors.class);
     }
 
-    private boolean isAnnotationPresent(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
+    /**
+     * Checks whether the substitution field registered for {@code field} carries
+     * {@code annotationClass}. This is deliberately different from checking annotations on
+     * {@code field} itself, which is the original field that hosted analysis is resolving.
+     */
+    private boolean isAnnotationPresentOnSubstitutionField(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
             return AnnotationUtil.isAnnotationPresent(substitutionField, annotationClass);
@@ -283,6 +286,27 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public boolean isDeleted(ResolvedJavaType type) {
         return deleteAnnotations.containsKey(OriginalClassProvider.getOriginalType(type));
+    }
+
+    /**
+     * Returns the original types explicitly marked with a class-level {@link Delete}.
+     */
+    public List<ResolvedJavaType> getDeletedTypes() {
+        return deleteAnnotations.keySet().stream()
+                        .filter(ResolvedJavaType.class::isInstance)
+                        .map(ResolvedJavaType.class::cast)
+                        .toList();
+    }
+
+    /**
+     * Returns methods recorded as deleted. For an explicit method-level {@link Delete}, this includes
+     * both the original target method and the annotated deletion declaration.
+     */
+    public List<ResolvedJavaMethod> getDeletedMethods() {
+        return deleteAnnotations.keySet().stream()
+                        .filter(ResolvedJavaMethod.class::isInstance)
+                        .map(ResolvedJavaMethod.class::cast)
+                        .toList();
     }
 
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
@@ -351,6 +375,38 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
         return method;
+    }
+
+    public boolean isDeleted(Method method) {
+        return isDeleted(metaAccess.lookupJavaMethod(method));
+    }
+
+    /**
+     * A method is deleted when it was recorded directly in {@link #deleteAnnotations}, or when its
+     * declaring type is deleted. In report-at-runtime mode, deleted types are also expanded into
+     * member deletions. In fail-fast mode, the type-level entry is the only representation. Methods
+     * whose declaring type is fully substituted are also implicitly deleted when no replacement
+     * method was provided.
+     */
+    public boolean isDeleted(ResolvedJavaMethod method) {
+        return deleteAnnotations.get(method) != null || isDeleted(method.getDeclaringClass()) || isImplicitlyDeleted(method);
+    }
+
+    /**
+     * When an entire type is fully substituted, for example when {@link Class} is replaced with
+     * {@link DynamicHub}, we replace all methods of the original type. All the methods that are
+     * not @{@link Substitute} are implicitly considered as @{@link Delete}. However, not all
+     * implicitly deleted methods are present in the {@link #deleteAnnotations} map because when the
+     * original class methods are iterated {@link Class#getDeclaredMethods()} applies
+     * {@link Reflection#filterMethods(Class, Method[])} and excludes several methods from
+     * reflection access.
+     */
+    private boolean isImplicitlyDeleted(ResolvedJavaMethod method) {
+        /*
+         * If a method's type is fully substituted but the method was not substituted, then it is
+         * considered implicitly deleted.
+         */
+        return typeSubstitutions.get(method.getDeclaringClass()) instanceof SubstitutionType && !methodSubstitutions.containsKey(method);
     }
 
     /**

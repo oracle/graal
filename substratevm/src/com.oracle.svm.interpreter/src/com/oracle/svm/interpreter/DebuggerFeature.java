@@ -79,6 +79,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -111,10 +112,6 @@ import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionValues;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -150,7 +147,6 @@ import jdk.vm.ci.meta.UnresolvedJavaMethod;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class DebuggerFeature implements InternalFeature {
     private AnalysisMethod enterInterpreterMethod;
     private InterpreterStubTable enterStubTable = null;
@@ -561,7 +557,7 @@ public class DebuggerFeature implements InternalFeature {
             if (!hostedMethod.isCompiled()) {
                 InterpreterUtil.log("[got] after compilation: %s is not compiled, nulling it out", hostedMethod);
                 interpreterMethod.setVTableIndex(VTBL_UNINITIALIZED);
-                interpreterMethod.setNativeEntryPoint(null);
+                interpreterMethod.setNativeEntryPoint((MethodRef) null);
             } else {
                 if (interpreterMethod.hasBytecodes()) {
                     /* only allocate stub for methods that we can actually run in the interpreter */

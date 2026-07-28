@@ -37,7 +37,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -53,7 +53,7 @@ import com.oracle.svm.webimage.print.WebImagePrintingProvider;
  */
 @AutomaticallyRegisteredImageSingleton(WebImagePrintingProvider.class)
 @Platforms(WebImageWasmLMPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageWasmLMPrintingProvider extends WebImagePrintingProvider {
     @Override
     @Uninterruptible(reason = "Handles untracked pointers.")

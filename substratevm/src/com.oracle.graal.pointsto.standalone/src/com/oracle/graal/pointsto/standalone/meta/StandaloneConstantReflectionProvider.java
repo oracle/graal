@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2024, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -29,12 +29,14 @@ package com.oracle.graal.pointsto.standalone.meta;
 import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.standalone.heap.StandaloneFieldValueAvailabilitySupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -71,6 +73,11 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
      * analysis state with analysis tasks (the analysis itself is using {@link ForkJoinPool}.
      */
     private JavaConstant commonPoolSubstitution;
+    /**
+     * Standalone-owned field-value availability layer used to decide when static reads may switch
+     * from original-provider semantics to shadow-heap-backed values.
+     */
+    private final StandaloneFieldValueAvailabilitySupport fieldValueAvailabilitySupport;
 
     /**
      * Creates a new {@link StandaloneConstantReflectionProvider} instance.
@@ -84,9 +91,11 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
      *            compilation and the compiled application
      */
     public StandaloneConstantReflectionProvider(AnalysisMetaAccess aMetaAccess, AnalysisUniverse universe, ConstantReflectionProvider original,
-                    SnippetReflectionProvider originalSnippetReflection, boolean fullyIsolated) {
+                    SnippetReflectionProvider originalSnippetReflection, boolean fullyIsolated,
+                    StandaloneFieldValueAvailabilitySupport fieldValueAvailabilitySupport) {
         this.universe = universe;
         this.original = original;
+        this.fieldValueAvailabilitySupport = fieldValueAvailabilitySupport;
         if (!fullyIsolated) {
             commonPoolField = aMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ForkJoinPool.class, "common"));
             commonPoolSubstitution = originalSnippetReflection.forObject(new ForkJoinPool());
@@ -139,7 +148,14 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
 
     @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
-        return universe.getHostedValuesProvider().interceptHosted(original.readArrayElement(array, index));
+        if (array instanceof ImageHeapArray imageHeapArray) {
+            if (index < 0 || index >= imageHeapArray.getLength()) {
+                return null;
+            }
+            imageHeapArray.ensureReaderInstalled();
+            return imageHeapArray.readElementValue(index);
+        }
+        return original.readArrayElement(array, index);
     }
 
     /**
@@ -161,6 +177,23 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
             assert commonPoolSubstitution != null : "A substitution for the common pool must be provided if commonPoolField is set.";
             return commonPoolSubstitution;
         }
+        if (field.isStatic()) {
+            switch (fieldValueAvailabilitySupport.getStaticFieldReadPolicy(field)) {
+                case SHADOW_HEAP:
+                    /*
+                     * Runtime-initialized classes keep their original provider semantics. Only classes
+                     * whose build-time initialization completed may use shadow-heap snapshots as the
+                     * source of truth for static field reads.
+                     */
+                    return field.getDeclaringClass().getOrComputeData().readFieldValue(field);
+                case ORIGINAL_PROVIDER:
+                    break;
+            }
+        }
+        if (receiver instanceof ImageHeapInstance imageHeapInstance) {
+            imageHeapInstance.ensureReaderInstalled();
+            return imageHeapInstance.readFieldValue(field);
+        }
         JavaConstant fieldReceiver = receiver;
         if (receiver instanceof ImageHeapConstant imageHeapConstant && imageHeapConstant.getHostedObject() != null) {
             /*
@@ -168,27 +201,32 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
              */
             fieldReceiver = imageHeapConstant.getHostedObject();
         }
-        return universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(field.wrapped, fieldReceiver));
+        return original.readFieldValue(field.wrapped, fieldReceiver);
     }
 
     @Override
     public JavaConstant boxPrimitive(JavaConstant source) {
-        return universe.getHostedValuesProvider().interceptHosted(original.boxPrimitive(source));
+        return original.boxPrimitive(source);
     }
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
-        return universe.getHostedValuesProvider().interceptHosted(original.unboxPrimitive(source));
+        return original.unboxPrimitive(source);
     }
 
     @Override
     public JavaConstant forString(String value) {
-        return universe.getHostedValuesProvider().interceptHosted(original.forString(value));
+        return original.forString(value);
     }
 
     /**
      * The correctness of this method is verified by
      * com.oracle.graal.pointsto.test.ClassEqualityTest.
+     *
+     * Standalone does not create a native-image-style {@code DynamicHub} representation for class
+     * constants. It still allows raw guest {@link Class} constants to be scanned as ordinary
+     * image-heap objects, and {@link #asJavaType(Constant)} keeps the represented type reachable when
+     * those constants are observed.
      */
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
@@ -212,9 +250,21 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
+        /*
+         * The native-image-style class-constant path is intentionally skipped in standalone for
+         * now. See asJavaClass() above for the Terminus-specific rationale.
+         */
         ResolvedJavaType originalJavaType = original.asJavaType(constant);
         if (originalJavaType != null) {
-            return universe.lookup(originalJavaType);
+            AnalysisType type = universe.lookup(originalJavaType);
+            /*
+             * Standalone still exposes raw guest Class constants instead of hosted DynamicHub
+             * objects, so scanning a class constant must also make the represented type reachable.
+             * Keep this temporary symmetry with asJavaClass() until standalone grows a dedicated
+             * class-constant model.
+             */
+            type.registerAsReachable("registered by the StandaloneConstantReflectionProvider.asJavaType");
+            return type;
         }
         return null;
     }

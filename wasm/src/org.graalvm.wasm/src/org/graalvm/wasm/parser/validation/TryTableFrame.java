@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,9 @@ public class TryTableFrame extends BlockFrame {
 
     @Override
     void exit(ParserState state, RuntimeBytecodeGen bytecode) {
-        super.exit(state, bytecode);
-        state.registerExceptionTable(new ExceptionTable(startOffset, bytecode.location(), handlers));
+        exitBlock(bytecode);
+        final ExceptionTable table = new ExceptionTable(startOffset, bytecode.location(), handlers);
+        final int tableIndex = state.registerExceptionTable(table);
+        registerDelegateContinuationFixups(state, tableIndex);
     }
 }

@@ -44,14 +44,12 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = DisallowLayered.class)
 class JfrGCEventSupport {
     private static final int MAX_PHASE_LEVEL = 4;
 
@@ -147,7 +145,6 @@ class JfrGCEventSupport {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 class JfrGCEventFeature implements InternalFeature {
     @Override

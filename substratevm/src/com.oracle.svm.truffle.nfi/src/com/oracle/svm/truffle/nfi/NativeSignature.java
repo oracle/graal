@@ -39,7 +39,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;

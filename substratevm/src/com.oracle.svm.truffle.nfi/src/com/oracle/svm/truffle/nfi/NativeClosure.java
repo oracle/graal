@@ -44,7 +44,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
@@ -250,7 +250,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -324,7 +324,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -380,7 +380,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }
@@ -437,7 +437,7 @@ final class NativeClosure {
                 CEntryPointActions.failFatally(code, errorMessageThread.get());
             }
         } else {
-            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessageIsolate.get());
             }

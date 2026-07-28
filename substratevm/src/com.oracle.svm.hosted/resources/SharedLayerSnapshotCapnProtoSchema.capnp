@@ -60,6 +60,7 @@ struct PersistedAnalysisType {
     }
     lambda :group {
       capturingClass @34 :Text;
+      captureSite @37 :Text;
     }
     proxyType @35 :Void;
   }

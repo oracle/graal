@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata.profile;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 
 import jdk.graal.compiler.options.Option;
 

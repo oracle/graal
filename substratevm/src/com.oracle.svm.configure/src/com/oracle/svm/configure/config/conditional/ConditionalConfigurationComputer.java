@@ -106,7 +106,7 @@ public class ConditionalConfigurationComputer {
             if (node.configuration == null) {
                 node.configuration = emptyConfigurationSet;
             }
-            List<MethodCallNode> callNodes = methodCallNodes.computeIfAbsent(node.methodInfo, info -> new ArrayList<>());
+            List<MethodCallNode> callNodes = methodCallNodes.computeIfAbsent(node.methodInfo, _ -> new ArrayList<>());
             callNodes.add(node);
         });
 

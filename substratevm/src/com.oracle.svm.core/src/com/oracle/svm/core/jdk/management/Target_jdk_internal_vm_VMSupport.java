@@ -31,11 +31,11 @@ import java.util.Properties;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.guest.staging.JavaMainSupport;
 
 @TargetClass(jdk.internal.vm.VMSupport.class)
 public final class Target_jdk_internal_vm_VMSupport {

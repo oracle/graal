@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.webimage.codegen.phase.WebImageJSSuitesCreatorProvi
 import com.oracle.svm.hosted.webimage.js.WebImageJSLoweringProvider;
 import com.oracle.svm.hosted.webimage.snippets.WebImageIdentityHashCodeSnippets;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -68,7 +68,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageJSFeature implements InternalFeature {
 
     @Override
@@ -97,7 +96,7 @@ public class WebImageJSFeature implements InternalFeature {
         templates.registerLowering(lowerings);
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageSubstrateRegisterConfigFactory implements SubstrateRegisterConfigFactory {
         @Override
         public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
@@ -105,7 +104,7 @@ public class WebImageJSFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageSubstrateBackendFactory extends SubstrateBackendFactory {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
@@ -113,7 +112,7 @@ public class WebImageJSFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
     private static final class WebImageJSLoweringProviderFactory implements SubstrateLoweringProviderFactory {
         @Override
         public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,9 +47,30 @@ public:
     virtual int foo3();
 };
 
+class VirtualDerived : virtual public A {
+public:
+    VirtualDerived();
+};
+
+POLYGLOT_DECLARE_TYPE(VirtualDerived);
+
+class Empty {};
+
+class EmptyFirst : public Empty {
+public:
+    EmptyFirst();
+    virtual int emptyFoo();
+};
+
+POLYGLOT_DECLARE_TYPE(EmptyFirst);
+
 A::A() {
 }
 B::B() : A() {
+}
+VirtualDerived::VirtualDerived() : A() {
+}
+EmptyFirst::EmptyFirst() {
 }
 
 int A::foo1() {
@@ -67,6 +88,9 @@ int B::foo2() {
 int B::foo3() {
     return 13;
 }
+int EmptyFirst::emptyFoo() {
+    return 21;
+}
 
 void *preparePolyglotA() {
     A *a = new A();
@@ -76,4 +100,12 @@ void *preparePolyglotA() {
 void *preparePolyglotBasA() {
     A *a = new B();
     return polyglot_from_A(a);
+}
+
+void *preparePolyglotVirtualDerived() {
+    return polyglot_from_VirtualDerived(new VirtualDerived());
+}
+
+void *preparePolyglotEmptyFirst() {
+    return polyglot_from_EmptyFirst(new EmptyFirst());
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,12 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class WebImageNativeLibrarySupport extends PlatformNativeLibrarySupport {
     @Override
     public NativeLibrary createLibrary(String canonical, boolean builtIn) {
@@ -129,7 +129,7 @@ public class WebImageNativeLibrarySupport extends PlatformNativeLibrarySupport {
                 address = addFunctionToFuntab((JSObject) entry);
                 symbolAddresses.put(name, address);
             }
-            return Word.pointer((long) address);
+            return Word.pointer(address);
         }
     }
 }

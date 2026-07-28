@@ -47,9 +47,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 
@@ -133,6 +131,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(Group group) {
+        assert group.size() == 1;
         if (group.isCapturing()) {
             result.setStart(group.getGroupNumber(), index);
         }
@@ -160,14 +159,6 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
                 lastGroup = groupUnroller.lastGroup;
             }
         }
-    }
-
-    @Override
-    protected void visit(Sequence sequence) {
-    }
-
-    @Override
-    protected void visit(PositionAssertion assertion) {
     }
 
     @Override

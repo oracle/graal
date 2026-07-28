@@ -189,8 +189,20 @@ public class ValueAPITest {
 
     @AfterClass
     public static void tearDown() {
-        context.close();
-        secondaryContext.close();
+        try {
+            if (context != null) {
+                context.close();
+            }
+        } finally {
+            try {
+                if (secondaryContext != null) {
+                    secondaryContext.close();
+                }
+            } finally {
+                context = null;
+                secondaryContext = null;
+            }
+        }
     }
 
     @Test

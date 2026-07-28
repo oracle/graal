@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperties;
 import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.ArrayList;
@@ -44,8 +45,6 @@ import jdk.vm.ci.hotspot.VMField;
  */
 public class GraalHotSpotVMConfigAccess {
 
-    private static final String ORACLE_VM_VENDOR = "Oracle Corporation";
-
     protected final HotSpotVMConfigAccess access;
     private final Map<String, Long> vmAddresses;
     private final Map<String, Long> vmConstants;
@@ -59,7 +58,7 @@ public class GraalHotSpotVMConfigAccess {
         this.vmFields = store.getFields();
         this.osName = platform.osName();
         this.osArch = platform.archName();
-        this.isOracleVmVendor = ORACLE_VM_VENDOR.equals(getSavedProperty("java.vm.vendor", ""));
+        this.isOracleVmVendor = JVMCIVersionCheck.isOracleJDK(getSavedProperties());
     }
 
     public HotSpotVMConfigStore getStore() {

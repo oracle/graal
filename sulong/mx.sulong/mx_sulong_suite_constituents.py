@@ -371,7 +371,10 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         if hasattr(self.subject, "getJavaProperties"):
             for key, value in sorted(self.subject.getJavaProperties().items()):
                 jvm_args.append(_quote("-D" + key + "=" + value))
-        command = [_quote(java)] + jvm_args + extra_props + [main_class, all_params]
+        # Disable JVM logging: Compiler wrappers should never produce additional output that might
+        # throw off build scripts or cmake probes.
+        logging_args = [_quote("-Xlog:disable")]
+        command = [_quote(java)] + jvm_args + extra_props + logging_args + [main_class, all_params]
         # create script
         if mx.is_windows():
             return "@echo off\n" + " ".join(command) + "\n"

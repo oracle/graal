@@ -235,24 +235,23 @@ def update_build_options_table():
     if begin_idx == -1 or end_idx == -1:
         # Fallback: try to find existing table and suggest adding markers
         table_start = content.find('| Command | Type | Description |')
-        if table_start != -1:
-            mx.log("Found existing table but no auto-generation markers.")
-            mx.log("Consider adding comment markers around the table:")
-            mx.log(f"  {begin_marker}")
-            mx.log("  [existing table content]")
-            mx.log(f"  {end_marker}")
-
-            # For now, use the old method
-            table_end = content.find('\n## ', table_start)
-            if table_end == -1:
-                table_end = len(content)
-
-            # Extract table from generated content (skip markdown header)
-            new_table = _extract_table_from_markdown(generated_content)
-            new_content = content[:table_start] + new_table + content[table_end:]
-        else:
+        if table_start == -1:
             mx.abort("Could not find table or auto-generation markers in BuildOptions.md")
-            return False
+
+        mx.log("Found existing table but no auto-generation markers.")
+        mx.log("Consider adding comment markers around the table:")
+        mx.log(f"  {begin_marker}")
+        mx.log("  [existing table content]")
+        mx.log(f"  {end_marker}")
+
+        # For now, use the old method
+        table_end = content.find('\n## ', table_start)
+        if table_end == -1:
+            table_end = len(content)
+
+        # Extract table from generated content (skip markdown header)
+        new_table = _extract_table_from_markdown(generated_content)
+        new_content = content[:table_start] + new_table + content[table_end:]
     else:
         # Use marker-based replacement (preferred method)
         mx.log("Found auto-generation markers - using clean replacement")

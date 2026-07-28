@@ -45,7 +45,7 @@ import java.util.zip.DataFormatException;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.AnnotateOriginal;

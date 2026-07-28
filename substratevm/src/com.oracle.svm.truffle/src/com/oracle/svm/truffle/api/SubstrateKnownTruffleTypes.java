@@ -26,7 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
     public SubstrateKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {

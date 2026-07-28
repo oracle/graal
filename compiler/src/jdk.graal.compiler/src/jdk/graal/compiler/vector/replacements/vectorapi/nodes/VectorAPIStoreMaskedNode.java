@@ -48,6 +48,7 @@ import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.SimdMaskedWriteNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 
 /**
  * Intrinsic node for the {@code VectorSupport.storeMasked} method. This operation performs a write
@@ -67,8 +68,11 @@ public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements Canon
 
     /* Indices into the macro argument list for relevant input values. */
     private static final int VCLASS_ARG_INDEX = 0;
+    private static final int BASE_ARG_INDEX = 4;
+    private static final int FROM_SEGMENT_ARG_INDEX = 6;
     private static final int V_ARG_INDEX = 7;
     private static final int M_ARG_INDEX = 8;
+    private static final int CONTAINER_ARG_INDEX = 9;
 
     protected VectorAPIStoreMaskedNode(MacroParams p, VectorAPIType storeType, AddressNode address, LocationIdentity location, FrameState stateAfter) {
         super(TYPE, p);
@@ -78,8 +82,10 @@ public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements Canon
         this.stateAfter = stateAfter;
     }
 
-    public static VectorAPIStoreMaskedNode create(MacroParams p, VectorAPIType storeType, AddressNode address, LocationIdentity location) {
-        return new VectorAPIStoreMaskedNode(p, storeType, address, location, null);
+    public static VectorAPIStoreMaskedNode create(MacroParams p, VectorAPIType storeType, AddressNode address) {
+        AddressNode newAddress = improveAddress(address);
+        LocationIdentity location = VectorAPIUtils.memoryLocationIdentity(p.arguments[BASE_ARG_INDEX], p.arguments[CONTAINER_ARG_INDEX], p.arguments[FROM_SEGMENT_ARG_INDEX]);
+        return new VectorAPIStoreMaskedNode(p, storeType, newAddress, location, null);
     }
 
     private ValueNode getVector() {
@@ -99,9 +105,11 @@ public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements Canon
     public Node canonical(CanonicalizerTool tool) {
         VectorAPIType newStoreType = VectorAPIType.ofConstant(getArgument(VCLASS_ARG_INDEX), tool);
         AddressNode newAddress = improveAddress(address);
-        if (newStoreType != storeType || newAddress != address) {
-            return new VectorAPIStoreMaskedNode(copyParams(), newStoreType, newAddress, location, stateAfter());
+        LocationIdentity newLocation = VectorAPIUtils.memoryLocationIdentity(getArgument(BASE_ARG_INDEX), getArgument(CONTAINER_ARG_INDEX), getArgument(FROM_SEGMENT_ARG_INDEX));
+        if (newStoreType != storeType || newAddress != address || !newLocation.equals(location)) {
+            return new VectorAPIStoreMaskedNode(copyParams(), newStoreType, newAddress, newLocation, stateAfter());
         }
+        /* Nothing to improve. */
         return this;
     }
 

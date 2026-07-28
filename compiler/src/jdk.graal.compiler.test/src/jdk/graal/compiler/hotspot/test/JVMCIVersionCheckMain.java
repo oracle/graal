@@ -60,8 +60,9 @@ public class JVMCIVersionCheckMain extends GraalCompilerTest {
         Assert.assertNotNull(out);
         Assert.assertFalse("no output produced", out.isEmpty());
         String[] split = out.strip().split(",");
-        Assert.assertEquals("unexpected length of result: " + Arrays.toString(split), 3, split.length);
+        Assert.assertEquals("unexpected length of result: " + Arrays.toString(split), 4, split.length);
         JVMCIVersionCheck.createLabsJDKVersion(split[0], split[1], Integer.parseInt(split[2]));
+        Assert.assertTrue("unexpected edition: " + split[3], split[3].equals("ce") || split[3].equals("ee"));
     }
 
     @Test
@@ -70,8 +71,9 @@ public class JVMCIVersionCheckMain extends GraalCompilerTest {
         Assert.assertNotNull(out);
         Assert.assertFalse("no output produced", out.isEmpty());
         String[] split = out.strip().split(",");
-        Assert.assertEquals("unexpected length of result: " + Arrays.toString(split), 3, split.length);
+        Assert.assertEquals("unexpected length of result: " + Arrays.toString(split), 4, split.length);
         JVMCIVersionCheck.createLabsJDKVersion(split[0], split[1], Integer.parseInt(split[2]));
+        Assert.assertTrue("unexpected edition: " + split[3], split[3].equals("ce") || split[3].equals("ee"));
     }
 
     @Test

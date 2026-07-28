@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,8 @@ public class CustomOperationModel extends Template {
     public final OperationModel operation;
     public final List<TypeMirror> implicitTags = new ArrayList<>();
     public Boolean forceCached;
-    public boolean customYield;
     public Boolean storeBytecodeIndex;
+    public int resultOperandIndex;
 
     public CustomOperationModel(ProcessorContext context, BytecodeDSLModel bytecode, TypeElement templateType, AnnotationMirror mirror, OperationModel operation) {
         super(context, templateType, mirror);
@@ -103,18 +103,27 @@ public class CustomOperationModel extends Template {
         return forceCached != null && forceCached;
     }
 
-    public void setCustomYield() {
-        this.customYield = true;
+    public boolean isCustomYield() {
+        return operation.kind == OperationModel.OperationKind.CUSTOM_YIELD;
     }
 
-    public boolean isCustomYield() {
-        return this.customYield;
+    public boolean isCustomReturn() {
+        return operation.kind == OperationModel.OperationKind.CUSTOM_RETURN;
+    }
+
+    public void setResultOperandIndex(int resultOperandIndex) {
+        this.resultOperandIndex = resultOperandIndex;
+    }
+
+    public int getResultOperandIndex() {
+        return resultOperandIndex;
     }
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        if (operation.instruction != null && operation.instruction.nodeData != null) {
-            return List.of(operation.instruction.nodeData);
+        NodeData node = operation.getNodeData();
+        if (node != null) {
+            return List.of(node);
         }
         return List.of();
     }
@@ -132,7 +141,7 @@ public class CustomOperationModel extends Template {
     }
 
     public boolean inferStoreBytecodeIndex() {
-        NodeData node = this.operation.instruction.nodeData;
+        NodeData node = this.operation.getNodeData();
         if (node == null) {
             // not a custom node, so not bytecode index to store
             return false;
@@ -162,7 +171,7 @@ public class CustomOperationModel extends Template {
             if (isStoreBytecodeIndex()) {
                 return true;
             } else {
-                NodeData node = this.operation.instruction.nodeData;
+                NodeData node = this.operation.getNodeData();
                 if (node == null) {
                     return false;
                 }

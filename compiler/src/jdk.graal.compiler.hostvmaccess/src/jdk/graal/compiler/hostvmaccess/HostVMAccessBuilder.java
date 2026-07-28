@@ -161,6 +161,7 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
             ModuleSupport.addExports(module, "jdk.graal.compiler",
                             "jdk.graal.compiler.api.replacements",
                             "jdk.graal.compiler.api.runtime",
+                            "jdk.graal.compiler.annotation",
                             "jdk.graal.compiler.core.target",
                             "jdk.graal.compiler.phases.util",
                             "jdk.graal.compiler.runtime");

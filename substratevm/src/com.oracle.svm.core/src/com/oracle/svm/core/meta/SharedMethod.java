@@ -45,6 +45,8 @@ public interface SharedMethod extends ResolvedJavaMethod {
 
     boolean needSafepointCheck();
 
+    boolean isLambdaFormCompiled();
+
     /**
      * @return true if the stack overflow check in the method's prologue cannot be omitted.
      */

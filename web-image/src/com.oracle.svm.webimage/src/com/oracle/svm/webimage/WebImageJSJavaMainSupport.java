@@ -31,14 +31,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 @Platforms(WebImageJSPlatform.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = DisallowLayered.class)
 public class WebImageJSJavaMainSupport extends WebImageJavaMainSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public WebImageJSJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {

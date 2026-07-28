@@ -61,7 +61,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateMethodRefStamp;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
@@ -224,10 +223,12 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             if (gen.isEntryPoint()) {
                 /*
-                 * In entry points, we want to restore the heap base register on return. For
-                 * example, in Isolate creation, this allows the current thread to get back its heap
-                 * base instead of the new thread's one.
+                 * Entry points can change the thread and heap base registers in a separate
+                 * prologue method. Make the changes visible to LLVM so that it restores the
+                 * caller's register values on return. For example, after creating an isolate, this
+                 * lets the current thread get back its original thread and heap base values.
                  */
+                gen.clobberRegister(ReservedRegisters.singleton().getThreadRegister().name);
                 gen.clobberRegister(ReservedRegisters.singleton().getHeapBaseRegister().name);
             }
 
@@ -580,7 +581,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             LLVMTypeRef referenceMemoryType = getReferenceMemoryType(referenceSize);
             LLVMValueRef loadedBits = builder.buildAlignedLoad(address, referenceMemoryType, referenceSize);
             LLVMValueRef loadedReference = builder.buildIntToPtr(gen.buildIntegerResize(loadedBits, LLVMIRBuilder.integerTypeWidth(builder.wordType())),
-                            builder.objectType(ReferenceAccess.singleton().haveCompressedReferences()));
+                            builder.objectType(true));
             return gen.buildReferenceValue(loadedReference, builder.objectType(false), false);
         }
         return builder.buildLoad(address, builder.objectType(false));
@@ -679,21 +680,22 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
-        LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
-        LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
-        LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
         LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
-        builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
 
         if (!nativeABI) {
+            LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
+            LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
+            LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
+            builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
             return emitCallInstruction(invoke, false, callee, patchpointId, args);
         } else {
-            LLVMValueRef wrapper = gen.createJNIWrapper(callee, true, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
+            LLVMValueRef wrapper = gen.createJNIWrapper(callee, true, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset(), KnownOffsets.singleton().getVMThreadStatusOffset());
 
-            LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
+            LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 3];
             newArgs[0] = anchor;
             newArgs[1] = callee;
-            System.arraycopy(args, 0, newArgs, 2, args.length);
+            newArgs[2] = newThreadStatus;
+            System.arraycopy(args, 0, newArgs, 3, args.length);
             LLVMValueRef wrapperCall = emitCallInstruction(invoke, true, wrapper, patchpointId, newArgs);
             builder.setInstructionCallingConvention(wrapperCall, LLVMIRBuilder.LLVMCallingConvention.GraalCallingConvention);
             return wrapperCall;

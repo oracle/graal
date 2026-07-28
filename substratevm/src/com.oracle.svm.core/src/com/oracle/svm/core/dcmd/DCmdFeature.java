@@ -28,19 +28,15 @@ package com.oracle.svm.core.dcmd;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.jfr.JfrFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.guest.staging.JavaMainSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 /** Registers the infrastructure for diagnostic commands. */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class DCmdFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

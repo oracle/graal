@@ -70,7 +70,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(canonicalizer);
 
         if (Options.Inline.getValue(options)) {
-            appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
+            appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer, options));
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
 

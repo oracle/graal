@@ -241,7 +241,6 @@ public class CInterfaceEnumTool {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 class CInterfaceEnumToolFeature implements InternalFeature {
     @Override

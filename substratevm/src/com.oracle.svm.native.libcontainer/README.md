@@ -13,9 +13,9 @@ risk. The default `mx build` command only uses settings from `suite.py`, so valu
 
 ## Dependencies
 
-For building `libsvm_container`, a C++14 compiler is required. Some parts of `libsvm_container` depend on `libm`.
-At image build time, `native-image` will automatically link statically against `libsvm_container` and `libm`.
-No further dependencies are needed at image build or image run time.
+For building `libsvm_container`, a C++14 compiler is required.
+At image build time, `native-image` will automatically link statically against `libsvm_container`.
+No additional native libraries are needed at image build or image run time.
 Specifically,  `libsvm_container` does _not_ depend on any code from the C++ standard library.
 
 ## Code Layout
@@ -48,6 +48,10 @@ release.
 To help keeping the `@BasedOnJDKFile` annotations up to date, the
 `mx gate --tags check_libcontainer_annotations` command ensures that the actual files and
 annotations are in sync.
+
+For a full reimport, use the developer skill in
+[`skills/update-libcontainer/SKILL.md`](./skills/update-libcontainer/SKILL.md).
+It supplements the instructions below with the reviewable commit structure and conflict-resolution guidance.
 
 ### Full Reimport
 

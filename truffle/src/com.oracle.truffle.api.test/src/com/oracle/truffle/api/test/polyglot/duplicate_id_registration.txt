@@ -1,0 +1,3 @@
+# Synthetic TruffleLanguageProvider service descriptor for LanguageCacheTest#testDuplicateLanguageIds.
+com.oracle.truffle.api.test.polyglot.LanguageCacheTestDuplicateIdLanguageProvider
+com.oracle.truffle.api.test.polyglot.LanguageCacheTest$DuplicateIdLanguage2Provider

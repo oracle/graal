@@ -46,7 +46,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -232,7 +232,7 @@ public class JfrSymbolRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private JfrSymbolEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        boolean epoch = previousEpoch ? JfrEpoch.getInstance().previousEpoch() : JfrEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 

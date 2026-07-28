@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,20 @@ public class NewInstanceWithExceptionNode extends AllocateWithExceptionNode {
         this.fillContents = fillContents;
     }
 
+    public NewInstanceWithExceptionNode(ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
+        this(type, fillContents, stateBefore, true);
+    }
+
+    public NewInstanceWithExceptionNode(ResolvedJavaType type, boolean fillContents, FrameState stateBefore, boolean mustHaveStateAfter) {
+        this(type, fillContents, stateBefore, null, mustHaveStateAfter);
+    }
+
     public NewInstanceWithExceptionNode(ResolvedJavaType type, boolean fillContents, FrameState stateBefore, FrameState stateAfter) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
+        this(type, fillContents, stateBefore, stateAfter, true);
+    }
+
+    public NewInstanceWithExceptionNode(ResolvedJavaType type, boolean fillContents, FrameState stateBefore, FrameState stateAfter, boolean mustHaveStateAfter) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), mustHaveStateAfter);
         this.instanceClass = type;
         this.fillContents = fillContents;
         this.stateBefore = stateBefore;
@@ -58,6 +70,11 @@ public class NewInstanceWithExceptionNode extends AllocateWithExceptionNode {
 
     public ResolvedJavaType instanceClass() {
         return instanceClass;
+    }
+
+    @Override
+    public boolean fillContents() {
+        return fillContents;
     }
 
     @Override

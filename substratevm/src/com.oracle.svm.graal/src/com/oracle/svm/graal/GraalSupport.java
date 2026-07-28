@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.graal;
 
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 
 // GR-49971 move to TruffleRuntimeCompilationSupport
 public class GraalSupport {
 
-    public static class GraalShutdownHook implements RuntimeSupport.Hook {
+    public static class GraalTeardownHook implements RuntimeSupport.Hook {
         @Override
         public void execute(boolean isFirstIsolate) {
             RuntimeCompilationSupport runtimeCompilationSupport = RuntimeCompilationSupport.get();

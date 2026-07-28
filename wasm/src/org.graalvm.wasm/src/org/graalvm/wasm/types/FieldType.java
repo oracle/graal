@@ -52,7 +52,7 @@ public record FieldType(StorageType storageType, byte mutability) {
             return false;
         }
         if (this.mutability == Mutability.MUTABLE) {
-            return this.storageType.equals(that.storageType);
+            return this.storageType.isSubtypeOf(that.storageType) && that.storageType.isSubtypeOf(this.storageType);
         } else {
             return this.storageType.isSubtypeOf(that.storageType);
         }

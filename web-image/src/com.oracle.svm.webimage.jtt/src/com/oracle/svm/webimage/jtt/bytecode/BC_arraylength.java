@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.webimage.jtt.bytecode;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 
 public class BC_arraylength {
     static int[] array1 = {1, 2, 3};

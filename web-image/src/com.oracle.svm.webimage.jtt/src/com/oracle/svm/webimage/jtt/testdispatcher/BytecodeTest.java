@@ -27,7 +27,7 @@ package com.oracle.svm.webimage.jtt.testdispatcher;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.webimage.jtt.bytecode.BC_aaload;
 import com.oracle.svm.webimage.jtt.bytecode.BC_aaload_1;

@@ -37,7 +37,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;

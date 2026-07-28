@@ -89,6 +89,11 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
+    public String toString(Object receiver, int identityHash, String isolate) {
+        return ((PolyglotEngineImpl) receiver).toEmbedderString(identityHash, isolate == null ? "NONE" : isolate, getImplementationName(receiver), getVersion(receiver));
+    }
+
+    @Override
     public Object requirePublicLanguage(Object oreceiver, String id) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {

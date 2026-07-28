@@ -195,7 +195,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     private static void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
         long methodId = SubstrateJVM.getMethodRepo().getMethodId(stackTraceElement.getSourceClass(), stackTraceElement.getSourceMethodName(),
-                        stackTraceElement.getSourceMethodSignature(), stackTraceElement.getSourceMethodId(), stackTraceElement.getSourceMethodModifiers());
+                        stackTraceElement.getSourceMethodSignature(), stackTraceElement.getSourceMethodId(), stackTraceElement.getSourceMethodFlags());
         JfrNativeEventWriter.putLong(data, methodId);
         JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());
         JfrNativeEventWriter.putInt(data, stackTraceElement.getBci());

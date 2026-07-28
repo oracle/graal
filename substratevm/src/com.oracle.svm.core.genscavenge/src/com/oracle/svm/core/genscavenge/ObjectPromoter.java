@@ -36,7 +36,7 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;

@@ -221,6 +221,36 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
                         byte[].class, long.class, int.class, int.class, int.class, int.class, int.class);
     }
 
+    protected ResolvedJavaMethod getIndexOf2ConsecutiveTablesIntl() {
+        return getTStringOpsMethod("indexOf2ConsecutiveTablesIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf2ConsecutiveTablesForeignEndianIntl() {
+        return getTStringOpsMethod("indexOf2ConsecutiveTablesForeignEndianIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf3ConsecutiveTablesIntl() {
+        return getTStringOpsMethod("indexOf3ConsecutiveTablesIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf3ConsecutiveTablesForeignEndianIntl() {
+        return getTStringOpsMethod("indexOf3ConsecutiveTablesForeignEndianIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf4ConsecutiveTablesIntl() {
+        return getTStringOpsMethod("indexOf4ConsecutiveTablesIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf4ConsecutiveTablesForeignEndianIntl() {
+        return getTStringOpsMethod("indexOf4ConsecutiveTablesForeignEndianIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
     protected InstalledCode cacheInstalledCodeConstantStride(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
                     InstalledCode[] cache1, int strideA, int strideB) {
         return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache1, strideA, strideB, 0);

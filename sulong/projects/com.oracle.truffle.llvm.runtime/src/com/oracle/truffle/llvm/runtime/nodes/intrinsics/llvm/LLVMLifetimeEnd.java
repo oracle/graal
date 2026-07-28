@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,12 +33,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "size")
-@NodeChild(type = LLVMExpressionNode.class, value = "expected")
+@NodeChild(type = LLVMExpressionNode.class, value = "ptr")
 public abstract class LLVMLifetimeEnd extends LLVMBuiltin {
 
     @Specialization
-    protected Object doI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
+    protected Object doI1(@SuppressWarnings("unused") Object ptr) {
         return null;
     }
 }

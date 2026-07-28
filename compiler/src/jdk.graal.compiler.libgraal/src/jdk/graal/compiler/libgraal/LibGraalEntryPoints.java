@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
@@ -76,7 +77,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates {@link CEntryPoint} implementations.
@@ -134,22 +134,23 @@ final class LibGraalEntryPoints {
      * @param optionsSize the number of bytes in the buffer
      * @param optionsHash hash code of bytes in the buffer (computed with
      *            {@link Arrays#hashCode(byte[])})
-     * @param stackTraceAddress a native buffer in which a serialized stack trace can be returned.
-     *            The caller will only read from this buffer if this method returns 0. A returned
-     *            serialized stack trace is returned in this buffer with the following format:
+     * @param compilationFailureBufferAddress a native buffer in which failure information can be
+     *            returned. The caller will only read from this buffer if this method returns 0. The
+     *            buffer has the following format:
      *
      *            <pre>
      *               struct {
-     *                   int   length;
-     *                   byte  data[length]; // Bytes from a stack trace printed to a ByteArrayOutputStream.
+     *                   int   retry;
+     *                   int   stackTraceLength;
+     *                   byte  stackTrace[stackTraceLength]; // Bytes from a stack trace printed to a ByteArrayOutputStream.
      *               }
      *            </pre>
      *
-     *            where {@code length} is truncated to {@code stackTraceCapacity - 4} if necessary
+     *            where {@code stackTraceLength} is truncated to
+     *            {@code compilationFailureBufferCapacity - 8} if necessary
      *
-     * @param stackTraceCapacity the size of the stack trace buffer
-     * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
-     *            measurements of the compilation
+     * @param compilationFailureBufferCapacity the size of the compilation failure buffer
+     * @param timeAndMemBufferAddress 16-byte native buffer to store memory and time measurements
      * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
      *            {@code Options#LoadProfiles} path.
      * @return a handle to a {@code InstalledCode} in HotSpot's heap or 0 if compilation failed
@@ -167,10 +168,11 @@ final class LibGraalEntryPoints {
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
-                    long stackTraceAddress,
-                    int stackTraceCapacity,
+                    long compilationFailureBufferAddress,
+                    int compilationFailureBufferCapacity,
                     long timeAndMemBufferAddress,
                     long profilePathBufferAddress) {
+        boolean retry = false;
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
@@ -196,6 +198,7 @@ final class LibGraalEntryPoints {
                 }
                 HotSpotCompilationRequestResult compilationRequestResult = task.runCompilation(options);
                 if (compilationRequestResult.getFailure() != null) {
+                    retry = compilationRequestResult.getRetry();
                     throw new GraalError(compilationRequestResult.getFailureMessage());
                 }
                 if (timeAndMemBufferAddress != 0) {
@@ -215,12 +218,16 @@ final class LibGraalEntryPoints {
                 return runtime.translate(installedCode);
             }
         } catch (Throwable t) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            t.printStackTrace(new PrintStream(baos));
-            byte[] stackTrace = baos.toByteArray();
-            int length = Math.min(stackTraceCapacity - Integer.BYTES, stackTrace.length);
-            Unsafe.getUnsafe().putInt(stackTraceAddress, length);
-            Unsafe.getUnsafe().copyMemory(stackTrace, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, stackTraceAddress + Integer.BYTES, length);
+            if (compilationFailureBufferAddress != 0) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                t.printStackTrace(new PrintStream(baos));
+                byte[] stackTrace = baos.toByteArray();
+                int headerSize = 2 * Integer.BYTES;
+                int length = Math.min(compilationFailureBufferCapacity - headerSize, stackTrace.length);
+                Unsafe.getUnsafe().putInt(compilationFailureBufferAddress, retry ? 1 : 0);
+                Unsafe.getUnsafe().putInt(compilationFailureBufferAddress + Integer.BYTES, length);
+                Unsafe.getUnsafe().copyMemory(stackTrace, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, compilationFailureBufferAddress + headerSize, length);
+            }
             return 0L;
         } finally {
             /*

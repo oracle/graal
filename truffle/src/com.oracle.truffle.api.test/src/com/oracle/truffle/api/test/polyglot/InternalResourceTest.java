@@ -1497,4 +1497,22 @@ public class InternalResourceTest {
             ReflectionUtils.invokeStatic(internalResourceCacheClass, "setTestCacheRoot", new Class<?>[]{Path.class, boolean.class}, root, nativeImageRuntime);
         }
     }
+
+    @Registration
+    static final class SetResourceRootInIsolate extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Path root = Path.of((String) contextArguments[0]);
+            TemporaryResourceCacheRoot.setTestCacheRoot(root, true);
+            return null;
+        }
+
+        static void set(Context context, Path root) {
+            if (TruffleTestAssumptions.isIsolateEncapsulation()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(context, SetResourceRootInIsolate.class, "", root.toAbsolutePath().toString());
+            }
+        }
+    }
 }

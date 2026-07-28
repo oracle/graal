@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,10 @@ package org.graalvm.wasm.types;
  * definitions. You can query the subtyping relation on types using the predicate
  * {@link #isSubtypeOf(ValueType)}.
  * <p>
- * If you need to check whether two types are equivalent, instead of checking
- * {@code A.isSubtypeOf(B) && B.isSubtypeOf(A)}, you can use {@code A.equals(B)}, since, in the
- * WebAssembly type system, type equivalence corresponds to structural equality.
+ * To check whether two types are equivalent, use
+ * {@code A.isSubtypeOf(B) && B.isSubtypeOf(A)}. The {@link Object#equals(Object)} methods on type
+ * representations can be used as an equivalence predicate only for top-level types. Embedded
+ * recursive references carry representation-specific markers that affect equality.
  * </p>
  */
 public sealed interface ValueType extends StorageType permits NumberType, VectorType, ReferenceType {

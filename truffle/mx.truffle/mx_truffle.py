@@ -359,6 +359,8 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = [*vmArgs, "-Dpolyglot.engine.WarnVirtualThreadSupport=false"]
+        # Disable MethodScoping warning
+        vmArgs = [*vmArgs, "-Dpolyglot.engine.WarnMethodScoping=false"]
         append_unittest_image_build_time_options(vmArgs)
         enable_truffle_native_access(vmArgs)
         enable_sun_misc_unsafe(vmArgs)
@@ -618,7 +620,9 @@ class TruffleGateTags:
     truffle_jvm = ["truffle-jvm"]
     truffle_jvm_lite = ["truffle-jvm-lite", "truffle-jvm"]
     truffle_native = ["truffle-native"]
-    truffle_native_lite = ["truffle-native-lite", "truffle-native"]
+    truffle_native0 = ["truffle-native0", "truffle-native"]
+    truffle_native1 = ["truffle-native1", "truffle-native"]
+    truffle_native_lite = ["truffle-native-lite", "truffle-native0", "truffle-native"]
     # LibC Musl tests need special setup so we can't run them in truffle-native
     truffle_native_libcmusl_static = ["truffle-native-libcmusl-static"]
 
@@ -710,21 +714,21 @@ def gate_truffle_jvm(tasks):
 
 
 def gate_truffle_native(tasks):
-    with Task("Truffle SL Native ModulePath", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native ModulePath", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_fallback_gate_tests(force_cp=False)
             _sl_native_optimized_gate_tests(force_cp=False)
 
-    with Task("Truffle SL Native Open World Test", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native Open World Test", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_open_world_gate_tests(force_cp=False)
 
-    with Task("Truffle SL Native ClassPath", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle SL Native ClassPath", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             _sl_native_fallback_gate_tests(force_cp=True)
             _sl_native_optimized_gate_tests(force_cp=True)
 
-    with Task("Truffle Native Unit Preinitialization Tests", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Preinitialization Tests", tasks, tags=TruffleGateTags.truffle_native0) as t:
         if t:
             truffle_native_context_preinitialization_tests()
 
@@ -732,11 +736,11 @@ def gate_truffle_native(tasks):
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=True)
 
-    with Task("Truffle Native Unit Tests Fallback", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Tests Fallback", tasks, tags=TruffleGateTags.truffle_native1) as t:
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=False)
 
-    with Task("Truffle Native Unit Tests Quick Build", tasks, tags=TruffleGateTags.truffle_native) as t:
+    with Task("Truffle Native Unit Tests Quick Build", tasks, tags=TruffleGateTags.truffle_native1) as t:
         if t:
             truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=["-Ob"])
 
@@ -1899,7 +1903,7 @@ def register_polyglot_isolate_distributions(
     :param str maven_group_id: The maven language group id.
     :param str | list | language_license: Language licence(s).
     :param list isolate_build_options: additional options passed to a native image to build the isolate library.
-    :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+    :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-aarch64', 'windows-amd64']
     :param list additional_image_path_artifacts: additional artifacts to include in the polyglot isolate library image path
     :param list additional_language_ids: language ids of additional languages added into polyglot isolate library
     """
@@ -1951,7 +1955,6 @@ def register_polyglot_isolate_distributions(
         platforms = [
             "linux-amd64",
             "linux-aarch64",
-            "darwin-amd64",
             "darwin-aarch64",
             "windows-amd64",
         ]
@@ -2382,7 +2385,7 @@ class LibffiBuilderProject(mx_native.MultitargetProject):
             else:
                 assert toolchain.spec.target.os == "linux"
 
-                configure_arch = {"amd64": "x86_64", "aarch64": "aarch64"}.get(toolchain.spec.target.arch)
+                configure_arch = {"amd64": "x86_64", "aarch64": "aarch64", "riscv64": "riscv64"}.get(toolchain.spec.target.arch)
                 assert configure_arch, "translation to configure style arch is not supported yet for " + str(
                     toolchain.spec.target.arch
                 )
@@ -2561,9 +2564,7 @@ mx_sdk_vm.register_graalvm_component(
             "GraalVM Launcher Common",
         ],
         jar_distributions=[],
-        jvmci_parent_jars=[
-            "truffle:LOCATOR",
-        ],
+        jvmci_parent_jars=[],
         stability="supported",
     )
 )
