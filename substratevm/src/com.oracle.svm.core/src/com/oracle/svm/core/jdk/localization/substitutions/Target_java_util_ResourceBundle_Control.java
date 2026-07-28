@@ -44,19 +44,6 @@ import jdk.internal.util.ReferencedKeyMap;
 import sun.util.locale.BaseLocale;
 import sun.util.resources.Bundles;
 
-@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
-@SuppressWarnings("unused")
-final class Target_java_util_ResourceBundle_Control_Cache {
-
-    /*
-     * This cache only memoizes candidate locale lists derived by Control.createCandidateList().
-     * That computation is pure and fully reconstructible from the BaseLocale key, so a fresh cache
-     * preserves the default JDK behavior while avoiding analysis-time cache rescans.
-     */
-    @Alias @TargetElement(name = "CANDIDATES_CACHE") @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-    private static ReferencedKeyMap<BaseLocale, List<Locale>> candidatesCache = ReferencedKeyMap.create(true, ConcurrentHashMap::new);
-}
-
 /**
  * In the no-runtime-class-loading mode, resource bundles are limited to the classes and resources
  * already included in the image. Runtime class loading keeps the JDK implementation so classes
@@ -107,4 +94,17 @@ final class Target_java_util_ResourceBundle_Control {
     @Alias
     private native ResourceBundle newBundle0(String bundleName, String format, ClassLoader loader, boolean reload)
                     throws IllegalAccessException, InstantiationException, IOException;
+}
+
+@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
+@SuppressWarnings("unused")
+final class Target_java_util_ResourceBundle_Control_Cache {
+
+    /*
+     * This cache only memoizes candidate locale lists derived by Control.createCandidateList().
+     * That computation is pure and fully reconstructible from the BaseLocale key, so a fresh cache
+     * preserves the default JDK behavior while avoiding analysis-time cache rescans.
+     */
+    @Alias @TargetElement(name = "CANDIDATES_CACHE") @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    private static ReferencedKeyMap<BaseLocale, List<Locale>> candidatesCache = ReferencedKeyMap.create(true, ConcurrentHashMap::new);
 }

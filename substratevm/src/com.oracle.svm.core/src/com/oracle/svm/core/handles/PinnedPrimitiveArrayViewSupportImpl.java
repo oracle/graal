@@ -36,21 +36,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@AutomaticallyRegisteredFeature
-final class PinnedPrimitiveArrayViewFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(PrimitiveArrayViewSupport.class)) {
-            ImageSingletons.add(PrimitiveArrayViewSupport.class, new PinnedPrimitiveArrayViewSupportImpl());
-        }
-    }
-}
-
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 final class PinnedPrimitiveArrayViewSupportImpl implements PrimitiveArrayViewSupport {
     static final class PinnedPrimitiveElementArrayReferenceImpl implements PrimitiveArrayView {
@@ -93,5 +78,20 @@ final class PinnedPrimitiveArrayViewSupportImpl implements PrimitiveArrayViewSup
     @Override
     public PrimitiveArrayView createForReadingAndWriting(Object object) {
         return new PinnedPrimitiveElementArrayReferenceImpl(object);
+    }
+}
+
+@AutomaticallyRegisteredFeature
+final class PinnedPrimitiveArrayViewFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(PrimitiveArrayViewSupport.class)) {
+            ImageSingletons.add(PrimitiveArrayViewSupport.class, new PinnedPrimitiveArrayViewSupportImpl());
+        }
     }
 }

@@ -61,6 +61,10 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.internal.misc.Unsafe;
 import sun.net.www.ParseUtil;
 
+/** Dummy class to have a class with the file's name. */
+class Target_jdk_internal_module_ModuleReaders {
+}
+
 /**
  * Makes build-time embedded resources compose with runtime jimage-backed resources for system
  * modules. Embedded resources take precedence over runtime jimage or module-path resources.
@@ -469,8 +473,4 @@ final class ResourceBasedModuleReaderSupport {
     static boolean isRedactedFilePath(String path) {
         return path != null && path.startsWith(REDACTED_FILE_PATH_PREFIX);
     }
-}
-
-/** Dummy class to have a class with the file's name. */
-class Target_jdk_internal_module_ModuleReaders {
 }

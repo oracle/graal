@@ -28,6 +28,43 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 /**
+ * The sequence is assumed to be very long and the maximum, avg, sd, davg, and dsd are calculated
+ * over all its elements.
+ */
+class NumberSeq extends AbstractSeq {
+    private double last = 0.0;
+    /** keep track of maximum value. */
+    private double maximum = 0.0;
+
+    /** Constructs a NumberSeq with the specified decay factor. */
+    NumberSeq(double alpha) {
+        super(alpha);
+    }
+
+    /** Adds a new value to the sequence. */
+    @Override
+    public void add(double val) {
+        super.add(val);
+
+        last = val;
+        if (num == 0) {
+            maximum = val;
+        } else if (val > maximum) {
+            maximum = val;
+        }
+        sum += val;
+        sumOfSquares += val * val;
+        num++;
+    }
+
+    /** Returns the last element added. */
+    @Override
+    public double last() {
+        return last;
+    }
+}
+
+/**
  * Abstract superclass for classes that represent number sequences, x1, x2, x3, ..., xN, and can
  * calculate their avg, max, and sd.
  *
@@ -144,43 +181,6 @@ abstract class AbstractSeq {
         double v = dvariance();
         VMError.guarantee(v >= 0.0);
         return Math.sqrt(v);
-    }
-}
-
-/**
- * The sequence is assumed to be very long and the maximum, avg, sd, davg, and dsd are calculated
- * over all its elements.
- */
-class NumberSeq extends AbstractSeq {
-    private double last = 0.0;
-    /** keep track of maximum value. */
-    private double maximum = 0.0;
-
-    /** Constructs a NumberSeq with the specified decay factor. */
-    NumberSeq(double alpha) {
-        super(alpha);
-    }
-
-    /** Adds a new value to the sequence. */
-    @Override
-    public void add(double val) {
-        super.add(val);
-
-        last = val;
-        if (num == 0) {
-            maximum = val;
-        } else if (val > maximum) {
-            maximum = val;
-        }
-        sum += val;
-        sumOfSquares += val * val;
-        num++;
-    }
-
-    /** Returns the last element added. */
-    @Override
-    public double last() {
-        return last;
     }
 }
 

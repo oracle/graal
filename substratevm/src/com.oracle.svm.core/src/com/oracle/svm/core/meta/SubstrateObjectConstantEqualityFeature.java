@@ -33,6 +33,16 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
+@AutomaticallyRegisteredFeature
+final class SubstrateObjectConstantEqualityFeature implements InternalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ObjectConstantEquality.class)) {
+            ImageSingletons.add(ObjectConstantEquality.class, new SubstrateObjectConstantEquality());
+        }
+    }
+}
+
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
 
@@ -44,15 +54,5 @@ final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
             return ((DirectSubstrateObjectConstant) x).getObject() == ((DirectSubstrateObjectConstant) y).getObject();
         }
         throw VMError.shouldNotReachHere("Unknown object constants: " + x + " and " + y);
-    }
-}
-
-@AutomaticallyRegisteredFeature
-final class SubstrateObjectConstantEqualityFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(ObjectConstantEquality.class)) {
-            ImageSingletons.add(ObjectConstantEquality.class, new SubstrateObjectConstantEquality());
-        }
     }
 }

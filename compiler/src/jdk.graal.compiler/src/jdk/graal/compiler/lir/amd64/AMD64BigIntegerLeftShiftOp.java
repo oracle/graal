@@ -103,6 +103,7 @@ public final class AMD64BigIntegerLeftShiftOp extends AMD64LIRInstruction {
         this.shiftCountValue = shiftCountValue;
         this.totalNumIterValue = totalNumIterValue;
         this.tmpValues = new Value[]{
+                        rdi.asValue(),
                         rax.asValue(),
                         rbx.asValue(),
                         r9.asValue(),

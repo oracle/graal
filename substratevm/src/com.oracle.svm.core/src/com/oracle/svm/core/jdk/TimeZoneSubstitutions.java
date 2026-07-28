@@ -60,6 +60,9 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
+class TimeZoneSubstitutions {
+}
+
 /**
  * The following classes aim to provide full support for time zones for native-image. This
  * substitution is necessary due to the reliance on JAVA_HOME in the JDK.
@@ -223,7 +226,4 @@ final class TimeZoneFeature implements InternalFeature {
          */
         ZoneId.systemDefault();
     }
-}
-
-class TimeZoneSubstitutions {
 }

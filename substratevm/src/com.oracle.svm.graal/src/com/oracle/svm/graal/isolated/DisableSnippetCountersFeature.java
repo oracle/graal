@@ -46,6 +46,27 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
+ * Disables snippet counters because they need a {@link SnippetReflectionProvider} which is not
+ * fully supported for cross-isolate compilations.
+ *
+ * In general snippets counters should only enabled if the flag SnippetCounters is set.
+ */
+@AutomaticallyRegisteredFeature
+final class DisableSnippetCountersFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.SupportCompileInIsolates.getValue() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton().get());
+    }
+
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        if (reason == ParsingReason.JITCompilation) {
+            plugins.appendNodePlugin(new DisableSnippetCountersPlugin());
+        }
+    }
+}
+
+/**
  * Adapted from code of {@link SymbolicSnippetEncoder}.
  */
 final class DisableSnippetCountersPlugin implements NodePlugin {
@@ -67,26 +88,5 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
             return true;
         }
         return false;
-    }
-}
-
-/**
- * Disables snippet counters because they need a {@link SnippetReflectionProvider} which is not
- * fully supported for cross-isolate compilations.
- *
- * In general snippets counters should only enabled if the flag SnippetCounters is set.
- */
-@AutomaticallyRegisteredFeature
-final class DisableSnippetCountersFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.SupportCompileInIsolates.getValue() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton().get());
-    }
-
-    @Override
-    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason == ParsingReason.JITCompilation) {
-            plugins.appendNodePlugin(new DisableSnippetCountersPlugin());
-        }
     }
 }

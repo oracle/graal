@@ -34,6 +34,20 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
+@TargetClass(className = "sun.nio.ch.Util")
+final class Target_sun_nio_ch_Util {
+
+    @Substitute
+    private static MappedByteBuffer newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
+    }
+
+    @Substitute
+    static MappedByteBuffer newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
+    }
+}
+
 @TargetClass(className = "java.lang.foreign.MemorySegment")
 @SuppressWarnings("unused")
 final class Target_java_lang_foreign_MemorySegment {
@@ -50,19 +64,5 @@ final class Target_java_nio_DirectByteBufferR {
 
     @Alias
     protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, Target_java_lang_foreign_MemorySegment segment) {
-    }
-}
-
-@TargetClass(className = "sun.nio.ch.Util")
-final class Target_sun_nio_ch_Util {
-
-    @Substitute
-    private static MappedByteBuffer newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
-    }
-
-    @Substitute
-    static MappedByteBuffer newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
     }
 }

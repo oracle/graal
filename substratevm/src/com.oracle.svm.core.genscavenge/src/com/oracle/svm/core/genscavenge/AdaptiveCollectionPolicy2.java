@@ -36,98 +36,6 @@ import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-/** Constants for policy tunables. */
-interface AdaptiveCollectionPolicy2Tunables {
-
-    /**
-     * Start out with the same sizes for young and old generation. This leads to less frequent minor
-     * collections and tenuring at startup especially with {@link #YOUNG_GENERATION_SIZE_SUPPLEMENT}
-     * disabled. (The HotSpot NewRatio default is 2, so 1:2 for young:old)
-     */
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L553-L557") //
-    int INITIAL_NEW_RATIO = 1;
-
-    /*
-     *
-     * The following are -XX options in HotSpot, refer to their descriptions for details. The values
-     * are HotSpot defaults unless labeled otherwise.
-     *
-     * Don't change these values individually without carefully going over their occurrences in
-     * HotSpot source code, there are dependencies between them that are not handled in our code.
-     *
-     */
-
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L325-L401") // actually:jdk-26+25#L308-L353
-    int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
-    int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
-    int PROMOTED_PADDING = 3;
-    int THRESHOLD_TOLERANCE = 10;
-    /**
-     * Maximum size increment step percentage. We reduce it from HotSpot's default to avoid growing
-     * the heap too eagerly and overshooting.
-     */
-    int YOUNG_GENERATION_SIZE_INCREMENT = 10; // HotSpot default: 20
-    /*
-     * Supplement to accelerate heap expansion at startup. We do not use it to avoid growing the
-     * heap too eagerly and overshooting.
-     */
-    int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
-    int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
-    double MAX_GC_PAUSE_MILLIS = UnsignedUtils.toDouble(UnsignedUtils.MAX_VALUE.subtract(1));
-    /**
-     * Target for throughput, which is the ratio of mutator wall-clock time to GC wall-clock time.
-     * Eden grows until reaching this ratio. HotSpot's default is 99, so, spending 1% of time in GC.
-     *
-     * With our single-threaded collector, we cannot expect to always scale with the allocations of
-     * a multi-threaded mutator by growing spaces, and often end up with long pause times instead.
-     * Therefore we set this to 1, i.e., 50%. Beyond that, we use {@link #MIN_GC_DISTANCE_SECOND} to
-     * drive eden size, avoiding collecting too frequently and starving the mutator.
-     */
-    int GC_TIME_RATIO = 1;
-    int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
-    /**
-     * The tenuring threshold at startup (HotSpot default: 7). The policy intentionally never
-     * reduces the tenuring threshold, so this is also its minimum value.
-     */
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L576-L581") //
-    int INITIAL_TENURING_THRESHOLD = 7;
-
-    /*
-     * We don't want to limit our freedom to adjust the heap. (Unless set explicitly, these options
-     * are set to these values in ParallelArguments::initialize on HotSpot)
-     */
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/parallelArguments.cpp#L57-L68") //
-    int MIN_HEAP_FREE_RATIO = 0; // %
-    int MAX_HEAP_FREE_RATIO = 100; // %
-    /** On HotSpot, this is the behavior if {@link #MIN_HEAP_FREE_RATIO} is not set explicitly. */
-    boolean SHRINK_OLD_CAUTIOUSLY = true;
-
-    /*
-     *
-     * Constants in class AdaptiveSizePolicy.
-     *
-     */
-
-    /** [0, 1]; closer to 1 means assigning more weight to most recent samples. */
-    double SEQ_DEFAULT_ALPHA_VALUE = 0.75;
-
-    /**
-     * Minimal distance between two consecutive GC pauses; shorter distance (more frequent gc) can
-     * hinder app throughput. Additionally, too frequent gc means objs haven't got time to die yet,
-     * so the number of promoted objs will be high. HotSpot default: 100ms.
-     *
-     * Beyond the minimum throughput via {@link #GC_TIME_RATIO}, we use distance to set eden size so
-     * the mutator can make sufficient progress and to limit overhead from frequent safepoints.
-     * Enforcing longer distance generally results in higher memory usage, and when it does not lead
-     * to a larger share of dying objects, causes longer pauses with little throughput improvement.
-     *
-     * 20ms seems to strike a good balance for us.
-     */
-    double MIN_GC_DISTANCE_SECOND = 0.020;
-
-    int NUM_OF_GC_SAMPLE = 32;
-}
-
 /**
  * A garbage collection policy that balances throughput and memory footprint (and optionally pause
  * times, which we currently don't consider).
@@ -619,6 +527,98 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
         double promotionRate = promoted / (gcDistanceSecondsSeq.last() + trimmedMinorGcTimeSeconds.last());
         promotionRateBytesPerSec.add(promotionRate);
     }
+}
+
+/** Constants for policy tunables. */
+interface AdaptiveCollectionPolicy2Tunables {
+
+    /**
+     * Start out with the same sizes for young and old generation. This leads to less frequent minor
+     * collections and tenuring at startup especially with {@link #YOUNG_GENERATION_SIZE_SUPPLEMENT}
+     * disabled. (The HotSpot NewRatio default is 2, so 1:2 for young:old)
+     */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L553-L557") //
+    int INITIAL_NEW_RATIO = 1;
+
+    /*
+     *
+     * The following are -XX options in HotSpot, refer to their descriptions for details. The values
+     * are HotSpot defaults unless labeled otherwise.
+     *
+     * Don't change these values individually without carefully going over their occurrences in
+     * HotSpot source code, there are dependencies between them that are not handled in our code.
+     *
+     */
+
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L325-L401") // actually:jdk-26+25#L308-L353
+    int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
+    int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
+    int PROMOTED_PADDING = 3;
+    int THRESHOLD_TOLERANCE = 10;
+    /**
+     * Maximum size increment step percentage. We reduce it from HotSpot's default to avoid growing
+     * the heap too eagerly and overshooting.
+     */
+    int YOUNG_GENERATION_SIZE_INCREMENT = 10; // HotSpot default: 20
+    /*
+     * Supplement to accelerate heap expansion at startup. We do not use it to avoid growing the
+     * heap too eagerly and overshooting.
+     */
+    int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
+    int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
+    double MAX_GC_PAUSE_MILLIS = UnsignedUtils.toDouble(UnsignedUtils.MAX_VALUE.subtract(1));
+    /**
+     * Target for throughput, which is the ratio of mutator wall-clock time to GC wall-clock time.
+     * Eden grows until reaching this ratio. HotSpot's default is 99, so, spending 1% of time in GC.
+     *
+     * With our single-threaded collector, we cannot expect to always scale with the allocations of
+     * a multi-threaded mutator by growing spaces, and often end up with long pause times instead.
+     * Therefore we set this to 1, i.e., 50%. Beyond that, we use {@link #MIN_GC_DISTANCE_SECOND} to
+     * drive eden size, avoiding collecting too frequently and starving the mutator.
+     */
+    int GC_TIME_RATIO = 1;
+    int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
+    /**
+     * The tenuring threshold at startup (HotSpot default: 7). The policy intentionally never
+     * reduces the tenuring threshold, so this is also its minimum value.
+     */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L576-L581") //
+    int INITIAL_TENURING_THRESHOLD = 7;
+
+    /*
+     * We don't want to limit our freedom to adjust the heap. (Unless set explicitly, these options
+     * are set to these values in ParallelArguments::initialize on HotSpot)
+     */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/parallelArguments.cpp#L57-L68") //
+    int MIN_HEAP_FREE_RATIO = 0; // %
+    int MAX_HEAP_FREE_RATIO = 100; // %
+    /** On HotSpot, this is the behavior if {@link #MIN_HEAP_FREE_RATIO} is not set explicitly. */
+    boolean SHRINK_OLD_CAUTIOUSLY = true;
+
+    /*
+     *
+     * Constants in class AdaptiveSizePolicy.
+     *
+     */
+
+    /** [0, 1]; closer to 1 means assigning more weight to most recent samples. */
+    double SEQ_DEFAULT_ALPHA_VALUE = 0.75;
+
+    /**
+     * Minimal distance between two consecutive GC pauses; shorter distance (more frequent gc) can
+     * hinder app throughput. Additionally, too frequent gc means objs haven't got time to die yet,
+     * so the number of promoted objs will be high. HotSpot default: 100ms.
+     *
+     * Beyond the minimum throughput via {@link #GC_TIME_RATIO}, we use distance to set eden size so
+     * the mutator can make sufficient progress and to limit overhead from frequent safepoints.
+     * Enforcing longer distance generally results in higher memory usage, and when it does not lead
+     * to a larger share of dying objects, causes longer pauses with little throughput improvement.
+     *
+     * 20ms seems to strike a good balance for us.
+     */
+    double MIN_GC_DISTANCE_SECOND = 0.020;
+
+    int NUM_OF_GC_SAMPLE = 32;
 }
 
 /*

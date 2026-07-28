@@ -36,6 +36,15 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
+@TargetClass(URLClassLoader.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_java_net_URLClassLoader {
+    /* Drop build-time resource streams and closeables from URLClassLoader instances in the image heap. */
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = WeakHashMap.class)//
+    private WeakHashMap<Closeable, Void> closeables;
+}
+
 @TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_URLClassPath {
@@ -74,13 +83,4 @@ final class Target_jdk_internal_loader_Resource {
 
     @Alias
     public native URL getCodeSourceURL();
-}
-
-@TargetClass(URLClassLoader.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_java_net_URLClassLoader {
-    /* Drop build-time resource streams and closeables from URLClassLoader instances in the image heap. */
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = WeakHashMap.class)//
-    private WeakHashMap<Closeable, Void> closeables;
 }

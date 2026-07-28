@@ -4,6 +4,10 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
+    <module name="OuterTypeFilename">
+      <message key="type.file.mismatch"
+               value="The top-level type matching the filename must be declared first in the file."/>
+    </module>
 
     <!-- Disallows direct calls to "AnnotatedElement.get(Declared)Annotation(s)". This check can yield false positives,
     i.e., it will match any ".get(Declared)Annotation(s)" calls that are not preceded by "AnnotationAccess"

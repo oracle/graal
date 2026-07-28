@@ -69,19 +69,6 @@ import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
-    private final ConcurrentMap<ResolvedJavaMethod, PodFactorySubstitutionMethod> substitutions = new ConcurrentHashMap<>();
-
-    @Override
-    public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (method.isSynthetic() && AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), PodFactory.class) && !method.isConstructor()) {
-            assert !(method instanceof CustomSubstitutionMethod);
-            return substitutions.computeIfAbsent(method, PodFactorySubstitutionMethod::new);
-        }
-        return method;
-    }
-}
-
 final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     private static class DeoptInfoProvider {
@@ -308,5 +295,18 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             }
         }
         throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
+    }
+}
+
+final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
+    private final ConcurrentMap<ResolvedJavaMethod, PodFactorySubstitutionMethod> substitutions = new ConcurrentHashMap<>();
+
+    @Override
+    public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
+        if (method.isSynthetic() && AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), PodFactory.class) && !method.isConstructor()) {
+            assert !(method instanceof CustomSubstitutionMethod);
+            return substitutions.computeIfAbsent(method, PodFactorySubstitutionMethod::new);
+        }
+        return method;
     }
 }
