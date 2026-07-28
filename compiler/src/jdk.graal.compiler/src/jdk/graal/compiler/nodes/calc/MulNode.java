@@ -164,8 +164,10 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                     long lowerBitValue = i - highestBitValue;
                     assert highestBitValue > 0 && lowerBitValue > 0 : Assertions.errorMessageContext("stamp", stamp, "forX", forX, "i", i, "highestBitVal", highestBitValue, "lowerBitVal",
                                     lowerBitValue);
+                    // The lower bit cannot be one because that case is handled by i - 1 above.
+                    assert lowerBitValue > 1 : Assertions.errorMessageContext("stamp", stamp, "forX", forX, "i", i, "lowerBitVal", lowerBitValue);
                     ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(highestBitValue)));
-                    ValueNode right = lowerBitValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
+                    ValueNode right = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
                     return AddNode.create(left, right, view);
                 } else {
                     // e.g., 0b1111_1100
@@ -173,6 +175,8 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                     long subValue = (1L << shiftToRoundUpToPowerOf2) - i;
                     if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
                         ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(shiftToRoundUpToPowerOf2));
+                        // For Long.MAX_VALUE, i + 1 overflows, so this valid subtraction by one is
+                        // not handled by the preceding i + 1 check.
                         ValueNode right = subValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
                         return SubNode.create(left, right, view);
                     }
