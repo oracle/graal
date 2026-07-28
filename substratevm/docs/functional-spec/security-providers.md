@@ -108,6 +108,8 @@ Type access, declared nullary constructor access, and qualifying `provider()` me
 alternative registration signals.
 Registering any one of them is sufficient to register the provider class.
 Type access alone does not make a provider JDK-constructible.
+Using ordinary reflection metadata as this registration signal implements
+[§DF-standard-jca-semantics.2](decisions/standard-jca-semantics.md#2-decision).
 
 ### 2.2 Provider Construction
 
@@ -129,7 +131,8 @@ Registering a provider class that is not JDK-constructible does not include its 
 used through an application-supplied instance must be retained independently.
 Provider registration does not change the configured provider order or make an unconfigured
 provider visible by name.
-This behavior implements §DF-complete-security-provider-registration.2.
+This behavior implements
+[§DF-complete-security-provider-registration.2](decisions/complete-security-provider-registration.md#2-decision).
 
 ### 2.4 SecureRandom Providers
 
@@ -153,8 +156,8 @@ Native Image internal runtime randomness must cause this registration only in an
 includes the runtime-compilation subsystem that consumes that randomness.
 The presence of the optional internal randomness implementation must not register SUN in an
 ordinary executable.
-
-This behavior implements §DF-default-secure-random-provider.2.
+This behavior implements
+[§DF-default-secure-random-provider.2](decisions/default-secure-random-provider.md#2-decision).
 
 ## 3. Permitted Run-Time Access
 
@@ -376,6 +379,13 @@ with run-time initialization, and explicit registration with run-time initializa
 
 With `--future-defaults=run-time-initialize-security-providers`, Native Image constructs the
 run-time provider list from the configured security properties using only registered providers.
+When a configured entry names a provider that the JDK resolves through `ServiceLoader`, Native
+Image applies the registration decision to the resolved provider class rather than treating the
+provider name as a class name.
+At run time, Native Image loads that resolved provider directly through its registered public
+nullary construction path.
+It does not scan or instantiate unrelated provider descriptors while resolving the configured
+name.
 An unregistered provider is not added to the list, and its services remain unavailable.
 Filtering unregistered providers preserves the ordering and lookup results specified in sections
 1.3, 3.2, and 4.
@@ -399,10 +409,15 @@ when their provider classes have no reflection metadata.
 In this compatibility mode, pre-existing reflection metadata for a provider remains inert unless
 another compatibility registration signal includes that provider; Native Image must not construct
 the provider or expand its complete service catalog merely because its type is registered.
+Type-only metadata collected for an application-supplied provider still establishes the class-based
+JCE verification outcome specified in section 5.3. This verification-only effect must not cause
+Native Image to construct the provider, register a construction path, or expand its service catalog.
 This compatibility behavior applies to supported facades such as the Generic Security Services API
 (GSS-API).
 For example, reachability of any `Signature.getInstance` overload can cause signature services and
 their providers to be included.
+When this service-driven behavior includes a provider, it preserves the earlier compatibility
+registration of every public provider constructor.
 The rule is based on reachability of the service factory and service type, not on build-time
 evaluation of the run-time algorithm argument.
 
@@ -413,6 +428,8 @@ a lookup that reflectively loads the provider follows section 4.3.
 The platform-owned `SecureRandom` registration signal in section 2.4 remains enabled.
 It registers complete providers for this commonly used JDK facility rather than inferring partial
 provider support from a general service factory.
+This planned behavior implements
+[§DF-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision).
 
 ### 7.4 Earlier Build-Time Initialization Behavior
 
