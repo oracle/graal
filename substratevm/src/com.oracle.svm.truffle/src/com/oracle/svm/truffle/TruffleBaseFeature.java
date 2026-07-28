@@ -821,6 +821,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             AnalysisType type = access.getMetaAccess().lookupJavaType(receiverClass);
             if (type.isInstantiated() && pendingExportLibraryReceiverClasses.remove(receiverClass)) {
                 initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                a.requireAnalysisIteration();
             }
         }
         access.rescanRoot(layoutInfoMapField, scanReason);
