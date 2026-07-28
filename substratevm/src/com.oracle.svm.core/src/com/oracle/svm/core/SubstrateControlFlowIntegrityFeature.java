@@ -33,6 +33,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 public class SubstrateControlFlowIntegrityFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        SubstrateControlFlowIntegrity.validateConfiguration(SubstrateControlFlowIntegrity.Options.CFI.getValue(), true);
         ImageSingletons.add(SubstrateControlFlowIntegrity.class, new SubstrateControlFlowIntegrity());
     }
 }

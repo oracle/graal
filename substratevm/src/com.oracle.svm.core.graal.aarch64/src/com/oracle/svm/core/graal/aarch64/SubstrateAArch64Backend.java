@@ -218,6 +218,18 @@ import jdk.vm.ci.meta.Value;
 public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<SubstrateAArch64MacroAssembler> implements LIRGenerationProvider {
     public static final Register HIDDEN_ARGUMENT_REGISTER = AArch64.r12;
 
+    protected static void emitCFIPrologue(AArch64MacroAssembler masm) {
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            masm.paciasp();
+        }
+    }
+
+    protected static void emitCFIEpilogue(AArch64MacroAssembler masm) {
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            masm.autiasp();
+        }
+    }
+
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
     }
@@ -1125,6 +1137,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 });
             }
 
+            emitCFIPrologue(masm);
             makeFrameWithoutRuntimeCodeOffset(crb, masm, totalFrameSize, frameSize);
         }
 
@@ -1189,6 +1202,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 }
             }
 
+            emitCFIEpilogue(masm);
             crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
         }
 
