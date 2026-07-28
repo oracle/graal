@@ -111,6 +111,12 @@ final class NamingConventionVerifier {
         return namingConventionsViolation(type.toJavaName(true)) == null;
     }
 
+    /*
+     * Layered-image candidate probing uses the predicates above to reject an unsupported candidate
+     * before analysis creates an element for it. checkUniverse remains the verification backstop:
+     * any forbidden element that becomes reachable through another path still fails the build.
+     */
+
     private static void checkName(BigBang bb, AnalysisMethod method, String name) {
         String message = namingConventionsViolation(name);
         if (message != null) {

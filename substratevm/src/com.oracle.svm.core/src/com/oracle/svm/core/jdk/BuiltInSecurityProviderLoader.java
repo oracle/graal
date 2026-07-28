@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
 
+import com.oracle.svm.shared.security.SecurityProviderCatalog;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -37,66 +39,15 @@ public final class BuiltInSecurityProviderLoader {
     }
 
     public static String getProviderName(String providerNameOrClassName) {
-        String providerClassName = getProviderClassName(providerNameOrClassName);
-        if (providerClassName == null) {
-            return null;
-        }
-        return switch (providerClassName) {
-            case "sun.security.provider.Sun" -> "SUN";
-            case "sun.security.rsa.SunRsaSign" -> "SunRsaSign";
-            case "com.sun.crypto.provider.SunJCE" -> "SunJCE";
-            case "sun.security.ssl.SunJSSE" -> "SunJSSE";
-            case "sun.security.ec.SunEC" -> "SunEC";
-            case "sun.security.jgss.SunProvider" -> "SunJGSS";
-            case "com.sun.security.sasl.Provider" -> "SunSASL";
-            case "org.jcp.xml.dsig.internal.dom.XMLDSigRI" -> "XMLDSig";
-            case "sun.security.smartcardio.SunPCSC" -> "SunPCSC";
-            case "sun.security.provider.certpath.ldap.JdkLDAP" -> "JdkLDAP";
-            case "com.sun.security.sasl.gsskerb.JdkSASL" -> "JdkSASL";
-            case "sun.security.pkcs11.SunPKCS11" -> "SunPKCS11";
-            case "sun.security.mscapi.SunMSCAPI" -> "SunMSCAPI";
-            case "com.oracle.security.ucrypto.UcryptoProvider" -> "OracleUcrypto";
-            case "apple.security.AppleProvider" -> "Apple";
-            default -> null;
-        };
+        return SecurityProviderCatalog.getProviderName(providerNameOrClassName);
     }
 
     public static String getProviderClassName(String providerNameOrClassName) {
-        return switch (providerNameOrClassName) {
-            case "SUN", "sun.security.provider.Sun" -> "sun.security.provider.Sun";
-            case "SunRsaSign", "sun.security.rsa.SunRsaSign" -> "sun.security.rsa.SunRsaSign";
-            case "SunJCE", "com.sun.crypto.provider.SunJCE" -> "com.sun.crypto.provider.SunJCE";
-            case "SunJSSE", "sun.security.ssl.SunJSSE" -> "sun.security.ssl.SunJSSE";
-            case "SunEC", "sun.security.ec.SunEC" -> "sun.security.ec.SunEC";
-            case "SunJGSS", "sun.security.jgss.SunProvider" -> "sun.security.jgss.SunProvider";
-            case "SunSASL", "com.sun.security.sasl.Provider" -> "com.sun.security.sasl.Provider";
-            case "XMLDSig", "org.jcp.xml.dsig.internal.dom.XMLDSigRI" -> "org.jcp.xml.dsig.internal.dom.XMLDSigRI";
-            case "SunPCSC", "sun.security.smartcardio.SunPCSC" -> "sun.security.smartcardio.SunPCSC";
-            case "JdkLDAP", "sun.security.provider.certpath.ldap.JdkLDAP" -> "sun.security.provider.certpath.ldap.JdkLDAP";
-            case "JdkSASL", "com.sun.security.sasl.gsskerb.JdkSASL" -> "com.sun.security.sasl.gsskerb.JdkSASL";
-            case "SunPKCS11", "sun.security.pkcs11.SunPKCS11" -> "sun.security.pkcs11.SunPKCS11";
-            case "SunMSCAPI", "sun.security.mscapi.SunMSCAPI" -> "sun.security.mscapi.SunMSCAPI";
-            case "OracleUcrypto", "com.oracle.security.ucrypto.UcryptoProvider" -> "com.oracle.security.ucrypto.UcryptoProvider";
-            case "Apple", "apple.security.AppleProvider" -> "apple.security.AppleProvider";
-            default -> null;
-        };
+        return SecurityProviderCatalog.getProviderClassName(providerNameOrClassName);
     }
 
     public static boolean isBuiltIn(String providerNameOrClassName) {
-        String providerClassName = getProviderClassName(providerNameOrClassName);
-        if (providerClassName == null) {
-            return false;
-        }
-        return switch (providerClassName) {
-            case "sun.security.provider.Sun",
-                            "sun.security.rsa.SunRsaSign",
-                            "com.sun.crypto.provider.SunJCE",
-                            "sun.security.ssl.SunJSSE",
-                            "sun.security.ec.SunEC",
-                            "apple.security.AppleProvider" ->
-                true;
-            default -> false;
-        };
+        return SecurityProviderCatalog.isDirectlyConstructible(providerNameOrClassName);
     }
 
     /** §FS-security-providers.3.1, §FS-security-providers.4.3, and §FS-security-providers.7.1. */
@@ -122,10 +73,12 @@ public final class BuiltInSecurityProviderLoader {
     }
 
     private static Provider allocateSunECProvider() {
+        Constructor<?> constructor = SecurityProviderRuntimeState.getSunECConstructor();
+        VMError.guarantee(constructor != null, "The SunEC constructor is not present.");
         try {
-            return (Provider) SecurityProviderRuntimeState.getSunECConstructor().newInstance();
+            return (Provider) constructor.newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw VMError.shouldNotReachHere("The SunEC constructor is not present.");
+            throw VMError.shouldNotReachHere("The SunEC provider cannot be constructed.", e);
         }
     }
 
