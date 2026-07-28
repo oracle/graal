@@ -986,6 +986,8 @@ def run_agent_security_provider_config_test(agent_path):
         ('enumeration', 'enumerateSecurityProviders', 'verifyEnumeratedProvidersWereRecorded'),
         ('mutation', 'programmaticProviderMutationDoesNotTraceConfiguredProviders',
          'verifyMutationRecordedOnlySuppliedProvider'),
+        ('service-construction', 'providerServiceHelpersRetainConstructorMetadata',
+         'verifyProviderServiceConstructorWasRecorded'),
     ]
     for name, generator_method, verifier_method in cases:
         config_dir = join(svmbuild_dir(), 'security-provider-agent-' + name + '-test-config')

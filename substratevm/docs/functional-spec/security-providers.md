@@ -346,6 +346,8 @@ traced factory calls. This includes a service implementation named only by
 `Provider.Service.getClassName()`: the caller-filtered trace must retain the construction access
 performed inside `Provider.Service.newInstance` and attribute it to the application operation that
 selected the service.
+The trace may locate `Provider.Service.newInstance` through contiguous helper frames declared by
+`Provider.Service`, but it must not cross a frame declared by another class.
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.
