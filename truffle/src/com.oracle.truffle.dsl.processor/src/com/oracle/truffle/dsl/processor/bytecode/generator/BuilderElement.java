@@ -1193,9 +1193,7 @@ final class BuilderElement extends AbstractElement {
 
         b.startNew(bytecodeLocalImpl.asType()).string("frameIndex");
         b.string("localIndex");
-        b.startCall("safeCastShort");
         b.string(operationStack.read(model.rootOperation, "state.operationStack[state.rootOperationSp]", operationFields.index));
-        b.end();
         if (model.enableBlockScoping) {
             b.string("scope");
             b.string("scope.sequenceNumber");
@@ -1661,7 +1659,7 @@ final class BuilderElement extends AbstractElement {
         emitRequestLeaderBci(b, "Reset the rewriter");
 
         Map<OperationField, String> initValues = new HashMap<>();
-        initValues.put(operationFields.index, BytecodeRootNodeElement.safeCastShort("numRoots++"));
+        initValues.put(operationFields.index, "checkOverflowInt(numRoots++, \"Root node count\")");
         b.startDeclaration(operationStack.asType(), "operation").startCall("beginOperation");
         b.tree(parent.createOperationConstant(rootOperation));
         b.end(2);
@@ -1677,9 +1675,6 @@ final class BuilderElement extends AbstractElement {
 
         b.startIf().string("reparseReason == null").end().startBlock();
         b.statement("builtNodes.add(null)");
-        b.startIf().string("builtNodes.size() > Short.MAX_VALUE").end().startBlock();
-        emitThrowEncodingException(b, "\"Root node count exceeded maximum value.\"");
-        b.end();
         b.end();
 
         if (model.enableBlockScoping) {
@@ -1779,7 +1774,7 @@ final class BuilderElement extends AbstractElement {
                 b.startNew(serializationRootNode.asType());
                 b.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                 b.string("serialization.depth");
-                b.startCall("checkOverflowShort").string("serialization.rootCount++").doubleQuote("Root node count").end();
+                b.startCall("checkOverflowInt").string("serialization.rootCount++").doubleQuote("Root node count").end();
                 b.end();
                 b.end(); // declaration
                 b.statement("serialization.rootStack.push(node)");
@@ -3182,8 +3177,8 @@ final class BuilderElement extends AbstractElement {
             case CLEAR_LOCAL -> new String[]{"((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex"};
             case STORE_LOCAL_MATERIALIZED -> {
                 List<String> immediates = new ArrayList<>();
-                immediates.add(operationStack.read(operation, operationFields.local) + ".frameIndex");
                 immediates.add(operationStack.read(operation, operationFields.local) + ".rootIndex");
+                immediates.add(operationStack.read(operation, operationFields.local) + ".frameIndex");
                 if (model.materializedLocalAccessesNeedLocalIndex()) {
                     immediates.add(operationStack.read(operation, operationFields.local) + ".localIndex");
                 }
@@ -3194,8 +3189,8 @@ final class BuilderElement extends AbstractElement {
             }
             case LOAD_LOCAL_MATERIALIZED -> {
                 List<String> immediates = new ArrayList<>();
-                immediates.add(operationStack.read(operation, operationFields.local) + ".frameIndex");
                 immediates.add(operationStack.read(operation, operationFields.local) + ".rootIndex");
+                immediates.add(operationStack.read(operation, operationFields.local) + ".frameIndex");
                 if (model.materializedLocalAccessesNeedLocalIndex()) {
                     immediates.add(operationStack.read(operation, operationFields.local) + ".localIndex");
                 }
@@ -8462,7 +8457,7 @@ final class BuilderElement extends AbstractElement {
 
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "frameIndex"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "localIndex"));
-            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "rootIndex"));
+            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "rootIndex"));
 
             if (model.enableBlockScoping) {
                 this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), operationStack.asType(), "scope"));
@@ -8706,7 +8701,7 @@ final class BuilderElement extends AbstractElement {
             rootStack.createInitBuilder().startNew("ArrayDeque<>").end();
 
             addField(this, Set.of(PRIVATE), int.class, "localCount");
-            addField(this, Set.of(PRIVATE), short.class, "rootCount");
+            addField(this, Set.of(PRIVATE), int.class, "rootCount");
             addField(this, Set.of(PRIVATE), int.class, "finallyGeneratorCount");
 
             codeBegin = new CodeVariableElement[model.getOperations().size() + 1];

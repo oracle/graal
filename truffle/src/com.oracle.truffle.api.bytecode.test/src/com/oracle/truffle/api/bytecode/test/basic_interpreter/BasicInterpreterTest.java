@@ -2396,10 +2396,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyRoots() {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
-            for (int i = 0; i < Short.MAX_VALUE; i++) {
+            for (long i = 0; i <= Short.MAX_VALUE + 1; i++) {
                 b.beginRoot();
+                BytecodeLocal local = b.createLocal();
+                b.beginStoreLocal(local);
+                b.emitLoadConstant(i);
+                b.endStoreLocal();
                 b.beginReturn();
-                b.emitLoadConstant((long) i);
+                // Materialized accesses use root index. Ensure high root indices can be encoded.
+                b.beginLoadLocalMaterialized(local);
+                b.emitMaterializeFrame();
+                b.endLoadLocalMaterialized();
                 b.endReturn();
                 b.endRoot();
             }
@@ -2407,22 +2414,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(0L, nodes.getNode(0).getCallTarget().call());
         assertEquals(42L, nodes.getNode(42).getCallTarget().call());
         assertEquals((long) (Short.MAX_VALUE - 1), nodes.getNode(Short.MAX_VALUE - 1).getCallTarget().call());
+        assertEquals((long) Short.MAX_VALUE + 1, nodes.getNode(Short.MAX_VALUE + 1).getCallTarget().call());
 
-    }
-
-    @Test
-    public void testTooManyRoots() {
-        assertThrowsWithMessage("Root node count exceeded maximum value", BytecodeEncodingException.class, () -> {
-            createNodes(BytecodeConfig.DEFAULT, b -> {
-                for (int i = 0; i < Short.MAX_VALUE + 1; i++) {
-                    b.beginRoot();
-                    b.beginReturn();
-                    b.emitLoadConstant((long) i);
-                    b.endReturn();
-                    b.endRoot();
-                }
-            });
-        });
+        BytecodeRootNodes<BasicInterpreter> roundTripped = doRoundTrip(nodes);
+        assertEquals((long) Short.MAX_VALUE + 1, roundTripped.getNode(Short.MAX_VALUE + 1).getCallTarget().call());
     }
 
     @Test

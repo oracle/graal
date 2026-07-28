@@ -197,7 +197,7 @@ public final class InstructionModel implements PrettyPrintable {
          * Index into BytecodeRootNodes.nodes. Necessary for boxing elimination of materialized
          * local accesses.
          */
-        LOCAL_ROOT("local_root", ImmediateWidth.SHORT),
+        LOCAL_ROOT("local_root", ImmediateWidth.INT),
         STATE_PROFILE("state", ImmediateWidth.SHORT),
         SHORT("short", ImmediateWidth.SHORT),
         INTEGER("int", ImmediateWidth.INT),
