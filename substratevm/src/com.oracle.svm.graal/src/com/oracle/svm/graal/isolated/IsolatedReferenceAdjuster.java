@@ -36,7 +36,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.graal.isolated.ClientHandle;
-import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nmt.NmtCategory;

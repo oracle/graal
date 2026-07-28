@@ -25,7 +25,7 @@
 package com.oracle.svm.jdwp.resident;
 
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadStatus;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 
 public enum JDWPThreadStatus {
 

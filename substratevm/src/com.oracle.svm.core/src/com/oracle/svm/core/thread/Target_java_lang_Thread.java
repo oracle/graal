@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.thread.ThreadStatus.JVMTI_THREAD_STATE_TERMINATED;
+import static com.oracle.svm.guest.staging.core.thread.ThreadStatus.JVMTI_THREAD_STATE_TERMINATED;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.Map;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 

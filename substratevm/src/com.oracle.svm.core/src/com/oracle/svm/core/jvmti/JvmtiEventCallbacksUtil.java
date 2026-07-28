@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
 import org.graalvm.word.impl.Word;
 

@@ -33,13 +33,13 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.guest.staging.core.jdk.UninterruptibleAtomicUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrStackWalker;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
@@ -72,8 +72,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     private static final FastThreadLocalInt samplerState = FastThreadLocalFactory.createInt("JfrSampler.samplerState");
     private static final FastThreadLocalInt isDisabledForCurrentThread = FastThreadLocalFactory.createInt("JfrSampler.isDisabledForCurrentThread");
 
-    private final UninterruptibleAtomicUtils.AtomicInteger isSignalHandlerDisabledGlobally = new UninterruptibleAtomicUtils.AtomicInteger(0);
-    private final UninterruptibleAtomicUtils.AtomicInteger threadsInSignalHandler = new UninterruptibleAtomicUtils.AtomicInteger(0);
+    private final UninterruptibleUtils.AtomicInteger isSignalHandlerDisabledGlobally = new UninterruptibleUtils.AtomicInteger(0);
+    private final UninterruptibleUtils.AtomicInteger threadsInSignalHandler = new UninterruptibleUtils.AtomicInteger(0);
 
     private volatile boolean isSampling;
     private long curIntervalMillis;
@@ -89,7 +89,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     }
 
     @Fold
-    protected static UninterruptibleAtomicUtils.AtomicInteger threadsInSignalHandler() {
+    protected static UninterruptibleUtils.AtomicInteger threadsInSignalHandler() {
         return singleton().threadsInSignalHandler;
     }
 

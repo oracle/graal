@@ -85,6 +85,7 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
@@ -159,6 +160,8 @@ import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolyno
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
+import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.MemorySessionImpl;
@@ -200,6 +203,7 @@ public class SubstrateGraphBuilderPlugins {
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins);
+        registerUninterruptibleUtilsPlugins(plugins);
         registerStackValuePlugins(plugins);
         registerArrayPlugins(plugins);
         registerClassPlugins(plugins);
@@ -214,6 +218,26 @@ public class SubstrateGraphBuilderPlugins {
             registerPoly1305Plugin(plugins);
             registerIntegerPolynomialPlugins(plugins);
         }
+    }
+
+    private static void registerUninterruptibleUtilsPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, UninterruptibleUtils.Integer.class);
+        r.register(new RequiredInlineOnlyInvocationPlugin("numberOfLeadingZeros", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(value));
+                return true;
+            }
+        });
+
+        r = new Registration(plugins, UninterruptibleUtils.Long.class);
+        r.register(new RequiredInlineOnlyInvocationPlugin("countTrailingZeros", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(value));
+                return true;
+            }
+        });
     }
 
     private static void registerArenaPlugins(InvocationPlugins plugins) {

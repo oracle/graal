@@ -43,7 +43,7 @@ import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;

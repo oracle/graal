@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.Byte.toUnsignedInt;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Byte.toUnsignedInt;
 
 import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.word.LocationIdentity;

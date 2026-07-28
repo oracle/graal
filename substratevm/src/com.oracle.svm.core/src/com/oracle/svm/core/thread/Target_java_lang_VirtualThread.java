@@ -42,6 +42,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;

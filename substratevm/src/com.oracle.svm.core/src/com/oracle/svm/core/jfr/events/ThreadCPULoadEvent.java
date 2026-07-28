@@ -30,13 +30,13 @@ import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jdk.Jvm;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.guest.staging.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.shared.util.TimeUtils;

@@ -44,7 +44,7 @@ import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;

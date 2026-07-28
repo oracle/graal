@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.CodeUtil.isPowerOf2;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
@@ -40,7 +41,7 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.shared.AlwaysInline;
@@ -632,7 +633,7 @@ public final class CodeInfoDecoder {
     private static int getMethodFlags(NonmovableArray<Byte> methodEncodings, int methodFlagsOffset, int methodIndex) {
         assert !CodeInfoEncoder.shouldEncodeMethodSignatureAndModifiers();
         int slotsPerByte = Byte.SIZE / FrameSourceInfo.MethodFlags.EXTRA_FLAGS_BITS;
-        assert UninterruptibleUtils.CodeUtil.isPowerOf2(slotsPerByte);
+        assert isPowerOf2(slotsPerByte);
         int shiftAmount = UninterruptibleUtils.CodeUtil.log2(slotsPerByte);
         Pointer methodFlags = NonmovableArrays.addressOf(methodEncodings, methodFlagsOffset);
         int byteOffset = methodIndex >>> shiftAmount;
