@@ -24,6 +24,23 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
+
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -45,24 +62,11 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.VMError.HostedError;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.APIDeprecationSupport;
-
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -305,17 +309,10 @@ public class FeatureHandler {
     }
 
     private static UserException handleFeatureError(Feature feature, Throwable throwable) {
-        /* Avoid wrapping UserError, VMError, and InterruptImageBuilding throwables. */
-        if (throwable instanceof UserException userError) {
-            throw userError;
-        }
-        if (throwable instanceof HostedError vmError) {
-            throw vmError;
-        }
-        if (throwable instanceof InterruptImageBuilding iib) {
-            throw iib;
-        }
+        /* Avoid wrapping well-known exceptions. */
+        rethrowWellKnownException(throwable);
 
+        /* Not a well-known exception. */
         String featureClassName = feature.getClass().getName();
         String throwableClassName = throwable.getClass().getName();
         if (InternalFeature.class.isAssignableFrom(feature.getClass())) {
@@ -323,6 +320,34 @@ public class FeatureHandler {
         }
         throw UserError.abort(throwable, "Feature defined by %s unexpectedly failed with a(n) %s. Please report this problem to the authors of %s.",
                         featureClassName, throwableClassName, featureClassName);
+    }
+
+    private static void rethrowWellKnownException(Throwable t) {
+        Throwable throwable = tryUnwrapWellKnownException(t);
+        if (throwable instanceof UserException userError) {
+            throw userError;
+        } else if (throwable instanceof HostedError vmError) {
+            throw vmError;
+        } else if (throwable instanceof InterruptImageBuilding iib) {
+            throw iib;
+        } else {
+            assert throwable == t : "unwrapping must only happen for exceptions that are rethrown";
+        }
+    }
+
+    private static Throwable tryUnwrapWellKnownException(Throwable throwable) {
+        Throwable cause = null;
+        if (throwable instanceof InvocationException invocationException) {
+            /* Can be removed once GR-77556 is merged. */
+            cause = invocationException.getCause();
+        } else if (throwable instanceof InvocationTargetException invocationException) {
+            cause = invocationException.getCause();
+        }
+        return isWellKnownException(cause) ? cause : throwable;
+    }
+
+    private static boolean isWellKnownException(Throwable cause) {
+        return cause instanceof UserException || cause instanceof HostedError || cause instanceof InterruptImageBuilding;
     }
 
     private static final class AutomaticallyRegisteredFeatureLoader extends AutomaticallyRegisteredClassSupport<AutomaticallyRegisteredFeatureServiceRegistration, AutomaticallyRegisteredFeature> {
