@@ -1565,7 +1565,8 @@ class GraalVmJImage(mx.Project):
         return join(self.get_output_base(), self.name)
 
     def output_witness(self):
-        return join(self.output_directory(), 'lib', 'modules')
+        # The release file is written at the end of every build, making it a reliable witness for the generated JDK.
+        return join(self.output_directory(), 'release')
 
     def getArchivableResults(self, use_relpath=True, single=False):
         if single:
