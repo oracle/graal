@@ -106,6 +106,7 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
+import com.oracle.svm.shared.security.SecurityProviderCatalog;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -753,7 +754,9 @@ final class BreakpointInterceptor {
          * and cache the service while recursive tracing is suppressed, preventing the real call
          * from recording its implementation metadata and resource accesses.
          */
-        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()), state.getDirectCallerClass(), state);
+        JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
+        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()),
+                        callerClass.notEqual(nullHandle()) ? callerClass : state.getDirectCallerClass(), state);
         return true;
     }
 
@@ -913,15 +916,7 @@ final class BreakpointInterceptor {
         if (providerClassName == null) {
             return;
         }
-        boolean hasNullaryConstruction = switch (providerClassName) {
-            case "sun.security.provider.Sun",
-                            "sun.security.rsa.SunRsaSign",
-                            "sun.security.ec.SunEC",
-                            "sun.security.ssl.SunJSSE",
-                            "com.sun.crypto.provider.SunJCE",
-                            "apple.security.AppleProvider" -> true;
-            default -> false;
-        };
+        boolean hasNullaryConstruction = SecurityProviderCatalog.isDirectlyConstructible(providerClassName);
         if (hasNullaryConstruction) {
             /*
              * Record the implicit no-argument construction only after ProviderConfig exposed a

@@ -140,9 +140,11 @@ final class Target_sun_security_jca_ProviderConfig {
             if (provider != null) {
                 return provider;
             }
+            String configuredProviderClassName = SecurityProviderRuntimeState.getConfiguredProviderClassName(provName);
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
-            String providerClassName = builtInProviderClassName != null ? builtInProviderClassName : provName;
-            /* Omit unregistered providers from the run-time list. §FS-security-providers.7.1 */
+            String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
+                            : builtInProviderClassName != null ? builtInProviderClassName : provName;
+            /* §FS-security-providers.7.1: Omit unregistered providers from the run-time list. */
             if (!SecurityProviderRuntimeAccess.shouldLoadUnregisteredConfiguredProvider() &&
                             !SecurityProviderRuntimeState.isJdkConstructible(providerClassName)) {
                 return null;
@@ -153,6 +155,11 @@ final class Target_sun_security_jca_ProviderConfig {
             // Create providers which are in java.base directly
             if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
                 provider = BuiltInSecurityProviderLoader.load(provName, debug);
+            } else if (configuredProviderClassName != null) {
+                /* §FS-security-providers.7.1:
+                 * Load the catalog-resolved provider directly, avoiding a ServiceLoader scan that
+                 * could touch unrelated omitted descriptors. */
+                provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName);
             } else {
                 if (isLoading) {
                     /*
@@ -177,6 +184,7 @@ final class Target_sun_security_jca_ProviderConfig {
         }
         return provider;
     }
+
 }
 
 @TargetClass(className = "sun.security.jca.ProviderList", onlyWith = SecurityProvidersInitializedAtRunTime.class)

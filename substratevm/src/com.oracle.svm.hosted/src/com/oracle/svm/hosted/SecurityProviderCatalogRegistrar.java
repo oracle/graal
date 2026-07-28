@@ -50,7 +50,7 @@ final class SecurityProviderCatalogRegistrar {
 
         void registerService(DuringAnalysisAccess access, Service service);
 
-        void registerSelectedConstructionPath(Class<?> providerClass);
+        void registerSelectedConstructionPath(DuringAnalysisAccess access, Class<?> providerClass);
 
         Object getProviderVerificationResult(Provider provider);
     }
@@ -77,8 +77,8 @@ final class SecurityProviderCatalogRegistrar {
         if (providers == null) {
             providers = List.of(host.instantiateProvider(providerClass));
         }
+        // §FS-security-providers.2.3:
         // Register every configured instance and the union of their service metadata.
-        // §FS-security-providers.2.3
         for (Provider provider : providers) {
             registerProvider(access, provider);
             for (Service service : provider.getServices()) {
@@ -93,13 +93,14 @@ final class SecurityProviderCatalogRegistrar {
         if (usedProviders.add(provider)) {
             RuntimeReflection.register(provider.getClass());
             if (host.isLoadableProviderClass(access, provider.getClass())) {
-                host.registerSelectedConstructionPath(provider.getClass());
+                host.registerSelectedConstructionPath(access, provider.getClass());
             }
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
             String providerClassName = provider.getClass().getName();
             Object verificationResult = host.getProviderVerificationResult(provider);
             SecurityProviderRuntimeState state = SecurityProviderRuntimeState.currentLayer();
+            state.registerConfiguredProviderName(provider.getName(), providerClassName);
             if (host.isLoadableProviderClass(access, provider.getClass())) {
                 state.registerJdkConstructibleProvider(providerClassName, verificationResult);
             } else {
@@ -108,7 +109,7 @@ final class SecurityProviderCatalogRegistrar {
         }
     }
 
-    private void registerApplicationSuppliedProviderClass(Class<?> providerClass) {
+    void registerApplicationSuppliedProviderClass(Class<?> providerClass) {
         // §FS-security-providers.5.3: Preserve verification without reconstructing the provider.
         List<Provider> buildTimeProviders = buildTimeProvidersByClassName.get(providerClass.getName());
         Object verificationResult = buildTimeProviders == null ? Boolean.TRUE : host.getProviderVerificationResult(buildTimeProviders.getFirst());

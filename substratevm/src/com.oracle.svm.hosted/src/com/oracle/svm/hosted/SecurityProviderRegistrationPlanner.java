@@ -36,6 +36,7 @@ import java.util.function.Function;
 final class SecurityProviderRegistrationPlanner {
     enum Source {
         APPLICATION_METADATA,
+        APPLICATION_VERIFICATION_METADATA,
         PRESERVE,
         SECURE_RANDOM_PLATFORM,
         LEGACY_ADDITIONAL_PROVIDER,
@@ -44,6 +45,7 @@ final class SecurityProviderRegistrationPlanner {
 
     private final Set<Class<?>> candidates = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> completed = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> verificationCompleted = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> completePlans = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> legacyGeneratedReflection = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<Class<?>, Set<Source>> sources = new ConcurrentHashMap<>();
@@ -72,14 +74,21 @@ final class SecurityProviderRegistrationPlanner {
         legacyGeneratedReflection.add(providerClass);
     }
 
-    boolean processNewCompleteProviders(Function<Class<?>, Source> signalSource, Consumer<Class<?>> includeProvider) {
+    boolean processNewProviders(Function<Class<?>, Source> signalSource, Consumer<Class<?>> includeProvider, Consumer<Class<?>> registerVerification) {
         boolean discoveredCandidate = changed.getAndSet(false);
         boolean processed = false;
         for (Class<?> providerClass : candidates) {
             Source signal = !legacyGeneratedReflection.contains(providerClass) ? signalSource.apply(providerClass) : null;
             if (signal != null) {
                 recordSource(providerClass, signal);
-                completePlans.add(providerClass);
+                if (signal == Source.APPLICATION_VERIFICATION_METADATA) {
+                    if (verificationCompleted.add(providerClass)) {
+                        registerVerification.accept(providerClass);
+                        processed = true;
+                    }
+                } else {
+                    completePlans.add(providerClass);
+                }
             }
             if (completePlans.contains(providerClass) && completed.add(providerClass)) {
                 includeProvider.accept(providerClass);
