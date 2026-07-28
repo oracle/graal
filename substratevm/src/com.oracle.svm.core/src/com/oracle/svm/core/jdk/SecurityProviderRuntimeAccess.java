@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 import java.security.Provider;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.NeverInline;
 
@@ -56,18 +57,38 @@ public final class SecurityProviderRuntimeAccess {
         return Boolean.TRUE.equals(LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get());
     }
 
+    /** §FS-security-providers.7.1: Load an already-resolved ServiceLoader provider directly. */
+    public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName) {
+        try {
+            Class<?> providerClass = Class.forName(providerClassName, true, ClassLoader.getSystemClassLoader());
+            Provider candidate = providerClass.asSubclass(Provider.class).getConstructor().newInstance();
+            return providerName.equals(candidate.getName()) ? candidate : null;
+        } catch (ReflectiveOperationException | SecurityException ex) {
+            return null;
+        }
+    }
+
     /** §FS-security-providers.4.3: Cache misses probe type access for standard diagnostics. */
     @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
     public static void reportMissingRegistration(Class<?> providerClass) {
+        String remediation = missingRegistrationRemediation();
         try {
             Class.forName(providerClass.getName(), false, providerClass.getClassLoader());
         } catch (ClassNotFoundException ex) {
             throw new SecurityException(
                             "Attempted to use a security provider that was not registered for reflection at build time: " + providerClass.getName() + ". " +
-                                            "Add the provider type to reachability-metadata.json and rebuild the image.",
+                                            remediation,
                             ex);
         }
-        throw new SecurityException("Attempted to use a security provider without build-time verification: " + providerClass.getName());
+        throw new SecurityException("Attempted to use a security provider without build-time verification: " + providerClass.getName() + ". " + remediation);
+    }
+
+    private static String missingRegistrationRemediation() {
+        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            return "Register the provider type or a supported construction path in reachability-metadata.json and rebuild the image.";
+        }
+        return "Provider reflection metadata does not enable provider construction or services in compatibility mode. " +
+                        "Add qualifying metadata and rebuild with --future-defaults=explicit-security-provider-registration.";
     }
 
     /** §FS-security-providers.6.1: Existing provider instances trace type access. */

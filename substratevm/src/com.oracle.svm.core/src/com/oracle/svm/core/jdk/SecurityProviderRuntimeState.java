@@ -51,6 +51,7 @@ public final class SecurityProviderRuntimeState {
     }
 
     private final EconomicMap<String, ProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<String, String> configuredProviderClassNames = ImageHeapMap.createNonLayeredMap();
 
     private Properties savedInitialSecurityProperties;
     private Constructor<?> sunECConstructor;
@@ -84,6 +85,14 @@ public final class SecurityProviderRuntimeState {
         providerInfos.put(providerClassName, merge(providerInfos.get(providerClassName), new ProviderInfo(acquisitionKind, verificationFailure)));
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void registerConfiguredProviderName(String providerName, String providerClassName) {
+        String previousClassName = configuredProviderClassNames.get(providerName);
+        assert previousClassName == null || previousClassName.equals(providerClassName) : providerName +
+                        " maps to both " + previousClassName + " and " + providerClassName;
+        configuredProviderClassNames.put(providerName, providerClassName);
+    }
+
     private static ProviderInfo merge(ProviderInfo oldInfo, ProviderInfo newInfo) {
         if (oldInfo == null || newInfo == null) {
             return oldInfo != null ? oldInfo : newInfo;
@@ -111,6 +120,20 @@ public final class SecurityProviderRuntimeState {
     public static boolean isJdkConstructible(String providerClassName) {
         ProviderInfo info = getProviderInfo(providerClassName);
         return info != null && info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
+    }
+
+    public static String getConfiguredProviderClassName(String providerName) {
+        String result = null;
+        for (SecurityProviderRuntimeState state : singletons()) {
+            String providerClassName = state.configuredProviderClassNames.get(providerName);
+            if (providerClassName != null) {
+                if (result != null && !result.equals(providerClassName)) {
+                    return null;
+                }
+                result = providerClassName;
+            }
+        }
+        return result;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

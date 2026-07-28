@@ -31,6 +31,8 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 
+import javax.crypto.Mac;
+
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -47,14 +49,14 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 public class SecurityServiceExplicitProviderRegistrationTest {
     private static final String REGISTERED_PROVIDER_NAME = "reflection-metadata-provider";
 
-    /** Tests §FS-security-providers.7.1. */
+    /** §FS-security-providers.7.1: Tests explicit registration with run-time initialization. */
     @Test
     public void testExplicitRegistrationEnablesRuntimeProviderInitialization() {
         Assert.assertTrue(FutureDefaultsOptions.explicitSecurityProviderRegistration());
         Assert.assertTrue(FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
     }
 
-    /** Tests §FS-security-providers.2.3 and §FS-security-providers.2.4. */
+    /** §FS-security-providers.2.3 and §FS-security-providers.2.4: Tests default SecureRandom registration. */
     @Test
     public void testDefaultSecureRandomIncludesCompleteSunProvider() throws NoSuchAlgorithmException {
         SecureRandom random = new SecureRandom();
@@ -68,7 +70,7 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         Assert.assertNotNull("An unrelated advertised service must remain usable.", jksService.newInstance(null));
     }
 
-    /** Tests §FS-security-providers.4.2 and §FS-security-providers.7.3. */
+    /** §FS-security-providers.4.2 and §FS-security-providers.7.3: Tests omitted providers. */
     @Test
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
         Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));
@@ -80,7 +82,38 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         }
     }
 
-    /** Tests §FS-security-providers.5.3. */
+    // §FS-security-providers.2.1, §FS-security-providers.2.3, and
+    // §FS-security-providers.5.1: Tests registration, complete services, and provider-object calls.
+    @Test
+    public void testReflectionMetadataProviderRegistration() throws Exception {
+        Provider provider = new SecurityServiceTest.ReflectionMetadataProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue(position > 0);
+            SecurityServiceTest.JCACompliantNoOpService service = SecurityServiceTest.JCACompliantNoOpService.getInstance("reflection-metadata-algo");
+            Assert.assertEquals(SecurityServiceTest.ReflectionMetadataNoOpServiceImpl.class, service.getClass());
+            Assert.assertNotNull(Mac.getInstance("reflection-metadata-mac", provider));
+        } finally {
+            Security.removeProvider(REGISTERED_PROVIDER_NAME);
+        }
+    }
+
+    // §FS-security-providers.2.1, §FS-security-providers.2.3, and
+    // §FS-security-providers.5.1: Tests type-only registration, services, and provider-object calls.
+    @Test
+    public void testTypeMetadataProviderRegistration() throws Exception {
+        Provider provider = new SecurityServiceTest.TypeMetadataProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue(position > 0);
+            SecurityServiceTest.JCACompliantNoOpService service = SecurityServiceTest.JCACompliantNoOpService.getInstance("type-metadata-algo");
+            Assert.assertEquals(SecurityServiceTest.TypeMetadataNoOpServiceImpl.class, service.getClass());
+        } finally {
+            Security.removeProvider("type-metadata-provider");
+        }
+    }
+
+    /** §FS-security-providers.5.3: Tests class-based verification identity. */
     @Test
     public void testUnregisteredProviderCannotReuseVerificationByName() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -88,6 +121,17 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         Assert.assertNotNull(registered);
         Assert.assertNull(registered.verificationFailure());
         Assert.assertNull(SecurityProviderRuntimeState.getProviderInfo(new SameNameUnregisteredProvider()));
+    }
+
+    /** §FS-security-providers.4.3: Tests the explicit-mode diagnostic. */
+    @Test
+    public void testUnregisteredProviderReportsExplicitMetadataRemediation() {
+        Provider provider = new SecurityServiceTest.UnregisteredMacProvider();
+        SecurityException error = Assert.assertThrows(SecurityException.class,
+                        () -> Mac.getInstance("unregistered-mac", provider));
+        Assert.assertTrue(error.getMessage().contains(SecurityServiceTest.UnregisteredMacProvider.class.getName()));
+        Assert.assertTrue(error.getMessage().contains("supported construction path"));
+        Assert.assertTrue(error.getMessage().contains("reachability-metadata.json"));
     }
 
     public static final class SameNameUnregisteredProvider extends Provider {

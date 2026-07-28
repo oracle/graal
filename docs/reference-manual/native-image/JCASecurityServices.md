@@ -98,10 +98,14 @@ acquisition also triggers registration of the complete configured-provider set t
 
 ## Custom Service Types
 
-By default, only services specified in the JCA framework are automatically registered. To automatically register custom service types, you can use the `-H:AdditionalSecurityServiceTypes` option.
-Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same name as the service type.
+By default, Native Image automatically detects only service types specified in the JCA framework.
+The `-H:AdditionalSecurityServiceTypes` option is deprecated.
+Register the provider class and its supported construction path in _reachability-metadata.json_ so
+Native Image retains its complete service catalog, including custom service types.
+Alternatively, collect this metadata with the Tracing Agent.
+For compatibility with automatic service-driven registration, the service interface must have a
+`getInstance` method and the same name as the service type.
 If you rely on third-party code that does not comply with these requirements, manual configuration is required.
-Register the provider class for reflection in _reachability-metadata.json_ or collect the metadata with the Tracing Agent.
 
 ### Further Reading
 
