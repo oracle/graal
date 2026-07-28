@@ -1231,7 +1231,7 @@ public class SVMHost extends HostVM {
          * they are replaced by the invocation plugin with a constant. If reachable in an extension
          * image, the plugin will replace it again.
          */
-        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) || GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) && GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
             return false;
         }
 
