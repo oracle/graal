@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.jca;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 
 /** The supported transition modes from §FS-security-providers.7. */
-enum SecurityProviderMode {
+public enum SecurityProviderMode {
     LEGACY_BUILD_TIME,
     LEGACY_RUN_TIME,
     EXPLICIT_RUN_TIME;
 
-    static SecurityProviderMode current() {
+    public static SecurityProviderMode current() {
         if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
             assert FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
             return EXPLICIT_RUN_TIME;
@@ -40,11 +40,11 @@ enum SecurityProviderMode {
         return FutureDefaultsOptions.securityProvidersInitializedAtRunTime() ? LEGACY_RUN_TIME : LEGACY_BUILD_TIME;
     }
 
-    boolean explicitRegistration() {
+    public boolean explicitRegistration() {
         return this == EXPLICIT_RUN_TIME;
     }
 
-    boolean runtimeProviderList() {
+    public boolean runtimeProviderList() {
         return this != LEGACY_BUILD_TIME;
     }
 }

@@ -296,7 +296,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.ResourcesFeature$1"),
                     clazz("com.oracle.svm.hosted.ResourcesFeature$ResourceCollectorImpl"),
                     clazz("com.oracle.svm.hosted.ResourcesFeature$ResourcesRegistryImpl"),
-                    clazz("com.oracle.svm.hosted.SecurityServicesFeature"),
+                    clazz("com.oracle.svm.hosted.jca.SecurityServicesFeature"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins$3"),
                     clazz("com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport"),

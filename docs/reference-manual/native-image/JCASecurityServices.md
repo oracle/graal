@@ -40,7 +40,7 @@ Alternatively, collect the metadata by running your application on the JVM with 
 
 ## Security Services Automatic Registration
 
-The mechanism, implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
+The mechanism, implemented in the `com.oracle.svm.hosted.jca.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
 
 Each JCA provider registers concrete implementation classes for the algorithms it supports.
 Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.) declares a series of `getInstance(<algorithm>, <provider>` factory methods which provide a concrete service implementation.

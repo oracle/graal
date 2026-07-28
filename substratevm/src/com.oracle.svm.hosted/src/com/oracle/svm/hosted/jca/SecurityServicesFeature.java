@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.jca;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.dedent;
-import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.indent;
+import static com.oracle.svm.hosted.jca.SecurityServicesFeature.SecurityServicesPrinter.dedent;
+import static com.oracle.svm.hosted.jca.SecurityServicesFeature.SecurityServicesPrinter.indent;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -101,6 +101,7 @@ import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -497,7 +498,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         initializeServiceRegistrationData();
-        preserveAll = access.imageClassLoader.classLoaderSupport.isPreserveAll();
+        preserveAll = access.getImageClassLoader().classLoaderSupport.isPreserveAll();
         reflectionRegistrationView = ReflectionRegistrationView.singleton();
         access.registerSubtypeReachabilityHandler((_, providerClass) -> addCandidateProviderClass(providerClass), Provider.class);
         registerServiceProviderCandidates(access);
@@ -634,7 +635,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
+        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We statically link sunmscapi thus we classify it as builtIn library */
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
 
@@ -800,7 +801,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void registerServiceProviderCandidates(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
-        accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+        accessImpl.getImageClassLoader().classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
                 // §FS-security-providers.7.2:
                 // Descriptors discover candidates without registering them.

@@ -101,10 +101,6 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
         return (AnalysisMethod) super.lookupJavaMethod(reflectionMethod);
     }
 
-    public Optional<AnalysisMethod> optionalLookupJavaMethod(Executable reflectionMethod) {
-        return Optional.ofNullable(getUniverse().optionalLookup(getWrapped().lookupJavaMethod(reflectionMethod)));
-    }
-
     @Override
     public AnalysisField lookupJavaField(Field reflectionField) {
         return (AnalysisField) super.lookupJavaField(reflectionField);

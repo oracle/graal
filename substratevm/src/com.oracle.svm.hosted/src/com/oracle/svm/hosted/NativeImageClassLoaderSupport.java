@@ -626,7 +626,7 @@ public final class NativeImageClassLoaderSupport {
         return serviceProviders.computeIfAbsent(serviceName, _ -> new LinkedHashSet<>());
     }
 
-    void serviceProvidersForEach(BiConsumer<String, Collection<String>> action) {
+    public void serviceProvidersForEach(BiConsumer<String, Collection<String>> action) {
         serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
