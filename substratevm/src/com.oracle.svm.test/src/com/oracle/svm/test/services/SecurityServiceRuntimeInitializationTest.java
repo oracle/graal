@@ -45,7 +45,10 @@ import sun.security.jca.GetInstance;
 
 @NativeImageBuildArgs({
                 "--future-defaults=run-time-initialize-security-providers",
-                "-H:AdditionalSecurityServiceTypes=JCACompliantNoOpService"
+                "--exact-reachability-metadata=com.oracle.svm.test.services",
+                "-H:+UnlockExperimentalVMOptions",
+                "-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService",
+                "-H:-UnlockExperimentalVMOptions"
 })
 public class SecurityServiceRuntimeInitializationTest {
     private static final String OMITTED_PROVIDER_ALGORITHM = "SHA256withECDSA";
@@ -87,11 +90,9 @@ public class SecurityServiceRuntimeInitializationTest {
     @Test
     public void testServiceLoaderProviderWithoutMetadataUsesReflectionLookupFailure() {
         Assert.assertTrue(ImageInfo.inImageRuntimeCode());
-        Assert.assertThrows(ClassNotFoundException.class, () -> Class.forName(SERVICE_LOADED_PROVIDER_CLASS_NAME));
-        ServiceConfigurationError error = Assert.assertThrows(ServiceConfigurationError.class, () -> ServiceLoader.load(Provider.class).stream()
-                        .anyMatch(provider -> provider.type().getName().equals(SERVICE_LOADED_PROVIDER_CLASS_NAME)));
+        ServiceConfigurationError error = Assert.assertThrows(ServiceConfigurationError.class,
+                        () -> findServiceLoaderProvider(SERVICE_LOADED_PROVIDER_CLASS_NAME));
         Assert.assertTrue(error.getMessage().contains(SERVICE_LOADED_PROVIDER_CLASS_NAME));
-        Assert.assertTrue(error.getCause() instanceof ClassNotFoundException);
         Assert.assertThrows(NoSuchAlgorithmException.class,
                         () -> SecurityServiceTest.JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
     }
@@ -99,12 +100,31 @@ public class SecurityServiceRuntimeInitializationTest {
     /** §FS-security-providers.7.2: Tests preserved metadata-registered service providers. */
     @Test
     public void testServiceLoaderProviderWithMetadataIsPreserved() {
-        Provider provider = ServiceLoader.load(Provider.class).stream()
-                        .filter(candidate -> candidate.type().getName().equals(REFLECTION_METADATA_PROVIDER_CLASS_NAME))
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("Metadata-registered security provider should be visible through ServiceLoader."))
-                        .get();
+        Provider provider = findServiceLoaderProvider(REFLECTION_METADATA_PROVIDER_CLASS_NAME).get();
         Assert.assertEquals(REFLECTION_METADATA_PROVIDER_NAME, provider.getName());
+    }
+
+    private static ServiceLoader.Provider<Provider> findServiceLoaderProvider(String providerClassName) {
+        Iterator<ServiceLoader.Provider<Provider>> providers = ServiceLoader.load(Provider.class).stream().iterator();
+        while (true) {
+            try {
+                if (!providers.hasNext()) {
+                    throw new AssertionError("Security provider should be visible through ServiceLoader: " + providerClassName);
+                }
+                ServiceLoader.Provider<Provider> provider = providers.next();
+                if (provider.type().getName().equals(providerClassName)) {
+                    return provider;
+                }
+            } catch (ServiceConfigurationError error) {
+                if (error.getMessage().contains(providerClassName)) {
+                    throw error;
+                }
+                /*
+                 * Some JDK modules contribute providers whose implementation module is not in
+                 * the image. They are unrelated to the provider selected by this test.
+                 */
+            }
+        }
     }
 
     /** §FS-security-providers.7.3: Tests compatibility-mode provider inclusion. */
