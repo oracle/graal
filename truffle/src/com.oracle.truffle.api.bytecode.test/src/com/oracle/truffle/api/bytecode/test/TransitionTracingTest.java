@@ -310,7 +310,6 @@ public class TransitionTracingTest {
             public void publish(LogRecord record) {
                 synchronized (messages) {
                     messages.add(record.getMessage());
-                    System.out.println(record.getMessage());
                 }
             }
 
