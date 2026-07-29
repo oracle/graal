@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,8 @@
 #if defined(__x86_64__) || defined(_WIN64)
 #include "amd64cpufeatures.h"
 #include "amd64hotspotcpuinfo.h"
+
+static int supports_avx512_simd_sort;
 
 #ifndef _WIN64
 #include <cpuid.h>
@@ -660,6 +662,13 @@ void determineCPUFeatures(CPUFeatures *features)
       features->fAVX512_IFMA = 0;
     }
   }
+
+  supports_avx512_simd_sort = features->fAVX512DQ && !(is_amd(_cpuid_info) && cpu_family(_cpuid_info) == 0x19);
+}
+
+int supportsAvx512SimdSort(void)
+{
+  return supports_avx512_simd_sort;
 }
 
 #elif defined(__aarch64__)
