@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal;
+package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.code.RuntimeCodeInstallation;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-public final class RuntimeCompilation {
+public final class RuntimeCodeInstallation {
     /**
-     * Returns whether the image supports runtime compilation using Graal. Use
-     * {@link RuntimeCodeInstallation#isEnabled()} when the question is whether runtime-installed
-     * code can appear, regardless of producer. This method can be called as early as during
-     * {@link Feature#afterRegistration}. {@code true} means that deoptimization is also enabled, so
-     * that {@link DeoptimizationSupport#enabled} would return {@code true}.
+     * Returns whether this image can contain code installed into the runtime code cache after
+     * startup. This is broader than runtime compilation: runtime compilation is one producer of
+     * runtime-installed code, but features can also install prepared code without enabling the
+     * runtime compiler. Use this predicate for code that must handle non-image {@link CodeInfo};
+     * keep runtime-compilation checks for compiler and deoptimization semantics.
+     * <p>
+     * This method can be called as early as during {@link Feature#afterRegistration}.
      */
     @Fold
     public static boolean isEnabled() {
-        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "RuntimeCompilation.isEnabled() must not be called before the feature registration is finished.");
-        boolean enabled = ImageSingletons.contains(RuntimeCompilationCanaryFeature.class);
-        assert !enabled || DeoptimizationSupport.enabled();
-        return enabled;
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "RuntimeCodeInstallation.isEnabled() must not be called before the feature registration is finished.");
+        return ImageSingletons.contains(RuntimeCodeInstallationCanaryFeature.class);
     }
 
-    private RuntimeCompilation() {
+    private RuntimeCodeInstallation() {
     }
 }
