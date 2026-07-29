@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,19 +40,28 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;
+import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.vmaccess.HostAnnotationValueConverter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
- * This complements {@link org.graalvm.nativeimage.AnnotationAccess} for use by SVM internal
- * features and code. It avoids relying on JVMCI types (such as {@link ResolvedJavaType})
- * implementing {@link java.lang.reflect.AnnotatedElement}.
+ * At image build time, provides builder-to-guest annotation access for SVM internal features and
+ * code. Same-VM annotation queries must use {@link org.graalvm.nativeimage.AnnotationAccess}.
+ * Class-based builder-to-guest convenience methods require the annotation class to be shared and
+ * resolvable in both contexts; guest-only annotation types must use the JVMCI overloads. Runtime
+ * use is restricted to Crema and Ristretto compiler paths that query runtime JVMCI elements; all
+ * other runtime code must use {@link org.graalvm.nativeimage.AnnotationAccess}.
  */
 public final class AnnotationUtil {
+
+    /** Prevents instantiation. */
+    private AnnotationUtil() {
+    }
 
     /**
      * Lazily created singleton to be used when outside the scope of a Native Image build.
@@ -75,51 +84,98 @@ public final class AnnotationUtil {
     private static Boolean instanceIsSingleton;
 
     /**
+     * The same-context service selected before {@link GuestAccess} is planted. Early bootstrap
+     * consumers use the returned {@link AnnotationExtractor} until
+     * {@link org.graalvm.nativeimage.AnnotationAccess} can retrieve it from image singletons.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static AnnotationExtractor sameContextExtractor;
+
+    /**
      * The hosted image builder creates the {@link AnnotationExtractor} before publishing it
      * globally. Registering it here avoids transient fallback to {@link Lazy} in that startup
      * window.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
-    private static AnnotatedObjectAccess hostedAnnotationExtractor;
+    private static AnnotatedObjectAccess builderToGuestBackend;
+
+    /**
+     * Selects and stores the same-context annotation service before {@link GuestAccess} is planted.
+     * The caller must provide the isolation mode obtained from the selected VMAccess builder;
+     * looking it up through {@link GuestAccess} at this stage would plant the default
+     * configuration.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static AnnotationExtractor initializeSameContextBackend(boolean fullyIsolated) {
+        GraalError.guarantee(sameContextExtractor == null, "Same-context annotation backend is already initialized");
+        sameContextExtractor = fullyIsolated ? new HostAnnotationExtractor() : new SubstrateAnnotationExtractor();
+        return sameContextExtractor;
+    }
+
+    /**
+     * Selects the builder-to-guest backend after {@link GuestAccess} has been planted.
+     *
+     * Non-isolated mode reuses the exact legacy instance selected by
+     * {@link #initializeSameContextBackend(boolean)}. Fully isolated mode installs a guest metadata
+     * backend independently of its builder-context extractor.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void initializeBuilderToGuestBackend() {
+        GraalError.guarantee(sameContextExtractor != null, "Same-context annotation backend is not initialized");
+        AnnotatedObjectAccess backend;
+        if (GuestAccess.get().isFullyIsolated()) {
+            GraalError.guarantee(sameContextExtractor instanceof HostAnnotationExtractor,
+                            "Fully isolated builds require the host annotation extractor");
+            backend = new GuestAnnotationBackend();
+        } else {
+            GraalError.guarantee(sameContextExtractor instanceof SubstrateAnnotationExtractor,
+                            "Non-isolated builds require the legacy annotation extractor");
+            backend = (SubstrateAnnotationExtractor) sameContextExtractor;
+        }
+        installBuilderToGuestBackend(backend);
+    }
 
     /*
-     * These accesses do not need synchronization: the hosted extractor is installed during the
+     * These accesses do not need synchronization: the hosted backend is installed during the
      * single-threaded image-builder bootstrap, and the fallback path only publishes immutable
      * singletons while rejecting any attempt to mix the hosted and lazy variants in one VM.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void installHostedAnnotationExtractor(AnnotatedObjectAccess extractor) {
-        Objects.requireNonNull(extractor);
+    private static void installBuilderToGuestBackend(AnnotatedObjectAccess backend) {
         if (instanceIsSingleton == null) {
             instanceIsSingleton = true;
         } else if (!instanceIsSingleton) {
-            throw new GraalError(Lazy.initLocation, "Cannot use image singleton AnnotatedObjectAccess after Lazy.instance initialized");
+            throw new GraalError(Lazy.initLocation, "Cannot install the image-build annotation backend after Lazy.instance initialized");
         }
-        GraalError.guarantee(hostedAnnotationExtractor == null || hostedAnnotationExtractor == extractor,
-                        "Conflicting hosted AnnotatedObjectAccess instances");
-        hostedAnnotationExtractor = extractor;
+        GraalError.guarantee(builderToGuestBackend == null || builderToGuestBackend == backend,
+                        "Conflicting builder-to-guest annotation backends");
+        builderToGuestBackend = backend;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static AnnotatedObjectAccess instance() {
-        if (hostedAnnotationExtractor != null) {
-            GraalError.guarantee(instanceIsSingleton == null || instanceIsSingleton, "Cannot use image singleton AnnotatedObjectAccess and Lazy.instance in one process");
+        if (builderToGuestBackend != null) {
+            GraalError.guarantee(instanceIsSingleton == null || instanceIsSingleton, "Cannot use the image-build annotation backend and Lazy.instance in one process");
             instanceIsSingleton = true;
-            return hostedAnnotationExtractor;
+            return builderToGuestBackend;
         }
-        // Fall back to singleton when no AnnotationExtractor singleton is available (e.g.,
+        // Fall back to a local backend when no image-build backend is available (e.g.,
         // running `mx unittest com.oracle.graal.pointsto.standalone.test`).
-        GraalError.guarantee(instanceIsSingleton == null || !instanceIsSingleton, "Cannot use image singleton AnnotatedObjectAccess and Lazy.instance in one process");
+        GraalError.guarantee(instanceIsSingleton == null || !instanceIsSingleton, "Cannot use the image-build annotation backend and Lazy.instance in one process");
         instanceIsSingleton = false;
         return Lazy.instance;
     }
 
     /**
      * Converts an {@link Annotation} to an {@link AnnotationValue}.
+     * <p>
+     * This is a compatibility bridge for callers that still carry builder annotation instances
+     * while handling guest metadata. New code should retain or construct {@link AnnotationValue}
+     * directly. GR-78020 tracks migrating existing callers and removing this method.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static AnnotationValue asAnnotationValue(Annotation annotation) {
-        return instance().asAnnotationValue(annotation);
+        return HostAnnotationValueConverter.toAnnotationValue(annotation, GuestAccess.get()::lookupType);
     }
 
     /**
@@ -131,16 +187,61 @@ public final class AnnotationUtil {
     }
 
     /**
+     * Gets the annotations associated with the parameters of {@code method}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+        return instance().getParameterAnnotationValues(method);
+    }
+
+    /**
+     * Gets the type annotations associated with {@code annotated}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static List<TypeAnnotationValue> getTypeAnnotationValues(Annotated annotated) {
+        return instance().getTypeAnnotationValues(annotated);
+    }
+
+    /**
+     * Gets the default value for the annotation member represented by {@code method}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Object getAnnotationDefaultValue(ResolvedJavaMethod method) {
+        return instance().getAnnotationDefaultValue(method);
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element} as an
      * {@link AnnotationValue} object if such an annotation is present, else null.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
         return instance().getAnnotationValue(element, annotationType);
     }
 
     /**
+     * Gets the annotation represented by {@code annotationType}.
+     *
+     * @param declaredOnly whether inherited annotations must be ignored
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static AnnotationValue getAnnotationValue(Annotated element, ResolvedJavaType annotationType, boolean declaredOnly) {
+        return instance().getAnnotationValue(element, requireAnnotationType(annotationType), declaredOnly);
+    }
+
+    /** Gets the JVMCI types of all annotations present on {@code element}. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static List<ResolvedJavaType> getAnnotationTypes(Annotated element) {
+        return instance().getAnnotationTypes(element);
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element} if such an annotation
      * is present, else null.
+     * <p>
+     * This is a compatibility bridge for callers that still materialize builder annotations from
+     * guest metadata. New code should consume {@link AnnotationValue} or a specialized guest
+     * annotation DTO instead. GR-78020 tracks migrating existing callers and removing this method.
      */
     public static <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
         // Checkstyle: allow direct annotation access
@@ -150,16 +251,14 @@ public final class AnnotationUtil {
             }
             throw new IllegalArgumentException("Cannot cast " + element.getClass() + " to " + RuntimeAnnotated.class.getName() + ": " + element);
         }
-        return instance().getAnnotation(element, annotationType);
+        return getHostedAnnotation(element, annotationType);
         // Checkstyle: disallow direct annotation access
     }
 
-    /**
-     * Gets the annotations associated with the parameters of {@code method}.
-     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
-        return instance().getParameterAnnotationValues(method);
+    private static <T extends Annotation> T getHostedAnnotation(Annotated element, Class<T> annotationType) {
+        AnnotationValue annotationValue = instance().getAnnotationValue(element, annotationType);
+        return annotationValue == null ? null : HostAnnotationValueConverter.toAnnotation(annotationValue, annotationType, OriginalClassProvider::getJavaClass);
     }
 
     /**
@@ -177,6 +276,10 @@ public final class AnnotationUtil {
      * <p>
      * To avoid complex reflective lookups, information about the container annotation must be
      * provided through the {@code containerClass} and {@code valueFunction} parameters.
+     * <p>
+     * This is a compatibility bridge for materializing builder annotations from guest metadata.
+     * GR-78020 tracks migrating existing callers to {@link AnnotationValue} or specialized DTOs and
+     * removing this method.
      *
      * @param element the annotated element to retrieve annotations from
      * @param annotationClass the type of annotation to retrieve
@@ -205,30 +308,18 @@ public final class AnnotationUtil {
      * Determines if an annotation of type {@code annotationType} is present on {@code element}.
      */
     public static boolean isAnnotationPresent(Annotated element, Class<? extends Annotation> annotationType) {
-        return getAnnotation(element, annotationType) != null;
+        if (ImageInfo.inImageRuntimeCode()) {
+            return getAnnotation(element, annotationType) != null;
+        }
+        return instance().hasAnnotation(element, annotationType);
     }
 
     /**
      * Determines if an annotation of type {@code annotationType} is present on {@code element}.
      */
-    @SuppressWarnings("unchecked")
-    public static boolean isAnnotationPresent(Annotated element, ResolvedJavaType annotationType) {
-        Objects.requireNonNull(annotationType, "annotationType must not be null");
-        return isAnnotationPresent(element, (Class<? extends Annotation>) OriginalClassProvider.getJavaClass(annotationType));
-    }
-
-    /**
-     * Creates an {@link Annotation} for the given annotation type and element values.
-     *
-     * @param elements a sequence of (name,value) pairs where each name must denote an existing
-     *            element of the annotation type and the value must have the right type according to
-     *            {@link AnnotationValueType#matchesElementType}. Note that {@link Enum} and
-     *            {@link Class} values are automatically converted to {@link EnumElement} and
-     *            {@link ResolvedJavaType} values respectively.
-     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static <T extends Annotation> T newAnnotation(Class<T> annotationType, Object... elements) {
-        return instance().asAnnotation(newAnnotationValue(annotationType, elements), annotationType);
+    public static boolean isAnnotationPresent(Annotated element, ResolvedJavaType annotationType) {
+        return instance().hasAnnotation(element, requireAnnotationType(annotationType));
     }
 
     /**
@@ -240,6 +331,7 @@ public final class AnnotationUtil {
      *            {@link Class} values are automatically converted to {@link EnumElement} and
      *            {@link ResolvedJavaType} values respectively.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static <T extends Annotation> AnnotationValue newAnnotationValue(Class<T> annotationType, Object... elements) {
         return newAnnotationValue(GuestAccess.get().lookupType(annotationType), elements);
     }
@@ -254,6 +346,7 @@ public final class AnnotationUtil {
      *            {@link ResolvedJavaType} values respectively.
      */
     public static <T extends Annotation> AnnotationValue newAnnotationValue(ResolvedJavaType annotationType, Object... elements) {
+        requireAnnotationType(annotationType);
         if ((elements.length % 2) != 0) {
             throw new IllegalArgumentException("Elements must be a sequence of (name,value) pairs");
         }
@@ -286,5 +379,13 @@ public final class AnnotationUtil {
             elementsMap.put(name, elementValue);
         }
         return new AnnotationValue(annotationType, elementsMap);
+    }
+
+    private static ResolvedJavaType requireAnnotationType(ResolvedJavaType annotationType) {
+        Objects.requireNonNull(annotationType, "annotationType");
+        if (!annotationType.isAnnotation()) {
+            throw new IllegalArgumentException("Type is not an annotation: " + annotationType.toJavaName());
+        }
+        return annotationType;
     }
 }
