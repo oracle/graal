@@ -615,7 +615,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ni_barista_cmd = [str(suite.baristaHarnessPath()), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
-            ni_barista_cmd += suite.runArgs(bm_suite_args) + self._energyTrackerExtraOptions(suite)
+            ni_barista_cmd += suite.runArgs(bm_suite_args) + self._energyTrackerExtraOptions(suite) + self._pagefaultsTrackerExtraOptions(suite)
             ni_barista_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", bm_suite_args)
             if stage.is_instrument():
                 # Make instrument run short
