@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
@@ -79,19 +80,6 @@ public final class SerialAndEpsilonGCOptions {
     @Option(help = "Print information about TLABs. Printed when The TLABs are retired before a GC, and during the resizing of the TLABs. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> PrintTLAB = new RuntimeOptionKey<>(false, null, SERIAL_OR_EPSILON_GC_ONLY);
 
-    @Option(help = "Print information about the metaspace on shutdown. Serial and epsilon GC only.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> PrintMetaspace = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
-
-    @Option(help = "Terminates the VM instead of throwing OutOfMemoryError when metaspace allocation fails.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> MetaspaceExhaustionIsFatal = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
-
-    /** Query these options only through an appropriate method. */
-    public static class ConcealedOptions {
-        /** Use {@link #getReservedMetaspaceSize} instead. */
-        @Option(help = "Determines the maximum size in bytes of the metaspace. 0 means set ergonomically.")//
-        public static final HostedOptionKey<Integer> MaxMetaspaceSize = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
-    }
-
     @Fold
     public static int getNullRegionSize() {
         if (SubstrateOptions.UseNullRegion.getValue()) {
@@ -111,7 +99,7 @@ public final class SerialAndEpsilonGCOptions {
             return 0;
         }
 
-        int value = SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
+        int value = SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
         if (value != 0) {
             return value;
         }

@@ -98,7 +98,7 @@ class GenScavengeGCFeature implements InternalFeature {
         if (RuntimeClassLoading.isSupported()) {
             MetaspaceImpl metaspace = new MetaspaceImpl();
             ImageSingletons.add(Metaspace.class, metaspace);
-            if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+            if (SubstrateGCOptions.PrintMetaspace.getValue()) {
                 RuntimeSupport.getRuntimeSupport().addTearDownHook(new MetaspaceImpl.TeardownHook(metaspace));
             }
         }

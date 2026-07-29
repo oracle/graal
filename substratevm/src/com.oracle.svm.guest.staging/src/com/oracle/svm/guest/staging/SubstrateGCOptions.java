@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,12 @@ public class SubstrateGCOptions {
     @Option(help = "Verify the heap before and after each collection.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
+    @Option(help = "Print information about the metaspace on shutdown.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> PrintMetaspace = new HostedOptionKey<>(false);
+
+    @Option(help = "Terminates the VM instead of throwing OutOfMemoryError when metaspace allocation fails.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> MetaspaceExhaustionIsFatal = new HostedOptionKey<>(false);
+
     @Option(help = "Determines if references from runtime-installed code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
 
@@ -165,6 +171,10 @@ public class SubstrateGCOptions {
 
     @DuplicatedInNativeCode
     public static class ConcealedOptions {
+        /** Use GC-specific accessors instead. */
+        @Option(help = "Determines the maximum size in bytes of the metaspace. 0 means set ergonomically.")//
+        public static final HostedOptionKey<Integer> MaxMetaspaceSize = new HostedOptionKey<>(0);
+
         /** Use GC-specific accessors instead. */
         @Option(help = "Minimum allowed TLAB size (in bytes).", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MinTLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);

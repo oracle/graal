@@ -121,7 +121,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
                     "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again.";
     private static final String OUT_OF_METASPACE_MSG = "Could not allocate a metaspace chunk because the metaspace is exhausted.\n" +
                     "Maximum metaspace size can be adjusted at build-time with `" +
-                    SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize, "<size in MB>m") + "`.";
+                    SubstrateOptionsParser.commandArgument(SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize, "<size in MB>m") + "`.";
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
     private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError(OUT_OF_METASPACE_MSG);
     private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
@@ -410,7 +410,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
         /* Check if the allocation fits into the reserved address space. */
         if (newTop.aboveThan(metaspaceEnd)) {
-            if (SerialAndEpsilonGCOptions.MetaspaceExhaustionIsFatal.getValue()) {
+            if (SubstrateGCOptions.MetaspaceExhaustionIsFatal.getValue()) {
                 throw VMError.shouldNotReachHere(OUT_OF_METASPACE_MSG);
             }
             throw OUT_OF_METASPACE;

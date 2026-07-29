@@ -150,25 +150,25 @@ public final class HeapParameters {
     }
 
     private static void validateMaxMetaSpaceSize(long alignedChunkSize) {
-        long maxMetaspaceSize = SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
+        long maxMetaspaceSize = SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
         if (maxMetaspaceSize == 0) {
             return;
         }
 
         if (!RuntimeClassLoading.isSupported()) {
             throw UserError.abort("'%s' can only be set if '%s' is enabled.",
-                            SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(),
+                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(),
                             RuntimeClassLoading.Options.RuntimeClassLoading.getName());
         } else if (maxMetaspaceSize < 0) {
             throw UserError.abort("The value of '%s' must be greater than or equal to 0.",
-                            SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
+                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
         } else if (maxMetaspaceSize % alignedChunkSize != 0) {
             throw UserError.abort("The value of '%s' (currently '%d') must be a multiple of '%s' (currently '%d').",
-                            SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(), maxMetaspaceSize,
+                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(), maxMetaspaceSize,
                             SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getName(), alignedChunkSize);
         } else if (HeapImpl.getHeap().getImageHeapOffsetInAddressSpace() < 0) {
             throw UserError.abort("The value of '%s' is too large.",
-                            SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
+                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
         }
     }
 

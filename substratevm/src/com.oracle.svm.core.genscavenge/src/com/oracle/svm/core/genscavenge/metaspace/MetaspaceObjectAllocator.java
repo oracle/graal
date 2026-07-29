@@ -33,7 +33,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
-import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -145,7 +145,7 @@ class MetaspaceObjectAllocator {
     @AlwaysInline("Folds to a constant: enable code elimination")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean collectsStats() {
-        return SerialAndEpsilonGCOptions.PrintMetaspace.getValue() || SerialAndEpsilonGCOptions.MetaspaceExhaustionIsFatal.getValue();
+        return SubstrateGCOptions.PrintMetaspace.getValue() || SubstrateGCOptions.MetaspaceExhaustionIsFatal.getValue();
     }
 
     @Uninterruptible(reason = "Prevent GCs until first object table is updated.")
