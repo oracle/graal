@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.core.UninterruptibleAnnotationUtils.isUninterruptible;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -38,8 +37,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -69,6 +66,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugContext;
@@ -207,7 +205,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
 
         /* Invoke the prologue. This call is the only one that may be inlined. */
-        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, AnnotationUtil.getParameterAnnotations(targetMethod), args);
+        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, AnnotationUtil.getParameterAnnotationValues(targetMethod), args);
         if (invokePrologue != null) {
             ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
             JavaKind prologueReturnKind = prologueMethod.getSignature().getReturnKind();
@@ -325,7 +323,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
         }
 
-        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), AnnotationUtil.getParameterAnnotations(aTargetMethod));
+        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), AnnotationUtil.getParameterAnnotationValues(aTargetMethod));
 
         /* Find the target method for the built-in. */
         CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
@@ -456,7 +454,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
     }
 
-    private InvokeWithExceptionNode generatePrologue(HostedGraphKit kit, List<AnalysisType> parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
+    private InvokeWithExceptionNode generatePrologue(HostedGraphKit kit, List<AnalysisType> parameterTypes, List<List<AnnotationValue>> parameterAnnotations, ValueNode[] args) {
         ResolvedJavaType prologueClass = entryPointData.getPrologue();
         if (prologueClass.equals(CEntryPointData.NO_PROLOGUE)) {
             UserError.guarantee(isUninterruptible(targetMethod), "%s.%s is allowed only for methods annotated with @%s: %s",
@@ -515,7 +513,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         int designatedThreadIndex = -1;
     }
 
-    private ExecutionContextParameters findExecutionContextParameters(HostedGraphKit kit, List<AnalysisType> parameterTypes, Annotation[][] parameterAnnotations) {
+    private ExecutionContextParameters findExecutionContextParameters(HostedGraphKit kit, List<AnalysisType> parameterTypes, List<List<AnnotationValue>> parameterAnnotations) {
         AnalysisType isolateType = kit.getMetaAccess().lookupJavaType(Isolate.class);
         AnalysisType threadType = kit.getMetaAccess().lookupJavaType(IsolateThread.class);
 
@@ -528,13 +526,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             boolean designated = false;
 
             if (parameterAnnotations != null) {
-                for (Annotation ann : parameterAnnotations[i]) {
-                    if (ann.annotationType() == IsolateContext.class) {
+                for (AnnotationValue annotation : parameterAnnotations.get(i)) {
+                    if (annotation.getAnnotationType().equals(GuestAccess.elements().CEntryPoint_IsolateContext)) {
                         UserError.guarantee(isIsolate || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
                                         CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateContext.class.getSimpleName(), Isolate.class.getSimpleName(), targetMethod);
                         designated = true;
                         isIsolate = true;
-                    } else if (ann.annotationType() == IsolateThreadContext.class) {
+                    } else if (annotation.getAnnotationType().equals(GuestAccess.elements().CEntryPoint_IsolateThreadContext)) {
                         UserError.guarantee(isThread || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
                                         CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateThreadContext.class.getSimpleName(), IsolateThread.class.getSimpleName(), targetMethod);
                         designated = true;

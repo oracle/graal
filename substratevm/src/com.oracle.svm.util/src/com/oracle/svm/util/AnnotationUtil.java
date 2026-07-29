@@ -154,24 +154,12 @@ public final class AnnotationUtil {
         // Checkstyle: disallow direct annotation access
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Gets the annotations associated with the parameters of {@code method}.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Annotation[][] getParameterAnnotations(ResolvedJavaMethod method) {
-        List<List<AnnotationValue>> values = instance().getParameterAnnotationValues(method);
-        if (values == null) {
-            return null;
-        }
-        Annotation[][] res = new Annotation[values.size()][];
-        for (int i = 0; i < values.size(); i++) {
-            List<AnnotationValue> annotations = values.get(i);
-            res[i] = new Annotation[annotations.size()];
-            for (int j = 0; j < annotations.size(); j++) {
-                AnnotationValue a = annotations.get(j);
-                Class<? extends Annotation> aType = (Class<? extends Annotation>) OriginalClassProvider.getJavaClass(a.getAnnotationType());
-                res[i][j] = instance().asAnnotation(a, aType);
-            }
-        }
-        return res;
+    public static List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+        return instance().getParameterAnnotationValues(method);
     }
 
     /**
