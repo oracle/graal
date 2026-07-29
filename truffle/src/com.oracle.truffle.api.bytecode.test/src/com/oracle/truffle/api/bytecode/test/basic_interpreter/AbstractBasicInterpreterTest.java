@@ -146,6 +146,14 @@ public abstract class AbstractBasicInterpreterTest {
             return interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
         }
 
+        /**
+         * This method returns the same {@link TestRun} with introspection disabled; it is useful
+         * for tests whose execution time would otherwise be dominated by introspection testing.
+         */
+        public TestRun withoutIntrospection() {
+            return new TestRun(bytecode, testSerialize, testTracer, false);
+        }
+
         @Override
         public String toString() {
             return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + ",trace=" + testTracer + ",introspection=" + testIntrospectionInvariants + "]";
