@@ -545,7 +545,7 @@ public class FrameInfoEncoder {
         return data;
     }
 
-    protected FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
+    FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
         FrameData data = new FrameData(null, totalFrameSize, null, true);
         data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, FrameState.StackState.BeforePop);
         customization.fillSourceFields(method, data.frame);
@@ -559,6 +559,20 @@ public class FrameInfoEncoder {
         }
 
         // save encoding metadata
+        CompressedFrameData frame = new CompressedFrameData(data.frame.sourceMethodId, data.frame.getSourceMethod(), data.frame.getSourceClass(), data.frame.getSourceMethodName(),
+                        data.frame.getSourceMethodSignature(), data.frame.getSourceMethodFlags(), data.frame.sourceLineNumber, data.frame.encodedBci, true);
+        frameMetadata.addFrameSlice(data, List.of(frame));
+
+        allDebugInfos.add(data);
+        return data;
+    }
+
+    FrameData addSyntheticDefaultDebugInfo(int totalFrameSize) {
+        FrameData data = new FrameData(null, totalFrameSize, null, true);
+        data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, FrameState.StackState.BeforePop);
+        // Synthetic runtime-code metadata has no source method table entry.
+        data.frame.sourceLineNumber = -1;
+
         CompressedFrameData frame = new CompressedFrameData(data.frame.sourceMethodId, data.frame.getSourceMethod(), data.frame.getSourceClass(), data.frame.getSourceMethodName(),
                         data.frame.getSourceMethodSignature(), data.frame.getSourceMethodFlags(), data.frame.sourceLineNumber, data.frame.encodedBci, true);
         frameMetadata.addFrameSlice(data, List.of(frame));
@@ -918,13 +932,17 @@ public class FrameInfoEncoder {
         return result;
     }
 
+    byte[] encodeAll(Runnable recordActivity) {
+        return NonmovableArrays.heapCopyOfByteArray(encodeFrameDatas(recordActivity));
+    }
+
     protected void encodeAllAndInstall(CodeInfo target, Runnable recordActivity) {
         NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas(recordActivity);
         install(target, frameInfoEncodings);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings) {
+    static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings) {
         CodeInfoAccess.setFrameInfo(target, frameInfoEncodings);
         afterInstallation(target);
     }

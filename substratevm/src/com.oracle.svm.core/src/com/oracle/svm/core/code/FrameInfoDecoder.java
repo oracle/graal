@@ -296,9 +296,25 @@ public class FrameInfoDecoder {
         } else {
             result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, constantAccess, state);
         }
+        fillLocalSourceFields(result, info);
         state.isFirstFrame = false;
 
         return result;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void fillLocalSourceFields(FrameInfoQueryResult result, CodeInfo info) {
+        if (CodeInfoAccess.getMethodCount(info) != 0) {
+            /*
+             * Resolve local source metadata while the producing CodeInfo is valid. Decoded frames
+             * then retain only ordinary Java source fields, not an unmanaged CodeInfo pointer.
+             */
+            for (FrameInfoQueryResult frame = result; frame != null; frame = frame.caller) {
+                if (frame.sourceMethodId != 0) {
+                    CodeInfoDecoder.fillSourceFields(frame, info);
+                }
+            }
+        }
     }
 
     /*

@@ -136,11 +136,118 @@ public class CodeInfoEncoder {
         }
     }
 
+    /**
+     * Object-reference side tables used by encoded {@link CodeInfo}. These are copied through a
+     * {@link ReferenceAdjuster} when the encoded byte tables are installed.
+     */
     public record Encodings(
                     JavaConstant[] objectConstantsArray,
                     Class<?>[] classesArray,
                     String[] memberNamesArray,
                     String[] otherStringsArray) {
+    }
+
+    /** Encoded runtime CodeInfo tables produced from a compilation result. */
+    public record EncodedCodeInfo(Encodings encodings,
+                    byte[] methodTable,
+                    int methodTableFirstId,
+                    int methodTableEntryCount,
+                    byte[] stackReferenceMapEncoding,
+                    byte[] frameInfoEncodings,
+                    byte[] codeInfoIndex,
+                    byte[] codeInfoEncodings,
+                    int codeInfoIndexEntriesPerBlock,
+                    byte[] codeInfoDefaultFrameInfoIndexes) {
+
+        /**
+         * Copies byte-only CodeInfo tables into nonmovable memory before the caller enters a more
+         * constrained publication phase. Object-reference arrays are still copied atomically during
+         * {@link PreparedEncodedCodeInfo#install}.
+         */
+        public PreparedEncodedCodeInfo prepareForInstall() {
+            NonmovableArray<Byte> preparedMethodTable = NonmovableArrays.nullArray();
+            NonmovableArray<Byte> preparedFrameInfoEncodings = NonmovableArrays.nullArray();
+            NonmovableArray<Byte> preparedCodeInfoIndex = NonmovableArrays.nullArray();
+            NonmovableArray<Byte> preparedCodeInfoEncodings = NonmovableArrays.nullArray();
+            NonmovableArray<Byte> preparedCodeInfoDefaultFrameInfoIndexes = NonmovableArrays.nullArray();
+            NonmovableArray<Byte> preparedStackReferenceMapEncoding = NonmovableArrays.nullArray();
+            try {
+                preparedMethodTable = NonmovableArrays.copyOfByteArray(methodTable, NmtCategory.Code);
+                preparedFrameInfoEncodings = NonmovableArrays.copyOfByteArray(frameInfoEncodings, NmtCategory.Code);
+                preparedCodeInfoIndex = NonmovableArrays.copyOfByteArray(codeInfoIndex, NmtCategory.Code);
+                preparedCodeInfoEncodings = NonmovableArrays.copyOfByteArray(codeInfoEncodings, NmtCategory.Code);
+                preparedCodeInfoDefaultFrameInfoIndexes = NonmovableArrays.copyOfByteArray(codeInfoDefaultFrameInfoIndexes, NmtCategory.Code);
+                preparedStackReferenceMapEncoding = NonmovableArrays.copyOfByteArray(stackReferenceMapEncoding, NmtCategory.Code);
+                return new PreparedEncodedCodeInfo(this, preparedMethodTable, preparedFrameInfoEncodings, preparedCodeInfoIndex, preparedCodeInfoEncodings,
+                                preparedCodeInfoDefaultFrameInfoIndexes, preparedStackReferenceMapEncoding);
+            } catch (RuntimeException | Error t) {
+                // The prepared tables are unmanaged memory until ownership transfers to PreparedEncodedCodeInfo.
+                NonmovableArrays.releaseUnmanagedArray(preparedMethodTable);
+                NonmovableArrays.releaseUnmanagedArray(preparedFrameInfoEncodings);
+                NonmovableArrays.releaseUnmanagedArray(preparedCodeInfoIndex);
+                NonmovableArrays.releaseUnmanagedArray(preparedCodeInfoEncodings);
+                NonmovableArrays.releaseUnmanagedArray(preparedCodeInfoDefaultFrameInfoIndexes);
+                NonmovableArrays.releaseUnmanagedArray(preparedStackReferenceMapEncoding);
+                throw t;
+            }
+        }
+    }
+
+    /**
+     * Prepared install view for {@link EncodedCodeInfo}. Only the byte tables are copied eagerly;
+     * object-reference side tables are adjusted and published by {@link #install}.
+     */
+    public static final class PreparedEncodedCodeInfo {
+        private final EncodedCodeInfo encodedCodeInfo;
+        private final NonmovableArray<Byte> methodTableArray;
+        private final NonmovableArray<Byte> frameInfoEncodingsArray;
+        private final NonmovableArray<Byte> codeInfoIndexArray;
+        private final NonmovableArray<Byte> codeInfoEncodingsArray;
+        private final NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray;
+        private final NonmovableArray<Byte> stackReferenceMapEncodingArray;
+
+        private PreparedEncodedCodeInfo(EncodedCodeInfo encodedCodeInfo, NonmovableArray<Byte> methodTableArray, NonmovableArray<Byte> frameInfoEncodingsArray,
+                        NonmovableArray<Byte> codeInfoIndexArray, NonmovableArray<Byte> codeInfoEncodingsArray, NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray,
+                        NonmovableArray<Byte> stackReferenceMapEncodingArray) {
+            this.encodedCodeInfo = encodedCodeInfo;
+            this.methodTableArray = methodTableArray;
+            this.frameInfoEncodingsArray = frameInfoEncodingsArray;
+            this.codeInfoIndexArray = codeInfoIndexArray;
+            this.codeInfoEncodingsArray = codeInfoEncodingsArray;
+            this.codeInfoDefaultFrameInfoIndexesArray = codeInfoDefaultFrameInfoIndexesArray;
+            this.stackReferenceMapEncodingArray = stackReferenceMapEncodingArray;
+        }
+
+        /**
+         * Installs prepared byte tables and atomically copies object-reference side tables into the
+         * target {@link CodeInfo}.
+         */
+        @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
+        public void install(CodeInfo target, ReferenceAdjuster adjuster) {
+            Encodings encodings = encodedCodeInfo.encodings;
+            NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(encodings.objectConstantsArray, NmtCategory.Code);
+            NonmovableObjectArray<Class<?>> classes = (encodings.classesArray != null) ? adjuster.copyOfObjectArray(encodings.classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> memberNames = (encodings.memberNamesArray != null) ? adjuster.copyOfObjectArray(encodings.memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> otherStrings = (encodings.otherStringsArray != null) ? adjuster.copyOfObjectArray(encodings.otherStringsArray, NmtCategory.Code)
+                            : NonmovableArrays.nullArray();
+
+            CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTableArray, encodedCodeInfo.methodTableFirstId, encodedCodeInfo.methodTableEntryCount);
+            FrameInfoEncoder.install(target, frameInfoEncodingsArray);
+            CodeInfoAccess.setCodeInfo(target, codeInfoIndexArray, codeInfoEncodingsArray, encodedCodeInfo.codeInfoIndexEntriesPerBlock, codeInfoDefaultFrameInfoIndexesArray,
+                            stackReferenceMapEncodingArray);
+        }
+
+        /**
+         * Releases prepared byte tables that were never installed into a {@link CodeInfo}.
+         */
+        public void releaseUninstalled() {
+            NonmovableArrays.releaseUnmanagedArray(methodTableArray);
+            NonmovableArrays.releaseUnmanagedArray(frameInfoEncodingsArray);
+            NonmovableArrays.releaseUnmanagedArray(codeInfoIndexArray);
+            NonmovableArrays.releaseUnmanagedArray(codeInfoEncodingsArray);
+            NonmovableArrays.releaseUnmanagedArray(codeInfoDefaultFrameInfoIndexesArray);
+            NonmovableArrays.releaseUnmanagedArray(stackReferenceMapEncodingArray);
+        }
     }
 
     /**
@@ -180,10 +287,11 @@ public class CodeInfoEncoder {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
 
             /*
-             * Only image code and metadata needs to store this data. Runtime code info should
-             * reference only image methods via method ids.
+             * Only image code and metadata need to store this data. Runtime-installed code should
+             * reference image methods via method ids, even when hosted code prepares the runtime
+             * metadata for later installation.
              */
-            assert imageCode == SubstrateUtil.HOSTED;
+            assert SubstrateUtil.HOSTED || !imageCode : "Image code metadata can only be encoded during image building.";
             this.classes = imageCode ? FrequencyEncoder.createVerifyingEqualityEncoder(classVerifier) : null;
             this.memberNames = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
             this.methods = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
@@ -232,22 +340,31 @@ public class CodeInfoEncoder {
                             encodeArray(otherStrings, String[]::new));
         }
 
-        private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
-            Encodings encodings = encodeAll();
-
+        private int methodTableEntryCount() {
             /* Runtime code info references image methods by id and does not encode methods. */
-            int methodTableEntryCount = methods == null ? 0 : methods.getLength();
-            int methodTableFirstId;
+            return methods == null ? 0 : methods.getLength();
+        }
+
+        private int nextMethodTableFirstId(int methodTableEntryCount) {
+            if (methods == null) {
+                return 0;
+            }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 var idTracker = MethodTableFirstIDTracker.singleton();
-                methodTableFirstId = idTracker.startingID;
+                int methodTableFirstId = idTracker.startingID;
                 idTracker.nextStartingId = methodTableFirstId + methodTableEntryCount;
+                return methodTableFirstId;
             } else {
-                methodTableFirstId = 0;
+                return 0;
             }
-            NonmovableArray<Byte> methodTable = encodeMethodTable();
+        }
 
-            install(target, encodings, methodTable, methodTableFirstId, adjuster, methodTableEntryCount);
+        private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+            Encodings encodings = encodeAll();
+            int entryCount = methodTableEntryCount();
+            int methodTableFirstId = nextMethodTableFirstId(entryCount);
+            NonmovableArray<Byte> methodTable = encodeMethodTable();
+            install(target, encodings, methodTable, methodTableFirstId, adjuster, entryCount);
         }
 
         private static <T> T[] encodeArray(FrequencyEncoder<T> encoder, IntFunction<T[]> allocator) {
@@ -383,10 +500,25 @@ public class CodeInfoEncoder {
     }
 
     public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, Encoders encoders, ConstantAccess constantAccess) {
+        this(frameInfoCustomization, encoders, constantAccess, useFinalImageCodeInfoEncoding());
+    }
+
+    /**
+     * Creates an encoder with an explicit code-info layout choice.
+     *
+     * {@code useFinalImageCodeInfoEncoding} enables the final image-code side-table format used by
+     * {@link ImageCodeInfo}. Runtime-installed code should pass {@code false} so frame-info indexes
+     * remain self-contained in the encoded entries.
+     */
+    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, Encoders encoders, boolean useFinalImageCodeInfoEncoding) {
+        this(frameInfoCustomization, encoders, FrameInfoDecoder.SubstrateConstantAccess, useFinalImageCodeInfoEncoding);
+    }
+
+    private CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, Encoders encoders, ConstantAccess constantAccess, boolean useFinalImageCodeInfoEncoding) {
         this.entries = new TreeMap<>();
         this.encoders = encoders;
         this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders, constantAccess);
-        this.useFinalImageCodeInfoEncoding = useFinalImageCodeInfoEncoding();
+        this.useFinalImageCodeInfoEncoding = useFinalImageCodeInfoEncoding;
     }
 
     public FrameInfoEncoder getFrameInfoEncoder() {
@@ -425,23 +557,8 @@ public class CodeInfoEncoder {
         int framePointerSaveAreaOffset = getFramePointerSaveAreaOffset(compilation);
 
         /* Mark the method start and register the frame size. */
-        IPData startEntry = makeEntry(compilationOffset);
         FrameInfoEncoder.FrameData defaultFrameData = frameInfoEncoder.addDefaultDebugInfo(method, totalFrameSize);
-        startEntry.defaultFrameData = defaultFrameData;
-        startEntry.frameData = defaultFrameData;
-        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
-        startEntry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
-
-        /* Register the frame size for all entries that are starting points for the index. */
-        long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
-        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
-            IPData entry = makeEntry(entryIP);
-            entry.defaultFrameData = defaultFrameData;
-            entry.frameData = defaultFrameData;
-            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
-            entry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
-            entryIP += CodeInfoDecoder.indexGranularity();
-        }
+        addDefaultFrameInfoEntries(compilationOffset, compilationSize, totalFrameSize, isEntryPoint, hasCalleeSavedRegisters, defaultFrameData, null, framePointerSaveAreaOffset);
 
         EconomicSet<Integer> infopointOffsets = EconomicSet.create(Equivalence.DEFAULT);
         EconomicSet<Long> deoptEntryBcis = EconomicSet.create(Equivalence.DEFAULT);
@@ -497,6 +614,43 @@ public class CodeInfoEncoder {
         return CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
     }
 
+    /**
+     * Adds code-info metadata for runtime-installed code that is not backed by a
+     * {@link SharedMethod} or {@link CompilationResult}. The whole code range uses one default
+     * frame shape and empty reference maps; no source method, infopoint, exception-handler, or
+     * deoptimization metadata is recorded.
+     */
+    public void addSyntheticMethod(int compilationOffset, int compilationSize, int totalFrameSize, boolean isEntryPoint, boolean hasCalleeSavedRegisters) {
+        SubstrateReferenceMap emptyReferenceMap = new SubstrateReferenceMap();
+        FrameInfoEncoder.FrameData defaultFrameData = frameInfoEncoder.addSyntheticDefaultDebugInfo(totalFrameSize);
+        addDefaultFrameInfoEntries(compilationOffset, compilationSize, totalFrameSize, isEntryPoint, hasCalleeSavedRegisters, defaultFrameData, emptyReferenceMap,
+                        CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
+
+        ImageSingletons.lookup(Counters.class).methodCount.inc();
+        ImageSingletons.lookup(Counters.class).codeSize.add(compilationSize);
+    }
+
+    private void addDefaultFrameInfoEntries(int compilationOffset, int compilationSize, int totalFrameSize, boolean isEntryPoint, boolean hasCalleeSavedRegisters,
+                    FrameInfoEncoder.FrameData defaultFrameData, ReferenceMapEncoder.Input referenceMap, int framePointerSaveAreaOffset) {
+        IPData startEntry = makeEntry(compilationOffset);
+        startEntry.defaultFrameData = defaultFrameData;
+        startEntry.referenceMap = referenceMap;
+        startEntry.frameData = defaultFrameData;
+        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
+        startEntry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
+
+        long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
+        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
+            IPData entry = makeEntry(entryIP);
+            entry.defaultFrameData = defaultFrameData;
+            entry.referenceMap = referenceMap;
+            entry.frameData = defaultFrameData;
+            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
+            entry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
+            entryIP += CodeInfoDecoder.indexGranularity();
+        }
+    }
+
     private IPData makeEntry(long ip) {
         IPData result = entries.get(ip);
         if (result == null) {
@@ -514,6 +668,32 @@ public class CodeInfoEncoder {
         encodeIPData();
 
         install(target);
+    }
+
+    /**
+     * Encodes all registered method metadata into heap byte arrays for later installation into a
+     * {@link CodeInfo}. This is useful when hosted code prepares runtime-code metadata that must be
+     * serialized before it can be copied back into nonmovable arrays at install time.
+     */
+    public EncodedCodeInfo encodeAll(Runnable recordActivity) {
+        Encodings encodings = encoders.encodeAll();
+        int methodTableEntryCount = encoders.methodTableEntryCount();
+        int methodTableFirstId = encoders.nextMethodTableFirstId(methodTableEntryCount);
+        NonmovableArray<Byte> methodTable = encoders.encodeMethodTable();
+        encodeReferenceMaps();
+        byte[] frameInfoEncodings = frameInfoEncoder.encodeAll(recordActivity);
+        encodeIPData();
+
+        return new EncodedCodeInfo(encodings,
+                        NonmovableArrays.heapCopyOfByteArray(methodTable),
+                        methodTableFirstId,
+                        methodTableEntryCount,
+                        NonmovableArrays.heapCopyOfByteArray(referenceMapEncoding),
+                        frameInfoEncodings,
+                        NonmovableArrays.heapCopyOfByteArray(codeInfoIndex),
+                        NonmovableArrays.heapCopyOfByteArray(codeInfoEncodings),
+                        codeInfoIndexEntriesPerBlock,
+                        NonmovableArrays.heapCopyOfByteArray(codeInfoDefaultFrameInfoIndexes));
     }
 
     private void install(CodeInfo target) {

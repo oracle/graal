@@ -54,9 +54,17 @@ public class AbstractRuntimeCodeInstaller {
         RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
     }
 
+    /**
+     * Installs already prepared runtime code using a temporary installation tether.
+     * <p>
+     * This is the normal path when another runtime object, for example a call target, owns the
+     * installed code after publication. The tether is released before this method returns. Callers
+     * that need to own the runtime code lifetime themselves should use
+     * {@link #doInstallPreparedAndTransferTether(SharedMethod, CodeInfo, SubstrateInstalledCode)}.
+     */
     protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
         // The tether is acquired when it is created.
-        Object tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
+        CodeInfoTether tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
         try {
             doInstallPreparedAndTethered(method, codeInfo, installedCode);
         } finally {
@@ -64,6 +72,35 @@ public class AbstractRuntimeCodeInstaller {
         }
     }
 
+    /**
+     * Installs already prepared runtime code and transfers the acquired {@link CodeInfoTether} to
+     * the caller on success.
+     * <p>
+     * Use this when the installed code has no existing owner, such as a call target, that keeps
+     * the runtime code alive. The caller must keep the returned tether reachable for as long as the
+     * installed code can be entered. If installation fails, this method releases the tether before
+     * rethrowing the failure.
+     */
+    protected static CodeInfoTether doInstallPreparedAndTransferTether(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
+        // The tether is acquired when it is created.
+        CodeInfoTether tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
+        try {
+            doInstallPreparedAndTethered(method, codeInfo, installedCode);
+            return tether;
+        } catch (Throwable t) {
+            CodeInfoAccess.releaseTether(codeInfo, tether);
+            throw t;
+        }
+    }
+
+    /**
+     * Installs runtime code whose {@link CodeInfoTether} was already acquired.
+     * <p>
+     * This method neither acquires nor releases the tether; callers should use
+     * {@link #doInstallPrepared(SharedMethod, CodeInfo, SubstrateInstalledCode)} or
+     * {@link #doInstallPreparedAndTransferTether(SharedMethod, CodeInfo, SubstrateInstalledCode)}
+     * unless they explicitly manage tether ownership.
+     */
     protected static void doInstallPreparedAndTethered(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
         InstallCodeOperation vmOp = new InstallCodeOperation(method, codeInfo, installedCode);
         vmOp.enqueue();

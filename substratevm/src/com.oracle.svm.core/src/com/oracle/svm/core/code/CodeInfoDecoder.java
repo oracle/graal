@@ -50,6 +50,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -565,23 +566,19 @@ public final class CodeInfoDecoder {
     }
 
     /**
-     * Looks up the appropriate {@link CodeInfo} for {@link FrameInfoQueryResult#sourceMethodId} and
-     * reads its associated method table entry to resolve and fill the source class and method name
-     * using the respective other arrays.
+     * Resolves {@link FrameInfoQueryResult#sourceMethodId} through the owning source metadata table
+     * and fills the decoded source class, method name, signature, and flags.
      *
      * @see CodeInfoEncoder.Encoders#encodeMethodTable
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void fillSourceFields(FrameInfoQueryResult result) {
+        fillSourceFields(result, imageCodeInfoForSourceMethod(result.sourceMethodId));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void fillSourceFields(FrameInfoQueryResult result, CodeInfo info) {
         int methodId = result.sourceMethodId;
-        CodeInfo info;
-        CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
-        assert next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next);
-        do {
-            info = next;
-            next = CodeInfoAccess.getNextImageCodeInfo(info);
-            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
-        } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
 
         boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;
         boolean shortName = NonmovableArrays.lengthOf(CodeInfoAccess.getMemberNames(info)) <= 0xffff;
@@ -623,6 +620,31 @@ public final class CodeInfoDecoder {
             sourceSignatureFlags = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS | getMethodFlags(methodEncodings, methodFlagsOffset, methodIndex);
         }
         result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureFlags);
+    }
+
+    /**
+     * Finds the image CodeInfo whose source metadata table owns {@code methodId}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static CodeInfo imageCodeInfoForSourceMethod(int methodId) {
+        CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
+        assert next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next);
+        CodeInfo info;
+        do {
+            info = next;
+            next = CodeInfoAccess.getNextImageCodeInfo(info);
+            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
+        } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
+        return info;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean containsMethodId(CodeInfo info, int methodId) {
+        if (SubstrateUtil.HOSTED ? info == null : info.isNull()) {
+            return false;
+        }
+        int firstMethodId = CodeInfoAccess.getMethodTableFirstId(info);
+        return methodId >= firstMethodId && methodId - firstMethodId < CodeInfoAccess.getMethodCount(info);
     }
 
     /**

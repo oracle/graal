@@ -247,6 +247,16 @@ public final class NonmovableArrays {
         return copyOfObjectArray(source, source.length, nmtCategory);
     }
 
+    /** Copies a heap byte array into a nonmovable byte array. */
+    public static NonmovableArray<Byte> copyOfByteArray(byte[] source, NmtCategory nmtCategory) {
+        if (source == null) {
+            return nullArray();
+        }
+        NonmovableArray<Byte> copy = createByteArray(source.length, nmtCategory);
+        asByteBuffer(copy).put(source);
+        return copy;
+    }
+
     public static byte[] heapCopyOfByteArray(NonmovableArray<Byte> source) {
         if (source.isNull()) {
             return null;

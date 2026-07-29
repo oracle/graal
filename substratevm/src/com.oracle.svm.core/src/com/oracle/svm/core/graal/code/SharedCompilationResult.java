@@ -78,6 +78,24 @@ public abstract class SharedCompilationResult extends CompilationResult {
         return result;
     }
 
+    /**
+     * Returns the offset where runtime code-info should treat the method entry point as starting.
+     * Most methods start at offset zero; {@link SubstrateBackend.SubstrateMarkId#PROLOGUE_START}
+     * records the non-zero start when the compiler emits bytes before the prologue.
+     */
+    public static int getEntryPointOffset(CompilationResult compilation) {
+        int result = 0;
+        boolean found = false;
+        for (CompilationResult.CodeMark mark : compilation.getMarks()) {
+            if (mark.id == SubstrateBackend.SubstrateMarkId.PROLOGUE_START) {
+                VMError.guarantee(!found, "multiple prologue start marks in compilation result");
+                result = mark.pcOffset;
+                found = true;
+            }
+        }
+        return result;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setCodeAlignment(int codeAlignment) {
         VMError.guarantee(codeAlignment > 0 && NumUtil.isUnsignedPowerOf2(codeAlignment), "invalid alignment %d", codeAlignment);
