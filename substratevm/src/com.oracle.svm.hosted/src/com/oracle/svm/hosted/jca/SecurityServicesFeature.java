@@ -320,7 +320,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field classCacheField;
     private Field constructorCacheField;
 
-    private ConcurrentHashMap<Object, Object> cachedVerificationCache;
+    private final ConcurrentHashMap<Object, Object> cachedVerificationCache = emptyVerificationCache();
     private ProviderList cachedProviders;
 
     private Class<?> jceSecurityClass;
@@ -560,32 +560,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 }
             });
 
-            access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
-                // JVMCI migration blocked by GR-72131: Refactor security service code for project
-                // Terminus.
-                /*
-                 * We must wait until all providers have been registered before filtering the list.
-                 */
-                @Override
-                public boolean isAvailable() {
-                    return BuildPhaseProvider.isHostedUniverseBuilt();
-                }
-
-                @Override
-                public Object transform(Object receiver, Object originalValue) {
-                    if (cachedVerificationCache != null) {
-                        if (SubstrateUtil.assertionsEnabled()) {
-                            var emptyCache = emptyVerificationCache();
-                            assert cachedVerificationCache.equals(emptyCache) : Assertions.errorMessage(cachedVerificationCache, emptyCache);
-                        }
-                    }
-                    /*
-                     * This object is manually rescanned during analysis to ensure its entire type
-                     * structure is part of the analysis universe.
-                     */
-                    return cachedVerificationCache;
-                }
-            });
+            /*
+             * Verification outcomes are preserved separately by provider class, so this JDK cache
+             * is always empty. Keep one stable, immediately available object: application-layer
+             * constant relinking reads static-final fields before the hosted universe is built.
+             * The object is manually rescanned during analysis to ensure its entire type structure
+             * is part of the analysis universe.
+             */
+            access.registerFieldValueTransformer(verificationResultsField, (_, _) -> cachedVerificationCache);
         }
     }
 
@@ -1254,11 +1236,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
         if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
-            var emptyCache = emptyVerificationCache();
-            if (cachedVerificationCache == null || !cachedVerificationCache.equals(emptyCache)) {
-                cachedVerificationCache = emptyCache;
-                access.rescanObject(cachedVerificationCache, scanReason);
-            }
+            access.rescanObject(cachedVerificationCache, scanReason);
         }
     }
 
