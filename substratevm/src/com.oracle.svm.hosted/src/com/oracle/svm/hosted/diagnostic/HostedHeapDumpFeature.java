@@ -45,8 +45,9 @@ import jdk.graal.compiler.options.Option;
 public class HostedHeapDumpFeature implements InternalFeature {
 
     static class Options {
-        @Option(help = "Dump the heap at a specific time during image building." +
-                        "The option accepts a list of comma separated phases, any of: during-analysis, after-analysis, before-compilation.")//
+        @Option(help = "Dump the heap at a specific time during image building. " +
+                        "The option accepts a list of comma separated phases, any of: during-analysis, after-analysis, before-compilation, " +
+                        "compile-queue-before-inlining, compile-queue-after-inlining, compile-queue-after-compilation, after-image-write, build-end.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
 

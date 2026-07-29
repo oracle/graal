@@ -227,6 +227,7 @@ import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
+import com.oracle.svm.hosted.diagnostic.HostedHeapDumpHandler;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
@@ -846,6 +847,9 @@ public class NativeImageGenerator {
                 Path tmpDir = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory();
                 LinkerInvocation inv = image.write(debug, generatedFiles(HostedOptionValues.singleton().get()), tmpDir, imageName, beforeConfig);
                 if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                    if (ImageSingletons.contains(HostedHeapDumpHandler.class)) {
+                        HostedHeapDumpHandler.singleton().dumpAfterImageWrite();
+                    }
                     return;
                 }
 
@@ -857,6 +861,9 @@ public class NativeImageGenerator {
                 } catch (Exception e) {
                     imageDiskFileSize = -1; // we can't read a disk file size
                 }
+                if (ImageSingletons.contains(HostedHeapDumpHandler.class)) {
+                    HostedHeapDumpHandler.singleton().dumpAfterImageWrite();
+                }
             }
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
@@ -866,6 +873,9 @@ public class NativeImageGenerator {
             }
             reporter.printCreationEnd(image.getImageFileSize(), heap.getCurrentLayerObjectCount(), image.getImageHeapSize(), image.getCodeSize(), numCompilations, image.getDebugInfoSize(),
                             imageDiskFileSize);
+            if (ImageSingletons.contains(HostedHeapDumpHandler.class)) {
+                HostedHeapDumpHandler.singleton().dumpBuildEnd();
+            }
         }
     }
 
