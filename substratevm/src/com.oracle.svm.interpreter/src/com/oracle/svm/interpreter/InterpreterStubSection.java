@@ -298,62 +298,62 @@ public abstract class InterpreterStubSection {
         return enterHelper(interpreterMethod, enterData);
     }
 
-    public static long enterDirectInterpreterStubArrayVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallArrayVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, false);
-        return enterInterpreterFromNativeVirtual(method, args);
+        return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubArrayNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallArrayNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, false);
-        return enterInterpreterFromNativeNonVirtual(method, args);
+        return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubArrayReadDoubleForFloatVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, true);
-        return enterInterpreterFromNativeVirtual(method, args);
+        return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubArrayReadDoubleForFloatNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, true);
-        return enterInterpreterFromNativeNonVirtual(method, args);
+        return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubVarargsVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallVarargsVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromVarargs(receiverOrClass, method, jniEnterData, false);
-        return enterInterpreterFromNativeVirtual(method, args);
+        return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubVarargsNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallVarargsNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Object[] args = prepareJNIArgsFromVarargs(receiverOrClass, method, jniEnterData, true);
-        return enterInterpreterFromNativeNonVirtual(method, args);
+        return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubVaListVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallVaListVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Pointer vaListInitialized = VaListInitializationNode.vaListInitialization(vaList);
         Object[] args = prepareJNIArgsFromVaList(receiverOrClass, method, vaListInitialized);
-        return enterInterpreterFromNativeVirtual(method, args);
+        return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterDirectInterpreterStubVaListNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
+    public static long enterInterpreterForJNIUpcallVaListNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
         InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
         Pointer vaListInitialized = VaListInitializationNode.vaListInitialization(vaList);
         Object[] args = prepareJNIArgsFromVaList(receiverOrClass, method, vaListInitialized);
-        return enterInterpreterFromNativeNonVirtual(method, args);
+        return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    private static long enterInterpreterFromNativeVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
+    private static long enterInterpreterForJNIUpcallVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
         Object result = CremaSupport.singleton().execute(method, args, CallKind.getCallKind(method));
         return encodeJNIResult(method, args, result);
     }
 
-    private static long enterInterpreterFromNativeNonVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
+    private static long enterInterpreterForJNIUpcallNonVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
         Object result = CremaSupport.singleton().execute(method, args, CallKind.DIRECT);
         return encodeJNIResult(method, args, result);
     }
@@ -963,11 +963,11 @@ public abstract class InterpreterStubSection {
         // @formatter:on
     }
 
-    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterLeaveJNIStub)
+    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterJNIDowncallStub)
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     @SuppressWarnings("unused")
-    public static long leaveInterpreterJNIStub(CFunctionPointer entryPoint, Pointer leaveData, long stackSize, boolean returnInFpRegister) {
+    public static long leaveInterpreterForJNIDowncallStub(CFunctionPointer entryPoint, Pointer leaveData, long stackSize, boolean returnInFpRegister) {
         /*
          * The backend overwrites this value and makes the stub return the raw result of invoking
          * entryPoint instead. Nevertheless, it relies on entryPoint.rawValue() being in the integer
@@ -976,7 +976,7 @@ public abstract class InterpreterStubSection {
         return entryPoint.rawValue();
     }
 
-    public static Object leaveInterpreterJNI(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
+    public static Object leaveInterpreterForJNIDowncall(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
         VMError.guarantee(seedMethod instanceof CremaResolvedJavaMethod, "Unexpected native interpreter method");
 
         CremaResolvedJavaMethod target = (CremaResolvedJavaMethod) seedMethod;
@@ -1003,7 +1003,7 @@ public abstract class InterpreterStubSection {
                 int stackSize = getStackSize(jniSignature);
                 try {
                     stackBuffer = allocateStackBuffer(accessHelper, leaveData, stackSize, false);
-                    result = leaveInterpreterJNI(nativeEntryPoint, args, jniSignature, accessHelper, leaveData, receiverOrClass, target.hasReceiver(), JNIMethodSupport.environment());
+                    result = leaveInterpreterForJNIDowncall(nativeEntryPoint, args, jniSignature, accessHelper, leaveData, receiverOrClass, target.hasReceiver(), JNIMethodSupport.environment());
                 } finally {
                     freeStackBuffer(stackBuffer, stackSize);
                 }
@@ -1020,7 +1020,7 @@ public abstract class InterpreterStubSection {
     }
 
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
-    public static Object leaveInterpreterJNI(CFunctionPointer nativeEntryPoint, Object[] args, PreparedSignature jniSignature, InterpreterAccessStubData accessHelper, Pointer leaveData,
+    public static Object leaveInterpreterForJNIDowncall(CFunctionPointer nativeEntryPoint, Object[] args, PreparedSignature jniSignature, InterpreterAccessStubData accessHelper, Pointer leaveData,
                     Object receiverOrClass, boolean hasReceiver, JNIEnvironment jniEnvironment) {
         int[] argumentTypes = jniSignature.getArgumentTypes();
         int gpPos = 0;
@@ -1094,7 +1094,7 @@ public abstract class InterpreterStubSection {
          * because leaveData is a pointer to the stack which may become invalid when virtual threads
          * are used.
          */
-        long rawReturnValue = leaveInterpreterJNIStub(nativeEntryPoint, leaveData, stackSize, returnInFpRegister);
+        long rawReturnValue = leaveInterpreterForJNIDowncallStub(nativeEntryPoint, leaveData, stackSize, returnInFpRegister);
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
 
         return switch (returnKind) {

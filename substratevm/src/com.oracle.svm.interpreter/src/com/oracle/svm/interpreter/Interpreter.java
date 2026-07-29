@@ -675,7 +675,7 @@ public final class Interpreter {
     public static final class JNIDowncallRoot {
         @NeverInline("needed for JNI caller-sensitive stack walks")
         public static Object execute(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
-            return InterpreterStubSection.leaveInterpreterJNI(seedMethod, args);
+            return InterpreterStubSection.leaveInterpreterForJNIDowncall(seedMethod, args);
         }
     }
 

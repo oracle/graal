@@ -65,9 +65,9 @@ public abstract class InterpreterSupport {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private int leaveStubLength;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
-    private CFunctionPointer leaveJNIStubPointer;
+    private CFunctionPointer jniDowncallStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
-    private int leaveJNIStubLength;
+    private int jniDowncallStubLength;
 
     @Fold
     public static boolean isEnabled() {
@@ -452,10 +452,10 @@ public abstract class InterpreterSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setLeaveJNIStubPointer(CFunctionPointer leaveJNIStubPointer, int length) {
-        assert singleton().leaveJNIStubPointer == null : "multiple JNI leave stub methods registered";
-        singleton().leaveJNIStubPointer = leaveJNIStubPointer;
-        singleton().leaveJNIStubLength = length;
+    public static void setJNIDowncallStubPointer(CFunctionPointer jniDowncallStubPointer, int length) {
+        assert singleton().jniDowncallStubPointer == null : "multiple JNI downcall stub methods registered";
+        singleton().jniDowncallStubPointer = jniDowncallStubPointer;
+        singleton().jniDowncallStubLength = length;
     }
 
     /**
@@ -476,9 +476,9 @@ public abstract class InterpreterSupport {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isInInterpreterJNILeaveStub(CodePointer ip) {
-        Pointer start = (Pointer) singleton().leaveJNIStubPointer;
-        Pointer end = start.add(singleton().leaveJNIStubLength);
+    public static boolean isInInterpreterJNIDowncallStub(CodePointer ip) {
+        Pointer start = (Pointer) singleton().jniDowncallStubPointer;
+        Pointer end = start.add(singleton().jniDowncallStubLength);
         return start.belowOrEqual((UnsignedWord) ip) && end.aboveOrEqual((UnsignedWord) ip);
     }
 

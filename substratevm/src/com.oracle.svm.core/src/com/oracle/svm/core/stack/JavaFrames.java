@@ -63,16 +63,16 @@ public class JavaFrames {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isInterpreterJNILeaveStub(JavaFrame frame) {
+    public static boolean isInterpreterJNIDowncallStub(JavaFrame frame) {
         if (!InterpreterSupport.isEnabled()) {
             return false;
         }
-        return InterpreterSupport.isInInterpreterJNILeaveStub(frame.getIP());
+        return InterpreterSupport.isInInterpreterJNIDowncallStub(frame.getIP());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isAnyInterpreterLeaveStub(JavaFrame frame) {
-        return isInterpreterLeaveStub(frame) || isInterpreterJNILeaveStub(frame);
+        return isInterpreterLeaveStub(frame) || isInterpreterJNIDowncallStub(frame);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

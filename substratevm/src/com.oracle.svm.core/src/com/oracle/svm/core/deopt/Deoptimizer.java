@@ -47,7 +47,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfo;
@@ -70,11 +69,9 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
@@ -85,9 +82,12 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -779,6 +779,15 @@ public final class Deoptimizer {
         InterpreterEnterStub,
 
         /**
+         * Custom prologue: adapt incoming JNI arguments to match the wrapper's signature. For
+         * varargs calls, we will save all native ABI argument registers onto the stack.
+         * <p>
+         * Custom epilogue: copy the raw return bits from the general-purpose return register to the
+         * floating-point return register.
+         */
+        InterpreterJNIUpcallStub,
+
+        /**
          * Custom prologue: store arguments to stack and allocate variable sized frame.
          * <p>
          * Custom epilogue: prepare stack layout and ABI registers for outgoing call.
@@ -788,7 +797,7 @@ public final class Deoptimizer {
         /**
          * Like {@link #InterpreterLeaveStub}, but calls a JNI native entry point.
          */
-        InterpreterLeaveJNIStub,
+        InterpreterJNIDowncallStub,
 
         /**
          * Custom prologue: move gp return register to first argument register.
@@ -796,7 +805,7 @@ public final class Deoptimizer {
         InterpreterDeoptEntryPointStub;
 
         public boolean isInterpreterStub() {
-            return equals(InterpreterEnterStub) || equals(InterpreterLeaveStub) || equals(InterpreterLeaveJNIStub);
+            return equals(InterpreterEnterStub) || equals(InterpreterJNIUpcallStub) || equals(InterpreterLeaveStub) || equals(InterpreterJNIDowncallStub);
         }
     }
 

@@ -36,12 +36,14 @@ import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r3;
+import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -61,6 +63,8 @@ import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -85,6 +89,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -276,7 +281,7 @@ public class AArch64InterpreterStubs {
 
             /*
              * Ristretto currently makes this frame context reachable during analysis. Explicitly
-             * avoid the singleton lookup in that case until GR-55022 is fixed.
+             * avoid the singleton lookup in that case until GR-74744 is fixed.
              */
             if (SubstrateUtil.HOSTED) {
                 try (AArch64MacroAssembler.ScratchRegister scratch1 = masm.getScratchRegister()) {
@@ -323,6 +328,77 @@ public class AArch64InterpreterStubs {
             /* r0 contains the raw result. Make it available in both ABI return registers. */
             masm.fmov(64, v0, r0);
 
+            super.leave(crb);
+        }
+    }
+
+    /** Adapts incoming JNI arguments to the interpreter wrapper signature. */
+    public static class InterpreterJNIUpcallStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+        private final CallVariant callVariant;
+        private final boolean nonVirtual;
+
+        public InterpreterJNIUpcallStubContext(SharedMethod method) {
+            super(method);
+            InterpreterJNIUpcallStub annotation = AnnotationUtil.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            assert annotation != null : "Missing @InterpreterJNIUpcallStub annotation on JNI interpreter wrapper.";
+            callVariant = annotation.callVariant();
+            nonVirtual = annotation.nonVirtual();
+        }
+
+        private static AArch64Address jniUpcallDataAddress(SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap, int offset) {
+            return createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, frameMap.offsetForStackSlot(frameMap.getInterpreterJNIUpcallData()) + offset);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap = (SubstrateAArch64Backend.SubstrateAArch64FrameMap) crb.frameMap;
+            SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) frameMap.getRegisterConfig();
+            StackSlot jniUpcallData = frameMap.getInterpreterJNIUpcallData();
+            boolean needsEnterData = callVariant == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class);
+            assert needsEnterData == (jniUpcallData != null);
+
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+            Register originalSp = AArch64.r11;
+
+            /* Preserve the caller stack pointer before the regular prologue allocates the frame. */
+            masm.mov(64, originalSp, sp);
+            super.enter(crb);
+
+            if (needsEnterData) {
+                /* Capture the original JNI arguments before adapting registers for the wrapper. */
+                masm.str(64, originalSp, jniUpcallDataAddress(frameMap, offsetAbiSpReg()));
+                for (int i = 0; i < gps.size(); i++) {
+                    masm.str(64, gps.get(i), jniUpcallDataAddress(frameMap, offsetAbiGpArg(i)));
+                }
+                for (int i = 0; i < fps.size(); i++) {
+                    masm.fstr(64, fps.get(i), jniUpcallDataAddress(frameMap, offsetAbiFpArg(i)));
+                }
+            }
+
+            if (nonVirtual) {
+                /* Drop the JNI clazz argument: methodID becomes the third argument. */
+                masm.mov(64, r2, r3);
+            }
+
+            if (needsEnterData) {
+                /* Pass the address of the dedicated frame slot that preserves the captured arguments. */
+                masm.add(64, r3, sp, frameMap.offsetForStackSlot(jniUpcallData));
+            } else if (callVariant == CallVariant.VARARGS) {
+                /* Darwin AArch64 represents the variable arguments directly on the caller stack. */
+                masm.mov(64, r3, originalSp);
+            } else if (nonVirtual) {
+                /* Due to the drop of the JNI clazz argument: payload becomes the fourth argument. */
+                masm.mov(64, r3, r4);
+            }
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            /* The wrapper returns raw bits in r0; JNI floating-point variants return them in v0. */
+            masm.fmov(64, v0, r0);
             super.leave(crb);
         }
     }
@@ -416,9 +492,9 @@ public class AArch64InterpreterStubs {
         }
     }
 
-    public static class InterpreterLeaveJNIStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+    public static class InterpreterJNIDowncallStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
 
-        public InterpreterLeaveJNIStubContext(SharedMethod method) {
+        public InterpreterJNIDowncallStubContext(SharedMethod method) {
             super(method);
         }
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,12 +36,15 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.interpreter.InterpreterStubSection;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugContext;
@@ -80,7 +85,7 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
     public JNIJavaCallInterpreterWrapperMethod(CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, jdk.graal.compiler.word.WordTypes wordTypes) {
         super(createName(callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
-                        createSignature(originalMetaAccess, wordTypes, nonVirtual),
+                        createSignature(originalMetaAccess, wordTypes),
                         JNIJavaCallVariantWrapperHolder.getConstantPool(originalMetaAccess));
         this.callVariant = callVariant;
         this.nonVirtual = nonVirtual;
@@ -97,14 +102,11 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
      * The signature uses the word kind from {@code wordTypes} for all native pointer-like parameters
      * and returns the raw {@code long} value produced by {@link InterpreterStubSection}.
      */
-    private static Signature createSignature(MetaAccessProvider originalMetaAccess, WordTypes wordTypes, boolean nonVirtual) {
+    private static Signature createSignature(MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
         JavaKind wordKind = wordTypes.getWordKind();
         List<JavaKind> args = new ArrayList<>();
         args.add(wordKind); // JNIEnv
         args.add(wordKind); // receiver/class handle
-        if (nonVirtual) {
-            args.add(wordKind); // clazz handle, ignored like the regular JNIJavaCallVariantWrapperMethod path
-        }
         args.add(wordKind); // runtime jmethodID handle
         args.add(wordKind); // payload: InterpreterAccessStubData, jvalue*, or va_list
         return ResolvedSignature.fromKinds(args.toArray(JavaKind[]::new), JavaKind.Long, originalMetaAccess);
@@ -135,9 +137,6 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
         slotIndex += wordKind.getSlotCount();
         ValueNode receiverOrClassHandle = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
-        if (nonVirtual) {
-            slotIndex += wordKind.getSlotCount();
-        }
         ValueNode methodId = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
         ValueNode payload = kit.loadLocal(slotIndex, wordKind);
@@ -146,12 +145,12 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
         ValueNode formerPendingException = kit.invokeGetAndClearPendingException();
         String interpreterStubNamePrefix;
         if (needsArrayReadDoubleForFloatStub(callVariant)) {
-            interpreterStubNamePrefix = "enterDirectInterpreterStubArrayReadDoubleForFloat";
+            interpreterStubNamePrefix = "enterInterpreterForJNIUpcallArrayReadDoubleForFloat";
         } else {
             interpreterStubNamePrefix = switch (callVariant) {
-                case ARRAY -> "enterDirectInterpreterStubArray";
-                case VARARGS -> "enterDirectInterpreterStubVarargs";
-                case VA_LIST -> "enterDirectInterpreterStubVaList";
+                case ARRAY -> "enterInterpreterForJNIUpcallArray";
+                case VARARGS -> "enterInterpreterForJNIUpcallVarargs";
+                case VA_LIST -> "enterInterpreterForJNIUpcallVaList";
             };
         }
         String interpreterStubName = interpreterStubNamePrefix + (nonVirtual ? "NonVirtual" : "Virtual");
@@ -176,5 +175,13 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
         kit.invokeJNILeaveIsolate();
         kit.createReturn(returnValue, JavaKind.Long);
         return kit.finalizeGraph();
+    }
+
+    @Override
+    public List<AnnotationValue> getInjectedAnnotations() {
+        List<AnnotationValue> annotations = new ArrayList<>(super.getInjectedAnnotations());
+        annotations.add(newAnnotationValue(Deoptimizer.DeoptStub.class, "stubType", Deoptimizer.StubType.InterpreterJNIUpcallStub));
+        annotations.add(newAnnotationValue(InterpreterJNIUpcallStub.class, "callVariant", callVariant, "nonVirtual", nonVirtual));
+        return annotations;
     }
 }

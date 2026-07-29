@@ -177,7 +177,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         for (int i = 0; i < argumentTypes.length; i++) {
             /*
              * We need to keep using signature.getParameterKind here and not use parameterTypes
-             * since leaveInterpreterJNI relies on that to decide what to wrap into a handle.
+             * since leaveInterpreterForJNIDowncall relies on that to decide what to wrap into a handle.
              */
             AllocatableValue allocatableValue = callingConvention.getArgument(i);
             JavaKind argKind = i < 2 ? stubSection.target.wordJavaKind : signature.getParameterKind(i - 2);
