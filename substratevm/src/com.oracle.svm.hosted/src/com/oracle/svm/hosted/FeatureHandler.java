@@ -65,7 +65,6 @@ import com.oracle.svm.shared.util.VMError.HostedError;
 import com.oracle.svm.util.GuestAccess;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -342,10 +341,7 @@ public class FeatureHandler {
 
     private static Throwable tryUnwrapWellKnownException(Throwable throwable) {
         Throwable cause = null;
-        if (throwable instanceof InvocationException invocationException) {
-            /* Can be removed once GR-77556 is merged. */
-            cause = invocationException.getCause();
-        } else if (throwable instanceof InvocationTargetException invocationException) {
+        if (throwable instanceof InvocationTargetException invocationException) {
             cause = invocationException.getCause();
         }
         return isWellKnownException(cause) ? cause : throwable;
