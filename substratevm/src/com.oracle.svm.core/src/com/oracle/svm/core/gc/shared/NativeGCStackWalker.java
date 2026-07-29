@@ -51,13 +51,13 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.CodeInfos;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.CodeInfosPerThread;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.StackFrame;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.StackFrames;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.StackFramesPerThread;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.heap.StoredContinuationAccess.ContinuationStackFrameVisitor;
@@ -104,7 +104,7 @@ public final class NativeGCStackWalker {
             funcFreeContinuationStackFrames = null;
         }
 
-        if (RuntimeCompilation.isEnabled()) {
+        if (RuntimeCodeInstallation.isEnabled()) {
             funcFetchCodeInfos = CEntryPointLiteral.create(NativeGCStackWalker.class, "fetchCodeInfos", Isolate.class, IsolateThread.class);
             funcFreeCodeInfos = CEntryPointLiteral.create(NativeGCStackWalker.class, "freeCodeInfos", Isolate.class, IsolateThread.class, CodeInfosPerThread.class);
         } else {

@@ -29,8 +29,8 @@ package com.oracle.svm.core.dcmd;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -72,7 +72,7 @@ public class DCmdFeature implements InternalFeature {
             dcmdSupport.registerCommand(new VMNativeMemoryDCmd());
         }
 
-        if (RuntimeCompilation.isEnabled()) {
+        if (RuntimeCodeInstallation.isEnabled()) {
             dcmdSupport.registerCommand(new CompilerDumpCodeCacheDCmd());
         }
 

@@ -51,6 +51,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -62,7 +63,6 @@ import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport.PinnedObjectImpl;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -621,7 +621,7 @@ public final class GCImpl implements GC {
                 }
             }
 
-            if (RuntimeCompilation.isEnabled()) {
+            if (RuntimeCodeInstallation.isEnabled()) {
                 Timer cleanCodeCacheTimer = timers.cleanCodeCache.start();
                 try {
                     /*
@@ -674,8 +674,8 @@ public final class GCImpl implements GC {
     }
 
     /**
-     * Visit all the memory that is reserved for runtime compiled code. References from the runtime
-     * compiled code to the Java heap must be consider as either strong or weak references,
+     * Visit all memory reserved for runtime-installed code. References from runtime-installed code
+     * to the Java heap must be considered either strong or weak references,
      * depending on whether the code is currently on the execution stack.
      */
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
@@ -758,11 +758,11 @@ public final class GCImpl implements GC {
             /* Visit all the Objects promoted since the snapshot. */
             scanGreyObjects();
 
-            if (RuntimeCompilation.isEnabled()) {
-                /* Visit the runtime compiled code, now that we know all the reachable objects. */
+            if (RuntimeCodeInstallation.isEnabled()) {
+                /* Visit the runtime-installed code, now that we know all the reachable objects. */
                 walkRuntimeCodeCache();
 
-                /* Visit all objects that became reachable because of the compiled code. */
+                /* Visit all objects that became reachable because of runtime-installed code. */
                 scanGreyObjects();
             }
         } finally {
@@ -906,9 +906,9 @@ public final class GCImpl implements GC {
 
                     CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
 
-                    if (RuntimeCompilation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
+                    if (RuntimeCodeInstallation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
                         /*
-                         * Runtime-compiled code that is currently on the stack must be kept alive.
+                         * Runtime-installed code that is currently on the stack must be kept alive.
                          * So, we mark the tether as strongly reachable. The RuntimeCodeCacheWalker
                          * will handle all other object references later on.
                          */

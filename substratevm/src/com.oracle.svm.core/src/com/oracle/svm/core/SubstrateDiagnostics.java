@@ -56,6 +56,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -1428,16 +1429,22 @@ class SubstrateDiagnosticsFeature implements InternalFeature {
     }
 
     /**
-     * {@link RuntimeCompilation#isEnabled()} can't be executed in the
-     * {@link DiagnosticThunkRegistry} constructor because the feature registration is not
-     * necessarily finished. So, we need to do it at a later point in time.
+     * Predicates such as {@link RuntimeCompilation#isEnabled()} can't be executed in the
+     * {@link DiagnosticThunkRegistry} constructor because feature registration is not necessarily
+     * finished. So, we need to do it at a later point in time.
      */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         DiagnosticThunkRegistry registry = DiagnosticThunkRegistry.singleton();
-        if (RuntimeCompilation.isEnabled()) {
-            int pos = registry.runtimeCompilationPosition;
-            SubstrateDiagnostics.DiagnosticThunk[] thunks = {new DumpCodeCacheHistory(), new DumpRuntimeCodeInfoMemory(), new DumpDeoptStubPointer(), new DumpRecentDeoptimizations()};
+        int pos = registry.runtimeCompilationPosition;
+
+        if (DeoptimizationSupport.enabled()) {
+            SubstrateDiagnostics.DiagnosticThunk[] thunks = {new DumpDeoptStubPointer(), new DumpRecentDeoptimizations()};
+            registry.add(pos, thunks);
+        }
+
+        if (RuntimeCodeInstallation.isEnabled()) {
+            SubstrateDiagnostics.DiagnosticThunk[] thunks = {new DumpCodeCacheHistory(), new DumpRuntimeCodeInfoMemory()};
             registry.add(pos, thunks);
         }
     }
