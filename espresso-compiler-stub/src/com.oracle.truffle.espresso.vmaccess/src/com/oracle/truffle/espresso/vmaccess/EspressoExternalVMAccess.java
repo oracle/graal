@@ -77,6 +77,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -684,6 +685,39 @@ final class EspressoExternalVMAccess implements VMAccess {
             if ("java.lang.reflect.Field".equals(value.getMetaObject().getMetaQualifiedName())) {
                 return EspressoExternalConstantReflectionProvider.fieldAsJavaResolvedField(value, this);
             }
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaPackage asResolvedJavaPackage(Constant constant) {
+        if (constant instanceof EspressoExternalObjectConstant espressoConstant) {
+            Value value = espressoConstant.getValue();
+            if ("java.lang.Package".equals(value.getMetaObject().getMetaQualifiedName())) {
+                return new EspressoExternalResolvedJavaPackage(this, value);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent asResolvedJavaRecordComponent(Constant constant) {
+        if (constant instanceof EspressoExternalObjectConstant espressoConstant &&
+                        "java.lang.reflect.RecordComponent".equals(espressoConstant.getValue().getMetaObject().getMetaQualifiedName())) {
+            Value value = espressoConstant.getValue();
+            /*
+             * The default JVMCI lookup accepts a host RecordComponent. Mirror its matching logic for
+             * this guest reflection object.
+             */
+            ResolvedJavaType declaringRecord = EspressoExternalConstantReflectionProvider.classAsType(value.invokeMember("getDeclaringRecord"), this);
+            String name = value.invokeMember("getName").asString();
+            ResolvedJavaType type = EspressoExternalConstantReflectionProvider.classAsType(value.invokeMember("getType"), this);
+            for (ResolvedJavaRecordComponent component : declaringRecord.getRecordComponents()) {
+                if (component.getName().equals(name) && component.getType().equals(type)) {
+                    return component;
+                }
+            }
+            throw new JVMCIError("unresolved RecordComponent %s", value);
         }
         return null;
     }
