@@ -656,15 +656,12 @@ def svm_gate_body(args, tasks):
 # THIS IS THE EXPECTED FAILURE STACK TRACE FOR TERMINUS HELLO WORLD MVP (GR-72797).
 # Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
 TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
-    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.util.VMError.shouldNotReachHere(VMError.java:121)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.validateSingletonRegistration(HostedImageLayerBuildingSupport.java:291)
-    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.addSingleton(ImageSingletonsSupportImpl.java:399)
-    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement.doAdd(ImageSingletonsSupportImpl.java:384)
-    at org.graalvm.nativeimage.shared/com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.add(ImageSingletonsSupportImpl.java:74)
-    at org.graalvm.nativeimage/org.graalvm.nativeimage.ImageSingletons.add(ImageSingletons.java:73)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.loadAndInstallLayeredSingletons(NativeImageGenerator.java:493)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.installSingletonRegistries(NativeImageGenerator.java:1336)
-    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:582)
+    at jdk.internal.vm.ci/jdk.vm.ci.common.JVMCIError.shouldNotReachHere(JVMCIError.java:48)
+    at jdk.graal.compiler.espresso.vmaccess/com.oracle.truffle.espresso.vmaccess.EspressoExternalSnippetReflectionProvider.asObject(EspressoExternalSnippetReflectionProvider.java:113)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.FeatureHandler.registerFeatures(FeatureHandler.java:162)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.setupNativeImage(NativeImageGenerator.java:1082)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.doRun(NativeImageGenerator.java:649)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:602)
     at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:613)
     at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:801)
     at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:185)
@@ -689,7 +686,9 @@ def _run_terminus_gate(args):
 
     # running with --build-only since for now there won't be anything to execute
     run_helloworld_command(
-        ['--build-only'] + svm_experimental_options(['-H:+RunMainInNewThread']) + ['-Dorg.graalvm.nativeimage.vmaccess.name=espresso'] + args.extra_image_builder_arguments,
+        ['--build-only'] + svm_experimental_options(['-H:+RunMainInNewThread']) + [
+            '-Dorg.graalvm.nativeimage.vmaccess.name=espresso',
+        ] + args.extra_image_builder_arguments,
         config=None, command_name="helloworld", native_image_wrapper=_native_image_wrapper
     )
 
@@ -709,16 +708,27 @@ def _run_terminus_gate(args):
         mx.log_error("\n".join(expected_lines))
         mx.abort("Truncated output.")
 
-    # compare expected and actual from bottom to top
-    for idx in range(len(expected_lines)):
-        expected_line = expected_lines[-idx-1]
-        actual_line = actual_lines[-idx-1]
+    # Anchor at the bottom of the expected stack so appended diagnostics do not affect the match.
+    try:
+        actual_idx = actual_lines.index(expected_lines[-1])
+    except ValueError:
+        mx.abort(f"Could not find the bottom of the expected stack trace:\n{expected_lines[-1]}")
+
+    if actual_idx < len(expected_lines) - 1:
+        mx.abort(
+            f"Not enough output before the bottom of the expected stack trace. Expected at least {len(expected_lines) - 1} lines, got {actual_idx}."
+        )
+
+    # Compare expected and actual from bottom to top.
+    for expected_idx in range(len(expected_lines) - 1, -1, -1):
+        expected_line = expected_lines[expected_idx]
+        actual_line = actual_lines[actual_idx]
 
         if expected_line != actual_line:
             mx.log_error("Actual output does not match expected:")
 
             # print lines before mismatch
-            for s in expected_lines[0:idx]:
+            for s in expected_lines[:expected_idx]:
                 mx.log_error(" " + s)
 
             # print mismatching line in diff style
@@ -726,10 +736,12 @@ def _run_terminus_gate(args):
             mx.log_error(mx.colorize(f"-{expected_line}", color="red"))
 
             # print lines after mismatch
-            for s in expected_lines[idx+1:]:
+            for s in expected_lines[expected_idx + 1:]:
                 mx.log_error(" " + s)
 
             mx.abort("Please update TERMINUS_HELLO_WORLD_EXPECTED_FAILURE in mx_substrate.py")
+
+        actual_idx -= 1
 
     mx.log(mx.colorize("Detected the expected failure pattern!", color="green"))
 
