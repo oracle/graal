@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
@@ -119,8 +118,6 @@ public class AnalysisUniverse implements Universe {
 
     private final MetaAccessProvider originalMetaAccess;
     private final AnalysisFactory analysisFactory;
-    private final AnnotationExtractor annotationExtractor;
-
     private final AtomicInteger numReachableTypes = new AtomicInteger();
 
     private AnalysisType objectClass;
@@ -142,14 +139,13 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
+                    AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
         this.substitutions = substitutions;
         this.originalMetaAccess = originalMetaAccess;
         this.analysisFactory = analysisFactory;
-        this.annotationExtractor = annotationExtractor;
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
@@ -163,10 +159,6 @@ public class AnalysisUniverse implements Universe {
     @Override
     public HostVM hostVM() {
         return hostVM;
-    }
-
-    protected AnnotationExtractor getAnnotationExtractor() {
-        return annotationExtractor;
     }
 
     public int getNextTypeId() {
