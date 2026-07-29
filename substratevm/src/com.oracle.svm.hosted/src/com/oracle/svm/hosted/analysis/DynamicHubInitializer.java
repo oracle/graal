@@ -35,7 +35,6 @@ import com.oracle.svm.core.hub.DynamicHubCompanion;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -88,6 +87,23 @@ public class DynamicHubInitializer {
     private final ResolvedJavaField hubCompanionInterpreterType;
     private final SVMImageLayerLoader layerLoader;
 
+    private static final class MetadataInitializationReason extends ScanReason {
+        private static final String PREFIX = "Metadata initialization for ";
+        private static final String SUFFIX = " triggered from class com.oracle.svm.hosted.analysis.DynamicHubInitializer";
+
+        private final DynamicHub hub;
+
+        private MetadataInitializationReason(DynamicHub hub) {
+            super(null, null);
+            this.hub = hub;
+        }
+
+        @Override
+        public String toString() {
+            return PREFIX + hub.getName() + SUFFIX;
+        }
+    }
+
     public DynamicHubInitializer(BigBang bb) {
         this.bb = bb;
         this.metaAccess = bb.getMetaAccess();
@@ -113,7 +129,7 @@ public class DynamicHubInitializer {
         Class<?> javaClass = type.getJavaClass();
         DynamicHub hub = hostVM.dynamicHub(type);
 
-        ScanReason reason = new OtherReason("Metadata initialization for " + hub.getName() + " triggered from " + DynamicHubInitializer.class);
+        ScanReason reason = new MetadataInitializationReason(hub);
         /*
          * Since the javaClass is java.lang.Object for BaseLayerTypes, the java.lang package would
          * be registered in the wrong class loader.
