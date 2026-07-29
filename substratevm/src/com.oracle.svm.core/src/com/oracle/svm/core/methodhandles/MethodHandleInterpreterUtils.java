@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,5 +48,15 @@ public final class MethodHandleInterpreterUtils {
             VMError.guarantee(lform.vmentry != null);
         }
         return lform.vmentry;
+    }
+
+    /**
+     * Returns the member represented by a direct method handle. The substituted
+     * {@link Target_java_lang_invoke_MethodHandle} keeps this state package-private, while the
+     * Ristretto method-handle plugin lives outside the core package. This helper exposes the
+     * operation without widening access to the substitution field itself.
+     */
+    public static Target_java_lang_invoke_MemberName getInternalMemberName(MethodHandle handle) {
+        return SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class).internalMemberName();
     }
 }

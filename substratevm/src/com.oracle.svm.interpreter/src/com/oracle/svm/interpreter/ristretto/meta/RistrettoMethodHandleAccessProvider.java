@@ -69,6 +69,21 @@ public final class RistrettoMethodHandleAccessProvider implements MethodHandleAc
         return null;
     }
 
+    /**
+     * Resolves the constructor carried by a constant {@code DirectMethodHandle} for the
+     * {@code newInvokeSpecial} parser fast path.
+     */
+    public ResolvedJavaMethod resolveInternalMemberTarget(JavaConstant methodHandle) {
+        Object value = snippetReflectionProvider.asObject(Object.class, methodHandle);
+        if (value instanceof MethodHandle handle) {
+            Target_java_lang_invoke_MemberName memberName = MethodHandleInterpreterUtils.getInternalMemberName(handle);
+            if (memberName != null && memberName.isInvocable()) {
+                return asRistrettoMethod(memberName);
+            }
+        }
+        return null;
+    }
+
     @Override
     public ResolvedJavaMethod resolveLinkToTarget(JavaConstant memberName) {
         Object value = snippetReflectionProvider.asObject(Object.class, memberName);

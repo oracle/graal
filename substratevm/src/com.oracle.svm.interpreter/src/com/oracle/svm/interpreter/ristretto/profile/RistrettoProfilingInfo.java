@@ -141,7 +141,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
     @Override
     public boolean isMature() {
         /*
-         * Either maturity was explicitly requested or we follow regular ergonomics.
+         * Follow the interpreter's regular profile-maturity ergonomics.
          */
         return methodProfile.isMature() || methodProfile.getProfileEntryCount() > InterpreterProfilingOptions.JITProfileMatureInvocationThreshold.getValue();
     }
