@@ -106,6 +106,17 @@ One way to check what dynamic libraries your application depends on is to run `l
 
 ### Frequently Asked Questions
 
+#### When should I use a static or mostly-static native executable?
+
+A mostly-static native executable statically links its native libraries except the standard C library (`libc`), specifically `glibc`.
+Use it when you deploy to a `glibc`-based Linux distribution or distroless container image and want to avoid dependencies on additional shared libraries.
+Examples of `glibc`-based environments include Debian, Ubuntu, Red Hat Enterprise Linux, Oracle Linux, Fedora, Amazon Linux, and SUSE Linux Enterprise.
+A distroless container image based on Debian is also a `glibc`-based environment.
+
+A fully static native executable uses `musl` and can run without library dependencies, including in a `scratch` container image.
+Use a fully static executable when you need that deployment flexibility.
+Alpine Linux uses `musl` instead of `glibc`.
+
 #### What is the recommended base container image for deploying a static or mostly-static native executable?
 
 A fully static native executable gives you the most flexibility to choose a base container image&mdash;it can even run on a `scratch` image.
