@@ -281,10 +281,6 @@ public class ResourcesFeature implements InternalFeature {
             addResourceEntry(RuntimeDynamicAccessMetadata.emptySet(false), module, resourcePath, origin);
         }
 
-        private void addResourceEntry(AccessCondition condition, Module module, String resourcePath, Object origin) {
-            addResourceEntry(RuntimeDynamicAccessMetadata.createHosted(condition, false), module, resourcePath, origin);
-        }
-
         private void addResourceEntry(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Module module, String resourcePath, Object origin) {
             String resPath = resourcePath;
             if (resourcePath.startsWith("/")) {
