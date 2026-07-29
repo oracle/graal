@@ -406,11 +406,21 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         CanonicalCondition otherCondition = otherCompare.condition();
         ValueNode otherX = otherCompare.getX();
         ValueNode otherY = otherCompare.getY();
+        /*
+         * True when both comparisons have equivalent inputs in the same order, e.g.,
+         * `this: Pi(a) == b` and `otherCompare: a == b`.
+         */
+        boolean sameInputs = sameValue(getX(), otherX) && sameValue(getY(), otherY);
+        /*
+         * True when both comparisons have equivalent inputs in reverse order, e.g.,
+         * `this: Pi(a) == b` and `otherCompare: b == a`.
+         */
+        boolean swappedInputs = sameValue(getX(), otherY) && sameValue(getY(), otherX);
         if (condition() == otherCondition && unorderedIsTrue == otherCompare.unorderedIsTrue() &&
-                        sameValue(getX(), otherX) && sameValue(getY(), otherY)) {
+                        (sameInputs || (swappedInputs && getNodeClass().isCommutative()))) {
             return TriState.get(!thisNegated);
         }
-        if ((sameValue(getX(), otherX) && sameValue(getY(), otherY)) || (sameValue(getX(), otherY) && sameValue(getY(), otherX))) {
+        if (sameInputs || swappedInputs) {
             if (condition() == CanonicalCondition.EQ && (otherCondition == CanonicalCondition.LT || otherCondition == CanonicalCondition.BT)) {
                 if (!thisNegated) {
                     // a == b => !(a < b)
@@ -424,7 +434,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 }
             }
         }
-        if (condition() == otherCondition && sameValue(getX(), otherY) && sameValue(getY(), otherX)) {
+        if (condition() == otherCondition && swappedInputs) {
             if ((condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT) && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 if (!thisNegated) {
                     // a < b => !(b < a)

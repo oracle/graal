@@ -24,7 +24,11 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 
 public class ConditionalEliminationPiTest extends ConditionalEliminationTestBase {
 
@@ -61,5 +65,41 @@ public class ConditionalEliminationPiTest extends ConditionalEliminationTestBase
     @Test
     public void test1() {
         test("testSnippet1", 1);
+    }
+
+    private static final String OBJECT_EQUALS_PI_ALIAS_SNIPPET = "objectEqualsPiAlias";
+
+    /**
+     * Evaluates the same object equality through a Pi alias with the operands reversed.
+     */
+    public static int objectEqualsPiAlias(Object x, Object y) {
+        if (x instanceof String string) {
+            if (string == y) {
+                if (y == x) {
+                    return 1;
+                }
+                return 2;
+            }
+        }
+        return 3;
+    }
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        if (graph.method().getName().equals(OBJECT_EQUALS_PI_ALIAS_SNIPPET)) {
+            Assert.assertEquals("the reversed Pi-alias equality must be eliminated", 1, graph.getNodes().filter(ObjectEqualsNode.class).count());
+        }
+        super.checkHighTierGraph(graph);
+    }
+
+    /**
+     * Tests that {@code Pi(x) == y} implies {@code y == x}.
+     */
+    @Test
+    public void testObjectEqualsPiAlias() {
+        String string = "value";
+        test(OBJECT_EQUALS_PI_ALIAS_SNIPPET, string, string);
+        test(OBJECT_EQUALS_PI_ALIAS_SNIPPET, string, "foo");
+        test(OBJECT_EQUALS_PI_ALIAS_SNIPPET, new Object(), string);
     }
 }
