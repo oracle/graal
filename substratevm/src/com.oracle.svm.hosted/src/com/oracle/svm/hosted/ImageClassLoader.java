@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,14 +58,11 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
-import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
-import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
-import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
@@ -132,7 +130,7 @@ public final class ImageClassLoader {
         int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(parsedHostedOptions);
         boolean watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue(parsedHostedOptions);
         this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
-        this.guestTypes = new GuestTypes(GuestAccess.get(), classLoaderSupport.annotationExtractor, platform);
+        this.guestTypes = new GuestTypes(GuestAccess.get(), platform);
         classLoaderSupport.getBuildClassPath().stream().map(Path::toUri).forEach(this.guestTypes.builderURILocations::add);
     }
 
@@ -169,14 +167,6 @@ public final class ImageClassLoader {
             PrintStream out = System.out;
             out.println("Error " + format.formatted(args));
             t.printStackTrace(out);
-        }
-    }
-
-    private static ResolvedJavaType getEnclosingTypeOrNull(ResolvedJavaType javaType) {
-        try {
-            return javaType.getEnclosingType();
-        } catch (LinkageError e) {
-            return null;
         }
     }
 
@@ -251,47 +241,7 @@ public final class ImageClassLoader {
      * enclosing classes and package are consulted as well.
      */
     public PlatformSupportResult isPlatformSupported(Annotated element, Platform thePlatform) {
-        if (element instanceof ResolvedJavaType javaType) {
-            PlatformSupportResult res = isPlatformSupported0(element, thePlatform);
-            if (res == PlatformSupportResult.NO) {
-                return res;
-            }
-            ResolvedJavaPackage p = JVMCIReflectionUtil.getPackage(javaType);
-            if (p != null) {
-                res = res.and(isPlatformSupported0(p, thePlatform));
-                if (res == PlatformSupportResult.NO) {
-                    return res;
-                }
-            }
-            ResolvedJavaType enclosingType = getEnclosingTypeOrNull(javaType);
-            while (enclosingType != null && res != PlatformSupportResult.NO) {
-                res = res.and(isPlatformSupported0(enclosingType, thePlatform));
-                enclosingType = getEnclosingTypeOrNull(enclosingType);
-            }
-            return res;
-        } else {
-            return isPlatformSupported0(element, thePlatform);
-        }
-    }
-
-    /**
-     * Helper for {@link #isPlatformSupported(Annotated, Platform)}.
-     */
-    private PlatformSupportResult isPlatformSupported0(Annotated element, Platform thePlatform) {
-        if (thePlatform == null) {
-            return PlatformSupportResult.YES;
-        }
-        AnnotationValue av = classLoaderSupport.annotationExtractor.getAnnotationValue(element, Platforms.class);
-        if (av != null) {
-            List<ResolvedJavaType> platforms = av.getList("value", ResolvedJavaType.class);
-            GuestAccess access = GuestAccess.get();
-            if (platforms.contains(access.lookupType(Platform.HOSTED_ONLY.class))) {
-                return PlatformSupportResult.HOSTED;
-            } else if (!NativeImageGenerator.includedIn(access.lookupType(thePlatform.getClass()), platforms)) {
-                return PlatformSupportResult.NO;
-            }
-        }
-        return PlatformSupportResult.YES;
+        return guestTypes.isPlatformSupported(element, thePlatform);
     }
 
     /**
@@ -447,9 +397,9 @@ public final class ImageClassLoader {
         return result;
     }
 
-    private void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
+    private static void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
         for (Class<?> c : classes) {
-            if (classLoaderSupport.annotationExtractor.hasAnnotation(c, annotationClass)) {
+            if (AnnotationAccess.isAnnotationPresent(c, annotationClass)) {
                 result.add(c);
             }
         }

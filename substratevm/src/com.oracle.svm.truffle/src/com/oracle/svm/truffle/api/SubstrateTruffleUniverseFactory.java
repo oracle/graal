@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -46,7 +45,7 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
@@ -83,8 +82,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateField createField(AnalysisField aField, HostedStringDeduplication stringTable) {
-        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(aField);
+        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(aField);
         ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, ImageSingletons.lookup(KnownTruffleTypes.class), OriginalClassProvider::getOriginalType);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
@@ -92,8 +90,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateType createType(AnalysisType analysisType, DynamicHub hub) {
-        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(analysisType);
+        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(analysisType);
         boolean valueType = annotations.containsKey(OriginalClassProvider.getOriginalType(ImageSingletons.lookup(KnownTruffleTypes.class).CompilerDirectives_ValueType));
         return new SubstrateTruffleType(analysisType.getJavaKind(), hub, valueType);
     }
@@ -101,8 +98,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     @Platforms(Platform.HOSTED_ONLY.class)
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method,
                     KnownTruffleTypes types) {
-        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
+        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
         if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             UninterruptibleGuestValue uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);

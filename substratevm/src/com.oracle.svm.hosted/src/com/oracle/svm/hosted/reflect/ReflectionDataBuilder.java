@@ -103,7 +103,6 @@ import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -119,6 +118,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -175,7 +175,6 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
     private AnalysisMetaAccess metaAccess;
-    private SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
     private LayeredReflectionDataBuilder layeredReflectionDataBuilder;
     private SubstitutionReflectivityFilter reflectivityFilter;
@@ -202,10 +201,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     // Reason tracking for manually triggered rescans
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ReflectionDataBuilder.class);
-
-    public ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
-        this.annotationExtractor = annotationExtractor;
-    }
 
     private void guaranteeRuntimeMetadataEncodingNotComplete() {
         VMError.guarantee(!runtimeMetadataEncodingComplete, "Reflection metadata was queried or updated after runtime metadata encoding completed.");
@@ -1063,7 +1058,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotated != null) {
             filteredAnnotations.computeIfAbsent(annotated, (element) -> {
                 List<AnnotationValue> includedAnnotations = new ArrayList<>();
-                for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationValues(element).values()) {
+                for (AnnotationValue annotation : AnnotationUtil.getDeclaredAnnotationValues(element).values()) {
                     if (includeAnnotation(annotation)) {
                         includedAnnotations.add(annotation);
                         registerTypesForAnnotation(annotation);
@@ -1077,7 +1072,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForParameterAnnotations(AnalysisMethod analysisMethod) {
         if (analysisMethod != null) {
             filteredParameterAnnotations.computeIfAbsent(analysisMethod, (method) -> {
-                List<List<AnnotationValue>> parameterAnnotations = annotationExtractor.getParameterAnnotationValues(method);
+                List<List<AnnotationValue>> parameterAnnotations = AnnotationUtil.getParameterAnnotationValues(method);
                 AnnotationValue[][] includedParameterAnnotations = NO_PARAMETER_ANNOTATIONS;
                 if (parameterAnnotations != null) {
                     includedParameterAnnotations = new AnnotationValue[parameterAnnotations.size()][];
@@ -1102,7 +1097,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotated != null) {
             filteredTypeAnnotations.computeIfAbsent(annotated, (element) -> {
                 List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
-                for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationValues(element)) {
+                for (TypeAnnotationValue typeAnnotation : AnnotationUtil.getTypeAnnotationValues(element)) {
                     if (includeAnnotation(typeAnnotation.getAnnotation())) {
                         includedTypeAnnotations.add(typeAnnotation);
                         registerTypesForAnnotation(typeAnnotation.getAnnotation());
@@ -1114,7 +1109,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForAnnotationDefault(AnalysisMethod method) {
-        Object annotationDefault = annotationExtractor.getAnnotationDefaultValue(method);
+        Object annotationDefault = AnnotationUtil.getAnnotationDefaultValue(method);
         if (annotationDefault != null) {
             registerTypesForMemberValue(annotationDefault);
         }
@@ -1237,7 +1232,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         metaAccess = null;
-        annotationExtractor = null;
         analysisAccess = null;
         clearAnalysisAccess();
         layeredReflectionDataBuilder = null;
@@ -1598,7 +1592,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public Object getAnnotationDefaultData(AnalysisMethod element) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
-        return annotationExtractor.getAnnotationDefaultValue(element);
+        return AnnotationUtil.getAnnotationDefaultValue(element);
     }
 
     @Override
