@@ -36,6 +36,9 @@ import java.lang.reflect.Method;
  * will not work on JDK 17 in cases when the field/method is filtered. See
  * jdk.internal.reflect.Reflection#fieldFilterMap for more information or
  * com.oracle.svm.hosted.ModuleLayerFeature for an example of a workaround in such cases.
+ * <p/>
+ * Use methods in this class (and reflection in general) when the queried element lives in the same VM.
+ * For queries from builder to guest, use {@code JVMCIReflectionUtil}.
  */
 public final class ReflectionUtil {
 
