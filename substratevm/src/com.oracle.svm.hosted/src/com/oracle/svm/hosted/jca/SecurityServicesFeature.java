@@ -974,7 +974,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private Object getProviderVerificationResult(Provider provider) {
-        // §FS-security-providers.5.3: Preserve the build-time outcome by provider class.
+        /*
+         * §FS-security-providers.5.3: Class registration establishes successful verification for
+         * an application-supplied provider that is not in the build-time configured provider list.
+         */
+        if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
+            return Boolean.TRUE;
+        }
+        // Preserve the build-time outcome of configured providers by provider class.
         try {
             Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
             /*
