@@ -136,8 +136,7 @@ class GenScavengeGCFeature implements InternalFeature {
             barrierSnippets.registerLowerings(providers.getMetaAccess(), lowerings);
         }
 
-        SubstrateAllocationSnippets allocationSnippets = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
-        SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers, allocationSnippets);
+        SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers);
         templates.registerLowering(lowerings);
 
         GenScavengeAllocationSnippets.Templates genScavengeTemplates = new GenScavengeAllocationSnippets.Templates(options, providers, templates);

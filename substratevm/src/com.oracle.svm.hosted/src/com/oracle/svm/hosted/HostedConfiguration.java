@@ -61,7 +61,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
-import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
@@ -118,10 +117,6 @@ public class HostedConfiguration {
         if (!ImageSingletons.contains(ObjectLayout.class)) {
             ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
-        }
-
-        if (!ImageSingletons.contains(HybridLayoutSupport.class)) {
-            ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
@@ -251,12 +246,9 @@ public class HostedConfiguration {
         return HybridLayout.isHybrid(clazz) || DynamicHubLayout.singleton().isDynamicHub(clazz);
     }
 
-    /**
-     * The hybrid array field and the type fields of the dynamic hub are directly inlined to the
-     * object to remove a level of indirection.
-     */
+    /** The type fields of the dynamic hub are directly inlined into the object. */
     public static boolean isInlinedField(HostedField field) {
-        return HybridLayout.isHybridField(field) || DynamicHubLayout.singleton().isInlinedField(field);
+        return DynamicHubLayout.singleton().isInlinedField(field);
     }
 
     public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -307,11 +299,6 @@ public class HostedConfiguration {
                 if (dynamicHubLayout.isIgnoredField(hField)) {
                     /*
                      * Ignored fields do not need a field offset.
-                     */
-                    allFields.add(hField);
-                } else if (HybridLayout.isHybridField(hField)) {
-                    /*
-                     * The array field of a hybrid is not materialized, so it needs no field offset.
                      */
                     allFields.add(hField);
                 } else if (hField.isAccessed()) {

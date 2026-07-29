@@ -619,15 +619,13 @@ public final class NativeImageHeap implements ImageHeap {
                 }
 
                 /*
-                 * The hybrid array is written within the hybrid object. If the hybrid object
-                 * declares that they can never be duplicated, i.e. written as a separate object, we
-                 * ensure that they are never duplicated. We use the blacklist to check that.
+                 * The hybrid array is written within the hybrid object, so ensure that it is not
+                 * also written as a separate object.
                  */
-                boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 HostedField hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readInlinedField(hybridArrayField, constant);
                 ignoredFields = Set.of(hybridArrayField);
-                if (hybridArray != null && shouldBlacklist) {
+                if (hybridArray != null) {
                     blacklist.add(hybridArray);
                     written = true;
                 }

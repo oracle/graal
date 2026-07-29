@@ -66,7 +66,6 @@ public class HeapBreakdownProvider {
     private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
 
     protected ImageHeapPartition[] allImageHeapPartitions;
-    private boolean reportStringBytes = true;
     private int graphEncodingByteLength = -1;
 
     private List<HeapBreakdownEntry> sortedBreakdownEntries;
@@ -74,10 +73,6 @@ public class HeapBreakdownProvider {
 
     public static HeapBreakdownProvider singleton() {
         return ImageSingletons.lookup(HeapBreakdownProvider.class);
-    }
-
-    public void disableStringBytesReporting() {
-        reportStringBytes = false;
     }
 
     public void setGraphEncodingByteLength(int value) {
@@ -123,7 +118,6 @@ public class HeapBreakdownProvider {
         long totalObjectSize = 0;
         List<byte[]> stringByteArrays = new ArrayList<>();
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
-        final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
             if (o.getConstant().isWrittenInPreviousLayer()) {
                 continue;
@@ -139,7 +133,7 @@ public class HeapBreakdownProvider {
                     currentLayerByteArrays.put(bytes, o);
                 }
             }
-            if (reportStringBytesConstant && o.getObject() instanceof String string) {
+            if (o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
                 if (seenStringByteArrays.add(bytes)) {

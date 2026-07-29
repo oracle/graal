@@ -35,13 +35,11 @@ import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 public class AllocationFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(SubstrateAllocationSnippets.class)) {
-            ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
-        }
+        ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
     }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        ImageSingletons.lookup(SubstrateAllocationSnippets.class).registerForeignCalls(foreignCalls);
+        SubstrateAllocationSnippets.registerForeignCalls(foreignCalls);
     }
 }

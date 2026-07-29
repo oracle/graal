@@ -60,47 +60,34 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     public static final NodeClass<ArrayCompareToNode> TYPE = NodeClass.create(ArrayCompareToNode.class);
 
     /** {@link Stride} of one array to compare. */
-    protected final Stride strideA;
+    private final Stride strideA;
 
     /** {@link Stride} of the other array to compare. */
-    protected final Stride strideB;
+    private final Stride strideB;
 
     /** One array to be tested for equality. */
-    @Input protected ValueNode arrayA;
+    @Input private ValueNode arrayA;
 
     /** Length of array A. */
-    @Input protected ValueNode lengthA;
+    @Input private ValueNode lengthA;
 
     /** The other array to be tested for equality. */
-    @Input protected ValueNode arrayB;
+    @Input private ValueNode arrayB;
 
     /** Length of array B. */
-    @Input protected ValueNode lengthB;
+    @Input private ValueNode lengthB;
 
     public ArrayCompareToNode(ValueNode arrayA, ValueNode lengthA, ValueNode arrayB, ValueNode lengthB,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB) {
-        this(TYPE, arrayA, lengthA, arrayB, lengthB, strideA, strideB);
+        this(arrayA, lengthA, arrayB, lengthB, strideA, strideB, null);
     }
 
     public ArrayCompareToNode(ValueNode arrayA, ValueNode lengthA, ValueNode arrayB, ValueNode lengthB,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arrayA, lengthA, arrayB, lengthB, strideA, strideB, runtimeCheckedCPUFeatures);
-    }
-
-    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode arrayA, ValueNode lengthA, ValueNode arrayB, ValueNode lengthB,
-                    @ConstantNodeParameter Stride strideA,
-                    @ConstantNodeParameter Stride strideB) {
-        this(c, arrayA, lengthA, arrayB, lengthB, strideA, strideB, null);
-    }
-
-    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode arrayA, ValueNode lengthA, ValueNode arrayB, ValueNode lengthB,
-                    @ConstantNodeParameter Stride strideA,
-                    @ConstantNodeParameter Stride strideB,
-                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+        super(TYPE, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         this.strideA = strideA;
         this.strideB = strideB;
         this.arrayA = arrayA;

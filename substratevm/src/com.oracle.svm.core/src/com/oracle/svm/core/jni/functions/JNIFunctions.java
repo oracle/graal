@@ -83,7 +83,6 @@ import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_loader_NativeLibraries_RespectsClassLoader;
-import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
@@ -1382,7 +1381,10 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle GetObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
-        return JNIObjectFieldAccess.singleton().getObjectField(obj, fieldId);
+        Object object = JNIObjectHandles.getObject(obj);
+        long offset = Support.getInstanceFieldOffset(fieldId);
+        Object result = U.getReference(object, offset);
+        return JNIObjectHandles.createLocal(result);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")

@@ -65,7 +65,6 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -119,7 +118,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, variant, null, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(stride, variant, null, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
@@ -127,7 +126,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, variant, runtimeCheckedCPUFeatures, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(stride, variant, runtimeCheckedCPUFeatures, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
@@ -135,27 +134,17 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, variant, null, NamedLocationIdentity.getArrayLocation(arrayKind), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
-    }
-
-    public ArrayIndexOfNode(
-                    Stride stride,
-                    ArrayIndexOfVariant variant,
-                    EnumSet<?> runtimeCheckedCPUFeatures,
-                    LocationIdentity locationIdentity,
-                    ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, variant, runtimeCheckedCPUFeatures, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(stride, variant, null, NamedLocationIdentity.getArrayLocation(arrayKind), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     @SuppressWarnings("this-escape")
     public ArrayIndexOfNode(
-                    NodeClass<? extends ArrayIndexOfNode> c,
                     Stride stride,
                     ArrayIndexOfVariant variant,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        super(c, StampFactory.forKind(resultKind(variant)), runtimeCheckedCPUFeatures, locationIdentity);
+        super(TYPE, StampFactory.forKind(resultKind(variant)), runtimeCheckedCPUFeatures, locationIdentity);
         GraalError.guarantee(stride.value <= 4, "unsupported stride");
         GraalError.guarantee(!variant.isForeignEndian() || stride.value > 1, "foreign endian variants must have a stride greater than 1");
         GraalError.guarantee(variant != ArrayIndexOfVariant.MatchAny || searchValues.length > 0 && searchValues.length <= 4, "indexOfAny requires 1 - 4 search values");
@@ -175,7 +164,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     public static ArrayIndexOfNode createIndexOfSingle(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ValueNode array, ValueNode arrayLength, ValueNode fromIndex, ValueNode searchValue) {
         ValueNode baseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(arrayKind), b.getGraph());
-        return new ArrayIndexOfNode(TYPE, stride, ArrayIndexOfVariant.MatchAny, null, defaultLocationIdentity(arrayKind),
+        return new ArrayIndexOfNode(stride, ArrayIndexOfVariant.MatchAny, null, defaultLocationIdentity(arrayKind),
                         array, baseOffset, arrayLength, fromIndex, searchValue);
     }
 
@@ -297,10 +286,6 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                         searchValuesAsOperands(gen)));
     }
 
-    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
-        return metaAccessProvider.getArrayBaseOffset(kind);
-    }
-
     private Value[] searchValuesAsOperands(NodeLIRBuilderTool gen) {
         Value[] searchValueOperands = new Value[searchValues.size()];
         for (int i = 0; i < searchValues.size(); i++) {
@@ -329,7 +314,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
             // arrayOffset is given in bytes, scale it to the stride.
             long arrayBaseOffsetBytesConstant = arrayOffset.asJavaConstant().asLong();
-            arrayBaseOffsetBytesConstant -= getArrayBaseOffset(tool.getMetaAccess(), arrayPointer, constantArrayKind);
+            arrayBaseOffsetBytesConstant -= tool.getMetaAccess().getArrayBaseOffset(constantArrayKind);
             final long arrayOffsetConstantScaled = arrayBaseOffsetBytesConstant >> stride.log2;
 
             final int arrayLengthConstant = arrayLength.asJavaConstant().asInt();

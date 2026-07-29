@@ -69,38 +69,32 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements Ca
      * The arrays are guaranteed to always have the same kind because the signature of
      * {@link Arrays#equals} only allows arrays of the same kind.
      */
-    protected final JavaKind kind;
+    private final JavaKind kind;
 
     /** One array to be tested for equality. */
-    @Input protected ValueNode array1;
+    @Input private ValueNode array1;
 
     /** array base offset of array1. */
-    @Input protected ValueNode offset1;
+    @Input private ValueNode offset1;
 
     /** The other array to be tested for equality. */
-    @Input protected ValueNode array2;
+    @Input private ValueNode array2;
 
     /** array base offset of array2. */
-    @Input protected ValueNode offset2;
+    @Input private ValueNode offset2;
 
     /** Length of both arrays. */
-    @Input protected ValueNode length;
+    @Input private ValueNode length;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
                     @ConstantNodeParameter JavaKind kind) {
-        this(TYPE, array1, offset1, array2, offset2, length, kind, null);
+        this(array1, offset1, array2, offset2, length, kind, null);
     }
 
     public ArrayEqualsNode(ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
                     @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, array1, offset1, array2, offset2, length, kind, runtimeCheckedCPUFeatures);
-    }
-
-    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
-                    @ConstantNodeParameter JavaKind kind,
-                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(c, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(kind));
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(kind));
         this.kind = kind;
         this.array1 = array1;
         this.offset1 = offset1;
