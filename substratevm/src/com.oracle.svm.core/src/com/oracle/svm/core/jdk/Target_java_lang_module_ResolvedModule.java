@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.module.Configuration;
-import java.util.function.Function;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = jdk.internal.module.ModuleLoaderMap.class)
-@SuppressWarnings("unused")
-final class Target_jdk_internal_module_ModuleLoaderMap {
-    @Alias
-    static native Function<String, ClassLoader> mappingFunction(Configuration cf);
+@TargetClass(ResolvedModule.class)
+public final class Target_java_lang_module_ResolvedModule {
+
+    /// Runtime `--patch-module` options replace the image-time module reference after startup.
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = false) //
+    ModuleReference mref;
 }

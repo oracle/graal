@@ -115,6 +115,7 @@ public final class RuntimeOptionParser {
     private static final String LOG_FILE_OPTION = "LogFile";
     private static final String LOG_FILE_OPTION_PREFIX = NORMAL_OPTION_PREFIX + LOG_FILE_OPTION + "=";
     @GuaranteeFolded private static final String HOTSPOT_OPTION_COMPATIBILITY_NAME = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
+    private static final String PATCH_MODULE_OPTION = "--patch-module";
     private static final String RESERVED_INTERNAL_MODULE_PROPERTY_WARNING = "Ignoring system property options whose names match '-Djdk.module.*', which is reserved for internal use.";
 
     private static final Set<String> SYSTEM_ASSERTION_OPTIONS = Set.of(
@@ -365,7 +366,6 @@ public final class RuntimeOptionParser {
                                             parseXBootClasspathAppendOption(arg, context)))) {
                 continue;
             }
-            assert newIdx <= oldIdx;
             args[newIdx] = arg;
             newIdx++;
         }
@@ -501,6 +501,10 @@ public final class RuntimeOptionParser {
     /// Parses module options that SVM applies to the runtime boot layer into the normalized
     /// `jdk.module.*` property scheme.
     private static boolean parseModuleOption(String arg, ParseContext context) {
+        if (arg.startsWith(PATCH_MODULE_OPTION + "=")) {
+            context.properties.put(RuntimeBootModuleLayerOptions.PATCH_MODULE_PROPERTY_PREFIX + context.patchModuleIndex++, optionValue(arg));
+            return true;
+        }
         if (arg.startsWith(RuntimeBootModuleLayerOptions.MODULE_PATH_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY, optionValue(arg));
             return true;
@@ -606,9 +610,6 @@ public final class RuntimeOptionParser {
         if (arg.startsWith(SUN_MISC_UNSAFE_MEMORY_ACCESS_OPTION_PREFIX)) {
             return true;
         }
-        if (arg.startsWith("--patch-module=")) {
-            return true;
-        }
         if (arg.startsWith("--limit-modules=")) {
             return true;
         }
@@ -660,6 +661,9 @@ public final class RuntimeOptionParser {
 
         /// Next numbered-property slot for decoded `--add-modules` options.
         int addModulesIndex;
+
+        /// Next numbered-property slot for decoded `--patch-module` options.
+        int patchModuleIndex;
 
         /// Next numbered-property slot for decoded `--add-reads` options.
         int addReadsIndex;

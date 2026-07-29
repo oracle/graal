@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.ADD_MODULES_PROPERTY_PREFIX;
 import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MAIN_MODULE_PROPERTY;
 import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY;
 import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION;
 import static com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_PROPERTY;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
@@ -38,13 +38,23 @@ import java.lang.module.ModuleDescriptor.Exports;
 import java.lang.module.ModuleDescriptor.Opens;
 import java.lang.module.ModuleDescriptor.Requires;
 import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolutionException;
 import java.lang.module.ResolvedModule;
 import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.security.CodeSigner;
+import java.security.CodeSource;
+import java.security.Permissions;
+import java.security.ProtectionDomain;
 import java.util.Collection;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -53,21 +63,30 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.internal.module.ModulePatcher;
+import jdk.internal.module.ModuleReferenceImpl;
 
 /// Registers the startup hook that augments the runtime boot layer when standard
 /// runtime Java option parsing can preserve module options.
 ///
 /// This feature is only enabled for the first image build. The actual augmentation work happens
-/// later, in [RuntimeBootModuleLayerSupport#initialize], once the preserved runtime
+/// later, in [RuntimeBootModuleLayerSupport#boot2], once the preserved runtime
 /// module options are available.
 @AutomaticallyRegisteredFeature
 final class RuntimeBootModuleLayerFeature implements InternalFeature {
@@ -89,7 +108,7 @@ final class RuntimeBootModuleLayerFeature implements InternalFeature {
 final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        RuntimeBootModuleLayerSupport.initialize();
+        RuntimeBootModuleLayerSupport.boot2();
     }
 }
 
@@ -104,58 +123,192 @@ final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
 /// - Grafts those modules onto the real boot layer, and
 /// - Rebuilds the boot-layer configuration and caches to match the augmented contents.
 public final class RuntimeBootModuleLayerSupport {
+
     public static final String ALL_MODULE_PATH = "ALL-MODULE-PATH";
     public static final String ALL_DEFAULT = "ALL-DEFAULT";
     public static final String ALL_SYSTEM = "ALL-SYSTEM";
+
+    /// Cache for [#patchedIfNeeded].
+    private static Map<ModuleReference, ModuleReference> mrefsPatcher;
 
     private RuntimeBootModuleLayerSupport() {
     }
 
     /// Resolves runtime module options and folds any newly resolved modules into the
-    /// existing boot layer.
+    /// existing boot layer. The method also applies runtime `--patch-module` changes
+    /// to the module finders and built-in loader metadata before applying additional
+    /// reads, exports, opens, and native-access grants.
     ///
     /// The flow is:
     ///
     /// 1. Read the runtime-initialized `jdk.module.*` properties for the launcher-selected main
-    /// module,
-    /// `--upgrade-module-path`, `--module-path`, `--add-modules`, `--add-reads`,
-    /// `--add-exports`, `--add-opens`, and `--enable-native-access`.
-    /// 2. Resolve only those roots that are not already part of the build-time boot layer. Modules
-    /// from `--upgrade-module-path` are searched before system modules, so the option can provide
-    /// new boot-layer modules. It cannot replace modules already built into the image boot layer.
-    /// 3. Create the corresponding runtime [Module] objects directly using the same built-in
-    /// loader mapping that HotSpot uses for boot-layer modules, then initialize their reads,
-    /// exports, and opens against the existing boot layer.
-    /// 4. Patch the real boot layer so [ModuleLayer#boot] exposes only the newly resolved runtime
-    /// modules without changing its identity, then apply any extra reads, exports, opens, and
-    /// native-access grants selected at launch time.
-    static void initialize() {
+    /// module and the supported module options.
+    /// 2. Update system module references and the build-time boot configuration when
+    /// `--patch-module` is present.
+    /// 3. Resolve only roots that are not already part of the build-time boot layer. Modules from
+    /// `--upgrade-module-path` are searched before system modules, but cannot replace modules
+    /// already built into the image boot layer.
+    /// 4. Create the corresponding runtime [Module] objects directly using the same built-in
+    /// loader mapping that HotSpot uses for boot-layer modules, then fold them into the real boot
+    /// layer without changing [ModuleLayer#boot] identity.
+    /// 5. Update built-in loader metadata for patched modules and apply extra reads, exports,
+    /// opens, and native-access grants selected at launch time.
+    ///
+    /// If [ModuleLayer#boot] is unavailable, the method returns without making changes.
+    ///
+    /// This method follows the layout as much as possible of `ModuleBootstrap.boot2()`
+    /// and adopts the same name to highlight this connection.
+    static void boot2() {
         ModuleLayer bootLayer = ModuleLayer.boot();
         if (bootLayer == null) {
             return;
         }
 
-        /*
-         * Resolve the runtime module options against the existing boot configuration, so we only
-         * add modules that were named at runtime and are not already present in the build-time boot
-         * layer.
-         */
-        String upgradeModulePath = System.getProperty(UPGRADE_MODULE_PATH_PROPERTY, "");
-        ModuleFinder upgradeModulePathFinder = createModuleFinder(upgradeModulePath);
+        Target_jdk_internal_module_ModuleBootstrap.patcher = Target_jdk_internal_module_ModuleBootstrap.initModulePatcher();
+        ModulePatcher patcher = SubstrateUtil.cast(Target_jdk_internal_module_ModuleBootstrap.patcher, ModulePatcher.class);
+        mrefsPatcher = patcher.hasPatches() ? new IdentityHashMap<>() : null;
+
+        ModuleFinder upgradeModulePath = Target_jdk_internal_module_ModuleBootstrap.finderFor(UPGRADE_MODULE_PATH_PROPERTY);
+        ModuleFinder appModulePath = Target_jdk_internal_module_ModuleBootstrap.finderFor(MODULE_PATH_PROPERTY);
+        String mainModule = System.getProperty(MAIN_MODULE_PROPERTY);
+        Set<String> addModules = Target_jdk_internal_module_ModuleBootstrap.addModules();
+
+        ModuleFinder systemModuleFinder = ModuleFinder.ofSystem();
         Configuration buildTimeBootConfiguration = bootLayer.configuration();
-        rejectUpgradeModulePathReplacements(buildTimeBootConfiguration, upgradeModulePathFinder);
-        ModuleFinder observableSystemModuleFinder = createSystemModuleFinder(ModuleFinder.ofSystem(), upgradeModulePathFinder);
-        String modulePath = System.getProperty(MODULE_PATH_PROPERTY, "");
-        ModuleFinder modulePathFinder = createModuleFinder(modulePath);
-        validateModulePath(modulePathFinder);
-        ModuleFinder observableModuleFinder = createObservableModuleFinder(observableSystemModuleFinder, modulePathFinder);
-        boolean hasRuntimeObservablePath = !upgradeModulePath.isEmpty() || !modulePath.isEmpty();
-        RootModules rootModules = getRootModules(buildTimeBootConfiguration, observableSystemModuleFinder, modulePathFinder, observableModuleFinder, hasRuntimeObservablePath);
-        Set<String> roots = rootModules.roots();
+        if (patcher.hasPatches()) {
+            // Fixup system modules for --patch-modules
+            Set<ModuleReference> all = systemModuleFinder.findAll();
+            Map<String, ModuleReference> nameToModule = new HashMap<>(all.size());
+            for (var mref : all) {
+                nameToModule.put(mref.descriptor().name(), patchedIfNeeded(mref));
+            }
+            systemModuleFinder = new MapBackedModuleFinder(nameToModule);
+            Target_jdk_internal_module_SystemModuleFinders.cachedSystemModuleFinder = systemModuleFinder;
+
+            // Fixup ResolvedModules in boot configuration for --patch-modules
+            buildTimeBootConfiguration.modules().forEach(module -> {
+                Target_java_lang_module_ResolvedModule rm = SubstrateUtil.cast(module, Target_java_lang_module_ResolvedModule.class);
+                ModuleReference patchedMref = patchedIfNeeded(rm.mref);
+                if (rm.mref != patchedMref) {
+                    rm.mref = patchedMref;
+                    // Keep the image-resident Module object consistent with its patched reference.
+                    Module bootModule = bootLayer.findModule(module.name()).orElseThrow();
+                    Target_java_lang_Module targetBootModule = SubstrateUtil.cast(bootModule, Target_java_lang_Module.class);
+                    targetBootModule.descriptor = rm.mref.descriptor();
+                }
+            });
+        }
+
+        ModuleFinder finder;
+
+        // upgraded modules override the modules in the run-time image
+        if (upgradeModulePath != null) {
+            rejectUpgradeModulePathReplacements(buildTimeBootConfiguration, upgradeModulePath);
+            systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
+        }
+
+        // The module finder: [--upgrade-module-path] system [--module-path]
+        if (appModulePath != null) {
+            validateAppModulePath(appModulePath);
+            finder = ModuleFinder.compose(systemModuleFinder, appModulePath);
+        } else {
+            finder = systemModuleFinder;
+        }
+
+        boolean hasRuntimeObservablePath = upgradeModulePath != null || appModulePath != null;
+
+        // The root modules to resolve
+        Set<String> roots = new HashSet<>();
+        Set<String> explicitRoots = new LinkedHashSet<>();
+
+        // launcher -m option to specify the main/initial module
+        if (mainModule != null) {
+            roots.add(mainModule);
+            explicitRoots.add(mainModule);
+        }
+
+        // additional module(s) specified by --add-modules
+        boolean addAllDefaultModules = false;
+        boolean addAllSystemModules = false;
+        boolean addAllApplicationModules = false;
+        for (String mod : addModules) {
+            switch (mod) {
+                case ALL_DEFAULT:
+                    addAllDefaultModules = true;
+                    break;
+                case ALL_SYSTEM:
+                    addAllSystemModules = true;
+                    break;
+                case ALL_MODULE_PATH:
+                    addAllApplicationModules = true;
+                    break;
+                default:
+                    roots.add(mod);
+                    explicitRoots.add(mod);
+            }
+        }
+
+        // --limit-modules (TBD)
+
+        // If there is no initial module specified then assume that the initial
+        // module is the unnamed module of the application class loader. This
+        // is implemented by resolving all observable modules that export an
+        // API. Modules that have the DO_NOT_RESOLVE_BY_DEFAULT bit set in
+        // their ModuleResolution attribute flags are excluded from the
+        // default set of roots.
+        //
+        // Runtime path options make an unnamed-module launch observe the HotSpot default roots.
+        // Without those options, the image's existing boot layer remains authoritative.
+        if ((mainModule == null && hasRuntimeObservablePath) || addAllDefaultModules) {
+            for (String name : Target_jdk_internal_module_DefaultRoots.compute(systemModuleFinder, finder)) {
+                if (!hasIncompatibleBuiltinLoaderModule(name, finder)) {
+                    roots.add(name);
+                }
+            }
+        }
+
+        // If `--add-modules ALL-SYSTEM` is specified, then all observable system
+        // modules will be resolved.
+        if (addAllSystemModules) {
+            ModuleFinder f = finder;  // observable modules
+            systemModuleFinder.findAll() //
+                            .stream() //
+                            .map(ModuleReference::descriptor) //
+                            .map(ModuleDescriptor::name) //
+                            .filter(name -> f.find(name).isPresent()) // observable
+                            .forEach(roots::add);
+        }
+
+        // If `--add-modules ALL-MODULE-PATH` is specified, then all observable
+        // modules on the application module path will be resolved.
+        if (appModulePath != null && addAllApplicationModules) {
+            ModuleFinder f = finder;  // observable modules
+            appModulePath.findAll().stream() //
+                            .map(ModuleReference::descriptor) //
+                            .map(ModuleDescriptor::name) //
+                            .filter(mn -> f.find(mn).isPresent())  // observable
+                            .forEach(mn -> {
+                                roots.add(mn);
+                                explicitRoots.add(mn);
+                            });
+        }
+
+        /*
+         * Explicitly requested roots need a diagnostic before pruning. Default roots are only
+         * candidates discovered from the observable module set, so incompatible defaults can be
+         * filtered silently. A module already in the build-time boot configuration is not a
+         * runtime augmentation candidate at all: the preserved boot-layer module remains
+         * authoritative, and replacement attempts from --upgrade-module-path are rejected earlier.
+         * The loader-compatibility rejection is only for modules absent from that configuration,
+         * because adding one would require registering a runtime ModuleReference in a built-in
+         * loader that already preserves a different reference for the same name.
+         */
+        rejectUnrepresentableExplicitRoots(buildTimeBootConfiguration, finder, explicitRoots);
+        roots.removeIf(moduleName -> !isRuntimeAugmentationCandidate(buildTimeBootConfiguration, finder, moduleName));
         if (!roots.isEmpty()) {
-            Configuration augmentationConfiguration = resolveAugmentationConfiguration(buildTimeBootConfiguration, observableModuleFinder, roots);
-            Set<ResolvedModule> runtimeModules = selectNewRuntimeModules(buildTimeBootConfiguration, augmentationConfiguration, observableModuleFinder, roots);
-            rejectUnrepresentedExplicitRoots(buildTimeBootConfiguration, rootModules.explicitRoots(), runtimeModules);
+            Configuration augmentationConfiguration = resolveAugmentationConfiguration(buildTimeBootConfiguration, finder, roots);
+            Set<ResolvedModule> runtimeModules = selectNewRuntimeModules(buildTimeBootConfiguration, augmentationConfiguration, finder, roots);
+            rejectUnrepresentedExplicitRoots(buildTimeBootConfiguration, explicitRoots, runtimeModules);
             if (!runtimeModules.isEmpty()) {
                 Configuration mergedConfiguration = createAugmentedBootConfiguration(buildTimeBootConfiguration, runtimeModules);
                 /*
@@ -174,9 +327,53 @@ public final class RuntimeBootModuleLayerSupport {
             }
         }
 
+        patchBuiltinLoaderModuleReferences(bootLayer);
+
         Target_jdk_internal_module_ModuleBootstrap.addExtraReads(bootLayer);
         Target_jdk_internal_module_ModuleBootstrap.addExtraExportsAndOpens(bootLayer);
         ModuleBootstrapSubstitutionsSupport.addRuntimeEnableNativeAccessModules(bootLayer);
+    }
+
+    /// Finds all [ModuleReference] values referenced from `BuiltinClassLoader.nameToModule`
+    /// and `BuiltinClassLoader.packageToModule` and replaces them with the result of
+    /// [#patchedIfNeeded] if it returns a different (i.e., patched) value.
+    ///
+    /// This method also warns for `--patch-module` targets that are not in the boot layer
+    /// or overlap with AOT classes in the image (which are unpatchable).
+    /// The latter check requires scanning the paths specified to `--patch-module`
+    /// which can be expensive. However, silently failing to patch a class can be
+    /// very confusing and given that `--patch-module` is typically used as
+    /// a development or testing tool, this is the right trade off.
+    private static void patchBuiltinLoaderModuleReferences(ModuleLayer bootLayer) {
+        for (Map.Entry<String, List<Path>> entry : Target_jdk_internal_module_ModuleBootstrap.patcher.map.entrySet()) {
+            String moduleName = entry.getKey();
+            Optional<Module> module = bootLayer.findModule(moduleName);
+            if (module.isEmpty()) {
+                LogUtils.warning("Unknown module: " + moduleName + " specified to --patch-module");
+                continue;
+            }
+
+            ClassLoader classLoader = module.get().getClassLoader();
+            Target_jdk_internal_loader_BuiltinClassLoader builtinLoader;
+            if (classLoader == null) {
+                builtinLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+            } else if (classLoader instanceof jdk.internal.loader.BuiltinClassLoader) {
+                builtinLoader = SubstrateUtil.cast(classLoader, Target_jdk_internal_loader_BuiltinClassLoader.class);
+            } else {
+                throw VMError.shouldNotReachHere("Patched boot-layer module is not assigned to a built-in class loader: " + moduleName);
+            }
+            ModuleReference moduleReference = builtinLoader.findModule(moduleName);
+            if (moduleReference == null) {
+                throw VMError.shouldNotReachHere("Missing built-in loader module reference for patched module " + moduleName);
+            }
+            ModuleReference patchedReference = patchedIfNeeded(moduleReference);
+            if (patchedReference != moduleReference) {
+                BuiltinClassLoaderSubstitutionsSupport.patchModuleReference(builtinLoader, moduleReference, patchedReference);
+            }
+            for (Path path : entry.getValue()) {
+                checkModulePatchForAOTClasses(moduleName, classLoader, path);
+            }
+        }
     }
 
     /// Resolves the runtime root modules against the existing boot configuration.
@@ -248,8 +445,8 @@ public final class RuntimeBootModuleLayerSupport {
     /// Rejects only the part of `--upgrade-module-path` that is impossible for SVM to implement:
     /// replacing a module already present in the prebuilt boot layer. Entries for modules not
     /// already in the boot layer remain supported and are resolved before system modules.
-    private static void rejectUpgradeModulePathReplacements(Configuration buildTimeBootConfiguration, ModuleFinder upgradeModulePathFinder) {
-        rejectBootLayerReplacements(buildTimeBootConfiguration, upgradeModulePathFinder, UPGRADE_MODULE_PATH_OPTION, "replace");
+    private static void rejectUpgradeModulePathReplacements(Configuration buildTimeBootConfiguration, ModuleFinder upgradeModulePath) {
+        rejectBootLayerReplacements(buildTimeBootConfiguration, upgradeModulePath, UPGRADE_MODULE_PATH_OPTION, "replace");
     }
 
     /// Rejects any upgrade path entry that collides by name with a module already present in the
@@ -396,8 +593,94 @@ public final class RuntimeBootModuleLayerSupport {
 
     private static void addModuleReferences(Map<String, ModuleReference> references, Collection<ResolvedModule> modules) {
         for (ResolvedModule resolvedModule : modules) {
-            ModuleReference reference = resolvedModule.reference();
-            references.put(reference.descriptor().name(), reference);
+            ModuleReference mref = resolvedModule.reference();
+            if (patchedIfNeeded(mref) != mref) {
+                VMError.shouldNotReachHere("Module reference " + mref + " was patched by --patch-module");
+            }
+            references.put(mref.descriptor().name(), mref);
+        }
+    }
+
+    /// Carries bytecode loaded from `--patch-module` together with the patch entry that supplied it.
+    public record PatchedModuleClass(byte[] bytes, URL codeSourceURL) {
+    }
+
+    /// Creates class definition metadata that matches the `CodeSource` HotSpot assigns to classes loaded from `--patch-module`.
+    public static RuntimeClassLoading.ClassDefinitionInfo createPatchedClassDefinitionInfo(ClassLoader loader, URL codeSourceURL) {
+        CodeSource codeSource = new CodeSource(codeSourceURL, (CodeSigner[]) null);
+        ProtectionDomain protectionDomain = new ProtectionDomain(codeSource, new Permissions(), loader, null);
+        return new RuntimeClassLoading.ClassDefinitionInfo(protectionDomain);
+    }
+
+    /// Loads `resourceName` from the patch paths for `moduleName` if that module is resolved
+    /// by the boot loader.
+    ///
+    /// A `--patch-module` target is effective only if the target module is in the runtime root
+    /// module graph. The boot layer is augmented before application code runs, so membership in
+    /// `ModuleLayer.boot()` is the runtime check for that rule.
+    public static PatchedModuleClass loadPatchedModuleBootLoaderClass(String moduleName, String resourceName) throws IOException {
+        if (moduleName == null || ModuleLayer.boot().findModule(moduleName).isEmpty()) {
+            return null;
+        }
+        Target_jdk_internal_loader_BuiltinClassLoader loader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        ModuleReference moduleReference = loader.findModule(moduleName);
+        if (moduleReference == null) {
+            return null;
+        }
+        ModuleReader moduleReader = loader.moduleReaderFor(moduleReference);
+        if (!(moduleReader instanceof jdk.internal.module.ModulePatcher.PatchedModuleReader)) {
+            return null;
+        }
+        jdk.internal.loader.Resource resource = SubstrateUtil.cast(moduleReader, Target_jdk_internal_module_ModulePatcher_PatchedModuleReader.class).findResource(resourceName);
+        if (resource == null) {
+            return null;
+        }
+        // Reuse the JDK reader so patched jar files remain shared across class lookups.
+        return new PatchedModuleClass(resource.getBytes(), resource.getCodeSourceURL());
+    }
+
+    /// Warns for each class file found under `path` that overlaps with an AOT class
+    /// associated with `loader`. Such an AOT class cannot be patched.
+    ///
+    /// @param moduleName the name of a module in a `--patch-module` argument
+    /// @param path the patch path for `moduleName` specified by `--patch-module`
+    private static void checkModulePatchForAOTClasses(String moduleName, ClassLoader loader, Path path) {
+        try {
+            if (Files.isDirectory(path)) {
+                try (Stream<Path> entries = Files.walk(path)) {
+                    entries.filter(Files::isRegularFile).forEach(classFile -> warnPatchModuleAOTClassOverlap(moduleName, loader, path, path.relativize(classFile).toString()));
+                }
+            } else if (Files.isRegularFile(path)) {
+                try (JarFile jarFile = new JarFile(path.toFile())) {
+                    Enumeration<JarEntry> jarEntries = jarFile.entries();
+                    while (jarEntries.hasMoreElements()) {
+                        JarEntry jarEntry = jarEntries.nextElement();
+                        if (!jarEntry.isDirectory()) {
+                            warnPatchModuleAOTClassOverlap(moduleName, loader, path, jarEntry.getName());
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LogUtils.warning("Could not scan " + path + " specified to --patch-module for module " + moduleName + ": " + e);
+        }
+    }
+
+    /// Warns when `resourceName` denotes an AOT-loaded class in `moduleName`.
+    ///
+    /// @param moduleName the name of a module in a `--patch-module` argument
+    /// @param path the patch path for `moduleName` specified by `--patch-module`
+    /// @param resourceName a resource (i.e., file or zip entry) available under `path`
+    private static void warnPatchModuleAOTClassOverlap(String moduleName, ClassLoader loader, Path path, String resourceName) {
+        String normalizedResourceName = resourceName.replace(File.separatorChar, '/');
+        if (!normalizedResourceName.endsWith(".class") || normalizedResourceName.equals("module-info.class")) {
+            return;
+        }
+        String className = normalizedResourceName.substring(0, normalizedResourceName.length() - ".class".length()).replace('/', '.');
+        if (ClassRegistries.hasAOTLoadedClass(className, loader)) {
+            String sep = Files.isDirectory(path) ? File.separator : "!";
+            LogUtils.warning("Class " + className + " from --patch-module=" + moduleName + " (" + path + sep + resourceName + ")" +
+                            " overlaps with a class already loaded from the image; the patch class will not replace the AOT class");
         }
     }
 
@@ -434,101 +717,16 @@ public final class RuntimeBootModuleLayerSupport {
         }
     }
 
-    private static ModuleFinder createModuleFinder(String modulePath) {
-        Path[] paths = Arrays.stream(modulePath.split(File.pathSeparator)).filter(entry -> !entry.isEmpty()).map(Path::of).toArray(Path[]::new);
-        if (paths.length == 0) {
-            return ModuleFinder.of();
-        }
-        return ModuleFinder.of(paths);
-    }
-
     /// Forces launcher-compatible validation of every runtime `--module-path` entry.
     ///
     /// Calling [ModuleFinder#findAll] eagerly scans the whole module path, parses explicit module
     /// descriptors or derives automatic-module descriptors, and reports malformed or unreadable
     /// entries, as well as duplicate module names within one module-path directory, through the JDK
     /// module finder before root selection can ignore an unused path entry.
-    private static void validateModulePath(ModuleFinder modulePathFinder) {
-        modulePathFinder.findAll();
-    }
-
-    /// Computes the runtime root modules requested by launcher options using the supplied boot
-    /// configuration plus the observable system and application module finders.
-    ///
-    /// This mirrors the root-selection logic from `jdk.internal.module.ModuleBootstrap#boot2`,
-    /// adapted to augment an existing boot layer at runtime. Modules already present in the
-    /// build-time boot layer are filtered out from the returned roots because runtime augmentation
-    /// can only add previously absent modules.
-    private static RootModules getRootModules(Configuration buildTimeBootConfiguration, ModuleFinder systemModuleFinder, ModuleFinder modulePathFinder, ModuleFinder observableModuleFinder,
-                    boolean hasRuntimeObservablePath) {
-        LinkedHashSet<String> roots = new LinkedHashSet<>();
-        LinkedHashSet<String> explicitRoots = new LinkedHashSet<>();
-        String mainModule = System.getProperty(MAIN_MODULE_PROPERTY);
-        if (mainModule != null) {
-            roots.add(mainModule);
-            explicitRoots.add(mainModule);
+    private static void validateAppModulePath(ModuleFinder appModulePath) {
+        if (appModulePath != null) {
+            appModulePath.findAll();
         }
-
-        boolean addAllDefaultModules = false;
-        boolean addAllSystemModules = false;
-        for (int index = 0;; index++) {
-            String value = System.getProperty(ADD_MODULES_PROPERTY_PREFIX + index);
-            if (value == null) {
-                break;
-            }
-            for (String moduleName : value.split(",")) {
-                switch (moduleName) {
-                    case "" -> {
-                    }
-                    case ALL_MODULE_PATH -> modulePathFinder.findAll() //
-                                    .stream() //
-                                    .map(ModuleReference::descriptor) //
-                                    .map(ModuleDescriptor::name) //
-                                    .filter(name -> observableModuleFinder.find(name).isPresent()) //
-                                    .forEach(mn -> {
-                                        roots.add(mn);
-                                        explicitRoots.add(mn);
-                                    });
-                    case ALL_DEFAULT -> addAllDefaultModules = true;
-                    case ALL_SYSTEM -> addAllSystemModules = true;
-                    default -> {
-                        roots.add(moduleName);
-                        explicitRoots.add(moduleName);
-                    }
-                }
-            }
-        }
-
-        // Runtime path options make an unnamed-module launch observe the HotSpot default roots.
-        // Without those options, the image's existing boot layer remains authoritative.
-        if ((mainModule == null && hasRuntimeObservablePath) || addAllDefaultModules) {
-            addDefaultRootModules(roots, systemModuleFinder, observableModuleFinder);
-        }
-
-        // If `--add-modules ALL-SYSTEM` is specified, then all observable system
-        // modules will be resolved.
-        if (addAllSystemModules) {
-            systemModuleFinder.findAll() //
-                            .stream() //
-                            .map(ModuleReference::descriptor) //
-                            .map(ModuleDescriptor::name) //
-                            .filter(name -> observableModuleFinder.find(name).isPresent()) //
-                            .forEach(roots::add);
-        }
-
-        /*
-         * Explicitly requested roots need a diagnostic before pruning. Default roots are only
-         * candidates discovered from the observable module set, so incompatible defaults can be
-         * filtered silently. A module already in the build-time boot configuration is not a
-         * runtime augmentation candidate at all: the preserved boot-layer module remains
-         * authoritative, and replacement attempts from --upgrade-module-path are rejected earlier.
-         * The loader-compatibility rejection is only for modules absent from that configuration,
-         * because adding one would require registering a runtime ModuleReference in a built-in
-         * loader that already preserves a different reference for the same name.
-         */
-        rejectUnrepresentableExplicitRoots(buildTimeBootConfiguration, observableModuleFinder, explicitRoots);
-        roots.removeIf(moduleName -> !isRuntimeAugmentationCandidate(buildTimeBootConfiguration, observableModuleFinder, moduleName));
-        return new RootModules(roots, explicitRoots);
     }
 
     /// Fails startup when a user-named root resolves to a module that conflicts with a built-in
@@ -557,14 +755,6 @@ public final class RuntimeBootModuleLayerSupport {
                                 "' cannot be added to the runtime boot layer because one or more of its mandatory dependencies cannot be represented");
             }
         }
-    }
-
-    /// Adds default roots that can be represented by the runtime observable module finder.
-    private static void addDefaultRootModules(Set<String> roots, ModuleFinder systemModuleFinder, ModuleFinder observableModuleFinder) {
-        Target_jdk_internal_module_DefaultRoots.compute(systemModuleFinder, observableModuleFinder) //
-                        .stream() //
-                        .filter(name -> !hasIncompatibleBuiltinLoaderModule(name, observableModuleFinder)) //
-                        .forEach(roots::add);
     }
 
     /// Tests whether `moduleName` can be added as a newly resolved runtime boot-layer module.
@@ -637,17 +827,19 @@ public final class RuntimeBootModuleLayerSupport {
         return null;
     }
 
-    /// Creates the system-module finder used at runtime, with upgrade-path modules searched before
-    /// system modules. This supports user modules on `--upgrade-module-path`; replacement of
-    /// image-built boot modules is rejected before this finder is used.
-    private static ModuleFinder createSystemModuleFinder(ModuleFinder systemModuleFinder, ModuleFinder upgradeModulePathFinder) {
-        return ModuleFinder.compose(upgradeModulePathFinder, systemModuleFinder);
-    }
-
-    /// Creates the observable-module finder from the upgraded system modules and application
-    /// module path.
-    private static ModuleFinder createObservableModuleFinder(ModuleFinder systemModuleFinder, ModuleFinder modulePathFinder) {
-        return ModuleFinder.compose(systemModuleFinder, modulePathFinder);
+    /// Gets the runtime-patched reference for `mref` when `--patch-module` is active.
+    ///
+    /// Already patched references and references from an image without patches are returned
+    /// unchanged. Other references are patched once per input module reference and the cached
+    /// result is reused for subsequent lookups.
+    ///
+    /// @param mref the module reference to patch when necessary
+    /// @return the patched module reference, or `mref` when no patch is needed
+    static ModuleReference patchedIfNeeded(ModuleReference mref) {
+        if (mrefsPatcher == null || mref instanceof ModuleReferenceImpl impl && impl.isPatched()) {
+            return mref;
+        }
+        return mrefsPatcher.computeIfAbsent(mref, Target_jdk_internal_module_ModuleBootstrap.patcher::patchIfNeeded);
     }
 
     /// Minimal `ModuleFinder` backed by an already-collected map of module references.
@@ -660,7 +852,8 @@ public final class RuntimeBootModuleLayerSupport {
 
         private MapBackedModuleFinder(Map<String, ModuleReference> references) {
             this.references = references;
-            this.modules = Set.copyOf(references.values());
+            Collection<ModuleReference> values = references.values();
+            this.modules = Set.copyOf(values);
         }
 
         @Override
@@ -672,9 +865,5 @@ public final class RuntimeBootModuleLayerSupport {
         public Set<ModuleReference> findAll() {
             return modules;
         }
-    }
-
-    /// Carries all runtime roots plus the subset named directly by the user.
-    private record RootModules(Set<String> roots, Set<String> explicitRoots) {
     }
 }

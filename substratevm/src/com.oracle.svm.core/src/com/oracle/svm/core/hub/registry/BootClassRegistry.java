@@ -47,6 +47,8 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;
 import com.oracle.svm.core.jdk.BootLoaderPackageAccess;
+import com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport;
+import com.oracle.svm.core.jdk.RuntimeBootModuleLayerSupport.PatchedModuleClass;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -117,7 +119,23 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
     public synchronized Class<?> doLoadClass(Symbol<Type> type) {
         String internalPackageName = packageFromType(type);
         try {
-            byte[] bytes = internalPackageName == null ? null : loadFromJImage(type, internalPackageName);
+            String moduleName = internalPackageName == null ? null : BootLoaderPackageAccess.bootModuleNameForPackage(internalPackageName);
+
+            // Follow same sequence as HotSpot:
+            // https://github.com/graalvm/labs-openjdk/blob/61a33c1b2856c0d9cdb4caea91fa84f27a3dd3ad/src/hotspot/share/classfile/classLoader.cpp#L1057-L1083
+
+            // 1. Try --patch-module path first:
+            PatchedModuleClass patchedClass = loadFromPatchModule(type, moduleName);
+            byte[] bytes = patchedClass == null ? null : patchedClass.bytes();
+            ClassDefinitionInfo classDefinitionInfo = patchedClass == null ? ClassDefinitionInfo.EMPTY
+                            : RuntimeBootModuleLayerSupport.createPatchedClassDefinitionInfo(null, patchedClass.codeSourceURL());
+
+            // 2. Try jimage next:
+            if (bytes == null && internalPackageName != null) {
+                bytes = loadFromJImage(type, internalPackageName);
+            }
+
+            // 3. Try -Xbootclasspath/a next:
             ClassFileBytes classFileBytes = null;
             if (bytes == null) {
                 /* Preserve boot class path append semantics by looking there after the jimage. */
@@ -127,11 +145,11 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
             if (bytes == null) {
                 return null;
             }
-            Class<?> loaded = defineClass(type, bytes, 0, bytes.length, ClassDefinitionInfo.EMPTY);
+            Class<?> loaded = defineClass(type, bytes, 0, bytes.length, classDefinitionInfo);
             if (classFileBytes != null) {
                 recordBootAppendPackageLocation(TypeSymbols.typeToName(type).toString(), classFileBytes.packageLocation());
             } else {
-                Module module = ModuleLayer.boot().findModule(BootLoaderPackageAccess.bootModuleNameForPackage(internalPackageName)).orElseThrow();
+                Module module = ModuleLayer.boot().findModule(moduleName).orElseThrow();
                 BootLoaderPackageAccess.ensureNamedPackageExists(internalPackageName, module);
             }
             CremaSupport.singleton().recordLoadingConstraint(type, DynamicHub.fromClass(loaded), null);
@@ -139,6 +157,12 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    /// Loads boot class bytes from `--patch-module` paths for the module `moduleName`.
+    private static PatchedModuleClass loadFromPatchModule(Symbol<Type> type, String moduleName) throws IOException {
+        String resourceName = TypeSymbols.typeToName(type) + ".class";
+        return RuntimeBootModuleLayerSupport.loadPatchedModuleBootLoaderClass(moduleName, resourceName);
     }
 
     private byte[] loadFromJImage(Symbol<Type> type, String internalPackageName) throws IOException {

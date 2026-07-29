@@ -44,10 +44,10 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
+import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue;
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadManualJavaThreadPrologue;
@@ -65,11 +65,11 @@ import com.oracle.svm.core.jvmti.JvmtiEnvs;
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
@@ -85,6 +85,8 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveDetachThrea
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.Utf8;
@@ -295,6 +297,12 @@ public final class JNIInvocationInterface {
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
     static int DetachCurrentThread(@SuppressWarnings("unused") JNIJavaVM vm) {
         int result = JNIErrors.JNI_OK();
+
+        Throwable throwable = JNIThreadLocalPendingException.get();
+        if (throwable != null) {
+            JavaThreads.dispatchUncaughtException(Thread.currentThread(), throwable);
+        }
+
         // JNI specification requires releasing all owned monitors
         Support.releaseCurrentThreadOwnedMonitors();
         return result;
