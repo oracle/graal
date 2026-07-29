@@ -112,16 +112,25 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashSet;
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.internal.module.Modules;
 import jdk.internal.module.Resources;
+import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * Provides class- and module-path support for native image builds.
+ *
+ * GR-77847: This class needs to be revisited for Terminus.
+ */
 public final class NativeImageClassLoaderSupport {
 
     public static final String ALL_UNNAMED = "ALL-UNNAMED";
@@ -222,13 +231,8 @@ public final class NativeImageClassLoaderSupport {
 
     private LoadClassHandler loadClassHandler;
 
-    /**
-     * Uninitialized value for {@link #libGraalLoader}.
-     */
-    private static final LibGraalLoader UninitializedLibGraalLoader = Map::of;
-
-    private LibGraalLoader libGraalLoader = UninitializedLibGraalLoader;
-    private List<ClassLoader> classLoaders;
+    private JavaConstant libGraalLoader;
+    private List<JavaConstant> classLoaders;
 
     private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
     private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
@@ -329,6 +333,19 @@ public final class NativeImageClassLoaderSupport {
     }
 
     /**
+     * Returns the class loader used to load image classes as a constant owned by the guest context.
+     * In fully isolated mode, this is the guest system class loader. Otherwise, it is a constant
+     * reference to the hosted {@linkplain #getClassLoader() native image class loader}.
+     */
+    private JavaConstant getGuestClassLoader() {
+        GuestAccess guestAccess = GuestAccess.get();
+        if (guestAccess.isFullyIsolated()) {
+            return guestAccess.invokeStatic(guestAccess.elements.java_lang_ClassLoader_getSystemClassLoader);
+        }
+        return guestAccess.getSnippetReflection().forObject(getClassLoader());
+    }
+
+    /**
      * The temporary {@link PathDigests} object is used to create the list of
      * {@link PathDigestEntry} tuples. Note that the {@code pathDigests} field is cleared after the
      * first time this method is called, and subsequent calls return the cached entries.
@@ -375,12 +392,12 @@ public final class NativeImageClassLoaderSupport {
         }).toList();
     }
 
-    public LibGraalLoader getLibGraalLoader() {
-        VMError.guarantee(libGraalLoader != UninitializedLibGraalLoader, "Invalid access to libGraalLoader before getting set up");
+    public JavaConstant getLibGraalLoader() {
+        VMError.guarantee(libGraalLoader != null, "Invalid access to libGraalLoader before getting set up");
         return libGraalLoader;
     }
 
-    public List<ClassLoader> getClassLoaders() {
+    public List<JavaConstant> getClassLoaders() {
         VMError.guarantee(classLoaders != null, "Invalid access to classLoaders before getting set up");
         return classLoaders;
     }
@@ -408,7 +425,13 @@ public final class NativeImageClassLoaderSupport {
         NativeImageSystemClassLoader systemClassLoader = NativeImageSystemClassLoader.singleton();
         loaders.add(systemClassLoader.defaultSystemClassLoader);
         loaders.add(systemClassLoader);
-        loaders.addAll(getClassLoaders());
+        for (JavaConstant guestClassLoader : getClassLoaders()) {
+            /*
+             * GR-77847: This converts a guest class-loader constant back to a builder-hosted object.
+             * Terminus must preinitialize proxy dynamic modules in the guest context instead.
+             */
+            loaders.add(GuestAccess.get().getSnippetReflection().asObject(ClassLoader.class, guestClassLoader));
+        }
 
         for (ClassLoader loader : loaders) {
             Proxy.getProxyClass(loader, Runnable.class);
@@ -453,7 +476,11 @@ public final class NativeImageClassLoaderSupport {
         loadClassHandler = new LoadClassHandler(executor, imageClassLoader);
         loadClassHandler.run();
 
-        LibGraalLoader loader = getLibGraalLoader();
+        /*
+         * GR-77772: This converts a guest class-loader constant back to a builder-hosted
+         * object. Terminus must keep this operation in the guest context instead.
+         */
+        LibGraalLoader loader = GuestAccess.get().getSnippetReflection().asObject(LibGraalLoader.class, getLibGraalLoader());
         if (loader != null) {
             /* If we have a LibGraalLoader, register its classes to the image builder */
             GuestTypes guestTypes = imageClassLoader.guestTypes;
@@ -801,21 +828,26 @@ public final class NativeImageClassLoaderSupport {
 
     public void setupLibGraalClassLoader() {
         var className = SubstrateOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
+        var guestAccess = GuestAccess.get();
+        JavaConstant nativeImageClassLoader = getGuestClassLoader();
         if (!className.isEmpty()) {
             String nameOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.LibGraalClassLoader, className);
+            JavaConstant loaderClass;
             try {
-                Class<?> loaderClass = Class.forName(className, true, classLoader);
-                if (!LibGraalLoader.class.isAssignableFrom(loaderClass)) {
-                    throw VMError.shouldNotReachHere("Class named by " + nameOption + " does not implement " + LibGraalLoader.class + '.');
-                }
-                libGraalLoader = (LibGraalLoader) ReflectionUtil.newInstance(loaderClass);
-                classLoaders = List.of((ClassLoader) libGraalLoader, getClassLoader());
-            } catch (ClassNotFoundException e) {
-                throw VMError.shouldNotReachHere("Class named by " + nameOption + " could not be found.", e);
+                loaderClass = guestAccess.invokeStatic(guestAccess.elements.java_lang_Class_forName,
+                                guestAccess.asGuestString(className), JavaConstant.forBoolean(true), nativeImageClassLoader);
+            } catch (InvocationException e) {
+                throw VMError.shouldNotReachHere("Class named by " + nameOption + " could not be loaded.", e);
             }
+            var loaderType = guestAccess.getProviders().getConstantReflection().asJavaType(loaderClass);
+            if (!guestAccess.lookupType(LibGraalLoader.class).isAssignableFrom(loaderType)) {
+                throw VMError.shouldNotReachHere("Class named by " + nameOption + " does not implement " + LibGraalLoader.class + '.');
+            }
+            libGraalLoader = guestAccess.invoke(JVMCIReflectionUtil.getDeclaredConstructor(false, loaderType), null);
+            classLoaders = List.of(libGraalLoader, nativeImageClassLoader);
         } else {
-            libGraalLoader = null;
-            classLoaders = List.of(getClassLoader());
+            libGraalLoader = JavaConstant.NULL_POINTER;
+            classLoaders = List.of(nativeImageClassLoader);
         }
     }
 
@@ -1138,7 +1170,8 @@ public final class NativeImageClassLoaderSupport {
                 final boolean includeUnconditionally = layerSelectors.moduleNames().contains(module.getName());
                 final boolean preserveModule = preserveSelectors.moduleNames().contains(module.getName());
                 var container = moduleReference.location().orElseThrow();
-                if (ModuleLayer.boot().equals(module.getLayer())) {
+                final boolean isBuilderContainer = ModuleLayer.boot().equals(module.getLayer());
+                if (isBuilderContainer) {
                     imageClassLoader.guestTypes.builderURILocations.add(container);
                 }
                 final boolean isInImageModulePathOfLayeredBuild = pathDigests != null && pathDigests.mpDigests.containsKey(container);
@@ -1149,7 +1182,7 @@ public final class NativeImageClassLoaderSupport {
                         String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                         if (className != null) {
                             currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                            executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule));
+                            executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule, isBuilderContainer));
                         }
                         if (isInImageModulePathOfLayeredBuild) {
                             executor.execute(() -> PathDigests.storePathFileDigest(container, moduleResource, isJar, pathDigests.mpDigests));
@@ -1245,7 +1278,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata, false));
                     }
                     if (isInImageClassPathOfLayeredBuild) {
                         executor.execute(() -> PathDigests.storePathFileDigest(container, fileName, isJar, pathDigests.cpDigests));
@@ -1336,7 +1369,8 @@ public final class NativeImageClassLoaderSupport {
          * Processes the name of a class discovered while scanning a classpath or module-path
          * origin.
          */
-        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean registerTypes, boolean preserveReflectionMetadata) {
+        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean registerTypes, boolean preserveReflectionMetadata,
+                        boolean isBuilderContainer) {
             handleClassFileNameInBuilderContext(module, className, registerTypes);
 
             imageClassLoader.guestTypes.handleClassFileName(container,
@@ -1346,6 +1380,7 @@ public final class NativeImageClassLoaderSupport {
                             includeUnconditionally,
                             registerTypes,
                             preserveReflectionMetadata,
+                            isBuilderContainer,
                             includePackages,
                             preservePackages);
 

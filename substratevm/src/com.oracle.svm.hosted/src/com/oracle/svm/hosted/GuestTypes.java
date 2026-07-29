@@ -96,6 +96,12 @@ public final class GuestTypes {
     final EconomicSet<URI> builderURILocations = EconomicSet.create();
 
     /**
+     * Types discovered in containers that belong to the Native Image implementation rather than
+     * the application class path or module path.
+     */
+    private final Set<ResolvedJavaType> builderTypes = ConcurrentHashMap.newKeySet();
+
+    /**
      * The platform of the target image being built.
      */
     private final Platform platform;
@@ -278,6 +284,14 @@ public final class GuestTypes {
         return applicationTypes;
     }
 
+    /**
+     * Returns whether {@code type} was discovered from the application class path or module path,
+     * rather than from a Native Image builder container.
+     */
+    public boolean isUserType(ResolvedJavaType type) {
+        return !builderTypes.contains(type);
+    }
+
     public List<ResolvedJavaMethod> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
         ArrayList<ResolvedJavaMethod> result = new ArrayList<>();
         for (ResolvedJavaMethod method : applicationMethods) {
@@ -430,6 +444,7 @@ public final class GuestTypes {
                     boolean includeUnconditionally,
                     boolean classRequiresInit,
                     boolean preserveReflectionMetadata,
+                    boolean isBuilderContainer,
                     NativeImageClassLoaderSupport.PackageRequest includePackages,
                     NativeImageClassLoaderSupport.PackageRequest preservePackages) {
         recordDiscoveredClassName(container, className, packageName);
@@ -448,6 +463,9 @@ public final class GuestTypes {
         }
 
         if (type != null) {
+            if (isBuilderContainer) {
+                builderTypes.add(type);
+            }
             includedJavaPackages.add(packageName);
             if (includeUnconditionally || includePackages.shouldInclude(packageName)) {
                 typesToIncludeUnconditionally.add(type);

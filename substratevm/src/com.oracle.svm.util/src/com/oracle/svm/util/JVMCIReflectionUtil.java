@@ -127,6 +127,49 @@ public final class JVMCIReflectionUtil {
     }
 
     /**
+     * Gets the method declared by {@code declaringClass} identified by its full JVM signature. Like
+     * {@link Class#getDeclaredMethod(String, Class...)}, this does not consider super classes or
+     * interfaces. The explicit {@code returnType} distinguishes covariant-return bridge methods
+     * that have the same name and parameter types.
+     *
+     * @param optional when {@code false}, an exception is thrown if the method does not exist
+     * @param declaringClass the class in which to look up the method
+     * @param name the name of the method to look up
+     * @param returnType the return type of the method to look up
+     * @param parameterTypes the parameter types of the method to look up
+     * @return the {@link ResolvedJavaMethod} object representing the requested method or
+     *         {@code null} if no such method exists and {@code optional} is {@code true}
+     * @throws GraalError if a signature type has the expected name but resolves to a different type
+     * @throws NoSuchMethodError if {@code optional} is {@code false} and no matching method exists
+     */
+    public static ResolvedJavaMethod getDeclaredMethod(boolean optional, ResolvedJavaType declaringClass, String name, ResolvedJavaType returnType,
+                    ResolvedJavaType... parameterTypes) {
+        for (ResolvedJavaMethod method : declaringClass.getDeclaredMethods(false)) {
+            if (method.getName().equals(name) && parameterTypesEqual(parameterTypes, method.getSignature(), declaringClass) &&
+                            returnTypesEqual(returnType, method.getSignature(), declaringClass)) {
+                return method;
+            }
+        }
+        if (!optional) {
+            throw new NoSuchMethodError("%s %s.%s(%s)".formatted(
+                            returnType.toClassName(),
+                            declaringClass.toClassName(),
+                            name,
+                            Arrays.stream(parameterTypes).map(ResolvedJavaType::toClassName).collect(Collectors.joining(", "))));
+        }
+        return null;
+    }
+
+    /**
+     * Shortcut for
+     * {@link #getDeclaredMethod(boolean, ResolvedJavaType, String, ResolvedJavaType, ResolvedJavaType...)}
+     * that passes {@code false} for {@code optional}.
+     */
+    public static ResolvedJavaMethod getDeclaredMethod(ResolvedJavaType declaringClass, String name, ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
+        return getDeclaredMethod(false, declaringClass, name, returnType, parameterTypes);
+    }
+
+    /**
      * Shortcut for {@link #getDeclaredConstructor(boolean, ResolvedJavaType, ResolvedJavaType...)}
      * with {@code optional} set to {@code false}.
      */
@@ -217,6 +260,18 @@ public final class JVMCIReflectionUtil {
                 // but with a different class loader.
                 throw new GraalError("Parameter %d has matching type name (%s) but type objects are not equal: p1=%s, p2=%s", i, p2.toClassName(), p1, p2);
             }
+        }
+        return true;
+    }
+
+    private static boolean returnTypesEqual(ResolvedJavaType returnType, Signature signature, ResolvedJavaType declaringClass) {
+        JavaType candidate = signature.getReturnType(declaringClass);
+        if (!returnType.getName().equals(candidate.getName())) {
+            return false;
+        }
+        candidate = candidate.resolve(declaringClass);
+        if (!returnType.equals(candidate)) {
+            throw new GraalError("Return type has matching type name (%s) but type objects are not equal: expected=%s, actual=%s", candidate.toClassName(), returnType, candidate);
         }
         return true;
     }
@@ -373,6 +428,72 @@ public final class JVMCIReflectionUtil {
             }
         }
         return type.toClassName();
+    }
+
+    /**
+     * Gets the simple name for a {@link ResolvedJavaType}. This is the same as calling
+     * {@link Class#getSimpleName()} on the underlying class.
+     * <p>
+     * Implementation derived from {@link Class#getSimpleName()}.
+     */
+    public static String getSimpleName(ResolvedJavaType type) {
+        if (type.isArray()) {
+            return getSimpleName(type.getComponentType()).concat("[]");
+        }
+
+        String className = type.toClassName();
+        ResolvedJavaType enclosingType = type.getEnclosingType();
+        if (enclosingType == null) {
+            return className.substring(className.lastIndexOf('.') + 1);
+        } else if (!type.isMember() && !type.isLocal()) {
+            return "";
+        }
+
+        String enclosingName = enclosingType.toClassName();
+        assert className.startsWith(enclosingName + "$") : type;
+        String result = className.substring(enclosingName.length() + 1);
+        if (type.isLocal()) {
+            int index = 0;
+            while (index < result.length() && Character.isDigit(result.charAt(index))) {
+                index++;
+            }
+            result = result.substring(index);
+        }
+        return result;
+    }
+
+    /**
+     * Returns the Java language modifiers for {@code type}, equivalent to
+     * {@link Class#getModifiers()} on the underlying class.
+     * <p>
+     * Unlike {@link ResolvedJavaType#getModifiers()}, this method includes member-class modifiers
+     * such as {@link java.lang.reflect.Modifier#STATIC} that are stored in the {@code InnerClasses}
+     * attribute instead of the class access flags. Use this method when migrating code that
+     * depends on the Java language modifiers returned by core reflection. Otherwise, prefer
+     * {@link ResolvedJavaType#getModifiers()} to avoid invoking guest code.
+     */
+    public static int getJavaLanguageModifiers(ResolvedJavaType type) {
+        if (!type.isMember() && !type.isArray()) {
+            return type.getModifiers();
+        }
+        GuestAccess access = GuestAccess.get();
+        ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
+        JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return access.invoke(access.elements.java_lang_Class_getModifiers, classConstant).asInt();
+    }
+
+    /**
+     * Returns the type that declares {@code type}, equivalent to {@link Class#getDeclaringClass()}
+     * on the underlying class, or {@code null} if {@code type} is not a member type.
+     * <p>
+     * Unlike {@link ResolvedJavaType#getEnclosingType()}, this method returns {@code null} for local
+     * and anonymous types. Use this method when migrating code that relies on the distinction
+     * between a declaring class and the broader enclosing class. Use
+     * {@link ResolvedJavaType#getEnclosingType()} when local and anonymous types should also return
+     * their enclosing type.
+     */
+    public static ResolvedJavaType getDeclaringType(ResolvedJavaType type) {
+        return type.isMember() ? type.getEnclosingType() : null;
     }
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {

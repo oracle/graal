@@ -62,7 +62,7 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.VMError.HostedError;
-
+import com.oracle.svm.util.GuestAccess;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.vmaccess.InvocationException;
@@ -151,10 +151,15 @@ public class FeatureHandler {
             registerFeature(featureClass, specificClassProvider, access, onRegistrationAccess, false, printFeatures);
         }
 
-        List<ClassLoader> featureClassLoaders = loader.classLoaderSupport.getClassLoaders();
+        var featureClassLoaders = loader.classLoaderSupport.getClassLoaders();
         for (String featureName : Options.userEnabledFeatures()) {
             Class<?> featureClass = null;
-            for (ClassLoader featureClassLoader : featureClassLoaders) {
+            for (var featureClassLoaderConstant : featureClassLoaders) {
+                /*
+                 * GR-72635: This converts a guest class-loader constant back to a builder-hosted
+                 * object. Terminus must load and invoke features in the guest context instead.
+                 */
+                ClassLoader featureClassLoader = GuestAccess.get().getSnippetReflection().asObject(ClassLoader.class, featureClassLoaderConstant);
                 try {
                     featureClass = Class.forName(featureName, true, featureClassLoader);
                     break;

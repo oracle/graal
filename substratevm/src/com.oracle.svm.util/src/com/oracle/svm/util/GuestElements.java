@@ -35,13 +35,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -96,14 +101,23 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
+    public final ResolvedJavaMethod java_lang_Class_forName = lookupMethod(java_lang_Class, "forName", String.class, boolean.class, ClassLoader.class);
+    public final ResolvedJavaMethod java_lang_Class_getAnnotation = lookupMethod(java_lang_Class, "getAnnotation", Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
+    public final ResolvedJavaMethod java_lang_Class_getModifiers = lookupMethod(java_lang_Class, "getModifiers");
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
     public final ResolvedJavaType java_lang_ClassLoader = lookupType(ClassLoader.class);
     public final ResolvedJavaMethod java_lang_ClassLoader_getName = lookupMethod(java_lang_ClassLoader, "getName");
+    public final ResolvedJavaMethod java_lang_ClassLoader_getPlatformClassLoader = lookupMethod(java_lang_ClassLoader, "getPlatformClassLoader");
+    public final ResolvedJavaMethod java_lang_ClassLoader_getSystemClassLoader = lookupMethod(java_lang_ClassLoader, "getSystemClassLoader");
+
+    public final ResolvedJavaType java_lang_ClassNotFoundException = lookupType(ClassNotFoundException.class);
 
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
+    public final ResolvedJavaMethod java_lang_Object_equals = lookupMethod(java_lang_Object, "equals", Object.class);
+    public final ResolvedJavaMethod java_lang_Object_hashCode = lookupMethod(java_lang_Object, "hashCode");
     public final ResolvedJavaMethod java_lang_Object_toString = lookupMethod(java_lang_Object, "toString");
 
     public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
@@ -142,6 +156,15 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_util_Objects = lookupType(Objects.class);
     public final ResolvedJavaMethod java_util_Objects_deepEquals = lookupMethod(java_util_Objects, "deepEquals", Object.class, Object.class);
 
+    public final ResolvedJavaType java_util_function_BooleanSupplier = lookupType(BooleanSupplier.class);
+    public final ResolvedJavaMethod java_util_function_BooleanSupplier_getAsBoolean = lookupMethod(java_util_function_BooleanSupplier, "getAsBoolean");
+
+    public final ResolvedJavaType java_util_function_Function = lookupType(Function.class);
+    public final ResolvedJavaMethod java_util_function_Function_apply = lookupMethod(java_util_function_Function, "apply", Object.class);
+
+    public final ResolvedJavaType java_util_function_Predicate = lookupType(Predicate.class);
+    public final ResolvedJavaMethod java_util_function_Predicate_test = lookupMethod(java_util_function_Predicate, "test", Object.class);
+
     public final ResolvedJavaType jdk_internal_foreign_abi_NativeEntryPoint = lookupType("jdk.internal.foreign.abi.NativeEntryPoint");
     public final ResolvedJavaMethod jdk_internal_foreign_abi_NativeEntryPoint_type = lookupMethod(jdk_internal_foreign_abi_NativeEntryPoint, "type");
     public final ResolvedJavaType jdk_internal_foreign_abi_SoftReferenceCache = lookupType("jdk.internal.foreign.abi.SoftReferenceCache");
@@ -150,9 +173,14 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType jdk_internal_foreign_abi_VMStorage = lookupType("jdk.internal.foreign.abi.VMStorage");
 
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.shared.Uninterruptible");
+    public final ResolvedJavaType Delete = lookupType(Delete.class);
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+
+    public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
+    public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
+    public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);

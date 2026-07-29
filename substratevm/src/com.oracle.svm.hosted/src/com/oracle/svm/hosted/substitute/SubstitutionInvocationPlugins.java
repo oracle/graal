@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -59,94 +56,16 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
         this.missingIntrinsicMetrics = null;
     }
 
-    private static boolean matchesType(Class<?> actualType, Type toMatch) {
-        if (actualType == toMatch) {
-            return true;
-        } else if (toMatch instanceof InvocationPlugins.TypeSymbol) {
-            return actualType.getTypeName().equals(toMatch.getTypeName());
-        }
-        return false;
-    }
-
-    private static boolean matchesMethod(InvocationPlugin plugin, Method method) {
-        if (plugin.isStatic == Modifier.isStatic(method.getModifiers()) && plugin.name.equals(method.getName())) {
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            int offset = plugin.isStatic ? 0 : 1;
-            List<Type> argumentTypes = plugin.getArgumentTypes();
-            if (parameterTypes.length == argumentTypes.size() - offset) {
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    if (!matchesType(parameterTypes[i], argumentTypes.get(i + offset))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean matchesConstructor(InvocationPlugin plugin, Constructor<?> c) {
-        if (!plugin.isStatic && "<init>".equals(plugin.name)) {
-            Class<?>[] parameterTypes = c.getParameterTypes();
-            List<Type> argumentTypes = plugin.getArgumentTypes();
-            if (parameterTypes.length == argumentTypes.size() - 1) {
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    if (!matchesType(parameterTypes[i], argumentTypes.get(i + 1))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// Resolves `plugin` to a method or constructor declared in `declaringClass`.
-    ///
-    /// This method is the same as `InvocationPlugins.ClassPlugins#resolveJavaMethod`
-    /// but is in terms of core reflection instead of JVMCI reflection.
-    ///
-    /// @return `null` if no matching member is found
-    public static Executable resolveExecutable(Class<?> declaringClass, InvocationPlugin plugin) {
-        if (!"<init>".equals(plugin.name)) {
-            Method[] methods = declaringClass.getDeclaredMethods();
-            Method match = null;
-            for (Method m : methods) {
-                if (matchesMethod(plugin, m)) {
-                    if (match == null) {
-                        match = m;
-                    } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
-                        // `m` has a more specific return type - choose it
-                        // (`match` is most likely a bridge method)
-                        match = m;
-                    } else {
-                        if (!m.getReturnType().isAssignableFrom(match.getReturnType())) {
-                            throw new NoSuchMethodError(String.format(
-                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
-                        }
-                    }
-                }
-            }
-            return match;
-        }
-        Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
-        for (Constructor<?> c : constructors) {
-            if (matchesConstructor(plugin, c)) {
-                return c;
-            }
-        }
-        return null;
-    }
-
     @Override
     protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         Type targetClass;
         if (declaringClass instanceof Class<?> annotatedClass) {
-            targetClass = annotationSubstitutionProcessor.getTargetClass(annotatedClass);
-            if (targetClass != declaringClass) {
+            ResolvedJavaType annotatedType = annotationSubstitutionProcessor.metaAccess.lookupJavaType(annotatedClass);
+            ResolvedJavaType targetType = annotationSubstitutionProcessor.getTargetType(annotatedType);
+            if (!targetType.equals(annotatedType)) {
                 /* Found a target class. Check if it is included. */
-                Executable annotatedMethod = resolveExecutable(annotatedClass, plugin);
-                String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, (Class<?>) targetClass);
+                ResolvedJavaMethod annotatedMethod = resolveJavaMethod(annotatedType, plugin);
+                String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, targetType);
                 if (originalName == null) {
                     /*
                      * If the name is null, the element should not be substituted. Thus, we should
@@ -159,6 +78,9 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
                                     InvocationPlugins cannot yet deal with substitution methods that set the target name via the @TargetElement(name = ...) property.
                                     Annotated method "%s" vs target method "%s".""", plugin.name, originalName));
                 }
+                targetClass = OriginalClassProvider.getJavaClass(targetType);
+            } else {
+                targetClass = declaringClass;
             }
         } else {
             targetClass = declaringClass;

@@ -104,6 +104,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -658,7 +659,8 @@ public class SubstrateGraphBuilderPlugins {
              * It is possible that the returned class is a substitution class, e.g., DynamicHub
              * returned for a Class.class constant. Get the target class of the substitution class.
              */
-            result[index] = annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
+            result[index] = annotationSubstitutions == null ? clazz
+                            : OriginalClassProvider.getJavaClass(annotationSubstitutions.getTargetType(GuestAccess.get().lookupType(clazz)));
         }
         return true;
     }
