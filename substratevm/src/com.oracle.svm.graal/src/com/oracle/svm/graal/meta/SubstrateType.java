@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -421,7 +422,7 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return DynamicHub.toClass(getHub()).getAnnotation(annotationClass);
+        return AnnotationAccess.getAnnotation(DynamicHub.toClass(getHub()), annotationClass);
     }
 
     @Override

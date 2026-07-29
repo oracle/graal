@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,8 +47,10 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 /**
- * This class provides methods to query annotation information on {@link AnnotatedElement}s while
- * trying to prevent, at image build time, side-effecting changes that impact the analysis results.
+ * This class provides same-VM annotation access for {@link AnnotatedElement}s owned by the current
+ * context while trying to prevent, at image build time, side-effecting changes that impact the
+ * analysis results. Native Image builder code querying guest-owned JVMCI elements must use its
+ * builder-to-guest annotation facade instead.
  *
  * The getAnnotation implementation in the JDK for Class, Field, and Method initializes the classes
  * of all annotations present on that element, not just the class of the queried annotation. This
@@ -63,6 +65,11 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
  * the execution of a Java application not involving native image, then the JDK method to query the
  * annotation is invoked. In these cases, there is no difference to the class initialization
  * behavior of the JDK.
+ *
+ * In a fully isolated image build, builder-owned elements are queried in the builder VM using core
+ * reflection. For those elements, these methods follow the JDK class initialization behavior; in
+ * particular, {@link #getAnnotationTypes} can initialize annotation interfaces. Guest and
+ * application elements retain the reduced class initialization behavior described above.
  *
  * Note that there is intentionally no `getAnnotations` method to query all annotations: all
  * annotation classes must be initialized anyways by this method, so the JDK method can be invoke
