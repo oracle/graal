@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Vector;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.c.type.VoidPointer;
@@ -546,6 +548,37 @@ class LambdaMustBeSimulated {
     }
 }
 
+/**
+ * Initialized at image build time and stored in the image heap, while its supplier is invoked once
+ * during image building to link the inner method-reference call site and again from the image at run
+ * time. The method reference targets a custom functional interface whose default method and
+ * non-simulated class-initialization dependency keep the generated lambda proxy initialized at run
+ * time. The linked call site can then carry a static-accessor appendix for the proxy singleton. If
+ * that accessor reads {@code LAMBDA_INSTANCE$} before runtime class initialization creates it,
+ * {@link #createScope(String, TestClassInitialization.CustomScopeHandler)} receives {@code null}
+ * instead of a callable method-reference object.
+ */
+class CustomInterfaceLambdaHolder {
+    static class DefaultScope {
+        static String TYPE = "custom-scope";
+    }
+
+    /* The inner method reference must create a real CustomScopeHandler object when this runs. */
+    private final Supplier<String> scope = () -> createScope(DefaultScope.TYPE, Optional::empty);
+
+    String scope() {
+        return scope.get();
+    }
+
+    @NeverInline("Keep the method-reference object visible at the call boundary.")
+    private static String createScope(String defaultScope, TestClassInitialization.CustomScopeHandler handler) {
+        if (handler == null) {
+            throw new NullPointerException(defaultScope + " handler");
+        }
+        return handler.currentScope().orElse(defaultScope);
+    }
+}
+
 @SuppressWarnings("deprecation")
 class BoxingMustBeSimulated {
     static Integer i1 = 41;
@@ -755,6 +788,12 @@ class TestClassInitializationFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         /* We need to access the checkedClasses array both at image build time and run time. */
         RuntimeClassInitialization.initializeAtBuildTime(TestClassInitialization.class);
+        RuntimeClassInitialization.initializeAtBuildTime(CustomInterfaceLambdaHolder.class);
+        /*
+         * Link the inner method-reference call site during image building, so the normal parser path
+         * observes the static-accessor appendix shape being tested.
+         */
+        TestClassInitialization.customInterfaceLambda.scope();
 
         /*
          * Initialization of a class first triggers initialization of all superinterfaces that
@@ -840,6 +879,28 @@ class TestClassInitializationFeature implements Feature {
 
 public class TestClassInitialization {
 
+    /**
+     * Custom functional interface used to keep the generated lambda proxy initialized at run time.
+     * The default method makes this interface a superinterface class-initialization dependency of the
+     * proxy class, and the helper class keeps that dependency non-simulated.
+     */
+    public interface CustomScopeHandler {
+        int v = B.v;
+
+        class B {
+            static int v = 1;
+            static {
+                System.out.println("Delaying CustomScopeHandler");
+            }
+        }
+
+        default int m() {
+            return v;
+        }
+
+        Optional<String> currentScope();
+    }
+
     static final Class<?>[] checkedClasses = new Class<?>[]{
                     PureMustBeSimulated.class,
                     NonPureMustBeDelayed.class,
@@ -896,6 +957,8 @@ public class TestClassInitialization {
     static String duplicate(String s) {
         return s + s;
     }
+
+    static final CustomInterfaceLambdaHolder customInterfaceLambda = new CustomInterfaceLambdaHolder();
 
     public static void main(String[] args) {
         for (var checkedClass : checkedClasses) {
@@ -987,6 +1050,7 @@ public class TestClassInitialization {
 
         assertSame(true, LambdaMustBeSimulated.matches(List.of("1", "2", "3", "Hello", "4")));
         assertSame(false, LambdaMustBeSimulated.matches(List.of("1", "2", "3", "4")));
+        assertTrue("custom-scope".equals(customInterfaceLambda.scope()));
 
         assertSame(83, BoxingMustBeSimulated.sum);
         assertSame(Character.class, BoxingMustBeSimulated.defaultValue(char.class).getClass());
