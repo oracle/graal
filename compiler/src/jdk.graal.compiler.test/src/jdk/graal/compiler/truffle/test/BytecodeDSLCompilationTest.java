@@ -90,7 +90,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     public static List<TestRun> getParameters() {
         List<TestRun> result = new ArrayList<>();
         for (BytecodeVariant bc : AbstractBasicInterpreterTest.allVariants()) {
-            result.add(new TestRun(bc, false, false));
+            result.add(new TestRun(bc, false, false, false));
         }
         return result;
     }
