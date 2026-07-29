@@ -29,7 +29,6 @@ import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -50,7 +49,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * Abstract base class for methods with generated Graal IR, i.e., methods that do not originate from
  * bytecode.
  */
-public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMethod, AnnotationWrapper, AnnotatedWrapper, OriginalMethodProvider {
+public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMethod, AnnotatedWrapper, OriginalMethodProvider {
 
     /**
      * Line numbers are bogus because this is generated code, but we need to include them in our

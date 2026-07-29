@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -53,7 +52,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
+public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotatedWrapper {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;

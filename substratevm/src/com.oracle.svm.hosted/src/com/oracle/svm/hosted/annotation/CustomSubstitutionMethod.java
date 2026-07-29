@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
+public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotatedWrapper {
 
     protected final ResolvedJavaMethod original;
 

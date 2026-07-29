@@ -30,7 +30,6 @@ import java.util.List;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -51,7 +50,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
  *
  * @see InjectedFieldsType
  */
-public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
+public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotatedWrapper {
     private static final ResolvedJavaField[] EMPTY_INSTANCE_FIELDS = new ResolvedJavaField[0];
 
     private final ResolvedJavaType original;

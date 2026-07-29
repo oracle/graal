@@ -28,7 +28,6 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalMethodProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -52,7 +51,7 @@ import java.lang.reflect.Type;
 import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
-public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
+public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotatedWrapper {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;

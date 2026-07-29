@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 
-public abstract class CustomSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
+public abstract class CustomSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotatedWrapper {
     private final ResolvedJavaType original;
 
     public CustomSubstitutionType(ResolvedJavaType original) {
