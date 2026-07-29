@@ -62,7 +62,11 @@ import sun.security.jca.GetInstance;
 /**
  * Tests the {@code SecurityServicesFeature}.
  */
-@NativeImageBuildArgs("-H:AdditionalSecurityServiceTypes=JCACompliantNoOpService")
+@NativeImageBuildArgs({
+                "-H:+UnlockExperimentalVMOptions",
+                "-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService",
+                "-H:-UnlockExperimentalVMOptions"
+})
 public class SecurityServiceTest {
     private static final String REFLECTION_METADATA_PROVIDER_NAME = "reflection-metadata-provider";
     private static final String REFLECTION_METADATA_PROVIDER_ALGORITHM = "reflection-metadata-algo";
