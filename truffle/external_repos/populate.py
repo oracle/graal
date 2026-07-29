@@ -59,7 +59,7 @@ def copytree(src, dest):
 
 def graalvm_version():
   output = subprocess.check_output(["mx", "graalvm-version"], text=True)
-  version_pattern = re.compile(r"^\d+\.\d+\.\d+(?:-[A-Za-z0-9_.-]+)?$")
+  version_pattern = re.compile(r"^\d+\.\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9_.-]+)?$")
   versions = [line.strip() for line in output.splitlines() if version_pattern.match(line.strip())]
   if len(versions) != 1:
       raise ValueError("Could not parse GraalVM version from mx graalvm-version output: " + repr(output))
