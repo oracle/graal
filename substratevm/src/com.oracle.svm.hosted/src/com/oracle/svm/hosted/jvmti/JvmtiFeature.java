@@ -57,7 +57,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -98,7 +98,7 @@ public class JvmtiFeature implements InternalFeature {
         /* Manually add the CEntryPoints, so that this is only done when JVMTI is enabled. */
         AnalysisType type = metaAccess.lookupJavaType(JvmtiFunctions.class);
         for (AnalysisMethod method : type.getDeclaredMethods(false)) {
-            VMError.guarantee(AnnotationUtil.getAnnotation(method, CEntryPoint.class) != null, "Method %s does not have a @CEntryPoint annotation.", method.format("%H.%n(%p)"));
+            VMError.guarantee(GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class) != null, "Method %s does not have a @CEntryPoint annotation.", method.format("%H.%n(%p)"));
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
         }
     }
@@ -131,7 +131,7 @@ public class JvmtiFeature implements InternalFeature {
     }
 
     private static boolean isIncluded(HostedMethod method) {
-        CEntryPoint entryPoint = AnnotationUtil.getAnnotation(method, CEntryPoint.class);
+        CEntryPoint entryPoint = GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class);
         return ReflectionUtil.newInstance(entryPoint.include()).getAsBoolean();
     }
 

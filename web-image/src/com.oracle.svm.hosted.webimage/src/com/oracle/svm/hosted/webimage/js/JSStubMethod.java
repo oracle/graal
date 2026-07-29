@@ -39,7 +39,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
@@ -119,9 +119,9 @@ public class JSStubMethod extends CustomSubstitutionMethod {
             coercion = jsObjectAccessMethod.isLoad();
             jsCode = jsObjectAccessMethod.getJSCode();
         } else {
-            rawCall = AnnotationUtil.isAnnotationPresent(method, JSRawCall.class);
-            coercion = AnnotationUtil.isAnnotationPresent(method, JS.Coerce.class);
-            JS js = Objects.requireNonNull(AnnotationUtil.getAnnotation(method, JS.class));
+            rawCall = GuestAnnotationAccess.isAnnotationPresent(method, JSRawCall.class);
+            coercion = GuestAnnotationAccess.isAnnotationPresent(method, JS.Coerce.class);
+            JS js = Objects.requireNonNull(GuestAnnotationAccess.getAnnotation(method, JS.class));
             jsCode = new JSBody.JSCode(js, method);
         }
         return buildGraph(debug, method, providers, purpose, jsCode, coercion, rawCall);

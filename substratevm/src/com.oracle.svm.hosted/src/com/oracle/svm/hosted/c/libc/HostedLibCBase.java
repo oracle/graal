@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.LibCSpecific;
 import com.oracle.svm.hosted.image.AbstractImage;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
@@ -48,11 +48,11 @@ public interface HostedLibCBase extends LibCBase {
     }
 
     static boolean containsLibCAnnotation(Annotated element) {
-        return AnnotationUtil.getAnnotationValue(element, LibCSpecific.class) != null;
+        return GuestAnnotationAccess.getAnnotationValue(element, LibCSpecific.class) != null;
     }
 
     static boolean isProvidedInCurrentLibc(Annotated element) {
-        LibCSpecific targetLibC = AnnotationUtil.getAnnotation(element, LibCSpecific.class);
+        LibCSpecific targetLibC = GuestAnnotationAccess.getAnnotation(element, LibCSpecific.class);
         if (targetLibC == null) {
             return false;
         }

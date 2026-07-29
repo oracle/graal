@@ -70,7 +70,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Label;
@@ -107,7 +107,7 @@ public class AMD64InterpreterStubs {
         public InterpreterEnterStubContext(SharedMethod method, CallingConvention callingConvention) {
             super(method, callingConvention);
             boolean useRistretto = SubstrateOptions.useRistretto();
-            InterpreterEnterStub stubType = AnnotationUtil.getAnnotation(method, InterpreterEnterStub.class);
+            InterpreterEnterStub stubType = GuestAnnotationAccess.getAnnotation(method, InterpreterEnterStub.class);
             assert stubType != null : "Missing @InterpreterEnterStub annotation on interpreter enter stub.";
             assert !useRistretto || ImageSingletons.contains(InterpreterExecutionOffsets.class) : "Missing InterpreterExecutionOffsets singleton while Ristretto is enabled.";
             emitDirectFastPath = useRistretto && stubType.value() == InterpreterEnterStub.Kind.DIRECT;
@@ -336,7 +336,7 @@ public class AMD64InterpreterStubs {
 
         public InterpreterJNIUpcallStubContext(SharedMethod method, CallingConvention callingConvention) {
             super(method, callingConvention);
-            InterpreterJNIUpcallStub annotation = AnnotationUtil.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            InterpreterJNIUpcallStub annotation = GuestAnnotationAccess.getAnnotation(method, InterpreterJNIUpcallStub.class);
             assert annotation != null : "Missing @InterpreterJNIUpcallStub annotation on JNI interpreter wrapper.";
             callVariant = annotation.callVariant();
             nonVirtual = annotation.nonVirtual();

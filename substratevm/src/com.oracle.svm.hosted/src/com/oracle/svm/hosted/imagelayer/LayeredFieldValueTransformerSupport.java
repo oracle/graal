@@ -58,7 +58,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -145,7 +145,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                 var aField = loader.getAnalysisFieldForBaseLayerId(fieldId);
                 var proxy = fieldToLayeredTransformer.get(aField);
                 if (proxy == null) {
-                    LayeredFieldValue layeredFieldValue = AnnotationUtil.getAnnotation(aField, LayeredFieldValue.class);
+                    LayeredFieldValue layeredFieldValue = GuestAnnotationAccess.getAnnotation(aField, LayeredFieldValue.class);
                     if (layeredFieldValue != null) {
                         proxy = createTransformer(aField, layeredFieldValue, Set.copyOf(loader.getUpdatableFieldReceiverIds(fieldId)));
                     }

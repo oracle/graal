@@ -36,7 +36,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.core.test.VerifyPhase;
@@ -329,7 +329,7 @@ public abstract class VerifyReflectionUsageBase extends VerifyPhase<CoreProvider
     protected static boolean isRuntimeOnly(StructuredGraph graph, MetaAccessProvider metaAccess) {
         ResolvedJavaMethod caller = graph.method();
         ResolvedJavaType declaringClass = caller.getDeclaringClass();
-        if (AnnotationUtil.isAnnotationPresent(declaringClass, TargetClass.class) || AnnotationUtil.isAnnotationPresent(declaringClass, Substitute.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(declaringClass, TargetClass.class) || GuestAnnotationAccess.isAnnotationPresent(declaringClass, Substitute.class)) {
             // Substitutions are runtime code which is allowed to use reflection
             return true;
         }

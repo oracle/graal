@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * This class exposes annotation metadata across the builder-to-guest boundary. Methods inherited
  * from {@link AnnotatedObjectAccess} that materialize {@link Annotation} instances are disabled so
  * that {@link AnnotationValue} remains the boundary representation. Hosted callers must use
- * {@link AnnotationUtil}.
+ * {@link GuestAnnotationAccess}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class GuestAnnotationBackend extends AnnotatedObjectAccess {
@@ -85,7 +85,7 @@ final class GuestAnnotationBackend extends AnnotatedObjectAccess {
 
     /**
      * This metadata backend cannot materialize builder annotations from guest metadata. Callers
-     * must use {@link AnnotationUtil}, which owns boundary conversion.
+     * must use {@link GuestAnnotationAccess}, which owns boundary conversion.
      */
     @Override
     public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
@@ -94,7 +94,7 @@ final class GuestAnnotationBackend extends AnnotatedObjectAccess {
 
     /**
      * This metadata backend cannot materialize builder annotations from guest metadata. Callers
-     * must use {@link AnnotationUtil}, which owns boundary conversion.
+     * must use {@link GuestAnnotationAccess}, which owns boundary conversion.
      */
     @Override
     protected <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType, boolean declaredOnly) {
@@ -136,6 +136,6 @@ final class GuestAnnotationBackend extends AnnotatedObjectAccess {
 
     /** Creates the failure used by APIs that would materialize annotations in the builder VM. */
     private static UnsupportedOperationException annotationMaterializationUnsupported() {
-        return new UnsupportedOperationException("GuestAnnotationBackend exposes AnnotationValue metadata only; materialize annotations through AnnotationUtil");
+        return new UnsupportedOperationException("GuestAnnotationBackend exposes AnnotationValue metadata only; materialize annotations through GuestAnnotationAccess");
     }
 }

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.word;
 
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -60,7 +60,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
             }
         }
 
-        SubstrateOperation operation = AnnotationUtil.getAnnotation(method, SubstrateOperation.class);
+        SubstrateOperation operation = GuestAnnotationAccess.getAnnotation(method, SubstrateOperation.class);
         if (operation == null) {
             processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
             return true;

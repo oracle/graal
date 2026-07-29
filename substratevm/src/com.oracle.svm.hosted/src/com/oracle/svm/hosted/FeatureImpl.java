@@ -105,7 +105,7 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -653,7 +653,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            assert !AnnotationUtil.isAnnotationPresent(aField, Delete.class);
+            assert !GuestAnnotationAccess.isAnnotationPresent(aField, Delete.class);
             return aField.registerAsUnsafeAccessed(reason);
         }
 

@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
 
@@ -79,7 +79,7 @@ public class WebImageHostedGraphKit extends HostedGraphKit {
     public JSBody createJSBody(JSBody.JSCode jsCode, ResolvedJavaMethod method, ValueNode[] argNodes, Stamp returnStamp, FrameStateBuilder state, int bci,
                     ResolvedJavaMethod exceptionHandler) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(state, bci);
-        boolean declaresResource = AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JSResource.class);
+        boolean declaresResource = GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JSResource.class);
         JSBodyWithExceptionNode jsBody = append(new JSBodyWithExceptionNode(jsCode, method, argNodes, returnStamp, exceptionObject, declaresResource));
         startWithException(jsBody, exceptionObject, state, bci);
         exceptionPart();

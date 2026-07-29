@@ -30,7 +30,7 @@ import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -127,7 +127,7 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
 
     private static void processInvoke(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, ReachabilityAnalysisMethod targetMethod, CallTargetNode.InvokeKind kind,
                     ValueNodeInterface node) {
-        if (targetMethod == null || AnnotationUtil.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
+        if (targetMethod == null || GuestAnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
             return;
         }
         BytecodePosition reason = AbstractAnalysisEngine.sourcePosition(node.asNode());

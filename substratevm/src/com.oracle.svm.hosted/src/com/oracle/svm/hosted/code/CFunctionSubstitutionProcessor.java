@@ -34,7 +34,7 @@ import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,8 +45,8 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
-        if (method.isNative() && AnnotationUtil.isAnnotationPresent(method, CFunction.class)) {
-            if (AnnotationUtil.isAnnotationPresent(method, GuestAccess.elements().Uninterruptible)) {
+        if (method.isNative() && GuestAnnotationAccess.isAnnotationPresent(method, CFunction.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(method, GuestAccess.elements().Uninterruptible)) {
                 throw VMError.shouldNotReachHere("Native method '%s' incorrectly annotated with @Uninterruptible. Please use @CFunction(transition = NO_TRANSITION) instead.",
                                 method.format("%H.%n(%p)"));
             }
@@ -60,12 +60,12 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private static int getNewThreadStatus(ResolvedJavaMethod method) {
-        CFunctionOptions cFunctionOptions = AnnotationUtil.getAnnotation(method, CFunctionOptions.class);
+        CFunctionOptions cFunctionOptions = GuestAnnotationAccess.getAnnotation(method, CFunctionOptions.class);
         if (cFunctionOptions != null) {
             return StatusSupport.getNewThreadStatus(cFunctionOptions.transition());
         }
 
-        CFunction cFunctionAnnotation = AnnotationUtil.getAnnotation(method, CFunction.class);
+        CFunction cFunctionAnnotation = GuestAnnotationAccess.getAnnotation(method, CFunction.class);
         if (cFunctionAnnotation != null) {
             return StatusSupport.getNewThreadStatus(cFunctionAnnotation.transition());
         }

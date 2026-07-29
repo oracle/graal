@@ -54,7 +54,7 @@ import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
@@ -241,7 +241,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
     private void verifySize(SizableInfo sizableInfo, ResolvedJavaType type, ResolvedJavaMethod method, boolean isReturn) {
         int declaredSize = getSizeInBytes(type);
 
-        boolean allowNarrowingCast = AnnotationUtil.isAnnotationPresent(method, AllowNarrowingCast.class);
+        boolean allowNarrowingCast = GuestAnnotationAccess.isAnnotationPresent(method, AllowNarrowingCast.class);
         if (allowNarrowingCast) {
             if (sizableInfo.isObject()) {
                 addError(ClassUtil.getUnqualifiedName(AllowNarrowingCast.class) + " cannot be used on fields that have an object type.", method);
@@ -250,7 +250,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             }
         }
 
-        boolean allowWideningCast = AnnotationUtil.isAnnotationPresent(method, AllowWideningCast.class);
+        boolean allowWideningCast = GuestAnnotationAccess.isAnnotationPresent(method, AllowWideningCast.class);
         if (allowWideningCast) {
             if (sizableInfo.isObject()) {
                 addError(ClassUtil.getUnqualifiedName(AllowWideningCast.class) + " cannot be used on fields that have an object type.", method);
@@ -267,7 +267,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             }
 
             Class<? extends Annotation> suppressionAnnotation = narrow ? AllowNarrowingCast.class : AllowWideningCast.class;
-            if (AnnotationUtil.getAnnotation(method, suppressionAnnotation) == null) {
+            if (GuestAnnotationAccess.getAnnotation(method, suppressionAnnotation) == null) {
                 addError("Type " + type.toJavaName(false) + " has a size of " + declaredSize + " bytes, but accessed C value has a size of " + actualSize +
                                 " bytes; to suppress this error, use the annotation @" + ClassUtil.getUnqualifiedName(suppressionAnnotation), method);
             }

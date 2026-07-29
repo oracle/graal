@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
 import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -134,13 +134,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
-        } else if (AnnotationUtil.getAnnotation(method, InvokeCFunctionPointer.class) != null) {
+        } else if (GuestAnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class) != null) {
             return replaceCFunctionPointerInvoke(b, method, args);
         } else {
-            if (AnnotationUtil.getAnnotation(method, InvokeJavaFunctionPointer.class) != null) {
+            if (GuestAnnotationAccess.getAnnotation(method, InvokeJavaFunctionPointer.class) != null) {
                 return replaceJavaFunctionPointerInvoke(b, method, args);
             } else {
-                if (AnnotationUtil.getAnnotation(method, CEntryPoint.class) != null) {
+                if (GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class) != null) {
                     assert !(method.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
                     AnalysisMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(method);
                     assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";

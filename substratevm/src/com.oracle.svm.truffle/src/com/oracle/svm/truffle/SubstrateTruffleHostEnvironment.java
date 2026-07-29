@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle;
 
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,7 +80,7 @@ final class SubstrateTruffleHostEnvironment extends TruffleHostEnvironment {
 
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(method);
+            Map<ResolvedJavaType, AnnotationValue> annotations = GuestAnnotationAccess.getDeclaredAnnotationValues(method);
             return computeHostMethodInfo(annotations, OriginalClassProvider::getOriginalType);
         }
 

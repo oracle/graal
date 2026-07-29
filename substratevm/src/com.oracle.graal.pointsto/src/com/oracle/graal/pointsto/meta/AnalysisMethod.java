@@ -68,7 +68,7 @@ import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MethodVariant;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -300,7 +300,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
         compilationBehavior = LayeredCompilationBehavior.Behavior.DEFAULT;
         if (universe.hostVM.buildingImageLayer()) {
-            LayeredCompilationBehavior behavior = AnnotationUtil.getAnnotation(wrapped, LayeredCompilationBehavior.class);
+            LayeredCompilationBehavior behavior = GuestAnnotationAccess.getAnnotation(wrapped, LayeredCompilationBehavior.class);
             if (behavior != null) {
                 compilationBehavior = behavior.value();
                 if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInSharedLayer) {
@@ -405,7 +405,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public boolean isGuaranteeFolded() {
-        return isGuaranteeFolded || AnnotationUtil.getAnnotation(this, GuaranteeFolded.class) != null;
+        return isGuaranteeFolded || GuestAnnotationAccess.getAnnotation(this, GuaranteeFolded.class) != null;
     }
 
     public void setGuaranteeFolded() {

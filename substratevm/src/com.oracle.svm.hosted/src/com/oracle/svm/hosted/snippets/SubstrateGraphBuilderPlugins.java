@@ -103,7 +103,7 @@ import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonT
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -1047,7 +1047,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void checkNeverInline(GraphBuilderContext b) {
-        if (!AnnotationUtil.isAnnotationPresent(b.getMethod(), NeverInline.class)) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(b.getMethod(), NeverInline.class)) {
             throw VMError.shouldNotReachHere("Accessing the stack pointer or instruction pointer of the caller frame is only safe and deterministic if the method is not inlined. " +
                             "Therefore, the method " + b.getMethod().format("%H.%n(%p)") + " must be annotated with @" + NeverInline.class.getSimpleName());
         }

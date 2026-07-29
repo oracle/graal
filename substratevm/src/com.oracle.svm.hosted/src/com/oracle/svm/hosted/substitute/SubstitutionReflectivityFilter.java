@@ -54,7 +54,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -116,7 +116,7 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
             if (!hostVM.platformSupported(analysisClass)) {
                 return true;
-            } else if (AnnotationUtil.isAnnotationPresent(analysisClass, Delete.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(analysisClass, Delete.class)) {
                 return true; // accesses would fail at runtime
             }
         } catch (UnsupportedFeatureException ignored) {
@@ -136,11 +136,11 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
             if (!hostVM.platformSupported(aMethod)) {
                 return true;
-            } else if (AnnotationUtil.isAnnotationPresent(aMethod, Delete.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(aMethod, Delete.class)) {
                 return true; // accesses would fail at runtime
-            } else if (AnnotationUtil.isAnnotationPresent(aMethod, Fold.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(aMethod, Fold.class)) {
                 return true; // accesses can contain hosted elements
-            } else if (aMethod.isSynthetic() && AnnotationUtil.isAnnotationPresent(aMethod.getDeclaringClass(), TargetClass.class)) {
+            } else if (aMethod.isSynthetic() && GuestAnnotationAccess.isAnnotationPresent(aMethod.getDeclaringClass(), TargetClass.class)) {
                 /*
                  * Synthetic methods are usually methods injected by javac to provide access to
                  * private fields or methods (access$NNN). In substitution classes, the referenced
@@ -170,10 +170,10 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             if (!hostVM.platformSupported(aField)) {
                 return true;
             }
-            if (AnnotationUtil.isAnnotationPresent(aField, Delete.class) || AnnotationUtil.isAnnotationPresent(aField, InjectAccessors.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(aField, Delete.class) || GuestAnnotationAccess.isAnnotationPresent(aField, InjectAccessors.class)) {
                 return true; // accesses would fail at runtime
             }
-            if (AnnotationUtil.isAnnotationPresent(aField, UnknownObjectField.class) || AnnotationUtil.isAnnotationPresent(aField, UnknownPrimitiveField.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(aField, UnknownObjectField.class) || GuestAnnotationAccess.isAnnotationPresent(aField, UnknownPrimitiveField.class)) {
                 return true; // reflective accesses to unknown fields break the image build
             }
             if (forbiddenFields.getOrDefault(metaAccess.lookupJavaType(field.getDeclaringClass()), Collections.emptySet()).contains(field.getName())) {
@@ -198,7 +198,7 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             AnalysisType analysisType = type instanceof AnalysisType aType ? aType : universe.lookup(type);
             if (!hostVM.platformSupported(analysisType)) {
                 return null;
-            } else if (AnnotationUtil.isAnnotationPresent(analysisType, Delete.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(analysisType, Delete.class)) {
                 return null; // accesses would fail at runtime
             }
             return analysisType;
@@ -220,11 +220,11 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             AnalysisMethod analysisMethod = method instanceof AnalysisMethod aMethod ? aMethod : universe.lookup(method);
             if (!hostVM.platformSupported(analysisMethod)) {
                 return null;
-            } else if (AnnotationUtil.isAnnotationPresent(analysisMethod, Delete.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(analysisMethod, Delete.class)) {
                 return null; // accesses would fail at runtime
-            } else if (AnnotationUtil.isAnnotationPresent(analysisMethod, Fold.class)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(analysisMethod, Fold.class)) {
                 return null; // accesses can contain hosted elements
-            } else if (analysisMethod.isSynthetic() && AnnotationUtil.isAnnotationPresent(analysisMethod.getDeclaringClass(), TargetClass.class)) {
+            } else if (analysisMethod.isSynthetic() && GuestAnnotationAccess.isAnnotationPresent(analysisMethod.getDeclaringClass(), TargetClass.class)) {
                 /*
                  * Synthetic methods are usually methods injected by javac to provide access to
                  * private fields or methods (access$NNN). In substitution classes, the referenced
@@ -256,10 +256,10 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             if (!hostVM.platformSupported(analysisField)) {
                 return null;
             }
-            if (AnnotationUtil.isAnnotationPresent(analysisField, Delete.class) || AnnotationUtil.isAnnotationPresent(analysisField, InjectAccessors.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(analysisField, Delete.class) || GuestAnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
                 return null; // accesses would fail at runtime
             }
-            if (AnnotationUtil.isAnnotationPresent(analysisField, UnknownObjectField.class) || AnnotationUtil.isAnnotationPresent(analysisField, UnknownPrimitiveField.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(analysisField, UnknownObjectField.class) || GuestAnnotationAccess.isAnnotationPresent(analysisField, UnknownPrimitiveField.class)) {
                 return null; // reflective accesses to unknown fields break the image build
             }
             if (forbiddenFields.getOrDefault(analysisField.getDeclaringClass(), Collections.emptySet()).contains(analysisField.getName())) {
@@ -275,19 +275,19 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
     }
 
     private static boolean hasOriginalTargetMethod(AnalysisMethod method) {
-        if (!AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), TargetClass.class)) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), TargetClass.class)) {
             return true;
         }
         ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
         ResolvedJavaType originalDeclaringType = originalMethod == null ? null : OriginalClassProvider.getOriginalType(originalMethod.getDeclaringClass());
-        return originalDeclaringType != null && !AnnotationUtil.isAnnotationPresent(originalDeclaringType, TargetClass.class);
+        return originalDeclaringType != null && !GuestAnnotationAccess.isAnnotationPresent(originalDeclaringType, TargetClass.class);
     }
 
     private static boolean hasOriginalTargetField(AnalysisField field) {
-        if (!AnnotationUtil.isAnnotationPresent(field.getDeclaringClass(), TargetClass.class)) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(field.getDeclaringClass(), TargetClass.class)) {
             return true;
         }
-        if (AnnotationUtil.isAnnotationPresent(field, Alias.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(field, Alias.class)) {
             return true;
         }
         /*

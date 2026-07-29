@@ -43,7 +43,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -134,7 +134,7 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
 
-        if (AnnotationUtil.getAnnotation(method, annotationClass) == null) {
+        if (GuestAnnotationAccess.getAnnotation(method, annotationClass) == null) {
             throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + ClassUtil.getUnqualifiedName(annotationClass));
         }
         return method;

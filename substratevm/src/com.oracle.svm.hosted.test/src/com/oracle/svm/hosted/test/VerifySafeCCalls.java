@@ -29,7 +29,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.test.VerifyPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -83,7 +83,7 @@ public class VerifySafeCCalls extends VerifyPhase<CoreProviders> {
     protected void verify(StructuredGraph graph, CoreProviders context) {
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod target = t.targetMethod();
-            CFunction fun = AnnotationUtil.getAnnotation(target, CFunction.class);
+            CFunction fun = GuestAnnotationAccess.getAnnotation(target, CFunction.class);
             if (fun == null) {
                 continue;
             }

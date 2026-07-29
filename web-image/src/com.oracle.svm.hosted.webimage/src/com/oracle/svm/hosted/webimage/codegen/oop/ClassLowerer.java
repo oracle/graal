@@ -56,7 +56,7 @@ import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
@@ -302,7 +302,7 @@ public class ClassLowerer {
      * Emits a static method on the given type for initializing JS resource, if any are present.
      */
     private static void lowerJSResources(HostedType type, JSCodeGenTool loweringTool) {
-        var requiredJSResources = AnnotationUtil.getAnnotationsByType(type, JSResource.class, JSResource.Group.class, JSResource.Group::value);
+        var requiredJSResources = GuestAnnotationAccess.getAnnotationsByType(type, JSResource.class, JSResource.Group.class, JSResource.Group::value);
 
         /*
          * JavaScriptResource is annotated as @Repeatable(JavaScriptResource.Group.class).
@@ -310,7 +310,7 @@ public class ClassLowerer {
          * JavaScriptResource.Group.
          */
         assert !requiredJSResources.isEmpty() ||
-                        !AnnotationUtil.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
+                        !GuestAnnotationAccess.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
 
         List<String> resourceNames = new ArrayList<>(requiredJSResources.size());
 

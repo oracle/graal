@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.foreign;
 
-import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
 import java.lang.invoke.MethodType;
 import java.util.List;

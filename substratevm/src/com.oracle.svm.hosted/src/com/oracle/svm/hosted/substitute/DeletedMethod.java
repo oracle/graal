@@ -36,7 +36,7 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -65,7 +65,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
-        this(original, AnnotationUtil.asAnnotationValue(deleteAnnotation));
+        this(original, GuestAnnotationAccess.asAnnotationValue(deleteAnnotation));
     }
 
     @Override

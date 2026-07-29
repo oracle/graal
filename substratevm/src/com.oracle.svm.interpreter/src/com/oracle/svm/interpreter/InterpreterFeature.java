@@ -72,7 +72,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -114,10 +114,10 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     static boolean executableByInterpreter(AnalysisMethod m) {
-        if (AnnotationUtil.getAnnotation(m, CFunction.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(m, CFunction.class) != null) {
             return false;
         }
-        if (AnnotationUtil.getAnnotation(m, CEntryPoint.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(m, CEntryPoint.class) != null) {
             return false;
         }
         UninterruptibleGuestValue uninterruptible = UninterruptibleAnnotationUtils.getAnnotation(m);
@@ -143,7 +143,7 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     public static boolean callableByInterpreter(ResolvedJavaMethod m, MetaAccessProvider metaAccess) {
-        if (AnnotationUtil.getAnnotation(m, Fold.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(m, Fold.class) != null) {
             /*
              * GR-55052: For now @Fold methods are considered not callable. The problem is that such
              * methods are reachability cut-offs, so we would need to roll our own reachability

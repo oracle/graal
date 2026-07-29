@@ -50,8 +50,8 @@ import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
- * Internal metadata parser backing {@link AnnotationUtil}. Annotation queries must use
- * {@link AnnotationAccess} for same-VM access or {@link AnnotationUtil} for builder-to-guest
+ * Internal metadata parser backing {@link GuestAnnotationAccess}. Annotation queries must use
+ * {@link AnnotationAccess} for same-VM access or {@link GuestAnnotationAccess} for builder-to-guest
  * access.
  */
 @Platforms(Platform.HOSTED_ONLY.class)

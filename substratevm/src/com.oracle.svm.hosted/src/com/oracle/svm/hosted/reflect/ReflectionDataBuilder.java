@@ -118,7 +118,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -1058,7 +1058,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotated != null) {
             filteredAnnotations.computeIfAbsent(annotated, (element) -> {
                 List<AnnotationValue> includedAnnotations = new ArrayList<>();
-                for (AnnotationValue annotation : AnnotationUtil.getDeclaredAnnotationValues(element).values()) {
+                for (AnnotationValue annotation : GuestAnnotationAccess.getDeclaredAnnotationValues(element).values()) {
                     if (includeAnnotation(annotation)) {
                         includedAnnotations.add(annotation);
                         registerTypesForAnnotation(annotation);
@@ -1072,7 +1072,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForParameterAnnotations(AnalysisMethod analysisMethod) {
         if (analysisMethod != null) {
             filteredParameterAnnotations.computeIfAbsent(analysisMethod, (method) -> {
-                List<List<AnnotationValue>> parameterAnnotations = AnnotationUtil.getParameterAnnotationValues(method);
+                List<List<AnnotationValue>> parameterAnnotations = GuestAnnotationAccess.getParameterAnnotationValues(method);
                 AnnotationValue[][] includedParameterAnnotations = NO_PARAMETER_ANNOTATIONS;
                 if (parameterAnnotations != null) {
                     includedParameterAnnotations = new AnnotationValue[parameterAnnotations.size()][];
@@ -1097,7 +1097,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotated != null) {
             filteredTypeAnnotations.computeIfAbsent(annotated, (element) -> {
                 List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
-                for (TypeAnnotationValue typeAnnotation : AnnotationUtil.getTypeAnnotationValues(element)) {
+                for (TypeAnnotationValue typeAnnotation : GuestAnnotationAccess.getTypeAnnotationValues(element)) {
                     if (includeAnnotation(typeAnnotation.getAnnotation())) {
                         includedTypeAnnotations.add(typeAnnotation);
                         registerTypesForAnnotation(typeAnnotation.getAnnotation());
@@ -1109,7 +1109,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForAnnotationDefault(AnalysisMethod method) {
-        Object annotationDefault = AnnotationUtil.getAnnotationDefaultValue(method);
+        Object annotationDefault = GuestAnnotationAccess.getAnnotationDefaultValue(method);
         if (annotationDefault != null) {
             registerTypesForMemberValue(annotationDefault);
         }
@@ -1592,7 +1592,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public Object getAnnotationDefaultData(AnalysisMethod element) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
-        return AnnotationUtil.getAnnotationDefaultValue(element);
+        return GuestAnnotationAccess.getAnnotationDefaultValue(element);
     }
 
     @Override

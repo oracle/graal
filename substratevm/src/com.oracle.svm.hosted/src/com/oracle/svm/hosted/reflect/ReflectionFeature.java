@@ -98,7 +98,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -467,7 +467,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public String getDeletionReason(Field reflectionField) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        Delete annotation = AnnotationUtil.getAnnotation(field, Delete.class);
+        Delete annotation = GuestAnnotationAccess.getAnnotation(field, Delete.class);
         return annotation != null ? annotation.value() : null;
     }
 

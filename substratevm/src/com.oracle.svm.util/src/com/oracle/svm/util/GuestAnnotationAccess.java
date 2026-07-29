@@ -57,10 +57,10 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * use is restricted to Crema and Ristretto compiler paths that query runtime JVMCI elements; all
  * other runtime code must use {@link org.graalvm.nativeimage.AnnotationAccess}.
  */
-public final class AnnotationUtil {
+public final class GuestAnnotationAccess {
 
     /** Prevents instantiation. */
-    private AnnotationUtil() {
+    private GuestAnnotationAccess() {
     }
 
     /**

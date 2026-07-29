@@ -50,7 +50,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -117,7 +117,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
         watchdog.recordActivity();
         for (AnalysisMethod method : methods) {
-            if (AnnotationUtil.isAnnotationPresent(method, RestrictHeapAccess.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(method, RestrictHeapAccess.class)) {
                 setMethodRestrictionInfo(method, aggregation);
             }
         }
@@ -138,19 +138,19 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
      * same annotation as the method.
      */
     private static void setMethodRestrictionInfo(AnalysisMethod method, Map<AnalysisMethod, RestrictionInfo> aggregation) {
-        assert AnnotationUtil.isAnnotationPresent(method, RestrictHeapAccess.class);
+        assert GuestAnnotationAccess.isAnnotationPresent(method, RestrictHeapAccess.class);
         if (aggregation.get(method) != null) {
             return;
         }
         Set<AnalysisMethod> implementations = method.collectMethodImplementations(false);
         for (AnalysisMethod impl : implementations) {
-            if (AnnotationUtil.isAnnotationPresent(impl, RestrictHeapAccess.class) && !impl.equals(method)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(impl, RestrictHeapAccess.class) && !impl.equals(method)) {
                 /* Annotated overrides take precedence, so process them first. */
                 setMethodRestrictionInfo(impl, aggregation);
             }
         }
         assert aggregation.get(method) == null;
-        Access access = AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class).access();
+        Access access = GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class).access();
         aggregation.put(method, new RestrictionInfo(access, null, null, method));
         for (AnalysisMethod impl : implementations) {
             aggregation.putIfAbsent(impl, new RestrictionInfo(access, null, null, impl));

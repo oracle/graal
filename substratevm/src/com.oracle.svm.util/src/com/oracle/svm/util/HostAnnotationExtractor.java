@@ -42,7 +42,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * necessarily have guest JVMCI types. Consequently, lookups follow the JDK class initialization
  * behavior; in particular, {@link #getAnnotationTypes(AnnotatedElement)} materializes builder-owned
  * annotations and can initialize their annotation interfaces. Guest and application annotation
- * metadata must be queried through {@link AnnotationUtil}.
+ * metadata must be queried through {@link GuestAnnotationAccess}.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class HostAnnotationExtractor implements AnnotationExtractor {

@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -205,7 +205,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
 
         /* Invoke the prologue. This call is the only one that may be inlined. */
-        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, AnnotationUtil.getParameterAnnotationValues(targetMethod), args);
+        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, GuestAnnotationAccess.getParameterAnnotationValues(targetMethod), args);
         if (invokePrologue != null) {
             ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
             JavaKind prologueReturnKind = prologueMethod.getSignature().getReturnKind();
@@ -323,13 +323,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
         }
 
-        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), AnnotationUtil.getParameterAnnotationValues(aTargetMethod));
+        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), GuestAnnotationAccess.getParameterAnnotationValues(aTargetMethod));
 
         /* Find the target method for the built-in. */
         CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
         AnalysisMethod builtinCallee = null;
         for (AnalysisMethod candidate : kit.getMetaAccess().lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods(false)) {
-            CEntryPointBuiltinImplementation annotation = AnnotationUtil.getAnnotation(candidate, CEntryPointBuiltinImplementation.class);
+            CEntryPointBuiltinImplementation annotation = GuestAnnotationAccess.getAnnotation(candidate, CEntryPointBuiltinImplementation.class);
             if (annotation != null && annotation.builtin().equals(builtin)) {
                 VMError.guarantee(builtinCallee == null, "More than one candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
                 builtinCallee = candidate;

@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.util.AnnotatedWrapper;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -61,7 +61,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     public AnnotatedMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
         this.original = original;
         this.annotated = annotated;
-        this.injectedAnnotations = new ArrayList<>(AnnotationUtil.getDeclaredAnnotationValues(annotated).values());
+        this.injectedAnnotations = new ArrayList<>(GuestAnnotationAccess.getDeclaredAnnotationValues(annotated).values());
     }
 
     public ResolvedJavaMethod getOriginal() {

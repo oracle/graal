@@ -34,7 +34,7 @@ import com.oracle.svm.core.SkipEpilogueSafepointCheck;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.SafepointNode;
@@ -54,7 +54,7 @@ public class SubstrateSafepointInsertionPhase extends LoopSafepointInsertionPhas
             /* Uninterruptible methods must not have a safepoint inserted. */
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method, CFunction.class) || AnnotationUtil.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, CFunction.class) || GuestAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
             /*
              * Methods transferring from Java to C have an implicit safepoint check as part of the
              * transition from C back to Java. So no explicit end-of-method safepoint check needs to
@@ -80,7 +80,7 @@ public class SubstrateSafepointInsertionPhase extends LoopSafepointInsertionPhas
     public static void insertMethodEndSafepoints(StructuredGraph graph, MidTierContext context) {
         SharedMethod method = (SharedMethod) graph.method();
         if (!((SubstrateBackend) context.getTargetProvider()).safepointCheckedInEpilogue(method) &&
-                        (ImageInfo.inImageRuntimeCode() || !AnnotationUtil.isAnnotationPresent(method, SkipEpilogueSafepointCheck.class))) {
+                        (ImageInfo.inImageRuntimeCode() || !GuestAnnotationAccess.isAnnotationPresent(method, SkipEpilogueSafepointCheck.class))) {
             /* Insert method-end safepoints. */
             for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
                 SafepointNode safepointNode = graph.add(new SafepointNode());

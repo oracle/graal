@@ -148,7 +148,7 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -337,7 +337,7 @@ public class SVMHost extends HostVM {
         if (!loader.getCoreGuestModules().contains(GuestAccess.get().getModule(originalType))) {
             return false;
         }
-        return !AnnotationUtil.isAnnotationPresent(originalType, FactoryMethodMarker.class);
+        return !GuestAnnotationAccess.isAnnotationPresent(originalType, FactoryMethodMarker.class);
     }
 
     @Override
@@ -627,7 +627,7 @@ public class SVMHost extends HostVM {
         boolean isHidden = javaClass.isHidden();
         boolean isRecord = javaClass.isRecord();
         boolean isSealed = javaClass.isSealed();
-        boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestAccess.elements().InternalVMMethod);
+        boolean isVMInternal = GuestAnnotationAccess.isAnnotationPresent(type, GuestAccess.elements().InternalVMMethod);
         boolean isLinked = type.isLinked();
 
         nestHost = PredefinedClassesSupport.maybeAdjustLambdaNestHost(className, javaClass, classLoader, nestHost);
@@ -705,7 +705,7 @@ public class SVMHost extends HostVM {
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
-        return AnnotationUtil.getAnnotation(resolvedJavaType, UnknownClass.class) != null;
+        return GuestAnnotationAccess.getAnnotation(resolvedJavaType, UnknownClass.class) != null;
     }
 
     public ClassInitializationSupport getClassInitializationSupport() {
@@ -921,11 +921,11 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean hasNeverInlineDirective(ResolvedJavaMethod method) {
-        if (AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
             return true;
         }
 
-        if (AnnotationUtil.isAnnotationPresent(method, DontInline.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, DontInline.class)) {
             return true;
         }
 
@@ -940,12 +940,12 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean hasNeverStrengthenGraphWithConstantsDirective(ResolvedJavaMethod method) {
-        return AnnotationUtil.isAnnotationPresent(method, NeverStrengthenGraphWithConstants.class);
+        return GuestAnnotationAccess.isAnnotationPresent(method, NeverStrengthenGraphWithConstants.class);
     }
 
     @Override
     public boolean hasAlwaysInlineDirective(ResolvedJavaMethod method) {
-        return AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class) || AnnotationUtil.isAnnotationPresent(method, ForceInline.class);
+        return GuestAnnotationAccess.isAnnotationPresent(method, AlwaysInline.class) || GuestAnnotationAccess.isAnnotationPresent(method, ForceInline.class);
     }
 
     private InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MethodVariant.MethodVariantKey methodVariantKey) {
@@ -1111,7 +1111,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Substitution types should never be reachable directly. */
-        if (AnnotationUtil.isAnnotationPresent(type, TargetClass.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(type, TargetClass.class)) {
             return false;
         }
 
@@ -1125,7 +1125,7 @@ public class SVMHost extends HostVM {
 
     /**
      * Check if an {@link AnalysisMethod} should be included in the image. For checking its
-     * annotations we rely on the {@link AnnotationUtil} unwrapping mechanism to include any
+     * annotations we rely on the {@link GuestAnnotationAccess} unwrapping mechanism to include any
      * annotations injected in the substitution layer.
      */
     @Override
@@ -1222,12 +1222,12 @@ public class SVMHost extends HostVM {
          * they are replaced by the invocation plugin with a constant. If reachable in an extension
          * image, the plugin will replace it again.
          */
-        if (AnnotationUtil.isAnnotationPresent(method, Fold.class) && AnnotationUtil.isAnnotationPresent(method, GuestFold.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) && GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
             return false;
         }
 
         /* Methods that are always folded don't need to be included. */
-        if (AnnotationUtil.isAnnotationPresent(method, GuaranteeFolded.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, GuaranteeFolded.class)) {
             return false;
         }
 
@@ -1240,8 +1240,8 @@ public class SVMHost extends HostVM {
          * Methods whose graph cannot be created should not be in the image. Those methods are
          * compiled in a different way and cannot be included in the same way as normal methods.
          */
-        if (AnnotationUtil.isAnnotationPresent(method, CConstant.class) || AnnotationUtil.isAnnotationPresent(method, Operation.class) ||
-                        AnnotationUtil.isAnnotationPresent(method, NodeIntrinsic.class) || AnnotationUtil.isAnnotationPresent(method, HotSpotOperation.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, CConstant.class) || GuestAnnotationAccess.isAnnotationPresent(method, Operation.class) ||
+                        GuestAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || GuestAnnotationAccess.isAnnotationPresent(method, HotSpotOperation.class)) {
             return false;
         }
 
@@ -1275,13 +1275,13 @@ public class SVMHost extends HostVM {
         }
 
         /* CEntryPoint methods should not be included according to their predicate. */
-        CEntryPoint cEntryPoint = AnnotationUtil.getAnnotation(method, CEntryPoint.class);
+        CEntryPoint cEntryPoint = GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class);
         return cEntryPoint == null || ReflectionUtil.newInstance(cEntryPoint.include()).getAsBoolean();
     }
 
     /**
      * Check if an {@link AnalysisField} should be included in the image. For checking its
-     * annotations we rely on the {@link AnnotationUtil} unwrapping mechanism to include any
+     * annotations we rely on the {@link GuestAnnotationAccess} unwrapping mechanism to include any
      * annotations injected in the substitution layer.
      */
     @Override
@@ -1301,7 +1301,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Fields that are deleted or substituted should not be in the image. */
-        if (AnnotationUtil.getAnnotation(field, Delete.class) != null || AnnotationUtil.getAnnotation(field, InjectAccessors.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(field, Delete.class) != null || GuestAnnotationAccess.getAnnotation(field, InjectAccessors.class) != null) {
             return false;
         }
 
@@ -1337,7 +1337,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Fields that are always folded don't need to be included. */
-        if (AnnotationUtil.isAnnotationPresent(field, GuaranteeFolded.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(field, GuaranteeFolded.class)) {
             return false;
         }
 
@@ -1423,8 +1423,8 @@ public class SVMHost extends HostVM {
         if (!callee.canBeInlined()) {
             return true;
         }
-        if (AnnotationUtil.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
-            Class<?>[] onlyWith = AnnotationUtil.getAnnotation(callee, NeverInlineTrivial.class).onlyWith();
+        if (GuestAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            Class<?>[] onlyWith = GuestAnnotationAccess.getAnnotation(callee, NeverInlineTrivial.class).onlyWith();
             if (shouldEvaluateNeverInlineTrivialOnlyWith(onlyWith)) {
                 return evaluateOnlyWith(onlyWith, callee.toString(), null);
             }
@@ -1557,7 +1557,7 @@ public class SVMHost extends HostVM {
     public boolean allowConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
         if (!BuildPhaseProvider.isAnalysisFinished() && !aField.isFinal() &&
-                        AnnotationUtil.isAnnotationPresent(aField, Stable.class)) {
+                        GuestAnnotationAccess.isAnnotationPresent(aField, Stable.class)) {
             return stableFieldsToFoldBeforeAnalysis.contains(aField);
         }
         return !finalFieldsInitializedOutsideOfConstructor.contains(aField);

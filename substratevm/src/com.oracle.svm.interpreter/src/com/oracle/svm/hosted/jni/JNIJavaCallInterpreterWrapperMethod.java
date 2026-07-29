@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.jni;
 
-import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
 import java.util.ArrayList;
 import java.util.List;

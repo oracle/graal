@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -109,15 +109,15 @@ public class UninterruptibleAnnotationUtils {
         }
 
         GuestAccess access = GuestAccess.get();
-        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elements.Uninterruptible));
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.Uninterruptible));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elements.CFunction));
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.CFunction));
         InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
-                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elements.InvokeCFunctionPointer));
+                        .fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.InvokeCFunctionPointer));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*
@@ -167,7 +167,7 @@ public class UninterruptibleAnnotationUtils {
                 return true;
             }
             UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue
-                            .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(GuestAccess.elements().Uninterruptible));
+                            .fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(callee).get(GuestAccess.elements().Uninterruptible));
             if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                 return true;
             }

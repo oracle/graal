@@ -28,7 +28,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -44,7 +44,7 @@ public final class GuestFoldInvocationPlugin implements NodePlugin {
 
     @Override
     public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
-        if (!AnnotationUtil.isAnnotationPresent(targetMethod, GuestFold.class)) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(targetMethod, GuestFold.class)) {
             return false;
         }
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();

@@ -45,7 +45,7 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
@@ -82,7 +82,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateField createField(AnalysisField aField, HostedStringDeduplication stringTable) {
-        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(aField);
+        Map<ResolvedJavaType, AnnotationValue> annotations = GuestAnnotationAccess.getDeclaredAnnotationValues(aField);
         ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, ImageSingletons.lookup(KnownTruffleTypes.class), OriginalClassProvider::getOriginalType);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
@@ -90,7 +90,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateType createType(AnalysisType analysisType, DynamicHub hub) {
-        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(analysisType);
+        Map<ResolvedJavaType, AnnotationValue> annotations = GuestAnnotationAccess.getDeclaredAnnotationValues(analysisType);
         boolean valueType = annotations.containsKey(OriginalClassProvider.getOriginalType(ImageSingletons.lookup(KnownTruffleTypes.class).CompilerDirectives_ValueType));
         return new SubstrateTruffleType(analysisType.getJavaKind(), hub, valueType);
     }
@@ -98,7 +98,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     @Platforms(Platform.HOSTED_ONLY.class)
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method,
                     KnownTruffleTypes types) {
-        Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationUtil.getDeclaredAnnotationValues(method);
+        Map<ResolvedJavaType, AnnotationValue> annotations = GuestAnnotationAccess.getDeclaredAnnotationValues(method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
         if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             UninterruptibleGuestValue uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);

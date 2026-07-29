@@ -39,7 +39,7 @@ import jdk.graal.compiler.annotation.AnnotationValue;
 
 /**
  * Internal legacy compatibility backend used only by non-isolated builds. Annotation queries must
- * use {@link AnnotationAccess} for same-VM access or {@link AnnotationUtil} for builder-to-guest
+ * use {@link AnnotationAccess} for same-VM access or {@link GuestAnnotationAccess} for builder-to-guest
  * access. Fully isolated builds must use context-specific backends instead. This class relies on
  * {@link jdk.graal.compiler.annotation.AnnotationValueParser} to avoid class initialization and
  * should be removed as part of GR-77735.

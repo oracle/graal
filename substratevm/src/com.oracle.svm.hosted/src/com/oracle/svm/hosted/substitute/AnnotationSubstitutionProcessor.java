@@ -79,7 +79,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -242,7 +242,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         this.imageClassLoader = imageClassLoader;
         this.metaAccess = metaAccess;
         this.guestAccess = GuestAccess.get();
-        this.substitutionDelete = AnnotationUtil.newAnnotationValue(guestAccess.elements.Delete, "value",
+        this.substitutionDelete = GuestAnnotationAccess.newAnnotationValue(guestAccess.elements.Delete, "value",
                         "The declaring class of this element has been substituted, but this element is not present in the substitution class");
         this.classInitializationSupport = classInitializationSupport;
 
@@ -354,7 +354,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private boolean isAnnotationPresentOnSubstitutionField(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
-            return AnnotationUtil.isAnnotationPresent(substitutionField, annotationClass);
+            return GuestAnnotationAccess.isAnnotationPresent(substitutionField, annotationClass);
         }
         return false;
     }
@@ -486,7 +486,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public void registerUnsafeAccessedFields(BigBang bb) {
         for (var entry : unsafeAccessedFields.entrySet()) {
             AnalysisField targetField = bb.getUniverse().lookup(entry.getKey());
-            assert !AnnotationUtil.isAnnotationPresent(targetField, Delete.class);
+            assert !GuestAnnotationAccess.isAnnotationPresent(targetField, Delete.class);
             targetField.registerAsUnsafeAccessed(entry.getValue());
         }
         /* Prevent later additions that would go unnoticed. */
@@ -646,7 +646,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, guestAccess.elements.Uninterruptible) && !isEffectivelyFinal(original)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(annotated, guestAccess.elements.Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotated);
             }
 
@@ -656,7 +656,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, guestAccess.elements.Uninterruptible) && !isEffectivelyFinal(original)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(annotated, guestAccess.elements.Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @AnnotateOriginal if the original method is effectively final: %s", annotated);
             }
 
@@ -1369,7 +1369,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     protected <T extends Annotation> AnnotationValue lookupAnnotation(Annotated element, Class<T> annotationClass) {
-        return imageClassLoader.classLoaderSupport.annotationExtractor.getAnnotationValue(element, annotationClass);
+        return GuestAnnotationAccess.getAnnotationValue(element, annotationClass);
     }
 
     protected <T extends Annotation, U> U lookupAnnotation(Annotated element, Class<T> annotationClass, Function<AnnotationValue, U> factory) {

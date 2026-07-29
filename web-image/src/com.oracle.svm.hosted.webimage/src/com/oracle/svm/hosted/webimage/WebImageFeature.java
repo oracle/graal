@@ -84,7 +84,7 @@ import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
@@ -303,6 +303,6 @@ public class WebImageFeature implements InternalFeature {
         /*
          * Methods annotated with @JS are never trivial.
          */
-        return AnnotationUtil.isAnnotationPresent(callee, JS.class);
+        return GuestAnnotationAccess.isAnnotationPresent(callee, JS.class);
     }
 }

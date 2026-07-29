@@ -82,7 +82,7 @@ import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
 
@@ -388,7 +388,7 @@ public class NativeImageGeneratorRunner {
         HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments, builderOptionFilter);
         VMAccess vmAccess = getVmAccess(vmAccessBuilder, classpath, modulepath, parser);
         GuestAccess.plantConfiguration(vmAccess);
-        nativeImageClassLoaderSupport.setAnnotationExtractor(AnnotationUtil.initializeBackends());
+        nativeImageClassLoaderSupport.setAnnotationExtractor(GuestAnnotationAccess.initializeBackends());
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
@@ -674,7 +674,7 @@ public class NativeImageGeneratorRunner {
     }
 
     protected void verifyMainEntryPoint(ResolvedJavaMethod mainEntryPoint) {
-        AnnotationValue cEntryPoint = AnnotationUtil.getAnnotationValue(mainEntryPoint, CEntryPoint.class);
+        AnnotationValue cEntryPoint = GuestAnnotationAccess.getAnnotationValue(mainEntryPoint, CEntryPoint.class);
         if (cEntryPoint == null) {
             throw UserError.abort("Entry point '%s' must have the '@%s' annotation", mainEntryPoint.format("%R %H.%n(%P)"), CEntryPoint.class.getSimpleName());
         }

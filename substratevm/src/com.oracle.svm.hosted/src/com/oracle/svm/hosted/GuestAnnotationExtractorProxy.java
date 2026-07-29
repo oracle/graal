@@ -28,7 +28,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.AnnotationFormatError;
 import java.util.List;
 
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * proxy. Method signatures intentionally use JVMCI types where the guest interface uses core
  * reflection types; {@link GuestAccess#createHostProxy} and the Espresso proxy conversion layer
  * adapt the boundary. This class is internal proxy wiring; hosted annotation queries must use
- * {@link AnnotationUtil}.
+ * {@link GuestAnnotationAccess}.
  */
 @SuppressWarnings("static-method")
 final class GuestAnnotationExtractorProxy {
@@ -58,7 +58,7 @@ final class GuestAnnotationExtractorProxy {
     public boolean hasAnnotation(JavaConstant element, ResolvedJavaType annotationType) {
         try {
             Annotated annotated = toAnnotated(element);
-            return annotated != null && AnnotationUtil.isAnnotationPresent(annotated, annotationType);
+            return annotated != null && GuestAnnotationAccess.isAnnotationPresent(annotated, annotationType);
         } catch (LinkageError | AnnotationFormatError e) {
             return false;
         }
@@ -69,7 +69,7 @@ final class GuestAnnotationExtractorProxy {
      * does not need reflective access to the interface default method.
      */
     public AnnotationValue extractAnnotation(JavaConstant element, ResolvedJavaType annotationType) {
-        AnnotationValue inherited = AnnotationUtil.getAnnotationValue(annotationType, Inherited.class);
+        AnnotationValue inherited = GuestAnnotationAccess.getAnnotationValue(annotationType, Inherited.class);
         return extractAnnotation(element, annotationType, inherited == null);
     }
 
@@ -79,7 +79,7 @@ final class GuestAnnotationExtractorProxy {
             if (annotated == null) {
                 return null;
             }
-            return AnnotationUtil.getAnnotationValue(annotated, annotationType, declaredOnly);
+            return GuestAnnotationAccess.getAnnotationValue(annotated, annotationType, declaredOnly);
         } catch (LinkageError | AnnotationFormatError e) {
             return null;
         }
@@ -94,7 +94,7 @@ final class GuestAnnotationExtractorProxy {
                 /* Return an empty guest Class[]; getAnnotationTypes must not return null. */
                 return emptyAnnotationTypes;
             }
-            List<ResolvedJavaType> annotationTypes = AnnotationUtil.getAnnotationTypes(annotated);
+            List<ResolvedJavaType> annotationTypes = GuestAnnotationAccess.getAnnotationTypes(annotated);
             JavaConstant[] annotationClasses = annotationTypes.stream()
                             .map(access.getProviders().getConstantReflection()::asJavaClass)
                             .toArray(JavaConstant[]::new);

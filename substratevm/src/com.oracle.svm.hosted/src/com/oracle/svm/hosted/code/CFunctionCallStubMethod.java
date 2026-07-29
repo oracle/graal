@@ -40,7 +40,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -64,7 +64,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     }
 
     private Class<?> getAnnotationClass() {
-        if (AnnotationUtil.getAnnotation(original, CFunction.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(original, CFunction.class) != null) {
             return CFunction.class;
         } else {
             throw VMError.shouldNotReachHere("Method is not annotated with @" + CFunction.class.getSimpleName());

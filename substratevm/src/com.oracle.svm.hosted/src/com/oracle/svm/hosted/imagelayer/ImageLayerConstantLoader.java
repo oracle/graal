@@ -77,7 +77,7 @@ import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -629,7 +629,7 @@ final class ImageLayerConstantLoader {
 
     private static boolean shouldRelinkField(AnalysisField field) {
         VMError.guarantee(field.isInSharedLayer());
-        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationUtil.isAnnotationPresent(field, Delete.class);
+        return !(field.getWrapped() instanceof BaseLayerField) && !GuestAnnotationAccess.isAnnotationPresent(field, Delete.class);
     }
 
     private JavaConstant getEnumValue(String className, String name) {

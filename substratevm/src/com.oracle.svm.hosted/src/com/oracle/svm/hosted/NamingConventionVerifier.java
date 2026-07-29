@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -63,7 +63,7 @@ final class NamingConventionVerifier {
             return;
         }
         for (AnalysisMethod method : universe.getMethods()) {
-            if ((method.isInvoked() || method.isReachable()) && AnnotationUtil.getAnnotation(method, Fold.class) == null) {
+            if ((method.isInvoked() || method.isReachable()) && GuestAnnotationAccess.getAnnotation(method, Fold.class) == null) {
                 checkName(bb, method);
             }
         }

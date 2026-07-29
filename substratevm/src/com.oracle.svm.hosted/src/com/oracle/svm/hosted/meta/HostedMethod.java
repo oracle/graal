@@ -62,7 +62,7 @@ import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -378,17 +378,17 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean needStackOverflowCheck() {
-        return SharedMethod.super.needStackOverflowCheck() && !AnnotationUtil.isAnnotationPresent(this, SkipStackOverflowCheck.class);
+        return SharedMethod.super.needStackOverflowCheck() && !GuestAnnotationAccess.isAnnotationPresent(this, SkipStackOverflowCheck.class);
     }
 
     @Override
     public boolean isForeignCallTarget() {
-        return AnnotationUtil.isAnnotationPresent(this, SubstrateForeignCallTarget.class);
+        return GuestAnnotationAccess.isAnnotationPresent(this, SubstrateForeignCallTarget.class);
     }
 
     @Override
     public boolean isSnippet() {
-        return AnnotationUtil.isAnnotationPresent(this, Snippet.class);
+        return GuestAnnotationAccess.isAnnotationPresent(this, Snippet.class);
     }
 
     public boolean hasVTableIndex() {
@@ -428,7 +428,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public Deoptimizer.StubType getDeoptStubType() {
-        Deoptimizer.DeoptStub stubAnnotation = AnnotationUtil.getAnnotation(this, Deoptimizer.DeoptStub.class);
+        Deoptimizer.DeoptStub stubAnnotation = GuestAnnotationAccess.getAnnotation(this, Deoptimizer.DeoptStub.class);
         if (stubAnnotation != null) {
             return stubAnnotation.stubType();
         }
@@ -594,7 +594,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean shouldBeInlined() {
-        return AnnotationUtil.getAnnotation(this, AlwaysInline.class) != null || AnnotationUtil.getAnnotation(this, ForceInline.class) != null;
+        return GuestAnnotationAccess.getAnnotation(this, AlwaysInline.class) != null || GuestAnnotationAccess.getAnnotation(this, ForceInline.class) != null;
     }
 
     private LineNumberTable lineNumberTable;

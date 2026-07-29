@@ -30,7 +30,7 @@ import java.util.List;
 
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.graph.Node;
@@ -72,7 +72,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (AnnotationUtil.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
              * Factory methods, which includes methods in ImplicitExceptions, are the methods that
              * actually perform the allocations at run time.
