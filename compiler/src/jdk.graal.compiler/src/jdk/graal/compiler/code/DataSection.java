@@ -39,8 +39,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.code.DataSection.Data;
-import jdk.graal.compiler.code.DataSection.MaterializedItems.ConstantPatch;
-import jdk.graal.compiler.code.DataSection.MaterializedItems.MaterializedItem;
+import jdk.graal.compiler.code.DataSection.EmittedItems.ConstantPatch;
+import jdk.graal.compiler.code.DataSection.EmittedItems.EmittedItem;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
@@ -378,29 +378,29 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Non-mutating materialized view of data-section items keyed by their
-     * {@link DataSectionReference}. Callers use it to inspect the emitted bytes, layout offset,
-     * alignment, and nested constant patches for selected items while preserving the normal
+     * Non-mutating view of emitted data-section items keyed by their
+     * {@link DataSectionReference}. Callers use it to inspect the computed layout offset, emitted
+     * bytes, alignment, and nested constant patches for selected items while preserving the normal
      * image-build ownership of the {@link DataSection}.
      */
-    public static final class MaterializedItems {
+    public static final class EmittedItems {
         public record ConstantPatch(int position, VMConstant constant) {
         }
 
-        public record MaterializedItem(int offset, int size, int alignment, byte[] bytes, List<ConstantPatch> constantPatches) {
+        public record EmittedItem(int offset, int size, int alignment, byte[] bytes, List<ConstantPatch> constantPatches) {
             public int constantPatchCount() {
                 return constantPatches.size();
             }
         }
 
-        private final EconomicMap<DataSectionReference, MaterializedItem> itemsByReference;
+        private final EconomicMap<DataSectionReference, EmittedItem> itemsByReference;
 
-        private MaterializedItems(EconomicMap<DataSectionReference, MaterializedItem> itemsByReference) {
+        private EmittedItems(EconomicMap<DataSectionReference, EmittedItem> itemsByReference) {
             this.itemsByReference = itemsByReference;
         }
 
-        public MaterializedItem getItem(DataSectionReference reference) {
-            MaterializedItem item = itemsByReference.get(reference);
+        public EmittedItem getItem(DataSectionReference reference) {
+            EmittedItem item = itemsByReference.get(reference);
             if (item == null) {
                 throw new IllegalArgumentException("Unknown data section reference: " + reference);
             }
@@ -409,17 +409,17 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Computes a per-item materialized view using the same item ordering and offset rules as
+     * Builds a per-item emitted view using the same item ordering and offset rules as
      * {@link #close(OptionValues, int)}, without mutating this instance.
      * <p>
      * The supplied byte order must match the final data-section emission target. The returned view
      * is intentionally item-scoped rather than a complete section snapshot.
      */
-    public MaterializedItems materializeItems(OptionValues option, int minDataAlignment, ByteOrder byteOrder) {
+    public EmittedItems buildEmittedItems(OptionValues option, int minDataAlignment, ByteOrder byteOrder) {
         ArrayList<Data> items = new ArrayList<>(dataItems);
         sortDataItems(items);
 
-        EconomicMap<DataSectionReference, MaterializedItem> itemsByReference = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        EconomicMap<DataSectionReference, EmittedItem> itemsByReference = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         int position = 0;
         for (Data data : items) {
             int itemAlignment = Math.max(minDataAlignment, data.alignment);
@@ -430,16 +430,16 @@ public final class DataSection implements Iterable<Data> {
             ByteBuffer itemBuffer = ByteBuffer.wrap(itemBytes).order(byteOrder);
             data.emit(itemBuffer, (patchPosition, constant) -> itemConstantPatches.add(new ConstantPatch(patchPosition, constant)));
 
-            itemsByReference.put(data.ref, new MaterializedItem(itemOffset, data.getSize(), itemAlignment, itemBytes, itemConstantPatches));
+            itemsByReference.put(data.ref, new EmittedItem(itemOffset, data.getSize(), itemAlignment, itemBytes, itemConstantPatches));
 
             position = itemOffset + data.size;
         }
-        return new MaterializedItems(itemsByReference);
+        return new EmittedItems(itemsByReference);
     }
 
     /**
      * Applies the same item ordering used by {@link #close(OptionValues, int)} and
-     * {@link #materializeItems(OptionValues, int, ByteOrder)} so non-mutating materialization
+     * {@link #buildEmittedItems(OptionValues, int, ByteOrder)} so non-mutating item emission
      * observes the layout that closing the section would compute.
      */
     private static void sortDataItems(List<Data> items) {
