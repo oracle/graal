@@ -114,7 +114,7 @@ You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/
 
 ## Operations
 Operations are the basic unit of language semantics in the Bytecode DSL.
-Each operation performs some computation and can produce a value.
+Each operation performs some computation and can produce a value (excluding [source operations](#source-information)).
 For example, the `LoadArgument` operation produces the value of a given argument.
 
 An operation can have children that produce inputs to the operation.
@@ -533,6 +533,8 @@ Bear in mind that declaring an operation with `forceCached` may limit the useful
 ### Source information
 
 The `Source` and `SourceSection` operations associate source ranges with each operation in a program.
+These operations are metadata-only and do not affect the operation tree semantics. Operations in their bodies appear as
+children of the enclosing operation.
 There are several `getSourceLocation` methods defined by [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) that can be used to compute source information for a particular bytecode index, frame instance, etc.
 
 It is recommended to enclose the `Root` operation in appropriate `Source` and `SourceSection` operations in order to provide accurate source information for the root node.

@@ -2966,6 +2966,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * with the source info table.
      */
     final class SourceInfoTable {
+        /*
+         * A table entry needs enough attributes to encode all source section kinds. For suffix
+         * sections, an unresolved entry also needs two attributes to encode a link in the patch
+         * list (node id + table index).
+         */
         static final int NUM_ATTRIBUTES = Math.max(SourceSectionKind.MAX_ATTRIBUTES, 2);
 
         private final List<CodeVariableElement> constants;
@@ -2973,11 +2978,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         final CodeVariableElement sourceOffset;
         final CodeVariableElement startBciOffset;
         final CodeVariableElement endBciOffset;
-        /*
-         * A table entry needs enough attributes to encode all source section kinds. For suffix
-         * sections, an entry needs enough attributes to encode a link in the patch list (node id +
-         * table index).
-         */
         final List<CodeVariableElement> attributeOffsets;
         final int entryLength;
         final CodeVariableElement entryLengthVariable;

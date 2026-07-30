@@ -1324,14 +1324,16 @@ final class BuilderElement extends AbstractElement {
 
         if (operation.kind == OperationKind.ROOT) {
             // do nothing
-        } else if (operation.isTransparent) {
+        } else if (operation.isSourceOnly()) {
+            result.append(" -> n/a (metadata-only)");
+        } else if (operation.forwardsChildResult) {
             result.append(" -> void/Object");
         } else if (operation.isVoid || operation.kind == OperationKind.RETURN) {
             result.append(" -> void");
         } else if (operation.isCustom()) {
             result.append(" -> ");
             result.append(ElementUtils.getSimpleName(
-                            operation.instruction().signature.returnType()));
+                            operation.instructions.getFirst().signature.returnType()));
         } else {
             result.append(" -> Object");
         }
@@ -1503,8 +1505,8 @@ final class BuilderElement extends AbstractElement {
                 break;
         }
 
-        if (operation.kind != OperationKind.FINALLY_HANDLER) {
-            b.startStatement().startCall("beforeChild").end(2);
+        if (operation.kind != OperationKind.FINALLY_HANDLER && !operation.isSourceOnly()) {
+            b.startStatement().startCall("beforeChild").string("state.operationSp").end(2);
         }
 
         if (operation.kind == OperationKind.TAG) {
@@ -1681,7 +1683,7 @@ final class BuilderElement extends AbstractElement {
             b.tree(operationStack.write(rootOperation, operationFields.frameOffset, "state.numLocals"));
         }
 
-        if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
+        if (needsGranularRootOperations()) {
             if (model.enableRootTagging) {
                 buildBegin(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootTag).getSimpleName().toString());
             }
@@ -1710,9 +1712,7 @@ final class BuilderElement extends AbstractElement {
             }
         }
 
-        if (needsRootBlock()) {
-            buildBegin(b, model.blockOperation);
-        }
+        buildBegin(b, model.blockOperation);
 
         return ex;
     }
@@ -1723,8 +1723,9 @@ final class BuilderElement extends AbstractElement {
         b.end(2);
     }
 
-    private boolean needsRootBlock() {
-        return model.enableRootTagging || model.enableRootBodyTagging || model.epilogExceptional != null || model.epilogReturn != null;
+    private boolean needsGranularRootOperations() {
+        // Prolog/epilog emission, if necessary, needs to be interleaved with tag emission.
+        return model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null;
     }
 
     private VariableElement getAllRootTagConstants() {
@@ -1935,14 +1936,22 @@ final class BuilderElement extends AbstractElement {
                 values.put(operationFields.sourceIndex, "foundSourceIndex");
                 values.put(operationFields.startBci, "startBci");
 
+                /*
+                 * Operation sequence numbers are local to a root stack element. The enclosing root
+                 * index distinguishes source sections belonging to nested root states.
+                 */
+                String enclosingRootIndex = "state.rootOperationSp == -1 ? " + UNINIT + " : " +
+                                operationStack.read(model.rootOperation, "state.operationStack[state.rootOperationSp]", operationFields.index);
+                values.put(operationFields.sourceSectionRootIndex, enclosingRootIndex);
+
                 if (operation == model.sourceSectionPrefixOperation) {
                     emitValidateSourceSection(b, operation.operationBeginArguments);
 
                     int i = 0;
-                    values.put(operationFields.sourceSectionTag, operation.getOperationBeginArgumentName(i++));
                     for (OperationField field : operationFields.sourceSectionPrefixAttrs) {
                         values.put(field, operation.getOperationBeginArgumentName(i++));
                     }
+                    values.put(operationFields.sourceSectionTag, operation.getOperationBeginArgumentName(i));
                 }
                 break;
         }
@@ -2121,6 +2130,8 @@ final class BuilderElement extends AbstractElement {
                     for (int i = 0; i < operation.operationEndArguments.length; i++) {
                         b.string(operation.getOperationEndArgumentName(i));
                     }
+                    b.string(operationStack.read(operation, operationFields.sourceSectionRootIndex));
+                    b.string("operation.sequenceNumber");
                     b.end(2);
 
                     b.startStatement().startCall("state.doEmitSourceInfo");
@@ -2130,17 +2141,11 @@ final class BuilderElement extends AbstractElement {
                     for (int i = 0; i < operation.operationEndArguments.length; i++) {
                         b.string(operation.getOperationEndArgumentName(i));
                     }
+                    b.string(operationStack.read(operation, operationFields.sourceSectionRootIndex));
+                    b.string("operation.sequenceNumber");
                     b.end(2);
                 } else {
-                    b.startStatement().startCall("state.doEmitSourceInfo");
-                    b.string(operationStack.read(operation, operationFields.sourceIndex));
-                    b.string(operationStack.read(operation, operationFields.startBci));
-                    b.string("state.bci");
-                    b.string(operationStack.read(operation, operationFields.sourceSectionTag));
-                    for (OperationField attr : operationFields.sourceSectionPrefixAttrs) {
-                        b.string(operationStack.read(operation, attr));
-                    }
-                    b.end(2);
+                    emitPrefixSourceInfo(b, "operation", operationStack.read(operation, operationFields.startBci), "state.bci");
                 }
                 break;
             case SOURCE:
@@ -2333,8 +2338,10 @@ final class BuilderElement extends AbstractElement {
 
         if (operation.kind == OperationKind.TAG) {
             // handled in tag section
-        } else if (operation.isTransparent) {
-            // custom transparent operations have the operation cast on the stack
+        } else if (operation.isSourceOnly()) {
+            // Source operations are metadata-only and do not produce a child for their parent.
+        } else if (operation.forwardsChildResult) {
+            // Forward the operation's child result to its parent.
             String bci = null;
             if (model.usesBoxingElimination()) {
                 bci = operationStack.read(operation, operationFields.childBci);
@@ -2382,7 +2389,7 @@ final class BuilderElement extends AbstractElement {
         } else {
             String nextBci;
             if (operation.hasInstruction()) {
-                nextBci = "state.bci - " + operation.instruction().getInstructionLength();
+                nextBci = "state.bci - " + operation.instructions.getFirst().getInstructionLength();
             } else {
                 nextBci = "-1";
             }
@@ -2435,11 +2442,11 @@ final class BuilderElement extends AbstractElement {
         for (OperationArgument arg : model.sourceSectionPrefixOperation.operationBeginArguments) {
             ex.addParameter(arg.toVariableElement());
         }
-        VariableElement tag = ex.getParameters().getFirst();
+        VariableElement tag = ex.getParameters().getLast();
         if (!tag.getSimpleName().contentEquals("tag")) {
             throw new AssertionError();
         }
-        List<VariableElement> attrs = ex.getParameters().subList(1, ex.getParameters().size());
+        List<VariableElement> attrs = ex.getParameters().subList(0, ex.getParameters().size() - 1);
 
         CodeTreeBuilder b = ex.createBuilder();
         b.startSwitch().variable(tag).end().startBlock();
@@ -2533,6 +2540,7 @@ final class BuilderElement extends AbstractElement {
 
     private void emitCallAfterChild(CodeTreeBuilder b, OperationModel op, String producedValue, String childBci) {
         b.startStatement().startCall("afterChild");
+        b.string("state.operationSp");
         b.tree(parent.createOperationConstant(op));
         b.string(producedValue);
         if (model.usesBoxingElimination()) {
@@ -2653,19 +2661,12 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        if (needsRootBlock()) {
-            emitCastOperationData(b, model.blockOperation, "state.operationSp - 1", "blockOperation");
-            b.startIf().string("!", operationStack.read(model.blockOperation, "blockOperation", operationFields.producedValue)).end().startBlock();
-            buildEmit(b, model.loadNullOperation);
-            b.end();
-            buildEnd(b, model.blockOperation);
-            emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
-        } else {
-            emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
-            b.startIf().string("!", operationStack.read(model.blockOperation, operationFields.producedValue)).end().startBlock();
-            buildEmit(b, model.loadNullOperation);
-            b.end();
-        }
+        emitCastOperationData(b, model.blockOperation, "state.operationSp - 1", "blockOperation");
+        b.startIf().string("!", operationStack.read(model.blockOperation, "blockOperation", operationFields.producedValue)).end().startBlock();
+        buildEmit(b, model.loadNullOperation);
+        b.end();
+        buildEnd(b, model.blockOperation);
+        emitCastOperationData(b, model.rootOperation, "state.rootOperationSp");
 
         b.startIf().string("!state.operationStack[state.rootOperationSp].validateDeclaredLabels()").end().startBlock();
         b.startThrow().startCall("state.failState");
@@ -2673,7 +2674,7 @@ final class BuilderElement extends AbstractElement {
         b.end(2); // throw, call
         b.end();
 
-        if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
+        if (needsGranularRootOperations()) {
             if (model.prolog != null) {
                 // Patch the end constants.
                 OperationModel prologOperation = model.prolog.operation;
@@ -3436,7 +3437,7 @@ final class BuilderElement extends AbstractElement {
             }
         }
 
-        b.startStatement().startCall("beforeChild").end(2);
+        b.startStatement().startCall("beforeChild").string("state.operationSp").end(2);
 
         if (operation.kind == OperationKind.LOAD_LOCAL || operation.kind == OperationKind.CLEAR_LOCAL) {
             emitValidateLocalScope(b, operation);
@@ -3643,11 +3644,6 @@ final class BuilderElement extends AbstractElement {
                         } else {
                             yield encodeRelativeBytecodeIndexArgument(customChildBci);
                         }
-                    } else if (operation.isTransparent) {
-                        if (instruction.resolveDynamicOperandIndex(immediate).orElse(-1) != 0) {
-                            throw new AssertionError("Unexpected transparent child.");
-                        }
-                        yield encodeRelativeBytecodeIndexArgument(operationStack.read(operation, operationFields.childBci));
                     }
 
                     Operand operand = instruction.resolveOperand(immediate).orElseThrow(
@@ -3728,123 +3724,138 @@ final class BuilderElement extends AbstractElement {
 
     private CodeExecutableElement createBeforeChild() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "beforeChild");
+        ex.addParameter(new CodeVariableElement(type(int.class), "operationSp"));
         CodeTreeBuilder p = ex.createBuilder();
 
         Map<EqualityCodeTree, List<OperationModel>> caseGrouping = EqualityCodeTree.group(p, model.getOperationsWithChildren(), (OperationModel op, CodeTreeBuilder b) -> {
-            if (op.isTransparent && (op.isVariadic || op.numDynamicOperands() > 1)) {
-                b.startIf().string(operationStack.read(op, operationFields.producedValue)).end().startBlock();
+            switch (op.kind) {
+                case BLOCK -> {
+                    b.startIf().string(operationStack.read(op, operationFields.producedValue)).end().startBlock();
 
-                String childBci = "-1";
-                if (model.usesBoxingElimination()) {
-                    childBci = operationStack.read(op, operationFields.childBci);
-                }
-
-                buildEmitInstruction(b, null, model.popInstruction, emitPopArguments(childBci));
-                b.end();
-                b.statement("break");
-            } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                ShortCircuitInstructionModel shortCircuitModel = op.instruction().shortCircuitModel;
-
-                // Only emit the boolean check between consecutive children.
-                b.startIf().string("childIndex != 0").end().startBlock();
-
-                // If this operation has a converter, convert the value.
-                if (shortCircuitModel.convertsOperands()) {
-                    /**
-                     * If the operation doesn't produce a boolean, it must DUP the operand so it can
-                     * pass it to the converter and also produce it as a result.
-                     */
-                    if (!shortCircuitModel.producesBoolean()) {
-                        buildEmitInstruction(b, null, model.dupInstruction);
+                    String childBci = "-1";
+                    if (model.usesBoxingElimination()) {
+                        childBci = operationStack.read(op, operationFields.childBci);
                     }
-                    buildEmitBooleanConverterInstruction(b, op.instruction());
+
+                    buildEmitInstruction(b, null, model.popInstruction, emitPopArguments(childBci));
+                    b.end();
+                    b.statement("break");
                 }
-
-                // Emit the boolean check.
-                buildEmitInstruction(b, "shortCircuitBci", op.instruction(), emitShortCircuitArguments(op.instruction()));
-
-                if (model.usesBoxingElimination()) {
-                    b.tree(operationStack.write(op, operationFields.shortCircuitBci, "shortCircuitBci"));
+                case SOURCE -> {
+                    b.startStatement().startCall("beforeChild").string("operationSp - 1").end(2);
+                    b.statement("break");
                 }
+                case SOURCE_SECTION -> {
+                    emitCloseSourceSection(b, op, "operation");
+                    b.startStatement().startCall("beforeChild").string("operationSp - 1").end(2);
+                    b.tree(operationStack.write(op, "operation", operationFields.startBci, "state.bci"));
+                    b.statement("break");
+                }
+                case CUSTOM_SHORT_CIRCUIT -> {
+                    ShortCircuitInstructionModel shortCircuitModel = op.instruction().shortCircuitModel;
 
-                emitRequestLeaderBci(b, "start of short-circuit fall-through block");
+                    // Only emit the boolean check between consecutive children.
+                    b.startIf().string("childIndex != 0").end().startBlock();
 
-                // Remember the short circuit instruction's bci so we can patch the branch bci.
-                b.startIf().string("shortCircuitBci != -1").end().startBlock();
-
-                b.declaration(type(int[].class), "branchFixupBcis", operationStack.read(op, operationFields.branchFixupBcis));
-                b.declaration(type(int.class), "numBranchFixupBcis", operationStack.read(op, operationFields.numBranchFixupBcis));
-                b.startIf().string("numBranchFixupBcis >= branchFixupBcis.length").end().startBlock();
-                b.startAssign("branchFixupBcis").startStaticCall(type(Arrays.class), "copyOf").string("branchFixupBcis").string("branchFixupBcis.length * 2").end().end();
-                b.tree(operationStack.write(op, operationFields.branchFixupBcis, "branchFixupBcis"));
-                b.end();
-                b.statement("branchFixupBcis[numBranchFixupBcis] = shortCircuitBci + " + op.instruction().getImmediate("branch_target").offset());
-                b.tree(operationStack.write(op, operationFields.numBranchFixupBcis, "numBranchFixupBcis + 1"));
-
-                b.end(); // reachable
-
-                b.end(); // childIndex != 0
-
-                b.statement("break");
-            } else if (op.kind == OperationKind.IF_THEN_ELSE ||
-                            op.kind == OperationKind.IF_THEN ||
-                            op.kind == OperationKind.CONDITIONAL) {
-                b.startIf().string("childIndex >= 1").end().startBlock();
-                b.lineComment("Entering new block. Set state.reachable to the new block's reachability.");
-                b.statement("state.reachable = resolveReachable()");
-                b.end();
-                b.statement("break");
-            } else if (op.kind == OperationKind.TRY_CATCH ||
-                            op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
-                b.startIf().string("childIndex == 1").end().startBlock();
-                b.lineComment("Entering the catch block. Set state.reachable using the catch block's reachability.");
-                b.statement("state.reachable = resolveReachable()");
-                b.lineComment("The exception dispatch logic pushes the exception onto the stack.");
-                b.statement("state.currentStackHeight = state.currentStackHeight + 1");
-                b.statement("state.updateMaxStackHeight(state.currentStackHeight)");
-                b.end(); // if
-                b.statement("break");
-            } else if (op.isCustomVariadic()) {
-                // Before emitting a variadic instruction, we need to emit instructions
-                // to merge all of the operands on the stack into one array.
-                if (op.instruction().signature.dynamicOperandCount() == 1) {
-                    // only argument is variadic
-                    b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
-                    if (model.maximumVariadicOffset > 0) {
-                        b.string(op.variadicOffset);
+                    // If this operation has a converter, convert the value.
+                    if (shortCircuitModel.convertsOperands()) {
+                        /*
+                         * If the operation doesn't produce a boolean, it must DUP the operand so it
+                         * can pass it to the converter and also produce it as a result.
+                         */
+                        if (!shortCircuitModel.producesBoolean()) {
+                            buildEmitInstruction(b, null, model.dupInstruction);
+                        }
+                        buildEmitBooleanConverterInstruction(b, op.instruction());
                     }
-                    b.string("childIndex");
-                    b.end().end();
-                    b.startIf().string("createVariadicBci != -1").end().startBlock();
 
-                    b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
-                    b.end();
-                } else {
-                    b.startIf().string("childIndex >= " + (op.instruction().signature.dynamicOperandCount() - 1)).end().startBlock();
-                    b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
-                    if (model.maximumVariadicOffset > 0) {
-                        b.string(op.variadicOffset);
+                    // Emit the boolean check.
+                    buildEmitInstruction(b, "shortCircuitBci", op.instruction(), emitShortCircuitArguments(op.instruction()));
+
+                    if (model.usesBoxingElimination()) {
+                        b.tree(operationStack.write(op, operationFields.shortCircuitBci, "shortCircuitBci"));
                     }
-                    b.string("childIndex - " + (op.instruction().signature.dynamicOperandCount() - 1));
-                    b.end().end();
-                    b.startIf().string("createVariadicBci != -1").end().startBlock();
-                    b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
-                    b.end();
-                    b.end();
-                }
 
-                b.statement("break");
-            } else {
-                b.statement("break");
+                    emitRequestLeaderBci(b, "start of short-circuit fall-through block");
+
+                    // Remember the short circuit instruction's bci so we can patch the branch bci.
+                    b.startIf().string("shortCircuitBci != -1").end().startBlock();
+
+                    b.declaration(type(int[].class), "branchFixupBcis", operationStack.read(op, operationFields.branchFixupBcis));
+                    b.declaration(type(int.class), "numBranchFixupBcis", operationStack.read(op, operationFields.numBranchFixupBcis));
+                    b.startIf().string("numBranchFixupBcis >= branchFixupBcis.length").end().startBlock();
+                    b.startAssign("branchFixupBcis").startStaticCall(type(Arrays.class), "copyOf").string("branchFixupBcis").string("branchFixupBcis.length * 2").end().end();
+                    b.tree(operationStack.write(op, operationFields.branchFixupBcis, "branchFixupBcis"));
+                    b.end();
+                    b.statement("branchFixupBcis[numBranchFixupBcis] = shortCircuitBci + " + op.instruction().getImmediate("branch_target").offset());
+                    b.tree(operationStack.write(op, operationFields.numBranchFixupBcis, "numBranchFixupBcis + 1"));
+
+                    b.end(); // reachable
+
+                    b.end(); // childIndex != 0
+
+                    b.statement("break");
+                }
+                case IF_THEN_ELSE, IF_THEN, CONDITIONAL -> {
+                    b.startIf().string("childIndex >= 1").end().startBlock();
+                    b.lineComment("Entering new block. Set state.reachable to the new block's reachability.");
+                    b.statement("state.reachable = resolveReachable()");
+                    b.end();
+                    b.statement("break");
+                }
+                case TRY_CATCH, TRY_CATCH_OTHERWISE -> {
+                    b.startIf().string("childIndex == 1").end().startBlock();
+                    b.lineComment("Entering the catch block. Set state.reachable using the catch block's reachability.");
+                    b.statement("state.reachable = resolveReachable()");
+                    b.lineComment("The exception dispatch logic pushes the exception onto the stack.");
+                    b.statement("state.currentStackHeight = state.currentStackHeight + 1");
+                    b.statement("state.updateMaxStackHeight(state.currentStackHeight)");
+                    b.end(); // if
+                    b.statement("break");
+                }
+                default -> {
+                    if (op.isCustomVariadic()) {
+                        // Before emitting a variadic instruction, we need to emit instructions
+                        // to merge all of the operands on the stack into one array.
+                        if (op.instruction().signature.dynamicOperandCount() == 1) {
+                            // only argument is variadic
+                            b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
+                            if (model.maximumVariadicOffset > 0) {
+                                b.string(op.variadicOffset);
+                            }
+                            b.string("childIndex");
+                            b.end().end();
+                            b.startIf().string("createVariadicBci != -1").end().startBlock();
+
+                            b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
+                            b.end();
+                        } else {
+                            b.startIf().string("childIndex >= " + (op.instruction().signature.dynamicOperandCount() - 1)).end().startBlock();
+                            b.startDeclaration(type(int.class), "createVariadicBci").startCall("doEmitVariadicBeforeChild");
+                            if (model.maximumVariadicOffset > 0) {
+                                b.string(op.variadicOffset);
+                            }
+                            b.string("childIndex - " + (op.instruction().signature.dynamicOperandCount() - 1));
+                            b.end().end();
+                            b.startIf().string("createVariadicBci != -1").end().startBlock();
+                            b.tree(operationStack.write(op, operationFields.createVariadicBci, "createVariadicBci"));
+                            b.end();
+                            b.end();
+                        }
+
+                        b.statement("break");
+                    } else {
+                        b.statement("break");
+                    }
+                }
             }
-
         });
         CodeTreeBuilder b = p;
-        b.startIf().string("state.operationSp == 0").end().startBlock();
+        b.startIf().string("operationSp == 0").end().startBlock();
         b.statement("return");
         b.end();
 
-        b.declaration(operationStack.asType(), "operation", "state.peekOperation()");
+        b.declaration(operationStack.asType(), "operation", "state.operationStack[operationSp - 1]");
         b.statement("int childIndex = operation.childCount");
 
         b.startSwitch().string("operation.operation").end().startBlock();
@@ -3864,6 +3875,55 @@ final class BuilderElement extends AbstractElement {
         b.end(); // switch
 
         return ex;
+    }
+
+    private void emitCloseSourceSection(CodeTreeBuilder b, OperationModel sourceSectionOperation, String operationName) {
+        if (sourceSectionOperation == model.sourceSectionPrefixOperation) {
+            emitPrefixSourceInfo(b, operationName, operationStack.read(sourceSectionOperation, operationName, operationFields.startBci), "state.bci");
+        } else if (sourceSectionOperation == model.sourceSectionSuffixOperation) {
+            emitUnresolvedSuffixSourceInfo(b, operationName,
+                            operationStack.read(sourceSectionOperation, operationName, operationFields.startBci), "state.bci", UNINIT);
+        } else {
+            throw new AssertionError("Expected a source section operation.");
+        }
+    }
+
+    private void emitPrefixSourceInfo(CodeTreeBuilder b, String operationName, String startBci, String endBci) {
+        OperationModel operation = model.sourceSectionPrefixOperation;
+        b.startStatement().startCall("state.doEmitSourceInfo");
+        b.string(operationStack.read(operation, operationName, operationFields.sourceIndex));
+        b.string(startBci);
+        b.string(endBci);
+        for (OperationField attr : operationFields.sourceSectionPrefixAttrs) {
+            b.string(operationStack.read(operation, operationName, attr));
+        }
+        b.string(operationStack.read(operation, operationName, operationFields.sourceSectionTag));
+        b.string(operationStack.read(operation, operationName, operationFields.sourceSectionRootIndex));
+        b.string(operationName + ".sequenceNumber");
+        b.end(2);
+    }
+
+    private void emitUnresolvedSuffixSourceInfo(CodeTreeBuilder b, String operationName, String startBci, String endBci, String patchNodeId) {
+        OperationModel operation = model.sourceSectionSuffixOperation;
+        b.startAssign("int sourceTablePatchIndex").startCall("state.doEmitSourceInfo");
+        b.string(operationStack.read(operation, operationName, operationFields.sourceIndex));
+        b.string(startBci);
+        b.string(endBci);
+        b.string(operationStack.read(operation, operationName, operationFields.sourceSectionSuffixNodeId));
+        b.string(operationStack.read(operation, operationName, operationFields.sourceSectionSuffixPatchIndex));
+        for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
+            // pad remaining attributes
+            b.variable(parent.sourceInfoTable.unspecifiedAttribute);
+        }
+        b.variable(builderSourceInfoTable.sourceSectionSuffixTag);
+        b.string(operationStack.read(operation, operationName, operationFields.sourceSectionRootIndex));
+        b.string(operationName + ".sequenceNumber");
+        b.end(2);
+
+        b.startIf().string("sourceTablePatchIndex != -1").end().startBlock();
+        b.tree(operationStack.write(operation, operationName, operationFields.sourceSectionSuffixNodeId, patchNodeId));
+        b.tree(operationStack.write(operation, operationName, operationFields.sourceSectionSuffixPatchIndex, "sourceTablePatchIndex"));
+        b.end();
     }
 
     private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
@@ -3900,6 +3960,7 @@ final class BuilderElement extends AbstractElement {
 
     private CodeExecutableElement createAfterChild() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "afterChild");
+        ex.addParameter(new CodeVariableElement(type(int.class), "operationSp"));
         ex.addParameter(new CodeVariableElement(type(int.class), "operationCode"));
         ex.addParameter(new CodeVariableElement(type(boolean.class), "producedValue"));
         if (model.usesBoxingElimination()) {
@@ -3908,16 +3969,15 @@ final class BuilderElement extends AbstractElement {
         CodeTreeBuilder p = ex.createBuilder();
 
         Map<EqualityCodeTree, List<OperationModel>> caseGrouping = EqualityCodeTree.group(p, model.getOperationsWithChildren(), (OperationModel op, CodeTreeBuilder b) -> {
-            if (op.isTransparent()) {
+            if (op.forwardsChildResult()) {
                 b.tree(operationStack.write(op, operationFields.producedValue, "producedValue"));
                 if (model.usesBoxingElimination()) {
                     b.tree(operationStack.write(op, operationFields.childBci, "childBci"));
                 }
                 b.statement("break");
                 return;
-            }
-
-            if (op.requiresStackBalancing()) {
+            } else if (op.kind != OperationKind.ROOT && !op.isSourceOnly()) {
+                // Check non-void children are value-producing and pop any results of void children.
                 List<Integer> valueChildren = new ArrayList<>();
                 List<Integer> nonValueChildren = new ArrayList<>();
                 for (int i = 0; i < op.dynamicOperands.length; i++) {
@@ -3984,12 +4044,6 @@ final class BuilderElement extends AbstractElement {
             }
 
             switch (op.kind) {
-                case TAG:
-                    b.tree(operationStack.write(op, operationFields.producedValue, "producedValue"));
-                    if (model.usesBoxingElimination()) {
-                        b.tree(operationStack.write(op, operationFields.childBci, "childBci"));
-                    }
-                    break;
                 case RETURN:
                     if (model.usesBoxingElimination()) {
                         b.tree(operationStack.write(op, operationFields.childBci, "childBci"));
@@ -4134,13 +4188,35 @@ final class BuilderElement extends AbstractElement {
                         // no operand to encode
                     }
                     break;
+                case SOURCE:
+                    b.startStatement().startCall("afterChild");
+                    b.string("operationSp - 1");
+                    b.string("operationCode");
+                    b.string("producedValue");
+                    if (model.usesBoxingElimination()) {
+                        b.string("childBci");
+                    }
+                    b.end(2);
+                    break;
+                case SOURCE_SECTION:
+                    emitCloseSourceSection(b, op, "operation");
+                    b.startStatement().startCall("afterChild");
+                    b.string("operationSp - 1");
+                    b.string("operationCode");
+                    b.string("producedValue");
+                    if (model.usesBoxingElimination()) {
+                        b.string("childBci");
+                    }
+                    b.end(2);
+                    b.tree(operationStack.write(op, "operation", operationFields.startBci, "state.bci"));
+                    break;
                 case CUSTOM:
                 case CUSTOM_YIELD:
                 case CUSTOM_RETURN:
                 case CUSTOM_INSTRUMENTATION:
                     boolean elseIf = false;
 
-                    for (Operand operand : op.instruction().signature.dynamicOperands()) {
+                    for (Operand operand : op.instructions.getFirst().signature.dynamicOperands()) {
                         if (needsChildBciOperationField(op, operand)) {
                             elseIf = b.startIf(elseIf);
                             b.string("childIndex == " + operand.dynamicIndex()).end().startBlock();
@@ -4189,11 +4265,11 @@ final class BuilderElement extends AbstractElement {
             b.statement("break");
         });
         CodeTreeBuilder b = p;
-        b.startIf().string("state.operationSp == 0").end().startBlock();
+        b.startIf().string("operationSp == 0").end().startBlock();
         b.statement("return");
         b.end();
 
-        b.declaration(operationStack.asType(), "operation", "state.peekOperation()");
+        b.declaration(operationStack.asType(), "operation", "state.operationStack[operationSp - 1]");
         b.statement("int childIndex = operation.childCount");
 
         b.startSwitch().string("operation.operation").end().startBlock();
@@ -4762,37 +4838,13 @@ final class BuilderElement extends AbstractElement {
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
             b.startBlock();
-            b.startStatement().startCall("state.doEmitSourceInfo");
-            b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceIndex));
-            b.string("epilogBci");
-            b.string("epilogBci + " + epilogInstructionLength);
-            b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceSectionTag));
-            for (int i = 0; i < operationFields.sourceSectionPrefixAttrs.length; i++) {
-                b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceSectionPrefixAttrs[i]));
-            }
-            b.end(2);
+            emitPrefixSourceInfo(b, "operation", "epilogBci", "epilogBci + " + epilogInstructionLength);
             b.statement("break");
             b.end(); // case source section
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
             b.startBlock();
-            b.startAssign("int sourceTablePatchIndex").startCall("state.doEmitSourceInfo");
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceIndex));
-            b.string("epilogBci");
-            b.string("epilogBci + " + epilogInstructionLength);
-            b.variable(builderSourceInfoTable.sourceSectionSuffixTag);
-            if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
-                throw new AssertionError();
-            }
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixNodeId));
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixPatchIndex));
-            for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                b.variable(builderSourceInfoTable.unpatchedAttribute);
-            }
-            b.end(2);
-
-            b.tree(operationStack.write(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixNodeId, UNINIT));
-            b.tree(operationStack.write(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixPatchIndex, "sourceTablePatchIndex"));
+            emitUnresolvedSuffixSourceInfo(b, "operation", "epilogBci", "epilogBci + " + epilogInstructionLength, UNINIT);
             b.statement("break");
             b.end();
 
@@ -4826,7 +4878,7 @@ final class BuilderElement extends AbstractElement {
         if (!model.usesBoxingElimination()) {
             return false;
         }
-        if (operation.instruction().needsChildBciForBoxingElimination(model, operand)) {
+        if (operation.instructions.getFirst().needsChildBciForBoxingElimination(model, operand)) {
             return true;
         }
 
@@ -5066,39 +5118,15 @@ final class BuilderElement extends AbstractElement {
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
             b.startBlock();
-            b.startStatement().startCall("state.doEmitSourceInfo");
-            b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.sourceIndex));
-            b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.startBci));
-            b.string("state.bci");
-            b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.sourceSectionTag));
-            for (int i = 0; i < operationFields.sourceSectionPrefixAttrs.length; i++) {
-                b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.sourceSectionPrefixAttrs[i]));
-            }
-            b.end(2);
+            emitPrefixSourceInfo(b, "operation", operationStack.read(model.sourceSectionPrefixOperation, operationFields.startBci), "state.bci");
             b.statement("needsRewind = true");
             b.statement("break");
             b.end(); // case source section
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
             b.startBlock();
-            b.startAssign("int sourceTablePatchIndex").startCall("state.doEmitSourceInfo");
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceIndex));
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.startBci));
-            b.string("state.bci");
-            b.variable(builderSourceInfoTable.sourceSectionSuffixTag);
-            if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
-                throw new AssertionError();
-            }
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixNodeId));
-            b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixPatchIndex));
-            for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                b.variable(builderSourceInfoTable.unpatchedAttribute);
-            }
-            b.end(2);
-
-            // Update the head of the patch list.
-            b.tree(operationStack.write(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixNodeId, UNINIT));
-            b.tree(operationStack.write(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixPatchIndex, "sourceTablePatchIndex"));
+            emitUnresolvedSuffixSourceInfo(b, "operation",
+                            operationStack.read(model.sourceSectionSuffixOperation, operationFields.startBci), "state.bci", UNINIT);
             b.statement("needsRewind = true");
             b.statement("break");
             b.end();
@@ -7042,24 +7070,21 @@ final class BuilderElement extends AbstractElement {
     }
 
     final class BuilderSourceInfoTable {
-        // Builder methods for SourceSection take a tag + attributes
+        // Builder methods for SourceSection take attributes + a tag.
         private static final int BUILDER_METHOD_PARAM_COUNT = 1 + SourceInfoTable.NUM_ATTRIBUTES;
+        private static final int SUFFIX_NEXT_NODE_ID_ATTRIBUTE = 0;
+        private static final int SUFFIX_NEXT_PATCH_INDEX_ATTRIBUTE = 1;
 
         private final CodeVariableElement sourceSectionSuffixTag;
-        private final CodeVariableElement unpatchedAttribute;
         private final Map<SourceSectionKind, CodeVariableElement> tags;
         private CodeVariableElement tagOffset;
+        private CodeVariableElement rootIndexOffset;
+        private CodeVariableElement sequenceNumberOffset;
         private CodeVariableElement entryLengthVariable;
 
         BuilderSourceInfoTable() {
             // Identifies builder table entries that need to be patched.
             this.sourceSectionSuffixTag = addConstant("TAG_SUFFIX", -2);
-            /*
-             * Placeholder value for unpatched attributes. This constant is used to validate that we
-             * only attempt to patch unpatched entries (it becomes ambiguous after finalization
-             * because tags are dropped). Must be distinct from SOURCE_INFO_UNSPECIFIED_ATTR.
-             */
-            this.unpatchedAttribute = addConstant("UNPATCHED_ATTR", -3);
             this.tags = new EnumMap<>(SourceSectionKind.class);
             for (SourceSectionKind kind : SourceSectionKind.values()) {
                 tags.put(kind, addConstant("TAG_" + kind, tags.size() + 1));
@@ -7068,7 +7093,10 @@ final class BuilderElement extends AbstractElement {
 
         void lazyInit() {
             int offset = parent.sourceInfoTable.entryLength;
+            // Builder entries carry metadata that is stripped by finalizeSourceInfoTable.
             this.tagOffset = addConstant("OFFSET_TAG", offset++);
+            this.rootIndexOffset = addConstant("OFFSET_ROOT_INDEX", offset++);
+            this.sequenceNumberOffset = addConstant("OFFSET_SEQUENCE_NUMBER", offset++);
             this.entryLengthVariable = addConstant("ENTRY_LENGTH", offset);
 
             for (SourceSectionKind kind : SourceSectionKind.values()) {
@@ -7193,20 +7221,28 @@ final class BuilderElement extends AbstractElement {
 
         private CodeExecutableElement createDoEmitSourceInfo() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitSourceInfo");
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "Emits source information, coalescing it with the previous entry when possible.",
+                            "The result should only be used to add newly emitted entries to suffix SourceSection patch lists.",
+                            "@return the index of the newly emitted entry, or {@code -1} if no entry needs to be patched"));
             ex.addParameter(new CodeVariableElement(type(int.class), "sourceIndex"));
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "endBci"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "tag"));
             List<CodeVariableElement> attrParams = new ArrayList<>();
             for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 CodeVariableElement param = new CodeVariableElement(type(int.class), "attr" + (i + 1));
                 attrParams.add(param);
                 ex.addParameter(param);
             }
+            ex.addParameter(new CodeVariableElement(type(int.class), "tag"));
+            CodeVariableElement rootIndex = new CodeVariableElement(type(int.class), "rootIndex");
+            CodeVariableElement sequenceNumber = new CodeVariableElement(type(int.class), "sequenceNumber");
+            ex.addParameter(rootIndex);
+            ex.addParameter(sequenceNumber);
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("this.rootOperationSp == -1").end().startBlock();
+            b.startIf().string("this.rootOperationSp == -1 || startBci == endBci").end().startBlock();
             b.statement("return -1");
             b.end();
 
@@ -7222,18 +7258,17 @@ final class BuilderElement extends AbstractElement {
 
             CodeTree checkSourceInfoMatches = CodeTreeBuilder.createBuilder() //
                             .startCall("sourceInfoMatches") //
-                            .string("this.sourceInfo").string("prevIndex").string("sourceIndex").string("tag")//
-                            .variables(attrParams).end() //
+                            .string("this.sourceInfo").string("prevIndex").variable(rootIndex).variable(sequenceNumber).end() //
                             .build();
             b.startIf();
             b.string("startBci == prevStartBci && endBci == prevEndBci && ").tree(checkSourceInfoMatches).end().startBlock();
             b.lineComment("duplicate entry");
-            b.statement("return prevIndex");
+            b.statement("return -1");
             b.end();
             b.startElseIf().string("startBci == prevEndBci && ").tree(checkSourceInfoMatches).end().startBlock();
             b.lineComment("contiguous entry");
             b.startStatement().tree(SourceInfoTable.loadElement("this.sourceInfo", "prevIndex", parent.sourceInfoTable.endBciOffset)).string(" = endBci").end();
-            b.statement("return prevIndex");
+            b.statement("return -1");
             b.end();
 
             b.end();
@@ -7249,6 +7284,8 @@ final class BuilderElement extends AbstractElement {
                 b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.attributeOffsets.get(i), attrParams.get(i)));
             }
             b.statement(writeElement("this.sourceInfo", "index", tagOffset, "tag"));
+            b.statement(writeElement("this.sourceInfo", "index", rootIndexOffset, rootIndex));
+            b.statement(writeElement("this.sourceInfo", "index", sequenceNumberOffset, sequenceNumber));
             b.startAssign("this.sourceInfoIndex").string("index + ").variable(entryLengthVariable).end();
 
             b.statement("return index");
@@ -7314,37 +7351,13 @@ final class BuilderElement extends AbstractElement {
 
                 b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
                 b.startBlock();
-                b.startStatement().startCall("state.doEmitSourceInfo");
-                b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.sourceIndex));
-                b.string("0");
-                b.string("state.bci");
-                b.string(operationStack.read(model.sourceSectionPrefixOperation, operationFields.sourceSectionTag));
-                for (OperationField attr : operationFields.sourceSectionPrefixAttrs) {
-                    b.string(operationStack.read(model.sourceSectionPrefixOperation, attr));
-                }
-                b.end(2);
+                emitPrefixSourceInfo(b, "operation", "0", "state.bci");
                 b.statement("return");
                 b.end();
 
                 b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
                 b.startBlock();
-
-                b.startAssign("int sourceTablePatchIndex").startCall("state.doEmitSourceInfo");
-                b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceIndex));
-                b.string("0");
-                b.string("state.bci");
-                b.variable(builderSourceInfoTable.sourceSectionSuffixTag);
-                b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixNodeId));
-                b.string(operationStack.read(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixPatchIndex));
-                for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                    b.variable(unpatchedAttribute);
-                }
-                b.end(2);
-
-                // Update the head of the patch list.
-                b.tree(operationStack.write(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixNodeId, "nodeId"));
-                b.tree(operationStack.write(model.sourceSectionSuffixOperation, operationFields.sourceSectionSuffixPatchIndex, "sourceTablePatchIndex"));
-
+                emitUnresolvedSuffixSourceInfo(b, "operation", "0", "state.bci", "nodeId");
                 b.statement("return");
                 b.end();
 
@@ -7363,12 +7376,14 @@ final class BuilderElement extends AbstractElement {
             ex.addParameter(new CodeVariableElement(type(int.class), "initialPatchIndex"));
             CodeVariableElement tag = new CodeVariableElement(type(int.class), "tag");
             List<CodeVariableElement> dataParams = new ArrayList<>();
-            ex.addParameter(tag);
             for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 CodeVariableElement param = new CodeVariableElement(type(int.class), "data" + (i + 1));
                 dataParams.add(param);
                 ex.addParameter(param);
             }
+            ex.addParameter(tag);
+            ex.addParameter(new CodeVariableElement(type(int.class), "expectedRootIndex"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "expectedSequenceNumber"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -7389,11 +7404,12 @@ final class BuilderElement extends AbstractElement {
             b.startThrow().startNew(type(AssertionError.class)).doubleQuote("Tried to patch non-suffix source table entry.").end(2);
             b.end();
 
-            b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(0))).end();
-            b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(1))).end();
-            for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                b.startAssert().tree(SourceInfoTable.loadElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(i))).string(" == ").variable(unpatchedAttribute).end();
-            }
+            b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_NODE_ID_ATTRIBUTE))).end();
+            b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_PATCH_INDEX_ATTRIBUTE))).end();
+            b.startAssert().tree(SourceInfoTable.loadElement("info", "patchIndex", rootIndexOffset)) //
+                            .string(" == expectedRootIndex").end();
+            b.startAssert().tree(SourceInfoTable.loadElement("info", "patchIndex", sequenceNumberOffset)) //
+                            .string(" == expectedSequenceNumber").end();
             for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 b.statement(writeElement("info", "patchIndex", parent.sourceInfoTable.attributeOffsets.get(i), dataParams.get(i)));
             }
@@ -7408,14 +7424,8 @@ final class BuilderElement extends AbstractElement {
             b.string("(patchIndex / ").variable(entryLengthVariable).string(") * ").variable(parent.sourceInfoTable.entryLengthVariable);
             b.end();
 
-            if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
-                throw new AssertionError("need at least 2 attributes in the source info table to patch suffix source sections.");
-            }
-            b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(0))).end();
-            b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(1))).end();
-            for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                b.startAssert().tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(i))).string(" == ").variable(unpatchedAttribute).end();
-            }
+            b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_NODE_ID_ATTRIBUTE))).end();
+            b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_PATCH_INDEX_ATTRIBUTE))).end();
             for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 b.statement(writeElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(i), dataParams.get(i)));
             }
@@ -7433,23 +7443,15 @@ final class BuilderElement extends AbstractElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "sourceInfoMatches");
             ex.addParameter(new CodeVariableElement(type(int[].class), "sourceInfo"));
             ex.addParameter(new CodeVariableElement(type(int.class), "prevIndex"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "sourceIndex"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "tag"));
-            CodeVariableElement[] attrParams = new CodeVariableElement[SourceInfoTable.NUM_ATTRIBUTES];
-            for (int i = 0; i < attrParams.length; i++) {
-                attrParams[i] = new CodeVariableElement(type(int.class), "attr" + (i + 1));
-                ex.addParameter(attrParams[i]);
-            }
+            ex.addParameter(new CodeVariableElement(type(int.class), "rootIndex"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "sequenceNumber"));
 
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
-            b.string("tag != ").variable(sourceSectionSuffixTag).startIndention();
-            b.newLine().string("&& tag == ").tree(SourceInfoTable.loadElement("sourceInfo", "prevIndex", tagOffset));
-            b.newLine().string("&& sourceIndex == ").tree(SourceInfoTable.loadElement("sourceInfo", "prevIndex", parent.sourceInfoTable.sourceOffset));
-            for (int i = 0; i < parent.sourceInfoTable.attributeOffsets.size(); i++) {
-                b.newLine().string("&& ").variable(attrParams[i]).string(" == ").tree(SourceInfoTable.loadElement("sourceInfo", "prevIndex", parent.sourceInfoTable.attributeOffsets.get(i)));
-            }
-            b.end(2);
+            b.string("rootIndex == ").tree(SourceInfoTable.loadElement("sourceInfo", "prevIndex", rootIndexOffset));
+            b.startIndention().newLine().string("&& ");
+            b.string("sequenceNumber == ").tree(SourceInfoTable.loadElement("sourceInfo", "prevIndex", sequenceNumberOffset));
+            b.end(2); // indent, return
 
             return ex;
         }
@@ -7501,11 +7503,11 @@ final class BuilderElement extends AbstractElement {
         private CodeTree callSourceSectionBuilderMethod(String methodName, SourceSectionKind kind, List<CodeVariableElement> params) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.startStatement().startCall(methodName);
-            b.variable(tags.get(kind));
             b.variables(params);
-            for (int i = 1 + params.size(); i < BUILDER_METHOD_PARAM_COUNT; i++) {
+            for (int i = params.size(); i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 b.variable(parent.sourceInfoTable.unspecifiedAttribute);
             }
+            b.variable(tags.get(kind));
             b.end(2);
             return b.build();
         }
@@ -7548,6 +7550,8 @@ final class BuilderElement extends AbstractElement {
                         .withDoc("Encodes the id of the root node to patch (or -1 for the current node).");
         private final OperationField sourceSectionSuffixPatchIndex = field(type(int.class), "sourceSectionSuffixPatchIndex").withInitializer(UNINIT) //
                         .withDoc("Encodes the index of the next entry in the table to be patched. Table entries form a linked list using this field.");
+        private final OperationField sourceSectionRootIndex = field(type(int.class), "sourceSectionRootIndex").asFinal() //
+                        .withDoc("Encodes the index of the root enclosing this source section (or -1 if there is no enclosing root).");
 
         private final OperationField local = field(bytecodeLocalImpl.asType(), "local");
 
@@ -7627,10 +7631,6 @@ final class BuilderElement extends AbstractElement {
             switch (operation.kind) {
                 case ROOT:
                     fields.add(index); // init
-                    fields.add(producedValue);
-                    if (model.usesBoxingElimination()) {
-                        fields.add(childBci);
-                    }
                     fields.add(reachable);
                     if (model.prolog != null && model.prolog.operation.operationEndArguments.length != 0) {
                         fields.add(prologBci);
@@ -7678,6 +7678,7 @@ final class BuilderElement extends AbstractElement {
                 case SOURCE_SECTION:
                     fields.add(sourceIndex); // init
                     fields.add(startBci); // init
+                    fields.add(sourceSectionRootIndex); // init
                     if (operation == model.sourceSectionPrefixOperation) {
                         fields.add(sourceSectionTag); // init
                         fields.addAll(Arrays.asList(sourceSectionPrefixAttrs)); // init
@@ -7685,17 +7686,9 @@ final class BuilderElement extends AbstractElement {
                         fields.add(sourceSectionSuffixNodeId);
                         fields.add(sourceSectionSuffixPatchIndex);
                     }
-                    fields.add(producedValue);
-                    if (model.usesBoxingElimination()) {
-                        fields.add(childBci);
-                    }
                     break;
                 case SOURCE:
                     fields.add(sourceIndex); // init
-                    fields.add(producedValue);
-                    if (model.usesBoxingElimination()) {
-                        fields.add(childBci);
-                    }
                     break;
                 case RETURN:
                     if (model.usesBoxingElimination()) {
@@ -7768,26 +7761,19 @@ final class BuilderElement extends AbstractElement {
                     fields.add(reachable); // init
                     break;
                 case CUSTOM, CUSTOM_YIELD, CUSTOM_RETURN, CUSTOM_INSTRUMENTATION:
-                    if (operation.isTransparent()) {
-                        fields.add(producedValue);
-                        if (model.usesBoxingElimination()) {
-                            fields.add(childBci);
-                        }
-                    } else {
-                        fields.addAll(getConstants(operation.constantOperands.before(), true));
-                        if (model.usesBoxingElimination()) {
-                            for (Operand operand : operation.instruction().signature.dynamicOperands()) {
-                                if (needsChildBciOperationField(operation, operand)) {
-                                    fields.add(getChildBci(operand.dynamicIndex(), true));
-                                }
+                    fields.addAll(getConstants(operation.constantOperands.before(), true));
+                    if (model.usesBoxingElimination()) {
+                        for (Operand operand : operation.instructions.getFirst().signature.dynamicOperands()) {
+                            if (needsChildBciOperationField(operation, operand)) {
+                                fields.add(getChildBci(operand.dynamicIndex(), true));
                             }
                         }
-                        if (operation.isVariadic) {
-                            fields.add(createVariadicBci);
-                            if (model.hasVariadicReturn) {
-                                fields.add(variadicReturnIndices);
-                                fields.add(numVariadicReturnIndices);
-                            }
+                    }
+                    if (operation.isVariadic) {
+                        fields.add(createVariadicBci);
+                        if (model.hasVariadicReturn) {
+                            fields.add(variadicReturnIndices);
+                            fields.add(numVariadicReturnIndices);
                         }
                     }
                     break;
@@ -7798,14 +7784,6 @@ final class BuilderElement extends AbstractElement {
                     }
                     fields.add(branchFixupBcis);
                     fields.add(numBranchFixupBcis);
-                    break;
-                default:
-                    if (operation.isTransparent()) {
-                        fields.add(producedValue);
-                        if (model.usesBoxingElimination()) {
-                            fields.add(childBci);
-                        }
-                    }
                     break;
             }
             return fields;

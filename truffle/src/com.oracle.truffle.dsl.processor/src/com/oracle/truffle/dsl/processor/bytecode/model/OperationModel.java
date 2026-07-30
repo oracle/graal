@@ -154,13 +154,9 @@ public class OperationModel implements PrettyPrintable {
     public final String javadoc;
 
     /**
-     * Transparent operations do not have their own logic; any value produced by their children is
-     * simply forwarded to the parent operation.
-     *
-     * e.g., blocks do not have their own logic, but are useful to support operation sequencing.
-     * Source position-related operations are also transparent.
+     * Whether this operation forwards its last child's result and bytecode index to its parent.
      */
-    public boolean isTransparent;
+    public boolean forwardsChildResult;
     public boolean isVoid;
     public boolean isVariadic;
     public int variadicOffset = 0;
@@ -225,8 +221,8 @@ public class OperationModel implements PrettyPrintable {
                         constantOperands).get(0);
     }
 
-    public OperationModel setTransparent(boolean isTransparent) {
-        this.isTransparent = isTransparent;
+    public OperationModel setForwardsChildResult(boolean forwardsChildResult) {
+        this.forwardsChildResult = forwardsChildResult;
         return this;
     }
 
@@ -236,8 +232,8 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public boolean isTransparent() {
-        return isTransparent;
+    public boolean forwardsChildResult() {
+        return forwardsChildResult;
     }
 
     public OperationModel setVoid(boolean isVoid) {
@@ -341,17 +337,13 @@ public class OperationModel implements PrettyPrintable {
 
     public boolean isCustomVariadic() {
         return switch (kind) {
-            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> isVariadic && !isTransparent;
+            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> isVariadic;
             default -> false;
         };
     }
 
     public boolean requiresRootOperation() {
         return kind != OperationKind.SOURCE && kind != OperationKind.SOURCE_SECTION;
-    }
-
-    public boolean requiresStackBalancing() {
-        return kind != OperationKind.TAG;
     }
 
     public String getConstantName() {

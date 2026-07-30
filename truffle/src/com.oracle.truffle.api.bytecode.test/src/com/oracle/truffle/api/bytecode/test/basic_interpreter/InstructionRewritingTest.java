@@ -956,7 +956,6 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
 
         assertSourceSectionsForInstructions(node, 0, 1, "keep;");
         assertSourceSectionsForInstructions(node, 1, 3, "return 42;");
-        assertEmptySourceSection(node, "drop;");
     }
 
     /**
@@ -1104,11 +1103,6 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
 
         assertSourceSectionsForInstructions(node, 0, 1, "void;", "void;nop;");
         assertSourceSectionsForInstructions(node, 1, 3, "return 42;");
-
-        // The source sections corresponding to the deleted instruction should have empty bci
-        // ranges.
-        assertEmptySourceSection(node, "nop;");
-        assertEmptySourceSection(node, "nop");
     }
 
     /**
@@ -1344,16 +1338,6 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
                 fail("Source \"%s\" should have been deleted from the table.".formatted(sourceString));
             }
         }
-    }
-
-    private static void assertEmptySourceSection(BasicInterpreter node, String sourceString) {
-        for (var sourceInfo : node.getBytecodeNode().getSourceInformation()) {
-            if (sourceString.equals(sourceInfo.getSourceSection().getCharacters())) {
-                assertEquals(sourceInfo.getStartBytecodeIndex(), sourceInfo.getEndBytecodeIndex());
-                return;
-            }
-        }
-        fail("Source \"%s\" not found.".formatted(sourceString));
     }
 
 }

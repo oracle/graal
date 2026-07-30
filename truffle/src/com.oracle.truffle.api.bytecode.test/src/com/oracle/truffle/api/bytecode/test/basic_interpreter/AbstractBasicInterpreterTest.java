@@ -563,7 +563,6 @@ public abstract class AbstractBasicInterpreterTest {
 
         SourceInformationTree tree = bytecode.getSourceInformationTree();
         if (tree != null) {
-
             testSourceTree(bytecode, null, tree);
         }
 
@@ -579,8 +578,17 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         assertNotNull(BytecodeLocation.get(bytecode, tree.getStartBytecodeIndex()));
+        assertTrue(tree.getStartBytecodeIndex() <= tree.getEndBytecodeIndex());
 
-        for (SourceInformationTree child : tree.getChildren()) {
+        List<SourceInformationTree> children = tree.getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            SourceInformationTree child = children.get(i);
+            assertTrue(tree.getStartBytecodeIndex() <= child.getStartBytecodeIndex());
+            assertTrue(child.getEndBytecodeIndex() <= tree.getEndBytecodeIndex());
+            if (i > 0) {
+                SourceInformationTree previous = children.get(i - 1);
+                assertTrue(previous.getEndBytecodeIndex() <= child.getStartBytecodeIndex());
+            }
             testSourceTree(bytecode, tree, child);
         }
     }
