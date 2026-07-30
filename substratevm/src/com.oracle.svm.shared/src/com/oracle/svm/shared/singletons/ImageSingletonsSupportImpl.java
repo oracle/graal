@@ -395,10 +395,16 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         /** Mechanism to inject additional traits on singleton registration. */
         private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
 
+        /**
+         * Creates a guest image-build registry, which currently does not perform any validation, see GR-77055.
+         */
         public HostedManagement() {
             this(null, null, null, null, false);
         }
 
+        /**
+         * Creates the builder image-build registry.
+         */
         public HostedManagement(AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback,
                         BiConsumer<SingletonRegistration, SingletonTraitMap> singletonValidationCallback, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector, boolean buildingImageLayer) {
             this.configObjects = new ConcurrentHashMap<>();

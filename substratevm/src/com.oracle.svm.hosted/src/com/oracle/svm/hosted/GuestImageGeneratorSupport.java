@@ -29,6 +29,7 @@ import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.SubstrateTarget;
@@ -147,6 +148,14 @@ final class GuestImageGeneratorSupport {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
         JavaConstant hostProxy = access.createHostProxy(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
+    }
+
+    /** Registers the guest-context annotation extractor. */
+    static void registerAnnotationExtractor() {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(AnnotationExtractor.class);
+        JavaConstant hostProxy = access.createHostProxy(new GuestAnnotationExtractorProxy(), key);
         GuestImageSingletonSupport.add(key, hostProxy);
     }
 

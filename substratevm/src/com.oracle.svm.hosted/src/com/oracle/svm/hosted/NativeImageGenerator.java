@@ -586,6 +586,9 @@ public class NativeImageGenerator {
             ImageSingletons.add(TimerCollection.class, timerCollection);
             ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
             ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.getAnnotationExtractor());
+            if (GuestAccess.get().isFullyIsolated()) {
+                GuestImageGeneratorSupport.registerAnnotationExtractor();
+            }
             ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
             ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
             if (ImageLayerBuildingSupport.firstImageBuild()) {
