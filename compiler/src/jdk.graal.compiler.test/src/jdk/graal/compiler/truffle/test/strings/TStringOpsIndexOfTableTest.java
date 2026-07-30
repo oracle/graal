@@ -27,6 +27,9 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -113,11 +116,13 @@ public class TStringOpsIndexOfTableTest extends TStringOpsTest<ArrayIndexOfNode>
 
     @Test
     public void testIndexOfTable() {
+        Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.Table));
         test(getIndexOfTableIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, table);
     }
 
     @Test
     public void testIndexOfTableForeignEndian() {
+        Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian));
         test(getIndexOfTableForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, table);
     }
 }

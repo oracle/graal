@@ -134,8 +134,8 @@
   test_javabase:: s.base("build,javabasetest"),
   test_jtt_phaseplan_fuzzing:: s.base("build,phaseplan-fuzz-jtt-tests"),
   test_vec16:: s.base(extra_vm_args="-Djdk.graal.DetailedAsserts=true -XX:MaxVectorSize=16"),
-  test_avx0:: s.base(extra_vm_args="-Djdk.graal.ForceAdversarialLayout=true", jvm_config_suffix="-avx0"),
-  test_avx1:: s.base(extra_vm_args="-Djdk.graal.ForceAdversarialLayout=true", jvm_config_suffix="-avx1"),
+  test_avx0:: s.base(extra_vm_args="-Djdk.graal.ForceAdversarialLayout=true -XX:UseAVX=0", jvm_config_suffix="-avx0"),
+  test_avx1:: s.base(extra_vm_args="-Djdk.graal.ForceAdversarialLayout=true -XX:UseAVX=1", jvm_config_suffix="-avx1"),
 
   # Runs truffle tests in a mode similar to HotSpot's -Xcomp option
   # (i.e. compile immediately without background compilation).

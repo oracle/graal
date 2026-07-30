@@ -27,11 +27,13 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
@@ -68,6 +70,7 @@ public class TStringOpsIndexOf4ConsecutiveTablesTest extends TStringOpsTest<Arra
 
     @Test
     public void testIndexOf4ConsecutiveTables() {
+        Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.FindFourConsecutiveTables));
         testWithNative(getIndexOf4ConsecutiveTablesIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, tables);
     }
 

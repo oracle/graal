@@ -27,11 +27,13 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -88,6 +90,7 @@ public class TStringOpsIndexOf3ConsecutiveTablesForeignEndianTest extends TStrin
 
     @Test
     public void testIndexOf3ConsecutiveTablesForeignEndian() {
+        Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTablesForeignEndian));
         constantArgs[4] = strideA;
         testWithNative(getIndexOf3ConsecutiveTablesForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, tables);
     }
