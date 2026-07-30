@@ -32,9 +32,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.code.DataSection.MaterializedItems.ConstantPatch;
@@ -45,7 +47,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
@@ -392,9 +393,9 @@ public final class DataSection implements Iterable<Data> {
             }
         }
 
-        private final Map<DataSectionReference, MaterializedItem> itemsByReference;
+        private final EconomicMap<DataSectionReference, MaterializedItem> itemsByReference;
 
-        private MaterializedItems(Map<DataSectionReference, MaterializedItem> itemsByReference) {
+        private MaterializedItems(EconomicMap<DataSectionReference, MaterializedItem> itemsByReference) {
             this.itemsByReference = itemsByReference;
         }
 
@@ -418,7 +419,7 @@ public final class DataSection implements Iterable<Data> {
         ArrayList<Data> items = new ArrayList<>(dataItems);
         sortDataItems(items);
 
-        Map<DataSectionReference, MaterializedItem> itemsByReference = EconomicHashMap.newIdentityMap();
+        EconomicMap<DataSectionReference, MaterializedItem> itemsByReference = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         int position = 0;
         for (Data data : items) {
             int itemAlignment = Math.max(minDataAlignment, data.alignment);
