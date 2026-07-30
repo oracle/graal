@@ -58,7 +58,13 @@ import jdk.graal.compiler.util.json.JsonWriter;
 public class MissingRegistrationUtils {
 
     public static boolean throwMissingRegistrationErrors() {
-        return ThrowMissingRegistrationErrors.hasBeenSet();
+        /*
+         * Suppressed lookups must not enter a reporting helper in the first place. Constructing a
+         * missing-registration error can itself perform dynamic accesses before report() gets a
+         * chance to discard it.
+         */
+        // See FS-001-native-image-semantics.3.1.
+        return ThrowMissingRegistrationErrors.hasBeenSet() && !missingRegistrationErrorsSuspended.get();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {
@@ -129,10 +135,6 @@ public class MissingRegistrationUtils {
 
     private static final ThreadLocal<Boolean> missingRegistrationErrorsSuspended = ThreadLocal.withInitial(() -> false);
 
-    public static boolean isIgnoringMissingRegistrations() {
-        return missingRegistrationErrorsSuspended.get();
-    }
-
     /**
      * Code executing inside this function will temporarily revert to throwing JDK exceptions like
      * ({@code ClassNotFoundException} when encountering a situation that would normally cause a
@@ -141,12 +143,12 @@ public class MissingRegistrationUtils {
      * the image, and is not a reason to abort the lookup completely.
      */
     public static <T> T runIgnoringMissingRegistrations(Supplier<T> callback) {
-        VMError.guarantee(!missingRegistrationErrorsSuspended.get());
+        boolean previouslySuspended = missingRegistrationErrorsSuspended.get();
         try {
             missingRegistrationErrorsSuspended.set(true);
             return callback.get();
         } finally {
-            missingRegistrationErrorsSuspended.set(false);
+            missingRegistrationErrorsSuspended.set(previouslySuspended);
         }
     }
 
