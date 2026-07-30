@@ -117,6 +117,13 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
 
+        if (headArg.startsWith("--expert-options-detail=")) {
+            args.poll();
+            String optionNames = headArg.substring("--expert-options-detail=".length());
+            nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
+            return true;
+        }
+
         if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
             // warning should be early, before any other output of the feature
             if (nativeImage.bundleSupport == null) {

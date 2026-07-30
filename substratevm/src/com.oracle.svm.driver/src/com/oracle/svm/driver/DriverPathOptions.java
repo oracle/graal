@@ -71,7 +71,7 @@ final class DriverPathOptions {
                 }
             }
         },
-        CONFIGURATIONS_PATH(ValueKind.PATH_LIST, "--configurations-path") {
+        CONFIGURATIONS_PATH(ValueKind.PATH_LIST, "--configurations-path=") {
             @Override
             void consume(NativeImage nativeImage, String optionSpelling, String rawValue) {
                 if (rawValue == null) {

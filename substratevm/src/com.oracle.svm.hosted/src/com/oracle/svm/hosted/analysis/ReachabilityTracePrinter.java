@@ -48,16 +48,37 @@ import jdk.graal.compiler.options.OptionValues;
 public final class ReachabilityTracePrinter {
     public static final String PATH_MESSAGE_PREFIX = "See the generated report for a complete reachability trace: ";
 
+    // @formatter:off
     public static class Options {
-        @Option(help = "Print a trace and abort the build process if any type matching the specified pattern becomes reachable.")//
+        @Option(help = """
+                       Print a trace and abort the build process if any type matching the specified pattern becomes reachable.
+
+                       Matching is performed against the qualified name of a type. It supports exact matches and simple * globs
+                       at the beginning or end. Examples:
+                           java.io.File // Qualified name equals "java.io.File"
+                           java.io.Fi*  // Qualified name starts with "java.io.Fi"
+                           java.io.*    // Qualified name starts with "java.io."
+                           *Exception   // Qualified name ends with "Exception"
+                           *Proxy*      // Qualified name contains "Proxy\"""")
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-        @Option(help = "Print a trace and abort the build process if any method matching the specified pattern becomes reachable.")//
+        @Option(help = """
+                       Print a trace and abort the build process if any method matching the specified pattern becomes reachable.
+
+                       Matching is performed as per the MethodFilter option""")
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnMethodReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-        @Option(help = "Print a trace and abort the build process if any field matching the specified pattern becomes reachable.")//
+        @Option(help = """
+                       Print a trace and abort the build process if any field matching the specified pattern becomes reachable.
+
+                       Matching is performed against the qualified name of a field. It supports exact matches and simple * globs
+                       at the beginning or end. Examples:
+                           java.util.BitSet.serialVersionUID  // Qualified name equals "java.util.BitSet.serialVersionUID"
+                           java.util.BitSet.serialVers*       // Qualified name starts with "java.util.BitSet.serialVers"
+                           *va.util.BitSet.serialVers*        // Qualified name contains "va.util.BitSet.serialVers\"""")
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
+    // @formatter:on
 
     private static String reportElements(String element, String trace, String reportsPath, String baseImageName, List<String> patterns,
                     HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
