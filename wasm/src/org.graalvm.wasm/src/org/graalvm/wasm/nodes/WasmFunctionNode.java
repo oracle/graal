@@ -63,8 +63,8 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import java.io.Serial;
+
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmArguments;
@@ -73,7 +73,6 @@ import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmMath;
@@ -81,8 +80,7 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.vector.Vector128;
-import org.graalvm.wasm.vector.Vector128Ops;
+import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.array.WasmFloat32Array;
 import org.graalvm.wasm.array.WasmFloat64Array;
@@ -105,31 +103,33 @@ import org.graalvm.wasm.parser.validation.ExceptionHandler;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.struct.WasmStructAccess;
 import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.EarlyInline;
 import com.oracle.truffle.api.CompilerDirectives.EarlyEscapeAnalysis;
+import com.oracle.truffle.api.CompilerDirectives.EarlyInline;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterFetchOpcode;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterFetchOpcode;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument;
-
-import java.io.Serial;
 
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
@@ -5467,6 +5467,20 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             case Bytecode.I64_TRUNC_SAT_F64_U:
                 i64_trunc_sat_f64_u(frame, stackPointer);
                 break;
+            case Bytecode.I64_ADD128:
+                i64_add128(frame, stackPointer);
+                stackPointer -= 2;
+                break;
+            case Bytecode.I64_SUB128:
+                i64_sub128(frame, stackPointer);
+                stackPointer -= 2;
+                break;
+            case Bytecode.I64_MUL_WIDE_S:
+                i64_mul_wide_s(frame, stackPointer);
+                break;
+            case Bytecode.I64_MUL_WIDE_U:
+                i64_mul_wide_u(frame, stackPointer);
+                break;
             case Bytecode.MEMORY_INIT:
             case Bytecode.MEMORY64_INIT: {
                 final int dataIndex = rawPeekI32(bytecode, offset);
@@ -7853,6 +7867,48 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         long x = popLong(frame, stackPointer - 1);
         long result = (x << 32) >> 32;
         pushLong(frame, stackPointer - 1, result);
+    }
+
+    private static void i64_add128(VirtualFrame frame, int stackPointer) {
+        long rhsHigh = popLong(frame, stackPointer - 1);
+        long rhsLow = popLong(frame, stackPointer - 2);
+        long lhsHigh = popLong(frame, stackPointer - 3);
+        long lhsLow = popLong(frame, stackPointer - 4);
+        long resultLow = lhsLow + rhsLow;
+        long carry = Long.compareUnsigned(resultLow, lhsLow) < 0 ? 1 : 0;
+        long resultHigh = lhsHigh + rhsHigh + carry;
+        pushLong(frame, stackPointer - 4, resultLow);
+        pushLong(frame, stackPointer - 3, resultHigh);
+    }
+
+    private static void i64_sub128(VirtualFrame frame, int stackPointer) {
+        long rhsHigh = popLong(frame, stackPointer - 1);
+        long rhsLow = popLong(frame, stackPointer - 2);
+        long lhsHigh = popLong(frame, stackPointer - 3);
+        long lhsLow = popLong(frame, stackPointer - 4);
+        long resultLow = lhsLow - rhsLow;
+        long borrow = Long.compareUnsigned(lhsLow, rhsLow) < 0 ? 1 : 0;
+        long resultHigh = lhsHigh - rhsHigh - borrow;
+        pushLong(frame, stackPointer - 4, resultLow);
+        pushLong(frame, stackPointer - 3, resultHigh);
+    }
+
+    private static void i64_mul_wide_s(VirtualFrame frame, int stackPointer) {
+        long rhs = popLong(frame, stackPointer - 1);
+        long lhs = popLong(frame, stackPointer - 2);
+        long resultLow = lhs * rhs;
+        long resultHigh = ExactMath.multiplyHigh(lhs, rhs);
+        pushLong(frame, stackPointer - 2, resultLow);
+        pushLong(frame, stackPointer - 1, resultHigh);
+    }
+
+    private static void i64_mul_wide_u(VirtualFrame frame, int stackPointer) {
+        long rhs = popLong(frame, stackPointer - 1);
+        long lhs = popLong(frame, stackPointer - 2);
+        long resultLow = lhs * rhs;
+        long resultHigh = ExactMath.multiplyHighUnsigned(lhs, rhs);
+        pushLong(frame, stackPointer - 2, resultLow);
+        pushLong(frame, stackPointer - 1, resultHigh);
     }
 
     @TruffleBoundary

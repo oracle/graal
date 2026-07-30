@@ -183,6 +183,9 @@ Users can override the defaults to experiment with upcoming features or opt out 
 * `--wasm.MultiMemory`: Enable support for the [multiple memories feature](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md), allowing modules to have multiple memories.
   Defaults to `true`.
 
+* `--wasm.WideArithmetic`: Enable support for the [wide arithmetic feature](https://github.com/WebAssembly/wide-arithmetic), adding instructions for 128-bit addition and subtraction and widening 64-bit multiplication.
+  Defaults to `false`.
+
 * `--wasm.MultiValue`: Enable support for the [multi-value feature](https://github.com/WebAssembly/spec/blob/master/proposals/multi-value/Overview.md), letting functions return multiple values.
   Defaults to `true`.
 

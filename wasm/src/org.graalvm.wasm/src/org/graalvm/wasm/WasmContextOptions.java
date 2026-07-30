@@ -56,6 +56,7 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean memory64;
     @CompilationFinal private boolean extendedConstExpressions;
     @CompilationFinal private boolean multiMemory;
+    @CompilationFinal private boolean wideArithmetic;
     @CompilationFinal private boolean unsafeMemory;
     @CompilationFinal private boolean threads;
     @CompilationFinal private boolean simd;
@@ -91,6 +92,7 @@ public final class WasmContextOptions {
         this.memory64 = readBooleanOption(WasmOptions.Memory64);
         this.extendedConstExpressions = readBooleanOption(WasmOptions.ExtendedConstExpressions);
         this.multiMemory = readBooleanOption(WasmOptions.MultiMemory);
+        this.wideArithmetic = readBooleanOption(WasmOptions.WideArithmetic);
         this.threads = readBooleanOption(WasmOptions.Threads);
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.simd = readBooleanOption(WasmOptions.SIMD);
@@ -152,6 +154,10 @@ public final class WasmContextOptions {
 
     public boolean supportMultiMemory() {
         return multiMemory;
+    }
+
+    public boolean supportWideArithmetic() {
+        return wideArithmetic;
     }
 
     public boolean supportThreads() {
@@ -216,6 +222,7 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.memory64 ? 1 : 0);
         hash = 53 * hash + (this.extendedConstExpressions ? 1 : 0);
         hash = 53 * hash + (this.multiMemory ? 1 : 0);
+        hash = 53 * hash + (this.wideArithmetic ? 1 : 0);
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.simd ? 1 : 0);
         hash = 53 * hash + (this.relaxedSimd ? 1 : 0);
@@ -258,6 +265,9 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.multiMemory != other.multiMemory) {
+            return false;
+        }
+        if (this.wideArithmetic != other.wideArithmetic) {
             return false;
         }
         if (this.threads != other.threads) {

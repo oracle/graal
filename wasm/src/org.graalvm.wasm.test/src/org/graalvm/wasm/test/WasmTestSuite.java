@@ -47,6 +47,7 @@ import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.ReferenceTypeSuite;
+import org.graalvm.wasm.test.suites.arithmetic.WideArithmeticSuite;
 import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
 import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
 import org.graalvm.wasm.test.suites.bytecode.WasmLegacyCatchOSRSuite;
@@ -86,6 +87,7 @@ import org.junit.runners.Suite;
                 Float32Suite.class,
                 Float64Suite.class,
                 ReferenceTypeSuite.class,
+                WideArithmeticSuite.class,
                 SimpleBlockSuite.class,
                 BlockWithLocalsSuite.class,
                 BranchBlockSuite.class,

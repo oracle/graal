@@ -145,6 +145,10 @@ public final class StackEffects {
         // unused, because stack effect is dynamic
         miscOpStackEffects[Bytecode.BR_ON_NON_NULL_I32] = UNREACHABLE;
         miscOpStackEffects[Bytecode.REF_EQ] = POP_1;
+        miscOpStackEffects[Bytecode.I64_ADD128] = POP_2;
+        miscOpStackEffects[Bytecode.I64_SUB128] = POP_2;
+        miscOpStackEffects[Bytecode.I64_MUL_WIDE_S] = NO_EFFECT;
+        miscOpStackEffects[Bytecode.I64_MUL_WIDE_U] = NO_EFFECT;
 
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD] = NO_EFFECT;
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD8X8_S] = NO_EFFECT;

@@ -325,6 +325,11 @@ public final class Instructions {
     public static final int TABLE_SIZE = 0x10;
     public static final int TABLE_FILL = 0x11;
 
+    public static final int I64_ADD128 = 0x13;
+    public static final int I64_SUB128 = 0x14;
+    public static final int I64_MUL_WIDE_S = 0x15;
+    public static final int I64_MUL_WIDE_U = 0x16;
+
     public static final int ATOMIC = 0xFE;
 
     public static final int ATOMIC_NOTIFY = 0x00;

@@ -1849,6 +1849,28 @@ public class BinaryParser extends BinaryStreamParser {
                         state.addInstruction(Bytecode.TABLE_FILL, tableIndex);
                         break;
                     }
+                    case Instructions.I64_ADD128:
+                    case Instructions.I64_SUB128:
+                        checkWideArithmeticSupport(miscOpcode);
+                        state.popChecked(I64_TYPE);
+                        state.popChecked(I64_TYPE);
+                        state.popChecked(I64_TYPE);
+                        state.popChecked(I64_TYPE);
+                        state.push(I64_TYPE);
+                        state.push(I64_TYPE);
+                        state.addMiscFlag();
+                        state.addInstruction(miscOpcode == Instructions.I64_ADD128 ? Bytecode.I64_ADD128 : Bytecode.I64_SUB128);
+                        break;
+                    case Instructions.I64_MUL_WIDE_S:
+                    case Instructions.I64_MUL_WIDE_U:
+                        checkWideArithmeticSupport(miscOpcode);
+                        state.popChecked(I64_TYPE);
+                        state.popChecked(I64_TYPE);
+                        state.push(I64_TYPE);
+                        state.push(I64_TYPE);
+                        state.addMiscFlag();
+                        state.addInstruction(miscOpcode == Instructions.I64_MUL_WIDE_S ? Bytecode.I64_MUL_WIDE_S : Bytecode.I64_MUL_WIDE_U);
+                        break;
                     default:
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFC 0x%02x", miscOpcode);
                 }
@@ -2884,6 +2906,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkBulkMemoryAndRefTypesSupport(int opcode) {
         checkContextOption(bulkMemoryAndRefTypes, "Bulk memory operations and reference types are not enabled (opcode: 0x%02x)", opcode);
+    }
+
+    private void checkWideArithmeticSupport(int opcode) {
+        checkContextOption(contextOptions.supportWideArithmetic(), "Wide arithmetic is not enabled (opcode: 0xFC 0x%02x)", opcode);
     }
 
     private void checkThreadsSupport(int opcode) {
