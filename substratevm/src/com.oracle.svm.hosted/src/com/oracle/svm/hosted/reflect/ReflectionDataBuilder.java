@@ -307,6 +307,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
 
                 if (accessibility == NONE) {
+                    // called from heap scanning
                     typeData.inHeap = true;
                 }
                 if (accessibility.includes(QUERIED)) {
@@ -1328,8 +1329,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return types.get(analysisType).dynamicAccess;
     }
 
+    @Override
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
-        return types.get(metaAccess.lookupJavaType(clazz)).unsafeAllocatedDynamicAccess;
+        TypeData typeData = types.get(metaAccess.lookupJavaType(clazz));
+        VMError.guarantee(typeData != null, "We only query metadata for types that we saw during analysis");
+        return typeData.unsafeAllocatedDynamicAccess;
     }
 
     @Override

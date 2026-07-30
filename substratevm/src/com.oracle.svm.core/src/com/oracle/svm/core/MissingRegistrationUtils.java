@@ -46,6 +46,7 @@ import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.StringUtil;
@@ -56,6 +57,8 @@ import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MissingRegistrationUtils {
+    private static final String MATCHING_METADATA_HEADER = "The matching metadata element in the '";
+    private static final String METADATA_HEADER = "The metadata element in the '";
 
     public static boolean throwMissingRegistrationErrors() {
         return ThrowMissingRegistrationErrors.hasBeenSet();
@@ -173,13 +176,50 @@ public class MissingRegistrationUtils {
     protected static String registrationMessage(String failedAction, String elementDescriptor, String json, String accessManner, String section, String helpLink) {
         /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
         String optionalSpace = accessManner.isEmpty() ? "" : " ";
-        return "Cannot" + optionalSpace + accessManner + " " + failedAction + " " + elementDescriptor + ". To allow this operation, add the following to the '" + section +
-                        "' section of 'reachability-metadata.json' and rebuild the native image:" + System.lineSeparator() +
+        return "Cannot" + optionalSpace + accessManner + " " + failedAction + " " + elementDescriptor + "." + System.lineSeparator() +
+                        System.lineSeparator() +
+                        "The matching metadata element in the '" + section + "' section of 'reachability-metadata.json' is:" + System.lineSeparator() +
                         System.lineSeparator() +
                         json + System.lineSeparator() +
                         System.lineSeparator() +
                         "The 'reachability-metadata.json' file should be located in 'META-INF/native-image/<group-id>/<artifact-id>/' of your project. For further help, see https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" +
                         helpLink;
+    }
+
+    protected static String appendUnsatisfiedConditions(String message, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        if (dynamicAccessMetadata == null) {
+            return message;
+        }
+        String conditions = dynamicAccessMetadata.formatUnsatisfiedConditionsAsJson();
+        if (conditions.isEmpty()) {
+            return message;
+        }
+        String lineSeparator = System.lineSeparator();
+        String paragraphSeparator = lineSeparator + lineSeparator;
+        int splitIndex = message.indexOf(paragraphSeparator);
+        if (splitIndex == -1) {
+            return replaceFirst(message + paragraphSeparator +
+                            "Reachability metadata for this access was found, but it is inactive because its runtime conditions were not satisfied." + lineSeparator +
+                            "To fix this, either change/remove the metadata condition, or make sure the condition is reached before this access." + lineSeparator +
+                            "Unsatisfied runtime conditions:" + paragraphSeparator +
+                            conditions,
+                            MATCHING_METADATA_HEADER, METADATA_HEADER);
+        }
+        return replaceFirst(message.substring(0, splitIndex) + paragraphSeparator +
+                        "Reachability metadata for this access was found, but it is inactive because its runtime conditions were not satisfied." + lineSeparator +
+                        "To fix this, either change/remove the metadata condition, or make sure the condition is reached before this access." + lineSeparator +
+                        "Unsatisfied runtime conditions:" + paragraphSeparator +
+                        conditions + paragraphSeparator +
+                        message.substring(splitIndex + paragraphSeparator.length()),
+                        MATCHING_METADATA_HEADER, METADATA_HEADER);
+    }
+
+    private static String replaceFirst(String text, String oldValue, String newValue) {
+        int index = text.indexOf(oldValue);
+        if (index == -1) {
+            return text;
+        }
+        return text.substring(0, index) + newValue + text.substring(index + oldValue.length());
     }
 
     protected static ConfigurationType namedConfigurationType(String typeName) {

@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -155,6 +156,18 @@ public final class ConfigurationFiles {
 
         @Option(help = "Testing flag: the 'typeReached' condition is always satisfied however it prints the stack trace where it would not be satisfied.")//
         public static final HostedOptionKey<Boolean> TrackUnsatisfiedTypeReachedConditions = new HostedOptionKey<>(false);
+
+        @Option(help = "Testing flag: print the stack trace when the configured 'typeReached' condition becomes satisfied. " +
+                        "Value must be a fully qualified class name or '*' to match any type.")//
+        public static final HostedOptionKey<String> TrackConditionSatisfied = new HostedOptionKey<>(null);
+
+        @Option(help = "Testing flag: print concise diagnostics for reflection class-query checks, including successes and failures.")//
+        public static final HostedOptionKey<Boolean> TrackReflectionClassQueryChecks = new HostedOptionKey<>(false);
+
+        @Fold
+        public static boolean trackReflectionClassQueryChecks() {
+            return TrackReflectionClassQueryChecks.getValue();
+        }
 
         @Option(help = "Testing flag: print 'typeReached' conditions that are used on interfaces without default methods at build time.")//
         public static final HostedOptionKey<Boolean> TrackTypeReachedOnInterfaces = new HostedOptionKey<>(false);

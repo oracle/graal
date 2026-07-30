@@ -37,6 +37,7 @@ import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.loader.BuiltinClassLoader;
@@ -44,7 +45,7 @@ import jdk.internal.loader.Loader;
 
 public final class MissingResourceRegistrationUtils extends MissingRegistrationUtils {
 
-    public static void reportResourceAccess(Module module, String resourcePath) {
+    public static void reportResourceAccess(Module module, String resourcePath, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         String moduleMessage = module == null ? "" : " from module " + quote(module.getName());
         String moduleOrNull = module == null ? null : module.getName();
         ConditionalElement<ResourceConfiguration.ResourceEntry> entry = new ConditionalElement<>(
@@ -57,12 +58,12 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
             throw VMError.shouldNotReachHere("In memory JSON printing should not fail");
         }
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
-                        resourceError("resource" + moduleMessage + " at path " + quote(resourcePath), json.toString(), "resources"),
+                        resourceError("resource" + moduleMessage + " at path " + quote(resourcePath), json.toString(), "resources", dynamicAccessMetadata),
                         resourcePath);
         report(exception);
     }
 
-    public static void reportResourceBundleAccess(Module module, String baseName) {
+    public static void reportResourceBundleAccess(Module module, String baseName, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         Objects.requireNonNull(module);
         var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedAccessCondition.unconditional(), module.getName(), baseName);
         StringWriter json = new StringWriter();
@@ -73,13 +74,13 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
         }
         String moduleMessage = module.isNamed() ? " from module " + quote(module.getName()) : "";
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
-                        resourceError("resource bundle" + moduleMessage + " with name " + quote(baseName), json.toString(), "resource-bundles"),
+                        resourceError("resource bundle" + moduleMessage + " with name " + quote(baseName), json.toString(), "resource-bundles", dynamicAccessMetadata),
                         baseName);
         report(exception);
     }
 
-    private static String resourceError(String resourceDescriptor, String resourceJSON, String anchor) {
-        return registrationMessage("access", resourceDescriptor, resourceJSON, "", "resources", anchor);
+    private static String resourceError(String resourceDescriptor, String resourceJSON, String anchor, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        return appendUnsatisfiedConditions(registrationMessage("access", resourceDescriptor, resourceJSON, "", "resources", anchor), dynamicAccessMetadata);
     }
 
     private static void report(MissingResourceRegistrationError exception) {

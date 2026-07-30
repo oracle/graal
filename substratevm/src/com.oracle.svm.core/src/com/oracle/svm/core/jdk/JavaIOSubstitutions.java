@@ -42,6 +42,7 @@ import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransforme
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.serialize.MissingSerializationRegistrationUtils;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -68,8 +69,9 @@ final class Target_java_io_ObjectStreamClass {
             if (MetadataTracer.enabled()) {
                 MetadataTracer.singleton().traceSerializationType(cl);
             }
-            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
-                MissingSerializationRegistrationUtils.reportSerialization(cl);
+            DynamicHub dynamicHub = DynamicHub.fromClass(cl);
+            if (!dynamicHub.isRegisteredForSerialization()) {
+                MissingSerializationRegistrationUtils.reportSerialization(cl, SerializationSupport.getDynamicAccessMetadataForSerialization(dynamicHub));
             }
         }
 

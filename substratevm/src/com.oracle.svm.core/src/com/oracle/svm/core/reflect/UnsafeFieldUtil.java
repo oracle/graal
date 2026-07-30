@@ -41,9 +41,10 @@ public class UnsafeFieldUtil {
             traceFieldAccess(SubstrateUtil.cast(field, Field.class));
         }
         int offset = field.root == null ? field.offset : field.root.offset;
-        boolean conditionsSatisfied = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata.satisfied();
+        var dynamicAccessMetadata = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
+        boolean conditionsSatisfied = dynamicAccessMetadata.satisfied();
         if (offset <= 0 || !conditionsSatisfied) {
-            throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
+            throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class), dynamicAccessMetadata);
         }
         return offset;
     }

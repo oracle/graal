@@ -26,7 +26,10 @@
 package com.oracle.svm.core.configure;
 
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackConditionSatisfied;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +43,9 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
  * The dynamic access metadata for some value that can be accessed at run time. Contains a set of
@@ -203,6 +209,53 @@ public class RuntimeDynamicAccessMetadata {
         }
 
         return result;
+    }
+
+    private static void maybeTrackConditionSatisfied(Object condition) {
+        maybeTrackConditionSatisfied(condition, false);
+    }
+
+    /**
+     * Logs satisfied conditions matching {@link #trackConditionSatisfied()}. The option is read and
+     * checked before inspecting the condition so the disabled case does not pay for type formatting or
+     * array traversal.
+     */
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime) {
+        String trackedType = trackConditionSatisfied();
+        if (trackedType == null || condition == null) {
+            return;
+        }
+        maybeTrackConditionSatisfied(condition, ignoredAtBuildTime, trackedType);
+    }
+
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime, String trackedType) {
+        if (condition == null) {
+            return;
+        } else if (condition instanceof Object[] conditionsArray) {
+            for (Object singleCondition : conditionsArray) {
+                maybeTrackConditionSatisfied(singleCondition, ignoredAtBuildTime, trackedType);
+            }
+            return;
+        }
+
+        String typeName = null;
+        if (condition instanceof Class<?> reachedTypeCondition) {
+            typeName = reachedTypeCondition.getTypeName();
+        } else if (condition instanceof TypeReachabilityCondition reachedTypeCondition) {
+            typeName = reachedTypeCondition.getType().getTypeName();
+        }
+        if (trackedType != null && typeName != null && ("*".equals(trackedType) || typeName.equals(trackedType)) && !"java.lang.Object".equals(typeName)) {
+            if (ignoredAtBuildTime) {
+                LogUtils.info("Tracked runtime condition reached at build time and ignored: type = " + typeName);
+            } else {
+                LogUtils.info("Tracked runtime condition reached: type = " + typeName);
+            }
+        }
+    }
+
+    @Fold
+    public static String trackConditionSatisfied() {
+        return TrackConditionSatisfied.getValue();
     }
 
     /*

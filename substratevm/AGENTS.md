@@ -29,6 +29,7 @@ Do not run `mx` commands concurrently; parallel runs can produce misleading fail
 
 ## Change Hygiene
 
+- Do not use lambdas in runtime code.
 - If you touch documented behavior, update `docs/`.
 - When adding or changing substitutions, include durable comments that explain when and why
   the substitution intentionally deviates from the original JDK implementation.
