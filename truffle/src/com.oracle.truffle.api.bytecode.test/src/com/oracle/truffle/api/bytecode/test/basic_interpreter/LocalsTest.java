@@ -70,6 +70,7 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -77,6 +78,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
@@ -778,6 +780,84 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testExceptionOutwardClearedLocal() {
+        assumeTrue(run.hasBlockScoping());
+        String clearedValue1 = "cleared block local 1";
+        String clearedValue2 = "cleared block local 2";
+        String preservedValue1 = "preserved block local 1";
+        String preservedValue2 = "preserved block local 2";
+        // @formatter:off
+        // {
+        //   p1 = preservedValue1;
+        //   p2 = preservedValue2;
+        //   try {
+        //     {
+        //       x = clearedValue1;
+        //       y = clearedValue2;
+        //       throw 42;
+        //     }
+        //   } catch (ex) {
+        //     return materializeFrame();
+        //   }
+        // }
+        // @formatter:on
+        BasicInterpreter root = parseNode("exceptionOutwardClearedLocal", b -> {
+            b.beginRoot();
+            b.beginBlock();
+            BytecodeLocal preserved1 = b.createLocal();
+            BytecodeLocal preserved2 = b.createLocal();
+
+            b.beginStoreLocal(preserved1);
+            b.emitLoadConstant(preservedValue1);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(preserved2);
+            b.emitLoadConstant(preservedValue2);
+            b.endStoreLocal();
+
+            b.beginTryCatch();
+            b.beginBlock();
+            BytecodeLocal cleared1 = b.createLocal();
+            BytecodeLocal cleared2 = b.createLocal();
+
+            b.beginStoreLocal(cleared1);
+            b.emitLoadConstant(clearedValue1);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(cleared2);
+            b.emitLoadConstant(clearedValue2);
+            b.endStoreLocal();
+
+            b.beginThrowOperation();
+            b.emitLoadConstant(42L);
+            b.endThrowOperation();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitMaterializeFrame();
+            b.endReturn();
+            b.endTryCatch();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        MaterializedFrame frame = (MaterializedFrame) root.getCallTarget().call();
+        boolean foundPreservedValue1 = false;
+        boolean foundPreservedValue2 = false;
+        for (int i = 0; i < frame.getFrameDescriptor().getNumberOfSlots(); i++) {
+            if (frame.getTag(i) != FrameSlotKind.Illegal.tag) {
+                Object value = frame.getValue(i);
+                assertTrue(!clearedValue1.equals(value));
+                assertTrue(!clearedValue2.equals(value));
+                foundPreservedValue1 |= preservedValue1.equals(value);
+                foundPreservedValue2 |= preservedValue2.equals(value);
+            }
+        }
+        assertTrue(foundPreservedValue1);
+        assertTrue(foundPreservedValue2);
+    }
+
+    @Test
     public void testGR73539() {
         assumeTrue(run.hasBoxingElimination());
         // Regression test for a bug where the materialized store slow-path would try to load the
@@ -1030,6 +1110,22 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testRejectsModifiedFrameDescriptorDefaultValue() {
+        assertThrows(IllegalStateException.class, () -> DefaultLocalValueRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+        assertThrows(IllegalStateException.class, () -> IllegalDefaultValueRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+        assertThrows(IllegalStateException.class, () -> CustomIllegalLocalExceptionRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.endRoot();
+        }));
+    }
+
+    @Test
     public void testInvalidLocalAccesses() {
         assertParseFailure(siblingRootsTest(LocalsTest::loadLocal));
         assertParseFailure(siblingRootsTest(LocalsTest::storeLocal));
@@ -1144,6 +1240,65 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         }
     }
 
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "DEFAULT_LOCAL_VALUE")
+abstract class DefaultLocalValueRootNode extends RootNode implements BytecodeRootNode {
+
+    static final String DEFAULT_LOCAL_VALUE = "default";
+
+    protected DefaultLocalValueRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class IllegalDefaultValueRootNode extends RootNode implements BytecodeRootNode {
+
+    protected IllegalDefaultValueRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, illegalLocalException = CustomIllegalLocalException.class)
+abstract class CustomIllegalLocalExceptionRootNode extends RootNode implements BytecodeRootNode {
+
+    protected CustomIllegalLocalExceptionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
+        super(language, builder.defaultValue("modified").build());
+    }
+
+    @Operation
+    public static final class Nop {
+        @Specialization
+        public static void doNop() {
+        }
+    }
+}
+
+@SuppressWarnings("serial")
+final class CustomIllegalLocalException extends AbstractTruffleException {
+
+    private CustomIllegalLocalException(Node location) {
+        super(null, location);
+    }
+
+    public static CustomIllegalLocalException create(Node location) {
+        return new CustomIllegalLocalException(location);
+    }
 }
 
 @ExpectWarning("Custom operation with name ClearLocal conflicts with a built-in operation with the same name. The built-in operation will not be generated.%")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1062,13 +1062,8 @@ public class DeadCodeTest extends AbstractInstructionTest {
     public abstract static class DeadCodeTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected DeadCodeTestRootNode(BytecodeDSLTestLanguage language,
-                        FrameDescriptor.Builder frameDescriptor) {
-            super(language, customize(frameDescriptor).build());
-        }
-
-        private static FrameDescriptor.Builder customize(FrameDescriptor.Builder b) {
-            b.defaultValue("Nil");
-            return b;
+                        FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
         }
 
         @Operation
