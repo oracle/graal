@@ -875,8 +875,6 @@ class NativeImageVM(StageAwareGraalVm):
         self.graalos = False
         self.graalhost_graalos = False
         self.layered = False
-        # Kept for compatibility with downstream benchmark suites. String inlining is no longer supported.
-        self.use_string_inlining = False
         self.static = False
         self.mostly_static = False
         self.is_llvm = False
