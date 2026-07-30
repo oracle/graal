@@ -402,6 +402,7 @@ public abstract class AbstractBinarySuite {
         private final BinaryGlobals binaryGlobals = new BinaryGlobals();
         private final BinaryTags binaryTags = new BinaryTags();
 
+        private final BinaryCustomSections binaryCustomSectionsBeforeCode = new BinaryCustomSections();
         private final BinaryCustomSections binaryCustomSections = new BinaryCustomSections();
 
         public BinaryBuilder addType(int[] params, int[] results) {
@@ -449,6 +450,11 @@ public abstract class AbstractBinarySuite {
             return this;
         }
 
+        public BinaryBuilder addCustomSectionBeforeCode(String name, byte[] section) {
+            binaryCustomSectionsBeforeCode.add(name, section);
+            return this;
+        }
+
         public BinaryBuilder addCustomSection(String name, byte[] section) {
             binaryCustomSections.add(name, section);
             return this;
@@ -473,12 +479,13 @@ public abstract class AbstractBinarySuite {
             final byte[] exportSection = binaryExports.generateExportSection();
             final byte[] elementSection = binaryElements.generateElementSection();
             final byte[] dataCountSection = binaryDatas.generateDataCountSection();
+            final byte[] customSectionsBeforeCode = binaryCustomSectionsBeforeCode.generateCustomSections();
             final byte[] codeSection = binaryFunctions.generateCodeSection();
             final byte[] dataSection = binaryDatas.generateDataSection();
             final byte[] customSections = binaryCustomSections.generateCustomSections();
             final byte[] tagSection = binaryTags.generateTagSection();
             final int totalLength = preamble.length + typeSection.length + functionSection.length + tableSection.length + memorySection.length + globalSection.length + exportSection.length +
-                            elementSection.length + dataCountSection.length + codeSection.length + dataSection.length + customSections.length + tagSection.length;
+                            elementSection.length + dataCountSection.length + customSectionsBeforeCode.length + codeSection.length + dataSection.length + customSections.length + tagSection.length;
             final byte[] binary = new byte[totalLength];
             int length = 0;
             System.arraycopy(preamble, 0, binary, length, preamble.length);
@@ -501,6 +508,8 @@ public abstract class AbstractBinarySuite {
             length += elementSection.length;
             System.arraycopy(dataCountSection, 0, binary, length, dataCountSection.length);
             length += dataCountSection.length;
+            System.arraycopy(customSectionsBeforeCode, 0, binary, length, customSectionsBeforeCode.length);
+            length += customSectionsBeforeCode.length;
             System.arraycopy(codeSection, 0, binary, length, codeSection.length);
             length += codeSection.length;
             System.arraycopy(dataSection, 0, binary, length, dataSection.length);

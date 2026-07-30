@@ -4,6 +4,7 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 
 ## Version 25.3.4
 
+* Implemented support for the [branch hinting](https://github.com/WebAssembly/branch-hinting) custom section, allowing GraalWasm to use `if` and `br_if` likelihood hints for optimized code generation.
 * Implemented the `table64` part of the [Memory64](https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md) proposal. This feature can be enabled with the option `--wasm.Memory64`.
 * Implemented the [Wide Arithmetic](https://github.com/WebAssembly/wide-arithmetic) proposal, adding `i64.add128`, `i64.sub128`, `i64.mul_wide_s`, and `i64.mul_wide_u`. This feature is disabled by default and can be enabled with the experimental option `--wasm.WideArithmetic=true`.
 

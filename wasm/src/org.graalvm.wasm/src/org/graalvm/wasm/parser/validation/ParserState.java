@@ -55,6 +55,7 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeFixup;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen.BranchHint;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen.BranchOp;
 import org.graalvm.wasm.vector.Vector128;
 
@@ -325,9 +326,10 @@ public class ParserState {
      *
      * @param paramTypes The param types of the if and else branch that was entered.
      * @param resultTypes The result type of the if and else branch that was entered.
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      */
-    public void enterIf(int[] paramTypes, int[] resultTypes) {
-        final int fixupLocation = bytecode.addIfLocation();
+    public void enterIf(int[] paramTypes, int[] resultTypes, BranchHint branchHint) {
+        final int fixupLocation = bytecode.addIfLocation(branchHint);
         ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), fixupLocation);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -503,14 +505,15 @@ public class ParserState {
      * data array.
      *
      * @param branchLabel The target label.
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      */
-    public void addConditionalBranch(int branchLabel) {
+    public void addConditionalBranch(int branchLabel, BranchHint branchHint) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_IF));
+        frame.addLabelFixup(createBranchFixup(BranchOp.BR_IF, branchHint));
     }
 
     /**
@@ -608,7 +611,11 @@ public class ParserState {
     }
 
     public BytecodeFixup createBranchFixup(BranchOp branchOp) {
-        final int location = bytecode.addBranchLocation(branchOp);
+        return createBranchFixup(branchOp, BranchHint.NONE);
+    }
+
+    public BytecodeFixup createBranchFixup(BranchOp branchOp, BranchHint branchHint) {
+        final int location = bytecode.addBranchLocation(branchOp, branchHint);
         return targetOffset -> bytecode.patchLocation(location, targetOffset);
     }
 
