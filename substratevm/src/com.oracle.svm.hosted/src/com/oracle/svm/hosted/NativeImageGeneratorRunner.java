@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotatedObjectAccess;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
 
@@ -380,6 +380,7 @@ public class NativeImageGeneratorRunner {
         HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments, builderOptionFilter);
         VMAccess vmAccess = getVmAccess(vmAccessBuilder, classpath, modulepath, parser);
         GuestAccess.plantConfiguration(vmAccess);
+        nativeImageClassLoaderSupport.setAnnotationExtractor(AnnotationUtil.initializeBackends());
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
@@ -608,7 +609,7 @@ public class NativeImageGeneratorRunner {
                         cEntryPointMethod = getMainEntryMethod(classLoader);
                     }
 
-                    verifyMainEntryPoint(cEntryPointMethod, classLoader.classLoaderSupport.annotationExtractor);
+                    verifyMainEntryPoint(cEntryPointMethod);
                     mainEntryPoint = createMainEntryPoint(imageKind, cEntryPointMethod);
                 }
 
@@ -664,8 +665,8 @@ public class NativeImageGeneratorRunner {
         return ExitStatus.OK.getValue();
     }
 
-    protected void verifyMainEntryPoint(ResolvedJavaMethod mainEntryPoint, AnnotatedObjectAccess annotationAccess) {
-        AnnotationValue cEntryPoint = annotationAccess.getAnnotationValue(mainEntryPoint, CEntryPoint.class);
+    protected void verifyMainEntryPoint(ResolvedJavaMethod mainEntryPoint) {
+        AnnotationValue cEntryPoint = AnnotationUtil.getAnnotationValue(mainEntryPoint, CEntryPoint.class);
         if (cEntryPoint == null) {
             throw UserError.abort("Entry point '%s' must have the '@%s' annotation", mainEntryPoint.format("%R %H.%n(%P)"), CEntryPoint.class.getSimpleName());
         }

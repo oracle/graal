@@ -84,14 +84,6 @@ public final class AnnotationUtil {
     private static Boolean instanceIsSingleton;
 
     /**
-     * The same-context service selected before {@link GuestAccess} is planted. Early bootstrap
-     * consumers use the returned {@link AnnotationExtractor} until
-     * {@link org.graalvm.nativeimage.AnnotationAccess} can retrieve it from image singletons.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private static AnnotationExtractor sameContextExtractor;
-
-    /**
      * The hosted image builder creates the {@link AnnotationExtractor} before publishing it
      * globally. Registering it here avoids transient fallback to {@link Lazy} in that startup
      * window.
@@ -100,39 +92,30 @@ public final class AnnotationUtil {
     private static AnnotatedObjectAccess builderToGuestBackend;
 
     /**
-     * Selects and stores the same-context annotation service before {@link GuestAccess} is planted.
-     * The caller must provide the isolation mode obtained from the selected VMAccess builder;
-     * looking it up through {@link GuestAccess} at this stage would plant the default
-     * configuration.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static AnnotationExtractor initializeSameContextBackend(boolean fullyIsolated) {
-        GraalError.guarantee(sameContextExtractor == null, "Same-context annotation backend is already initialized");
-        sameContextExtractor = fullyIsolated ? new HostAnnotationExtractor() : new SubstrateAnnotationExtractor();
-        return sameContextExtractor;
-    }
-
-    /**
-     * Selects the builder-to-guest backend after {@link GuestAccess} has been planted.
+     * Initializes the same-context and builder-to-guest annotation backends after
+     * {@link GuestAccess} has been planted.
      *
-     * Non-isolated mode reuses the exact legacy instance selected by
-     * {@link #initializeSameContextBackend(boolean)}. Fully isolated mode installs a guest metadata
-     * backend independently of its builder-context extractor.
+     * Non-isolated mode uses one legacy extractor for both directions. Fully isolated mode uses a
+     * reflection-based extractor for builder-owned metadata and a JVMCI-based backend for guest
+     * metadata.
+     *
+     * @return the same-context extractor to publish through
+     *         {@link org.graalvm.nativeimage.AnnotationAccess}
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void initializeBuilderToGuestBackend() {
-        GraalError.guarantee(sameContextExtractor != null, "Same-context annotation backend is not initialized");
+    public static AnnotationExtractor initializeBackends() {
+        AnnotationExtractor sameContextExtractor;
         AnnotatedObjectAccess backend;
         if (GuestAccess.get().isFullyIsolated()) {
-            GraalError.guarantee(sameContextExtractor instanceof HostAnnotationExtractor,
-                            "Fully isolated builds require the host annotation extractor");
+            sameContextExtractor = new HostAnnotationExtractor();
             backend = new GuestAnnotationBackend();
         } else {
-            GraalError.guarantee(sameContextExtractor instanceof SubstrateAnnotationExtractor,
-                            "Non-isolated builds require the legacy annotation extractor");
-            backend = (SubstrateAnnotationExtractor) sameContextExtractor;
+            SubstrateAnnotationExtractor legacyExtractor = new SubstrateAnnotationExtractor();
+            sameContextExtractor = legacyExtractor;
+            backend = legacyExtractor;
         }
         installBuilderToGuestBackend(backend);
+        return sameContextExtractor;
     }
 
     /*

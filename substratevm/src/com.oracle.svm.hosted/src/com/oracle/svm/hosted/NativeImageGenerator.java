@@ -593,7 +593,7 @@ public class NativeImageGenerator {
             ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
             ImageSingletons.add(TimerCollection.class, timerCollection);
             ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
-            ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
+            ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.getAnnotationExtractor());
             ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
             ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
             if (ImageLayerBuildingSupport.firstImageBuild()) {
@@ -1348,7 +1348,7 @@ public class NativeImageGenerator {
         var registrationCallback = imageLayerSupport.createSingletonRegistrationCallback();
         var validationCallback = imageLayerSupport.createSingletonValidationCallback();
         var singletonTraitInjector = imageLayerSupport.getSingletonTraitInjector();
-        HostedManagement hostedSingletonManagement = new HostedManagement(loader.classLoaderSupport.annotationExtractor,
+        HostedManagement hostedSingletonManagement = new HostedManagement(loader.classLoaderSupport.getAnnotationExtractor(),
                         registrationCallback, validationCallback, singletonTraitInjector, imageLayerSupport.buildingImageLayer);
         /* Install a singleton registry in the builder context. */
         HostedManagement.install(hostedSingletonManagement);
