@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -325,6 +326,13 @@ public class NativeImageGeneratorRunner {
                         .forEach(ref -> builder.addModule(ref.descriptor().name()));
 
         if (builder.isFullyIsolated()) {
+            /*
+             * The isolated guest does not inherit system properties from the builder VM. Mark code
+             * in the guest as image build-time code so that the ImageInfo API reports the correct
+             * execution context.
+             */
+            builder.systemProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
+
             // Propagate --add-exports into the Espresso guest.
             // GR-73131 will make this non-Espresso specific.
             EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
