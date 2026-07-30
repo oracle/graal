@@ -97,7 +97,6 @@ import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.config.SignatureUtil;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -142,6 +141,7 @@ import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -537,8 +537,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, simpleBinaryName, declaringClass, signature, info);
 
         companion.dynamicAccess = RuntimeDynamicAccessMetadata.emptySet(false);
-        /* Always allow unsafe allocation for classes that were loaded at run-time. */
-        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.emptySet(false);
         companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(componentHub != null, hasClassInitializer);
         byte additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true) | makeFlag(ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT, true));
         writeByte(companion, dynamicHubOffsets.getCompanionAdditionalFlagsOffset(), additionalFlags);
@@ -597,6 +595,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 }
                 layoutEncoding = LayoutEncoding.forPureInstance(ol.alignUp(instanceSize));
             }
+        }
+
+        /* Unsafe allocation is always available for runtime-loaded classes with a pure instance layout. */
+        if (LayoutEncoding.isPureInstance(layoutEncoding)) {
+            companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         }
 
         companion.interfacesEncoding = interfacesEncoding;
