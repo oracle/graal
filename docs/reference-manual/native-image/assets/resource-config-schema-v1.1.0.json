@@ -120,6 +120,10 @@
             "additionalProperties": false,
             "type": "object"
           },
+          "module": {
+            "type": "string",
+            "title": "Module containing the resource bundle"
+          },
           "name": {
             "type": "string",
             "title": "Fully qualified name of the resource bundle"

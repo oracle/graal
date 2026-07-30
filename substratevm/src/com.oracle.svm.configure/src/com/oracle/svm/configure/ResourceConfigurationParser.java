@@ -73,11 +73,14 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         String bundleNameAttribute = inResourcesSection ? BUNDLE_KEY : NAME_KEY;
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList(MODULE_KEY, "locales", "classNames", "condition"));
         String basename = asString(resource.get(bundleNameAttribute));
+        String moduleName = asNullableString(resource.get(MODULE_KEY), MODULE_KEY);
+        if (moduleName != null && moduleName.isEmpty()) {
+            moduleName = null;
+        }
         TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(resource));
         if (!resolvedAccessCondition.isPresent()) {
             return;
         }
-        // TODO GR-67556 - Add full support for MODULE_KEY in ResourceBundle configurations
         Object locales = resource.get("locales");
         if (locales != null) {
             List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
@@ -85,7 +88,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
             if (!asList.isEmpty()) {
-                registry.addResourceBundles(resolvedAccessCondition.get(), basename, asList);
+                registry.addResourceBundles(resolvedAccessCondition.get(), moduleName, basename, asList);
             }
 
         }
@@ -94,12 +97,12 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
             for (Object o : asList) {
                 String className = asString(o);
-                registry.addClassBasedResourceBundle(resolvedAccessCondition.get(), basename, className);
+                registry.addClassBasedResourceBundle(resolvedAccessCondition.get(), moduleName, basename, className);
             }
         }
         if (locales == null && classNames == null) {
             /* If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundles(resolvedAccessCondition.get(), false, basename);
+            registry.addResourceBundles(resolvedAccessCondition.get(), false, moduleName, basename);
         }
     }
 

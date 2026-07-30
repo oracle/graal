@@ -73,7 +73,7 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     }
 
     @Override
-    public boolean testIncludedBundle(ConditionalElement<String> condition, ResourceConfiguration.BundleConfiguration bundleConfiguration) {
+    public boolean testIncludedBundle(ConditionalElement<ResourceConfiguration.BundleIdentity> condition, ResourceConfiguration.BundleConfiguration bundleConfiguration) {
         return !filter.includes(condition.condition().getTypeName());
     }
 

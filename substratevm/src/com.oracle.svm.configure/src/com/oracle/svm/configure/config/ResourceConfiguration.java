@@ -104,13 +104,28 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
+        public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String moduleName, String baseName) {
+            configuration.addBundle(condition, moduleName, baseName);
+        }
+
+        @Override
         public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
             configuration.addBundle(condition, basename, locales);
         }
 
         @Override
+        public void addResourceBundles(UnresolvedAccessCondition condition, String moduleName, String basename, Collection<Locale> locales) {
+            configuration.addBundle(condition, moduleName, basename, locales);
+        }
+
+        @Override
         public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
             configuration.addClassResourceBundle(condition, basename, className);
+        }
+
+        @Override
+        public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String moduleName, String basename, String className) {
+            configuration.addClassResourceBundle(condition, moduleName, basename, className);
         }
     }
 
@@ -146,10 +161,17 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
     }
 
+    public record BundleIdentity(String module, String baseName) {
+        public static Comparator<BundleIdentity> comparator() {
+            Comparator<String> stringComparator = Comparator.nullsFirst(Comparator.naturalOrder());
+            return Comparator.comparing(BundleIdentity::module, stringComparator).thenComparing(BundleIdentity::baseName, stringComparator);
+        }
+    }
+
     private final Set<ConditionalElement<String>> addedResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<ConditionalElement<ResourceEntry>> addedGlobs = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ConcurrentMap<ConditionalElement<String>, Pattern> ignoredResources = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ConditionalElement<String>, BundleConfiguration> bundles = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConditionalElement<BundleIdentity>, BundleConfiguration> bundles = new ConcurrentHashMap<>();
 
     public ResourceConfiguration() {
     }
@@ -158,7 +180,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         addedGlobs.addAll(other.addedGlobs);
         other.addedResources.forEach(this::classifyAndAddPattern);
         ignoredResources.putAll(other.ignoredResources);
-        for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
+        for (Map.Entry<ConditionalElement<BundleIdentity>, BundleConfiguration> entry : other.bundles.entrySet()) {
             bundles.put(entry.getKey(), new BundleConfiguration(entry.getValue()));
         }
     }
@@ -210,7 +232,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.ignoredResources.entrySet()) {
             ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().element()), entry.getValue());
         }
-        for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
+        for (Map.Entry<ConditionalElement<BundleIdentity>, BundleConfiguration> entry : other.bundles.entrySet()) {
             bundles.put(new ConditionalElement<>(condition, entry.getKey().element()), new BundleConfiguration(entry.getValue()));
         }
     }
@@ -300,23 +322,35 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public void addBundle(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
-        BundleConfiguration config = getOrCreateBundleConfig(condition, basename);
+        addBundle(condition, null, basename, locales);
+    }
+
+    public void addBundle(UnresolvedAccessCondition condition, String moduleName, String basename, Collection<Locale> locales) {
+        BundleConfiguration config = getOrCreateBundleConfig(condition, moduleName, basename);
         for (Locale locale : locales) {
             config.locales.add(locale.toLanguageTag());
         }
     }
 
     public void addBundle(UnresolvedAccessCondition condition, String baseName) {
-        getOrCreateBundleConfig(condition, baseName);
+        addBundle(condition, null, baseName);
+    }
+
+    public void addBundle(UnresolvedAccessCondition condition, String moduleName, String baseName) {
+        getOrCreateBundleConfig(condition, moduleName, baseName);
     }
 
     private void addClassResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
-        getOrCreateBundleConfig(condition, basename).classNames.add(className);
+        addClassResourceBundle(condition, null, basename, className);
     }
 
-    private BundleConfiguration getOrCreateBundleConfig(UnresolvedAccessCondition condition, String baseName) {
-        ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
-        return bundles.computeIfAbsent(key, _ -> new BundleConfiguration(condition, baseName));
+    private void addClassResourceBundle(UnresolvedAccessCondition condition, String moduleName, String basename, String className) {
+        getOrCreateBundleConfig(condition, moduleName, basename).classNames.add(className);
+    }
+
+    private BundleConfiguration getOrCreateBundleConfig(UnresolvedAccessCondition condition, String moduleName, String baseName) {
+        ConditionalElement<BundleIdentity> key = new ConditionalElement<>(condition, new BundleIdentity(moduleName, baseName));
+        return bundles.computeIfAbsent(key, entry -> new BundleConfiguration(entry.condition(), entry.element().module(), entry.element().baseName()));
     }
 
     public boolean anyResourceMatches(String s) {
@@ -340,7 +374,11 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public boolean anyBundleMatches(UnresolvedAccessCondition condition, String bundleName) {
-        return bundles.containsKey(new ConditionalElement<>(condition, bundleName));
+        return anyBundleMatches(condition, null, bundleName);
+    }
+
+    public boolean anyBundleMatches(UnresolvedAccessCondition condition, String moduleName, String bundleName) {
+        return bundles.containsKey(new ConditionalElement<>(condition, new BundleIdentity(moduleName, bundleName)));
     }
 
     @Override
@@ -350,7 +388,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
             if (!addedGlobs.isEmpty()) {
                 writer.appendSeparator();
             }
-            JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(String::compareTo), (p, w) -> printResourceBundle(bundles.get(p), w, true), false, true);
+            JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(BundleIdentity.comparator()), (p, w) -> printResourceBundle(bundles.get(p), w, true), false, true);
         }
     }
 
@@ -379,7 +417,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
     void printBundlesJson(JsonWriter writer) throws IOException {
         writer.quote(BUNDLES_KEY).appendFieldSeparator();
-        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w, false));
+        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(BundleIdentity.comparator()), (p, w) -> printResourceBundle(bundles.get(p), w, false));
     }
 
     void printGlobsJson(JsonWriter writer) throws IOException {
@@ -450,7 +488,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     public interface Predicate {
         boolean testIncludedResource(ConditionalElement<String> condition);
 
-        boolean testIncludedBundle(ConditionalElement<String> condition, BundleConfiguration bundleConfiguration);
+        boolean testIncludedBundle(ConditionalElement<BundleIdentity> condition, BundleConfiguration bundleConfiguration);
 
         boolean testIncludedGlob(ConditionalElement<ResourceEntry> entry);
     }

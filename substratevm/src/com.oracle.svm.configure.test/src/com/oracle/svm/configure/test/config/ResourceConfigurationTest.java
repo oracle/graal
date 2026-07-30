@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -93,7 +94,54 @@ public class ResourceConfigurationTest {
             List<String> addedResources = new LinkedList<>();
             List<String> ignoredResources = new LinkedList<>();
 
-            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = createParser(newTestRegistry(addedResources, ignoredResources));
+            ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
+
+                @Override
+                public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                    addedResources.add(pattern);
+                }
+
+                @Override
+                public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
+                    throw new AssertionError("Unused function.");
+                }
+
+                @Override
+                public void addResourceEntry(Module module, String resourcePath, Object origin) {
+                    throw new AssertionError("Unused function.");
+                }
+
+                @Override
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+                }
+
+                @Override
+                public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                    ignoredResources.add(pattern);
+                }
+
+                @Override
+                public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
+                }
+
+                @Override
+                public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
+
+                }
+
+                @Override
+                public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
+
+                }
+
+                @Override
+                public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
+
+                }
+            };
+
+            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry,
+                            EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
             writerThread.start();
             rcp.parseAndRegister(pr);
 
@@ -116,6 +164,178 @@ public class ResourceConfigurationTest {
         parser.parseAndRegister(new StringReader(config));
 
         Assert.assertEquals(List.of("\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\E"), ignoredResources);
+    }
+
+    @Test
+    public void moduleQualifiedBundlesRoundTripInLegacyConfig() throws IOException {
+        String json = """
+                        {
+                          "resources": {
+                            "includes": []
+                          },
+                          "bundles": [
+                            {
+                              "module": "first.module",
+                              "name": "com.example.Messages",
+                              "locales": ["en-US"]
+                            },
+                            {
+                              "module": "second.module",
+                              "name": "com.example.Messages",
+                              "classNames": ["com.example.MessagesBundle"]
+                            }
+                          ],
+                          "globs": []
+                        }
+                        """;
+
+        ResourceConfiguration rc = new ResourceConfiguration();
+        rc.createParser(false, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION)).parseAndRegister(new StringReader(json));
+
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
+        Assert.assertTrue(rc.anyBundleMatches(condition, "first.module", "com.example.Messages"));
+        Assert.assertTrue(rc.anyBundleMatches(condition, "second.module", "com.example.Messages"));
+        Assert.assertFalse(rc.anyBundleMatches(condition, "com.example.Messages"));
+
+        String printed = printLegacyJson(rc);
+        Assert.assertTrue(printed.contains("\"module\":\"first.module\""));
+        Assert.assertTrue(printed.contains("\"module\":\"second.module\""));
+        Assert.assertTrue(printed.contains("\"name\":\"com.example.Messages\""));
+        Assert.assertTrue(printed.contains("\"classNames\":[\"com.example.MessagesBundle\"]"));
+        Assert.assertTrue(printed.contains("\"locales\":[\"en-US\"]"));
+    }
+
+    @Test
+    public void moduleQualifiedBundlesUseQualifiedNamesForLegacyRegistryCallbacks() throws IOException {
+        String json = """
+                        {
+                          "bundles": [
+                            {
+                              "module": "first.module",
+                              "name": "com.example.Messages",
+                              "locales": ["en-US"]
+                            },
+                            {
+                              "module": "second.module",
+                              "name": "com.example.Messages",
+                              "classNames": ["com.example.MessagesBundle"]
+                            },
+                            {
+                              "module": "third.module",
+                              "name": "com.example.Messages"
+                            }
+                          ]
+                        }
+                        """;
+
+        List<String> localizedBundles = new LinkedList<>();
+        List<String> classBasedBundles = new LinkedList<>();
+        List<String> allLocaleBundles = new LinkedList<>();
+
+        ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
+            @Override
+            public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void addResourceEntry(Module module, String resourcePath, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+            }
+
+            @Override
+            public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
+                allLocaleBundles.add(name);
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
+                localizedBundles.add(basename);
+            }
+
+            @Override
+            public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
+            }
+
+            @Override
+            public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
+                classBasedBundles.add(basename + "=" + className);
+            }
+        };
+
+        ResourceConfigurationParser<UnresolvedAccessCondition> parser = ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry,
+                        EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
+        parser.parseAndRegister(new StringReader(json));
+
+        Assert.assertEquals(List.of("first.module:com.example.Messages"), localizedBundles);
+        Assert.assertEquals(List.of("second.module:com.example.Messages=com.example.MessagesBundle"), classBasedBundles);
+        Assert.assertEquals(List.of("third.module:com.example.Messages"), allLocaleBundles);
+    }
+
+    @Test
+    public void moduleQualifiedBundlesRemainDistinctInCombinedConfig() throws IOException {
+        String json = """
+                        {
+                          "resources": [
+                            {
+                              "module": "first.module",
+                              "bundle": "com.example.Messages"
+                            },
+                            {
+                              "module": "second.module",
+                              "bundle": "com.example.Messages"
+                            }
+                          ]
+                        }
+                        """;
+
+        ResourceConfiguration rc = new ResourceConfiguration();
+        rc.createParser(true, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION)).parseAndRegister(new StringReader(json));
+
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
+        Assert.assertTrue(rc.anyBundleMatches(condition, "first.module", "com.example.Messages"));
+        Assert.assertTrue(rc.anyBundleMatches(condition, "second.module", "com.example.Messages"));
+        Assert.assertFalse(rc.anyBundleMatches(condition, "com.example.Messages"));
+        Assert.assertTrue(rc.supportsCombinedFile());
+
+        String printed = printJson(rc);
+        Assert.assertTrue(printed.contains("\"module\":\"first.module\""));
+        Assert.assertTrue(printed.contains("\"module\":\"second.module\""));
+        Assert.assertTrue(printed.contains("\"bundle\":\"com.example.Messages\""));
+    }
+
+    private static String printLegacyJson(ResourceConfiguration rc) {
+        StringWriter out = new StringWriter();
+        try (JsonWriter writer = new JsonWriter(out)) {
+            rc.printLegacyJson(writer);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return out.toString();
+    }
+
+    private static String printJson(ResourceConfiguration rc) {
+        StringWriter out = new StringWriter();
+        try (JsonWriter writer = new JsonWriter(out)) {
+            rc.printJson(writer);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return out.toString();
     }
 
     private static ResourceConfigurationParser<UnresolvedAccessCondition> createParser(ResourcesRegistry<UnresolvedAccessCondition> registry) {

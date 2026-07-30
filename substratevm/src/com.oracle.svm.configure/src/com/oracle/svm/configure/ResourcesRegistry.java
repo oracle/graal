@@ -40,6 +40,10 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
 
     void addClassBasedResourceBundle(C condition, String basename, String className);
 
+    default void addClassBasedResourceBundle(C condition, String moduleName, String basename, String className) {
+        addClassBasedResourceBundle(condition, qualifyBundleName(moduleName, basename), className);
+    }
+
     /**
      * Although the interface-methods below are already defined in the super-interface
      * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
@@ -57,5 +61,19 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
     void addResourceBundles(C condition, boolean preserved, String name);
 
     @Override
+    default void addResourceBundles(C condition, boolean preserved, String moduleName, String name) {
+        RuntimeResourceSupport.super.addResourceBundles(condition, preserved, moduleName, name);
+    }
+
+    @Override
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+
+    @Override
+    default void addResourceBundles(C condition, String moduleName, String basename, Collection<Locale> locales) {
+        RuntimeResourceSupport.super.addResourceBundles(condition, moduleName, basename, locales);
+    }
+
+    private static String qualifyBundleName(String moduleName, String bundleName) {
+        return moduleName != null && !moduleName.isEmpty() ? moduleName + ":" + bundleName : bundleName;
+    }
 }
