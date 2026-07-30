@@ -129,6 +129,10 @@ public class MissingRegistrationUtils {
 
     private static final ThreadLocal<Boolean> missingRegistrationErrorsSuspended = ThreadLocal.withInitial(() -> false);
 
+    public static boolean isIgnoringMissingRegistrations() {
+        return missingRegistrationErrorsSuspended.get();
+    }
+
     /**
      * Code executing inside this function will temporarily revert to throwing JDK exceptions like
      * ({@code ClassNotFoundException} when encountering a situation that would normally cause a
@@ -137,12 +141,12 @@ public class MissingRegistrationUtils {
      * the image, and is not a reason to abort the lookup completely.
      */
     public static <T> T runIgnoringMissingRegistrations(Supplier<T> callback) {
-        boolean previouslySuspended = missingRegistrationErrorsSuspended.get();
+        VMError.guarantee(!missingRegistrationErrorsSuspended.get());
         try {
             missingRegistrationErrorsSuspended.set(true);
             return callback.get();
         } finally {
-            missingRegistrationErrorsSuspended.set(previouslySuspended);
+            missingRegistrationErrorsSuspended.set(false);
         }
     }
 

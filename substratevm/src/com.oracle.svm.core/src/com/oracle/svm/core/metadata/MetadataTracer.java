@@ -438,6 +438,13 @@ public final class MetadataTracer {
         if (conditionPackagePrefixes.isEmpty()) {
             return UnresolvedAccessCondition.unconditional();
         }
+        if (MissingRegistrationUtils.isIgnoringMissingRegistrations()) {
+            /*
+             * The access was triggered by an implementation lookup whose metadata diagnostics are
+             * suppressed. Do not recursively walk the stack or trace that internal access.
+             */
+            return null;
+        }
         try (var _ = new DisableTracingImpl("condition stack trace")) {
             /*
              * Stack walking can perform internal dynamic accesses. They are implementation details
