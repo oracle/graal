@@ -30,6 +30,7 @@ import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationF
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -792,6 +793,9 @@ public class TruffleFeature implements InternalFeature {
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportClassQuery", Class.class, String.class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", Class[].class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportArrayInstantiation", Class.class, int.class);
+        // Keep the intrinsified array diagnostic path outside runtime compilation.
+        // See FS-001-native-image-semantics.3.1.
+        markTruffleBoundary(metaAccess, Array.class, "newInstance", Class.class, int.class);
         markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceAccess", Module.class, String.class);
         markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceBundleAccess", Module.class, String.class);
 

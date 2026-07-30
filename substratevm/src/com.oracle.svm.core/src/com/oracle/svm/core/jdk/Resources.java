@@ -874,7 +874,12 @@ public final class Resources {
                 // stored in the image heap, so we cannot reliably identify if the resource was
                 // included at build time. Assume it is missing.
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
-                return null;
+                /*
+                 * Preserve missing-metadata identity for probing native-tracing lookups so the
+                 * caller can trace the final user-level query after all internal probes fail.
+                 */
+                // See FS-001-native-image-semantics.3.1.
+                return MetadataTracer.enabled() && probe ? MISSING_METADATA_MARKER : null;
             }
         }
         traceResource(resourceName, moduleName, entry.getDynamicAccessMetadata());

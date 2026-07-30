@@ -47,6 +47,7 @@ import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -438,12 +439,17 @@ public final class MetadataTracer {
             return UnresolvedAccessCondition.unconditional();
         }
         try (var _ = new DisableTracingImpl("condition stack trace")) {
-            return conditionStackWalker.walk(stackFrames -> stackFrames
+            /*
+             * Stack walking can perform internal dynamic accesses. They are implementation details
+             * and must neither be traced nor reported as missing metadata.
+             */
+            // See FS-001-native-image-semantics.3.1.
+            return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> conditionStackWalker.walk(stackFrames -> stackFrames
                             .map(StackWalker.StackFrame::getClassName)
                             .filter(this::matchesConditionPackagePrefix)
                             .findFirst()
                             .map(className -> UnresolvedAccessCondition.create(NamedConfigurationTypeDescriptor.fromTypeName(className))))
-                            .orElse(null);
+                            .orElse(null));
         }
     }
 
