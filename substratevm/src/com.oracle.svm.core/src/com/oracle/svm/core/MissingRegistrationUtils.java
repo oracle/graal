@@ -46,6 +46,7 @@ import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.StringUtil;
@@ -58,13 +59,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
 public class MissingRegistrationUtils {
 
     public static boolean throwMissingRegistrationErrors() {
-        /*
-         * Suppressed lookups must not enter a reporting helper in the first place. Constructing a
-         * missing-registration error can itself perform dynamic accesses before report() gets a
-         * chance to discard it.
-         */
-        // See FS-001-native-image-semantics.3.1.
-        return ThrowMissingRegistrationErrors.hasBeenSet() && !missingRegistrationErrorsSuspended.get();
+        return ThrowMissingRegistrationErrors.hasBeenSet();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {
@@ -229,7 +224,15 @@ public class MissingRegistrationUtils {
     }
 
     protected static StackTraceElement getResponsibleClass(Throwable t, Map<String, Set<String>> entryPoints) {
-        StackTraceElement[] stackTrace = t.getStackTrace();
+        StackTraceElement[] stackTrace;
+        /*
+         * Materializing a diagnostic stack trace reflectively allocates a StackTraceElement array.
+         * That implementation detail must not become replay metadata.
+         */
+        // See FS-001-native-image-semantics.3.1.
+        try (var _ = MetadataTracer.disableTracing("missing registration stack trace")) {
+            stackTrace = t.getStackTrace();
+        }
         boolean returnNext = false;
         for (StackTraceElement stackTraceElement : stackTrace) {
             if (entryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {
