@@ -99,10 +99,10 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64SHA3Op> TYPE = LIRInstructionClass.create(AArch64SHA3Op.class);
 
     @Use({REG}) private Value bufValue;
-    @Use({REG}) private Value stateValue;
-    @Use({REG}) private Value blockSizeValue;
+    @UseKill({REG}) private Value stateValue;
+    @Alive({REG}) private Value blockSizeValue;
     @Use({REG, ILLEGAL}) private Value ofsValue;
-    @Use({REG, ILLEGAL}) private Value limitValue;
+    @Alive({REG, ILLEGAL}) private Value limitValue;
 
     @Temp({REG}) private Value blockSizeTempValue;
 
