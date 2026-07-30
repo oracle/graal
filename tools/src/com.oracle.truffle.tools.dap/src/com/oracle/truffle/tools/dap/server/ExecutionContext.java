@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,7 @@ public final class ExecutionContext {
     private volatile VariablesHandler variablesHandler;
     private boolean linesStartAt1 = true;
     private boolean columnsStartAt1 = true;
+    private volatile PathMappings pathMappings = PathMappings.EMPTY;
 
     private final EconomicSet<TruffleContext> contexts = EconomicSet.create();
 
@@ -145,6 +146,22 @@ public final class ExecutionContext {
 
     public StackFramesHandler getStackFramesHandler() {
         return stackFramesHandler;
+    }
+
+    public void configurePathMappings(Object mappings, Object localRoot, Object remoteRoot) {
+        pathMappings = PathMappings.parse(mappings, localRoot, remoteRoot);
+        LoadedSourcesHandler handler = loadedSourcesHandler;
+        if (handler != null) {
+            handler.refreshClientPaths();
+        }
+    }
+
+    public String clientToRuntimePath(String path) {
+        return pathMappings.toRuntime(path);
+    }
+
+    public String runtimeToClientPath(String path) {
+        return pathMappings.toClient(path);
     }
 
     public void setLinesStartAt1(Boolean value) {
