@@ -44,6 +44,11 @@ public class AMD64ControlFlowIntegrityFeature extends SubstrateControlFlowIntegr
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         SubstrateControlFlowIntegrity.CFIOptions cfi = SubstrateControlFlowIntegrity.Options.CFI.getValue();
+        /*
+         * Branch-target validation temporarily spills a scratch register below the stack pointer.
+         * The System V ABI used by Linux and macOS provides a safe red zone for this spill, but the
+         * Windows x64 ABI does not.
+         */
         boolean supportedOperatingSystem = Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
         SubstrateControlFlowIntegrity.validateConfiguration(cfi, supportedOperatingSystem, SubstrateControlFlowIntegrity.CFIOptions.SW, SubstrateControlFlowIntegrity.CFIOptions.SW_NONATIVE);
         ImageSingletons.add(SubstrateControlFlowIntegrity.class, new AMD64ControlFlowIntegrity());

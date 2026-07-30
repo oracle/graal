@@ -85,6 +85,16 @@ public class SubstrateControlFlowIntegrity {
         return CFIOptions.NONE;
     }
 
+    /**
+     * Returns the architecture-specific register used to carry an indirect branch target while
+     * software CFI validates it. Returns and runtime-generated trampolines load their target into
+     * this register before the validated jump. Calls declare the register as temporary, and
+     * runtime calling-convention support excludes it from callee-saved and bytecode-handler
+     * argument registers, so its value is never expected to survive a call.
+     *
+     * This method is only valid when software CFI is enabled. Implementations that support
+     * software CFI must override it with a register suitable for this purpose.
+     */
     public Register getCFITargetRegister() {
         throw VMError.shouldNotReachHere("No CFI Target Register is available");
     }
