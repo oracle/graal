@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
+import jdk.vm.ci.code.CodeUtil;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
@@ -219,7 +220,10 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
         if (super.isConstantScale(ref)) {
             return super.constantScale(ref);
         }
-        return scale.asJavaConstant().asLong() * base.constantScale(ref);
+        int bits = IntegerStamp.getBits(valueNode().stamp(NodeView.DEFAULT));
+        long longScale = this.scale.asJavaConstant().asLong() * base.constantScale(ref);
+        // The accumulated scale has to be sign extended to the IV's native width to preserve overflow semantics
+        return CodeUtil.signExtend(longScale, bits);
     }
 
     @Override
