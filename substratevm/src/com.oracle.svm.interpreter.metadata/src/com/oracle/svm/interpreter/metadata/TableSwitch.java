@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,6 +99,12 @@ public final class TableSwitch {
         return bci + offsetAt(code, bci, i);
     }
 
+    /** Gets a verified switch target without performing bytecode-array bounds checks. */
+    public static int uncheckedTargetAt(byte[] code, int bci, int i) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
+        return bci + BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
+    }
+
     /**
      * Gets the index of the instruction for the default switch target.
      *
@@ -107,6 +113,12 @@ public final class TableSwitch {
     public static int defaultTarget(byte[] code, int bci) {
         assert BytecodeStream.opcode(code, bci) == TABLESWITCH;
         return bci + defaultOffset(code, bci);
+    }
+
+    /** Gets the verified default target without performing bytecode-array bounds checks. */
+    public static int uncheckedDefaultTarget(byte[] code, int bci) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
+        return bci + BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci));
     }
 
     /**
@@ -129,6 +141,12 @@ public final class TableSwitch {
         return BytecodeStream.readInt(code, getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
     }
 
+    /** Gets the verified low key without performing bytecode-array bounds checks. */
+    public static int uncheckedLowKey(byte[] code, int bci) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
+        return BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
+    }
+
     /**
      * Gets the high key of the table switch.
      *
@@ -137,5 +155,11 @@ public final class TableSwitch {
     public static int highKey(byte[] code, int bci) {
         assert BytecodeStream.opcode(code, bci) == TABLESWITCH;
         return BytecodeStream.readInt(code, getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
+    }
+
+    /** Gets the verified high key without performing bytecode-array bounds checks. */
+    public static int uncheckedHighKey(byte[] code, int bci) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
+        return BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
     }
 }

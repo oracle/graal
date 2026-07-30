@@ -1432,7 +1432,7 @@ public final class Interpreter {
                 return state.opcode;
             }
             // Without debugger support, the bytecode contains the semantic opcode directly.
-            return BytecodeStream.opcode(state.code, curBCI);
+            return BytecodeStream.uncheckedOpcode(state.code, curBCI);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -1578,7 +1578,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = BIPUSH, safepoint = false)
         private static int bipushHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putInt(frame, expandedState.top, BytecodeStream.readByte(state.code, curBCI));
+            putInt(frame, expandedState.top, BytecodeStream.uncheckedReadByte(state.code, curBCI));
             expandedState.top += ConstantBytecodes.stackEffectOf(BIPUSH);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(BIPUSH);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1588,7 +1588,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = SIPUSH, safepoint = false)
         private static int sipushHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putInt(frame, expandedState.top, BytecodeStream.readShort(state.code, curBCI));
+            putInt(frame, expandedState.top, BytecodeStream.uncheckedReadShort(state.code, curBCI));
             expandedState.top += ConstantBytecodes.stackEffectOf(SIPUSH);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(SIPUSH);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1598,7 +1598,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC, safepoint = false)
         private static int ldcHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            loadConstant(frame, state.method, expandedState.top, BytecodeStream.readCPI1(state.code, curBCI), LDC);
+            loadConstant(frame, state.method, expandedState.top, BytecodeStream.uncheckedReadCPI1(state.code, curBCI), LDC);
             expandedState.top += ConstantBytecodes.stackEffectOf(LDC);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1608,7 +1608,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC_W, safepoint = false)
         private static int ldcWHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            loadConstant(frame, state.method, expandedState.top, BytecodeStream.readCPI2(state.code, curBCI), LDC_W);
+            loadConstant(frame, state.method, expandedState.top, BytecodeStream.uncheckedReadCPI2(state.code, curBCI), LDC_W);
             expandedState.top += ConstantBytecodes.stackEffectOf(LDC_W);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC_W);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1618,7 +1618,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC2_W, safepoint = false)
         private static int ldc2WHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            loadConstant(frame, state.method, expandedState.top, BytecodeStream.readCPI2(state.code, curBCI), LDC2_W);
+            loadConstant(frame, state.method, expandedState.top, BytecodeStream.uncheckedReadCPI2(state.code, curBCI), LDC2_W);
             expandedState.top += ConstantBytecodes.stackEffectOf(LDC2_W);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC2_W);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1628,7 +1628,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD, safepoint = false)
         private static int iloadHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putInt(frame, expandedState.top, getLocalInt(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)));
+            putInt(frame, expandedState.top, getLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)));
             expandedState.top += ConstantBytecodes.stackEffectOf(ILOAD);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(ILOAD);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1638,7 +1638,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD, safepoint = false)
         private static int lloadHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putLong(frame, expandedState.top, getLocalLong(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)));
+            putLong(frame, expandedState.top, getLocalLong(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)));
             expandedState.top += ConstantBytecodes.stackEffectOf(LLOAD);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(LLOAD);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1648,7 +1648,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD, safepoint = false)
         private static int floadHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putFloat(frame, expandedState.top, getLocalFloat(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)));
+            putFloat(frame, expandedState.top, getLocalFloat(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)));
             expandedState.top += ConstantBytecodes.stackEffectOf(FLOAD);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(FLOAD);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1658,7 +1658,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD, safepoint = false)
         private static int dloadHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putDouble(frame, expandedState.top, getLocalDouble(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)));
+            putDouble(frame, expandedState.top, getLocalDouble(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)));
             expandedState.top += ConstantBytecodes.stackEffectOf(DLOAD);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(DLOAD);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1668,7 +1668,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD, safepoint = false)
         private static int aloadHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putObject(frame, expandedState.top, getLocalObject(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)));
+            putObject(frame, expandedState.top, getLocalObject(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)));
             expandedState.top += ConstantBytecodes.stackEffectOf(ALOAD);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(ALOAD);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1878,7 +1878,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE, safepoint = false)
         private static int istoreHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalInt(frame, BytecodeStream.readLocalIndex1(state.code, curBCI), popInt(frame, expandedState.top - 1));
+            setLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI), popInt(frame, expandedState.top - 1));
             expandedState.top += ConstantBytecodes.stackEffectOf(ISTORE);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(ISTORE);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1888,7 +1888,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE, safepoint = false)
         private static int lstoreHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalLong(frame, BytecodeStream.readLocalIndex1(state.code, curBCI), popLong(frame, expandedState.top - 1));
+            setLocalLong(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI), popLong(frame, expandedState.top - 1));
             expandedState.top += ConstantBytecodes.stackEffectOf(LSTORE);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(LSTORE);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1898,7 +1898,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE, safepoint = false)
         private static int fstoreHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalFloat(frame, BytecodeStream.readLocalIndex1(state.code, curBCI), popFloat(frame, expandedState.top - 1));
+            setLocalFloat(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI), popFloat(frame, expandedState.top - 1));
             expandedState.top += ConstantBytecodes.stackEffectOf(FSTORE);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(FSTORE);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1908,7 +1908,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE, safepoint = false)
         private static int dstoreHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalDouble(frame, BytecodeStream.readLocalIndex1(state.code, curBCI), popDouble(frame, expandedState.top - 1));
+            setLocalDouble(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI), popDouble(frame, expandedState.top - 1));
             expandedState.top += ConstantBytecodes.stackEffectOf(DSTORE);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(DSTORE);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -1918,7 +1918,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE, safepoint = false)
         private static int astoreHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalObjectOrReturnAddress(frame, BytecodeStream.readLocalIndex1(state.code, curBCI), popReturnAddressOrObject(frame, expandedState.top - 1));
+            setLocalObjectOrReturnAddress(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI), popReturnAddressOrObject(frame, expandedState.top - 1));
             expandedState.top += ConstantBytecodes.stackEffectOf(ASTORE);
             int nextBCI = curBCI + ConstantBytecodes.lengthOf(ASTORE);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
@@ -2556,8 +2556,8 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IINC, safepoint = false)
         private static int iincHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            setLocalInt(frame, BytecodeStream.readLocalIndex1(state.code, curBCI),
-                            getLocalInt(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)) + BytecodeStream.readIncrement1(state.code, curBCI));
+            setLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI),
+                            getLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)) + BytecodeStream.uncheckedReadIncrement1(state.code, curBCI));
             return advanceToNextBytecode(curBCI, IINC, expandedState, state, frame);
         }
 
@@ -2707,7 +2707,7 @@ public final class Interpreter {
             profileBranch(state.methodProfile, curBCI, branchTaken);
             if (branchTaken) {
                 expandedState.top += Bytecodes.stackEffectOf(curOpcode);
-                return finishJump(curBCI, BytecodeStream.readBranchDest2(state.code, curBCI), expandedState, state, frame);
+                return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
@@ -2754,7 +2754,7 @@ public final class Interpreter {
             profileBranch(state.methodProfile, curBCI, branchTaken);
             if (branchTaken) {
                 expandedState.top += Bytecodes.stackEffectOf(curOpcode);
-                return finishJump(curBCI, BytecodeStream.readBranchDest2(state.code, curBCI), expandedState, state, frame);
+                return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
@@ -2801,7 +2801,7 @@ public final class Interpreter {
             profileBranch(state.methodProfile, curBCI, branchTaken);
             if (branchTaken) {
                 expandedState.top += Bytecodes.stackEffectOf(curOpcode);
-                return finishJump(curBCI, BytecodeStream.readBranchDest2(state.code, curBCI), expandedState, state, frame);
+                return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
@@ -2824,7 +2824,7 @@ public final class Interpreter {
             profileBranch(state.methodProfile, curBCI, branchTaken);
             if (branchTaken) {
                 expandedState.top += Bytecodes.stackEffectOf(curOpcode);
-                return finishJump(curBCI, BytecodeStream.readBranchDest2(state.code, curBCI), expandedState, state, frame);
+                return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
@@ -2843,7 +2843,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold jump width in individual handlers")
         private static int gotoBytecode(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
-            int targetBCI = curOpcode == GOTO ? BytecodeStream.readBranchDest2(state.code, curBCI) : BytecodeStream.readBranchDest4(state.code, curBCI);
+            int targetBCI = curOpcode == GOTO ? BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI) : BytecodeStream.uncheckedReadBranchDest4(state.code, curBCI);
             return finishJump(curBCI, targetBCI, expandedState, state, frame);
         }
 
@@ -2866,10 +2866,10 @@ public final class Interpreter {
             int targetBCI;
             if (curOpcode == JSR) {
                 putReturnAddress(frame, expandedState.top - 1, curBCI + ConstantBytecodes.lengthOf(JSR));
-                targetBCI = BytecodeStream.readBranchDest2(state.code, curBCI);
+                targetBCI = BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI);
             } else {
                 putReturnAddress(frame, expandedState.top - 1, curBCI + ConstantBytecodes.lengthOf(JSR_W));
-                targetBCI = BytecodeStream.readBranchDest4(state.code, curBCI);
+                targetBCI = BytecodeStream.uncheckedReadBranchDest4(state.code, curBCI);
             }
             return finishJump(curBCI, targetBCI, expandedState, state, frame);
         }
@@ -2890,22 +2890,22 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = RET, safepoint = false)
         private static int retHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             expandedState.top += ConstantBytecodes.stackEffectOf(RET);
-            return finishJump(curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex1(state.code, curBCI)), expandedState, state, frame);
+            return finishJump(curBCI, getLocalReturnAddress(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)), expandedState, state, frame);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = TABLESWITCH, safepoint = false)
         private static int tableswitchHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             int index = popInt(frame, expandedState.top - 1);
-            int low = TableSwitch.lowKey(state.code, curBCI);
-            int high = TableSwitch.highKey(state.code, curBCI);
+            int low = TableSwitch.uncheckedLowKey(state.code, curBCI);
+            int high = TableSwitch.uncheckedHighKey(state.code, curBCI);
             assert low <= high;
 
             int targetBCI;
             if (low <= index && index <= high) {
-                targetBCI = TableSwitch.targetAt(state.code, curBCI, index - low);
+                targetBCI = TableSwitch.uncheckedTargetAt(state.code, curBCI, index - low);
             } else {
-                targetBCI = TableSwitch.defaultTarget(state.code, curBCI);
+                targetBCI = TableSwitch.uncheckedDefaultTarget(state.code, curBCI);
             }
             expandedState.top += ConstantBytecodes.stackEffectOf(TABLESWITCH);
             return finishJump(curBCI, targetBCI, expandedState, state, frame);
@@ -2916,22 +2916,22 @@ public final class Interpreter {
         private static int lookupswitchHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             int key = popInt(frame, expandedState.top - 1);
             int low = 0;
-            int high = LookupSwitch.numberOfCases(state.code, curBCI) - 1;
+            int high = LookupSwitch.uncheckedNumberOfCases(state.code, curBCI) - 1;
             while (low <= high) {
                 int mid = (low + high) >>> 1;
-                int midVal = LookupSwitch.keyAt(state.code, curBCI, mid);
+                int midVal = LookupSwitch.uncheckedKeyAt(state.code, curBCI, mid);
                 if (midVal < key) {
                     low = mid + 1;
                 } else if (midVal > key) {
                     high = mid - 1;
                 } else {
                     expandedState.top += ConstantBytecodes.stackEffectOf(LOOKUPSWITCH);
-                    return finishJump(curBCI, curBCI + LookupSwitch.offsetAt(state.code, curBCI, mid), expandedState, state, frame);
+                    return finishJump(curBCI, curBCI + LookupSwitch.uncheckedOffsetAt(state.code, curBCI, mid), expandedState, state, frame);
                 }
             }
 
             expandedState.top += ConstantBytecodes.stackEffectOf(LOOKUPSWITCH);
-            return finishJump(curBCI, LookupSwitch.defaultTarget(state.code, curBCI), expandedState, state, frame);
+            return finishJump(curBCI, LookupSwitch.uncheckedDefaultTarget(state.code, curBCI), expandedState, state, frame);
         }
 
         @AlwaysInline("Fold field get opcode in individual handlers")
@@ -2942,7 +2942,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold quickened field get opcode in individual handlers")
         private static int quickenedFieldGetBytecode(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int quickOpcode, int originalOpcode) {
-            expandedState.top += getField(frame, expandedState.top, resolveQuickenedField(state.method, originalOpcode, BytecodeStream.readCPI2(state.code, curBCI)), originalOpcode);
+            expandedState.top += getField(frame, expandedState.top, resolveQuickenedField(state.method, originalOpcode, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), originalOpcode);
             return advanceToNextBytecode(curBCI, quickOpcode, expandedState, state, frame);
         }
 
@@ -2978,7 +2978,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold quickened field put opcode in individual handlers")
         private static int quickenedFieldPutBytecode(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int quickOpcode, int originalOpcode) {
-            expandedState.top += putField(frame, expandedState.top, resolveQuickenedField(state.method, originalOpcode, BytecodeStream.readCPI2(state.code, curBCI)), originalOpcode);
+            expandedState.top += putField(frame, expandedState.top, resolveQuickenedField(state.method, originalOpcode, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), originalOpcode);
             return advanceToNextBytecode(curBCI, quickOpcode, expandedState, state, frame);
         }
 
@@ -3085,14 +3085,14 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NEW)
         private static int newHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putObject(frame, expandedState.top, InterpreterToVM.createNewReference(resolveType(state.method, NEW, BytecodeStream.readCPI2(state.code, curBCI))));
+            putObject(frame, expandedState.top, InterpreterToVM.createNewReference(resolveType(state.method, NEW, BytecodeStream.uncheckedReadCPI2(state.code, curBCI))));
             return advanceToNextBytecode(curBCI, NEW, expandedState, state, frame);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NEWARRAY)
         private static int newarrayHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            putObject(frame, expandedState.top - 1, InterpreterToVM.createNewPrimitiveArray(BytecodeStream.readByte(state.code, curBCI), popInt(frame, expandedState.top - 1)));
+            putObject(frame, expandedState.top - 1, InterpreterToVM.createNewPrimitiveArray(BytecodeStream.uncheckedReadByte(state.code, curBCI), popInt(frame, expandedState.top - 1)));
             return advanceToNextBytecode(curBCI, NEWARRAY, expandedState, state, frame);
         }
 
@@ -3100,7 +3100,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ANEWARRAY)
         private static int anewarrayHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putObject(frame, expandedState.top - 1,
-                            InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.readCPI2(state.code, curBCI)), popInt(frame, expandedState.top - 1)));
+                            InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), popInt(frame, expandedState.top - 1)));
             return advanceToNextBytecode(curBCI, ANEWARRAY, expandedState, state, frame);
         }
 
@@ -3124,7 +3124,7 @@ public final class Interpreter {
             Object receiver = peekObject(frame, expandedState.top - 1);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
-                InterpreterToVM.checkCast(receiver, resolveType(state.method, CHECKCAST, BytecodeStream.readCPI2(state.code, curBCI)));
+                InterpreterToVM.checkCast(receiver, resolveType(state.method, CHECKCAST, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)));
             }
             return advanceToNextBytecode(curBCI, CHECKCAST, expandedState, state, frame);
         }
@@ -3135,7 +3135,7 @@ public final class Interpreter {
             Object receiver = popObject(frame, expandedState.top - 1);
             profileType(state.methodProfile, curBCI, receiver);
             putInt(frame, expandedState.top - 1,
-                            (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.readCPI2(state.code, curBCI)))) ? 1 : 0);
+                            (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0);
             return advanceToNextBytecode(curBCI, INSTANCEOF, expandedState, state, frame);
         }
 
@@ -3165,24 +3165,24 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = WIDE, safepoint = false)
         private static int wideHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            int wideOpcode = BytecodeStream.opcode(state.code, curBCI + 1);
+            int wideOpcode = BytecodeStream.uncheckedOpcode(state.code, curBCI + 1);
             switch (wideOpcode) {
-                case ILOAD -> putInt(frame, expandedState.top, getLocalInt(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)));
-                case LLOAD -> putLong(frame, expandedState.top, getLocalLong(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)));
-                case FLOAD -> putFloat(frame, expandedState.top, getLocalFloat(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)));
-                case DLOAD -> putDouble(frame, expandedState.top, getLocalDouble(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)));
-                case ALOAD -> putObject(frame, expandedState.top, getLocalObject(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)));
+                case ILOAD -> putInt(frame, expandedState.top, getLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)));
+                case LLOAD -> putLong(frame, expandedState.top, getLocalLong(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)));
+                case FLOAD -> putFloat(frame, expandedState.top, getLocalFloat(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)));
+                case DLOAD -> putDouble(frame, expandedState.top, getLocalDouble(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)));
+                case ALOAD -> putObject(frame, expandedState.top, getLocalObject(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)));
 
-                case ISTORE -> setLocalInt(frame, BytecodeStream.readLocalIndex2(state.code, curBCI), popInt(frame, expandedState.top - 1));
-                case LSTORE -> setLocalLong(frame, BytecodeStream.readLocalIndex2(state.code, curBCI), popLong(frame, expandedState.top - 1));
-                case FSTORE -> setLocalFloat(frame, BytecodeStream.readLocalIndex2(state.code, curBCI), popFloat(frame, expandedState.top - 1));
-                case DSTORE -> setLocalDouble(frame, BytecodeStream.readLocalIndex2(state.code, curBCI), popDouble(frame, expandedState.top - 1));
-                case ASTORE -> setLocalObjectOrReturnAddress(frame, BytecodeStream.readLocalIndex2(state.code, curBCI), popReturnAddressOrObject(frame, expandedState.top - 1));
-                case IINC -> setLocalInt(frame, BytecodeStream.readLocalIndex2(state.code, curBCI),
-                                getLocalInt(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)) + BytecodeStream.readIncrement2(state.code, curBCI));
+                case ISTORE -> setLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI), popInt(frame, expandedState.top - 1));
+                case LSTORE -> setLocalLong(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI), popLong(frame, expandedState.top - 1));
+                case FSTORE -> setLocalFloat(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI), popFloat(frame, expandedState.top - 1));
+                case DSTORE -> setLocalDouble(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI), popDouble(frame, expandedState.top - 1));
+                case ASTORE -> setLocalObjectOrReturnAddress(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI), popReturnAddressOrObject(frame, expandedState.top - 1));
+                case IINC -> setLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI),
+                                getLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)) + BytecodeStream.uncheckedReadIncrement2(state.code, curBCI));
                 case RET -> {
                     expandedState.top += ConstantBytecodes.stackEffectOf(RET);
-                    return finishJump(curBCI, getLocalReturnAddress(frame, BytecodeStream.readLocalIndex2(state.code, curBCI)), expandedState, state, frame);
+                    return finishJump(curBCI, getLocalReturnAddress(frame, BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI)), expandedState, state, frame);
                 }
                 default -> throw VMError.shouldNotReachHere(Bytecodes.nameOf(wideOpcode));
             }
@@ -3195,8 +3195,8 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MULTIANEWARRAY)
         private static int multianewarrayHandler(int curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            expandedState.top += allocateMultiArray(frame, expandedState.top, resolveType(state.method, MULTIANEWARRAY, BytecodeStream.readCPI2(state.code, curBCI)),
-                            BytecodeStream.readUByte(state.code, curBCI + 3));
+            expandedState.top += allocateMultiArray(frame, expandedState.top, resolveType(state.method, MULTIANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)),
+                            BytecodeStream.uncheckedReadUByte(state.code, curBCI + 3));
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, expandedState, state, frame);
         }
 
@@ -3551,10 +3551,10 @@ public final class Interpreter {
         if (opcode == LDC2_W) {
             VMError.guarantee(cpi != 0);
             InterpreterConstantPool pool = getConstantPool(method);
-            ConstantPool.Tag tag = pool.tagAt(cpi);
+            ConstantPool.Tag tag = pool.uncheckedTagAt(cpi);
             switch (tag) {
-                case LONG -> putLong(frame, top, pool.longAt(cpi));
-                case DOUBLE -> putDouble(frame, top, pool.doubleAt(cpi));
+                case LONG -> putLong(frame, top, pool.uncheckedLongAt(cpi));
+                case DOUBLE -> putDouble(frame, top, pool.uncheckedDoubleAt(cpi));
                 default -> resolveConstantAtSlowPath(frame, method, top, cpi, opcode, pool, tag);
             }
         } else {
@@ -3563,10 +3563,10 @@ public final class Interpreter {
                 throw noClassDefFoundError(opcode, null);
             }
             InterpreterConstantPool pool = getConstantPool(method);
-            ConstantPool.Tag tag = pool.tagAt(cpi);
+            ConstantPool.Tag tag = pool.uncheckedTagAt(cpi);
             switch (tag) {
-                case INTEGER -> putInt(frame, top, pool.intAt(cpi));
-                case FLOAT -> putFloat(frame, top, pool.floatAt(cpi));
+                case INTEGER -> putInt(frame, top, pool.uncheckedIntAt(cpi));
+                case FLOAT -> putFloat(frame, top, pool.uncheckedFloatAt(cpi));
                 default -> resolveConstantAtSlowPath(frame, method, top, cpi, opcode, pool, tag);
             }
         }
@@ -3612,7 +3612,7 @@ public final class Interpreter {
                 // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
                 // implemented.
-                Object appendix = pool.resolvedAt(cpi, null);
+                Object appendix = pool.uncheckedResolvedAt(cpi, null);
                 if (appendix instanceof ReferenceConstant<?> referenceConstant) {
                     VMError.guarantee(referenceConstant.isNonNull(), FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP);
                     Object constantValue = referenceConstant.getReferent();
@@ -3645,14 +3645,14 @@ public final class Interpreter {
         boolean requiresSymbolicTypeCheck = false;
 
         if (opcode == INVOKEDYNAMIC) {
-            int fullCPI = BytecodeStream.readCPI4(code, curBCI);
+            int fullCPI = BytecodeStream.uncheckedReadCPI4(code, curBCI);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
                 // This can happen for the debugger
                 throw noSuchMethodError(opcode, null);
             }
             int indyCPI = fullCPI >>> 16;
             int extraCPI = fullCPI & 0xFFFF;
-            Object indyEntry = method.getConstantPool().resolvedAt(indyCPI, method.getDeclaringClass());
+            Object indyEntry = method.getConstantPool().uncheckedResolvedAt(indyCPI, method.getDeclaringClass());
             Object appendix;
             if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
                 // runtime-loaded case
@@ -3666,7 +3666,7 @@ public final class Interpreter {
                     }
                     method.patchInvokeDynamicExtraCPI(curBCI, extraCPI);
                     assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
-                    assert BytecodeStream.readCPI2(code, curBCI) == indyCPI;
+                    assert BytecodeStream.uncheckedReadCPI2(code, curBCI) == indyCPI;
                 }
                 CallSiteLink link = invokeDynamicConstant.getCallSiteLink(method, code, curBCI, extraCPI);
                 if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {
@@ -3678,7 +3678,7 @@ public final class Interpreter {
             } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
                 // AOT case
                 seedMethod = entryMethod;
-                Object appendixEntry = method.getConstantPool().resolvedAt(extraCPI, method.getDeclaringClass());
+                Object appendixEntry = method.getConstantPool().uncheckedResolvedAt(extraCPI, method.getDeclaringClass());
                 if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
                     // The appendix is deliberately null.
                     appendix = null;
@@ -3747,10 +3747,10 @@ public final class Interpreter {
     }
 
     private static LinkedInvoke getOrLinkInvoke(InterpreterResolvedJavaMethod method, byte[] code, int curBCI, int opcode) {
-        char cpi = BytecodeStream.readCPI2(code, curBCI);
+        char cpi = BytecodeStream.uncheckedReadCPI2(code, curBCI);
         assert opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL || opcode == INVOKESTATIC || opcode == INVOKEINTERFACE : Bytecodes.nameOf(opcode);
         InterpreterConstantPool constantPool = getConstantPool(method);
-        LinkedInvoke linkedInvoke = constantPool.peekLinkedInvoke(cpi, opcode);
+        LinkedInvoke linkedInvoke = constantPool.uncheckedPeekLinkedInvoke(cpi, opcode);
         if (linkedInvoke != null) {
             return linkedInvoke;
         }
@@ -3776,7 +3776,7 @@ public final class Interpreter {
         // interface. This is not checked by the verifier, so we need to dynamically
         // check that property. Note: this condition covers both INVOKEINTERFACE, and
         // INVOKESPECIAL of an interface method.
-        boolean requiresSymbolicTypeCheck = getConstantPool(method).tagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF;
+        boolean requiresSymbolicTypeCheck = getConstantPool(method).uncheckedTagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF;
 
         try {
             ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
@@ -3829,7 +3829,7 @@ public final class Interpreter {
     private static Object resolveDynamicConstant(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert opcode == LDC || opcode == LDC_W : Bytecodes.nameOf(opcode);
         try {
-            return pool.resolvedDynamicConstantAt(cpi, method.getDeclaringClass());
+            return pool.uncheckedResolvedDynamicConstantAt(cpi, method.getDeclaringClass());
         } catch (Throwable t) {
             throw SemanticJavaException.raise(t);
         }
@@ -3843,11 +3843,11 @@ public final class Interpreter {
             throw noClassDefFoundError(opcode, null);
         }
         try {
-            return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
+            return getConstantPool(method).uncheckedResolvedTypeAt(method.getDeclaringClass(), cpi);
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
             UnresolvedJavaType missingType = null;
-            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaType unresolvedJavaType) {
+            if (getConstantPool(method).uncheckedPeekCachedEntry(cpi) instanceof UnresolvedJavaType unresolvedJavaType) {
                 missingType = unresolvedJavaType;
             }
             throw noClassDefFoundError(opcode, missingType);
@@ -3862,7 +3862,7 @@ public final class Interpreter {
             return null; // CPI 0 is a marker for unresolvable AND unknown entry
         }
         try {
-            return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
+            return getConstantPool(method).uncheckedResolvedTypeAt(method.getDeclaringClass(), cpi);
         } catch (UnsupportedResolutionException e) {
             return null;
         } catch (Throwable t) {
@@ -3892,7 +3892,7 @@ public final class Interpreter {
             return null; // CPI 0 is a marker for unresolvable AND unknown entry
         }
         try {
-            return getConstantPool(caller).resolvedTypeAt(caller.getDeclaringClass(), holderCpi);
+            return getConstantPool(caller).uncheckedResolvedTypeAt(caller.getDeclaringClass(), holderCpi);
         } catch (UnsupportedResolutionException e) {
             return null;
         } catch (Throwable t) {
@@ -3906,11 +3906,11 @@ public final class Interpreter {
             throw noSuchMethodError(opcode, null);
         }
         try {
-            return getConstantPool(method).resolvedMethodAt(method.getDeclaringClass(), cpi);
+            return getConstantPool(method).uncheckedResolvedMethodAt(method.getDeclaringClass(), cpi);
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
             UnresolvedJavaMethod missingMethod = null;
-            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
+            if (getConstantPool(method).uncheckedPeekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
                 missingMethod = unresolvedJavaMethod;
             }
             throw noSuchMethodError(opcode, missingMethod);
@@ -3921,12 +3921,12 @@ public final class Interpreter {
 
     private static InterpreterResolvedJavaField resolveField(InterpreterResolvedJavaMethod method, int opcode, byte[] code, int bci) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
-        char cpi = BytecodeStream.readCPI2(code, bci);
+        char cpi = BytecodeStream.uncheckedReadCPI2(code, bci);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchFieldError(opcode, null);
         }
         try {
-            InterpreterResolvedJavaField field = getConstantPool(method).resolvedFieldAt(method.getDeclaringClass(), cpi);
+            InterpreterResolvedJavaField field = getConstantPool(method).uncheckedResolvedFieldAt(method.getDeclaringClass(), cpi);
             // Apply the opcode-specific field rules after symbolic resolution.
             CremaLinkResolver.checkFieldAccessOrThrow(CremaRuntimeAccess.getInstance(), field, opcode, method.getDeclaringClass(), method);
             quickenFieldAccess(code, bci, opcode);
@@ -3934,7 +3934,7 @@ public final class Interpreter {
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
             UnresolvedJavaField missingField = null;
-            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaField unresolvedJavaField) {
+            if (getConstantPool(method).uncheckedPeekCachedEntry(cpi) instanceof UnresolvedJavaField unresolvedJavaField) {
                 missingField = unresolvedJavaField;
             }
             throw noSuchFieldError(opcode, missingField);
@@ -3948,7 +3948,7 @@ public final class Interpreter {
         assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
         try {
             // The first execution cached the resolved field after applying opcode-specific access checks.
-            return (InterpreterResolvedJavaField) getConstantPool(method).peekCachedEntry(cpi);
+            return (InterpreterResolvedJavaField) getConstantPool(method).uncheckedPeekCachedEntry(cpi);
         } catch (Throwable t) {
             throw VMError.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
         }

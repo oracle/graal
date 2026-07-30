@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,10 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * A collection of utility methods for dealing with bytes, particularly in byte arrays.
+ * <p>
+ * Unchecked accessors in this class rely on bytecode verification to establish that the requested
+ * bytes are within the bytecode array. If verification is explicitly disabled, the supplied
+ * bytecode is trusted and the user is responsible for ensuring that it is valid.
  */
 public final class ByteUtils {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -49,6 +53,17 @@ public final class ByteUtils {
     }
 
     /**
+     * Gets a signed 1-byte value without performing a bounds check.
+     *
+     * @param data the array containing the data
+     * @param bci the index to retrieve, which must be within the array bounds
+     * @return the signed byte at index {@code bci}
+     */
+    public static int uncheckedBeS1(byte[] data, int bci) {
+        return UNSAFE.getByte(data, offsetFor(bci));
+    }
+
+    /**
      * Gets a signed 2-byte big-endian value.
      *
      * @param data the array containing the data
@@ -60,6 +75,17 @@ public final class ByteUtils {
     }
 
     /**
+     * Gets a signed 2-byte big-endian value without performing a bounds check.
+     *
+     * @param data the array containing the data
+     * @param bci the start index to retrieve, which must leave two bytes within the array bounds
+     * @return the signed 2-byte, big-endian value at index {@code bci}
+     */
+    public static int uncheckedBeS2(byte[] data, int bci) {
+        return UNSAFE.getShortUnaligned(data, offsetFor(bci), true);
+    }
+
+    /**
      * Gets an unsigned 1-byte value.
      *
      * @param data the array containing the data
@@ -68,6 +94,17 @@ public final class ByteUtils {
      */
     public static int beU1(byte[] data, int bci) {
         return data[bci] & 0xff;
+    }
+
+    /**
+     * Gets an unsigned, 1-byte value without performing a bounds check.
+     *
+     * @param data the array containing the data
+     * @param bci the index to retrieve, which must be within the array bounds
+     * @return the unsigned byte at index {@code bci}
+     */
+    public static int uncheckedBeU1(byte[] data, int bci) {
+        return UNSAFE.getByte(data, offsetFor(bci)) & 0xff;
     }
 
     /**
@@ -101,6 +138,28 @@ public final class ByteUtils {
      */
     public static int beU2(byte[] data, int bci) {
         return ((data[bci] & 0xff) << 8) | (data[bci + 1] & 0xff);
+    }
+
+    /**
+     * Gets an unsigned 2-byte big-endian value without performing a bounds check.
+     *
+     * @param data the array containing the data
+     * @param bci the start index to retrieve, which must leave two bytes within the array bounds
+     * @return the unsigned 2-byte, big-endian value at index {@code bci}
+     */
+    public static int uncheckedBeU2(byte[] data, int bci) {
+        return uncheckedBeS2(data, bci) & 0xffff;
+    }
+
+    /**
+     * Gets a signed 4-byte big-endian value without performing a bounds check.
+     *
+     * @param data the array containing the data
+     * @param bci the start index to retrieve, which must leave four bytes within the array bounds
+     * @return the signed 4-byte, big-endian value at index {@code bci}
+     */
+    public static int uncheckedBeS4(byte[] data, int bci) {
+        return UNSAFE.getIntUnaligned(data, offsetFor(bci), true);
     }
 
     /**

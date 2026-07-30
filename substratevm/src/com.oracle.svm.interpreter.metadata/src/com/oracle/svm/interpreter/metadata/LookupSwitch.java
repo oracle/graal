@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,12 @@ public final class LookupSwitch {
         return BytecodeStream.readInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
     }
 
+    /** Gets a verified switch offset without performing bytecode-array bounds checks. */
+    public static int uncheckedOffsetAt(byte[] code, int bci, int i) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == LOOKUPSWITCH;
+        return BytecodeStream.uncheckedReadInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
+    }
+
     /**
      * Gets the key at {@code i}'th switch target index.
      *
@@ -64,6 +70,12 @@ public final class LookupSwitch {
         return BytecodeStream.readInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
     }
 
+    /** Gets a verified switch key without performing bytecode-array bounds checks. */
+    public static int uncheckedKeyAt(byte[] code, int bci, int i) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == LOOKUPSWITCH;
+        return BytecodeStream.uncheckedReadInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
+    }
+
     /**
      * Gets the number of switch targets.
      *
@@ -72,6 +84,12 @@ public final class LookupSwitch {
     public static int numberOfCases(byte[] code, int bci) {
         assert BytecodeStream.opcode(code, bci) == LOOKUPSWITCH;
         return BytecodeStream.readInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_NUMBER_PAIRS);
+    }
+
+    /** Gets the verified number of pairs without performing bytecode-array bounds checks. */
+    public static int uncheckedNumberOfCases(byte[] code, int bci) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == LOOKUPSWITCH;
+        return BytecodeStream.uncheckedReadInt(code, TableSwitch.getAlignedBci(bci) + OFFSET_TO_NUMBER_PAIRS);
     }
 
     /**
@@ -103,6 +121,12 @@ public final class LookupSwitch {
     public static int defaultTarget(byte[] code, int bci) {
         assert BytecodeStream.opcode(code, bci) == LOOKUPSWITCH;
         return bci + defaultOffset(code, bci);
+    }
+
+    /** Gets the verified default target without performing bytecode-array bounds checks. */
+    public static int uncheckedDefaultTarget(byte[] code, int bci) {
+        assert BytecodeStream.uncheckedOpcode(code, bci) == LOOKUPSWITCH;
+        return bci + BytecodeStream.uncheckedReadInt(code, TableSwitch.getAlignedBci(bci));
     }
 
     /**
