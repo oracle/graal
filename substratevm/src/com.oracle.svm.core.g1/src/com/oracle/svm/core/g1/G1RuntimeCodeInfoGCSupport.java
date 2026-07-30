@@ -35,8 +35,8 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.g1.nativelib.G1Library;
@@ -48,7 +48,7 @@ public class G1RuntimeCodeInfoGCSupport extends RuntimeCodeInfoGCSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public G1RuntimeCodeInfoGCSupport() {
-        funcCleanCodeCache = RuntimeCompilation.isEnabled() ? CEntryPointLiteral.create(G1RuntimeCodeInfoGCSupport.class, "cleanCodeCache", PointerBase.class, IsolateThread.class) : null;
+        funcCleanCodeCache = RuntimeCodeInstallation.isEnabled() ? CEntryPointLiteral.create(G1RuntimeCodeInfoGCSupport.class, "cleanCodeCache", PointerBase.class, IsolateThread.class) : null;
     }
 
     @Override
