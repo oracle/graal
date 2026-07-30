@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.InvokeTarget;
 public class AMD64SoftwareCFISubstrateMacroAssembler extends SubstrateAMD64MacroAssembler {
 
     private static final int ENDBR64_ENCODING = 0xfa1e0ff3;
+    private static final int SCRATCH_REGISTER_SPILL_OFFSET = -16;
     private final boolean checkNativeTransitions;
     /** Jump target for the trap instruction ({@code int3}) when failing a CFI check. */
     private Label targetCheckFail;
@@ -74,11 +75,11 @@ public class AMD64SoftwareCFISubstrateMacroAssembler extends SubstrateAMD64Macro
              * Writing below the stack pointer is safe if the ABI guarantees a safe zone that is not
              * written by interrupts or signal handlers. AMD64 System V provides such a zone.
              *
-             * In the context of a return, this spill overwrites the return address, which is
-             * currently in the target register. Return interception must restore a valid return
-             * address to keep the stack walkable.
+             * In the context of a return, rsp already points to the caller frame and the popped
+             * return address remains at [rsp - 8]. Spill into the next word so that asynchronous
+             * stack walkers can still find the return address throughout target validation.
              */
-            movq(makeAddress(rsp, -8), scratchRegister);
+            movq(makeAddress(rsp, SCRATCH_REGISTER_SPILL_OFFSET), scratchRegister);
         }
         movl(scratchRegister, new AMD64Address(target, 0));
         addl(scratchRegister, -ENDBR64_ENCODING);
@@ -87,7 +88,7 @@ public class AMD64SoftwareCFISubstrateMacroAssembler extends SubstrateAMD64Macro
         }
         jcc(ConditionFlag.NotZero, targetCheckFail);
         if (restoreScratchRegister) {
-            movq(scratchRegister, makeAddress(rsp, -8));
+            movq(scratchRegister, makeAddress(rsp, SCRATCH_REGISTER_SPILL_OFFSET));
         }
     }
 
