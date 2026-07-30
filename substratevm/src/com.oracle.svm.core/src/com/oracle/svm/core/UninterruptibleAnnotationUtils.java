@@ -33,57 +33,9 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
-import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class UninterruptibleAnnotationUtils {
-
-    /**
-     * Wraps a guest-level {@code com.oracle.svm.shared.Uninterruptible} annotation.
-     */
-    public record UninterruptibleGuestValue(String reason, boolean callerMustBe, boolean calleeMustBe, boolean mayBeInlined) {
-
-        static UninterruptibleGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
-            if (annotationValue == null) {
-                return null;
-            }
-            return new UninterruptibleGuestValue(
-                            annotationValue.getString("reason"),
-                            annotationValue.getBoolean("callerMustBe"),
-                            annotationValue.getBoolean("calleeMustBe"),
-                            annotationValue.getBoolean("mayBeInlined"));
-        }
-    }
-
-    /**
-     * Wraps a guest-level {@code org.graalvm.nativeimage.c.function.CFunction} annotation.
-     */
-    public record CFunctionGuestValue(String value, CFunction.Transition transition) {
-
-        public static CFunctionGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
-            if (annotationValue == null) {
-                return null;
-            }
-            return new CFunctionGuestValue(
-                            annotationValue.getString("value"),
-                            annotationValue.getEnum(CFunction.Transition.class, "transition"));
-        }
-    }
-
-    /**
-     * Wraps a guest-level {@code org.graalvm.nativeimage.c.function.InvokeCFunctionPointer}
-     * annotation.
-     */
-    public record InvokeCFunctionPointerGuestValue(CFunction.Transition transition) {
-
-        public static InvokeCFunctionPointerGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
-            if (annotationValue == null) {
-                return null;
-            }
-            return new InvokeCFunctionPointerGuestValue(
-                            annotationValue.getEnum(CFunction.Transition.class, "transition"));
-        }
-    }
 
     /**
      * The {@code Uninterruptible} annotation returned for C function calls with NO_TRANSITION.
@@ -109,15 +61,15 @@ public class UninterruptibleAnnotationUtils {
         }
 
         GuestAccess access = GuestAccess.get();
-        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.Uninterruptible));
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.from(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.Uninterruptible));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.CFunction));
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.from(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.CFunction));
         InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
-                        .fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.InvokeCFunctionPointer));
+                        .from(GuestAnnotationAccess.getDeclaredAnnotationValues(method).get(access.elements.InvokeCFunctionPointer));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*
@@ -126,7 +78,7 @@ public class UninterruptibleAnnotationUtils {
              * annotations.
              */
             if (NO_TRANSITION.get() == null) {
-                NO_TRANSITION.compareAndExchange(null, new UninterruptibleGuestValue("@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION", false, true, false));
+                NO_TRANSITION.compareAndExchange(null, new UninterruptibleGuestValue("@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION", true, false, false));
             }
             return NO_TRANSITION.get();
         }
@@ -167,7 +119,7 @@ public class UninterruptibleAnnotationUtils {
                 return true;
             }
             UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue
-                            .fromAnnotationValue(GuestAnnotationAccess.getDeclaredAnnotationValues(callee).get(GuestAccess.elements().Uninterruptible));
+                            .from(GuestAnnotationAccess.getDeclaredAnnotationValues(callee).get(GuestAccess.elements().Uninterruptible));
             if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                 return true;
             }

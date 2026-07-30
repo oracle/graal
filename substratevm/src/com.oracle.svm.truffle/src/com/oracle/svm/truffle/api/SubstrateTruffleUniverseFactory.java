@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -45,6 +43,7 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
