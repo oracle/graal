@@ -60,7 +60,6 @@ import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -171,45 +170,6 @@ final class Target_java_lang_Integer {
     @AnnotateOriginal
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     native long longValue();
-}
-
-@TargetClass(java.lang.String.class)
-final class Target_java_lang_String {
-
-    // Checkstyle: stop
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
-    public static boolean COMPACT_STRINGS;
-    // Checkstyle: resume
-
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
-    public static byte LATIN1;
-
-    @Substitute
-    public String intern() {
-        String thisStr = SubstrateUtil.cast(this, String.class);
-        return StringInternSupport.intern(thisStr);
-    }
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    native boolean isLatin1();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public native boolean isEmpty();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public native int length();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    native byte coder();
-
-    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
-    public byte[] value;
 }
 
 @TargetClass(className = "java.lang.StringLatin1")
