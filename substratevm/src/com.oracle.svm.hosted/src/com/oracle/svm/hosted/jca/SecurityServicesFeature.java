@@ -82,8 +82,10 @@ import javax.security.auth.login.Configuration;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -96,6 +98,7 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -104,6 +107,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -333,6 +337,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private SecurityProviderCatalogRegistrar catalogRegistrar;
     private ReflectionRegistrationView reflectionRegistrationView;
     private boolean preserveAll;
+    private boolean registerProviderTypeReachedTracking;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -361,6 +366,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             @Override
             public void registerSelectedConstructionPath(DuringAnalysisAccess access, Class<?> providerClass) {
                 if (mode.explicitRegistration()) {
+                    /* §FS-security-providers.7.1:
+                     * The run-time provider-list loader invokes this path from a different module.
+                     * Open non-exported JDK provider packages only to that loader.
+                     */
+                    ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, providerClass);
                     SecurityServicesFeature.registerSelectedConstructionPath(providerClass);
                 } else {
                     /* §FS-security-providers.7.3:
@@ -497,17 +507,31 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         access.ensureInitialized("sun.security.util.AnchorCertificates");
 
+        registerProviderTypeReachedTracking = mode.explicitRegistration();
         initializeServiceRegistrationData();
         preserveAll = access.getImageClassLoader().classLoaderSupport.isPreserveAll();
         reflectionRegistrationView = ReflectionRegistrationView.singleton();
         access.registerSubtypeReachabilityHandler((_, providerClass) -> addCandidateProviderClass(providerClass), Provider.class);
         registerServiceProviderCandidates(access);
+        if (mode.explicitRegistration()) {
+            /* §FS-security-providers.2.1 and §FS-security-providers.7.3:
+             * Provider selection happens during analysis. Candidate discovery above also loads
+             * descriptor-only provider classes. Pre-register only type-reached tracking here so
+             * selected construction paths can remain conditional without retaining unselected
+             * providers.
+             */
+            for (Class<? extends Provider> providerClass : loader.findSubclasses(Provider.class, false)) {
+                ClassInitializationSupport.singleton().addForTypeReachedTracking(providerClass);
+            }
+        }
         LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
             if (shouldRegisterProviderClassForReflection(access, providerClass)) {
+                addCandidateProviderClass(providerClass);
                 providerPlanner.requestCompleteProvider(providerClass, SecurityProviderRegistrationPlanner.Source.LEGACY_ADDITIONAL_PROVIDER);
                 registerProviderClassForReflection(providerClass);
             }
         });
+        registerProviderTypeReachedTracking = false;
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
         }
@@ -798,6 +822,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void addCandidateProviderClass(Class<?> providerClass) {
+        if (registerProviderTypeReachedTracking) {
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(providerClass);
+        }
         providerPlanner.addCandidate(providerClass);
     }
 
@@ -1139,13 +1166,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerSelectedConstructionPath(Class<?> providerClass) {
+        AccessCondition condition = AccessCondition.typeReached(providerClass);
+        RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
         if (constructor != null) {
-            RuntimeReflection.register(constructor);
+            reflection.register(condition, false, constructor);
         } else {
             Method providerMethod = findProviderMethod(providerClass);
             if (providerMethod != null) {
-                RuntimeReflection.register(providerMethod);
+                reflection.register(condition, false, providerMethod);
             }
         }
     }
