@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -267,6 +267,7 @@ final class SourceImpl extends Source {
                             Objects.equals(getPath(), other.getPath()) && //
                             Objects.equals(getURI(), other.getURI()) && //
                             Objects.equals(getURL(), other.getURL()) && //
+                            Objects.equals(options, other.options) && //
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
