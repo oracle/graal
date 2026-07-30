@@ -42,6 +42,10 @@ public final class TableSwitch {
         return (bci + 4) & 0xfffffffc;
     }
 
+    public static long getAlignedBci(long bci) {
+        return (bci + 4) & 0xfffffffffffffffcL;
+    }
+
     private TableSwitch() {
         throw VMError.shouldNotReachHereAtRuntime();
     }
@@ -100,7 +104,7 @@ public final class TableSwitch {
     }
 
     /** Gets a verified switch target without performing bytecode-array bounds checks. */
-    public static int uncheckedTargetAt(byte[] code, int bci, int i) {
+    public static long uncheckedTargetAt(byte[] code, long bci, int i) {
         assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
         return bci + BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }
@@ -116,7 +120,7 @@ public final class TableSwitch {
     }
 
     /** Gets the verified default target without performing bytecode-array bounds checks. */
-    public static int uncheckedDefaultTarget(byte[] code, int bci) {
+    public static long uncheckedDefaultTarget(byte[] code, long bci) {
         assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
         return bci + BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci));
     }
@@ -142,7 +146,7 @@ public final class TableSwitch {
     }
 
     /** Gets the verified low key without performing bytecode-array bounds checks. */
-    public static int uncheckedLowKey(byte[] code, int bci) {
+    public static int uncheckedLowKey(byte[] code, long bci) {
         assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
         return BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
     }
@@ -158,7 +162,7 @@ public final class TableSwitch {
     }
 
     /** Gets the verified high key without performing bytecode-array bounds checks. */
-    public static int uncheckedHighKey(byte[] code, int bci) {
+    public static int uncheckedHighKey(byte[] code, long bci) {
         assert BytecodeStream.uncheckedOpcode(code, bci) == TABLESWITCH;
         return BytecodeStream.uncheckedReadInt(code, getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
     }

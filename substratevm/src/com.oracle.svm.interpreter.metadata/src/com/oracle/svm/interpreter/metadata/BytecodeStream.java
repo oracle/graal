@@ -140,7 +140,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 1-byte local index without performing a bounds check. */
-    public static int uncheckedReadLocalIndex1(byte[] code, int curBCI) {
+    public static int uncheckedReadLocalIndex1(byte[] code, long curBCI) {
         return ByteUtils.uncheckedBeU1(code, curBCI + 1);
     }
 
@@ -156,7 +156,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 2-byte local index without performing a bounds check. */
-    public static int uncheckedReadLocalIndex2(byte[] code, int curBCI) {
+    public static int uncheckedReadLocalIndex2(byte[] code, long curBCI) {
         return ByteUtils.uncheckedBeU2(code, curBCI + 2);
     }
 
@@ -185,7 +185,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 1-byte IINC delta without performing a bounds check. */
-    public static int uncheckedReadIncrement1(byte[] code, int curBCI) {
+    public static int uncheckedReadIncrement1(byte[] code, long curBCI) {
         return ByteUtils.uncheckedBeS1(code, curBCI + 2);
     }
 
@@ -200,7 +200,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 2-byte WIDE IINC delta without performing a bounds check. */
-    public static int uncheckedReadIncrement2(byte[] code, int curBCI) {
+    public static int uncheckedReadIncrement2(byte[] code, long curBCI) {
         return ByteUtils.uncheckedBeS2(code, curBCI + 4);
     }
 
@@ -231,7 +231,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 4-byte branch destination without performing a bounds check. */
-    public static int uncheckedReadBranchDest4(byte[] code, int curBCI) {
+    public static long uncheckedReadBranchDest4(byte[] code, long curBCI) {
         return curBCI + ByteUtils.uncheckedBeS4(code, curBCI + 1);
     }
 
@@ -246,7 +246,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 2-byte branch destination without performing a bounds check. */
-    public static int uncheckedReadBranchDest2(byte[] code, int curBCI) {
+    public static long uncheckedReadBranchDest2(byte[] code, long curBCI) {
         return curBCI + ByteUtils.uncheckedBeS2(code, curBCI + 1);
     }
 
@@ -262,7 +262,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a signed 4-byte value without performing a bounds check. */
-    public static int uncheckedReadInt(byte[] code, int bci) {
+    public static int uncheckedReadInt(byte[] code, long bci) {
         return ByteUtils.uncheckedBeS4(code, bci);
     }
 
@@ -277,7 +277,7 @@ public final class BytecodeStream {
     }
 
     /** Reads an unsigned byte without performing a bounds check. */
-    public static int uncheckedReadUByte(byte[] code, int bci) {
+    public static int uncheckedReadUByte(byte[] code, long bci) {
         return ByteUtils.uncheckedBeU1(code, bci);
     }
 
@@ -292,7 +292,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 1-byte constant-pool index without performing a bounds check. */
-    public static char uncheckedReadCPI1(byte[] code, int curBCI) {
+    public static char uncheckedReadCPI1(byte[] code, long curBCI) {
         return (char) ByteUtils.uncheckedBeU1(code, curBCI + 1);
     }
 
@@ -306,7 +306,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 2-byte constant-pool index without performing a bounds check. */
-    public static char uncheckedReadCPI2(byte[] code, int curBCI) {
+    public static char uncheckedReadCPI2(byte[] code, long curBCI) {
         return (char) ByteUtils.uncheckedBeU2(code, curBCI + 1);
     }
 
@@ -333,7 +333,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a 4-byte invokedynamic constant-pool operand without a bounds check. */
-    public static int uncheckedReadCPI4(byte[] code, int curBCI) {
+    public static int uncheckedReadCPI4(byte[] code, long curBCI) {
         assert uncheckedOpcode(code, curBCI) == Bytecodes.INVOKEDYNAMIC;
         return ByteUtils.uncheckedBeS4(code, curBCI + 1);
     }
@@ -348,7 +348,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a signed byte operand without performing a bounds check. */
-    public static byte uncheckedReadByte(byte[] code, int curBCI) {
+    public static byte uncheckedReadByte(byte[] code, long curBCI) {
         return (byte) ByteUtils.uncheckedBeS1(code, curBCI + 1);
     }
 
@@ -362,7 +362,7 @@ public final class BytecodeStream {
     }
 
     /** Reads a signed short operand with one native load and without a bounds check. */
-    public static short uncheckedReadShort(byte[] code, int curBCI) {
+    public static short uncheckedReadShort(byte[] code, long curBCI) {
         return (short) ByteUtils.uncheckedBeS2(code, curBCI + 1);
     }
 
@@ -381,7 +381,7 @@ public final class BytecodeStream {
      * Reads an opcode without performing a bounds check. The bytecode index must have been
      * validated during bytecode verification.
      */
-    public static int uncheckedOpcode(byte[] code, int curBCI) {
+    public static int uncheckedOpcode(byte[] code, long curBCI) {
         return ByteUtils.uncheckedBeU1(code, curBCI);
     }
 
@@ -389,7 +389,7 @@ public final class BytecodeStream {
      * Reads an unsigned byte for the current instruction (e.g. SIPUSH). The {@link Bytecodes#WIDE}
      * modifier is <b>NOT</b> handled internally. It performs an opaque memory access.
      */
-    public static int opaqueOpcode(byte[] code, int curBCI) {
+    public static int opaqueOpcode(byte[] code, long curBCI) {
         // opcode validity is performed at verification time.
         return ByteUtils.opaqueBeU1(code, curBCI);
     }
