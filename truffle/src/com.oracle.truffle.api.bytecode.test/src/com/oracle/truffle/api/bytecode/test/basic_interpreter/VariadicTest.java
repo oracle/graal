@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -173,6 +173,7 @@ public class VariadicTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(1, countInstructions(root, "load.variadic"));
+        assertEquals(1, countInstructions(root, "splat.variadic"));
         for (Instruction instruction : root.getBytecodeNode().getInstructions()) {
             if (instruction.getName().equals("load.variadic")) {
                 boolean argumentFound = false;
@@ -205,7 +206,8 @@ public class VariadicTest extends AbstractBasicInterpreterTest {
                 final int dynamicVariadicCount = y;
                 for (int z = 0; z < run.getVariadicsLimit() + 1; z++) {
                     final int dynamicVariadics = z;
-                    var root = parseNode("testMergeVariadics", (b) -> {
+                    // Introspection takes a long time on this test.
+                    var root = parseNode(run.withoutIntrospection(), LANGUAGE, "testMergeVariadics", (b) -> {
                         b.beginRoot();
                         b.beginReturn();
                         b.beginVariadic0Operation();
@@ -258,7 +260,8 @@ public class VariadicTest extends AbstractBasicInterpreterTest {
                 final int staticCount = y;
                 for (int z = 0; z < 6; z++) {
                     final int dynamicCount = z;
-                    var root = parseNode("testMultiSplat", (b) -> {
+                    // Introspection takes a long time on this test.
+                    var root = parseNode(run.withoutIntrospection(), LANGUAGE, "testMultiSplat", (b) -> {
                         b.beginRoot();
                         b.beginReturn();
                         b.beginVariadic0Operation();

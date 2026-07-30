@@ -101,7 +101,7 @@ import com.oracle.truffle.api.source.Source;
 @RunWith(Parameterized.class)
 public abstract class AbstractBasicInterpreterTest {
 
-    public record TestRun(BytecodeVariant bytecode, boolean testSerialize, boolean testTracer) {
+    public record TestRun(BytecodeVariant bytecode, boolean testSerialize, boolean testTracer, boolean testIntrospectionInvariants) {
 
         public Class<? extends BasicInterpreter> interpreterClass() {
             return bytecode.getGeneratedClass();
@@ -146,9 +146,17 @@ public abstract class AbstractBasicInterpreterTest {
             return interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
         }
 
+        /**
+         * This method returns the same {@link TestRun} with introspection disabled; it is useful
+         * for tests whose execution time would otherwise be dominated by introspection testing.
+         */
+        public TestRun withoutIntrospection() {
+            return new TestRun(bytecode, testSerialize, testTracer, false);
+        }
+
         @Override
         public String toString() {
-            return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + ",trace=" + testTracer + "]";
+            return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + ",trace=" + testTracer + ",introspection=" + testIntrospectionInvariants + "]";
         }
 
         public int getFrameBaseSlots() {
@@ -278,9 +286,9 @@ public abstract class AbstractBasicInterpreterTest {
     public static List<TestRun> getParameters() {
         List<TestRun> result = new ArrayList<>();
         for (BytecodeVariant bc : allVariants()) {
-            result.add(new TestRun(bc, false, false));
-            result.add(new TestRun(bc, true, false));
-            result.add(new TestRun(bc, false, true));
+            result.add(new TestRun(bc, false, false, true));
+            result.add(new TestRun(bc, true, false, false));
+            result.add(new TestRun(bc, false, true, false));
         }
         return result;
     }
@@ -365,11 +373,13 @@ public abstract class AbstractBasicInterpreterTest {
             });
         }
 
-        for (BasicInterpreter interpreter : result.getNodes()) {
-            try {
-                testIntrospectionInvariants(interpreter.getBytecodeNode());
-            } catch (Throwable e) {
-                throw new AssertionError("Invariant failure " + interpreter.dump(), e);
+        if (run.testIntrospectionInvariants()) {
+            for (BasicInterpreter interpreter : result.getNodes()) {
+                try {
+                    testIntrospectionInvariants(interpreter.getBytecodeNode());
+                } catch (Throwable e) {
+                    throw new AssertionError("Invariant failure " + interpreter.dump(), e);
+                }
             }
         }
 
