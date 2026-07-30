@@ -281,7 +281,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         JavaKind returnKind = wordMethod.getSignature().getReturnKind();
         AnnotationValue factoryOperation = BridgeMethodUtils.getAnnotation(WordFactoryOperation.class, wordMethod);
         if (factoryOperation != null) {
-            WordFactoryOpcode opcode = factoryOperation.getEnum(WordFactoryOpcode.class, "opcode");
+            WordFactoryOpcode opcode = factoryOperation.getEnum("opcode", WordFactoryOpcode.class);
             switch (opcode) {
                 case ZERO:
                     assert NumUtil.assertArrayLength(args, 0);
@@ -304,7 +304,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         if (operation == null) {
             throw bailout(b, "Cannot call method on a word value: " + wordMethod.format("%H.%n(%p)"));
         }
-        Opcode opcode = operation.getEnum(Opcode.class, "opcode");
+        Opcode opcode = operation.getEnum("opcode", Opcode.class);
         String name = wordMethod.getName();
         switch (opcode) {
             case ARITHMETIC: {
