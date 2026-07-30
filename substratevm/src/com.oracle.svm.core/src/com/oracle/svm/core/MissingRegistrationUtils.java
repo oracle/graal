@@ -137,12 +137,12 @@ public class MissingRegistrationUtils {
      * the image, and is not a reason to abort the lookup completely.
      */
     public static <T> T runIgnoringMissingRegistrations(Supplier<T> callback) {
-        VMError.guarantee(!missingRegistrationErrorsSuspended.get());
+        boolean previouslySuspended = missingRegistrationErrorsSuspended.get();
         try {
             missingRegistrationErrorsSuspended.set(true);
             return callback.get();
         } finally {
-            missingRegistrationErrorsSuspended.set(false);
+            missingRegistrationErrorsSuspended.set(previouslySuspended);
         }
     }
 
