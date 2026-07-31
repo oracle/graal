@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,12 +55,15 @@ import java.util.function.Predicate;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
@@ -179,11 +182,19 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             return true; // continue
         });
 
-        if (!ProcessorContext.types().ExpectErrorTypes.isEmpty()) {
+        if (shouldVerifyExpectedErrors()) {
             for (Element element : relevantTypes) {
                 verifyExpectedErrors(element, emittedMessages);
             }
         }
+    }
+
+    private static boolean shouldVerifyExpectedErrors() {
+        if (TruffleProcessorOptions.generateSlowPathOnly(ProcessorContext.getInstance().getEnvironment())) {
+            // Errors are not reported reliably when GenerateSlowPathOnly is set.
+            return false;
+        }
+        return !ProcessorContext.types().ExpectErrorTypes.isEmpty();
     }
 
     private static void verifyExpectedErrors(Element element, Map<Element, List<Message>> emitted) {
@@ -221,10 +232,15 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
         for (Element enclosed : element.getEnclosedElements()) {
             if (enclosed instanceof TypeElement) {
-                // we just validate types.
+                // we don't validate nested types.
                 continue;
             }
             verifyExpectedErrors(enclosed, emitted);
+        }
+        if (element instanceof ExecutableElement ex) {
+            for (VariableElement param : ex.getParameters()) {
+                verifyExpectedErrors(param, emitted);
+            }
         }
 
     }

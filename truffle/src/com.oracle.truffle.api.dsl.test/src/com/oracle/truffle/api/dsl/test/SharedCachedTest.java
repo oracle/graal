@@ -354,17 +354,14 @@ public class SharedCachedTest {
         }
     }
 
-    // invalid multiple instances
-    abstract static class ErrorInvalidGroup4 extends Node {
+    // sharing across multiple instances is now supported
+    abstract static class SharedMultipleInstances extends Node {
 
         abstract Object execute(Object arg);
 
         @Specialization(guards = "node == arg", limit = "3")
         Object s0(int arg,
                         @Cached("arg") int node,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
-                                        "  - s1(..., @Cached(...) int shared) : The specialization 's0(int, int, int)' has multiple instances.%n" +
-                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.")//
                         @Shared("shared") @Cached("arg") int shared) {
             return arg;
         }
@@ -372,9 +369,6 @@ public class SharedCachedTest {
         @Specialization(guards = "arg == node", limit = "3")
         Object s1(int arg,
                         @Cached("arg") int node,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
-                                        "  - s0(..., @Cached(...) int shared) : The specialization 's1(int, int, int)' has multiple instances.%n" +
-                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.")//
                         @Shared("shared") @Cached("arg") int shared) {
             return arg;
         }

@@ -64,7 +64,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused", "static-method"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "unused", "static-method"})
 public class ExportMethodTest extends AbstractLibraryTest {
 
     @GenerateLibrary
