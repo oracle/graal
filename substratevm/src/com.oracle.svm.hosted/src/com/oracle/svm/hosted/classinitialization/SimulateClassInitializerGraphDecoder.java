@@ -393,10 +393,10 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
 
     private Node handleEnsureClassInitializedNode(EnsureClassInitializedNode node) {
         var aConstantReflection = (AnalysisConstantReflectionProvider) providers.getConstantReflection();
-        var classInitType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
-        if (classInitType != null) {
-            boolean requiresInitializationCheck = aConstantReflection.initializationCheckRequired(classInitType);
-            boolean isClassInitializerSimulated = support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember);
+        var initializationTargetType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
+        if (initializationTargetType != null) {
+            boolean requiresInitializationCheck = aConstantReflection.initializationCheckRequired(initializationTargetType);
+            boolean isClassInitializerSimulated = support.trySimulateClassInitializer(graph.getDebug(), initializationTargetType, clusterMember);
             /*
              * A required initialization check must survive simulation, even if its target is an
              * unpublished member of this cluster. The in-cluster relationship only records a
@@ -409,7 +409,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
                     /* Class is already simulated initialized, no need for a run-time check. */
                     return null;
                 }
-                var classInitTypeMember = clusterMember.cluster.clusterMembers.get(classInitType);
+                var classInitTypeMember = clusterMember.cluster.clusterMembers.get(initializationTargetType);
                 if (classInitTypeMember != null && !classInitTypeMember.status.published) {
                     /*
                      * The class is part of the same cycle as our class. We optimistically remove the
