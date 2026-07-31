@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -114,7 +115,7 @@ public abstract class DeoptimizedFrame {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected abstract void write(Deoptimizer.TargetContent targetContent);
+        protected abstract void write(Deoptimizer.TargetContent targetContent, Pointer targetContentStart);
     }
 
     /**
@@ -164,7 +165,7 @@ public abstract class DeoptimizedFrame {
 
         @Override
         @Uninterruptible(reason = "Writes pointers to unmanaged storage.")
-        protected void write(Deoptimizer.TargetContent targetContent) {
+        protected void write(Deoptimizer.TargetContent targetContent, @SuppressWarnings("unused") Pointer targetContentStart) {
             targetContent.writeInt(offset, value);
         }
     }
@@ -181,7 +182,7 @@ public abstract class DeoptimizedFrame {
 
         @Override
         @Uninterruptible(reason = "Writes pointers to unmanaged storage.")
-        protected void write(Deoptimizer.TargetContent targetContent) {
+        protected void write(Deoptimizer.TargetContent targetContent, @SuppressWarnings("unused") Pointer targetContentStart) {
             targetContent.writeLong(offset, value);
         }
     }
@@ -200,7 +201,7 @@ public abstract class DeoptimizedFrame {
 
         @Override
         @Uninterruptible(reason = "Writes pointers to unmanaged storage.")
-        protected void write(Deoptimizer.TargetContent targetContent) {
+        protected void write(Deoptimizer.TargetContent targetContent, @SuppressWarnings("unused") Pointer targetContentStart) {
             targetContent.writeObject(offset, value, compressed);
         }
     }
@@ -218,8 +219,14 @@ public abstract class DeoptimizedFrame {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected void write(Deoptimizer.TargetContent targetContent) {
-            targetContent.writeLong(offset, returnAddress);
+        protected void write(Deoptimizer.TargetContent targetContent, Pointer targetContentStart) {
+            /*
+             * targetContentStart is the address to which the buffer is copied. The stack pointer
+             * used to authenticate this return is immediately above its stack slot.
+             */
+            Pointer sourceSp = targetContentStart.add(Word.unsigned(offset + FrameAccess.returnAddressSize()));
+            CodePointer encodedReturnAddress = FrameAccess.singleton().encodeReturnAddress(sourceSp, Word.pointer(returnAddress));
+            targetContent.writeWord(offset, encodedReturnAddress);
         }
 
         public long getReturnAddress() {

@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -176,16 +177,17 @@ public final class DeoptimizedBaselineCompiledFrame extends DeoptimizedFrame {
      */
     @Uninterruptible(reason = "Reads pointer values from the stack frame to unmanaged storage.")
     void buildContent(Pointer newSp) {
+        Pointer targetContentStart = newSp.subtract(Word.unsigned(FrameAccess.returnAddressSize() + Deoptimizer.savedBasePointerSize()));
 
         VirtualFrame cur = topFrame;
         do {
-            cur.getReturnAddress().write(targetContent);
+            cur.getReturnAddress().write(targetContent, targetContentStart);
             if (cur.getSavedBasePointer() != null) {
                 cur.getSavedBasePointer().write(targetContent, newSp);
             }
             for (int i = 0; i < cur.values.length; i++) {
                 if (cur.values[i] != null) {
-                    cur.values[i].write(targetContent);
+                    cur.values[i].write(targetContent, targetContentStart);
                 }
             }
             cur = cur.getCaller();
