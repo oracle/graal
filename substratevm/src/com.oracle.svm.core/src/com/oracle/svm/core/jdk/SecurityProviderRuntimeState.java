@@ -52,6 +52,7 @@ public final class SecurityProviderRuntimeState {
 
     private final EconomicMap<String, ProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, String> configuredProviderClassNames = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<String, Boolean> ambiguousConfiguredProviderNames = ImageHeapMap.createNonLayeredMap();
 
     private Properties savedInitialSecurityProperties;
     private Constructor<?> sunECConstructor;
@@ -88,9 +89,12 @@ public final class SecurityProviderRuntimeState {
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerConfiguredProviderName(String providerName, String providerClassName) {
         String previousClassName = configuredProviderClassNames.get(providerName);
-        assert previousClassName == null || previousClassName.equals(providerClassName) : providerName +
-                        " maps to both " + previousClassName + " and " + providerClassName;
-        configuredProviderClassNames.put(providerName, providerClassName);
+        if (previousClassName == null) {
+            configuredProviderClassNames.put(providerName, providerClassName);
+        } else if (!previousClassName.equals(providerClassName)) {
+            /* §FS-security-providers.7.1: Provider names are not globally unique class keys. */
+            ambiguousConfiguredProviderNames.put(providerName, true);
+        }
     }
 
     private static ProviderInfo merge(ProviderInfo oldInfo, ProviderInfo newInfo) {
@@ -125,6 +129,9 @@ public final class SecurityProviderRuntimeState {
     public static String getConfiguredProviderClassName(String providerName) {
         String result = null;
         for (SecurityProviderRuntimeState state : singletons()) {
+            if (Boolean.TRUE.equals(state.ambiguousConfiguredProviderNames.get(providerName))) {
+                return null;
+            }
             String providerClassName = state.configuredProviderClassNames.get(providerName);
             if (providerClassName != null) {
                 if (result != null && !result.equals(providerClassName)) {
