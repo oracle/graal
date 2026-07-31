@@ -84,6 +84,16 @@ final class Target_javax_crypto_JceSecurityManager {
     Target_javax_crypto_CryptoPermission getCryptoPermission(String var1) {
         return SubstrateUtil.cast(Target_javax_crypto_CryptoAllPermission.INSTANCE, Target_javax_crypto_CryptoPermission.class);
     }
+
+    /**
+     * Native Image cannot perform the JAR verification used by the JDK to establish caller trust.
+     * All callers embedded in an image are trusted; provider verification remains enforced
+     * separately by {@link JceProviderVerificationSupport}.
+     */
+    @Substitute
+    boolean isCallerTrusted(Class<?> callerClass, Provider provider) {
+        return true;
+    }
 }
 
 @TargetClass(className = "javax.crypto.CryptoPermission")
