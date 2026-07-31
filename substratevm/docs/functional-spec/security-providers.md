@@ -386,6 +386,9 @@ At run time, Native Image loads that resolved provider directly through its regi
 nullary construction path.
 It does not scan or instantiate unrelated provider descriptors while resolving the configured
 name.
+Provider names do not globally identify provider classes. If multiple registered provider classes
+report the same name, Native Image retains their class-based registration but does not treat that
+name as an unambiguous configured-provider-to-class mapping.
 An unregistered provider is not added to the list, and its services remain unavailable.
 Filtering unregistered providers preserves the ordering and lookup results specified in sections
 1.3, 3.2, and 4.
