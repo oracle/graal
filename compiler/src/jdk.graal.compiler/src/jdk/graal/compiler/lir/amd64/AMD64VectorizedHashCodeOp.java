@@ -391,8 +391,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
 
         // for (; i < cnt1 ; i += 2) {
         masm.bind(labelShortUnrolledLoopBegin);
-        masm.movl(tmp3, 961);
-        masm.imull(result, tmp3);
+        masm.imull(result, result, 961);
         arraysHashcodeElload(masm, tmp2, new AMD64Address(ary1, index, stride, -elsize), arrayKind);
         masm.movl(tmp3, tmp2);
         masm.shll(tmp3, 5);
