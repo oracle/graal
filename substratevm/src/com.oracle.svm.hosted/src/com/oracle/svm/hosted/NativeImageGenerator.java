@@ -758,6 +758,7 @@ public class NativeImageGenerator {
                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
                 compileQueue.finish(debug);
+                HostedConfiguration.instance().afterCompileQueue(debug, compileQueue);
                 BuildPhaseProviderImpl.markCompileQueueFinished();
 
                 /* release memory taken by graphs for the image writing */

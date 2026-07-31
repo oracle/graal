@@ -70,6 +70,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
@@ -125,6 +126,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -200,6 +202,10 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
+    public NativeImageHeap getImageHeap() {
+        return imageHeap;
+    }
+
     public int getCodeAreaSize() {
         assert codeAreaSize >= 0;
         return codeAreaSize;
@@ -263,6 +269,15 @@ public abstract class NativeImageCodeCache {
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
         assert orderedCompilations != null;
         return orderedCompilations;
+    }
+
+    /**
+     * Builds the image-wide data section's emitted-item view for resolving
+     * {@link DataSectionReference data-section references} after merging all per-compilation data
+     * sections.
+     */
+    public DataSection.EmittedItems buildDataSectionEmittedItems() {
+        return dataSection.buildEmittedItems(HostedOptionValues.singleton().get(), 1, SubstrateTarget.getArchitecture().getByteOrder());
     }
 
     /**

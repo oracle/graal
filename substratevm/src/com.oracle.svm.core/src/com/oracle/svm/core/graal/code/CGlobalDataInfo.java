@@ -61,7 +61,7 @@ public final class CGlobalDataInfo {
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
     @Platforms(HOSTED_ONLY.class) private byte[] bytes;
 
-    @SuppressWarnings("unused") private final int layerNum;
+    private final int layerNum;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public CGlobalDataInfo(CGlobalDataImpl<?> data, boolean definedAsGlobalInPriorLayer, int layerNum) {
@@ -107,6 +107,10 @@ public final class CGlobalDataInfo {
     public int getSize() {
         VMError.guarantee(size >= 0, "size has not been initialized");
         return size;
+    }
+
+    public int getLayerNumber() {
+        return layerNum;
     }
 
     public void makeGlobalSymbol() {

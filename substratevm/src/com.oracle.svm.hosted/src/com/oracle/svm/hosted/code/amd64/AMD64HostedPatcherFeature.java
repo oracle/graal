@@ -95,7 +95,7 @@ class AMD64HostedPatcherFeature implements InternalFeature {
     }
 }
 
-class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher, HostedPatcher.ContiguousOperandPatchSite {
     private final OperandDataAnnotation annotation;
 
     AMD64HostedPatcher(OperandDataAnnotation annotation) {
@@ -120,6 +120,26 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
         int result = annotation.nextInstructionPosition - annotation.operandPosition;
         assert result >= annotation.operandSize : annotation;
         return result;
+    }
+
+    @Override
+    public int instructionPosition() {
+        return annotation.instructionPosition;
+    }
+
+    @Override
+    public int operandPosition() {
+        return annotation.operandPosition;
+    }
+
+    @Override
+    public int operandSize() {
+        return annotation.operandSize;
+    }
+
+    @Override
+    public int nextInstructionPosition() {
+        return annotation.nextInstructionPosition;
     }
 
     @Override
