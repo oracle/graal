@@ -46,6 +46,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
+import com.oracle.svm.test.clinit.typereached.TypeReachedSimulationCycleReproducer;
 
 import jdk.internal.misc.Unsafe;
 
@@ -961,7 +962,7 @@ public class TestClassInitialization {
     static final CustomInterfaceLambdaHolder customInterfaceLambda = new CustomInterfaceLambdaHolder();
 
     public static void main(String[] args) {
-        com.oracle.svm.test.clinit.typereached.TypeReachedSimulationCycleReproducer.verify();
+        TypeReachedSimulationCycleReproducer.verify();
 
         for (var checkedClass : checkedClasses) {
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
