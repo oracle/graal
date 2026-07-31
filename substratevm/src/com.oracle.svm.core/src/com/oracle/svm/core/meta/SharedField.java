@@ -53,12 +53,30 @@ public interface SharedField extends ResolvedJavaField {
      */
     int getLocation();
 
+    /**
+     * Returns whether accesses to this field must be supported. During native image generation,
+     * this includes reads and writes with observable side effects. Runtime implementations may
+     * conservatively return {@code true} when dynamically loaded code can access the field.
+     */
     boolean isAccessed();
 
+    /**
+     * Returns whether this field is reachable. During native image generation, a field can become
+     * reachable because it is accessed, read, written, or folded. Runtime implementations use
+     * their runtime reachability semantics.
+     */
     boolean isReachable();
 
+    /**
+     * Returns whether writes to this field must be supported. During native image generation,
+     * this identifies fields marked as written. Runtime implementations may conservatively return
+     * {@code true} when dynamically loaded code can write the field.
+     */
     boolean isWritten();
 
+    /**
+     * Returns the kind of the field in memory, which can differ from its Java language kind.
+     */
     JavaKind getStorageKind();
 
     /**
