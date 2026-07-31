@@ -373,6 +373,17 @@ public class RistrettoUtils {
             installedCode.invalidate();
             return discardCompiledCode(rMethod, "because a speculation failed during installation");
         }
+        if (RistrettoOptions.JITTraceCodeInstallations.getValue()) {
+            long start = installedCode.getAddress();
+            int size = compilationResult.getTargetCodeSize();
+            Log.log().string("[Ristretto CodeMap] method=").string(rMethod.format("%H.%n(%p)"))
+                            .string(" entryBCI=").signed(entryBCI)
+                            .string(" start=").hex(start)
+                            .string(" end=").hex(start + size)
+                            .string(" entry=").hex(installedCode.getEntryPoint())
+                            .string(" size=").signed(size)
+                            .newline();
+        }
         if (RistrettoOptions.JITTraceCompilation.getValue()) {
             Log.log().string("[Ristretto Compiler] Finished compilation, code for ").string(rMethod.format("%H.%n(%p)")).string(": ").signed(compilationResult.getTargetCodeSize()).string(" bytes")
                             .newline();

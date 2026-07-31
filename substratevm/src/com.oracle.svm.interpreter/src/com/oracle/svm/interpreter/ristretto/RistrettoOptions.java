@@ -69,6 +69,9 @@ public class RistrettoOptions {
     @Option(help = "Trace compilation events.")//
     public static final RuntimeOptionKey<Boolean> JITTraceCompilation = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Trace installed Ristretto JIT code address ranges.")//
+    public static final RuntimeOptionKey<Boolean> JITTraceCodeInstallations = new RuntimeOptionKey<>(false);
+
     @Option(help = "Print stack traces of compiler exceptions.")//
     public static final RuntimeOptionKey<Boolean> JITPrintExceptions = new RuntimeOptionKey<>(false);
 
