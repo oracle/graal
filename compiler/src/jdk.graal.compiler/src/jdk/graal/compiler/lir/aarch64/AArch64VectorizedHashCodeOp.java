@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,11 +164,10 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      *     var vresult1 = IntVector.zero(I128);
      *     var vresult2 = IntVector.zero(I128);
      *     var vresult3 = IntVector.zero(I128);
-     *     var vresult4 = IntVector.zero(I128);
+     *     var vresult4 = IntVector.zero(I128).withLane(vlen - 1, result);
      *     int inext = 31 ** N;
      *     var vnext = IntVector.broadcast(I128, inext);
      *     for (int i = 0; i &lt; bound; i += N) {
-     *         result *= inext;
      *         // load 4x4 zero-extended-to-32-bit int values
      *         var vtmp1 = IntVector.fromArray(I128, data, i + 0 * vlen);
      *         var vtmp2 = IntVector.fromArray(I128, data, i + 1 * vlen);
@@ -184,7 +183,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      *     vresult3 = vresult3.mul(IntVector.fromArray(I128, POW31BW, 2 * vlen));
      *     vresult4 = vresult4.mul(IntVector.fromArray(I128, POW31BW, 3 * vlen));
      *     var vresult = vresult1.add(vresult2).add(vresult3).add(vresult4);
-     *     result += vresult.reduceLanes(ADD);
+     *     result = vresult.reduceLanes(ADD);
      * }
      * // UNROLLED (x2) SCALAR LOOP
      * int i = 1;
@@ -267,6 +266,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             for (int idx = 0; idx < nRegs; idx++) {
                 masm.neon.moviVI(ASIMDSize.FullReg, vresult[idx], 0);
             }
+            // Seed the last lane, whose final coefficient is 31**0, with the initial value.
+            masm.neon.insXG(ElementSize.Word, vresult[nRegs - 1], elementsPerVector - 1, result);
 
             // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
             // Throws AIOOBE if there are not enough elements in the array but allows more.
@@ -285,9 +286,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                 Label labelUnrolledVectorLoopBegin = new Label();
                 masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(labelUnrolledVectorLoopBegin);
-
-                // result *= next;
-                masm.mul(32, result, result, next);
 
                 /*
                  * Load the next 16 data elements, zero-extended to 32-bit, into 4 vector registers.
@@ -339,10 +337,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                 }
             }
 
-            // result += vresult[0].reduceLanes(ADD); (horizontal lane-wise add reduction)
+            // result = vresult[0].reduceLanes(ADD); (horizontal lane-wise add reduction)
             masm.neon.addvSV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[0]);
-            masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
-            masm.add(32, result, result, tmp2);
+            masm.fmov(32, result, vresult[0]); // umovGX(Word, result, vresult[0], 0);
         }
 
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
