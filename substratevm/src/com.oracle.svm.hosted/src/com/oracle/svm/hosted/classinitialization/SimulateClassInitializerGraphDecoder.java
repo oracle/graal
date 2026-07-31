@@ -395,15 +395,17 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var aConstantReflection = (AnalysisConstantReflectionProvider) providers.getConstantReflection();
         var classInitType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
         if (classInitType != null) {
-            boolean initializationCheckRequired = aConstantReflection.initializationCheckRequired(classInitType);
-            boolean simulated = support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember);
+            boolean requiresInitializationCheck = aConstantReflection.initializationCheckRequired(classInitType);
+            boolean isClassInitializerSimulated = support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember);
             /*
-             * Neither optimization below is valid when an initialization check is required. In
-             * particular, an in-cluster cycle does not establish that the required run-time
-             * transition occurs.
+             * A required initialization check must survive simulation, even if its target is an
+             * unpublished member of this cluster. The in-cluster relationship only records a
+             * recursive simulation dependency; it does not show that run-time execution will
+             * perform the check. For a type-reached check, removing the node can skip marking the
+             * target's DynamicHub as reached and leave conditional metadata unavailable.
              */
-            if (!initializationCheckRequired) {
-                if (simulated) {
+            if (!requiresInitializationCheck) {
+                if (isClassInitializerSimulated) {
                     /* Class is already simulated initialized, no need for a run-time check. */
                     return null;
                 }
