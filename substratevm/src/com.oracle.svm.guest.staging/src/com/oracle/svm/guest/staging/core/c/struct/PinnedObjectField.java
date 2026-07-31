@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.guest.staging.core.c.struct;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+
 /**
- * For classes with this annotation no context sensitive analysis is done. This means that no
- * context information is recorded for objects of the annotated class, i.e., no allocation site or
- * other context information, but only the declared type is used to model objects of the annotated
- * class.
+ * Allows {@link RawField fields} of {@link Object} types in {@link RawStructure structures}. This
+ * is inherently dangerous, because such fields are not visited by the garbage collector. Therefore,
+ * only references to objects that are never moved and never freed by the garbage collector can be
+ * safely stored in such fields. That can be objects that are in the native image or objects that
+ * are pinned.
+ * <p>
+ * This annotation serves as a marker, by using it you acknowledge that you know what you are doing.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.TYPE})
-@Platforms(Platform.HOSTED_ONLY.class)
-public @interface UnknownClass {
-
+@Target({ElementType.METHOD})
+public @interface PinnedObjectField {
 }
