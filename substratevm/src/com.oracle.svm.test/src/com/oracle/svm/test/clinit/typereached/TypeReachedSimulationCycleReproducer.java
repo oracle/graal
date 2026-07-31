@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Models the Berkeley DB {@code TupleBinding} initialization shape that exposed GR-73663.
+ * Models the Berkeley DB {@code TupleBinding} initialization shape.
  *
  * The colocated {@code reachability-metadata.json} registers a {@code typeReached} condition for
  * {@code TupleBinding}. Initializing {@code TupleBinding} constructs subclasses whose initialization
