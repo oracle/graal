@@ -397,6 +397,11 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         if (classInitType != null) {
             boolean initializationCheckRequired = aConstantReflection.initializationCheckRequired(classInitType);
             boolean simulated = support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember);
+            /*
+             * Neither optimization below is valid when an initialization check is required. In
+             * particular, an in-cluster cycle does not establish that the required run-time
+             * transition occurs.
+             */
             if (!initializationCheckRequired) {
                 if (simulated) {
                     /* Class is already simulated initialized, no need for a run-time check. */
@@ -408,8 +413,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
                      * The class is part of the same cycle as our class. We optimistically remove the
                      * initialization check, which is correct if the whole cycle can be simulated. If
                      * the cycle cannot be simulated, then this graph with the optimistic assumption
-                     * will be discarded. A required check cannot use this optimization: the cycle
-                     * does not establish that its required run-time transition occurs.
+                     * will be discarded.
                      */
                     clusterMember.dependencies.add(classInitTypeMember);
                     return null;
