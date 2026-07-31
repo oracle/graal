@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.LINUX;
 
-import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
@@ -43,9 +43,9 @@ public class JfrOptions {
         if (option.getValue()) {
             if (!isPlatformSupported) {
                 throw UserError.invalidOptionValue(option, option.getValue(), "The signal handler-based sampler is not supported on this platform.");
-            } else if (RuntimeCompilation.isEnabled()) {
+            } else if (RuntimeCodeInstallation.isEnabled()) {
                 /* It is inherently unsafe to access the RuntimeCodeCache from a signal handler. */
-                throw UserError.invalidOptionValue(option, option.getValue(), "The signal handler-based sampler is not supported when runtime compilation is enabled.");
+                throw UserError.invalidOptionValue(option, option.getValue(), "The signal handler-based sampler is not supported when runtime-installed code is enabled.");
             }
         }
     }

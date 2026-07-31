@@ -41,10 +41,10 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.VirtualFrame;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
@@ -150,7 +150,7 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
 
     @Override
     public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
-        if (InterpreterSupport.isEnabled() || RuntimeCompilation.isEnabled() && !CodeInfoTable.isInAOTImageCode(ip)) {
+        if (InterpreterSupport.isEnabled() || RuntimeCodeInstallation.isEnabled() && !CodeInfoTable.isInAOTImageCode(ip)) {
             /*
              * GR-46090: better detection of interpreter frames needed. Right now this forces
              * exception handling to always go through the "encoded Java source reference" case as

@@ -39,7 +39,7 @@ public class RuntimeCodeInfoGCSupportImpl extends RuntimeCodeInfoGCSupport {
     @Override
     @Uninterruptible(reason = "Called when installing code.", callerMustBe = true)
     public void registerObjectFields(CodeInfo codeInfo) {
-        // nothing to do (all runtime compiled code gets processed at every GC)
+        // nothing to do (all runtime-installed code gets processed at every GC)
     }
 
     @Override

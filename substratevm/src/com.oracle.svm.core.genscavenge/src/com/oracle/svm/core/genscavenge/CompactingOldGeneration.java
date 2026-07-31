@@ -50,7 +50,7 @@ import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -397,7 +397,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
         Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.start();
         try {
-            if (RuntimeCompilation.isEnabled()) {
+            if (RuntimeCodeInstallation.isEnabled()) {
                 RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheFixupWalker);
             }
         } finally {

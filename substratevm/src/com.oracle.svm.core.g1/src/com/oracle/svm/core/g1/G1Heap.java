@@ -67,7 +67,7 @@ import com.oracle.svm.core.gc.shared.NativeGCThreadTransitions;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationData;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationWrapperData;
-import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
@@ -254,7 +254,7 @@ public final class G1Heap extends Heap {
 
     @Uninterruptible(reason = "Called during startup.")
     private static Word getClassesAssumedReachableForCodeUnloading() {
-        if (RuntimeCompilation.isEnabled()) {
+        if (RuntimeCodeInstallation.isEnabled()) {
             return Word.objectToUntrackedWord(CLASSES_ASSUMED_REACHABLE);
         }
         return Word.nullPointer();

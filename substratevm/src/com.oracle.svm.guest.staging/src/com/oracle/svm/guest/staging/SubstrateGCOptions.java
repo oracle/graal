@@ -106,7 +106,7 @@ public class SubstrateGCOptions {
     @Option(help = "Verify the heap before and after each collection.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
-    @Option(help = "Determines if references from runtime-compiled code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
+    @Option(help = "Determines if references from runtime-installed code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
 
     @Option(help = "Use thread-local object allocation.", type = OptionType.Expert)//
