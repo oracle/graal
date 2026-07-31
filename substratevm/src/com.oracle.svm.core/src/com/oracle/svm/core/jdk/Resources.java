@@ -864,7 +864,8 @@ public final class Resources {
                                 missingResourceMatchesIncludePattern(canonicalResourceName, moduleName);
                 if (resourceNameMatchesIncludePattern || canonicalResourceNameMatchesIncludePattern) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
-                    // resource with the name actually exists. Do not report missing metadata.
+                    // resource with the name actually exists. Do not report missing metadata or
+                    // trace the covered lookup. See FS-001-native-image-semantics.3.1.
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
