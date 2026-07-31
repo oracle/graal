@@ -85,8 +85,9 @@ public class RistrettoParser extends BytecodeParser {
                 if (plugin.canBeDisabled()) {
                     return false;
                 }
-                throw new PermanentBailoutException("Ristretto cannot apply non-disableable invocation plugin for %s at bci %d because the invoke is covered by a local exception handler.",
-                                targetMethod.format("%H.%n(%p)"), currentBci);
+                throw new PermanentBailoutException("Ristretto cannot apply non-disableable invocation plugin for " +
+                                targetMethod.format("%H.%n(%p)") + " at bci " + currentBci +
+                                " because the invoke is covered by a local exception handler.");
             }
         }
         return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);

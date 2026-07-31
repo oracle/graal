@@ -137,6 +137,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         if (existing instanceof Placeholder placeholder && placeholder.isSuperProbingThread()) {
             throw new ClassCircularityError(name.toString());
         }
+        RuntimeClassLoading.guaranteeClassLoadingAllowed();
         Class<?> result = doLoadClass(name);
         if (result == null) {
             // The boot class loader can return null
@@ -174,6 +175,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     }
 
     private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
+        RuntimeClassLoading.guaranteeClassLoadingAllowed();
         byte[] data = b;
         if (off != 0 || b.length != len) {
             if (len < 0) {

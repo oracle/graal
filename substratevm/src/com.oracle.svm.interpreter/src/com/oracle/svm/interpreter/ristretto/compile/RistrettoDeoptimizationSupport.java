@@ -47,11 +47,11 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.interpreter.CallSiteLink;
-import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.InterpreterToVM;
@@ -60,7 +60,11 @@ import com.oracle.svm.interpreter.ResolvedInvokeDynamicConstant;
 import com.oracle.svm.interpreter.SuccessfulCallSiteLink;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -262,7 +266,7 @@ public class RistrettoDeoptimizationSupport {
                 logger().string("[buf/deopt] create interp frame for method=").string(interpreterMethod.toString()).newline();
             }
             InterpreterFrame reconstructedFrame = createInterpreterFrameFromCompiledFrame(interpreterMethod, compiledFrame, deoptimizer);
-            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, interpreterMethod, reconstructedFrame, frameBefore);
+            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, rMethod, reconstructedFrame, frameBefore);
             frameBefore = currentFrame;
 
             // iterate inlining (caller) chain in deoptimized physical frame and associated compiler
@@ -291,13 +295,14 @@ public class RistrettoDeoptimizationSupport {
      * Only the physical top frame records a pending compiled return kind because only that frame can
      * still own unread GP/FP return registers when deoptimization starts.
      */
-    private static RistrettoVirtualInterpreterFrame createVirtualInterpreterFrame(FrameInfoQueryResult compiledFrame, InterpreterResolvedJavaMethod interpreterMethod,
+    private static RistrettoVirtualInterpreterFrame createVirtualInterpreterFrame(FrameInfoQueryResult compiledFrame, RistrettoMethod rMethod,
                     InterpreterFrame reconstructedFrame, RistrettoVirtualInterpreterFrame calleeFrame) {
+        InterpreterResolvedJavaMethod interpreterMethod = rMethod.getInterpreterMethod();
         int currentBci = compiledFrame.getBci();
         int targetBci = computeDeoptTargetBci(interpreterMethod, compiledFrame);
-        JavaKind compiledReturnKind = calleeFrame == null ? resolvePendingTopFrameReturnKind(interpreterMethod, compiledFrame) : JavaKind.Illegal;
+        JavaKind compiledReturnKind = calleeFrame == null ? resolvePendingTopFrameReturnKind(rMethod, compiledFrame) : JavaKind.Illegal;
 
-        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, reconstructedFrame, interpreterMethod, currentBci,
+        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, reconstructedFrame, rMethod, currentBci,
                         targetBci, compiledFrame.getStackState(), compiledFrame.getNumStack(), compiledReturnKind, calleeFrame);
         if (calleeFrame != null) {
             calleeFrame.setCaller(currentFrame);
@@ -385,24 +390,23 @@ public class RistrettoDeoptimizationSupport {
      * the Java-side resume path runs only after the stub has restored caller state and no longer
      * has safe access to the machine return-value registers.
      */
-    private static JavaKind resolvePendingTopFrameReturnKind(InterpreterResolvedJavaMethod topFrameMethod, FrameInfoQueryResult topCompiledFrame) {
+    private static JavaKind resolvePendingTopFrameReturnKind(RistrettoMethod topFrameMethod, FrameInfoQueryResult topCompiledFrame) {
         if (topCompiledFrame.getStackState() != StackState.AfterPop) {
             return JavaKind.Illegal;
         }
         int currentBci = topCompiledFrame.getBci();
-        return resolveDeoptInvokeSiteLayout(topFrameMethod, currentBci).getReturnKind();
+        return computeDeoptInvokeSiteLayout(topFrameMethod, currentBci).getReturnKind();
     }
 
     /**
-     * Resolves the invoke-site layout for the caller-side bytecode state that triggered
-     * deoptimization.
+     * Computes the invoke-site layout needed to resume a deoptimized invoke.
      */
-    static CallSiteLayout resolveDeoptInvokeSiteLayout(InterpreterResolvedJavaMethod interpreterMethod, int callsiteBci) {
+    static CallSiteLayout computeDeoptInvokeSiteLayout(RistrettoMethod method, int callsiteBci) {
+        InterpreterResolvedJavaMethod interpreterMethod = method.getInterpreterMethod();
         byte[] compilerCode = interpreterMethod.getCode();
         int opcode = BytecodeStream.opcode(compilerCode, callsiteBci);
-        VMError.guarantee(Bytecodes.isInvoke(opcode), "Deopt resume must resolve an invoke bytecode");
+        VMError.guarantee(Bytecodes.isInvoke(opcode), "Deopt resume expects an invoke bytecode");
 
-        InterpreterResolvedJavaMethod linkedMethod;
         if (opcode == Bytecodes.INVOKEDYNAMIC) {
             int fullCpi = BytecodeStream.readCPI4(compilerCode, callsiteBci);
             int indyCpi = fullCpi >>> 16;
@@ -414,19 +418,22 @@ public class RistrettoDeoptimizationSupport {
             CallSiteLink link = ((ResolvedInvokeDynamicConstant) indyEntry).getCallSiteLink(interpreterMethod, callsiteBci);
             VMError.guarantee(link instanceof SuccessfulCallSiteLink,
                             "Deopt resume expects an already-published runtime invokedynamic link");
-            linkedMethod = ((SuccessfulCallSiteLink) link).getInvoker();
-        } else {
-            if (!(opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEINTERFACE)) {
-                throw VMError.shouldNotReachHere("Deopt resume expected a concrete invoke bytecode, got opcode " + opcode + " at BCI " + callsiteBci);
-            }
-            char cpi = BytecodeStream.readCPI2(compilerCode, callsiteBci);
-            linkedMethod = Interpreter.resolveMethod(interpreterMethod, opcode, cpi);
+            InterpreterResolvedJavaMethod linkedMethod = ((SuccessfulCallSiteLink) link).getInvoker();
+            boolean hasReceiver = !linkedMethod.isStatic();
+            return new CallSiteLayout(linkedMethod.getSignature().getReturnKind(), linkedMethod.getSignature().slotsForParameters(hasReceiver));
         }
 
-        boolean hasReceiver = !linkedMethod.isStatic();
-        JavaKind returnKind = linkedMethod.getSignature().getReturnKind();
-        int argumentSlotCount = linkedMethod.getSignature().slotsForParameters(hasReceiver);
-        return new CallSiteLayout(returnKind, argumentSlotCount);
+        if (!(opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEINTERFACE)) {
+            throw VMError.shouldNotReachHere("Deopt resume expected a concrete invoke bytecode, got opcode " + opcode + " at BCI " + callsiteBci);
+        }
+        char cpi = BytecodeStream.readCPI2(compilerCode, callsiteBci);
+        InterpreterConstantPool constantPool = interpreterMethod.getConstantPool();
+        LinkedInvoke linkedInvoke = constantPool.peekLinkedInvoke(cpi, opcode);
+        if (linkedInvoke != null) {
+            return new CallSiteLayout(linkedInvoke.returnKind, linkedInvoke.parameterSlots);
+        }
+        InterpreterUnresolvedSignature signature = CremaMethodAccess.toJVMCI(constantPool.methodSignature(cpi), SymbolsSupport.getTypes());
+        return new CallSiteLayout(signature.getReturnKind(), signature.slotsForParameters(opcode != Bytecodes.INVOKESTATIC));
     }
 
     /**

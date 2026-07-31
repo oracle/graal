@@ -42,6 +42,7 @@ import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
@@ -403,7 +404,7 @@ public class InterpreterDeoptEntryPoints {
      *
      * <p>
      * The slot calculation intentionally reuses
-     * {@link RistrettoDeoptimizationSupport#resolveDeoptInvokeSiteLayout(InterpreterResolvedJavaMethod, int)}
+     * {@link RistrettoDeoptimizationSupport#computeDeoptInvokeSiteLayout(RistrettoMethod, int)}
      * so the deopt resume path keeps one local source of truth for invoke layout, return-kind
      * selection, and result placement.
      */
@@ -420,7 +421,7 @@ public class InterpreterDeoptEntryPoints {
         if (!Bytecodes.isInvoke(opcode)) {
             throw VMError.shouldNotReachHere("Return-value injection expects an invoke bytecode at BCI " + callsiteBci);
         }
-        RistrettoDeoptimizationSupport.CallSiteLayout invokeLayout = RistrettoDeoptimizationSupport.resolveDeoptInvokeSiteLayout(interpreterMethod, callsiteBci);
+        RistrettoDeoptimizationSupport.CallSiteLayout invokeLayout = RistrettoDeoptimizationSupport.computeDeoptInvokeSiteLayout(chainedFrame.getRistrettoMethod(), callsiteBci);
         JavaKind returnKind = invokeLayout.getReturnKind();
         /*
          * AfterPop frames already reflect the post-invoke stack shape, so the result belongs at the

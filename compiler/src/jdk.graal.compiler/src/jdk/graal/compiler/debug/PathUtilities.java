@@ -90,16 +90,29 @@ public class PathUtilities {
     }
 
     /**
-     * This circumvents instantiating {@link SimpleDateFormat} at libgraal runtime. This is needed
-     * to avoid String-based class-lookup (to find resource bundle
-     * {@code sun.text.resources.cldr.FormatData} as part of {@link SimpleDateFormat} construction)
-     * and allows us to avoid class-lookup support in the image.
+     * This circumvents initializing path and date-formatting support at libgraal runtime. This is
+     * needed to avoid String-based class lookup, for example to find resource bundle
+     * {@code sun.text.resources.cldr.FormatData} as part of {@link SimpleDateFormat} construction,
+     * and allows us to avoid class-loading support in the image. Regular runtime compilation runs
+     * in a closed-world image. Ristretto additionally supports loading guest classes at runtime but
+     * prohibits class loading on compiler threads, so all compiler-owned path and date-formatting
+     * state must likewise be initialized before such a thread uses it.
      */
     private static final SimpleDateFormat SIMPLE_DATE_FORMAT = getSimpleDateFormat();
 
     private static SimpleDateFormat getSimpleDateFormat() {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
+        /*
+         * Without explicit symbols, formatting can consult the locale provider for calendar
+         * display names even though SimpleDateFormat already contains the required symbols.
+         */
+        simpleDateFormat.setDateFormatSymbols(simpleDateFormat.getDateFormatSymbols());
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        /*
+         * Initialize the provider while PathUtilities itself is initialized so getting the first
+         * absolute diagnostic path cannot trigger class loading on a compiler thread.
+         */
+        getAbsolutePath(".");
         return simpleDateFormat;
     }
 
