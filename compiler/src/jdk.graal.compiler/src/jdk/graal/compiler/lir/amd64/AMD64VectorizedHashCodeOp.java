@@ -106,7 +106,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         this.arrayKind = arrayKind;
 
         this.temp = allocateTempRegisters(tool, QWORD, 5);
-        this.vectorTemp = allocateVectorRegisters(tool, JavaKind.Byte, 13);
+        this.vectorTemp = allocateVectorRegisters(tool, JavaKind.Byte, 9);
     }
 
     private static void arraysHashcodeElload(AMD64MacroAssembler masm, Register dst, AMD64Address src, JavaKind eltype) {
@@ -296,9 +296,8 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
 
         // For "renaming" for readability of the code
         Register vnext = asRegister(vectorTemp[0]);
-        Register[] vcoef = {asRegister(vectorTemp[1]), asRegister(vectorTemp[2]), asRegister(vectorTemp[3]), asRegister(vectorTemp[4])};
+        Register[] vtmp = {asRegister(vectorTemp[1]), asRegister(vectorTemp[2]), asRegister(vectorTemp[3]), asRegister(vectorTemp[4])};
         Register[] vresult = {asRegister(vectorTemp[5]), asRegister(vectorTemp[6]), asRegister(vectorTemp[7]), asRegister(vectorTemp[8])};
-        Register[] vtmp = {asRegister(vectorTemp[9]), asRegister(vectorTemp[10]), asRegister(vectorTemp[11]), asRegister(vectorTemp[12])};
 
         Stride stride = Stride.fromJavaKind(arrayKind);
         int elsize = arrayKind.getByteCount();
@@ -373,8 +372,8 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
             int coefficientOffset = powersOf31Offset + JavaKind.Int.getByteCount();
             for (int idx = 0; idx < 4; idx++) {
-                loadVector(masm, vcoef[idx], new AMD64Address(tmp2, coefficientOffset + idx * avxSize.getBytes()), avxSize.getBytes());
-                masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], avxSize);
+                loadVector(masm, vtmp[idx], new AMD64Address(tmp2, coefficientOffset + idx * avxSize.getBytes()), avxSize.getBytes());
+                masm.emit(VPMULLD, vresult[idx], vresult[idx], vtmp[idx], avxSize);
             }
             // result += vresult.reduceLanes(ADD);
             reduce(masm, avxSize, JavaKind.Int, vtmp[0], vresult[0], vresult[1]);
