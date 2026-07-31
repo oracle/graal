@@ -165,6 +165,10 @@ public final class RuntimeOptionParser {
                     "-Xverify:none",
                     "-Xdebug",
                     "-Xcheck:jni");
+    private static final Set<String> UNIMPLEMENTED_VERBOSE_OPTIONS = Set.of(
+                    "gc",
+                    "jni",
+                    "module");
 
     /** All reachable options. */
     private final EconomicMap<String, OptionDescriptor> options = ImageHeapMap.createNonLayeredMap();
@@ -210,6 +214,7 @@ public final class RuntimeOptionParser {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
         configureLogFile(context.logFile);
+        GuestStagingDependencyBridge.singleton().endOfParsing();
         return args;
     }
 
@@ -363,7 +368,8 @@ public final class RuntimeOptionParser {
             if (parseProperty(arg, context) ||
                             (!context.legacyJavaOptionMode && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
-                                            parseXBootClasspathAppendOption(arg, context)))) {
+                                            parseXBootClasspathAppendOption(arg, context) ||
+                                            parseRecognizedJavaOption(arg, context)))) {
                 continue;
             }
             args[newIdx] = arg;
@@ -567,6 +573,24 @@ public final class RuntimeOptionParser {
         return true;
     }
 
+    /// Parses known and implemented Java VM options.
+    private static boolean parseRecognizedJavaOption(String arg, @SuppressWarnings("unused") ParseContext context) {
+        if (arg.equals("-verbose") || arg.equals("-verbose:class")) {
+            GuestStagingDependencyBridge.singleton().enableTraceClassLoading();
+            return true;
+        }
+        if (arg.startsWith("-verbose:")) {
+            String component = arg.substring("-verbose:".length());
+            if (UNIMPLEMENTED_VERBOSE_OPTIONS.contains(component)) {
+                // Will be handled in `isRecognizedUnimplementedJavaOption`
+                return false;
+            }
+            // Accept any `-verbose:foo`, as they are implemented by doing nothing.
+            return true;
+        }
+        return false;
+    }
+
     /// Rejects recognized Java VM options that remain in `args` because this parser does not
     /// implement their runtime behavior yet. Unknown options are left to the caller's
     /// entry-point-specific policy.
@@ -601,8 +625,11 @@ public final class RuntimeOptionParser {
         if (arg.startsWith("-javaagent:")) {
             return true;
         }
-        if (arg.equals("-verbose") || arg.startsWith("-verbose:")) {
-            return true;
+        if (arg.startsWith("-verbose:")) {
+            String component = arg.substring("-verbose:".length());
+            if (UNIMPLEMENTED_VERBOSE_OPTIONS.contains(component)) {
+                return true;
+            }
         }
         if (arg.startsWith(ILLEGAL_NATIVE_ACCESS_OPTION_PREFIX)) {
             return true;

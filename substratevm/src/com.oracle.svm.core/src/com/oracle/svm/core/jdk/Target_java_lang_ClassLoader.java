@@ -342,9 +342,9 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L71-L151")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1051-L1054")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L857-L896")
-    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, @SuppressWarnings("unused") String source) {
+    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source) {
         // Note that if name is not null, it is a binary name in either / or .-form
-        return RuntimeClassLoading.defineClass(loader, name, b, off, len, new ClassDefinitionInfo(pd));
+        return RuntimeClassLoading.defineClass(loader, name, b, off, len, new ClassDefinitionInfo(pd, source));
     }
 
     @Substitute
@@ -352,7 +352,7 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L153-L213")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1051-L1054")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L857-L896")
-    private static Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, @SuppressWarnings("unused") String source) {
+    private static Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source) {
         // Note that if name is not null, it is a binary name in either / or .-form
         // only bother extracting the bytes if it has a chance to work
         if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoading.isSupported()) {
@@ -366,7 +366,7 @@ public final class Target_java_lang_ClassLoader {
                 b.get(off, array);
                 offset = 0;
             }
-            return RuntimeClassLoading.defineClass(loader, name, array, offset, len, new ClassDefinitionInfo(pd));
+            return RuntimeClassLoading.defineClass(loader, name, array, offset, len, new ClassDefinitionInfo(pd, source));
         }
         throw RuntimeClassLoading.throwNoBytecodeClasses(name);
     }
@@ -376,7 +376,7 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1039-L1049")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L909-L1022")
     private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd,
-                    @SuppressWarnings("unused") boolean initialize, int flags, Object classData) {
+                    boolean initialize, int flags, Object classData) {
         // Note that if name is not null, it is a binary name in either / or .-form
         String actualName = name;
         assert !(PredefinedClassesSupport.hasBytecodeClasses() && RuntimeClassLoading.isSupported());

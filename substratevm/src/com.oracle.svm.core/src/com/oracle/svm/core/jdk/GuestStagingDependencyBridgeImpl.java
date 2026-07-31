@@ -35,14 +35,17 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -164,5 +167,26 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     public void enablePreviewFeatures() {
         Target_jdk_internal_misc_PreviewFeatures.ENABLED = true;
         Target_java_lang_runtime_SwitchBootstraps.previewEnabled = true;
+    }
+
+    @Override
+    public void enableTraceClassLoading() {
+        RuntimeClassLoading.Options.TraceClassLoading.update(true);
+    }
+
+    @Override
+    public void endOfParsing() {
+        maybeReportImageClasses();
+    }
+
+    private static void maybeReportImageClasses() {
+        if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+            Heap.getHeap().visitLoadedClasses((cls) -> {
+                DynamicHub hub = DynamicHub.fromClass(cls);
+                if (!hub.isArray()) {
+                    Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
+                }
+            });
+        }
     }
 }
