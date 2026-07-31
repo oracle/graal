@@ -34,6 +34,8 @@ import java.util.Map;
  * {@code TupleBinding}. Initializing {@code TupleBinding} constructs subclasses whose initialization
  * checks form a simulation-cluster cycle. The required check for {@code TupleBinding} must remain in the
  * decoded graph: at run time it records the type-reached transition and enables the conditional metadata.
+ * Multiple leaf bindings are intentional: one is sufficient for the cycle, but independent simulation
+ * paths make the concurrent publication race observable.
  */
 public final class TypeReachedSimulationCycleReproducer {
     public static void verify() {
