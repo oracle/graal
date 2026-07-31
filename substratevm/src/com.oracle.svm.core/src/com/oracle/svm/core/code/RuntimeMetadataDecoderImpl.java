@@ -49,7 +49,7 @@ import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;

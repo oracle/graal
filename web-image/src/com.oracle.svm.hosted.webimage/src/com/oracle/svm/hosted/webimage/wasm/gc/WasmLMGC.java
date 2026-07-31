@@ -66,7 +66,8 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
@@ -564,7 +565,7 @@ final class GrayToBlackObjectVisitor implements ObjectVisitor {
             assert isGray(obj) : "Object in worklist is not gray";
 
             // Mark all references in the object gray
-            if (probability(SLOW_PATH_PROBABILITY, KnownIntrinsics.readHub(obj).isReferenceInstanceClass())) {
+            if (probability(SLOW_PATH_PROBABILITY, DynamicHubIntrinsics.readHub(obj).isReferenceInstanceClass())) {
                 discoverReference(obj, grayReferenceVisitor);
             }
             InteriorObjRefWalker.walkObject(obj, grayReferenceVisitor);

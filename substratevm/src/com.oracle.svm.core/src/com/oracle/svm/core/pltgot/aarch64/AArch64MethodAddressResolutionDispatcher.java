@@ -33,7 +33,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.pltgot.MethodAddressResolutionDispatcher;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
 import org.graalvm.word.impl.Word;

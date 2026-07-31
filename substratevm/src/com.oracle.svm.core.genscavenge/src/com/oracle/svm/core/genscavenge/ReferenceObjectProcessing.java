@@ -47,7 +47,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -85,7 +85,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
         assert object != null;
-        DynamicHub hub = KnownIntrinsics.readHub(object);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(object);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
             discover(object, refVisitor);
         }

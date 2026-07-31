@@ -61,7 +61,7 @@ import com.oracle.svm.core.jni.JNITestingBackdoor;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes;
 import com.oracle.svm.core.log.DebugLog;
 import com.oracle.svm.core.os.RawFileOperationSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;

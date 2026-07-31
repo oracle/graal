@@ -48,7 +48,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
@@ -102,7 +102,7 @@ public final class StoredContinuationAccess {
 
     @Uninterruptible(reason = "Prevent GC during accesses via object address.", callerMustBe = true)
     public static Pointer getFramesStart(StoredContinuation s) {
-        int layout = KnownIntrinsics.readHub(s).getLayoutEncoding();
+        int layout = DynamicHubIntrinsics.readHub(s).getLayoutEncoding();
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(layout);
         return Word.objectToUntrackedPointer(s).add(baseOffset);
     }

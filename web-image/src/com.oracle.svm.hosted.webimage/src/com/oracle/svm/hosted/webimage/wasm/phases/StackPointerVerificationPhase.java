@@ -25,7 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.wasm.phases;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.hosted.webimage.wasm.debug.NoStackVerification;
 import com.oracle.svm.hosted.webimage.wasm.debug.WasmDebug;
 import com.oracle.svm.util.GuestAnnotationAccess;

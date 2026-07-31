@@ -38,7 +38,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -82,8 +82,8 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
         if (fromArray == null || toArray == null) {
             throw new NullPointerException();
         }
-        DynamicHub fromHub = KnownIntrinsics.readHub(fromArray);
-        DynamicHub toHub = KnownIntrinsics.readHub(toArray);
+        DynamicHub fromHub = DynamicHubIntrinsics.readHub(fromArray);
+        DynamicHub toHub = DynamicHubIntrinsics.readHub(toArray);
         int fromLayoutEncoding = fromHub.getLayoutEncoding();
 
         if (LayoutEncoding.isPrimitiveArray(fromLayoutEncoding)) {

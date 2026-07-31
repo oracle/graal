@@ -37,7 +37,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.ArrayUtil;
@@ -108,9 +108,9 @@ public class WasmGCArrayCopySupport {
         if (fromArray == null || toArray == null) {
             throw new NullPointerException();
         }
-        DynamicHub fromHub = KnownIntrinsics.readHub(fromArray);
+        DynamicHub fromHub = DynamicHubIntrinsics.readHub(fromArray);
         Class<?> fromClass = DynamicHub.toClass(fromHub);
-        DynamicHub toHub = KnownIntrinsics.readHub(toArray);
+        DynamicHub toHub = DynamicHubIntrinsics.readHub(toArray);
         int fromLayoutEncoding = fromHub.getLayoutEncoding();
 
         if (LayoutEncoding.isArray(fromLayoutEncoding)) {

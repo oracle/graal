@@ -38,7 +38,8 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -106,7 +107,7 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub readDynamicHubFromObject(Object o) {
-        return KnownIntrinsics.readHub(o);
+        return DynamicHubIntrinsics.readHub(o);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

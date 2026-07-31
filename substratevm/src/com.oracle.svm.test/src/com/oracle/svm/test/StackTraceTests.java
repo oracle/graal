@@ -32,11 +32,12 @@ import org.junit.Test;
 
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 
 /**
  * Tests of {@link com.oracle.svm.core.jdk.StackTraceUtils}.
  */
+@NativeImageBuildArgs("--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.core.graal=ALL-UNNAMED")
 public class StackTraceTests {
 
     enum Type {

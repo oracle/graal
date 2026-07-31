@@ -35,7 +35,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -240,7 +240,7 @@ public final class SimdSortSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer addressOfArray(Object array) {
-        DynamicHub hub = KnownIntrinsics.readHub(array);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(array);
         return Word.objectToUntrackedPointer(array).add(LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding()));
     }
 }

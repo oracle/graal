@@ -50,7 +50,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -294,7 +294,7 @@ public final class NonmovableArrays {
             System.arraycopy(getHostedArray(src), srcPos, dest, destPos, length);
             return dest;
         }
-        DynamicHub destHub = KnownIntrinsics.readHub(dest);
+        DynamicHub destHub = DynamicHubIntrinsics.readHub(dest);
         assert LayoutEncoding.isArray(destHub.getLayoutEncoding()) && destHub == readHub(src) : "Copying is only supported for arrays with identical types";
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= ArrayLengthNode.arrayLength(dest);
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));

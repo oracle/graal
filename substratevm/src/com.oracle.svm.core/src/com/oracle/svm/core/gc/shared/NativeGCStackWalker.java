@@ -64,7 +64,7 @@ import com.oracle.svm.core.heap.StoredContinuationAccess.ContinuationStackFrameV
 import com.oracle.svm.core.heap.StoredContinuationAccess.ContinuationStackFrameVisitorData;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 import com.oracle.svm.core.thread.ContinuationSupport;

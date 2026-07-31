@@ -45,7 +45,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -178,7 +178,7 @@ final class CardTable {
                     success &= CARD_TABLE_VERIFICATION_VISITOR.success;
                     CARD_TABLE_VERIFICATION_VISITOR.reset();
 
-                    DynamicHub hub = KnownIntrinsics.readHub(obj);
+                    DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
                     if (hub.isReferenceInstanceClass()) {
                         // The referent field of java.lang.Reference is excluded from the reference
                         // map, so we need to verify it separately.

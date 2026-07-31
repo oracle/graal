@@ -48,7 +48,7 @@ import com.oracle.svm.core.jdk.NativeLibraries;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;

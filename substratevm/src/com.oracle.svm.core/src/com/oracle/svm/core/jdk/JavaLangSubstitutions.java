@@ -26,7 +26,7 @@
 package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
+import static com.oracle.svm.core.hub.DynamicHubIntrinsics.readHub;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.InputStream;

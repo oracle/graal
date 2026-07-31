@@ -42,7 +42,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;

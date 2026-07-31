@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 
 /**
  * All {@link CEntryPoint} methods in here can be directly called from a debugger.
@@ -149,7 +149,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static long getHub(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            return Word.objectToUntrackedPointer(KnownIntrinsics.readHub(obj)).rawValue();
+            return Word.objectToUntrackedPointer(DynamicHubIntrinsics.readHub(obj)).rawValue();
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
@@ -165,7 +165,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static int getArrayElementSize(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.getArrayElementSize(hub);
         }
 
@@ -174,7 +174,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static long getArrayBaseOffset(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.getArrayBaseOffset(hub);
         }
 
@@ -183,7 +183,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static boolean isArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.isArray(hub);
         }
 
@@ -192,7 +192,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static boolean isPrimitiveArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.isPrimitiveArray(hub);
         }
 
@@ -201,7 +201,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static boolean isObjectArray(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.isObjectArray(hub);
         }
 
@@ -210,7 +210,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static boolean isInstance(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.isInstance(hub);
         }
 
@@ -219,7 +219,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static boolean isReference(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
             return DebugHelper.isReference(hub);
         }
 
