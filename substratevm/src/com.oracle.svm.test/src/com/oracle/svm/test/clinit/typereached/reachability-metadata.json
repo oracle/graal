@@ -2,7 +2,7 @@
   "reflection": [
     {
       "condition": {
-        "typeReached": "gr73663.TupleBinding"
+        "typeReached": "com.oracle.svm.test.clinit.typereached.TupleBinding"
       },
       "type": "java.lang.Boolean"
     }

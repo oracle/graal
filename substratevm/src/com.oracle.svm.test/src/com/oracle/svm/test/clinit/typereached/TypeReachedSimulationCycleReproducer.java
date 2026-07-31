@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package gr73663;
+package com.oracle.svm.test.clinit.typereached;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,10 +30,10 @@ import java.util.Map;
 /**
  * Models the Berkeley DB {@code TupleBinding} initialization shape that exposed GR-73663.
  *
- * {@code reachability-metadata.json} registers a {@code typeReached} condition for {@code TupleBinding}.
- * Initializing {@code TupleBinding} constructs subclasses whose initialization checks form a simulation
- * cluster cycle. The required check for {@code TupleBinding} must remain in the decoded graph: at run
- * time it records the type-reached transition and enables the conditional metadata.
+ * The colocated {@code reachability-metadata.json} registers a {@code typeReached} condition for
+ * {@code TupleBinding}. Initializing {@code TupleBinding} constructs subclasses whose initialization
+ * checks form a simulation-cluster cycle. The required check for {@code TupleBinding} must remain in the
+ * decoded graph: at run time it records the type-reached transition and enables the conditional metadata.
  */
 public final class TypeReachedSimulationCycleReproducer {
     public static void verify() {
