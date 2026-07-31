@@ -65,6 +65,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoInstalledCode;
+import com.oracle.svm.interpreter.ristretto.compile.RistrettoMethodHandleWithExceptionPlugin;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoOnStackReplacementPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog;
@@ -114,7 +115,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.replacements.MethodHandleWithExceptionPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.vm.ci.code.InstalledCode;
@@ -669,7 +669,7 @@ public class RistrettoUtils {
          * Ristretto does not provide method-handle-specific deoptimization entries, so folding
          * linkTo* calls must preserve enough state for normal deoptimization replay.
          */
-        runtimeParseGraphBuilderPlugins.appendNodePlugin(new MethodHandleWithExceptionPlugin(new RistrettoMethodHandleAccessProvider(srp), true));
+        runtimeParseGraphBuilderPlugins.appendNodePlugin(new RistrettoMethodHandleWithExceptionPlugin(new RistrettoMethodHandleAccessProvider(srp), true));
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
         StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false, false);
         if (ImageSingletons.contains(TargetGraphBuilderPlugins.class)) {
