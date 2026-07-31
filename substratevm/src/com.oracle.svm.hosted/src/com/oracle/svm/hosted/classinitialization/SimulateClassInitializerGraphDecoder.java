@@ -396,31 +396,29 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var initializationTargetType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
         if (initializationTargetType != null) {
             boolean requiresInitializationCheck = aConstantReflection.initializationCheckRequired(initializationTargetType);
-            boolean isClassInitializerSimulated = support.trySimulateClassInitializer(graph.getDebug(), initializationTargetType, clusterMember);
-            /*
-             * A required initialization check means that the initializer currently being decoded
-             * cannot be simulated. Its EnsureClassInitializedNode must remain in the graph and
-             * execute at run time, even if its target is an unpublished member of this cluster. The
-             * in-cluster relationship only records a recursive simulation dependency; it does not
-             * make the run-time check redundant. For a type-reached check, executing the node marks
-             * the target's DynamicHub as reached and makes conditional metadata available.
-             */
-            if (!requiresInitializationCheck) {
-                if (isClassInitializerSimulated) {
-                    /* Class is already simulated initialized, no need for a run-time check. */
-                    return null;
-                }
-                var classInitTypeMember = clusterMember.cluster.clusterMembers.get(initializationTargetType);
-                if (classInitTypeMember != null && !classInitTypeMember.status.published) {
-                    /*
-                     * The class is part of the same cycle as our class. We optimistically remove the
-                     * initialization check, which is correct if the whole cycle can be simulated. If
-                     * the cycle cannot be simulated, then this graph with the optimistic assumption
-                     * will be discarded.
-                     */
-                    clusterMember.dependencies.add(classInitTypeMember);
-                    return null;
-                }
+            if (requiresInitializationCheck) {
+                /*
+                 * A required initialization check means that the initializer currently being decoded
+                 * cannot be simulated. The EnsureClassInitializedNode must remain in the graph and
+                 * execute at run time. For a type-reached check, executing the node marks the
+                 * target's DynamicHub as reached and makes conditional metadata available.
+                 */
+                return node;
+            }
+            if (support.trySimulateClassInitializer(graph.getDebug(), initializationTargetType, clusterMember)) {
+                /* Class is already simulated initialized, no need for a run-time check. */
+                return null;
+            }
+            var classInitTypeMember = clusterMember.cluster.clusterMembers.get(initializationTargetType);
+            if (classInitTypeMember != null && !classInitTypeMember.status.published) {
+                /*
+                 * The class is part of the same cycle as our class. We optimistically remove the
+                 * initialization check, which is correct if the whole cycle can be simulated. If
+                 * the cycle cannot be simulated, then this graph with the optimistic assumption
+                 * will be discarded.
+                 */
+                clusterMember.dependencies.add(classInitTypeMember);
+                return null;
             }
         }
         return node;
