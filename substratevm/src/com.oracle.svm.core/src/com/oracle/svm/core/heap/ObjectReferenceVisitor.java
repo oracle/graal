@@ -26,6 +26,7 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.util.VMError;
 
 /**

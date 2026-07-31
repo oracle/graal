@@ -27,7 +27,7 @@ package com.oracle.svm.core.c;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 
 /**
  * A variant of {@link BoxedPointer} that is immutable, but has a non-final field, intended to work

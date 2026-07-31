@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInp
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.shared.Uninterruptible;
 
 class GCCExceptionTable {
