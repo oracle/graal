@@ -80,13 +80,14 @@ import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SimdSortSupport;
 import com.oracle.svm.core.jdk.SimdSortSupport.Variant;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
@@ -950,7 +951,8 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("readHub", Object.class) {
+        Registration hubRegistration = new Registration(plugins, DynamicHubIntrinsics.class);
+        hubRegistration.register(new RequiredInvocationPlugin("readHub", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode nonNullObject = b.nullCheckedValue(object);
