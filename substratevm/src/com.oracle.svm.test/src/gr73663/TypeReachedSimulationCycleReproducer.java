@@ -27,8 +27,15 @@ package gr73663;
 import java.util.HashMap;
 import java.util.Map;
 
-/** A self-contained shape of the Berkeley DB initializer that exposed GR-73663. */
-public final class TupleBindingReproducer {
+/**
+ * Models the Berkeley DB {@code TupleBinding} initialization shape that exposed GR-73663.
+ *
+ * {@code reachability-metadata.json} registers a {@code typeReached} condition for {@code TupleBinding}.
+ * Initializing {@code TupleBinding} constructs subclasses whose initialization checks form a simulation
+ * cluster cycle. The required check for {@code TupleBinding} must remain in the decoded graph: at run
+ * time it records the type-reached transition and enables the conditional metadata.
+ */
+public final class TypeReachedSimulationCycleReproducer {
     public static void verify() {
         TupleBinding binding = TupleBinding.getPrimitiveBinding(String.class);
         if (!(binding instanceof StringBinding)) {
