@@ -1,0 +1,10 @@
+{
+  "reflection": [
+    {
+      "condition": {
+        "typeReached": "gr73663.TupleBinding"
+      },
+      "type": "java.lang.Boolean"
+    }
+  ]
+}

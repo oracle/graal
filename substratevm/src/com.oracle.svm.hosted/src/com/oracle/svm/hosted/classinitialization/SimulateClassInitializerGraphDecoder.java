@@ -395,20 +395,25 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var aConstantReflection = (AnalysisConstantReflectionProvider) providers.getConstantReflection();
         var classInitType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
         if (classInitType != null) {
-            if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember) && !aConstantReflection.initializationCheckRequired(classInitType)) {
-                /* Class is already simulated initialized, no need for a run-time check. */
-                return null;
-            }
-            var classInitTypeMember = clusterMember.cluster.clusterMembers.get(classInitType);
-            if (classInitTypeMember != null && !classInitTypeMember.status.published) {
-                /*
-                 * The class is part of the same cycle as our class. We optimistically remove the
-                 * initialization check, which is correct if the whole cycle can be simulated. If
-                 * the cycle cannot be simulated, then this graph with the optimistic assumption
-                 * will be discarded.
-                 */
-                clusterMember.dependencies.add(classInitTypeMember);
-                return null;
+            boolean initializationCheckRequired = aConstantReflection.initializationCheckRequired(classInitType);
+            boolean simulated = support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember);
+            if (!initializationCheckRequired) {
+                if (simulated) {
+                    /* Class is already simulated initialized, no need for a run-time check. */
+                    return null;
+                }
+                var classInitTypeMember = clusterMember.cluster.clusterMembers.get(classInitType);
+                if (classInitTypeMember != null && !classInitTypeMember.status.published) {
+                    /*
+                     * The class is part of the same cycle as our class. We optimistically remove the
+                     * initialization check, which is correct if the whole cycle can be simulated. If
+                     * the cycle cannot be simulated, then this graph with the optimistic assumption
+                     * will be discarded. A required check cannot use this optimization: the cycle
+                     * does not establish that its required run-time transition occurs.
+                     */
+                    clusterMember.dependencies.add(classInitTypeMember);
+                    return null;
+                }
             }
         }
         return node;
