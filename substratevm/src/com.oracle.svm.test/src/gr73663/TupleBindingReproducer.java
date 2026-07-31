@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** A self-contained shape of the Berkeley DB initializer that exposed GR-73663. */
-public final class GR73663PublicReproducer {
+public final class TupleBindingReproducer {
     public static void verify() {
         TupleBinding binding = TupleBinding.getPrimitiveBinding(String.class);
         if (!(binding instanceof StringBinding)) {

@@ -961,7 +961,7 @@ public class TestClassInitialization {
     static final CustomInterfaceLambdaHolder customInterfaceLambda = new CustomInterfaceLambdaHolder();
 
     public static void main(String[] args) {
-        gr73663.GR73663PublicReproducer.verify();
+        gr73663.TupleBindingReproducer.verify();
 
         for (var checkedClass : checkedClasses) {
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
