@@ -140,6 +140,8 @@ import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPo
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
@@ -1765,6 +1767,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @SuppressWarnings("deprecation")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     public Class<?>[] getClasses() {
         checkClassFlag(ALL_CLASSES_FLAG, "getClasses");
 
