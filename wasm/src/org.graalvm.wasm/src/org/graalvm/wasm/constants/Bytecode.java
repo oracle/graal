@@ -424,6 +424,12 @@ public class Bytecode {
     // Misc - GC opcodes
     public static final int REF_EQ = 0x26;
 
+    // Misc - Wide arithmetic opcodes
+    public static final int I64_ADD128 = 0x2B;
+    public static final int I64_SUB128 = 0x2C;
+    public static final int I64_MUL_WIDE_S = 0x2D;
+    public static final int I64_MUL_WIDE_U = 0x2E;
+
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;

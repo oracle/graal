@@ -876,6 +876,10 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
                         case Bytecode.I64_TRUNC_SAT_F64_U:
+                        case Bytecode.I64_ADD128:
+                        case Bytecode.I64_SUB128:
+                        case Bytecode.I64_MUL_WIDE_S:
+                        case Bytecode.I64_MUL_WIDE_U:
                         case Bytecode.THROW_REF:
                         case Bytecode.REF_EQ:
                         case Bytecode.LEGACY_CATCH_DROP: {

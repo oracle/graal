@@ -120,6 +120,10 @@ public class WasmOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MultiMemory = new OptionKey<>(true);
 
+    @Option(help = "Enable support for wide integer arithmetic", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> WideArithmetic = new OptionKey<>(false);
+
     @Option(help = "Enable support for threads and atomics", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Threads = new OptionKey<>(false);
