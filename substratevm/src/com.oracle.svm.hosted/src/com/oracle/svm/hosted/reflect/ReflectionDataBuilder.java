@@ -1836,9 +1836,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean inHeap = false;
         boolean hiding = false;
         /* Preserve must stay visible to native tracing even with explicit metadata for the same
-         * element. See FS-001-native-image-semantics.3.2. */
+         * element. */
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */
-        boolean accessMetadata = false; // See FS-001-native-image-semantics.3.2.
+        boolean accessMetadata = false;
 
         ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
             ConfigurationMemberAccessibility previous = accessibility;

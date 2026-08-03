@@ -443,7 +443,6 @@ public final class MetadataTracer {
              * Stack walking can perform internal dynamic accesses. They are implementation details
              * and must neither be traced nor reported as missing metadata.
              */
-            // See FS-001-native-image-semantics.3.1.
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> conditionStackWalker.walk(stackFrames -> stackFrames
                             .map(StackWalker.StackFrame::getClassName)
                             .filter(this::matchesConditionPackagePrefix)

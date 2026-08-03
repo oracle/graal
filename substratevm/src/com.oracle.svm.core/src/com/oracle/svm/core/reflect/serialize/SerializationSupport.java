@@ -289,7 +289,6 @@ public class SerializationSupport {
             tracer.traceSerializationType(declaringClass);
             if (targetConstructorClass != declaringClass) {
                 // Replay also needs the constructor declaring class.
-                // See FS-001-native-image-semantics.3.1.
                 tracer.traceReflectionType(targetConstructorClass);
             }
         }

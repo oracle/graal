@@ -229,7 +229,6 @@ public class MissingRegistrationUtils {
          * Materializing a diagnostic stack trace reflectively allocates a StackTraceElement array.
          * That implementation detail must not become replay metadata.
          */
-        // See FS-001-native-image-semantics.3.1.
         try (var _ = MetadataTracer.disableTracing("missing registration stack trace")) {
             stackTrace = t.getStackTrace();
         }

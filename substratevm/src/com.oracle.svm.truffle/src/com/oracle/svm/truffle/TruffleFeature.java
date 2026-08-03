@@ -794,7 +794,6 @@ public class TruffleFeature implements InternalFeature {
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", Class[].class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportArrayInstantiation", Class.class, int.class);
         // Keep the intrinsified array diagnostic path outside runtime compilation.
-        // See FS-001-native-image-semantics.3.1.
         markTruffleBoundary(metaAccess, Array.class, "newInstance", Class.class, int.class);
         markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceAccess", Module.class, String.class);
         markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceBundleAccess", Module.class, String.class);

@@ -101,7 +101,6 @@ public final class ResourceURLConnection extends URLConnection {
             }
         } else {
             // Preserve FileNotFoundException after a warned missing-metadata access.
-            // See FS-001-native-image-semantics.3.1.
             this.data = null;
         }
     }

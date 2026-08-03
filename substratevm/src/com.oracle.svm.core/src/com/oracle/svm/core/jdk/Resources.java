@@ -865,7 +865,7 @@ public final class Resources {
                 if (resourceNameMatchesIncludePattern || canonicalResourceNameMatchesIncludePattern) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
                     // resource with the name actually exists. Do not report missing metadata or
-                    // trace the covered lookup. See FS-001-native-image-semantics.3.1.
+                    // trace the covered lookup.
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
@@ -879,7 +879,6 @@ public final class Resources {
                  * Preserve missing-metadata identity for probing native-tracing lookups so the
                  * caller can trace the final user-level query after all internal probes fail.
                  */
-                // See FS-001-native-image-semantics.3.1.
                 return MetadataTracer.enabled() && probe ? MISSING_METADATA_MARKER : null;
             }
         }

@@ -483,7 +483,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
          * Decoding conditions reflectively allocates internal Class arrays. Tracing those
          * allocations would recursively decode their own dynamic-access metadata.
          */
-        // See FS-001-native-image-semantics.3.1.
         try (var _ = MetadataTracer.disableTracing("dynamic access metadata decoding")) {
             var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
             return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
