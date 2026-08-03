@@ -177,17 +177,17 @@ public final class DeoptimizedBaselineCompiledFrame extends DeoptimizedFrame {
      */
     @Uninterruptible(reason = "Reads pointer values from the stack frame to unmanaged storage.")
     void buildContent(Pointer newSp) {
-        Pointer targetContentStart = newSp.subtract(Word.unsigned(FrameAccess.returnAddressSize() + Deoptimizer.savedBasePointerSize()));
+        Pointer targetContentDestination = newSp.subtract(Word.unsigned(FrameAccess.returnAddressSize() + Deoptimizer.savedBasePointerSize()));
 
         VirtualFrame cur = topFrame;
         do {
-            cur.getReturnAddress().write(targetContent, targetContentStart);
+            cur.getReturnAddress().write(targetContent, targetContentDestination);
             if (cur.getSavedBasePointer() != null) {
                 cur.getSavedBasePointer().write(targetContent, newSp);
             }
             for (int i = 0; i < cur.values.length; i++) {
                 if (cur.values[i] != null) {
-                    cur.values[i].write(targetContent, targetContentStart);
+                    cur.values[i].write(targetContent);
                 }
             }
             cur = cur.getCaller();
