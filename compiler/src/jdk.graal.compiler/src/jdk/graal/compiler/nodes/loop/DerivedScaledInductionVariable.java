@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -183,19 +183,19 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
-    protected ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+    protected ValueNode collectLocalEndpointOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseEndpoint,
                     Collection<LogicNode> conditions) {
         GraalError.guarantee(stamp instanceof IntegerStamp, "Expected integer stamp for %s but got %s", this, stamp);
-        GraalError.guarantee(baseExtremum != null, "Expected base extremum for %s", this);
+        GraalError.guarantee(baseEndpoint != null, "Expected base endpoint for %s", this);
         ValueNode convertedScale = scale;
         if (!convertedScale.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
             convertedScale = IntegerConvertNode.convert(convertedScale, stamp, graph(), NodeView.DEFAULT);
         }
-        LogicNode mulOverflow = IntegerMulExactOverflowNode.create(baseExtremum, convertedScale);
+        LogicNode mulOverflow = IntegerMulExactOverflowNode.create(baseEndpoint, convertedScale);
         if (!mulOverflow.isContradiction()) {
             conditions.add(graph().addOrUniqueWithInputs(mulOverflow));
         }
-        return mul(graph(), baseExtremum, convertedScale);
+        return mul(graph(), baseEndpoint, convertedScale);
     }
 
     @Override
