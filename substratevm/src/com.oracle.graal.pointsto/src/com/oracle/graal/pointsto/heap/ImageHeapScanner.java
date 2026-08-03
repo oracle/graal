@@ -362,7 +362,7 @@ public abstract class ImageHeapScanner {
             checkSealed(reason, "Trying to materialize an ImageHeapObjectArray for %s after the ImageHeapScanner is sealed.", constant);
             markTypeReachable(type, reason);
             ScanReason arrayReason = new ArrayScan(type, array, reason);
-            Object[] elementValues = new Object[length];
+            Object[] elementValues = ImageHeapObjectArray.createElementValues(length);
             for (int idx = 0; idx < length; idx++) {
                 final JavaConstant rawElementValue = hostedValuesProvider.readArrayElement(constant, idx);
                 int finalIdx = idx;
@@ -407,7 +407,7 @@ public abstract class ImageHeapScanner {
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeReachable(type, reason);
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
-            Object[] hostedFieldValues = new Object[instanceFields.length];
+            Object[] hostedFieldValues = ImageHeapInstance.createFieldValues(instanceFields.length);
             for (ResolvedJavaField javaField : instanceFields) {
                 AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;

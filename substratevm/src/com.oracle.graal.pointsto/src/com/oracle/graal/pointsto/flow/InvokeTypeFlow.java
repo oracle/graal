@@ -43,6 +43,8 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implements InvokeInfo {
 
+    private static final TypeFlow<?>[] EMPTY_ACTUAL_PARAMETERS = new TypeFlow<?>[0];
+
     /**
      * Actual parameters passed to the callee.
      */
@@ -77,7 +79,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         this.originalInvoke = null;
         this.receiverType = receiverType;
         this.targetMethod = targetMethod;
-        this.actualParameters = actualParameters;
+        this.actualParameters = actualParameters.length == 0 ? EMPTY_ACTUAL_PARAMETERS : actualParameters;
         this.actualReturn = actualReturn;
         this.callerMethodVariantKey = callerMethodVariantKey;
 
@@ -94,12 +96,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
         actualReturn = original.getActualReturn() != null ? (ActualReturnTypeFlow) methodFlows.lookupCloneOf(bb, original.getActualReturn()) : null;
 
-        actualParameters = new TypeFlow<?>[original.actualParameters.length];
+        actualParameters = createActualParameters(original.actualParameters.length);
         for (int i = 0; i < original.actualParameters.length; i++) {
             if (original.getActualParameter(i) != null) {
                 actualParameters[i] = methodFlows.lookupCloneOf(bb, original.getActualParameter(i));
             }
         }
+    }
+
+    static TypeFlow<?>[] createActualParameters(int length) {
+        return length == 0 ? EMPTY_ACTUAL_PARAMETERS : new TypeFlow<?>[length];
     }
 
     public boolean linksOnlyOriginalCallees() {

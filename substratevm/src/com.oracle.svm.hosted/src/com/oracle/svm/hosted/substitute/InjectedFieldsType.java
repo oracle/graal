@@ -60,7 +60,9 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     public InjectedFieldsType(ResolvedJavaType original) {
         this.original = original;
 
-        this.instanceFields = new ResolvedJavaField[][]{original.getInstanceFields(false), original.getInstanceFields(true)};
+        this.instanceFields = new ResolvedJavaField[][]{
+                        SubstitutionType.canonicalizeInstanceFields(original.getInstanceFields(false)),
+                        SubstitutionType.canonicalizeInstanceFields(original.getInstanceFields(true))};
     }
 
     public ResolvedJavaType getOriginal() {

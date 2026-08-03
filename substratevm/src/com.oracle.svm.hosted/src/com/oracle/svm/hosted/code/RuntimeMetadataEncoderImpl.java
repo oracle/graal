@@ -171,7 +171,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private final CodeInfoEncoder.Encoders encoders;
     private final HostedMetaAccess metaAccess;
     private final ReflectionDataAccessors accessors;
-    private final ReflectionDataBuilder dataBuilder;
+    private ReflectionDataBuilder dataBuilder;
     private final SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
     private final LayeredRuntimeMetadataSingleton layeredRuntimeMetadataSingleton;
     private TreeSet<HostedType> sortedTypes = new TreeSet<>(Comparator.comparingLong(t -> t.getHub().getTypeID()));
@@ -878,6 +878,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         RuntimeMetadataEncoding.currentLayer().trimReflectionMetadataEncoding();
         /* Enable field recomputers in reflection objects to see the computed values */
         ImageSingletons.add(EncodedRuntimeMetadataSupplier.class, encodings);
+        dataBuilder.afterRuntimeMetadataEncoding();
         clearDataAfterEncoding();
     }
 
@@ -898,6 +899,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         this.recordComponentLookupErrors = null;
 
         this.heapData = null;
+        this.dataBuilder = null;
     }
 
     private int encodeErrorIndex(Throwable error) {

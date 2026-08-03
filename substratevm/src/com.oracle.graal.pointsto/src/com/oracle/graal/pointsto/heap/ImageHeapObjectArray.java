@@ -48,6 +48,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final VarHandle elementsHandle = ReflectionUtil.unreflectField(ObjectArrayData.class, "arrayElementValues", MethodHandles.lookup());
+    private static final Object[] EMPTY_ELEMENT_VALUES = new Object[0];
 
     private static final class ObjectArrayData extends ConstantData {
 
@@ -85,11 +86,11 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     }
 
     ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int identityHashCode, int id) {
-        super(new ObjectArrayData(type, hostedObject, arrayElementValues, arrayElementValues.length, identityHashCode, id), false);
+        super(new ObjectArrayData(type, hostedObject, canonicalizeElementValues(arrayElementValues), arrayElementValues.length, identityHashCode, id), false);
     }
 
     ImageHeapObjectArray(AnalysisType type, int length) {
-        super(new ObjectArrayData(type, null, new Object[length], length, -1, -1), false);
+        super(new ObjectArrayData(type, null, createElementValues(length), length, -1, -1), false);
     }
 
     private ImageHeapObjectArray(ConstantData data, boolean compressed) {
@@ -102,12 +103,20 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     }
 
     public void setElementValues(Object[] elementValues) {
-        boolean success = elementsHandle.compareAndSet(constantData, null, elementValues);
+        boolean success = elementsHandle.compareAndSet(constantData, null, canonicalizeElementValues(elementValues));
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }
 
     public static ImageHeapObjectArray createUnbackedImageHeapArray(AnalysisType type, Object[] elementValues) {
         return new ImageHeapObjectArray(type, null, elementValues, -1, -1);
+    }
+
+    static Object[] createElementValues(int length) {
+        return length == 0 ? EMPTY_ELEMENT_VALUES : new Object[length];
+    }
+
+    private static Object[] canonicalizeElementValues(Object[] elementValues) {
+        return elementValues.length == 0 ? EMPTY_ELEMENT_VALUES : elementValues;
     }
 
     /**
@@ -178,7 +187,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
         Object[] arrayElements = getElementValues();
         Objects.requireNonNull(arrayElements, "Cannot clone an array before the element values are set.");
-        Object[] newArrayElementValues = Arrays.copyOf(arrayElements, arrayElements.length);
+        Object[] newArrayElementValues = arrayElements.length == 0 ? EMPTY_ELEMENT_VALUES : Arrays.copyOf(arrayElements, arrayElements.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
         return new ImageHeapObjectArray(new ObjectArrayData(constantData.type, null, newArrayElementValues, arrayElements.length, -1, -1), compressed);
     }

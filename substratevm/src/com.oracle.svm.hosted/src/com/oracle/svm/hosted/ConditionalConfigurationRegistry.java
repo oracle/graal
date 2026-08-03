@@ -112,6 +112,10 @@ public abstract class ConditionalConfigurationRegistry {
         pendingReachabilityHandlers.clear();
     }
 
+    protected void clearAnalysisAccess() {
+        beforeAnalysisAccess = null;
+    }
+
     protected void requireNonNull(Object[] values, String kind, String accessKind) {
         for (Object value : values) {
             Objects.requireNonNull(value, () -> nullErrorMessage(kind, accessKind));

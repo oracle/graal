@@ -52,6 +52,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * @see InjectedFieldsType
  */
 public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
+    private static final ResolvedJavaField[] EMPTY_INSTANCE_FIELDS = new ResolvedJavaField[0];
 
     private final ResolvedJavaType original;
     private final ResolvedJavaType annotated;
@@ -69,7 +70,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
         this.annotated = annotated;
         this.original = original;
         this.userSubstitution = userSubstitution;
-        this.instanceFields = new ResolvedJavaField[][]{annotated.getInstanceFields(false), annotated.getInstanceFields(true)};
+        this.instanceFields = new ResolvedJavaField[][]{
+                        canonicalizeInstanceFields(annotated.getInstanceFields(false)),
+                        canonicalizeInstanceFields(annotated.getInstanceFields(true))};
+    }
+
+    static ResolvedJavaField[] canonicalizeInstanceFields(ResolvedJavaField[] fields) {
+        return fields.length == 0 ? EMPTY_INSTANCE_FIELDS : fields;
     }
 
     public boolean isUserSubstitution() {
