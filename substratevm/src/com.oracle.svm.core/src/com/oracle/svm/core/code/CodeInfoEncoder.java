@@ -225,13 +225,24 @@ public class CodeInfoEncoder {
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
         public void install(CodeInfo target, ReferenceAdjuster adjuster) {
             Encodings encodings = encodedCodeInfo.encodings;
-            NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(encodings.objectConstantsArray, NmtCategory.Code);
-            NonmovableObjectArray<Class<?>> classes = (encodings.classesArray != null) ? adjuster.copyOfObjectArray(encodings.classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> memberNames = (encodings.memberNamesArray != null) ? adjuster.copyOfObjectArray(encodings.memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> otherStrings = (encodings.otherStringsArray != null) ? adjuster.copyOfObjectArray(encodings.otherStringsArray, NmtCategory.Code)
-                            : NonmovableArrays.nullArray();
-
-            CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTableArray, encodedCodeInfo.methodTableFirstId, encodedCodeInfo.methodTableEntryCount);
+            NonmovableObjectArray<Object> objectConstants = NonmovableArrays.nullArray();
+            NonmovableObjectArray<Class<?>> classes = NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> memberNames = NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> otherStrings = NonmovableArrays.nullArray();
+            try {
+                objectConstants = adjuster.copyOfObjectConstantArray(encodings.objectConstantsArray, NmtCategory.Code);
+                classes = (encodings.classesArray != null) ? adjuster.copyOfObjectArray(encodings.classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+                memberNames = (encodings.memberNamesArray != null) ? adjuster.copyOfObjectArray(encodings.memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+                otherStrings = (encodings.otherStringsArray != null) ? adjuster.copyOfObjectArray(encodings.otherStringsArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+                CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings, methodTableArray, encodedCodeInfo.methodTableFirstId, encodedCodeInfo.methodTableEntryCount);
+            } catch (RuntimeException | Error t) {
+                // The object arrays are unmanaged memory until ownership transfers to CodeInfo.
+                NonmovableArrays.releaseUnmanagedArray(objectConstants);
+                NonmovableArrays.releaseUnmanagedArray(classes);
+                NonmovableArrays.releaseUnmanagedArray(memberNames);
+                NonmovableArrays.releaseUnmanagedArray(otherStrings);
+                throw t;
+            }
             FrameInfoEncoder.install(target, frameInfoEncodingsArray);
             CodeInfoAccess.setCodeInfo(target, codeInfoIndexArray, codeInfoEncodingsArray, encodedCodeInfo.codeInfoIndexEntriesPerBlock, codeInfoDefaultFrameInfoIndexesArray,
                             stackReferenceMapEncodingArray);
