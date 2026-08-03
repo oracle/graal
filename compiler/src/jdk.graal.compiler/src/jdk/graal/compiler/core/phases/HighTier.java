@@ -119,7 +119,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
-        appendPhase(new HighTierLoweringPhase(canonicalizer, true));
+        appendPhase(new HighTierLoweringPhase(canonicalizer));
     }
 
     @Override

@@ -117,6 +117,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.JavaKind;
@@ -672,6 +673,7 @@ public class RistrettoUtils {
         runtimeParseGraphBuilderPlugins.appendNodePlugin(new RistrettoMethodHandleWithExceptionPlugin(new RistrettoMethodHandleAccessProvider(srp), true));
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
         StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false, false);
+        VectorIntrinsics.registerPlugins(runtimeParseGraphBuilderPlugins.getInvocationPlugins(), RuntimeOptionValues.singleton().get(), !RistrettoOptions.useDeoptimization());
         if (ImageSingletons.contains(TargetGraphBuilderPlugins.class)) {
             ImageSingletons.lookup(TargetGraphBuilderPlugins.class).registerPlugins(runtimeParseGraphBuilderPlugins, RuntimeOptionValues.singleton().get());
         }

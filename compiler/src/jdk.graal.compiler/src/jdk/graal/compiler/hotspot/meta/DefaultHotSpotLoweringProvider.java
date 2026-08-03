@@ -214,6 +214,8 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.replacements.CopyOfSnippets;
+import jdk.graal.compiler.vector.replacements.VectorSnippets;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
@@ -343,6 +345,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         virtualThreadUpdateJFRSnippets = new VirtualThreadUpdateJFRSnippets.Templates(options, providers);
 
         replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
+        replacements.registerSnippetTemplateCache(new VectorSnippets.Templates(options, runtime, providers, target, vectorArchitecture));
+        replacements.registerSnippetTemplateCache(new CopyOfSnippets.Templates(options, providers));
 
         initializeExtensions(options, factories, providers, config, GraalServices.load(Extensions.class));
     }
@@ -413,6 +417,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
      */
     private boolean lowerWithoutDelegation(Node n, LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
+        if (lowerVectorNode(n, tool)) {
+            return true;
+        }
         if (n instanceof Invoke) {
             lowerInvoke((Invoke) n, tool, graph);
         } else if (n instanceof LoadMethodNode) {
@@ -534,7 +541,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 monitorSnippets.lower((MonitorExitNode) n, registers, tool);
             }
         } else if (n instanceof ArrayCopyNode) {
-            arraycopySnippets.lower((ArrayCopyNode) n, tool);
+            ArrayCopyNode arraycopy = (ArrayCopyNode) n;
+            arraycopySnippets.lower(arraycopy, mayExpandArraycopyToLoop(arraycopy), tool);
         } else if (n instanceof GenericArrayCopyCallNode arraycopy) {
             lowerGenericArrayCopyCallNode(arraycopy);
         } else if (n instanceof CheckcastArrayCopyCallNode) {

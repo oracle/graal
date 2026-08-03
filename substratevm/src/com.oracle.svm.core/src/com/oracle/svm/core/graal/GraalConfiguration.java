@@ -69,6 +69,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorNodeMatchRules;
 import jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -127,21 +128,28 @@ public class GraalConfiguration {
     }
 
     public Suites createSuites(OptionValues options, boolean hosted, Architecture arch) {
-        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(options, arch);
+        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
     }
 
     public Suites createFirstTierSuites(OptionValues options, boolean hosted, Architecture arch) {
-        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options, arch);
+        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
     }
 
     public Suites createFallbackSuites(OptionValues options, boolean hosted, Architecture arch) {
-        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFallbackSuitesCreator().createSuites(options, arch);
+        Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFallbackSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
+    }
+
+    /**
+     * Disables optimizations that are incompatible with SubstrateVM deoptimization.
+     */
+    protected static OptionValues withSubstrateSuiteOptions(OptionValues options) {
+        return new OptionValues(options, LoopVectorizationPhase.Options.VectorizeDeopts, false);
     }
 
     protected static void maybeAddRuntimeConstantBlinding(@SuppressWarnings("unused") OptionValues options, boolean hosted, Suites suites) {

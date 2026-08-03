@@ -31,8 +31,13 @@ import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
+import jdk.graal.compiler.guards.optimistic.memory.OptimisticGuardsPhase;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -50,8 +55,24 @@ import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.common.VerifyHeapAtReturnPhase;
 import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
+import jdk.graal.compiler.vector.phases.NodeVectorizationPhase;
+import jdk.graal.compiler.vector.phases.OptimizeAddressesInLoopsPhase;
+import jdk.graal.compiler.vector.phases.RemoveEmptyLoopsPhase;
+import jdk.graal.compiler.vector.phases.VectorMaterializationPhaseSuite;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 
 public class MidTier extends BaseTier<MidTierContext> {
+
+    public static class Options {
+
+        //@formatter:off
+        @Option(help = "Performs aliasing analysis on arrays to determine which memory " +
+                       "does not alias and enables more optimizations to be performed.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> OptimisticAliasingAnalysis = new OptionKey<>(true);
+        //@formatter:on
+    }
 
     @SuppressWarnings("this-escape")
     public MidTier(OptionValues options) {
@@ -106,7 +127,25 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new OptimizeDivPhase(canonicalizer));
         }
 
+        if (VectorIntrinsics.Options.Vectorization.getValue(options) && Options.OptimisticAliasingAnalysis.getValue(options)) {
+            appendPhase(new OptimizeAddressesInLoopsPhase());
+            appendPhase(new OptimisticAliasingAnalysisPhase(canonicalizer));
+        }
+
         appendPhase(new FrameStateAssignmentPhase());
+
+        if (VectorIntrinsics.Options.Vectorization.getValue(options)) {
+            appendPhase(new NodeVectorizationPhase(canonicalizer));
+            if (ConditionalMoveOptimizationPhase.Options.OptConditionalMoves.getValue(options)) {
+                appendPhase(new ConditionalMoveOptimizationPhase(canonicalizer));
+            }
+            if (LoopVectorizationPhase.Options.VectorizeLoops.getValue(options)) {
+                appendPhase(new LoopVectorizationPhase(LoopVectorizationPhase.Options.VectorizeDeopts.getValue(options), Options.OptimisticAliasingAnalysis.getValue(options), canonicalizer));
+            }
+            appendPhase(new RemoveEmptyLoopsPhase(canonicalizer));
+            appendPhase(new VectorMaterializationPhaseSuite(canonicalizer));
+            appendPhase(new OptimisticGuardsPhase(canonicalizer));
+        }
 
         if (GraalOptions.PartialUnroll.getValue(options)) {
             LoopPolicies loopPolicies = createLoopPolicies(options);
