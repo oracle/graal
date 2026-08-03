@@ -205,7 +205,7 @@ public class CodeInfoEncoder {
         private NonmovableArray<Byte> codeInfoEncodingsArray;
         private NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray;
         private NonmovableArray<Byte> stackReferenceMapEncodingArray;
-        private boolean installed;
+        private boolean consumed;
 
         private PreparedEncodedCodeInfo(EncodedCodeInfo encodedCodeInfo, NonmovableArray<Byte> methodTableArray, NonmovableArray<Byte> frameInfoEncodingsArray,
                         NonmovableArray<Byte> codeInfoIndexArray, NonmovableArray<Byte> codeInfoEncodingsArray, NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray,
@@ -225,7 +225,8 @@ public class CodeInfoEncoder {
          */
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
         public void install(CodeInfo target, ReferenceAdjuster adjuster) {
-            VMError.guarantee(!installed, "Prepared CodeInfo metadata is already installed");
+            VMError.guarantee(!consumed, "Prepared CodeInfo metadata is already consumed");
+            consumed = true;
             Encodings encodings = encodedCodeInfo.encodings;
             NonmovableObjectArray<Object> objectConstants = NonmovableArrays.nullArray();
             NonmovableObjectArray<Class<?>> classes = NonmovableArrays.nullArray();
@@ -258,11 +259,10 @@ public class CodeInfoEncoder {
             codeInfoEncodingsArray = NonmovableArrays.nullArray();
             codeInfoDefaultFrameInfoIndexesArray = NonmovableArrays.nullArray();
             stackReferenceMapEncodingArray = NonmovableArrays.nullArray();
-            installed = true;
         }
 
         /**
-         * Releases prepared byte tables that have not transferred to a {@link CodeInfo}.
+         * Releases prepared byte tables before they transfer to a {@link CodeInfo}.
          */
         public void releaseUninstalled() {
             NonmovableArrays.releaseUnmanagedArray(methodTableArray);
