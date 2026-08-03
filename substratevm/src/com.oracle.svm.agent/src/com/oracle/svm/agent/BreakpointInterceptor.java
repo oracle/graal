@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -763,12 +763,66 @@ final class BreakpointInterceptor {
     /** §FS-security-providers.6.1: Trace the provider selected for service instantiation. */
     private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle service = getReceiver(thread);
+        JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
+        JNIObjectHandle effectiveCallerClass = callerClass.notEqual(nullHandle()) ? callerClass : state.getDirectCallerClass();
+        traceCachedSecurityServiceImplementation(jni, thread, service, effectiveCallerClass, state);
         JNIObjectHandle provider = Support.callObjectMethod(jni, service, agent.handles().javaSecurityProviderServiceGetProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
-        traceSecurityProvider(jni, provider, validResult,
-                        callerClass.notEqual(nullHandle()) ? callerClass : state.getDirectCallerClass(), state);
+        traceSecurityProvider(jni, provider, validResult, effectiveCallerClass, state);
         return true;
+    }
+
+    /** §FS-security-providers.6.1: Retain a service implementation cached by Provider.Service. */
+    private static void traceCachedSecurityServiceImplementation(JNIEnvironment jni, JNIObjectHandle thread, JNIObjectHandle service, JNIObjectHandle callerClass,
+                    InterceptedState state) {
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        if (handles.javaSecurityProviderServiceClassCache.isNull() ||
+                        handles.javaSecurityProviderServiceEngineDescription.isNull() ||
+                        handles.javaSecurityProviderEngineDescriptionConstructorParameterClass.isNull()) {
+            return;
+        }
+
+        JNIObjectHandle cachedClass = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceClassCache);
+        if (clearException(jni) || cachedClass.equal(nullHandle())) {
+            return;
+        }
+        if (!jniFunctions().getIsInstanceOf().invoke(jni, cachedClass, handles.javaLangClass)) {
+            if (!jniFunctions().getIsInstanceOf().invoke(jni, cachedClass, handles.javaLangRefReference)) {
+                return;
+            }
+            cachedClass = Support.callObjectMethod(jni, cachedClass, handles.javaLangRefReferenceGet);
+            if (clearException(jni) || cachedClass.equal(nullHandle()) ||
+                            !jniFunctions().getIsInstanceOf().invoke(jni, cachedClass, handles.javaLangClass)) {
+                return;
+            }
+        }
+
+        JNIObjectHandle parameterClass;
+        JNIObjectHandle engineDescription = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceEngineDescription);
+        if (clearException(jni)) {
+            return;
+        }
+        if (engineDescription.notEqual(nullHandle())) {
+            parameterClass = jniFunctions().getGetObjectField().invoke(jni, engineDescription, handles.javaSecurityProviderEngineDescriptionConstructorParameterClass);
+            if (clearException(jni)) {
+                return;
+            }
+        } else {
+            JNIObjectHandle constructorParameter = getObjectArgument(thread, 0);
+            parameterClass = constructorParameter.equal(nullHandle()) ? nullHandle() : jniFunctions().getGetObjectClass().invoke(jni, constructorParameter);
+        }
+
+        String[] parameterTypes;
+        if (parameterClass.equal(nullHandle())) {
+            parameterTypes = new String[0];
+        } else {
+            String parameterType = getClassNameOrNull(jni, parameterClass);
+            if (parameterType == null) {
+                return;
+            }
+            parameterTypes = new String[]{parameterType};
+        }
+        traceReflectBreakpoint(jni, cachedClass, cachedClass, callerClass, "invokeConstructor", true, state.getFullStackTraceOrNull(), (Object) parameterTypes);
     }
 
     /**
