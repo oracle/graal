@@ -25,10 +25,12 @@
 package com.oracle.svm.interpreter.ristretto.compile;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.interpreter.metadata.RuntimeLoadedClassHierarchy;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.util.VMError;
@@ -41,10 +43,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Ristretto-specific implementation of {@link SubstrateInstalledCode} that also records a pointer
  * to the corresponding {@link RistrettoMethod}.
  */
-public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
+public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl implements RuntimeLoadedClassHierarchy.AssumptionDependent {
+    /** Runtime method that owns this installed code. */
     private final RistrettoMethod rMethod;
+    /** Infopoints indexed by their code offset from the installation start. */
     private final EconomicMap<Integer, Infopoint> relativeIpToInfopoint;
+    /** Speculation log shared with recompilations of the owning method. */
     private final RistrettoSpeculationLog speculationLog;
+    /** Runtime hierarchy assumptions that must remain valid while this code is installed. */
+    private RuntimeLoadedClassHierarchy.Assumptions hierarchyAssumptions;
+    /** Whether this code was created with runtime hierarchy assumptions. */
+    private final boolean hasHierarchyAssumptions;
 
     /**
      * Single-bit latch that keeps a reprofiling request attached to this installed-code instance
@@ -62,21 +71,28 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
      */
     private AtomicBoolean reprofileRequested;
 
-    public RistrettoInstalledCode(RistrettoMethod rMethod, EconomicMap<Integer, Infopoint> relativeIpToInfopoint, RistrettoSpeculationLog speculationLog) {
+    /** Creates installed Ristretto code with its infopoints, speculation log, and assumptions. */
+    public RistrettoInstalledCode(RistrettoMethod rMethod, EconomicMap<Integer, Infopoint> relativeIpToInfopoint, RistrettoSpeculationLog speculationLog,
+                    RuntimeLoadedClassHierarchy.Assumptions hierarchyAssumptions) {
         super(rMethod);
         this.rMethod = rMethod;
         VMError.guarantee(relativeIpToInfopoint != null, "relativeIpToInfopoint must be precomputed");
         VMError.guarantee(speculationLog != null, "speculationLog must be provided");
+        VMError.guarantee(hierarchyAssumptions != null, "hierarchyAssumptions must be provided");
         this.relativeIpToInfopoint = relativeIpToInfopoint;
         this.speculationLog = speculationLog;
+        this.hierarchyAssumptions = hierarchyAssumptions;
+        this.hasHierarchyAssumptions = !hierarchyAssumptions.isEmpty();
         this.reprofileRequested = new AtomicBoolean(false);
     }
 
+    /** Returns the runtime method that owns this installed code. */
     @Override
     public ResolvedJavaMethod getMethod() {
         return rMethod;
     }
 
+    /** Returns the infopoint recorded at {@code relativeIp}. */
     public Infopoint getInfopointForRelativeIP(int relativeIp) {
         var infopoint = relativeIpToInfopoint.get(relativeIp);
         if (infopoint == null) {
@@ -85,11 +101,42 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
         return infopoint;
     }
 
+    /** Returns the speculation log shared with recompilations of the owning method. */
     @Override
     public RistrettoSpeculationLog getSpeculationLog() {
         return speculationLog;
     }
 
+    /**
+     * Registers this code for hierarchy-driven invalidation and publishes it in one hierarchy-lock
+     * transaction. A successful transaction consumes the pending assumptions; a rejected
+     * transaction retains them so that any retry must validate under the hierarchy lock again.
+     *
+     * @return {@code false} when this code was already finalized, an assumption became invalid, or
+     *         publication was rejected
+     */
+    public synchronized boolean registerHierarchyAssumptionsAndPublish(BooleanSupplier publish) {
+        RuntimeLoadedClassHierarchy.Assumptions assumptions = hierarchyAssumptions;
+        if (assumptions == null) {
+            return false;
+        }
+        boolean published = assumptions.registerAndPublishIfValid(this, publish);
+        if (published) {
+            hierarchyAssumptions = null;
+        }
+        return published;
+    }
+
+    /** Test-only access to hierarchy assumption state. */
+    public static final class TestingBackdoor {
+
+        /** Returns whether {@code code} depends on at least one runtime hierarchy assumption. */
+        public static boolean hasHierarchyAssumptions(RistrettoInstalledCode code) {
+            return code.hasHierarchyAssumptions;
+        }
+    }
+
+    /** Invalidates this code and applies a pending reprofiling request if it is still current. */
     @Override
     public void invalidate() {
         super.invalidate();
@@ -108,6 +155,7 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
         reprofileRequested.set(true);
     }
 
+    /** Records one deoptimization against the owning runtime method. */
     @Override
     public void recordDeoptimization(DeoptimizationReason reason) {
         rMethod.recordDeoptimization(reason);

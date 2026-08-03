@@ -176,12 +176,12 @@ public final class RistrettoOSRBackedgeState {
     /**
      * Publishes successful OSR compilation for the request id that currently owns this backedge state.
      */
-    synchronized void onCompilationSuccess(RistrettoMethod method, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
+    synchronized boolean onCompilationSuccess(RistrettoMethod method, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
         if (!ownsCurrentSubmittedRequest(requestId)) {
-            if (code != null) {
-                code.invalidate();
-            }
-            return;
+            return false;
+        }
+        if (installCode && !code.isValid()) {
+            return false;
         }
         if (installCode) {
             installedCode = code;
@@ -194,6 +194,7 @@ public final class RistrettoOSRBackedgeState {
             }
             throw GraalError.shouldNotReachHere(String.format("Unexpected OSR compile state for %s@%s: %s", method, targetBCI, compilationState));
         }
+        return true;
     }
 
     /**

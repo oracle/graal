@@ -39,9 +39,12 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -50,6 +53,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJavaType {
     private final JavaKind kind;
+
+    @Override
+    public ResolvedJavaType getSingleImplementor() {
+        throw new JVMCIError("Cannot call getSingleImplementor() on a non-interface type: %s", this);
+    }
+
+    @Override
+    public Assumptions.AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
+        return new Assumptions.AssumptionResult<>(this);
+    }
+
+    @Override
+    public Assumptions.AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
+        return null;
+    }
 
     private InterpreterResolvedPrimitiveType(Symbol<Type> type, JavaKind kind) {
         super(type, kind.toJavaClass());
