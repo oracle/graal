@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,13 +41,51 @@ import jdk.graal.compiler.nodes.ValueNode;
 public abstract class InductionVariable {
 
     /**
-     * Captures a computed induction-variable extremum together with the overflow conditions for the
-     * arithmetic operations used to produce it. If any condition evaluates to {@code true}, the
-     * corresponding operation in this extremum computation cannot be evaluated without overflow.
-     * Operations whose overflow is already covered by the loop overflow guard are omitted from
-     * {@link #overflowConditions()}.
+     * Captures the initial and extremum values of an induction variable, together with the
+     * conditions needed to use the computed endpoints safely. For example:
+     * <pre>
+     * for (int base = start; base &lt; limit; base += stride) {
+     *     int derived = base * scale + offset;
+     * }
+     * </pre>
+     * The endpoints for the IVs here are:
+     * <pre>
+     * baseInit = start
+     * baseExtremum = start + stride * (tripCount - 1)
+     *
+     * derivedInit = baseInit * scale + offset
+     * derivedExtremum = baseExtremum * scale + offset
+     * </pre>
+     *
+     * The corresponding overflow conditions that must be guarded in order to use those
+     * endpoints are:
+     *
+     * <pre>
+     * multiplyOverflows(baseInit, scale)
+     * addOverflows(baseInit * scale, offset)
+     *
+     * multiplyOverflows(baseExtremum, scale)
+     * addOverflows(baseExtremum * scale, offset)
+     * </pre>
+     *
+     * Since {@code base} is the loop's limit-checked IV, the loop overflow guard guarantees that
+     * computing {@code basicExtremum} does not overflow, so no overflow conditions are needed
+     * for its endpoints.
+     *
+     * <p>
+     * {@link #init()} is the value from the first loop iteration. {@link #extremum()} is the value
+     * from the last iteration.
+     *
+     * <p>
+     * {@link #overflowConditions()} contains conditions that are true when the IV cannot
+     * be treated as a monotonic range bounded by these endpoints, such as arithmetic overflow,
+     * a narrowing conversion that wraps, or a zero extension that crosses the sign boundary.
+     * The computed endpoints can only be used safely when all conditions are false.
      */
-    public record Extremum(ValueNode extremum, List<LogicNode> overflowConditions) {
+    public record Endpoints(ValueNode init, ValueNode extremum, List<LogicNode> overflowConditions) {
+        public Endpoints {
+            overflowConditions = List.copyOf(overflowConditions);
+        }
     }
 
     public enum Direction {
@@ -78,6 +116,10 @@ public abstract class InductionVariable {
         return loop;
     }
 
+    /**
+     * Returns the direction of the induction variable, or {@code null} when it cannot be
+     * statically determined (such as when the stride is a runtime variable).
+     */
     public abstract Direction direction();
 
     /**
@@ -96,12 +138,24 @@ public abstract class InductionVariable {
      */
     public abstract ValueNode strideNode();
 
+    /**
+     * Returns whether the initial value of the induction variable is a constant.
+     */
     public abstract boolean isConstantInit();
 
+    /**
+     * Returns whether the stride of the induction variable is a constant.
+     */
     public abstract boolean isConstantStride();
 
+    /**
+     * Returns the constant initial value of an induction variable as a {@code long}.
+     */
     public abstract long constantInit();
 
+    /**
+     * Returns the constant stride of an induction variable as a {@code long}.
+     */
     public abstract long constantStride();
 
     /**
@@ -116,29 +170,49 @@ public abstract class InductionVariable {
 
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp);
 
+    /**
+     * Returns the extremum value of the induction variable computed in the given stamp.
+     *
+     * @param assumeLoopEntered whether the caller guarantees that the loop executes at least once
+     * @param stamp stamp to use for the computation
+     * @param maxTripCount maximum trip count to use when computing the last-iteration value
+     */
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount);
 
     /**
-     * Computes an extremum expression together with the overflow conditions for the arithmetic used
-     * to produce that expression.
+     * Computes the initial value and extremum values of this IV, together with the conditions required to use
+     * them safely. The initial value is computed in the IV's stamp, and the extremum in {@code extremumStamp},
      * <p>
-     * The returned {@linkplain Extremum#extremum() extremum expression} uses {@code extremumStamp},
-     * which is chosen by the caller. Each overflow condition is still emitted in the native
-     * arithmetic width of the IV step that can overflow, so the condition matches that step's real
-     * overflow semantics.
+     * Each overflow condition is emitted in the native arithmetic width of the IV step that can overflow,
+     * so the condition matches that step's real overflow semantics. Both endpoints need checks,
+     * because derived IV operations may overflow while producing the initial value, or the extremum
+     * value, or both.
      * <p>
-     * For example, consider a loop {@code for (int i = 0; i < max; i++)} containing an IV
-     * {@code i * 2}. Asking for a {@code long} extremum returns {@code (((long) max) - 1L) * 2L}.
-     * The accompanying overflow condition is still the {@code int}-width check
-     * {@code !IntegerMulExactOverflowNode.create(max - 1, 2)}, because the multiplication overflows
-     * in {@code int}, not in the final widened expression.
+     * For example, for the derived IV in this loop:
+     * <pre>
+     * for (int i = start; i < limit; i++) {
+     *     int iv = i * 8;
+     * }
+     * </pre>
+     * The returned init value is the {@code int} expression {@code start * 8}, but with a requested
+     * {@code extremumStamp = long}, the extremum is the {@code long} expression
+     * {@code (((long) limit) - 1L) * 8L}.
+     * The returned overflow conditions check both {@code start * 8} and {@code (limit - 1) * 8}
+     * in {@code int} arithmetic.
+     *
+     * @param assumeLoopEntered if the caller guarantees that the loop executes at least once
+     * @param effectiveMaxTripCount maximum trip count to use when computing the last-iteration value
+     * @param extremumStamp stamp to use for the returned extremum expression
+     * @param bodyIV counted loop's body IV, used to identify the protected basic counter
+     * @param limitCheckedIV counted loop's limit checked IV, used to identify the protected basic
+     *            counter
      */
-    public Extremum extremumComputation(boolean assumeLoopEntered, Stamp extremumStamp, ValueNode effectiveMaxTripCount, InductionVariable bodyIV,
+    public Endpoints computeEndpoints(boolean assumeLoopEntered, ValueNode effectiveMaxTripCount, Stamp extremumStamp, InductionVariable bodyIV,
                     InductionVariable limitCheckedIV) {
         /*
          * Follow this IV's base chain to the root/basic IV, compute that root extremum and its
-         * overflow conditions first, then rebuild the derived IV extrema and overflow conditions on
-         * the way back out.
+         * overflow conditions first, then rebuild the derived IV initial values, endpoints, and
+         * overflow conditions on the way back out.
          */
         ArrayList<DerivedInductionVariable> derivedIVs = null;
         InductionVariable current = this;
@@ -153,20 +227,20 @@ public abstract class InductionVariable {
 
         ArrayList<LogicNode> overflowConditions = new ArrayList<>();
         /*
-         * The root/basic IV contributes overflow conditions in the width of its own IV stamp, even
-         * if the caller wants the final extremum in some other compatible stamp.
+         * The root/basic IV contributes overflow conditions in the width of its own IV stamp.
          */
         Stamp ivStamp = current.valueNode().stamp(NodeView.DEFAULT);
+        ValueNode init = current.initNode();
         ValueNode currentExtremum = current.extremumNode(assumeLoopEntered, extremumStamp, effectiveMaxTripCount);
         ValueNode currentIvExtremum;
         /*
          * The body and limit checked IVs are already covered by the counted loop's overflow guard
          * or the guarantee that the counter does not overflow.
          */
-        if (current == bodyIV || current == limitCheckedIV) {
+        if (extremumOverflowCoveredByCountedLoop(current, bodyIV, limitCheckedIV)) {
             currentIvExtremum = current.extremumNode(assumeLoopEntered, ivStamp, effectiveMaxTripCount);
         } else {
-            currentIvExtremum = current.collectLocalExtremumOverflowConditions(assumeLoopEntered, ivStamp, effectiveMaxTripCount, null, overflowConditions);
+            currentIvExtremum = current.collectLocalEndpointOverflowConditions(assumeLoopEntered, ivStamp, effectiveMaxTripCount, null, overflowConditions);
         }
 
         if (derivedIVs != null) {
@@ -177,36 +251,88 @@ public abstract class InductionVariable {
                  * IV stamp, not in the caller-requested final extremum stamp.
                  */
                 Stamp derivedIVStamp = derived.valueNode().stamp(NodeView.DEFAULT);
-                if (derived == bodyIV || derived == limitCheckedIV) {
+                if (derived instanceof DerivedConvertedInductionVariable converted) {
+                    /*
+                     * Conversion IVs contribute conditions that ensure they don't introduce
+                     * discontinuities across the range.
+                     */
+                    converted.collectRangeEndpointConditions(init, currentIvExtremum, overflowConditions);
+                }
+                /*
+                 * Checking both init and extremum for overflow can be unnecessary. For example, for an ascending
+                 * base IV, checking only `init - 50` and not `extremum - 50` is sufficient, but which of the two
+                 * conditions is redundant in the general offset IV case depends on the sign of the offset and
+                 * the IV direction.
+                 * TODO skip these redundant conditions when possible
+                 */
+                init = derived.collectLocalEndpointOverflowConditions(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount, init, overflowConditions);
+                if (extremumOverflowCoveredByCountedLoop(derived, bodyIV, limitCheckedIV)) {
                     currentIvExtremum = derived.extremumNode(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount);
                 } else {
-                    currentIvExtremum = derived.collectLocalExtremumOverflowConditions(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount, currentIvExtremum, overflowConditions);
+                    currentIvExtremum = derived.collectLocalEndpointOverflowConditions(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount, currentIvExtremum, overflowConditions);
                 }
                 currentExtremum = derived.extremumNode(assumeLoopEntered, extremumStamp, effectiveMaxTripCount);
             }
         }
-        return new Extremum(currentExtremum, overflowConditions);
+        return new Endpoints(init, currentExtremum, overflowConditions);
     }
 
     /**
-     * Adds the overflow conditions contributed by this induction variable's own extremum
-     * arithmetic. If any added condition evaluates to {@code true}, the corresponding local step of
-     * the extremum computation overflows.
+     * Returns whether the counted loop's no-overflow guarantee covers the extremum
+     * computation for {@code iv}. It directly covers a basic body or limit-checked IV. It also
+     * covers body/limit-checked offset IVs, because it preserves the base stride: after the
+     * initial operation has been checked for overflow, a later overflow would imply that the
+     * loop counter itself wraps.
      * <p>
-     * The supplied {@code stamp} is the stamp that the resulting extremum value should have.
-     * <p>
-     * For derived IVs, {@code baseExtremum} is the already computed extremum of the base IV as
-     * produced by the preceding step of this iterative computation. For a basic IV,
-     * {@code baseExtremum} is unused and can be {@code null}.
+     * This does not cover the initial endpoint. A derived IV can overflow while producing its
+     * initial value even though the resulting counter advances without overflow. It
+     * also excludes {@code offset - base} and scaled IVs, since negation or multiplication can
+     * overflow.
      *
-     * @return this IV's extremum in {@code stamp}, as threaded through the iterative overflow
+     * @param iv IV whose extremum is being computed
+     * @param bodyIV counted loop's body IV
+     * @param limitCheckedIV counted loop's limit-checked IV
+     */
+    private static boolean extremumOverflowCoveredByCountedLoop(InductionVariable iv, InductionVariable bodyIV, InductionVariable limitCheckedIV) {
+        if (iv == bodyIV || iv == limitCheckedIV) {
+            if (iv instanceof BasicInductionVariable) {
+                return true;
+            }
+            if (iv instanceof DerivedOffsetInductionVariable offsetIV && !offsetIV.baseIsSubtrahend) {
+                /* match offsetIV = `base +/- offset` */
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Produces one endpoint and adds the safety conditions contributed by this induction
+     * variable's local arithmetic and conversions. If any added condition evaluates to {@code true},
+     * the corresponding endpoint computation cannot be used safely. This method is used for both
+     * the initial and extremum (last-iteration) endpoints.
+     * <p>
+     * The supplied {@code stamp} is the stamp that the resulting endpoint value should have.
+     * <p>
+     * For derived IVs, {@code baseEndpoint} is the already computed endpoint of the base IV as
+     * produced by the preceding step of this iterative computation. For a basic IV,
+     * {@code baseEndpoint} is unused and can be {@code null}.
+     *
+     * @param conditions the collection to which endpoint-safety conditions are added
+     * @return this IV's endpoint in {@code stamp}, as threaded through the iterative endpoint
      *         computation
      */
-    protected abstract ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+    protected abstract ValueNode collectLocalEndpointOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseEndpoint,
                     Collection<LogicNode> conditions);
 
+    /**
+     * @return whether the extremum of this induction variable is a constant
+     */
     public abstract boolean isConstantExtremum();
 
+    /**
+     * @return the constant extremum of this induction variable as a {@code long}
+     */
     public abstract long constantExtremum();
 
     /**
