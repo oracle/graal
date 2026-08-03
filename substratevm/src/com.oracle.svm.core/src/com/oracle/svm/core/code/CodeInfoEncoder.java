@@ -194,17 +194,18 @@ public class CodeInfoEncoder {
     }
 
     /**
-     * Prepared install view for {@link EncodedCodeInfo}. Only the byte tables are copied eagerly;
-     * object-reference side tables are adjusted and published by {@link #install}.
+     * Prepared, single-use install view for {@link EncodedCodeInfo}. Byte tables are copied
+     * eagerly; object-reference side tables are adjusted and published by {@link #install}.
      */
     public static final class PreparedEncodedCodeInfo {
         private final EncodedCodeInfo encodedCodeInfo;
-        private final NonmovableArray<Byte> methodTableArray;
-        private final NonmovableArray<Byte> frameInfoEncodingsArray;
-        private final NonmovableArray<Byte> codeInfoIndexArray;
-        private final NonmovableArray<Byte> codeInfoEncodingsArray;
-        private final NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray;
-        private final NonmovableArray<Byte> stackReferenceMapEncodingArray;
+        private NonmovableArray<Byte> methodTableArray;
+        private NonmovableArray<Byte> frameInfoEncodingsArray;
+        private NonmovableArray<Byte> codeInfoIndexArray;
+        private NonmovableArray<Byte> codeInfoEncodingsArray;
+        private NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray;
+        private NonmovableArray<Byte> stackReferenceMapEncodingArray;
+        private boolean installed;
 
         private PreparedEncodedCodeInfo(EncodedCodeInfo encodedCodeInfo, NonmovableArray<Byte> methodTableArray, NonmovableArray<Byte> frameInfoEncodingsArray,
                         NonmovableArray<Byte> codeInfoIndexArray, NonmovableArray<Byte> codeInfoEncodingsArray, NonmovableArray<Byte> codeInfoDefaultFrameInfoIndexesArray,
@@ -219,11 +220,12 @@ public class CodeInfoEncoder {
         }
 
         /**
-         * Installs prepared byte tables and atomically copies object-reference side tables into the
-         * target {@link CodeInfo}.
+         * Installs prepared byte tables and copies object-reference side tables into the target
+         * {@link CodeInfo}.
          */
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
         public void install(CodeInfo target, ReferenceAdjuster adjuster) {
+            VMError.guarantee(!installed, "Prepared CodeInfo metadata is already installed");
             Encodings encodings = encodedCodeInfo.encodings;
             NonmovableObjectArray<Object> objectConstants = NonmovableArrays.nullArray();
             NonmovableObjectArray<Class<?>> classes = NonmovableArrays.nullArray();
@@ -243,13 +245,24 @@ public class CodeInfoEncoder {
                 NonmovableArrays.releaseUnmanagedArray(otherStrings);
                 throw t;
             }
+
+            // setEncodings transfers ownership of the method table to target.
+            methodTableArray = NonmovableArrays.nullArray();
             FrameInfoEncoder.install(target, frameInfoEncodingsArray);
+            // FrameInfoEncoder.install transfers ownership of its encoding table to target.
+            frameInfoEncodingsArray = NonmovableArrays.nullArray();
             CodeInfoAccess.setCodeInfo(target, codeInfoIndexArray, codeInfoEncodingsArray, encodedCodeInfo.codeInfoIndexEntriesPerBlock, codeInfoDefaultFrameInfoIndexesArray,
                             stackReferenceMapEncodingArray);
+            // setCodeInfo transfers ownership of all remaining prepared byte tables to target.
+            codeInfoIndexArray = NonmovableArrays.nullArray();
+            codeInfoEncodingsArray = NonmovableArrays.nullArray();
+            codeInfoDefaultFrameInfoIndexesArray = NonmovableArrays.nullArray();
+            stackReferenceMapEncodingArray = NonmovableArrays.nullArray();
+            installed = true;
         }
 
         /**
-         * Releases prepared byte tables that were never installed into a {@link CodeInfo}.
+         * Releases prepared byte tables that have not transferred to a {@link CodeInfo}.
          */
         public void releaseUninstalled() {
             NonmovableArrays.releaseUnmanagedArray(methodTableArray);
