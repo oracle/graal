@@ -349,6 +349,8 @@ traced factory calls. This includes a service implementation named only by
 `Provider.Service.getClassName()`: the caller-filtered trace must retain the construction access
 performed inside `Provider.Service.newInstance` and attribute it to the application operation that
 selected the service.
+Tracing must retain that construction access when `Provider.Service` reuses its cached
+implementation class and therefore performs no subsequent reflective class lookup.
 The trace may locate `Provider.Service.newInstance` through contiguous helper frames declared by
 `Provider.Service`, but it must not cross a frame declared by another class.
 
