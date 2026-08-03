@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -46,12 +45,14 @@ import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers.BarrierKind;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -73,8 +74,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 
@@ -252,7 +251,7 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Thread state no longer set up.")
     public void freeCurrentIsolateThread() {
         freeIsolateThread(CurrentIsolate.getCurrentThread());
-        writeCurrentVMThread(Word.nullPointer());
+        KnownIntrinsics.writeCurrentVMThread(Word.nullPointer());
     }
 
     /** Free the native memory allocated by {@link #allocateIsolateThread}. */
@@ -346,7 +345,7 @@ public abstract class VMThreads {
             nextTL.set(currentThread, head);
 
             /* Make sure that concurrent readers see consistent data. */
-            MembarNode.memoryBarrier(FenceKind.STORE_STORE);
+            MemoryBarriers.memoryBarrier(BarrierKind.STORE_STORE);
             head = currentThread;
 
             /* Adjust thread counts. */
@@ -396,7 +395,7 @@ public abstract class VMThreads {
         threadExit();
         IsolateThreadCache.clear();
         detachThread(CurrentIsolate.getCurrentThread());
-        writeCurrentVMThread(Word.nullPointer());
+        KnownIntrinsics.writeCurrentVMThread(Word.nullPointer());
     }
 
     /**
@@ -1100,7 +1099,7 @@ public abstract class VMThreads {
             }
 
             assert actionTL.get() == SYNCHRONIZE_CODE;
-            CodeSynchronizationNode.synchronizeCode();
+            KnownIntrinsics.synchronizeCode();
             actionTL.set(NO_ACTION);
         }
 

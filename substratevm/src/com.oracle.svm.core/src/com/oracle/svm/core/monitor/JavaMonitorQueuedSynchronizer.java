@@ -42,11 +42,11 @@ import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.monitor.JavaMonitor.FastMonitorExitStatus;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-import jdk.graal.compiler.nodes.PauseNode;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -324,7 +324,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
         long prv = 0;
         while (--ctr >= 0) {
             if ((ctr & 0xFF) == 0) {
-                PauseNode.pause();
+                KnownIntrinsics.pause();
             }
             long owner = getState();
             if (probability(NOT_FREQUENT_PROBABILITY, owner == 0)) {
@@ -355,7 +355,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
                 }
                 return true;
             }
-            PauseNode.pause();
+            KnownIntrinsics.pause();
         }
         return false;
     }

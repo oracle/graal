@@ -31,17 +31,16 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.word.LocationIdentity;
-
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers.BarrierKind;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 /**
@@ -76,7 +75,7 @@ public class ThreadStatusTransition {
 
         if (probability(VERY_FAST_PATH_PROBABILITY, StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
             /* Prevent reads from floating before the status transition. */
-            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+            MemoryBarriers.memoryBarrier(BarrierKind.NONE);
 
             if (popFrameAnchor) {
                 JavaFrameAnchors.popFrameAnchor();
@@ -96,7 +95,7 @@ public class ThreadStatusTransition {
             call(ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
 
             /* Prevent reads from floating before the status transition. */
-            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+            MemoryBarriers.memoryBarrier(BarrierKind.NONE);
         }
     }
 
