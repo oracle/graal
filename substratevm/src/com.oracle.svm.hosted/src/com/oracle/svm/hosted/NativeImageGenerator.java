@@ -1933,6 +1933,14 @@ public class NativeImageGenerator {
 
         ListIterator<BasePhase<? super HighTierContext>> position;
         if (hosted) {
+            /*
+             * Remove any existing method inliner before potentially adding an SVM specific
+             * inliner for AOT compilation. Even if `createHostedInliners` below returns
+             * null (e.g. when using `-Ob`), SVM still has its own basic inlining system
+             * (see com.oracle.svm.hosted.code.CompileQueue.TrivialInliningPlugin).
+             */
+            highTier.removePhase(AbstractInliningPhase.class);
+
             position = GraalConfiguration.hostedInstance().createHostedInliners(highTier);
         } else {
             /* Find the runtime inliner. */
@@ -1967,9 +1975,6 @@ public class NativeImageGenerator {
 
         if (hosted) {
             lowTier.appendPhase(new VerifyNoGuardsPhase());
-
-            /* Disable the Graal method inlining, since we have our own inlining system. */
-            highTier.removePhase(AbstractInliningPhase.class);
 
             /* Remove phases that are not suitable for AOT compilation. */
             highTier.removePhase(ConvertDeoptimizeToGuardPhase.class);

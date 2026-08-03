@@ -36,15 +36,12 @@ import com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhas
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.vm.ci.code.Architecture;
 
 /// Configures the compiler phases used for hosted Native Image compilation.
 public class HostedGraalConfiguration extends GraalConfiguration {
@@ -62,31 +59,6 @@ public class HostedGraalConfiguration extends GraalConfiguration {
     /// Records the hosted universe after analysis.
     public void setHostedUniverse(HostedUniverse hUniverse) {
         this.hUniverse = hUniverse;
-    }
-
-    /// Creates hosted suites with the traditional inliner that this configuration replaces.
-    @Override
-    public Suites createSuites(OptionValues options, boolean hosted, Architecture arch) {
-        return super.createSuites(hostedOptions(options, hosted), hosted, arch);
-    }
-
-    /// Creates first tier hosted suites with the traditional inliner.
-    @Override
-    public Suites createFirstTierSuites(OptionValues options, boolean hosted, Architecture arch) {
-        return super.createFirstTierSuites(hostedOptions(options, hosted), hosted, arch);
-    }
-
-    /// Creates fallback hosted suites with the traditional inliner.
-    @Override
-    public Suites createFallbackSuites(OptionValues options, boolean hosted, Architecture arch) {
-        return super.createFallbackSuites(hostedOptions(options, hosted), hosted, arch);
-    }
-
-    private static OptionValues hostedOptions(OptionValues options, boolean hosted) {
-        if (hosted) {
-            return new OptionValues(options, PriorityInliningPhase.Options.UsePriorityInlining, false);
-        }
-        return options;
     }
 
     /// Removes priority inlining from suites used to compile deoptimization targets.

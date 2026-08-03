@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.phases;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
@@ -73,6 +74,10 @@ public class HighTier extends BaseTier<HighTierContext> {
         boolean boxNodeIdentityPhaseAdded = false;
         if (Options.Inline.getValue(options)) {
             boolean usePriorityInlining = PriorityInliningPhase.Options.UsePriorityInlining.getValue(options);
+            if (NativeImageSupport.inBuildtimeCode()) {
+                // GR-78137: priority inliner does not yet work with Native Image runtime compilation
+                usePriorityInlining = false;
+            }
             if (usePriorityInlining) {
                 appendPhase(new BoxNodeIdentityPhase());
                 appendPhase(new PriorityInliningPhase(canonicalizer, options));
