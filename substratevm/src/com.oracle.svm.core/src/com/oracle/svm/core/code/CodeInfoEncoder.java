@@ -625,22 +625,6 @@ public class CodeInfoEncoder {
         return CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
     }
 
-    /**
-     * Adds code-info metadata for runtime-installed code that is not backed by a
-     * {@link SharedMethod} or {@link CompilationResult}. The whole code range uses one default
-     * frame shape and empty reference maps; no source method, infopoint, exception-handler, or
-     * deoptimization metadata is recorded.
-     */
-    public void addSyntheticMethod(int compilationOffset, int compilationSize, int totalFrameSize, boolean isEntryPoint, boolean hasCalleeSavedRegisters) {
-        SubstrateReferenceMap emptyReferenceMap = new SubstrateReferenceMap();
-        FrameInfoEncoder.FrameData defaultFrameData = frameInfoEncoder.addSyntheticDefaultDebugInfo(totalFrameSize);
-        addDefaultFrameInfoEntries(compilationOffset, compilationSize, totalFrameSize, isEntryPoint, hasCalleeSavedRegisters, defaultFrameData, emptyReferenceMap,
-                        CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET);
-
-        ImageSingletons.lookup(Counters.class).methodCount.inc();
-        ImageSingletons.lookup(Counters.class).codeSize.add(compilationSize);
-    }
-
     private void addDefaultFrameInfoEntries(int compilationOffset, int compilationSize, int totalFrameSize, boolean isEntryPoint, boolean hasCalleeSavedRegisters,
                     FrameInfoEncoder.FrameData defaultFrameData, ReferenceMapEncoder.Input referenceMap, int framePointerSaveAreaOffset) {
         IPData startEntry = makeEntry(compilationOffset);
