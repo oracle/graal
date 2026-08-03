@@ -275,10 +275,11 @@ public class HostedConfiguration {
     }
 
     /**
-     * Invoked after the normal compile queue has finished and before later image-building phases
-     * consume compilation results.
+     * Invoked in a separate active executor pass after the normal compile queue and before later
+     * image-building phases consume compilation results. Implementations may compile additional
+     * methods.
      */
-    public void afterCompileQueue(DebugContext debug, CompileQueue compileQueue) {
+    public void afterCompileQueue(@SuppressWarnings("unused") DebugContext debug, @SuppressWarnings("unused") CompileQueue compileQueue) {
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
