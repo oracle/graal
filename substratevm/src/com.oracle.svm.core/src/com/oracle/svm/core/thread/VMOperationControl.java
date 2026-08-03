@@ -303,8 +303,7 @@ public final class VMOperationControl {
         }
     }
 
-    /** Check if it is okay for this thread to block. */
-    public static void guaranteeOkayToBlock(String message) {
+    public static boolean isOkayToBlock() {
         /*-
          * No Java synchronization must be performed within a VMOperation. Otherwise, one of the
          * following deadlocks could occur:
@@ -323,7 +322,11 @@ public final class VMOperationControl {
          */
         VMOperationControl control = VMOperationControl.get();
         OpInProgress opInProgress = control.getInProgress();
-        if (VMOperation.isInProgress(opInProgress)) {
+        return !VMOperation.isInProgress(opInProgress);
+    }
+
+    public static void guaranteeOkayToBlock(String message) {
+        if (!isOkayToBlock()) {
             Log.log().string(message).newline();
             throw VMError.shouldNotReachHere("Should not reach here: Not okay to block.");
         }

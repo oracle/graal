@@ -57,11 +57,11 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.GCOptionValue;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.option.APIOptionGroup;
@@ -1805,4 +1805,7 @@ public class SubstrateOptions {
             throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The value must be non-negative");
         }
     }, RelevantForCompilationIsolates);
+
+    @Option(help = "Emit fast path in monitor snippets", type = Expert) //
+    public static final HostedOptionKey<Boolean> UseMonitorFastPath = new HostedOptionKey<>(true);
 }
