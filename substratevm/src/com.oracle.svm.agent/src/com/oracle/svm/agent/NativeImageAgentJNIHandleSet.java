@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,9 +57,15 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangObjectGetClass;
     final JNIMethodId javaLangObjectToString;
 
+    final JNIObjectHandle javaLangRefReference;
+    final JNIMethodId javaLangRefReferenceGet;
+
     final JNIObjectHandle javaSecurityProviderService;
     final JNIMethodId javaSecurityProviderServiceGetProvider;
     final JNIMethodId javaSecurityProviderServiceNewInstance;
+    final JNIFieldId javaSecurityProviderServiceClassCache;
+    final JNIFieldId javaSecurityProviderServiceEngineDescription;
+    final JNIFieldId javaSecurityProviderEngineDescriptionConstructorParameterClass;
     final JNIMethodId javaSecurityProviderGetName;
     final JNIMethodId javaSecurityGetProvider;
     final JNIMethodId javaSecurityGetProviders;
@@ -177,9 +183,18 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
         javaLangObjectToString = getMethodId(env, javaLangObject, "toString", "()Ljava/lang/String;", false);
 
+        javaLangRefReference = newClassGlobalRef(env, "java/lang/ref/Reference");
+        javaLangRefReferenceGet = getMethodId(env, javaLangRefReference, "get", "()Ljava/lang/Object;", false);
+
         javaSecurityProviderService = newClassGlobalRef(env, "java/security/Provider$Service");
         javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
         javaSecurityProviderServiceNewInstance = getMethodId(env, javaSecurityProviderService, "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
+        javaSecurityProviderServiceClassCache = getFieldIdOptional(env, javaSecurityProviderService, "classCache", "Ljava/lang/Object;", false);
+        javaSecurityProviderServiceEngineDescription = getFieldIdOptional(env, javaSecurityProviderService, "engineDescription", "Ljava/security/Provider$EngineDescription;", false);
+        JNIObjectHandle javaSecurityProviderEngineDescription = findClassOptional(env, "java/security/Provider$EngineDescription");
+        javaSecurityProviderEngineDescriptionConstructorParameterClass = javaSecurityProviderEngineDescription.equal(nullHandle())
+                        ? WordFactory.nullPointer()
+                        : getFieldIdOptional(env, javaSecurityProviderEngineDescription, "constructorParameterClass", "Ljava/lang/Class;", false);
         JNIObjectHandle javaSecurityProvider = findClass(env, "java/security/Provider");
         javaSecurityProviderGetName = getMethodId(env, javaSecurityProvider, "getName", "()Ljava/lang/String;", false);
 
