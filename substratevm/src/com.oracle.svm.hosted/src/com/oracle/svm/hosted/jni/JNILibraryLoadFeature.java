@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -90,7 +91,9 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        Predicate<String> hasOnLoadSymbol = library -> nativeLibraries.getStaticLibrarySymbols(library)
+                        .contains(JNILibraryInitializer.getOnLoadName(library, true));
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries(), hasOnLoadSymbol);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
