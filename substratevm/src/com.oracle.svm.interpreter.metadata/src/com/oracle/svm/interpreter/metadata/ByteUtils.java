@@ -37,8 +37,8 @@ import jdk.internal.misc.Unsafe;
 public final class ByteUtils {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private static long offsetFor(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + ((long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+    private static long offsetFor(long index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
     }
 
     /**
@@ -59,7 +59,7 @@ public final class ByteUtils {
      * @param bci the index to retrieve, which must be within the array bounds
      * @return the signed byte at index {@code bci}
      */
-    public static int uncheckedBeS1(byte[] data, int bci) {
+    public static int uncheckedBeS1(byte[] data, long bci) {
         return UNSAFE.getByte(data, offsetFor(bci));
     }
 
@@ -81,7 +81,7 @@ public final class ByteUtils {
      * @param bci the start index to retrieve, which must leave two bytes within the array bounds
      * @return the signed 2-byte, big-endian value at index {@code bci}
      */
-    public static int uncheckedBeS2(byte[] data, int bci) {
+    public static int uncheckedBeS2(byte[] data, long bci) {
         return UNSAFE.getShortUnaligned(data, offsetFor(bci), true);
     }
 
@@ -103,7 +103,7 @@ public final class ByteUtils {
      * @param bci the index to retrieve, which must be within the array bounds
      * @return the unsigned byte at index {@code bci}
      */
-    public static int uncheckedBeU1(byte[] data, int bci) {
+    public static int uncheckedBeU1(byte[] data, long bci) {
         return UNSAFE.getByte(data, offsetFor(bci)) & 0xff;
     }
 
@@ -125,7 +125,7 @@ public final class ByteUtils {
      * @param bci the start index of the value to retrieve
      * @return the unsigned 1-byte value at index {@code bci} in array {@code data}
      */
-    public static int opaqueBeU1(byte[] data, int bci) {
+    public static int opaqueBeU1(byte[] data, long bci) {
         return UNSAFE.getByteOpaque(data, offsetFor(bci)) & 0xff;
     }
 
@@ -147,7 +147,7 @@ public final class ByteUtils {
      * @param bci the start index to retrieve, which must leave two bytes within the array bounds
      * @return the unsigned 2-byte, big-endian value at index {@code bci}
      */
-    public static int uncheckedBeU2(byte[] data, int bci) {
+    public static int uncheckedBeU2(byte[] data, long bci) {
         return uncheckedBeS2(data, bci) & 0xffff;
     }
 
@@ -158,7 +158,7 @@ public final class ByteUtils {
      * @param bci the start index to retrieve, which must leave four bytes within the array bounds
      * @return the signed 4-byte, big-endian value at index {@code bci}
      */
-    public static int uncheckedBeS4(byte[] data, int bci) {
+    public static int uncheckedBeS4(byte[] data, long bci) {
         return UNSAFE.getIntUnaligned(data, offsetFor(bci), true);
     }
 

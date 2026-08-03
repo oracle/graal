@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,153 +47,209 @@ public final class InterpreterFrameUtil {
 
     // region Operand stack accessors
 
-    public static void dup1(InterpreterFrame frame, int top) {
+    public static void dup1(InterpreterFrame frame, long top) {
         // value1 -> value1, value1
-        copyStatic(frame, top - 1, top);
+        copyStatic(frame, top, -1, 0);
     }
 
-    public static void dupx1(InterpreterFrame frame, int top) {
+    public static void dupx1(InterpreterFrame frame, long top) {
         // value2, value1 -> value1, value2, value1
-        copyStatic(frame, top - 1, top);
-        copyStatic(frame, top - 2, top - 1);
-        copyStatic(frame, top, top - 2);
+        copyStatic(frame, top, -1, 0);
+        copyStatic(frame, top, -2, -1);
+        copyStatic(frame, top, 0, -2);
     }
 
-    public static void dupx2(InterpreterFrame frame, int top) {
+    public static void dupx2(InterpreterFrame frame, long top) {
         // value3, value2, value1 -> value1, value3, value2, value1
-        copyStatic(frame, top - 1, top);
-        copyStatic(frame, top - 2, top - 1);
-        copyStatic(frame, top - 3, top - 2);
-        copyStatic(frame, top, top - 3);
+        copyStatic(frame, top, -1, 0);
+        copyStatic(frame, top, -2, -1);
+        copyStatic(frame, top, -3, -2);
+        copyStatic(frame, top, 0, -3);
     }
 
-    public static void dup2(InterpreterFrame frame, int top) {
+    public static void dup2(InterpreterFrame frame, long top) {
         // {value2, value1} -> {value2, value1}, {value2, value1}
-        copyStatic(frame, top - 2, top);
-        copyStatic(frame, top - 1, top + 1);
+        copyStatic(frame, top, -2, 0);
+        copyStatic(frame, top, -1, 1);
     }
 
-    public static void swapSingle(InterpreterFrame frame, int top) {
+    public static void swapSingle(InterpreterFrame frame, long top) {
         // value2, value1 -> value1, value2
         swapStatic(frame, top);
     }
 
-    public static void dup2x1(InterpreterFrame frame, int top) {
+    public static void dup2x1(InterpreterFrame frame, long top) {
         // value3, {value2, value1} -> {value2, value1}, value3, {value2, value1}
-        copyStatic(frame, top - 2, top);
-        copyStatic(frame, top - 1, top + 1);
-        copyStatic(frame, top - 3, top - 1);
-        copyStatic(frame, top, top - 3);
-        copyStatic(frame, top + 1, top - 2);
+        copyStatic(frame, top, -2, 0);
+        copyStatic(frame, top, -1, 1);
+        copyStatic(frame, top, -3, -1);
+        copyStatic(frame, top, 0, -3);
+        copyStatic(frame, top, 1, -2);
     }
 
-    public static void dup2x2(InterpreterFrame frame, int top) {
+    public static void dup2x2(InterpreterFrame frame, long top) {
         // {value4, value3}, {value2, value1} -> {value2, value1}, {value4, value3}, {value2,
         // value1}
-        copyStatic(frame, top - 1, top + 1);
-        copyStatic(frame, top - 2, top);
-        copyStatic(frame, top - 3, top - 1);
-        copyStatic(frame, top - 4, top - 2);
-        copyStatic(frame, top, top - 4);
-        copyStatic(frame, top + 1, top - 3);
+        copyStatic(frame, top, -1, 1);
+        copyStatic(frame, top, -2, 0);
+        copyStatic(frame, top, -3, -1);
+        copyStatic(frame, top, -4, -2);
+        copyStatic(frame, top, 0, -4);
+        copyStatic(frame, top, 1, -3);
     }
 
-    private static void swapStatic(InterpreterFrame frame, int top) {
-        frame.swapStatic(top - 1, top - 2);
+    private static void swapStatic(InterpreterFrame frame, long top) {
+        frame.swapStatic(top, -1, top, -2);
     }
 
-    private static void copyStatic(InterpreterFrame frame, int src, int dst) {
-        frame.copyStatic(src, dst);
+    private static void copyStatic(InterpreterFrame frame, long slot, long srcOffset, long dstOffset) {
+        frame.copyStatic(slot, srcOffset, slot, dstOffset);
     }
 
-    public static int popInt(InterpreterFrame frame, int slot) {
-        int result = frame.getIntStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
+    /*
+     * Match HotSpot's stack convention for primitive slots: popping does not clear the slot,
+     * avoiding stores in threaded handlers. Reference slots must still be cleared because the GC
+     * scans every non-null entry of the frame's {@code Object[]} references, unlike HotSpot's oop
+     * maps, which can distinguish dead stack references.
+     */
+    public static int popInt(InterpreterFrame frame, long slot) {
+        return frame.getIntStatic(slot);
     }
 
-    public static Object peekObject(InterpreterFrame frame, int slot) {
+    public static int popInt(InterpreterFrame frame, long slot, long slotOffset) {
+        return frame.getIntStatic(slot, slotOffset);
+    }
+
+    public static Object peekObject(InterpreterFrame frame, long slot) {
         Object result = frame.getObjectStatic(slot);
         return result;
     }
 
-    public static long peekPrimitive(InterpreterFrame frame, int slot) {
+    public static Object peekObject(InterpreterFrame frame, long slot, long slotOffset) {
+        Object result = frame.getObjectStatic(slot, slotOffset);
+        return result;
+    }
+
+    public static long peekPrimitive(InterpreterFrame frame, long slot) {
         return frame.getLongStatic(slot);
     }
 
-    /**
-     * Reads and clear the operand stack slot.
-     */
-    public static Object popObject(InterpreterFrame frame, int slot) {
-        // nulls-out the slot, use peekObject to read only
+    public static long peekPrimitive(InterpreterFrame frame, long slot, long slotOffset) {
+        return frame.getLongStatic(slot, slotOffset);
+    }
+
+    public static Object popObject(InterpreterFrame frame, long slot) {
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
         assert !(result instanceof ReturnAddress);
         return result;
     }
 
-    public static float popFloat(InterpreterFrame frame, int slot) {
-        float result = frame.getFloatStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
+    public static Object popObject(InterpreterFrame frame, long slot, long slotOffset) {
+        Object result = frame.getObjectStatic(slot, slotOffset);
+        clearReference(frame, slot, slotOffset);
+        assert !(result instanceof ReturnAddress);
         return result;
     }
 
-    public static long popLong(InterpreterFrame frame, int slot) {
-        long result = frame.getLongStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
+    public static float popFloat(InterpreterFrame frame, long slot) {
+        return frame.getFloatStatic(slot);
     }
 
-    public static double popDouble(InterpreterFrame frame, int slot) {
-        double result = frame.getDoubleStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
+    public static float popFloat(InterpreterFrame frame, long slot, long slotOffset) {
+        return frame.getFloatStatic(slot, slotOffset);
     }
 
-    static Object popReturnAddressOrObject(InterpreterFrame frame, int slot) {
+    public static long popLong(InterpreterFrame frame, long slot) {
+        return frame.getLongStatic(slot);
+    }
+
+    public static long popLong(InterpreterFrame frame, long slot, long slotOffset) {
+        return frame.getLongStatic(slot, slotOffset);
+    }
+
+    public static double popDouble(InterpreterFrame frame, long slot) {
+        return frame.getDoubleStatic(slot);
+    }
+
+    public static double popDouble(InterpreterFrame frame, long slot, long slotOffset) {
+        return frame.getDoubleStatic(slot, slotOffset);
+    }
+
+    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot) {
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
         return result;
     }
 
-    static void putReturnAddress(InterpreterFrame frame, int slot, int targetBCI) {
+    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot, long slotOffset) {
+        Object result = frame.getObjectStatic(slot, slotOffset);
+        clearReference(frame, slot, slotOffset);
+        return result;
+    }
+
+    static void putReturnAddress(InterpreterFrame frame, long slot, int targetBCI) {
         frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
-    public static void putObject(InterpreterFrame frame, int slot, Object value) {
+    static void putReturnAddress(InterpreterFrame frame, long slot, long slotOffset, int targetBCI) {
+        frame.setObjectStatic(slot, slotOffset, ReturnAddress.create(targetBCI));
+    }
+
+    public static void putObject(InterpreterFrame frame, long slot, Object value) {
         frame.setObjectStatic(slot, value);
     }
 
-    public static void putInt(InterpreterFrame frame, int slot, int value) {
+    public static void putObject(InterpreterFrame frame, long slot, long slotOffset, Object value) {
+        frame.setObjectStatic(slot, slotOffset, value);
+    }
+
+    public static void putInt(InterpreterFrame frame, long slot, int value) {
         frame.setIntStatic(slot, value);
     }
 
-    public static void putFloat(InterpreterFrame frame, int slot, float value) {
+    public static void putInt(InterpreterFrame frame, long slot, long slotOffset, int value) {
+        frame.setIntStatic(slot, slotOffset, value);
+    }
+
+    public static void putFloat(InterpreterFrame frame, long slot, float value) {
         frame.setFloatStatic(slot, value);
     }
 
-    public static void putLong(InterpreterFrame frame, int slot, long value) {
+    public static void putFloat(InterpreterFrame frame, long slot, long slotOffset, float value) {
+        frame.setFloatStatic(slot, slotOffset, value);
+    }
+
+    public static void putLong(InterpreterFrame frame, long slot, long value) {
         frame.setLongStatic(slot + 1, value);
     }
 
-    public static void putDouble(InterpreterFrame frame, int slot, double value) {
+    public static void putLong(InterpreterFrame frame, long slot, long slotOffset, long value) {
+        frame.setLongStatic(slot, slotOffset + 1, value);
+    }
+
+    public static void putDouble(InterpreterFrame frame, long slot, double value) {
         frame.setDoubleStatic(slot + 1, value);
     }
 
-    private static void clearReference(InterpreterFrame frame, int slot) {
+    public static void putDouble(InterpreterFrame frame, long slot, long slotOffset, double value) {
+        frame.setDoubleStatic(slot, slotOffset + 1, value);
+    }
+
+    private static void clearReference(InterpreterFrame frame, long slot) {
         frame.clearObjectStatic(slot);
     }
 
-    private static void clearPrimitive(InterpreterFrame frame, int slot) {
-        frame.clearPrimitiveStatic(slot);
+    private static void clearReference(InterpreterFrame frame, long slot, long slotOffset) {
+        frame.clearObjectStatic(slot, slotOffset);
     }
 
-    public static void clear(InterpreterFrame frame, int slot) {
+    public static void clear(InterpreterFrame frame, long slot) {
         frame.clearStatic(slot);
+    }
+
+    public static void clear(InterpreterFrame frame, long slot, long slotOffset) {
+        frame.clearStatic(slot, slotOffset);
     }
 
     // endregion Operand stack accessors
@@ -271,13 +327,13 @@ public final class InterpreterFrameUtil {
         return maxLocals;
     }
 
-    public static Object[] popArguments(InterpreterFrame frame, int top, boolean hasReceiver, InterpreterUnresolvedSignature signature) {
+    public static Object[] popArguments(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature) {
         int argCount = signature.getParameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
 
-        int argAt = top - 1;
+        long argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
             JavaKind argKind = signature.getParameterKind(i);
             // @formatter:off
@@ -313,7 +369,7 @@ public final class InterpreterFrameUtil {
      * @param value value to push
      * @param returnKind kind to push
      */
-    public static int putKind(InterpreterFrame frame, int top, Object value, JavaKind returnKind) {
+    public static int putKind(InterpreterFrame frame, long top, Object value, JavaKind returnKind) {
         // @formatter:off
         switch (returnKind) {
             case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;

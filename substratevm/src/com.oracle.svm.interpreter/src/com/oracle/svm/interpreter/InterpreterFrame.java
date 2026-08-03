@@ -42,8 +42,8 @@ import jdk.vm.ci.code.BytecodeFrame;
 /// * [#primitives] stores primitive values as raw `long` bits.
 /// * [#references] stores object references.
 ///
-/// The `Static` suffix on methods such as [#getObjectStatic(int)] and
-/// [#setIntStatic(int, int)] does **not** refer to Java static fields or static methods. It means
+/// The `Static` suffix on methods such as [#getObjectStatic(long)] and
+/// [#setIntStatic(long, int)] does **not** refer to Java static fields or static methods. It means
 /// the caller statically knows which storage kind is valid for the slot and wants direct typed
 /// access to the underlying arrays. The slot must be within the frame bounds established from the
 /// verified method metadata because these raw accesses do not perform array bounds checks.
@@ -102,95 +102,170 @@ public final class InterpreterFrame {
         return debuggerEventBCI;
     }
 
-    int getIntStatic(int slot) {
-        return (int) getPrimitiveStatic(slot);
+    int getIntStatic(long slot) {
+        return getIntStatic(slot, 0);
     }
 
-    Object getObjectStatic(int slot) {
-        return getReferenceStatic(slot);
+    int getIntStatic(long slot, long slotOffset) {
+        return (int) getPrimitiveStatic(slot, slotOffset);
     }
 
-    float getFloatStatic(int slot) {
-        return Float.intBitsToFloat((int) getPrimitiveStatic(slot));
+    Object getObjectStatic(long slot) {
+        return getObjectStatic(slot, 0);
     }
 
-    long getLongStatic(int slot) {
-        return getPrimitiveStatic(slot);
+    Object getObjectStatic(long slot, long slotOffset) {
+        return getReferenceStatic(slot, slotOffset);
     }
 
-    double getDoubleStatic(int slot) {
-        return Double.longBitsToDouble(getPrimitiveStatic(slot));
+    float getFloatStatic(long slot) {
+        return getFloatStatic(slot, 0);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setObjectStatic(int slot, Object value) {
-        setReferenceStatic(slot, value);
+    float getFloatStatic(long slot, long slotOffset) {
+        return Float.intBitsToFloat((int) getPrimitiveStatic(slot, slotOffset));
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setIntStatic(int slot, int value) {
-        setPrimitiveStatic(slot, value);
+    long getLongStatic(long slot) {
+        return getLongStatic(slot, 0);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setFloatStatic(int slot, float value) {
-        setPrimitiveStatic(slot, Float.floatToRawIntBits(value));
+    long getLongStatic(long slot, long slotOffset) {
+        return getPrimitiveStatic(slot, slotOffset);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setLongStatic(int slot, long value) {
-        setPrimitiveStatic(slot, value);
+    double getDoubleStatic(long slot) {
+        return getDoubleStatic(slot, 0);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setDoubleStatic(int slot, double value) {
-        setPrimitiveStatic(slot, Double.doubleToRawLongBits(value));
-    }
-
-    void clearObjectStatic(int slot) {
-        setReferenceStatic(slot, null);
-    }
-
-    void clearPrimitiveStatic(int slot) {
-        setPrimitiveStatic(slot, 0);
-    }
-
-    void clearStatic(int slot) {
-        clearObjectStatic(slot);
-        clearPrimitiveStatic(slot);
-    }
-
-    void swapStatic(int src, int dst) {
-        long tmp = getPrimitiveStatic(src);
-        setPrimitiveStatic(src, getPrimitiveStatic(dst));
-        setPrimitiveStatic(dst, tmp);
-
-        Object otmp = getReferenceStatic(src);
-        setReferenceStatic(src, getReferenceStatic(dst));
-        setReferenceStatic(dst, otmp);
-    }
-
-    void copyStatic(int src, int dst) {
-        setPrimitiveStatic(dst, getPrimitiveStatic(src));
-        setReferenceStatic(dst, getReferenceStatic(src));
-    }
-
-    private long getPrimitiveStatic(int slot) {
-        return UNSAFE.getLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + ((long) slot * Unsafe.ARRAY_LONG_INDEX_SCALE));
+    double getDoubleStatic(long slot, long slotOffset) {
+        return Double.longBitsToDouble(getPrimitiveStatic(slot, slotOffset));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setPrimitiveStatic(int slot, long value) {
-        UNSAFE.putLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + ((long) slot * Unsafe.ARRAY_LONG_INDEX_SCALE), value);
-    }
-
-    private Object getReferenceStatic(int slot) {
-        return UNSAFE.getReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((long) slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
+    void setObjectStatic(long slot, Object value) {
+        setObjectStatic(slot, 0, value);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setReferenceStatic(int slot, Object value) {
-        UNSAFE.putReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((long) slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE), value);
+    void setObjectStatic(long slot, long slotOffset, Object value) {
+        setReferenceStatic(slot, slotOffset, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setIntStatic(long slot, int value) {
+        setIntStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setIntStatic(long slot, long slotOffset, int value) {
+        setPrimitiveStatic(slot, slotOffset, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setFloatStatic(long slot, float value) {
+        setFloatStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setFloatStatic(long slot, long slotOffset, float value) {
+        setPrimitiveStatic(slot, slotOffset, Float.floatToRawIntBits(value));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setLongStatic(long slot, long value) {
+        setLongStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setLongStatic(long slot, long slotOffset, long value) {
+        setPrimitiveStatic(slot, slotOffset, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setDoubleStatic(long slot, double value) {
+        setDoubleStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setDoubleStatic(long slot, long slotOffset, double value) {
+        setPrimitiveStatic(slot, slotOffset, Double.doubleToRawLongBits(value));
+    }
+
+    void clearObjectStatic(long slot) {
+        clearObjectStatic(slot, 0);
+    }
+
+    void clearObjectStatic(long slot, long slotOffset) {
+        setReferenceStatic(slot, slotOffset, null);
+    }
+
+    void clearPrimitiveStatic(long slot) {
+        clearPrimitiveStatic(slot, 0);
+    }
+
+    void clearPrimitiveStatic(long slot, long slotOffset) {
+        setPrimitiveStatic(slot, slotOffset, 0);
+    }
+
+    void clearStatic(long slot) {
+        clearStatic(slot, 0);
+    }
+
+    void clearStatic(long slot, long slotOffset) {
+        clearObjectStatic(slot, slotOffset);
+        clearPrimitiveStatic(slot, slotOffset);
+    }
+
+    void swapStatic(long src, long dst) {
+        swapStatic(src, 0, dst, 0);
+    }
+
+    void swapStatic(long src, long srcOffset, long dst, long dstOffset) {
+        long tmp = getPrimitiveStatic(src, srcOffset);
+        setPrimitiveStatic(src, srcOffset, getPrimitiveStatic(dst, dstOffset));
+        setPrimitiveStatic(dst, dstOffset, tmp);
+
+        Object otmp = getReferenceStatic(src, srcOffset);
+        setReferenceStatic(src, srcOffset, getReferenceStatic(dst, dstOffset));
+        setReferenceStatic(dst, dstOffset, otmp);
+    }
+
+    void copyStatic(long src, long dst) {
+        copyStatic(src, 0, dst, 0);
+    }
+
+    void copyStatic(long src, long srcOffset, long dst, long dstOffset) {
+        setPrimitiveStatic(dst, dstOffset, getPrimitiveStatic(src, srcOffset));
+        setReferenceStatic(dst, dstOffset, getReferenceStatic(src, srcOffset));
+    }
+
+    private long getPrimitiveStatic(long slot, long slotOffset) {
+        return UNSAFE.getLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_LONG_INDEX_SCALE));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void setPrimitiveStatic(long slot, long value) {
+        setPrimitiveStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void setPrimitiveStatic(long slot, long slotOffset, long value) {
+        UNSAFE.putLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_LONG_INDEX_SCALE), value);
+    }
+
+    private Object getReferenceStatic(long slot, long slotOffset) {
+        return UNSAFE.getReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void setReferenceStatic(long slot, Object value) {
+        setReferenceStatic(slot, 0, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void setReferenceStatic(long slot, long slotOffset, Object value) {
+        UNSAFE.putReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE), value);
     }
 
     private void ensureLocksCapacity(int capacity) {
