@@ -43,6 +43,7 @@ import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -745,6 +746,20 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     public final void imposeLoadingConstraints() {
+        /*
+         * Preparation updates shared loading-constraint state through the vtable and itable walks
+         * below. Keep the yellow zone available for the complete update so StackOverflowError
+         * cannot expose partially recorded constraints.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            imposeLoadingConstraints0();
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    private void imposeLoadingConstraints0() {
         if (!isInterface() && getSuperClass() != null) {
             InterpreterResolvedJavaMethod[] thisTable = getVtable();
             InterpreterResolvedJavaMethod[] superTable = getSuperClass().getVtable();

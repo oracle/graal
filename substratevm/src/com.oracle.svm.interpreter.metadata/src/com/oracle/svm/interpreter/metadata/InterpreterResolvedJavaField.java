@@ -43,6 +43,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -367,11 +368,22 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     @Override
     public final void loadingConstraints(InterpreterResolvedJavaType accessingClass) {
-        ClassLoader loader1 = accessingClass.getClassLoader();
-        ClassLoader loader2 = getDeclaringClass().getClassLoader();
+        /*
+         * Loading-constraint checks can update shared VM state and therefore must not be interrupted
+         * by a StackOverflowError. Make the yellow zone available before doing any constraint work
+         * so a check that starts near the regular stack boundary can finish. No application code is
+         * invoked while the yellow zone is available.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            ClassLoader loader1 = accessingClass.getClassLoader();
+            ClassLoader loader2 = getDeclaringClass().getClassLoader();
 
-        if (loader1 != loader2) {
-            CremaSupport.singleton().checkLoadingConstraint(getSymbolicType(), loader1, loader2);
+            if (loader1 != loader2) {
+                CremaSupport.singleton().checkLoadingConstraint(getSymbolicType(), loader1, loader2);
+            }
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 

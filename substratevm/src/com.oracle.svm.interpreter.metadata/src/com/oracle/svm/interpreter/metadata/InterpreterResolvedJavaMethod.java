@@ -72,6 +72,7 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParserMethod;
@@ -1015,12 +1016,24 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final void loadingConstraints(InterpreterResolvedJavaType accessingClass) {
-        ClassLoader loader1 = accessingClass.getClassLoader();
-        ClassLoader loader2 = getDeclaringClass().getClassLoader();
-        checkLoadingConstraints(loader1, loader2);
+        /*
+         * Loading-constraint checks can update shared VM state and therefore must not be interrupted
+         * by a StackOverflowError. Make the yellow zone available before doing any constraint work
+         * so a check that starts near the regular stack boundary can finish. No application code is
+         * invoked while the yellow zone is available.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            ClassLoader loader1 = accessingClass.getClassLoader();
+            ClassLoader loader2 = getDeclaringClass().getClassLoader();
+            checkLoadingConstraints(loader1, loader2);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
-    public final void checkLoadingConstraints(ClassLoader loader1, ClassLoader loader2) {
+    final void checkLoadingConstraints(ClassLoader loader1, ClassLoader loader2) {
+        assert StackOverflowCheck.singleton().isYellowZoneAvailable();
         if (loader1 != loader2) {
             for (Symbol<Type> type : SymbolsSupport.getSignatures().parsed(getSymbolicSignature())) {
                 CremaSupport.singleton().checkLoadingConstraint(type, loader1, loader2);
