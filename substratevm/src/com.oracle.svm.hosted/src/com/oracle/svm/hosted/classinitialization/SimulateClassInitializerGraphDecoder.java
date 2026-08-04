@@ -404,13 +404,23 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
 
     private Node handleEnsureClassInitializedNode(EnsureClassInitializedNode node) {
         var aConstantReflection = (AnalysisConstantReflectionProvider) providers.getConstantReflection();
-        var classInitType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
-        if (classInitType != null) {
-            if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember) && !aConstantReflection.initializationCheckRequired(classInitType)) {
+        var initializationTargetType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
+        if (initializationTargetType != null) {
+            boolean requiresInitializationCheck = aConstantReflection.initializationCheckRequired(initializationTargetType);
+            if (requiresInitializationCheck) {
+                /*
+                 * A required initialization check means that the initializer currently being decoded
+                 * cannot be simulated. The EnsureClassInitializedNode must remain in the graph and
+                 * execute at run time. For a type-reached check, executing the node marks the
+                 * target's DynamicHub as reached and makes conditional metadata available.
+                 */
+                return node;
+            }
+            if (support.trySimulateClassInitializer(graph.getDebug(), initializationTargetType, clusterMember)) {
                 /* Class is already simulated initialized, no need for a run-time check. */
                 return null;
             }
-            var classInitTypeMember = clusterMember.cluster.clusterMembers.get(classInitType);
+            var classInitTypeMember = clusterMember.cluster.clusterMembers.get(initializationTargetType);
             if (classInitTypeMember != null && !classInitTypeMember.status.published) {
                 /*
                  * The class is part of the same cycle as our class. We optimistically remove the

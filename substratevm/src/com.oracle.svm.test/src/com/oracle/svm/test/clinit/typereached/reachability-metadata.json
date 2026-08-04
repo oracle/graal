@@ -1,0 +1,10 @@
+{
+  "reflection": [
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.test.clinit.typereached.TupleBinding"
+      },
+      "type": "java.lang.Boolean"
+    }
+  ]
+}
