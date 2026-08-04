@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,13 @@
 package jdk.graal.compiler.replacements.nodes;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 
 import java.util.EnumSet;
+
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -39,9 +44,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_1024, size = NodeSize.SIZE_32)
@@ -88,7 +91,7 @@ public class BigIntegerMulAddNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "mulAdd")
+    @GenerateStub(name = "mulAdd", runtimeCPUFeaturesAMD64 = "runtimeCheckedCPUFeaturesAMD64")
     public static native int apply(Pointer out,
                     Pointer in,
                     int offset,
@@ -115,5 +118,9 @@ public class BigIntegerMulAddNode extends MemoryKillStubIntrinsicNode {
                         gen.operand(offset),
                         gen.operand(len),
                         gen.operand(k)));
+    }
+
+    public static EnumSet<AMD64.CPUFeature> runtimeCheckedCPUFeaturesAMD64() {
+        return EnumSet.of(AVX, BMI2);
     }
 }

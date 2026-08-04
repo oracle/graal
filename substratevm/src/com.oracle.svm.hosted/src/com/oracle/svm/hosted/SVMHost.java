@@ -556,12 +556,8 @@ public class SVMHost extends HostVM {
     public Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider) {
         SubstrateForeignCallsProvider foreignCalls = (SubstrateForeignCallsProvider) foreignCallsProvider;
         /* In unit tests, we run with no registered foreign calls. */
-        Optional<AnalysisMethod> targetMethod = Optional.empty();
-        if (foreignCalls.getForeignCalls().size() > 0) {
-            SubstrateForeignCallLinkage linkage = foreignCalls.lookupForeignCall(foreignCallDescriptor);
-            targetMethod = Optional.of((AnalysisMethod) linkage.getMethod());
-        }
-        return targetMethod;
+        SubstrateForeignCallLinkage linkage = foreignCalls.lookupOptionalForeignCall(foreignCallDescriptor);
+        return linkage == null ? Optional.empty() : Optional.of((AnalysisMethod) linkage.getMethod());
     }
 
     public DynamicHub dynamicHub(Class<?> type) {

@@ -25,7 +25,6 @@
 package jdk.graal.compiler.replacements.nodes;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_16;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
@@ -43,7 +42,9 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -53,8 +54,6 @@ import jdk.vm.ci.meta.JavaKind;
 public class IndexOfZeroNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<IndexOfZeroNode> TYPE = NodeClass.create(IndexOfZeroNode.class);
-
-    private static final EnumSet<AMD64.CPUFeature> MINIMUM_FEATURES_AMD64 = EnumSet.of(SSE, SSE2, SSE3, SSSE3, SSE4_1);
 
     private final Stride stride;
 
@@ -71,7 +70,15 @@ public class IndexOfZeroNode extends PureFunctionStubIntrinsicNode {
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return MINIMUM_FEATURES_AMD64;
+        return EnumSet.of(SSE2, SSE3, SSSE3, SSE4_1);
+    }
+
+    public static boolean isSupported(Architecture arch) {
+        return switch (arch) {
+            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64());
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
     }
 
     public Stride getStride() {
@@ -94,6 +101,7 @@ public class IndexOfZeroNode extends PureFunctionStubIntrinsicNode {
     }
 
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     @GenerateStub(name = "indexOfZeroS1", parameters = "S1", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
     @GenerateStub(name = "indexOfZeroS2", parameters = "S2", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
     @GenerateStub(name = "indexOfZeroS4", parameters = "S4", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")

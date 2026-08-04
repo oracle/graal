@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.GenerateStub;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -42,6 +41,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -54,7 +54,6 @@ import jdk.vm.ci.meta.JavaKind;
 public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<StringCodepointIndexToByteIndexNode> TYPE = NodeClass.create(StringCodepointIndexToByteIndexNode.class);
-    private static final EnumSet<AMD64.CPUFeature> MINIMUM_FEATURES_AMD64 = EnumSet.of(SSSE3, POPCNT);
 
     /**
      * Encoding of input string.
@@ -117,11 +116,11 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return MINIMUM_FEATURES_AMD64;
+        return EnumSet.of(SSSE3, POPCNT);
     }
 
-    public static EnumSet<?> minFeaturesAARCH64() {
-        throw GraalError.shouldNotReachHere("not implemented yet"); // ExcludeFromJacocoGeneratedReport
+    public static boolean isSupported(Architecture arch) {
+        return arch instanceof AMD64 amd64 && amd64.getFeatures().containsAll(minFeaturesAMD64());
     }
 
     @Override
@@ -143,9 +142,10 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
     /* NodeIntrinsic plugins for snippet stubs. */
 
     @NodeIntrinsic
-    @GenerateStub(name = "codePointIndexToByteIndexUTF8", parameters = "UTF_8", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
-    @GenerateStub(name = "codePointIndexToByteIndexUTF16", parameters = "UTF_16", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
-    @GenerateStub(name = "codePointIndexToByteIndexUTF16FE", parameters = "UTF_16_FOREIGN_ENDIAN", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF8", parameters = "UTF_8", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF16", parameters = "UTF_16", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF16FE", parameters = "UTF_16_FOREIGN_ENDIAN", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
     public static native int codepointIndexToByteIndex(Object array, long offset, int length, int index,
                     @ConstantNodeParameter InputEncoding inputEncoding);
 

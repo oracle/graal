@@ -107,7 +107,7 @@ public final class CRC32UpdateBytesNode extends PureFunctionStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "updateBytesCRC32", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "updateBytesCRC32", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "maxFeaturesAMD64")
     public static native int update(int crc, Pointer bufferAddress, int length);
 
     @NodeIntrinsic

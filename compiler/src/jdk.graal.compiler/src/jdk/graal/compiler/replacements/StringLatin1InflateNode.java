@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -118,7 +118,7 @@ public final class StringLatin1InflateNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub
+    @GenerateStub(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     public static native void stringLatin1Inflate(Pointer src, Pointer dst, int len);
 
     @NodeIntrinsic

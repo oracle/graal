@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 
 // JaCoCo Exclude
 
@@ -69,17 +66,13 @@ public final class CalcStringAttributesMacroNode extends MacroWithExceptionNode 
     public Node canonical(CanonicalizerTool tool) {
         /*
          * This node has architecture-specific feature checks. However, since all logic besides the
-         * feature check is shared, we have deliberately decided avoid code duplication and not to
-         * make architecture-specific nodes.
+         * feature check is shared, we have deliberately decided to avoid code duplication and not
+         * to make architecture-specific nodes.
          */
-        Architecture arch = tool.getLowerer().getTarget().arch;
-        boolean intrinsifiable = (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64())) ||
-                        (arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64()));
+        boolean intrinsifiable = CalcStringAttributesNode.isSupported(tool.getLowerer().getTarget().arch);
         if (intrinsifiable) {
             return new CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), encoding, assumeValid, locationIdentity);
-
         }
-
         return this;
     }
 }

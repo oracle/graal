@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
-import jdk.vm.ci.amd64.AMD64;
 
 // JaCoCo Exclude
 
@@ -63,12 +62,10 @@ public final class StringCodepointIndexToByteIndexMacroNode extends MacroWithExc
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        AMD64 arch = (AMD64) tool.getLowerer().getTarget().arch;
-        boolean intrinsifiable = arch.getFeatures().containsAll(StringCodepointIndexToByteIndexNode.minFeaturesAMD64());
+        boolean intrinsifiable = StringCodepointIndexToByteIndexNode.isSupported(tool.getLowerer().getTarget().arch);
         if (intrinsifiable) {
             return new StringCodepointIndexToByteIndexNode(getArgument(1), getArgument(2), getArgument(3), getArgument(4), inputEncoding, locationIdentity);
         }
-
         return this;
     }
 }

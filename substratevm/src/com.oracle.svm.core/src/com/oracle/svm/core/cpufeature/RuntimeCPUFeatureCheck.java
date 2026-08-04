@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,10 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
@@ -117,4 +116,10 @@ public final class RuntimeCPUFeatureCheck {
      */
     @NodeIntrinsic(RuntimeCPUFeatureCheckImpl.class)
     public static native <T extends Enum<T>> boolean isSupported(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1, @ConstantNodeParameter Enum<T> arg2);
+
+    /**
+     * @see #isSupported(Enum)
+     */
+    @NodeIntrinsic(RuntimeCPUFeatureCheckImpl.class)
+    public static native <T extends Enum<T>> boolean isSupported(@ConstantNodeParameter EnumSet<T> arg0);
 }
