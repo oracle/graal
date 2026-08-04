@@ -57,12 +57,12 @@ import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.Utf8.WrappedAsciiCString;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
 import jdk.vm.ci.meta.Signature;
