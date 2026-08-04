@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.shared.lookup.LookupMode;
 import com.oracle.truffle.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.truffle.espresso.shared.lookup.MethodLookup;
@@ -61,13 +62,6 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      * Returns whether this class and the other class share the same defining class loader.
      */
     boolean hasSameDefiningClassLoader(C other);
-
-    /**
-     * Finds the least common ancestor between this class and the other class.
-     * <p>
-     * This is only called on classes that are neither array, interface nor primitive.
-     */
-    C findLeastCommonAncestor(C other);
 
     /**
      * Returns the superclass of this class, or {@code null} if this class is {@link Object}. For
@@ -178,6 +172,45 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      *             constant pool at index {@code cpi}.
      */
     C resolveClassConstantInPool(int cpi);
+
+    /**
+     * Finds the least common ancestor between this class and the other class. When called with
+     * non-primitive arguments, this method should never return {@code null}, as all reference
+     * types have {@link Object} as a common ancestor.
+     * <p>
+     * Used by the {@link com.oracle.truffle.espresso.shared.verifier.Verifier} to merge types in
+     * the verification of older class files (major version {@code <= 49}). The verifier will only
+     * call this method with non-primitive, non-array and non-interface classes arguments
+     * <p>
+     * Note the following for the default implementation:
+     * <ul>
+     * <li>if unrelated arrays or interfaces are passed, the default implementation will return
+     * {@link Object}.</li>
+     * <li>if different primitive types are passed, the default implementation will return
+     * {@code null}.</li>
+     * </ul>
+     */
+    @SuppressWarnings("unchecked")
+    default C findLeastCommonAncestor(C other) {
+        if (TypeSymbols.isPrimitive(getSymbolicType())) {
+            if (getSymbolicType() == other.getSymbolicType()) {
+                return other;
+            }
+            return null;
+        }
+        C t1 = (C) this;
+        C t2 = other;
+        while (true) {
+            if (t1.isAssignableFrom(t2)) {
+                return t1;
+            }
+            if (t2.isAssignableFrom(t1)) {
+                return t2;
+            }
+            t1 = t1.getSuperClass();
+            t2 = t2.getSuperClass();
+        }
+    }
 
     /**
      * If this type declares a method with the given method {@code name} and {@code signature},

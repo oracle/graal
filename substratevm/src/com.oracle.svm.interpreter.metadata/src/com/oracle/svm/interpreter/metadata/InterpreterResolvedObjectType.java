@@ -659,25 +659,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         throw VMError.unimplemented("getJavaName");
     }
 
-    @Override
-    public final InterpreterResolvedJavaType findLeastCommonAncestor(InterpreterResolvedJavaType other) {
-        assert !isPrimitive() && !other.isPrimitive();
-        assert !isInterface() && !other.isInterface();
-        assert !isArray() && !other.isArray();
-        InterpreterResolvedObjectType t1 = this;
-        InterpreterResolvedObjectType t2 = (InterpreterResolvedObjectType) other;
-        while (true) {
-            if (t1.isAssignableFrom(t2)) {
-                return t1;
-            }
-            if (t2.isAssignableFrom(t1)) {
-                return t2;
-            }
-            t1 = t1.getSuperclass();
-            t2 = t2.getSuperclass();
-        }
-    }
-
     /**
      * Returns the super class according to the contract of {@link TypeAccess#getSuperClass()}.
      * <p>

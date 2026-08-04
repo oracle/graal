@@ -326,21 +326,48 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        /*
+         * This method is only ever called when the merging of 'this' into 'other' has already been
+         * confirmed to fail.
+         *
+         * Crucially, this implies some restrictions on the relationship of these two operands,
+         * namely:
+         *
+         * - 'other' can not be a super class of 'this' (but the opposite may be true)
+         *
+         * - 'other' may not be the same type as 'this'
+         */
         assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
+            // Covers other.isPrimitive()
             return null;
         }
+        assert !other.isPrimitive();
         if (other.isUninit()) {
             return null;
         }
         if (other.isArrayType()) {
+            // 'this' is not an array
             return methodVerifier.jlObject;
         }
         if (other.isNull()) {
             return this;
         }
-        C result = getKlass(methodVerifier).findLeastCommonAncestor(other.getKlass(methodVerifier));
-        return result == null ? null : new ReferenceOperand<>(result);
+        C thisOpKlass = getKlass(methodVerifier);
+        C otherOpKlass = other.getKlass(methodVerifier);
+        if (thisOpKlass.isInterface() || otherOpKlass.isInterface()) {
+            // Interfaces erase to 'Object'
+            return methodVerifier.jlObject;
+        }
+
+        // Ensure findLeastCommonAncestor preconditions
+        assert !this.isPrimitive() && !other.isPrimitive();
+        assert !this.isArrayType() && !other.isArrayType();
+        assert !thisOpKlass.isInterface() && !otherOpKlass.isInterface();
+
+        C result = thisOpKlass.findLeastCommonAncestor(otherOpKlass);
+        assert result != null;
+        return new ReferenceOperand<>(result);
     }
 
     @Override
