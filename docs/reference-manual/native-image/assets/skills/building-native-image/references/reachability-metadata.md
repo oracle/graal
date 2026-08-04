@@ -36,11 +36,13 @@ Use `Exit` mode during testing to catch errors hidden inside `catch (Throwable t
 ```shell
 java -XX:MissingRegistrationReportingMode=Exit -jar your-app.jar
 ```
-Enable strict metadata mode at build time:
+Make strict metadata mode the executable default at build time:
 ```shell
 native-image --exact-reachability-metadata ...
-# Or for specific packages only:
-native-image --exact-reachability-metadata=com.example.mypackage ...
+```
+Or select it globally when starting the executable:
+```shell
+./application -XX:+ExactReachabilityMetadata
 ```
 
 ---
@@ -188,7 +190,7 @@ For `Unsafe.allocateInstance(MyClass.class)`:
 
 Used when native C/C++ code calls back into Java via JNI. Fixes `MissingJNIRegistrationError`.
 
-> Most JNI libraries don't handle Java exceptions gracefully - always use `--exact-reachability-metadata` with `-XX:MissingRegistrationReportingMode=Warn` to see what's missing.
+> Most JNI libraries don't handle Java exceptions gracefully - use exact reachability metadata with `-XX:MissingRegistrationReportingMode=Warn` to see what's missing.
 
 **Register a JNI-accessible type:**
 ```json

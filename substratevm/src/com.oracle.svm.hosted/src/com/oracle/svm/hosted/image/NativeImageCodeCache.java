@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
@@ -524,7 +523,7 @@ public abstract class NativeImageCodeCache {
         configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
-                runtimeMetadataEncoder.addReflectionFieldMetadata(hostedField, reflectField);
+                runtimeMetadataEncoder.addReflectionFieldMetadata(hostedField, reflectField, reflectionSupport.isLegacyFieldAccess(analysisField));
             }
         }));
 
@@ -577,40 +576,38 @@ public abstract class NativeImageCodeCache {
             }
         }
 
-        if (throwMissingRegistrationErrors()) {
-            reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
-                HostedType hostedType = hUniverse.optionalLookup(analysisType);
-                if (hostedType != null) {
-                    for (String field : fields) {
-                        runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, field);
-                    }
+        reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
+            HostedType hostedType = hUniverse.optionalLookup(analysisType);
+            if (hostedType != null) {
+                for (String field : fields) {
+                    runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, field);
                 }
-            });
+            }
+        });
 
-            reflectionSupport.getNegativeMethodQueries().forEach((analysisType, methodSignatures) -> {
-                HostedType hostedType = hUniverse.optionalLookup(analysisType);
-                if (hostedType != null) {
-                    for (AnalysisMethod.Signature methodSignature : methodSignatures) {
-                        HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
-                        if (parameterTypes != null) {
-                            runtimeMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
-                        }
+        reflectionSupport.getNegativeMethodQueries().forEach((analysisType, methodSignatures) -> {
+            HostedType hostedType = hUniverse.optionalLookup(analysisType);
+            if (hostedType != null) {
+                for (AnalysisMethod.Signature methodSignature : methodSignatures) {
+                    HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
+                    if (parameterTypes != null) {
+                        runtimeMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
                     }
                 }
-            });
+            }
+        });
 
-            reflectionSupport.getNegativeConstructorQueries().forEach((analysisType, constructorSignatures) -> {
-                HostedType hostedType = hUniverse.optionalLookup(analysisType);
-                if (hostedType != null) {
-                    for (AnalysisType[] analysisParameterTypes : constructorSignatures) {
-                        HostedType[] parameterTypes = hUniverse.optionalLookup(analysisParameterTypes);
-                        if (parameterTypes != null) {
-                            runtimeMetadataEncoder.addNegativeConstructorQueryMetadata(hostedType, parameterTypes);
-                        }
+        reflectionSupport.getNegativeConstructorQueries().forEach((analysisType, constructorSignatures) -> {
+            HostedType hostedType = hUniverse.optionalLookup(analysisType);
+            if (hostedType != null) {
+                for (AnalysisType[] analysisParameterTypes : constructorSignatures) {
+                    HostedType[] parameterTypes = hUniverse.optionalLookup(analysisParameterTypes);
+                    if (parameterTypes != null) {
+                        runtimeMetadataEncoder.addNegativeConstructorQueryMetadata(hostedType, parameterTypes);
                     }
                 }
-            });
-        }
+            }
+        });
 
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {
             System.out.println("encoded deopt entry points                 ; " + frameInfoCustomization.numDeoptEntryPoints);
@@ -959,7 +956,7 @@ public abstract class NativeImageCodeCache {
     public interface RuntimeMetadataEncoder {
         void addClassMetadata(HostedType type, Class<?>[] reflectionClasses);
 
-        void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
+        void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField, boolean legacyAccess);
 
         void addReflectionExecutableMetadata(HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
 

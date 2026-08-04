@@ -2029,7 +2029,7 @@ public final class JNIFunctions {
              */
             boolean hubInaccessible = clazz != null && !DynamicHub.fromClass(clazz).isJNIAccessible();
 
-            if (MissingRegistrationUtils.throwMissingRegistrationErrors() &&
+            if (MissingRegistrationUtils.exactReflection() &&
                             (hubInaccessible || (clazz == null && !JNIReflectionDictionary.isNegativeClassLookup(name)))) {
                 MissingJNIRegistrationUtils.reportClassAccess(name);
             }

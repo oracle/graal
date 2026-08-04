@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 
 import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -396,8 +397,10 @@ public final class ClassRegistries implements ParsingContext {
             remainingDims--;
             hub = arrayHub;
         }
-        // Perform the MissingRegistrationError check for the final element
-        hub = hub.arrayType();
+        // Class-name lookup is deliberately less strict than other reflection when only the
+        // exact-reflection future default is enabled.
+        DynamicHub finalHub = hub;
+        hub = exactReachabilityMetadata() ? finalHub.arrayType() : MissingRegistrationUtils.runIgnoringMissingRegistrations(finalHub::arrayType);
         return SubstrateUtil.cast(hub, Class.class);
     }
 
@@ -405,7 +408,7 @@ public final class ClassRegistries implements ParsingContext {
         // name can use either dot or slash package separators.
         assert RuntimeClassLoading.isSupported();
         String reflectionName = toReflectionName(name);
-        if (exactReachabilityMetadata() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
+        if (MissingRegistrationUtils.exactReflection() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
             throw MissingReflectionRegistrationUtils.reportDefineClass(reflectionName);
         }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) runtimeLastLayer().getRegistry(loader);

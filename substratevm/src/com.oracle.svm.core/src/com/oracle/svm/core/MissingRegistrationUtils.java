@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.ConcealedOptions.ThrowMissingRegistrationErrors;
-
 import java.io.IOException;
 import java.io.Serial;
 import java.io.StringWriter;
@@ -58,17 +56,12 @@ import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MissingRegistrationUtils {
 
-    // TODO this will be removed by GR-72061 and GR-72062
-    public static boolean throwMissingRegistrationErrors() {
-        return ThrowMissingRegistrationErrors.hasBeenSet() || FutureDefaultsOptions.preciseDynamicAccess();
-    }
-
-    public static boolean preciseDynamicAccess() {
-        return ThrowMissingRegistrationErrors.hasBeenSet() || FutureDefaultsOptions.preciseDynamicAccess();
+    public static boolean exactReflection() {
+        return FutureDefaultsOptions.exactReflection() || exactReachabilityMetadata();
     }
 
     public static boolean exactReachabilityMetadata() {
-        return ThrowMissingRegistrationErrors.hasBeenSet();
+        return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadata.getValue();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {

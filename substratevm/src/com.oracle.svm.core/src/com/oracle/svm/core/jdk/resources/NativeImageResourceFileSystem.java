@@ -627,7 +627,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     IndexNode getInode(byte[] path) {
         Objects.requireNonNull(path, "Path is null!");
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
-        if (indexNode == null && MissingRegistrationUtils.preciseDynamicAccess()) {
+        if (indexNode == null && MissingRegistrationUtils.exactReachabilityMetadata()) {
             // Try to access the resource to see if the metadata is present
             NativeImageResourceFileSystemUtil.getEntry(getString(path), false);
         }
