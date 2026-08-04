@@ -247,6 +247,10 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addCondition(AccessCondition condition, Module module, String resourcePath) {
+            addCondition(condition, module, resourcePath, false);
+        }
+
+        private void addCondition(AccessCondition condition, Module module, String resourcePath, boolean preserved) {
             VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
             TypeReachabilityCondition typeReachabilityCondition = (TypeReachabilityCondition) condition;
             if (!typeReachabilityCondition.isRuntimeChecked() && !typeReachabilityCondition.isAlwaysTrue()) {
@@ -256,24 +260,25 @@ public class ResourcesFeature implements InternalFeature {
                 classInitializationSupport.addForTypeReachedTracking(typeReachabilityCondition.getType());
             }
 
-            Resources.currentLayer().addResourceCondition(module, resourcePath, condition, false);
+            Resources.currentLayer().addResourceCondition(module, resourcePath, condition, preserved);
         }
 
         @Override
         public void addResource(AccessCondition condition, Module module, String resourcePath, Object origin) {
+            addResource(condition, module, resourcePath, origin, false);
+        }
+
+        private void addResource(AccessCondition condition, Module module, String resourcePath, Object origin, boolean preserved) {
             abortIfSealed();
-            addCondition(condition, module, resourcePath);
-            registerConditionalConfiguration(condition, cnd -> addResourceEntry(cnd, module, resourcePath, origin));
+            addCondition(condition, module, resourcePath, preserved);
+            registerConditionalConfiguration(condition,
+                            cnd -> addResourceEntry(RuntimeDynamicAccessMetadata.createHosted(cnd, preserved), module, resourcePath, origin));
         }
 
         /* Adds single resource defined with its module and name */
         @Override
         public void addResourceEntry(Module module, String resourcePath, Object origin) {
             addResourceEntry(RuntimeDynamicAccessMetadata.emptySet(false), module, resourcePath, origin);
-        }
-
-        private void addResourceEntry(AccessCondition condition, Module module, String resourcePath, Object origin) {
-            addResourceEntry(RuntimeDynamicAccessMetadata.createHosted(condition, false), module, resourcePath, origin);
         }
 
         private void addResourceEntry(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Module module, String resourcePath, Object origin) {
@@ -313,7 +318,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addResourceBundles(AccessCondition condition, boolean preserved, String name) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name, preserved));
         }
 
         @Override
@@ -870,8 +875,8 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(condition, module, resourceName, origin);
+        public void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin, boolean preserved) {
+            resourceRegistryImpl().addResource(condition, module, resourceName, origin, preserved);
         }
 
         @Override

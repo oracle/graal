@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
@@ -478,8 +479,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     }
 
     private static RuntimeDynamicAccessMetadata decodeDynamicAccessMetadata(UnsafeArrayTypeReader buf, int layerId, boolean preserved) {
-        var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
-        return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
+        /*
+         * Decoding conditions reflectively allocates internal Class arrays. Tracing those
+         * allocations would recursively decode their own dynamic-access metadata.
+         */
+        try (var _ = MetadataTracer.disableTracing("dynamic access metadata decoding")) {
+            var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
+            return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
+        }
     }
 
     /**
@@ -786,7 +793,12 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 result[valueCount++] = element;
             }
         }
-        return Arrays.copyOf(result, valueCount);
+        if (valueCount == length) {
+            return result;
+        }
+        T[] trimmedResult = (T[]) KnownIntrinsics.unvalidatedNewArray(elementType, valueCount);
+        System.arraycopy(result, 0, trimmedResult, 0, valueCount);
+        return trimmedResult;
     }
 
     private static byte[] decodeByteArray(UnsafeArrayTypeReader buf) {

@@ -505,7 +505,12 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(AccessCondition condition, String baseName) {
-        prepareBundle(condition, baseName, allLocales);
+        prepareBundle(condition, baseName, false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareBundle(AccessCondition condition, String baseName, boolean preserved) {
+        prepareBundle(condition, baseName, allLocales, preserved);
     }
 
     private static final String[] RESOURCE_EXTENSION_PREFIXES = new String[]{
@@ -517,7 +522,12 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
-        prepareBundleInternal(condition, baseName, wantedLocales);
+        prepareBundle(condition, baseName, wantedLocales, false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void prepareBundle(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales, boolean preserved) {
+        prepareBundleInternal(condition, baseName, wantedLocales, preserved);
 
         String alternativeBundleName = null;
         for (String resourceExtensionPrefix : RESOURCE_EXTENSION_PREFIXES) {
@@ -527,14 +537,14 @@ public class LocalizationFeature implements InternalFeature {
             }
         }
         if (alternativeBundleName != null) {
-            prepareBundleInternal(condition, alternativeBundleName, wantedLocales);
+            prepareBundleInternal(condition, alternativeBundleName, wantedLocales, preserved);
         }
     }
 
-    private void prepareBundleInternal(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
+    private void prepareBundleInternal(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales, boolean preserved) {
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
-            support.registerBundleLookup(condition, baseName);
+            support.registerBundleLookup(condition, baseName, preserved);
             List<ResourceBundle> resourceBundle;
             try {
                 resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);

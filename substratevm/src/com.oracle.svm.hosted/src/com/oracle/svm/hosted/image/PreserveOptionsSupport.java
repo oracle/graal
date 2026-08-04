@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -279,8 +279,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         registerType(reflection, c.arrayType().arrayType());
 
         /* Register every single-interface proxy */
-        // GR-62293 can't register proxies from jdk modules.
-        if (c.getModule() == null && c.isInterface()) {
+        // GR-62293 can't register proxies from named JDK modules.
+        if (!c.getModule().isNamed() && c.isInterface()) {
             proxy.registerProxy(always, true, c);
         }
 

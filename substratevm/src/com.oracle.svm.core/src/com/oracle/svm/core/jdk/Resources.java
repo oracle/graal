@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -482,6 +482,8 @@ public final class Resources {
                 ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
                 if (entry == null) {
                     addResource(key, new ConditionalRuntimeValue<>(dynamicAccessMetadata, NEGATIVE_QUERY_MARKER));
+                } else {
+                    resources.put(key, mergeResourceMetadata(entry, dynamicAccessMetadata));
                 }
                 return;
             }
@@ -546,7 +548,9 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static ConditionalRuntimeValue<ResourceStorageEntryBase> mergeResourceMetadata(ConditionalRuntimeValue<ResourceStorageEntryBase> current,
                     RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
-        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(current.getDynamicAccessMetadata(), dynamicAccessMetadata);
+        RuntimeDynamicAccessMetadata currentMetadata = current.getDynamicAccessMetadata();
+        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.merge(currentMetadata, dynamicAccessMetadata)
+                        .withPreserved(currentMetadata.isPreserved() || dynamicAccessMetadata.isPreserved());
         return new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally());
     }
 
@@ -855,10 +859,13 @@ public final class Resources {
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = loaderKey == null ? getEntry(module, canonicalResourceName) : getEntry(loaderKey, module, canonicalResourceName);
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                if (missingResourceMatchesIncludePattern(resourceName, moduleName) || missingResourceMatchesIncludePattern(canonicalResourceName, moduleName)) {
+                boolean resourceNameMatchesIncludePattern = missingResourceMatchesIncludePattern(resourceName, moduleName);
+                boolean canonicalResourceNameMatchesIncludePattern = !resourceNameMatchesIncludePattern &&
+                                missingResourceMatchesIncludePattern(canonicalResourceName, moduleName);
+                if (resourceNameMatchesIncludePattern || canonicalResourceNameMatchesIncludePattern) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
-                    // resource with the name actually exists. Do not report missing metadata.
-                    traceResource(resourceName, moduleName);
+                    // resource with the name actually exists. Do not report missing metadata or
+                    // trace the covered lookup.
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
@@ -868,10 +875,14 @@ public final class Resources {
                 // stored in the image heap, so we cannot reliably identify if the resource was
                 // included at build time. Assume it is missing.
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
-                return null;
+                /*
+                 * Preserve missing-metadata identity for probing native-tracing lookups so the
+                 * caller can trace the final user-level query after all internal probes fail.
+                 */
+                return MetadataTracer.enabled() && probe ? MISSING_METADATA_MARKER : null;
             }
         }
-        traceResource(resourceName, moduleName);
+        traceResource(resourceName, moduleName, entry.getDynamicAccessMetadata());
         if (!entry.getDynamicAccessMetadata().satisfied()) {
             return missingMetadata(module, resourceName, probe);
         }
@@ -919,6 +930,13 @@ public final class Resources {
     @AlwaysInline("tracing should fold away when disabled")
     private static void traceResource(String resourceName, String moduleName) {
         if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResource(String resourceName, String moduleName, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
     }
@@ -1126,6 +1144,7 @@ public final class Resources {
         }
 
         if (missingMetadata) {
+            traceResourceMissingMetadata(resourceName, moduleName(module));
             MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
 

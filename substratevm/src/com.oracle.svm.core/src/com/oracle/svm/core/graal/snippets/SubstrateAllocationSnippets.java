@@ -364,7 +364,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     /** Foreign call: {@link #TRACE_UNSAFE_ALLOCATION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void traceUnsafeAllocation(DynamicHub hub) {
-        MetadataTracer.singleton().traceUnsafeAllocatedType(DynamicHub.toClass(hub));
+        if (MetadataTracer.shouldTraceMetadata(hub.getUnsafeAllocationMetadata())) {
+            MetadataTracer.singleton().traceUnsafeAllocatedType(DynamicHub.toClass(hub));
+        }
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)

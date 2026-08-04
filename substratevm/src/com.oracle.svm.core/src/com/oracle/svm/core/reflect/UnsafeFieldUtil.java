@@ -27,21 +27,23 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class UnsafeFieldUtil {
     public static long getFieldOffset(Target_java_lang_reflect_Field field) {
         if (field == null) {
             throw new NullPointerException();
         }
-        if (MetadataTracer.enabled()) {
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             traceFieldAccess(SubstrateUtil.cast(field, Field.class));
         }
         int offset = field.root == null ? field.offset : field.root.offset;
-        boolean conditionsSatisfied = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata.satisfied();
+        boolean conditionsSatisfied = dynamicAccessMetadata.satisfied();
         if (offset <= 0 || !conditionsSatisfied) {
             throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
         }

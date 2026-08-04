@@ -30,6 +30,7 @@ import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationF
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -126,6 +127,8 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
+import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -776,6 +779,24 @@ public class TruffleFeature implements InternalFeature {
         warnAllMethods(metaAccess, JavaStackWalker.class);
         warnAllMethods(metaAccess, Deoptimizer.class);
         warnAllMethods(metaAccess, Heap.getHeap().getClass());
+
+        /*
+         * Missing registration diagnostics format JSON suggestions and use broad JDK library code.
+         * Keep these cold reporting paths outside Truffle runtime compilation.
+         */
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportClassAccess", String.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportUnsafeAllocation", Class.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportFieldQuery", Class.class, String.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportInvokedExecutable", Executable.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportAccessedField", Field.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportMethodQuery", Class.class, String.class, Class[].class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportClassQuery", Class.class, String.class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", Class[].class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportArrayInstantiation", Class.class, int.class);
+        // Keep the intrinsified array diagnostic path outside runtime compilation.
+        markTruffleBoundary(metaAccess, Array.class, "newInstance", Class.class, int.class);
+        markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceAccess", Module.class, String.class);
+        markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceBundleAccess", Module.class, String.class);
 
         /*
          * GR-41564 These methods should become part of the blocklist once the Truffle language

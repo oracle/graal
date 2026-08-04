@@ -65,7 +65,7 @@ public class ClassPathJarResourceAgentTest {
     public void accessBuiltInClassPathJarResource() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
-        accessBuiltInClassPathJarResourceInternal(); // FS-001-native-image-semantics.3.2
+        accessBuiltInClassPathJarResourceInternal();
     }
 
     @Test
@@ -74,14 +74,14 @@ public class ClassPathJarResourceAgentTest {
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
 
         accessBuiltInClassPathJarResourceInternal();
-        accessExplicitJarURL(); // FS-001-native-image-semantics.3.2
+        accessExplicitJarURL();
     }
 
     @Test
     public void accessURLClassLoaderJarResource() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
-        accessURLClassLoaderJarResourceInternal(); // FS-001-native-image-semantics.3.2
+        accessURLClassLoaderJarResourceInternal();
     }
 
     @Test

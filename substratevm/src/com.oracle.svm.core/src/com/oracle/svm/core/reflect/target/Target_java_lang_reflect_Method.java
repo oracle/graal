@@ -143,7 +143,7 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
-        if (MetadataTracer.enabled()) {
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));
         }
         assert methodAccessor == null : "acquireMethodAccessor() method must not be called if `this` is in image heap.";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,7 +133,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         if (conditionalValue == null) {
             conditionalValue = ConditionalRuntimeValue.create(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs, preserved));
         } else {
-            conditionalValue = ConditionalRuntimeValue.withCondition(conditionalValue, condition, preserved);
+            RuntimeDynamicAccessMetadata currentMetadata = ConditionalRuntimeValue.getDynamicAccessMetadata(conditionalValue);
+            RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.addCondition(currentMetadata, condition, true)
+                            .withPreserved(preserved || currentMetadata.isPreserved());
+            conditionalValue = ConditionalRuntimeValue.create(newMetadata, ConditionalRuntimeValue.getValueUnconditionally(conditionalValue));
         }
         proxyCache.put(key, conditionalValue);
     }
@@ -242,12 +245,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, boolean nullIfMissing, Class<?>... interfaces) {
-        if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceProxyType(interfaces);
-        }
-
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(clazzOrError == null ? null : ConditionalRuntimeValue.getDynamicAccessMetadata(clazzOrError))) {
+            MetadataTracer.singleton().traceProxyType(interfaces);
+        }
 
         if (clazzOrError == null || !ConditionalRuntimeValue.isSatisfied(clazzOrError)) {
             if (nullIfMissing) {

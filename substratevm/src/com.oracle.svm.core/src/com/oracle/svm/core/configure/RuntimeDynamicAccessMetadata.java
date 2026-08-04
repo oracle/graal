@@ -216,6 +216,14 @@ public class RuntimeDynamicAccessMetadata {
         return preserved;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public RuntimeDynamicAccessMetadata withPreserved(boolean newPreserved) {
+        if (preserved == newPreserved) {
+            return this;
+        }
+        return conditions == null ? alwaysAvailable(newPreserved) : intern(conditions, newPreserved);
+    }
+
     @Override
     public String toString() {
         String conditionsString = this.conditions == null ? "[]" : Arrays.toString(this.conditions);

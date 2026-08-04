@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -228,7 +228,9 @@ public class SerializationSupport {
         VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt());
         synchronized (hostedClasses) {
             DynamicHubKey key = new DynamicHubKey(hub);
-            hostedClasses.put(key, RuntimeDynamicAccessMetadata.addCondition(hostedClasses.get(key), cnd, preserved));
+            RuntimeDynamicAccessMetadata current = hostedClasses.get(key);
+            boolean newPreserved = preserved || current != null && current.isPreserved();
+            hostedClasses.put(key, RuntimeDynamicAccessMetadata.addCondition(current, cnd, true).withPreserved(newPreserved));
         }
     }
 
@@ -280,12 +282,17 @@ public class SerializationSupport {
             declaringClass = SerializedLambda.class;
         }
 
-        if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceSerializationType(declaringClass);
+        DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
+        DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
+        if (MetadataTracer.enabled() && shouldTraceSerialization(declaringHub)) {
+            MetadataTracer tracer = MetadataTracer.singleton();
+            tracer.traceSerializationType(declaringClass);
+            if (targetConstructorClass != declaringClass) {
+                // Replay also needs the constructor declaring class.
+                tracer.traceReflectionType(targetConstructorClass);
+            }
         }
         for (var singleton : layeredSingletons()) {
-            DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
-            DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
             Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
             if (constructorAccessor != null) {
                 return constructorAccessor;
@@ -338,6 +345,20 @@ public class SerializationSupport {
         SubstrateUtil.guaranteeRuntimeOnly();
         var conditionSet = classes.get(dynamicHub.getTypeID());
         return conditionSet != null && conditionSet.satisfied();
+    }
+
+    public static boolean shouldTraceSerialization(DynamicHub dynamicHub) {
+        boolean metadataFound = false;
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
+            var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
+            if (conditionSet != null) {
+                metadataFound = true;
+                if (conditionSet.isPreserved()) {
+                    return true;
+                }
+            }
+        }
+        return !metadataFound;
     }
 
     public static boolean isPreservedForSerialization(DynamicHub dynamicHub) {

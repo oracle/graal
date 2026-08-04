@@ -46,6 +46,7 @@ import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.StringUtil;
@@ -137,12 +138,12 @@ public class MissingRegistrationUtils {
      * the image, and is not a reason to abort the lookup completely.
      */
     public static <T> T runIgnoringMissingRegistrations(Supplier<T> callback) {
-        VMError.guarantee(!missingRegistrationErrorsSuspended.get());
+        boolean previouslySuspended = missingRegistrationErrorsSuspended.get();
         try {
             missingRegistrationErrorsSuspended.set(true);
             return callback.get();
         } finally {
-            missingRegistrationErrorsSuspended.set(false);
+            missingRegistrationErrorsSuspended.set(previouslySuspended);
         }
     }
 
@@ -223,7 +224,14 @@ public class MissingRegistrationUtils {
     }
 
     protected static StackTraceElement getResponsibleClass(Throwable t, Map<String, Set<String>> entryPoints) {
-        StackTraceElement[] stackTrace = t.getStackTrace();
+        StackTraceElement[] stackTrace;
+        /*
+         * Materializing a diagnostic stack trace reflectively allocates a StackTraceElement array.
+         * That implementation detail must not become replay metadata.
+         */
+        try (var _ = MetadataTracer.disableTracing("missing registration stack trace")) {
+            stackTrace = t.getStackTrace();
+        }
         boolean returnNext = false;
         for (StackTraceElement stackTraceElement : stackTrace) {
             if (entryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {

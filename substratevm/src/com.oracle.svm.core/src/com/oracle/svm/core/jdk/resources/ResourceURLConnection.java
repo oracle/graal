@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public final class ResourceURLConnection extends URLConnection {
             Module module = hostName != null ? ModuleLayer.boot().findModule(hostName).orElse(null) : null;
             entry = Resources.getAtRuntime(module, resourceName, false);
         }
-        if (entry != null) {
+        if (entry != null && entry != Resources.MISSING_METADATA_MARKER) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             byte[][] bytes = resourceStorageEntry.getData();
             isDirectory = resourceStorageEntry.isDirectory();
@@ -100,6 +100,7 @@ public final class ResourceURLConnection extends URLConnection {
                 this.data = null;
             }
         } else {
+            // Preserve FileNotFoundException after a warned missing-metadata access.
             this.data = null;
         }
     }
