@@ -37,6 +37,8 @@ import java.util.stream.Stream;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
@@ -147,7 +149,7 @@ public class CodeInfoEncoder {
                     String[] otherStringsArray) {
     }
 
-    /** Encoded runtime CodeInfo tables produced from a compilation result. */
+    /** Heap-serializable runtime CodeInfo tables produced from a compilation result. */
     public record EncodedCodeInfo(Encodings encodings,
                     byte[] methodTable,
                     int methodTableFirstId,
@@ -680,9 +682,10 @@ public class CodeInfoEncoder {
 
     /**
      * Encodes all registered method metadata into heap byte arrays for later installation into a
-     * {@link CodeInfo}. This is useful when hosted code prepares runtime-code metadata that must be
-     * serialized before it can be copied back into nonmovable arrays at install time.
+     * {@link CodeInfo}. Hosted code uses this to serialize runtime-code metadata before it is copied
+     * into nonmovable arrays at install time.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public EncodedCodeInfo encodeAll(Runnable recordActivity) {
         Encodings encodings = encoders.encodeAll();
         int methodTableEntryCount = encoders.methodTableEntryCount();
