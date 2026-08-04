@@ -35,6 +35,8 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.nodes.GraphDecoder.DecodeContext;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
@@ -60,8 +62,9 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
     }
 
     @Override
-    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
-        return ((HostedMethod) method).compilationInfo.createGraph(graph.getDebug(), graph.getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true);
+    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method, Invoke invoke) {
+        DecodeContext decodeContext = invoke.isInOOMETry() ? DecodeContext.OOME_EXCEPTION_EDGES : DecodeContext.DEFAULT;
+        return ((HostedMethod) method).compilationInfo.createGraph(graph.getDebug(), graph.getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true, decodeContext);
     }
 
     @Override

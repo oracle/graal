@@ -81,6 +81,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -156,6 +157,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             runTest("testNativeCall");
             runTest("testBCDSLPrologIfVersion");
             runTest("testInliningRoot");
+            runTest("testCatchOOMEFromHostInlinedMethod");
         }).parameterizedBy(run).run();
     }
 
@@ -220,6 +222,10 @@ public class HostInliningTest extends TruffleCompilerImplTest {
 
             assertInvokesFound(graph, notInlined != null ? notInlined.getList("name", String.class) : null,
                             notInlined != null ? notInlined.getList("count", Integer.class) : null);
+
+            if (AnnotationValueSupport.getAnnotationValue(method, ExpectOOMEExceptionEdge.class) != null) {
+                Assert.assertEquals("Host-inlined allocation must retain its OOME exception edge", 1, graph.getNodes().filter(NewArrayWithExceptionNode.class).count());
+            }
 
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
@@ -350,6 +356,23 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     static void trivialMethod() {
+    }
+
+    private static volatile Object allocationSink;
+
+    @BytecodeInterpreterSwitch
+    @ExpectOOMEExceptionEdge
+    private static int testCatchOOMEFromHostInlinedMethod(int value) {
+        try {
+            allocationSink = allocateArray(value);
+            return allocationSink == null ? -1 : 0;
+        } catch (OutOfMemoryError e) {
+            return 42;
+        }
+    }
+
+    private static int[] allocateArray(int length) {
+        return new int[length];
     }
 
     static void otherTrivalMethod() {
@@ -1029,6 +1052,11 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         String[] name();
 
         int[] count();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface ExpectOOMEExceptionEdge {
     }
 
     @Retention(RetentionPolicy.RUNTIME)

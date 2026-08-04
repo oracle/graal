@@ -73,6 +73,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -1301,18 +1302,19 @@ public class HostInliningPhase extends AbstractInliningPhase {
                         invoke.bci(), invoke.isInOOMETry(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
                         invoke.asNode().graph().allowAssumptions(), invoke.asNode().getOptions());
         if (graph == null) {
-            graph = context.graphCache.get(method);
+            EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = invoke.isInOOMETry() ? context.oomeGraphCache : context.graphCache;
+            graph = graphCache.get(method);
             if (graph == null) {
-                graph = parseGraph(context.highTierContext, context.graph, method);
+                graph = parseGraph(context.highTierContext, context.graph, method, invoke);
 
-                context.graphCache.put(method, graph);
+                graphCache.put(method, graph);
             }
         }
         return graph;
     }
 
     @SuppressWarnings("try")
-    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
+    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method, Invoke invoke) {
         DebugContext debug = graph.getDebug();
         StructuredGraph newGraph = new StructuredGraph.Builder(graph.getOptions(), debug, graph.allowAssumptions())//
                         .method(method).trackNodeSourcePosition(graph.trackNodeSourcePosition()) //
@@ -1323,8 +1325,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
             if (!graph.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();
             }
-            if (context.getGraphBuilderSuite() != null) {
-                context.getGraphBuilderSuite().apply(newGraph, context);
+            PhaseSuite<HighTierContext> graphBuilderSuite = context.getGraphBuilderSuiteForCallee(invoke);
+            if (graphBuilderSuite != null) {
+                graphBuilderSuite.apply(newGraph, context);
             }
             assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
 
@@ -1453,6 +1456,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * CallTree.
          */
         final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
+        final EconomicMap<ResolvedJavaMethod, StructuredGraph> oomeGraphCache = EconomicMap.create(Equivalence.DEFAULT);
 
         InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeHandlerStub, boolean hasBytecodeInterpreterHandlerConfig,
                         boolean isBytecodeSwitch, double defaultMinimumFrequency) {

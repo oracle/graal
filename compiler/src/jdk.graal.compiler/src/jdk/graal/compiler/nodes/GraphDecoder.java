@@ -85,6 +85,7 @@ import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -199,6 +200,12 @@ public class GraphDecoder {
         protected FixedNode prepareFixedNode(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") LoopScope loopScope, @SuppressWarnings("unused") int nodeOrderId,
                         FixedNode node) {
             return node;
+        }
+
+        /**
+         * Performs policy-specific cleanup after all nodes in the root scope have been decoded.
+         */
+        protected void cleanupGraph(@SuppressWarnings("unused") MethodScope methodScope) {
         }
     }
 
@@ -446,6 +453,36 @@ public class GraphDecoder {
                 return exit.unwind.predecessor() instanceof FixedWithNextNode;
             }
             return exit.merge.isAlive() && exit.exceptionPhi != null && exit.exceptionPhi.isAlive() && exit.unwind.predecessor() == exit.merge;
+        }
+
+        /**
+         * Graph-copy inlining expects an inlinee to have at most one unwind. OOME decoding can add
+         * a synthetic unwind to a graph that already has an encoded unwind, so normalize both to a
+         * single exit before exposing the decoded graph.
+         */
+        @Override
+        protected void cleanupGraph(MethodScope methodScope) {
+            List<UnwindNode> unwinds = new ArrayList<>();
+            for (ControlSinkNode sink : methodScope.returnAndUnwindNodes) {
+                if (sink instanceof UnwindNode unwind && unwind.isAlive()) {
+                    unwinds.add(unwind);
+                }
+            }
+            if (unwinds.size() <= 1) {
+                return;
+            }
+
+            OOMEOwnerData owner = oomeScopeData(methodScope).owner;
+            GraalError.guarantee(owner.exceptionExit != null && owner.exceptionExit.exceptionState != null,
+                            "Multiple unwinds in an OOME decode scope require a synthetic OOME exit");
+            MergeNode merge = graph.add(new MergeNode());
+            ValueNode exception = ValueMergeUtil.mergeUnwindExceptions(merge, unwinds);
+            merge.setStateAfter(owner.exceptionExit.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exception, null));
+            UnwindNode unwind = graph.add(new UnwindNode(exception));
+            merge.setNext(unwind);
+
+            methodScope.returnAndUnwindNodes.removeIf(sink -> sink instanceof UnwindNode);
+            methodScope.returnAndUnwindNodes.add(unwind);
         }
     }
 
@@ -2558,6 +2595,7 @@ public class GraphDecoder {
      * @param rootMethodScope The current method.
      */
     protected void cleanupGraph(MethodScope rootMethodScope) {
+        rootMethodScope.decodePolicy.cleanupGraph(rootMethodScope);
         assert verifyEdges();
     }
 
