@@ -28,16 +28,27 @@ import static jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPh
 
 import java.util.List;
 
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DirectCallTargetNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.LoadMethodNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -50,15 +61,65 @@ public interface InliningProvider {
      */
     boolean canInlineUninitialized();
 
+    /** Returns whether {@code method} exposes exception-handler metadata to the compiler. */
+    default boolean supportsExceptionHandlerMetadata(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return true;
+    }
+
+    /**
+     * Selects the method whose receiver-table entry is used to prove the direct target for a
+     * devirtualized invoke. The result identifies the table entry to load and can therefore differ
+     * from {@code concreteMethod}. It is used only after
+     * {@link #isMethodForDevirtualizationInTable} succeeds.
+     */
     @SuppressWarnings("unused")
     default ResolvedJavaMethod methodForDevirtualizationCheck(ResolvedJavaMethod originalTargetMethod, ResolvedJavaMethod targetMethod, ResolvedJavaMethod concreteMethod,
                     ResolvedJavaType receiverType) {
         return concreteMethod.isInVirtualMethodTable(receiverType) ? concreteMethod : targetMethod;
     }
 
+    /**
+     * Creates the condition that guards replacing {@code virtualInvoke} with a direct call to
+     * {@code concreteMethod}. For a non-null receiver of {@code receiverType}, the condition is
+     * true exactly when invoking {@code checkedMethod} on that receiver dispatches to
+     * {@code concreteMethod}:
+     *
+     * <pre>
+     * R nonNullReceiver = ...; // R is receiverType
+     * nonNullReceiver.checkedMethod(); // dispatches to concreteMethod
+     * </pre>
+     *
+     * {@code checkedMethod} identifies the receiver-table entry to load from
+     * {@code nonNullReceiver}.
+     * <p>
+     * Implementations may add nodes before {@code virtualInvoke} while loading and comparing the
+     * dispatch-table entry. The caller guarantees that {@code nonNullReceiver} is non-null.
+     *
+     * @return the condition guarding the direct call to {@code concreteMethod}
+     */
+    default LogicNode createMethodCheckCondition(CoreProviders coreProviders, StructuredGraph graph, Invoke virtualInvoke, ValueNode nonNullReceiver,
+                    ResolvedJavaMethod checkedMethod, ResolvedJavaMethod concreteMethod, ResolvedJavaType receiverType) {
+        StampProvider stampProvider = coreProviders.getStampProvider();
+        MetaAccessProvider metaAccess = coreProviders.getMetaAccess();
+        LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
+        Constant methodConstant = concreteMethod.getEncoding();
+        ConstantNode expectedMethod = ConstantNode.forConstant(stampProvider.createMethodStamp(), methodConstant, metaAccess, graph);
+        ResolvedJavaType callerType = virtualInvoke.getContextType();
+        LoadMethodNode method = graph.add(new LoadMethodNode(stampProvider.createMethodStamp(), checkedMethod, receiverType, callerType, hub));
+        graph.addBeforeFixed(virtualInvoke.asFixedNode(), method);
+        return CompareNode.createCompareNode(graph, CanonicalCondition.EQ, method, expectedMethod, null, NodeView.DEFAULT);
+    }
+
+    /** Returns whether a receiver-table entry can safely guard this devirtualization. */
     @SuppressWarnings("unused")
     default boolean isMethodForDevirtualizationInTable(ResolvedJavaMethod originalTargetMethod, ResolvedJavaMethod targetMethod, ResolvedJavaMethod concreteMethod, ResolvedJavaType receiverType) {
         return targetMethod.isInVirtualMethodTable(receiverType) || concreteMethod.isInVirtualMethodTable(receiverType);
+    }
+
+    /** Compares two methods using the identity relevant to receiver-table checks. */
+    @SuppressWarnings("unused")
+    default boolean isSameMethodForDevirtualizationCheck(ResolvedJavaMethod existingMethod, ResolvedJavaMethod candidateMethod) {
+        return existingMethod.equals(candidateMethod);
     }
 
     @SuppressWarnings("unused")

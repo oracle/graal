@@ -27,12 +27,10 @@ package jdk.graal.compiler.phases.common.priorityinline.nodes.devirtualization;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
-import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -41,20 +39,14 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
-import jdk.graal.compiler.nodes.extended.LoadHubNode;
-import jdk.graal.compiler.nodes.extended.LoadMethodNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 
 import jdk.graal.compiler.phases.common.priorityinline.InliningProvider;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -78,8 +70,6 @@ public abstract class MethodBasedDevirtualization extends ToDirectCallDevirtuali
     @Override
     public LogicNode createDevirtualizationCondition(CoreProviders coreProviders, InliningProvider inliningProvider, StructuredGraph graph, Invoke virtualInvoke,
                     AbstractBeginNode invocationBlock) {
-        StampProvider stampProvider = coreProviders.getStampProvider();
-        MetaAccessProvider metaAccess = coreProviders.getMetaAccess();
         ResolvedJavaMethod concreteMethod = dispatchedMethod();
         ResolvedJavaType receiverType = virtualInvoke.getReceiverType();
         Invoke newInvoke = duplicatedInvoke();
@@ -99,14 +89,8 @@ public abstract class MethodBasedDevirtualization extends ToDirectCallDevirtuali
             } else {
                 nonNullReceiver = receiver;
             }
-            LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
-            Constant methodConstant = concreteMethod.getEncoding();
-            ConstantNode firstMethodConstantNode = ConstantNode.forConstant(stampProvider.createMethodStamp(), methodConstant, metaAccess, graph);
-            ResolvedJavaType callerType = virtualInvoke.getContextType();
             final ResolvedJavaMethod checkedMethod = inliningProvider.methodForDevirtualizationCheck(originalTargetMethod(), virtualInvoke.getTargetMethod(), concreteMethod, receiverType);
-            LoadMethodNode method = graph.add(new LoadMethodNode(stampProvider.createMethodStamp(), checkedMethod, receiverType, callerType, hub));
-            graph.addBeforeFixed(virtualInvoke.asFixedNode(), method);
-            condition = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, method, firstMethodConstantNode, null, NodeView.DEFAULT);
+            condition = inliningProvider.createMethodCheckCondition(coreProviders, graph, virtualInvoke, nonNullReceiver, checkedMethod, concreteMethod, receiverType);
             checkedReceiver = graph.addOrUnique(PiNode.create(nonNullReceiver, piStamp, invocationBlock));
         } else {
             // The method is not in the virtual table of the receiver, indicating that the

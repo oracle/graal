@@ -51,6 +51,7 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.CallTree;
 import jdk.graal.compiler.phases.common.priorityinline.DefaultInliningProvider;
+import jdk.graal.compiler.phases.common.priorityinline.AbstractPriorityInliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.nodes.GenericNode;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
@@ -134,7 +135,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     @Test
     public void testForceInliningIgnoresRootGraphSizeLimit() {
         OptionValues options = new OptionValues(getInitialOptions(),
-                        PriorityInliningPhase.Options.PriorityForceInline, "forceInlineTarget,nestedForceInlineTarget",
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "forceInlineTarget,nestedForceInlineTarget",
                         PriorityInliningPhase.Options.InlinedCompilerNodeLimit, 1,
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph = getGraph("forceInlineLargeRootSnippet", options);
@@ -169,7 +170,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     @Test
     public void testRecursiveForceInliningTerminates() {
         OptionValues options = new OptionValues(getInitialOptions(),
-                        PriorityInliningPhase.Options.PriorityForceInline, "recursiveForceInlineTarget",
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "recursiveForceInlineTarget",
                         PriorityInliningPhase.Options.InlinedCompilerNodeLimit, 1,
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph = getGraph("recursiveForceInlineSnippet", options);
@@ -196,7 +197,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     public void testPriorityNeverInliningTracingUsesNotUsedForInliningCause() {
         OptionValues options = new OptionValues(getInitialOptions(),
                         GraalOptions.TraceInlining, true,
-                        PriorityInliningPhase.Options.PriorityNeverInline, "priorityNeverInlineTarget",
+                        AbstractPriorityInliningPhase.Options.PriorityNeverInline, "priorityNeverInlineTarget",
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph;
         try (Filter _ = new Filter()) {
@@ -518,7 +519,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     @Test
     public void testDirectedNeverInliningPreservesMatchingTarget() {
         OptionValues options = new OptionValues(getInitialOptions(),
-                        PriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller,directedNeverInlineTarget",
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller,directedNeverInlineTarget",
                         InliningPhase.Options.DirectedDontInline, "directedNeverInlineRoot->directedNeverInlineCaller->directedNeverInlineTarget",
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph = getGraph("directedNeverInlineRoot", options);
@@ -547,7 +548,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
             Assert.assertEquals("inline command from file should force the matching invoke", 0, countInvokesTo(inlineGraph, directedInlineCaller));
 
             OptionValues neverInlineOptions = new OptionValues(getInitialOptions(),
-                            PriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller,directedNeverInlineTarget",
+                            AbstractPriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller,directedNeverInlineTarget",
                             InliningPhase.Options.DirectedInliningRulesFile, rulesFile.toString(),
                             BytecodeParserOptions.InlineDuringParsing, false);
             StructuredGraph neverInlineGraph = getGraph("directedNeverInlineRoot", neverInlineOptions);
@@ -572,7 +573,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     @Test
     public void testDirectedNeverInliningRequiresMatchingBci() {
         OptionValues options = new OptionValues(getInitialOptions(),
-                        PriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller",
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller",
                         InliningPhase.Options.DirectedDontInline, "directedNeverInlineRoot->directedNeverInlineCaller@-123456->directedNeverInlineTarget",
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph = getGraph("directedNeverInlineRoot", options);
@@ -586,7 +587,7 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     public void testDirectedNeverInliningTracing() {
         OptionValues options = new OptionValues(getInitialOptions(),
                         GraalOptions.TraceInlining, true,
-                        PriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller",
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "directedNeverInlineCaller",
                         InliningPhase.Options.DirectedDontInline, "directedNeverInlineRoot->directedNeverInlineCaller->directedNeverInlineTarget",
                         BytecodeParserOptions.InlineDuringParsing, false);
         StructuredGraph graph;

@@ -25,8 +25,8 @@
 package jdk.graal.compiler.phases.common.priorityinline;
 
 import static jdk.graal.compiler.bytecode.Bytecodes.INSTANCEOF;
-import static jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase.Options.PriorityForceInline;
-import static jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase.Options.PriorityNeverInline;
+import static jdk.graal.compiler.phases.common.priorityinline.AbstractPriorityInliningPhase.Options.PriorityForceInline;
+import static jdk.graal.compiler.phases.common.priorityinline.AbstractPriorityInliningPhase.Options.PriorityNeverInline;
 import static jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase.Options.UseGraphCache;
 
 import java.util.Collection;
@@ -353,7 +353,7 @@ public class CallTree extends Graph {
      * can belong to an inner source method while the active handler is in an outer source frame, so
      * walk the source-position chain before falling back to the graph method.
      */
-    private static boolean invokeBciCatchesOOME(Invoke invoke) {
+    private boolean invokeBciCatchesOOME(Invoke invoke) {
         for (NodeSourcePosition position = invoke.asNode().getNodeSourcePosition(); position != null; position = position.getCaller()) {
             if (methodCatchesOOME(position.getMethod(), position.getBCI())) {
                 return true;
@@ -362,11 +362,14 @@ public class CallTree extends Graph {
         return methodCatchesOOME(invoke.asNode().graph().method(), invoke.bci());
     }
 
-    private static boolean methodCatchesOOME(ResolvedJavaMethod callerMethod, int bci) {
+    private boolean methodCatchesOOME(ResolvedJavaMethod callerMethod, int bci) {
         if (bci < 0) {
             return false;
         }
         if (callerMethod == null) {
+            return false;
+        }
+        if (!inliningProvider.supportsExceptionHandlerMetadata(callerMethod)) {
             return false;
         }
         for (ExceptionHandler handler : callerMethod.getExceptionHandlers()) {
