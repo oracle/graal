@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,12 +56,23 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstrateInstalledCode}).
  */
 public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
-    protected final WeakReference<SubstrateOptimizedCallTarget> callTargetRef;
+    protected final WeakCallTargetRef<SubstrateOptimizedCallTarget> callTargetRef;
     private String nameSuffix = "";
+
+    /**
+     * Final subclass to ensure <code>{@link #callTargetRef}.get()</code> can be statically bound in
+     * open type world. This also works around the native image build breaking with allocating
+     * implementations of {@link java.lang.ref.Reference#get()}.
+     */
+    protected static final class WeakCallTargetRef<T> extends WeakReference<T> {
+        protected WeakCallTargetRef(T referent) {
+            super(referent);
+        }
+    }
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
-        this.callTargetRef = new WeakReference<>(callTarget);
+        this.callTargetRef = new WeakCallTargetRef<>(callTarget);
     }
 
     @Override
