@@ -27,6 +27,7 @@ package com.oracle.svm.core.c.locale;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -104,6 +105,20 @@ public class LocaleSupport {
                 throw VMError.shouldNotReachHere("LocaleCHelper.initializeLocale() returned an unexpected result.");
             }
         }
+    }
+
+    /**
+     * Returns the native character encoding selected by the execution environment. The locale must
+     * have been initialized before calling this method.
+     */
+    public static String getNativeEncoding() {
+        if (!isSystemSpecificLocaleSupported()) {
+            return null;
+        }
+
+        assert STATE.get().readWord(0) == State.SUCCESS;
+        CCharPointer encoding = LocaleCHelper.getLocale().nativeEncoding();
+        return encoding.isNull() ? null : CTypeConversion.utf8ToJavaString(encoding);
     }
 
     /** Called once per isolate. */

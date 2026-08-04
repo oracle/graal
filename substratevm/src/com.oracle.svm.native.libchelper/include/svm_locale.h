@@ -32,10 +32,11 @@ typedef struct {
     char* format_script;
     char* format_country;
     char* format_variant;
+
+    char* native_encoding;
     
     char* display_language;
     char* display_script;
     char* display_country;
     char* display_variant;
 } svm_locale_props_t;
-

@@ -92,5 +92,8 @@ class LocaleCHelper {
 
         @CField(value = "format_variant")
         CCharPointer formatVariant();
+
+        @CField(value = "native_encoding")
+        CCharPointer nativeEncoding();
     }
 }

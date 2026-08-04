@@ -27,6 +27,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifndef _WIN64
+#include <langinfo.h>
+#endif
 #include "svm_locale.h"
 #include "locale_str.h"
 
@@ -36,6 +39,9 @@
 
 #define PROPSIZE 9      // eight-letter + null terminator
 #define SNAMESIZE 86    // max number of chars for LOCALE_SNAME is 85
+
+/* "windows-" (8) + decimal digits of a 32-bit UINT (10) + null terminator (1). */
+static char _svm_native_encoding[19];
 #endif
 
 /* Process-wide state. */
@@ -267,6 +273,8 @@ int svm_initialize_locale() {
                              &(_svm_locale_sprops.display_variant));
     }
 
+    _svm_locale_sprops.native_encoding = (char *) nl_langinfo(CODESET);
+
     if (result == SVM_LOCALE_INITIALIZATION_USE_DEFAULT) {
         _svm_locale_sprops.display_language = "en";
         return SVM_LOCALE_INITIALIZATION_SUCCEEDED;
@@ -351,6 +359,15 @@ int svm_initialize_locale() {
     LCID userDefaultLCID = GetUserDefaultLCID();
     LANGID userDefaultUILang = GetUserDefaultUILanguage();
     LCID userDefaultUILCID = MAKELCID(userDefaultUILang, SORTIDFROMLCID(userDefaultLCID));
+    UINT codePage = GetACP();
+    if (codePage == 65001) {
+        strcpy(_svm_native_encoding, "UTF-8");
+    } else if (codePage == 20127) {
+        strcpy(_svm_native_encoding, "US-ASCII");
+    } else {
+        snprintf(_svm_native_encoding, sizeof(_svm_native_encoding), "windows-%u", codePage);
+    }
+    _svm_locale_sprops.native_encoding = _svm_native_encoding;
 
     // Windows UI Language selection list only cares "language"
     // information of the UI Language. For example, the list
@@ -383,4 +400,3 @@ int svm_initialize_locale() {
 svm_locale_props_t* svm_get_locale() {
     return &_svm_locale_sprops;
 }
-
