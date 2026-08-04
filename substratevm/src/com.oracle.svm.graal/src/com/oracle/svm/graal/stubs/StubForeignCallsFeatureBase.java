@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,6 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,6 +44,9 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -101,10 +101,10 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
                 Set<?> minimumFeatures = getMinimumRequiredFeatures(call);
                 boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumFeatures) || isJITCompilationEnabled && !minimumFeatures.equals(runtimeCheckedCPUFeatures);
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.getSideEffect()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.getSideEffect(), call.getKilledLocations()));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.getSideEffect()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.getSideEffect(), call.getKilledLocations()));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);
