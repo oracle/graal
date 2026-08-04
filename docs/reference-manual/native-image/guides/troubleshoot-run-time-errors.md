@@ -21,7 +21,9 @@ In some cases, you need to provide the analysis with configuration to make all d
 Failing to do so will result in an image that terminates at run-time with hard-to-diagnose errors once the dynamic feature is used in the application.
 This can be avoided by eagerly checking for missing metadata.
 
-1. Pass the `--exact-reachability-metadata` option to the `native-image` tool and rebuild the application. If you want to do this only for a specific package, specify a package prefix `--exact-reachability-metadata=[package prefix]`.
+1. Enable exact reachability metadata globally.
+   Pass `--exact-reachability-metadata` to `native-image` to make it the executable's default, or pass `-XX:+ExactReachabilityMetadata` when starting an existing executable.
+   The runtime option can only be changed during startup.
     
     > This option was introduced in GraalVM for JDK 23 for debugging purposes. In GraalVM versions prior to JDK 23, use the `-H:ThrowMissingRegistrationErrors=` build option instead.
 

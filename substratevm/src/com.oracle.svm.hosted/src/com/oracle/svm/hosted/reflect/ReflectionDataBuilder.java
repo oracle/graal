@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.reflect;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.ACCESSED;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.NONE;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.QUERIED;
-import static com.oracle.svm.core.MissingRegistrationUtils.preciseDynamicAccess;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
@@ -255,7 +254,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 for (var innerType : t.getDeclaredTypes()) {
                     if (innerType.isPublic()) {
                         innerType.registerAsReachable("Is inner class of class registered for reflection.");
-                        if (!preciseDynamicAccess() && !shouldExcludeClass(innerType, ACCESSED)) {
+                        if (!shouldExcludeClass(innerType, ACCESSED)) {
                             registerClass(unconditional(), QUERIED, innerType, true);
                         }
                     }
@@ -270,7 +269,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             for (var innerType : type.getDeclaredTypes()) {
                 innerType.registerAsReachable("Is inner class of class registered for reflection.");
-                if (!preciseDynamicAccess() && !shouldExcludeClass(innerType, ACCESSED)) {
+                if (!shouldExcludeClass(innerType, ACCESSED)) {
                     registerClass(unconditional(), QUERIED, innerType, true);
                 }
             }
@@ -479,9 +478,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding methods, the declaring class of the method has to be registered to allow
          * individual queries at run-time.
          */
-        if (preciseDynamicAccess()) {
-            registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor(), preserved);
-        }
+        registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor(), preserved);
         registerMethod(condition, ACCESSED, preserved, method);
     }
 
@@ -603,9 +600,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
                         processAnnotationMethod(accessibility, aMethod);
                     }
-                    if (!preciseDynamicAccess()) {
-                        checkHidingMethods(aMethod);
-                    }
+                    checkHidingMethods(aMethod);
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -654,9 +649,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding fields, the declaring class of the field has to be registered to allow
          * individual queries at run-time.
          */
-        if (preciseDynamicAccess()) {
-            registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
-        }
+        registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
         registerField(condition, ACCESSED, preserved, field);
     }
 
@@ -761,6 +754,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaField field) {
+        registerField(condition, accessibility, preserved, field, false);
+    }
+
+    private void registerField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaField field, boolean legacyAccess) {
         guaranteeRuntimeMetadataEncodingNotComplete();
         runConditionalTask(condition, cnd -> {
             AnalysisField analysisField = reflectivityFilter.getFilteredAnalysisField(field);
@@ -776,6 +773,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 ElementData data = fd != null ? fd : new ElementData();
 
                 ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
+                if (accessibility.includes(ACCESSED)) {
+                    data.legacyAccess = legacyAccess && (previous == null || !previous.includes(ACCESSED));
+                }
                 if (previous == null) {
                     registerTypesForField(analysisField);
                 }
@@ -787,9 +787,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (analysisField.getDeclaringClass().isAnnotation()) {
                         processAnnotationField(accessibility, analysisField);
                     }
-                    if (!preciseDynamicAccess()) {
-                        checkHidingFields(analysisField);
-                    }
+                    checkHidingFields(analysisField);
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -840,8 +838,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             try {
                 ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(true, GuestAccess.get().lookupType(declaringClass), fieldName);
                 if (field != null) {
-                    ConfigurationMemberAccessibility accessibility = preciseDynamicAccess() ? QUERIED : ACCESSED;
-                    registerField(cnd, accessibility, preserved, field);
+                    registerField(cnd, ACCESSED, preserved, field, true);
                 }
             } catch (LinkageError ignored) {
                 // Field lookup errors will be handled by the declaring class registration
@@ -1318,11 +1315,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             }
                         }
                     });
-                    if (!preciseDynamicAccess()) {
-                        AnalysisType enclosingType = type.getEnclosingType();
-                        if (enclosingType != null) {
-                            innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
-                        }
+                    AnalysisType enclosingType = type.getEnclosingType();
+                    if (enclosingType != null) {
+                        innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
                     }
                 } catch (LinkageError ignored) {
                     // The linkage error is handled in registerAllDeclaredClasses
@@ -1366,6 +1361,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return createReflectionFields();
+    }
+
+    @Override
+    public boolean isLegacyFieldAccess(AnalysisField field) {
+        ElementData data = fields.get(field);
+        return data != null && data.legacyAccess;
     }
 
     @Override
@@ -1871,6 +1872,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         RuntimeDynamicAccessMetadata dynamicAccess = null;
         boolean inHeap = false;
         boolean hiding = false;
+        boolean legacyAccess = false;
         /* Preserve must stay visible to native tracing even with explicit metadata for the same
          * element. */
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */

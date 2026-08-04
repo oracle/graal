@@ -524,9 +524,9 @@ public class SVMHost extends HostVM {
                  * precedence over the generic ThrowMissingRegistrationError option.
                  */
             }
-        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
-            type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
-            typeToHub.get(type).setCanUnsafeAllocate();
+        } else {
+            type.registerAsUnsafeAllocated("Type is registered as Unsafe allocated automatically for compatibility mode");
+            typeToHub.get(type).setCanUnsafeAllocateForLegacyCompatibility();
         }
     }
 

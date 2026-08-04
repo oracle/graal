@@ -39,6 +39,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -89,8 +90,10 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     public static final int NEGATIVE_FLAG_MASK = 1 << NEGATIVE_FLAG_INDEX;
     private static final int PRESERVED_FLAG_INDEX = 27;
     public static final int PRESERVED_FLAG_MASK = 1 << PRESERVED_FLAG_INDEX;
+    private static final int LEGACY_ACCESS_FLAG_INDEX = 26;
+    public static final int LEGACY_ACCESS_FLAG_MASK = 1 << LEGACY_ACCESS_FLAG_INDEX;
     /* single lookup flags are filled before encoding */
-    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK | PRESERVED_FLAG_MASK;
+    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK | PRESERVED_FLAG_MASK | LEGACY_ACCESS_FLAG_MASK;
 
     public static final int ALL_FIELDS_FLAG = 1 << 16;
     public static final int ALL_DECLARED_FIELDS_FLAG = 1 << 17;
@@ -421,6 +424,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
+        boolean legacyAccess = (modifiers & LEGACY_ACCESS_FLAG_MASK) != 0;
 
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
@@ -467,6 +471,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
+        if (legacyAccess && MissingRegistrationUtils.exactReflection()) {
+            offset = ReflectionObjectFactory.FIELD_OFFSET_NONE;
+        }
         int installedLayerNumber = Modifier.isStatic(modifiers) ? buf.getSVInt() : MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         String deletedReason = decodeOtherString(buf, layerId);
         if (publicOnly && !Modifier.isPublic(modifiers)) {

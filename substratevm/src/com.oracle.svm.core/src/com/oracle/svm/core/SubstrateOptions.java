@@ -1327,10 +1327,9 @@ public class SubstrateOptions {
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
-        @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
+        @APIOption(name = "exact-reachability-metadata")//
         @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
-        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.build());
+        public static final RuntimeOptionKey<Boolean> ExactReachabilityMetadata = new RuntimeOptionKey<>(false, Immutable);
 
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
@@ -1589,11 +1588,6 @@ public class SubstrateOptions {
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
-    @APIOption(name = "exact-reachability-metadata-path")//
-    @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(
-                    AccumulatingLocatableMultiOptionValue.Strings.build());
-
     public enum ReportingMode {
         Warn,
         Throw,
@@ -1755,7 +1749,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 
     @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
-                    deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level.") //
+                    deprecated = true, deprecationMessage = "--exact-reachability-metadata is the preferred way to detect missing unsafe-allocation metadata.") //
     public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//

@@ -75,7 +75,6 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
-import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -726,8 +725,8 @@ public class ResourcesFeature implements InternalFeature {
          * GR-58701: The SVM core is currently not included in the base layer of a Layered Image.
          * Those specific types can be reachable from Resources#resourcesTrieRoot, but they can be
          * missed by the analysis because the GlobTrieNode#children field is only available after
-         * analysis and the only reference to those types is with ThrowMissingRegistrationErrors
-         * enabled. Until a clear SVM core separation is created and included in the base layer,
+         * analysis and the only reference to those types is from exact reachability metadata.
+         * Until a clear SVM core separation is created and included in the base layer,
          * those types should be manually registered as instantiated before the analysis.
          */
         if (HostedImageLayerBuildingSupport.buildingImageLayer()) {
@@ -745,14 +744,9 @@ public class ResourcesFeature implements InternalFeature {
         Set<CompiledConditionalPattern> excludePatterns = compilePatternWorkset(excludedResourcePatterns);
 
         ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
-        /*
-         * register all included patterns in Resources singleton (if we are throwing
-         * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
-         */
-        if (MissingRegistrationUtils.preciseDynamicAccess()) {
-            includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
-                            resourcePattern.compiledPattern.pattern.pattern()));
-        }
+        /* Store all included patterns so the runtime exactness option can be selected at startup. */
+        includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
+                        resourcePattern.compiledPattern.pattern.pattern()));
 
         /* if we have any entry in resource config file we should collect resources */
         if (!resourcePatternWorkSet.isEmpty() || !globWorkSet.isEmpty() || SubstrateOptions.Preserve.hasBeenSet()) {
