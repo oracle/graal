@@ -425,7 +425,13 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         /* Reflect method because substitution of Object.hashCode() is private */
         int modifiers = reflectField.getModifiers();
         boolean trustedFinal = isTrustedFinal(reflectField);
-        String signature = getSignature(reflectField);
+        AnalysisField analysisField = hostedField.getWrapped();
+        /*
+         * The generic signature must describe the original declaration, because that is the
+         * declaring class reported at run time.
+         */
+        Field signatureField = ReflectionDataBuilder.getGenericSignatureDeclaration(analysisField);
+        String signature = getSignature(signatureField != null ? signatureField : reflectField);
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
         Delete deleteAnnotation = GuestAnnotationAccess.getAnnotation(hostedField, Delete.class);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
@@ -439,7 +445,6 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.otherStrings.addObject(signature);
         encoders.otherStrings.addObject(deletedReason);
         /* Register string and class values in annotations */
-        AnalysisField analysisField = hostedField.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisField);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisField);
         int installedLayerNumber = Modifier.isStatic(modifiers) && hostedField.hasInstalledLayerNum() ? hostedField.getInstalledLayerNum()

@@ -87,6 +87,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -1987,7 +1988,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static Type getGenericType(AnalysisField field) {
-            Field javaField = getJavaField(field);
+            Field javaField = getGenericSignatureDeclaration(field);
             return javaField != null ? queryGenericInfo(javaField::getGenericType) : null;
         }
 
@@ -2020,6 +2021,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return OriginalFieldProvider.getJavaField(field);
         }
 
+        static Field getGenericSignatureDeclaration(AnalysisField field) {
+            if (GuestAnnotationAccess.isAnnotationPresent(field.getDeclaringClass(), TargetClass.class)) {
+                ResolvedJavaType originalDeclaringType = OriginalClassProvider.getOriginalType(field.getDeclaringClass());
+                ResolvedJavaField originalField = originalDeclaringType == null ? null
+                                : JVMCIReflectionUtil.getUniqueDeclaredField(true, originalDeclaringType, field.getName());
+                Field originalJavaField = originalField == null ? null : OriginalFieldProvider.getJavaField(originalField);
+                if (originalJavaField != null) {
+                    return originalJavaField;
+                }
+            }
+            return getJavaField(field);
+        }
+
         @SuppressWarnings("deprecation")
         public AnalysisType getProxyType(AnalysisType intf) {
             try {
@@ -2028,6 +2042,20 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 return null;
             }
         }
+    }
+
+    /**
+     * Returns the field whose generic signature describes {@code field} at run time, or null if
+     * there is no reflective representation.
+     *
+     * Implementation-side fields of a substituted class unwrap to the field declared in the
+     * substitution class. That declaration's generic signature can reference substitution types or
+     * type variables that have no runtime identity, while the declaring class reported at run time
+     * is the original class. Deriving the signature from the original declaration keeps the encoded
+     * signature resolvable against the runtime declaring class.
+     */
+    public static Field getGenericSignatureDeclaration(AnalysisField field) {
+        return ClassAccess.getGenericSignatureDeclaration(field);
     }
 
     @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
