@@ -46,7 +46,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -122,7 +122,7 @@ public final class UninterruptibleAnnotationChecker {
 
     private void checkSpecifiedOptions(HostedMethod method, UninterruptibleGuestValue annotation) {
         if (annotation.reason().equals(CALLED_FROM_UNINTERRUPTIBLE_CODE)) {
-            if (!annotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
+            if (!annotation.mayBeInlined() && !GuestAnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
                 addViolation("Inconsistent @Uninterruptible annotation on %s: reason '%s' is too generic for a method that is annotated with 'mayBeInlined = false'. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
                                 "Otherwise, use 'mayBeInlined = true' to allow inlining into interruptible code.",
@@ -148,7 +148,7 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.mayBeInlined()) {
-            if (AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
                 addViolation("Inconsistent @Uninterruptible annotation on %s: 'mayBeInlined = true' conflicts with @NeverInline.",
                                 formatMethod(method));
             }
@@ -162,7 +162,7 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.mayBeInlined() && annotation.calleeMustBe()) {
-            if (!annotation.reason().equals(CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
+            if (!annotation.reason().equals(CALLED_FROM_UNINTERRUPTIBLE_CODE) && !GuestAnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
                 addViolation("Inconsistent @Uninterruptible annotation on %s: 'mayBeInlined = true' can only be used with '%s'. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
                                 "Otherwise, use 'CALLED_FROM_UNINTERRUPTIBLE_CODE' as the reason.",
@@ -170,7 +170,7 @@ public final class UninterruptibleAnnotationChecker {
             }
         }
 
-        if (!annotation.mayBeInlined() && !annotation.callerMustBe() && AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
+        if (!annotation.mayBeInlined() && !annotation.callerMustBe() && GuestAnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
             addViolation("Inconsistent @Uninterruptible annotation on %s: @AlwaysInline requires either 'mayBeInlined = true' or 'callerMustBe = true'. " +
                             "If the method may be inlined into interruptible code, please use 'mayBeInlined = true'. " +
                             "Otherwise, use 'callerMustBe = true'.",
@@ -248,8 +248,8 @@ public final class UninterruptibleAnnotationChecker {
              */
             if (directCallerAnnotation.mayBeInlined() && !callee.isNative()) {
                 UninterruptibleGuestValue calleeAnnotation = UninterruptibleAnnotationUtils.getAnnotation(callee);
-                if (calleeAnnotation != null && !calleeAnnotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(callee, NeverInline.class) &&
-                                !AnnotationUtil.isAnnotationPresent(directCaller, AlwaysInline.class)) {
+                if (calleeAnnotation != null && !calleeAnnotation.mayBeInlined() && !GuestAnnotationAccess.isAnnotationPresent(callee, NeverInline.class) &&
+                                !GuestAnnotationAccess.isAnnotationPresent(directCaller, AlwaysInline.class)) {
                     addViolation("Inconsistent @Uninterruptible annotations: %s is annotated with 'mayBeInlined = true', but calls %s which is annotated with 'mayBeInlined = false'. " +
                                     "This can unexpectedly inline the callee into interruptible code. " +
                                     "To prevent such inlining, either remove 'mayBeInlined = true' from the caller or annotate the callee with @NeverInline. " +

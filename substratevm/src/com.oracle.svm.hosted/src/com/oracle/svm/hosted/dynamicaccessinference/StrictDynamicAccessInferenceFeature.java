@@ -64,7 +64,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.TypeResult;
@@ -484,7 +484,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
              * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will
              * return a substitution method that has the @Delete annotation.
              */
-            return annotated != null && AnnotationUtil.isAnnotationPresent(annotated, Delete.class);
+            return annotated != null && GuestAnnotationAccess.isAnnotationPresent(annotated, Delete.class);
         }
 
         private void registerBulkPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, String methodName, Consumer<Class<?>> registrationCallback) {

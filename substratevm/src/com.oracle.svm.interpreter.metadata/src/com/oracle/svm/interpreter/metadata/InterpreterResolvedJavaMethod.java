@@ -88,7 +88,7 @@ import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -450,22 +450,22 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         if (isSubstitutedNative) {
             newModifiers |= ACC_SUBSTITUTED_NATIVE;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
             newModifiers |= ACC_CALLER_SENSITIVE;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, LAMBDA_FORM_COMPILED_CLASS)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, LAMBDA_FORM_COMPILED_CLASS)) {
             newModifiers |= ACC_LAMBDA_FORM_COMPILED;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.Hidden.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.Hidden.class)) {
             newModifiers |= ACC_HIDDEN;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.ForceInline.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.ForceInline.class)) {
             newModifiers |= ACC_FORCE_INLINE;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.DontInline.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, jdk.internal.vm.annotation.DontInline.class)) {
             newModifiers |= ACC_DONT_INLINE;
         }
-        if (AnnotationUtil.isAnnotationPresent(originalMethod, SCOPED_MEMORY_SCOPED_CLASS)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(originalMethod, SCOPED_MEMORY_SCOPED_CLASS)) {
             newModifiers |= ACC_SCOPED;
         }
         return newModifiers;

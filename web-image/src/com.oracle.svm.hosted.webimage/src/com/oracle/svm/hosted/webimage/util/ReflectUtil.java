@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -83,7 +83,7 @@ public class ReflectUtil {
     /// determine which method is the single abstract method.
     public static Optional<ResolvedJavaMethod> singleAbstractMethodForInterface(MetaAccessProvider metaAccess, ResolvedJavaType javaInterface) {
         GraalError.guarantee(javaInterface.isInterface(), "Got non-interface type %s", javaInterface);
-        if (!AnnotationUtil.isAnnotationPresent(javaInterface, FunctionalInterface.class)) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(javaInterface, FunctionalInterface.class)) {
             return Optional.empty();
         }
 

@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.common.meta.MethodVariant;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -148,7 +148,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
-                if (targetMethod == null || AnnotationUtil.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
+                if (targetMethod == null || GuestAnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
                     continue;
                 }
                 if (method != null) {

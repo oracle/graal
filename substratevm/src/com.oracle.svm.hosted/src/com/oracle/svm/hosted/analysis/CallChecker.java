@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.SuppressSVMWarnings;
 import jdk.vm.ci.code.BytecodePosition;
@@ -70,10 +70,10 @@ public class CallChecker {
         if (illegalCalleesPattern.matcher(calleeName).find()) {
             String callerName = caller.getQualifiedName();
             if (targetCallersPattern.matcher(callerName).find()) {
-                SuppressSVMWarnings suppress = AnnotationUtil.getAnnotation(caller, SuppressSVMWarnings.class);
+                SuppressSVMWarnings suppress = GuestAnnotationAccess.getAnnotation(caller, SuppressSVMWarnings.class);
                 AnalysisType callerType = caller.getDeclaringClass();
                 while (suppress == null && callerType != null) {
-                    suppress = AnnotationUtil.getAnnotation(callerType, SuppressSVMWarnings.class);
+                    suppress = GuestAnnotationAccess.getAnnotation(callerType, SuppressSVMWarnings.class);
                     callerType = callerType.getEnclosingType();
                 }
                 if (suppress != null) {

@@ -27,7 +27,7 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.deopt.Deoptimizer.StubType.NoDeoptStub;
 import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.IMMUTABLE;
 import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.VALUE_REFERENCE;
-import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
 import java.util.ArrayList;
 import java.util.List;

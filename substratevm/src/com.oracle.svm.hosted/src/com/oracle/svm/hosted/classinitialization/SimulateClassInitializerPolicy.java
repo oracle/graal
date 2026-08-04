@@ -33,7 +33,7 @@ import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -114,7 +114,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
             /* Safeguard against excessive inlining, for example endless recursion. */
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), FactoryMethodMarker.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
              * Synthetic factory methods are annotated as "never inline before analysis" because
              * they would all be inlined immediately. But for the class initializer analysis, we

@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.truffle;
 
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -42,7 +41,6 @@ import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import java.util.Map;
 
@@ -82,8 +80,7 @@ final class SubstrateTruffleHostEnvironment extends TruffleHostEnvironment {
 
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-            Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
+            Map<ResolvedJavaType, AnnotationValue> annotations = GuestAnnotationAccess.getDeclaredAnnotationValues(method);
             return computeHostMethodInfo(annotations, OriginalClassProvider::getOriginalType);
         }
 

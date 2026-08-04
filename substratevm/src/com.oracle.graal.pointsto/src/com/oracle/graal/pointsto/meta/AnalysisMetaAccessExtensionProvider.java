@@ -30,7 +30,7 @@ import java.lang.annotation.Annotation;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -87,7 +87,7 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
              * Base layer methods are not from GuestAccess' host JVMCI provider, but their persisted
              * annotations are available.
              */
-            return AnnotationUtil.isAnnotationPresent(original, LAMBDA_FORM_COMPILED);
+            return GuestAnnotationAccess.isAnnotationPresent(original, LAMBDA_FORM_COMPILED);
         }
         return original != null && GuestAccess.get().getProviders().getMetaAccessExtensionProvider().isLambdaFormCompiled(original);
     }

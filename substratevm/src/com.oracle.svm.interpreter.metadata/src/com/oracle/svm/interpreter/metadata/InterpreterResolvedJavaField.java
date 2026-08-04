@@ -52,7 +52,7 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -134,7 +134,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     public static InterpreterResolvedJavaField createAtBuildTime(AnalysisField originalField, InterpreterResolvedObjectType declaringClass) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(originalField.getName());
         Symbol<Type> typeSymbol = CremaTypeAccess.jvmciNameToType(originalField.getType().getName());
-        boolean isStable = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Stable.class);
+        boolean isStable = GuestAnnotationAccess.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Stable.class);
         boolean isHidden = originalField.isInternal();
         int flags = createFlags(originalField.getModifiers(), isStable, isHidden);
         InterpreterResolvedJavaField field = new InterpreterResolvedJavaField(

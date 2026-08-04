@@ -33,7 +33,7 @@ import org.graalvm.webimage.api.JS;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -59,6 +59,6 @@ public class JSSubstitutionProcessor extends SubstitutionProcessor {
     private static boolean isJSStubMethod(ResolvedJavaMethod method) {
         // If AnalysisMethods appeared here, they would first need to be unwrapped
         assert !(method instanceof AnalysisMethod) : method;
-        return method instanceof JSObjectAccessMethod || AnnotationUtil.isAnnotationPresent(method, JS.class);
+        return method instanceof JSObjectAccessMethod || GuestAnnotationAccess.isAnnotationPresent(method, JS.class);
     }
 }

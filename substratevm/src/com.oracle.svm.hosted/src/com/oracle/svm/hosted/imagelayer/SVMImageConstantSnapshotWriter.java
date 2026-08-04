@@ -85,7 +85,7 @@ import com.oracle.svm.hosted.snapshot.constant.RelinkingData.StringConstant;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -240,7 +240,7 @@ final class SVMImageConstantSnapshotWriter {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        return !AnnotationUtil.isAnnotationPresent(field, Delete.class) &&
+        return !GuestAnnotationAccess.isAnnotationPresent(field, Delete.class) &&
                         ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                         field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers() && field.installableInLayer();
     }

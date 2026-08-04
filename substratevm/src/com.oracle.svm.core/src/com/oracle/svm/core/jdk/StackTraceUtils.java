@@ -55,7 +55,7 @@ import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -256,7 +256,7 @@ public class StackTraceUtils {
         if (clazz instanceof SharedType sharedType) {
             return sharedType.isInternalVMMethods();
         }
-        return AnnotationUtil.isAnnotationPresent(clazz, InternalVMMethod.class);
+        return GuestAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class);
     }
 
     public static ClassLoader latestUserDefinedClassLoader(Pointer startSP) {

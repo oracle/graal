@@ -125,7 +125,7 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -282,7 +282,7 @@ public abstract class NativeImage extends AbstractImage {
     private static Class<? extends CHeader.Header> cHeader(HostedMethod entryPointStub) {
         /* check if method is annotated */
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub((CEntryPointCallStubMethod) entryPointStub.wrapped.wrapped);
-        CHeader methodAnnotation = AnnotationUtil.getAnnotation(entryPoint, CHeader.class);
+        CHeader methodAnnotation = GuestAnnotationAccess.getAnnotation(entryPoint, CHeader.class);
         if (methodAnnotation != null) {
             return methodAnnotation.value();
         }
@@ -290,7 +290,7 @@ public abstract class NativeImage extends AbstractImage {
         /* check if enclosing classes are annotated */
         AnalysisType enclosingType = entryPoint.getDeclaringClass();
         while (enclosingType != null) {
-            CHeader enclosing = AnnotationUtil.getAnnotation(enclosingType, CHeader.class);
+            CHeader enclosing = GuestAnnotationAccess.getAnnotation(enclosingType, CHeader.class);
             if (enclosing != null) {
                 return enclosing.value();
             }

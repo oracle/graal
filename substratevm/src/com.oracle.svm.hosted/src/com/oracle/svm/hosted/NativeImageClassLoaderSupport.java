@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,6 +87,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
@@ -96,7 +97,6 @@ import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
@@ -111,7 +111,6 @@ import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -166,7 +165,7 @@ public final class NativeImageClassLoaderSupport {
      */
     public final Set<String> imageModulePathRequiredSystemModules;
 
-    public final SubstrateAnnotationExtractor annotationExtractor;
+    private AnnotationExtractor annotationExtractor;
 
     private Path layerFile;
 
@@ -300,9 +299,6 @@ public final class NativeImageClassLoaderSupport {
 
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
-        annotationExtractor = new SubstrateAnnotationExtractor();
-        AnnotationUtil.installHostedAnnotationExtractor(annotationExtractor);
-
         includeConfigSealed = false;
 
         explodedModuleReaderClass = ReflectionUtil.lookupClass(false, "jdk.internal.module.ModuleReferences$ExplodedModuleReader");
@@ -400,6 +396,22 @@ public final class NativeImageClassLoaderSupport {
     public List<JavaConstant> getClassLoaders() {
         VMError.guarantee(classLoaders != null, "Invalid access to classLoaders before getting set up");
         return classLoaders;
+    }
+
+    /**
+     * Installs the same-context annotation extractor after the guest VM configuration is available.
+     */
+    void setAnnotationExtractor(AnnotationExtractor extractor) {
+        VMError.guarantee(annotationExtractor == null, "Annotation extractor is already initialized");
+        annotationExtractor = Objects.requireNonNull(extractor);
+    }
+
+    /**
+     * Returns the same-context annotation extractor selected for this image build.
+     */
+    AnnotationExtractor getAnnotationExtractor() {
+        VMError.guarantee(annotationExtractor != null, "Annotation extractor is not initialized");
+        return annotationExtractor;
     }
 
     /**

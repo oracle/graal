@@ -49,7 +49,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.common.meta.MethodVariant;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -432,7 +432,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * injects an annotation, or provides an alias, without changing the implementation. Those
          * methods should not be included in the image.
          */
-        if (AnnotationUtil.isAnnotationPresent(type, TargetClass.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(type, TargetClass.class)) {
             return;
         }
         ResolvedJavaMethod[] methods = tryApply(type, t -> t.getDeclaredMethods(false), NO_METHODS);

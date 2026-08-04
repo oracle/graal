@@ -126,7 +126,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -980,7 +980,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * @see #registerTruffleLibrariesAsInHeap
      */
     private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
-        if (AnnotationUtil.isAnnotationPresent(type, GenerateLibrary.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(type, GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
             LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
             /* Trigger computation of uncachedDispatch. */
@@ -988,7 +988,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Manually rescan the field since this is during analysis. */
             access.rescanField(factory, uncachedDispatchField, scanReason);
         }
-        if (AnnotationUtil.isAnnotationPresent(type, ExportLibrary.class) || AnnotationUtil.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.class) || GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
             Class<?> receiverClass = type.getJavaClass();
             if (registeredExportLibraryClasses.add(receiverClass)) {
                 access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
@@ -1004,7 +1004,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static boolean hasExplicitReceiverExport(AnalysisType type) {
-        for (ExportLibrary export : AnnotationUtil.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
+        for (ExportLibrary export : GuestAnnotationAccess.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
             if (export.receiverType() != Void.class) {
                 return true;
             }

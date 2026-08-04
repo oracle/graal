@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,15 @@ import java.lang.reflect.AnnotatedElement;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * Low-level same-VM annotation service backing
+ * {@link org.graalvm.nativeimage.AnnotationAccess AnnotationAccess}.
+ *
+ * Native Image bootstrap code may use this service directly before the context-local image
+ * singleton is available. Once installed, annotation-query callers must use
+ * {@code AnnotationAccess}; direct uses should be limited to bootstrap, singleton registration, and
+ * host-proxy wiring.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface AnnotationExtractor {
     /**

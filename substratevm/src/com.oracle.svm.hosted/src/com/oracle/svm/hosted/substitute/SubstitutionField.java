@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -34,7 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 
-public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper, AnnotatedWrapper {
+public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvider, AnnotatedWrapper {
 
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;

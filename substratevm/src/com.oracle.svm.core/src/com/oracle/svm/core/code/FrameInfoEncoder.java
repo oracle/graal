@@ -59,7 +59,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.LIRKind;
@@ -161,7 +161,7 @@ public class FrameInfoEncoder {
          * a {@link Hidden} annotation themselves.
          */
         protected boolean isHiddenMethod(ResolvedJavaMethod method) {
-            return method.getDeclaringClass().isHidden() || AnnotationUtil.isAnnotationPresent(method, Hidden.class);
+            return method.getDeclaringClass().isHidden() || GuestAnnotationAccess.isAnnotationPresent(method, Hidden.class);
         }
 
         /**

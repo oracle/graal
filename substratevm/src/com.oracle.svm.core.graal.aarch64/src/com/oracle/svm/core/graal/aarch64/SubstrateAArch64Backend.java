@@ -100,7 +100,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -1848,7 +1848,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
          * hosted-only CallVariant in that case until GR-74744 is fixed.
          */
         if (SubstrateUtil.HOSTED) {
-            InterpreterJNIUpcallStub annotation = AnnotationUtil.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            InterpreterJNIUpcallStub annotation = GuestAnnotationAccess.getAnnotation(method, InterpreterJNIUpcallStub.class);
             if (annotation != null && annotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();

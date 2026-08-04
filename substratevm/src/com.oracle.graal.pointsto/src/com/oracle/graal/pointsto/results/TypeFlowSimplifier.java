@@ -45,7 +45,7 @@ import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -387,7 +387,7 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
                 AnalysisMethod singleCallee = callees.iterator().next();
                 assert targetMethod.equals(singleCallee) : "Direct invoke target mismatch: " + targetMethod + " != " + singleCallee + ". Called from " + graph.method().format("%H.%n");
             }
-        } else if (AnnotationUtil.isAnnotationPresent(targetMethod, Delete.class)) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(targetMethod, Delete.class)) {
             /* We de-virtualize invokes to deleted methods since the callee must be unique. */
             AnalysisError.guarantee(callees.size() == 1, "@Delete methods should have a single callee.");
             AnalysisMethod singleCallee = callees.iterator().next();

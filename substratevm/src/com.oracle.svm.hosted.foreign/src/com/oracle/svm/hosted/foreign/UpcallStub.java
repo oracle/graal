@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.foreign;
 
 import static com.oracle.graal.pointsto.infrastructure.ResolvedSignature.fromMethodType;
-import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 import java.lang.invoke.MethodHandle;

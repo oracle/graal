@@ -60,7 +60,7 @@ import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -529,7 +529,7 @@ public class MethodTypeFlowBuilder {
     }
 
     private boolean handleNodeIntrinsic() {
-        if (AnnotationUtil.isAnnotationPresent(method, NodeIntrinsic.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = method.getSignature().getReturnType();
             if (bb.isSupportedJavaKind(returnType.getJavaKind())) {

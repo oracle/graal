@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.cenum;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
 import java.lang.reflect.Modifier;
 import java.util.List;
@@ -43,7 +43,7 @@ import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -79,7 +79,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
         /* Annotate @CEnumValue methods with @Uninterruptible. */
-        if (AnnotationUtil.getAnnotation(original, CEnumValue.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(original, CEnumValue.class) != null) {
             return INJECTED_ANNOTATIONS;
         }
         return List.of();
@@ -101,11 +101,11 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     private ValueNode createInvoke(AnalysisMethod method, HostedGraphKit kit, AnalysisType returnType, ValueNode arg) {
-        if (AnnotationUtil.getAnnotation(method, CEnumLookup.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(method, CEnumLookup.class) != null) {
             /* Call a method that converts the primitive value to a Java enum. */
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
             return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg, true);
-        } else if (AnnotationUtil.getAnnotation(method, CEnumValue.class) != null) {
+        } else if (GuestAnnotationAccess.getAnnotation(method, CEnumValue.class) != null) {
             /* Call a method that converts a Java enum to a primitive value. */
             ResolvedJavaType declaringType = method.getDeclaringClass();
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);

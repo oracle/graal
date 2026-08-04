@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.service.AutomaticallyRegisteredServiceRegistration;
-import com.oracle.svm.util.GuestAccess;
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
+
+import com.oracle.svm.core.service.AutomaticallyRegisteredServiceRegistration;
+import com.oracle.svm.util.GuestAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * Shared support for automatic-registration handlers that reconcile generated {@link ServiceLoader}
@@ -96,7 +96,7 @@ abstract class AutomaticallyRegisteredClassSupport<S extends AutomaticallyRegist
             } catch (IllegalStateException ex) {
                 throw missingClassError(ex.getCause(), className);
             }
-            if (AnnotationAccess.getAnnotation(registeredClass, annotationClass()) == null) {
+            if (!AnnotationAccess.isAnnotationPresent(registeredClass, annotationClass())) {
                 throw staleGeneratedRegistrationError(registeredClass);
             }
             /*

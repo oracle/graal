@@ -27,7 +27,7 @@ package com.oracle.svm.truffle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -63,9 +63,9 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
      */
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        boolean hasTruffleFoldedAnnotation = AnnotationUtil.isAnnotationPresent(field, CompilationFinal.class) ||
-                        AnnotationUtil.isAnnotationPresent(field, Child.class) ||
-                        AnnotationUtil.isAnnotationPresent(field, Children.class);
+        boolean hasTruffleFoldedAnnotation = GuestAnnotationAccess.isAnnotationPresent(field, CompilationFinal.class) ||
+                        GuestAnnotationAccess.isAnnotationPresent(field, Child.class) ||
+                        GuestAnnotationAccess.isAnnotationPresent(field, Children.class);
         if (hasTruffleFoldedAnnotation) {
             return null;
         }

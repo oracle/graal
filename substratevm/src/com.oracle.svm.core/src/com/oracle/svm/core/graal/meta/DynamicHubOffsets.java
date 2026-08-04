@@ -42,7 +42,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -152,7 +152,7 @@ public class DynamicHubOffsets {
             if (Arrays.stream(SKIPPED_FIELDS).anyMatch(field.getName()::equals)) {
                 continue;
             }
-            if (AnnotationUtil.isAnnotationPresent(field, InjectAccessors.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
                 continue;
             }
 

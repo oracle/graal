@@ -87,7 +87,7 @@ import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -973,14 +973,14 @@ public class CompileQueue {
          * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
          * more inlining restrictions and this code can be removed.
          */
-        RestrictHeapAccess annotation = AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class);
+        RestrictHeapAccess annotation = GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class);
         return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
             assert state.getMethod() != null : state;
-            if (AnnotationUtil.getAnnotation(state.getMethod(), annotationClass) != null) {
+            if (GuestAnnotationAccess.getAnnotation(state.getMethod(), annotationClass) != null) {
                 return true;
             }
         }
@@ -1088,7 +1088,7 @@ public class CompileQueue {
             return;
         }
 
-        if (!allowFoldMethods && AnnotationUtil.isAnnotationPresent(method, Fold.class) && !isFoldInvocationPluginMethod(callerMethod)) {
+        if (!allowFoldMethods && GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) && !isFoldInvocationPluginMethod(callerMethod)) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @%s: %s. " +
                             "This could happen if either: the Graal annotation processor was not executed on the parent-project of the method's declaring class, " +
                             "the arguments passed to the method were not compile-time constants, or the plugin was disabled by the corresponding %s.",
@@ -1143,7 +1143,7 @@ public class CompileQueue {
     }
 
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
-        if (AnnotationUtil.getAnnotation(method, NodeIntrinsic.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(method, NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
@@ -1249,10 +1249,10 @@ public class CompileQueue {
             return false;
         }
 
-        if (AnnotationUtil.getAnnotation(callee, Specialize.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(callee, Specialize.class) != null) {
             return false;
         }
-        if (callerAnnotatedWith(invoke, Specialize.class) && AnnotationUtil.getAnnotation(callee, DeoptTest.class) != null) {
+        if (callerAnnotatedWith(invoke, Specialize.class) && GuestAnnotationAccess.getAnnotation(callee, DeoptTest.class) != null) {
             return false;
         }
 
@@ -1273,7 +1273,7 @@ public class CompileQueue {
     }
 
     private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
-        if (AnnotationUtil.getAnnotation(method, Specialize.class) != null && !method.isDeoptTarget() && AnnotationUtil.getAnnotation(invokeTarget, DeoptTest.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(method, Specialize.class) != null && !method.isDeoptTarget() && GuestAnnotationAccess.getAnnotation(invokeTarget, DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
              */

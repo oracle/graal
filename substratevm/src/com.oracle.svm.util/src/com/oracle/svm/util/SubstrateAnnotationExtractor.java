@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.annotation;
+package com.oracle.svm.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
@@ -35,15 +35,14 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.util.AnnotatedObjectAccess;
-import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.OriginalClassProvider;
-
 import jdk.graal.compiler.annotation.AnnotationValue;
 
 /**
- * This class wraps all annotation accesses during the Native Image build. It relies on
- * {@link jdk.graal.compiler.annotation.AnnotationValueParser} to avoid class initialization.
+ * Internal legacy compatibility backend used only by non-isolated builds. Annotation queries must
+ * use {@link AnnotationAccess} for same-VM access or {@link GuestAnnotationAccess} for builder-to-guest
+ * access. Fully isolated builds must use context-specific backends instead. This class relies on
+ * {@link jdk.graal.compiler.annotation.AnnotationValueParser} to avoid class initialization and
+ * should be removed as part of GR-77735.
  * <p>
  * The {@link SubstrateAnnotationExtractor} is tightly coupled with {@link AnnotationAccess}, which
  * provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
@@ -52,7 +51,7 @@ import jdk.graal.compiler.annotation.AnnotationValue;
  * their dependencies.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implements AnnotationExtractor {
+final class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implements AnnotationExtractor {
 
     @Override
     public <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly) {

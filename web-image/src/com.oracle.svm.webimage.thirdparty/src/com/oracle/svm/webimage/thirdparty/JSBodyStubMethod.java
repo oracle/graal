@@ -38,7 +38,7 @@ import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
@@ -83,7 +83,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     public JSBodyStubMethod(ResolvedJavaMethod original) {
         super(original);
-        JavaScriptBody jsb = AnnotationUtil.getAnnotation(original, JavaScriptBody.class);
+        JavaScriptBody jsb = GuestAnnotationAccess.getAnnotation(original, JavaScriptBody.class);
         this.jsCode = new JSBody.JSCode(jsb.args(), jsb.body());
         this.isJavaCall = jsb.javacall();
         JSIntrinsifyFile.FileData data = new JSIntrinsifyFile.FileData(original.getName(), jsCode.getBody());
@@ -166,7 +166,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     private static ValueNode createJSBody(AnalysisMethod method, HostedGraphKit kit, ValueNode[] argNodes, Stamp returnStamp,
                     JSBody.JSCode jsCode, Function<CodeGenTool, String> codeSupplier) {
-        boolean declaresResource = AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
+        boolean declaresResource = GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
         return kit.appendWithUnwind(new JSBodyWithExceptionNode(jsCode, method, argNodes, returnStamp, null, declaresResource, codeSupplier));
     }
 

@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -91,7 +91,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
     @Override
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
         if (Options.WarnMissingIntrinsic.getValue(options)) {
-            for (ResolvedJavaType annotationType : AnnotationUtil.getDeclaredAnnotationValues(targetMethod).keySet()) {
+            for (ResolvedJavaType annotationType : GuestAnnotationAccess.getDeclaredAnnotationValues(targetMethod).keySet()) {
                 if (annotationType.toJavaName(false).contains("IntrinsicCandidate")) {
                     String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
                                     targetMethod.getSignature().toMethodDescriptor());

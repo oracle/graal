@@ -69,7 +69,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -471,7 +471,7 @@ public final class FieldValueInterceptionSupport {
      * intercept the value and return 0 / null.
      */
     private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
-        if (AnnotationUtil.getAnnotation(field, InjectAccessors.class) != null) {
+        if (GuestAnnotationAccess.getAnnotation(field, InjectAccessors.class) != null) {
             assert !field.isAccessed();
             return JavaConstant.defaultForKind(value.getJavaKind());
         }
@@ -506,7 +506,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, AnalysisField aField) {
-        LayeredFieldValue layeredFieldValue = AnnotationUtil.getAnnotation(aField, LayeredFieldValue.class);
+        LayeredFieldValue layeredFieldValue = GuestAnnotationAccess.getAnnotation(aField, LayeredFieldValue.class);
         if (layeredFieldValue != null) {
             var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
             return new FieldValueTransformation(OriginalClassProvider.getOriginalType(oField.getType()), transformer);
@@ -515,7 +515,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {
-        UnknownObjectField unknownObjectField = AnnotationUtil.getAnnotation(field, UnknownObjectField.class);
+        UnknownObjectField unknownObjectField = GuestAnnotationAccess.getAnnotation(field, UnknownObjectField.class);
         if (unknownObjectField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isObject(), field);
             return new FieldValueComputer(
@@ -523,7 +523,7 @@ public final class FieldValueInterceptionSupport {
                             extractAnnotationTypes(field, unknownObjectField.types(), unknownObjectField.fullyQualifiedTypes()),
                             unknownObjectField.canBeNull());
         }
-        UnknownPrimitiveField unknownPrimitiveField = AnnotationUtil.getAnnotation(field, UnknownPrimitiveField.class);
+        UnknownPrimitiveField unknownPrimitiveField = GuestAnnotationAccess.getAnnotation(field, UnknownPrimitiveField.class);
         if (unknownPrimitiveField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isPrimitive(), field);
             return new FieldValueComputer(

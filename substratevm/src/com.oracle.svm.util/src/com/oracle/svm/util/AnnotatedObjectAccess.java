@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -49,11 +50,12 @@ import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
- * Provides methods to query annotation information on {@link Annotated} objects. Caches are
- * employed to speed up most queries.
+ * Internal metadata parser backing {@link GuestAnnotationAccess}. Annotation queries must use
+ * {@link AnnotationAccess} for same-VM access or {@link GuestAnnotationAccess} for builder-to-guest
+ * access.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnnotatedObjectAccess {
+class AnnotatedObjectAccess {
 
     /**
      * Gets the annotation of type {@code annotationType} from {@code element} as an
@@ -69,6 +71,39 @@ public class AnnotatedObjectAccess {
         // Checkstyle: disallow direct annotation access
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
         return annotationValues.get(GuestAccess.get().lookupType(annotationType));
+    }
+
+    /**
+     * Determines if {@code element} has an annotation represented by the JVMCI
+     * {@code annotationType}.
+     */
+    boolean hasAnnotation(Annotated element, ResolvedJavaType annotationType) {
+        return getAnnotationValue(element, annotationType, false) != null;
+    }
+
+    /**
+     * Gets the annotation represented by the JVMCI {@code annotationType}.
+     *
+     * @param declaredOnly whether inherited annotations must be ignored
+     */
+    AnnotationValue getAnnotationValue(Annotated element, ResolvedJavaType annotationType, boolean declaredOnly) {
+        try {
+            return getAnnotationValues(element, declaredOnly).get(annotationType);
+        } catch (LinkageError | AnnotationFormatError e) {
+            return null;
+        }
+    }
+
+    /** Gets the JVMCI types of all annotations present on {@code element}. */
+    List<ResolvedJavaType> getAnnotationTypes(Annotated element) {
+        try {
+            return getAnnotationValues(element, false).values().stream()
+                            .filter(annotationValue -> !annotationValue.isError())
+                            .map(AnnotationValue::getAnnotationType)
+                            .toList();
+        } catch (LinkageError | AnnotationFormatError e) {
+            return List.of();
+        }
     }
 
     /**

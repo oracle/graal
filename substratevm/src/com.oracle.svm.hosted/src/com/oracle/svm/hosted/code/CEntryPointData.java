@@ -37,7 +37,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.DefaultNameTra
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -91,8 +91,8 @@ public final class CEntryPointData {
     public static final ResolvedJavaType FATAL_EXCEPTION_HANDLER = GuestAccess.get().lookupType(CEntryPoint.FatalExceptionHandler.class);
 
     public static CEntryPointData create(ResolvedJavaMethod method, String name) {
-        CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPoint.class));
-        CEntryPointOptionsGuestValue cEntryPointOptions = CEntryPointOptionsGuestValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPointOptions.class));
+        CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(GuestAnnotationAccess.getAnnotationValue(method, CEntryPoint.class));
+        CEntryPointOptionsGuestValue cEntryPointOptions = CEntryPointOptionsGuestValue.from(GuestAnnotationAccess.getAnnotationValue(method, CEntryPointOptions.class));
         assert cEntryPoint.name().isEmpty() || name.isEmpty();
         return create(cEntryPoint, cEntryPointOptions,
                         () -> !name.isEmpty() ? name : NativeImage.globalSymbolNameForMethod(method));

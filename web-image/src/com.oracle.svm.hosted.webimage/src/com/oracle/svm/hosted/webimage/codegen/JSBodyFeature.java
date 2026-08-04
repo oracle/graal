@@ -42,7 +42,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -77,7 +77,7 @@ public final class JSBodyFeature implements InternalFeature {
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
+                if (GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
                     ((AnalysisType) method.getDeclaringClass()).registerAsInstantiated("JS.Import classes might be allocated in JavaScript. We need to tell the static analysis about that");
                 }
                 return false;
@@ -208,7 +208,7 @@ public final class JSBodyFeature implements InternalFeature {
              * reachable) because they may be instantiated in user JS code without the type ever
              * appearing in the Java program.
              */
-            if (AnnotationUtil.isAnnotationPresent(subtype, JS.Export.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(subtype, JS.Export.class)) {
                 subtype.registerAsUnsafeAllocated("@JS.Export classes are unconditionally reachable, registered from " + JSBodyFeature.class);
             }
         }
@@ -244,7 +244,7 @@ public final class JSBodyFeature implements InternalFeature {
         for (AnalysisType subType : access.findSubtypes(jsObjectType)) {
             // The methods of @JS.Import are intended to be called from Java. They can be discovered
             // by the analysis.
-            if (AnnotationUtil.isAnnotationPresent(subType, JS.Import.class)) {
+            if (GuestAnnotationAccess.isAnnotationPresent(subType, JS.Import.class)) {
                 continue;
             }
 

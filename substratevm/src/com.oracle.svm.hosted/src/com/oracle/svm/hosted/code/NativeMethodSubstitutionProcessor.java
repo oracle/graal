@@ -32,7 +32,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.shared.option.HostedOptionValues;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -64,9 +64,9 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
             assert !(method instanceof WrappedJavaMethod) : "Must not see AnalysisMethod or HostedMethod here";
             return method;
         }
-        assert !AnnotationUtil.isAnnotationPresent(method, CFunction.class) : "CFunction must have been handled by another SubstitutionProcessor";
-        if (AnnotationUtil.isAnnotationPresent(method, NodeIntrinsic.class) || AnnotationUtil.isAnnotationPresent(method, Operation.class) ||
-                        AnnotationUtil.isAnnotationPresent(method, CConstant.class)) {
+        assert !GuestAnnotationAccess.isAnnotationPresent(method, CFunction.class) : "CFunction must have been handled by another SubstitutionProcessor";
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || GuestAnnotationAccess.isAnnotationPresent(method, Operation.class) ||
+                        GuestAnnotationAccess.isAnnotationPresent(method, CConstant.class)) {
             return method;
         }
         boolean isHandledByPlugin = isHandledByPlugin(method);

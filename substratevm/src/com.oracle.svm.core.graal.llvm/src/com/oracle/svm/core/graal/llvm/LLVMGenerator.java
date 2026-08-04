@@ -97,7 +97,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DataSection;
@@ -295,7 +295,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         builder.setTarget(LLVMTargetSpecific.get().getTargetTriple());
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
-        if (AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
             builder.setFunctionAttribute(Attribute.NoIPA);
         }
         builder.setFunctionAttribute(Attribute.NoRedZone);
@@ -556,7 +556,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     private static boolean isCEnumType(ResolvedJavaType type) {
-        return type.isEnum() && AnnotationUtil.isAnnotationPresent(type, CEnum.class);
+        return type.isEnum() && GuestAnnotationAccess.isAnnotationPresent(type, CEnum.class);
     }
 
     /* Constants */

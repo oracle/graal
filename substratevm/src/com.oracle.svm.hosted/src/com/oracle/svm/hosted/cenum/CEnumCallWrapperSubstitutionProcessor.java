@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,8 +51,8 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (AnnotationUtil.isAnnotationPresent(method, CEnumLookup.class) ||
-                        AnnotationUtil.isAnnotationPresent(method, CEnumValue.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, CEnumLookup.class) ||
+                        GuestAnnotationAccess.isAnnotationPresent(method, CEnumValue.class)) {
             return callWrappers.computeIfAbsent(method, v -> new CEnumCallWrapperMethod(nativeLibraries, v));
         } else {
             return method;
