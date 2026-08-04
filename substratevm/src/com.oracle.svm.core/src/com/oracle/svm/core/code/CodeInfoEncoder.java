@@ -267,12 +267,19 @@ public class CodeInfoEncoder {
          * Releases prepared byte tables before they transfer to a {@link CodeInfo}.
          */
         public void releaseUninstalled() {
+            consumed = true;
             NonmovableArrays.releaseUnmanagedArray(methodTableArray);
+            methodTableArray = NonmovableArrays.nullArray();
             NonmovableArrays.releaseUnmanagedArray(frameInfoEncodingsArray);
+            frameInfoEncodingsArray = NonmovableArrays.nullArray();
             NonmovableArrays.releaseUnmanagedArray(codeInfoIndexArray);
+            codeInfoIndexArray = NonmovableArrays.nullArray();
             NonmovableArrays.releaseUnmanagedArray(codeInfoEncodingsArray);
+            codeInfoEncodingsArray = NonmovableArrays.nullArray();
             NonmovableArrays.releaseUnmanagedArray(codeInfoDefaultFrameInfoIndexesArray);
+            codeInfoDefaultFrameInfoIndexesArray = NonmovableArrays.nullArray();
             NonmovableArrays.releaseUnmanagedArray(stackReferenceMapEncodingArray);
+            stackReferenceMapEncodingArray = NonmovableArrays.nullArray();
         }
     }
 
