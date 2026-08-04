@@ -2,7 +2,8 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
-## GraalVM 25.3 (Internal Version 25.3.4)
+## GraalVM 25.3 (Internal Version 25.3.4.1)
+* (GR-77137) Added `SubstratePriorityInliningPhase` to leverage the new priority inliner added to the compiler suite.
 * (GR-77637) Fast inline execution paths and optimized spinning for `synchronized`. This generally improves locking performance, but inlined fast paths might increase image size. They can be disabled with `-H:-UseMonitorFastPath`.
 * (GR-72095) Refactored the Native Image runtime bytecode interpreter to enable tail-call threading among outlined bytecode handlers, significantly improving interpreter performance.
 * (GR-77670) Chunk up digest generation for Native Image Layers, to allow for large layer files to be checked. This makes older layer files potentially incompabile with layers created after this change.

@@ -317,7 +317,7 @@ public class CommonOptionParser {
             } else if (valueString.equals("false")) {
                 value = false;
             } else {
-                return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false'");
+                return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false': '" + valueString + "'");
             }
         } else if (optionType == String.class || optionType == Path.class) {
             Object defaultValue = optionKey.getDefaultValue();

@@ -541,7 +541,10 @@ def _check_forbidden_imports(projects, package_substrings, exceptions=None):
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
         # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
-        if t: _check_forbidden_imports([mx.project('jdk.graal.compiler')], ('hotspot', 'libgraal'))
+        exceptions = {
+            'TruffleInliningPolicy.java': 'GR-45924'
+        }
+        if t: _check_forbidden_imports([mx.project('jdk.graal.compiler')], ('hotspot', 'libgraal'), exceptions)
 
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])

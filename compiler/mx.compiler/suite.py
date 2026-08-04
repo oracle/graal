@@ -198,7 +198,8 @@ suite = {
         "jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider",
         "jdk.graal.compiler.truffle.phases.inlining.InliningPolicyProvider",
         "jdk.graal.compiler.truffle.host.TruffleHostEnvironment.Lookup",
-        "jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider"
+        "jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider",
+        "jdk.graal.compiler.phases.common.priorityinline.PolicyFactory"
       ],
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
