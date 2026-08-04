@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,7 @@ final class Target_java_lang_StackWalker {
         AbstractStackFrameSpliterator spliterator;
         if (ContinuationSupport.isSupported() && continuation != null) {
             /* Walk a yielded continuation. */
-            spliterator = new ContinuationSpliterator(walk, contScope, continuation);
+            spliterator = new ContinuationSpliterator(walk, CurrentIsolate.getCurrentThread(), contScope, continuation);
         } else {
             /* Walk the stack of the current thread. */
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
@@ -279,6 +279,7 @@ final class Target_java_lang_StackWalker {
     }
 
     final class ContinuationSpliterator extends AbstractStackFrameSpliterator {
+        private final IsolateThread walkerThread;
         private final Target_jdk_internal_vm_ContinuationScope contScope;
 
         private boolean initialized;
@@ -287,9 +288,11 @@ final class Target_java_lang_StackWalker {
         private StoredContinuation stored;
         private final InterpretedFrameData interpretedFrameData = new InterpretedFrameData();
 
-        ContinuationSpliterator(JavaStackWalk walk, Target_jdk_internal_vm_ContinuationScope contScope, Target_jdk_internal_vm_Continuation continuation) {
+        ContinuationSpliterator(JavaStackWalk walk, IsolateThread walkerThread, Target_jdk_internal_vm_ContinuationScope contScope, Target_jdk_internal_vm_Continuation continuation) {
             assert walk.isNonNull();
+            assert walkerThread.isNonNull();
             this.walk = walk;
+            this.walkerThread = walkerThread;
             this.contScope = contScope;
             this.continuation = continuation;
         }
@@ -379,6 +382,8 @@ final class Target_java_lang_StackWalker {
         protected void checkState() {
             if (walk.isNull()) {
                 throw new IllegalStateException("Continuation traversal no longer valid");
+            } else if (walkerThread != CurrentIsolate.getCurrentThread()) {
+                throw new IllegalStateException("Invalid thread");
             }
         }
 
