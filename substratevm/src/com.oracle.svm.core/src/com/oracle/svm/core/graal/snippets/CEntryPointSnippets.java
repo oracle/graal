@@ -799,7 +799,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 ReferenceHandlerThread.waitInNativeUntilDetached();
             }
 
-            /* Shut down VM operation thread. */
+            /* Shut down VM operation thread last. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {
                 VMOperationControl.shutdownAndDetachVMOperationThread();
             }

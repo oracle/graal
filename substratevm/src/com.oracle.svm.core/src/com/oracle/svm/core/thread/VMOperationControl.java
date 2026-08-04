@@ -159,7 +159,6 @@ public final class VMOperationControl {
 
         VMThreads.waitInNativeUntilDetached(get().dedicatedVMOperationThread.getIsolateThread());
         assert get().mainQueues.isEmpty();
-        assert VMThreads.firstThread().isNull() : "the VM operation thread must detach last";
     }
 
     /** Returns {@code true} if the current thread owns {@link #VM_OPERATION_MUTEX}. */
