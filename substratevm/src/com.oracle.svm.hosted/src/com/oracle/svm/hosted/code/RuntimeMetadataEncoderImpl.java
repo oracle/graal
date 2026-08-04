@@ -33,6 +33,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.COMPLETE_FLAG_
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.FIRST_ERROR_INDEX;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.HIDING_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.LEGACY_ACCESS_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NULL_OBJECT;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK;
@@ -417,7 +418,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addReflectionFieldMetadata(HostedField hostedField, ConditionalRuntimeValue<Field> conditionalReflectField) {
+    public void addReflectionFieldMetadata(HostedField hostedField, ConditionalRuntimeValue<Field> conditionalReflectField, boolean legacyAccess) {
         Field reflectField = conditionalReflectField.getValueUnconditionally();
         HostedType declaringType = hostedField.getDeclaringClass();
         String name = hostedField.getName();
@@ -450,7 +451,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         int installedLayerNumber = Modifier.isStatic(modifiers) && hostedField.hasInstalledLayerNum() ? hostedField.getInstalledLayerNum()
                         : MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
 
-        registerField(declaringType, reflectField, new FieldMetadata(dynamicAccessMetadata, declaringType, name, type, modifiers, trustedFinal, signature, annotations,
+        registerField(declaringType, reflectField, new FieldMetadata(dynamicAccessMetadata, declaringType, name, type, modifiers, trustedFinal, legacyAccess, signature, annotations,
                         typeAnnotations, offset, installedLayerNumber, deletedReason));
     }
 
@@ -1002,6 +1003,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= field.hiding ? HIDING_FLAG_MASK : 0;
         modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
         modifiers |= field.dynamicAccessMetadata.isPreserved() ? PRESERVED_FLAG_MASK : 0;
+        modifiers |= field.legacyAccess ? LEGACY_ACCESS_FLAG_MASK : 0;
         buf.putUV(modifiers);
         encodeConditions(buf, field.dynamicAccessMetadata);
 

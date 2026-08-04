@@ -45,7 +45,6 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ConfigurationFile;
-import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.SubstrateGCOptions.TLABPolicy;
@@ -386,11 +385,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 return hub;
             } else {
                 Class<?> clazz = DynamicHub.toClass(hub);
-                if (FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.preciseDynamicAccess()) {
+                if (MissingRegistrationUtils.exactReflection()) {
                     throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                }
-                if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
                 }
                 throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
                                 " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
