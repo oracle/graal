@@ -241,7 +241,6 @@ public class SVMHost extends HostVM {
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
-    private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
@@ -283,12 +282,11 @@ public class SVMHost extends HostVM {
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    MissingRegistrationSupport missingRegistrationSupport) {
+                    @SuppressWarnings("unused") MissingRegistrationSupport missingRegistrationSupport) {
         super(options, loader.getClassLoader());
         this.loader = loader;
         this.classInitializationSupport = classInitializationSupport;
         this.annotationSubstitutions = annotationSubstitutions;
-        this.missingRegistrationSupport = missingRegistrationSupport;
         this.originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
