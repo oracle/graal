@@ -48,21 +48,16 @@ public class MissingRegistrationSupport {
         return ImageSingletons.lookup(MissingRegistrationSupport.class);
     }
 
-    public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
-        return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
+    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") StackTraceElement responsibleClass) {
+        return reportMissingRegistrationErrors();
     }
 
-    public boolean reportMissingRegistrationErrors(Class<?> clazz) {
-        return reportMissingRegistrationErrors(clazz.getModule().getName(), clazz.getPackageName(), clazz.getName());
+    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") Class<?> clazz) {
+        return reportMissingRegistrationErrors();
     }
 
-    private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
+    private static boolean reportMissingRegistrationErrors() {
         /* Hosted plugins must retain the metadata needed by either runtime mode. */
         return SubstrateUtil.HOSTED || MissingRegistrationUtils.exactReflection();
-    }
-
-    private static String getPackageName(String className) {
-        int lastDot = className.lastIndexOf('.');
-        return (lastDot != -1) ? className.substring(0, lastDot) : "";
     }
 }
