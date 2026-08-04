@@ -24,38 +24,32 @@
  */
 package jdk.graal.compiler.truffle.inlining;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-import jdk.graal.compiler.duplication.util.DuplicationUtil;
-
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.duplication.util.DuplicationUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PiArrayNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.BoxNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.java.NewArrayNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
+import jdk.graal.compiler.truffle.ConstantArgumentInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
-import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
 import jdk.graal.compiler.truffle.phases.inlining.CallNode;
 import jdk.graal.compiler.truffle.phases.inlining.CallTree;
 import jdk.graal.compiler.truffle.phases.inlining.InliningPolicy;
@@ -113,12 +107,13 @@ public class AgnosticInliningPolicy implements InliningPolicy {
     protected final CoreProviders providers;
     private final ConditionalEliminationPhase conditionalElimination;
     private final PartialEscapePhase partialEscape;
+    private final CanonicalizerPhase canonicalizer;
 
     @SuppressWarnings("unused")
     AgnosticInliningPolicy(OptionValues options, CoreProviders providers) {
         this.inliningConstants = new InliningConstants(options);
         this.providers = providers;
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        this.canonicalizer = CanonicalizerPhase.create();
         this.conditionalElimination = new ConditionalEliminationPhase(canonicalizer, false);
         this.partialEscape = new PartialEscapePhase(TruffleCompilerOptions.IterativePartialEscape.getValue(options), canonicalizer, options);
     }
@@ -129,45 +124,6 @@ public class AgnosticInliningPolicy implements InliningPolicy {
 
     private static CallNodeData data(CallNode node) {
         return (CallNodeData) node.getPolicyData();
-    }
-
-    private static ValueNode[] determineCallSiteArguments(Invoke invoke) {
-        // Invokes call target is OptimizedCallTarget#callDirect
-        final CallTargetNode callDirect = invoke.callTarget();
-        // Since callDirect(Node location, Object... args)
-        // callDirect: arg[0] -> this, arg[1] -> Node, args[2] -> Object[] i.e. actual args
-        final ValueNode arg1 = callDirect.arguments().get(2);
-        boolean[] storeSeen;
-        ValueNode[] constants = null;
-        if (arg1 instanceof NewArrayNode && ((NewArrayNode) arg1).length() instanceof ConstantNode) {
-            NewArrayNode arguments = (NewArrayNode) arg1;
-            constants = new ValueNode[arguments.length().asJavaConstant().asInt()];
-            storeSeen = new boolean[constants.length];
-            for (Node usage : arguments.usages()) {
-                if (usage instanceof StoreIndexedNode && !(((StoreIndexedNode) usage).index() instanceof ConstantNode)) {
-                    // The store to an arg array does not have constant index
-                    // This can happen, e.g., because of the JS apply or call targets.
-                    return null;
-                }
-                if (!(usage instanceof StoreIndexedNode)) {
-                    continue;
-                }
-                final int index = ((StoreIndexedNode) usage).index().asJavaConstant().asInt();
-                if (storeSeen[index]) {
-                    // A specific index is stored twice, which indicates a reuse of the argument
-                    // array. The arguments are not propagated.
-                    return null;
-                }
-                storeSeen[index] = true;
-                final ValueNode value = ((StoreIndexedNode) usage).value();
-                if (value instanceof ConstantNode) {
-                    constants[index] = value;
-                } else if (value instanceof BoxNode && ((BoxNode) value).getValue() instanceof ConstantNode) {
-                    constants[index] = value;
-                }
-            }
-        }
-        return constants;
     }
 
     /**
@@ -217,27 +173,6 @@ public class AgnosticInliningPolicy implements InliningPolicy {
             castArray = (PiNode) parameterArrayUsages.first();
         }
         return castArray;
-    }
-
-    private static boolean isArgumentArrayMutated(ValueNode castArray) {
-        for (Node usage : castArray.usages()) {
-            if (usage instanceof FrameState) {
-                continue;
-            } else if (usage instanceof LoadIndexedNode) {
-                continue;
-            } else if (usage instanceof ArrayLengthNode) {
-                continue;
-            } else if (usage instanceof MethodCallTargetNode) {
-                continue;
-            } else if (usage instanceof NewFrameNode) {
-                continue;
-            } else {
-                // The argument array is used in a non-standard way,
-                // so we conservatively assume that is getting mutated.
-                return true;
-            }
-        }
-        return false;
     }
 
     private static int expansionsPerRound(int cutoffCount) {
@@ -587,8 +522,10 @@ public class AgnosticInliningPolicy implements InliningPolicy {
     }
 
     private void tryEnhancement(CallNode node) {
-        if (enhanceParameters(node)) {
+        Iterable<Node> enhancedNodes = enhanceParameters(node);
+        if (enhancedNodes != null) {
             data(node).enhanced = true;
+            canonicalizer.applyIncremental(node.getIR(), providers, enhancedNodes);
             enhance(node);
             for (CallNode child : node.getChildren()) {
                 if (child.getInvoke() == null || !child.getInvoke().isAlive()) {
@@ -598,40 +535,37 @@ public class AgnosticInliningPolicy implements InliningPolicy {
         }
     }
 
-    private boolean enhanceParameters(CallNode node) {
+    private Iterable<Node> enhanceParameters(CallNode node) {
         Invoke invoke = node.getInvoke();
         if (invoke != null && invoke.callTarget() != null) {
-            final ValueNode[] constants = determineCallSiteArguments(invoke);
+            final ConstantArgumentInfo[] constants = node.findConstantGuestArguments();
             if (constants != null) {
                 return replaceCalleeParameters(node, constants);
             }
         }
-        return false;
+        return null;
     }
 
-    private boolean replaceCalleeParameters(CallNode node, ValueNode[] constants) {
+    private Iterable<Node> replaceCalleeParameters(CallNode node, ConstantArgumentInfo[] constants) {
+        List<Node> updatedUsages = new ArrayList<>();
         if (constants == null) {
             node.getDebug().log(DebugContext.VERBOSE_LEVEL, "Constants array is null.");
-            return false;
+            return null;
         }
         // Check that the argument array is safe, where safe means that it is not modified.
         final StructuredGraph ir = node.getIR();
         final ParameterNode parameterArray = ir.getParameter(2);
         final ValueNode castArray = unproxifyArgumentArray(parameterArray);
         if (castArray == null) {
-            return false;
+            return null;
         }
-        if (isArgumentArrayMutated(castArray)) {
-            return false;
+        if (CallNode.isArgumentArrayMutated(castArray, null)) {
+            return null;
         }
 
         // Replace callee parameters.
         boolean replaced = false;
         for (Node usage : castArray.usages()) {
-            if (usage instanceof StoreIndexedNode) {
-                node.getDebug().log(DebugContext.VERBOSE_LEVEL, "Unexpected write to arguments array.");
-                return false;
-            }
             if (!(usage instanceof LoadIndexedNode && ((LoadIndexedNode) usage).index() instanceof ConstantNode)) {
                 continue;
             }
@@ -641,20 +575,20 @@ public class AgnosticInliningPolicy implements InliningPolicy {
                 // Callee has a different speculation about the number of arguments.
                 continue;
             }
-            if (constants[index] instanceof ConstantNode) {
-                ConstantNode argument = ir.addOrUniqueWithInputs(ConstantNode.forConstant(constants[index].asJavaConstant(), providers.getMetaAccess()));
-                replaced = true;
-                loadParameter.replaceAtUsages(argument);
-            } else if (constants[index] instanceof BoxNode) {
-                BoxNode box = (BoxNode) constants[index];
-                ConstantNode constant = ir.addOrUniqueWithInputs(ConstantNode.forPrimitive(box.getValue().asJavaConstant()));
-                BoxNode boxedArgument = ir.addOrUniqueWithInputs(BoxNode.create(constant, box.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess()), box.getBoxingKind()));
-                loadParameter.graph().addAfterFixed(loadParameter, boxedArgument);
-                replaced = true;
-                loadParameter.replaceAtUsages(boxedArgument);
+            if (constants[index] == null) {
+                continue;
             }
+            for (Node updatedUsage : loadParameter.usages()) {
+                updatedUsages.add(updatedUsage);
+            }
+            constants[index].replaceInGraph(loadParameter, providers.getMetaAccess());
+            replaced = true;
         }
-        return replaced;
+        if (replaced) {
+            return updatedUsages; // might be an empty list, but the graph is changed
+        } else {
+            return null;
+        }
     }
 
     private void enhance(CallNode node) {
