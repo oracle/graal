@@ -122,10 +122,12 @@ final class ReflectionRuntimeMetadata {
         }
 
         /* Field registered for reflection */
-        FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, boolean legacyAccess, String signature,
+        FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, boolean legacyAccess,
+                        String signature,
                         AnnotationValue[] annotations,
                         TypeAnnotationValue[] typeAnnotations, int offset, int installedLayerNumber, String deletedReason) {
-            this(dynamicAccessMetadata, true, false, false, null, declaringType, name, type, modifiers, trustedFinal, legacyAccess, signature, annotations, typeAnnotations, offset, installedLayerNumber,
+            this(dynamicAccessMetadata, true, false, false, null, declaringType, name, type, modifiers, trustedFinal, legacyAccess, signature, annotations, typeAnnotations, offset,
+                            installedLayerNumber,
                             deletedReason);
         }
 
