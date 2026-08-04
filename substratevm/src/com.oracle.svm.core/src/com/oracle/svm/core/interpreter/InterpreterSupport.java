@@ -105,10 +105,10 @@ public abstract class InterpreterSupport {
     public abstract boolean isInterpreterBytecodeHandlerStub(ResolvedJavaMethod method);
 
     /**
-     * Reads the current guest BCI from the Java handler frame whose caller is a generated
-     * bytecode-handler stub.
+     * Reads the current guest BCI from a bytecode-handler frame or its generated stub. Both use the
+     * same handler ABI, whose first argument is the current guest BCI.
      *
-     * @param frameInfo Java handler frame containing the current BCI as an argument
+     * @param frameInfo handler or generated-stub frame containing the current BCI as an argument
      * @param sp stack pointer of the physical frame containing {@code frameInfo}
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -119,16 +119,20 @@ public abstract class InterpreterSupport {
      * Threaded bytecode execution stores the active guest BCI in the Java handler frame, while the
      * interpreted method and {@link com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo}
      * data remain in the interpreter root frame below the generated handler stub. Translation
-     * therefore needs to carry the handler BCI across the following VM-level frame sequence:
+     * therefore normally carries the handler BCI across the following VM-level frame sequence:
      *
      * <pre>
      * Java bytecode handler -> generated handler stub -> interpreter root
      * </pre>
      *
      * The corresponding state transitions are {@code INITIAL -> BYTECODE_HANDLER_SEEN ->
-     * BYTECODE_HANDLER_STUB_SEEN -> INITIAL}. Continuation walking can capture the handler BCI
-     * before translation, in which case translation starts with {@code BYTECODE_HANDLER_SEEN} and
-     * does not read the stack pointer again.
+     * BYTECODE_HANDLER_STUB_SEEN -> INITIAL}. Stack walking on a throwing or exceptional path can
+     * observe the equivalent {@code generated handler stub -> interpreter root} sequence without
+     * the Java handler frame. The handler frame is logical inline metadata and is not guaranteed for
+     * every PC in the stub; synthetic OOME edges are one example. In that case the stub ABI is used
+     * as a fallback source for the BCI. Continuation walking can capture the handler BCI before
+     * translation, in which case translation starts with {@code BYTECODE_HANDLER_SEEN} and does not
+     * read the stack pointer again.
      *
      * The state belongs to one source-level stack walk and is cleared after the matching root is
      * translated.
@@ -167,6 +171,13 @@ public abstract class InterpreterSupport {
         private void consumeBytecodeHandlerStub(FrameInfoQueryResult frameInfo) {
             VMError.guarantee(bytecodeHandlerState == BYTECODE_HANDLER_SEEN, "Interpreter bytecode-handler stub has no matching Java handler frame");
             VMError.guarantee(bytecodeHandlerStub == frameInfo, "Interpreter bytecode-handler frame has a different generated stub caller");
+            bytecodeHandlerState = BYTECODE_HANDLER_STUB_SEEN;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private void setBytecodeHandlerStub(int bci) {
+            VMError.guarantee(bytecodeHandlerState == INITIAL, "Nested interpreter bytecode-handler stubs are not supported");
+            threadedHandlerBCI = bci;
             bytecodeHandlerState = BYTECODE_HANDLER_STUB_SEEN;
         }
 
@@ -316,7 +327,18 @@ public abstract class InterpreterSupport {
                 VMError.guarantee(state.isBytecodeHandlerSeen(), "Unexpected interpreter bytecode-handler frame");
             }
         } else if (isInterpreterBytecodeHandlerStub(frameInfo)) {
-            state.consumeBytecodeHandlerStub(frameInfo);
+            if (state.isInitial()) {
+                /*
+                 * A throwing or exceptional path may expose only the generated stub frame. Its
+                 * first ABI argument is still curBCI, so use it when the physical stack pointer is
+                 * available. A continuation or deoptimized frame has no usable SP; retain an
+                 * unknown BCI rather than attempting an unsafe read.
+                 */
+                int threadedHandlerBCI = sp.isNonNull() ? getInterpreterBytecodeHandlerBCI(frameInfo, sp) : BytecodeFrame.UNKNOWN_BCI;
+                state.setBytecodeHandlerStub(threadedHandlerBCI);
+            } else {
+                state.consumeBytecodeHandlerStub(frameInfo);
+            }
             return null;
         }
 
