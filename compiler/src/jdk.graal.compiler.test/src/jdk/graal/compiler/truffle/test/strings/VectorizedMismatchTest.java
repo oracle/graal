@@ -29,17 +29,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
-@RunWith(Parameterized.class)
 public class VectorizedMismatchTest extends TStringOpsTest<VectorizedMismatchNode> {
 
-    @Parameters(name = "{index}: offset: {1}, {3}, stride: {5}, length: {4}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -85,27 +80,23 @@ public class VectorizedMismatchTest extends TStringOpsTest<VectorizedMismatchNod
         return array;
     }
 
-    final byte[] arrayA;
-    final int offsetA;
-    final byte[] arrayB;
-    final int offsetB;
-    final int length;
-    final int stride;
-
-    public VectorizedMismatchTest(
-                    byte[] arrayA, int offsetA,
-                    byte[] arrayB, int offsetB, int length, int stride) {
+    public VectorizedMismatchTest() {
         super(VectorizedMismatchNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA;
-        this.arrayB = arrayB;
-        this.offsetB = offsetB;
-        this.length = length;
-        this.stride = stride;
     }
 
     @Test
     public void testVectorizedMismatch() {
+        testParameterized(data(), this::testVectorizedMismatchCase);
+    }
+
+    private void testVectorizedMismatchCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        int offsetA = (int) args[1];
+        byte[] arrayB = (byte[]) args[2];
+        int offsetB = (int) args[3];
+        int length = (int) args[4];
+        int stride = (int) args[5];
+
         switch (stride) {
             case 0:
                 test("vectorizedMismatch0",

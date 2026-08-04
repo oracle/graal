@@ -29,16 +29,11 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEqualsNode> {
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -60,9 +55,9 @@ public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEquals
                                 continue;
                             }
                             int fromIndexB = (contentLength * iFromIndex) + fromIndexOffset;
-                            ret.add(new Object[]{
-                                            arrayA, offsetA, lengthA, strideA, fromIndexA,
-                                            arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP});
+                            ret.add(new Object[]{DUMMY_LOCATION,
+                                            arrayA, offsetA + byteArrayBaseOffset(), lengthA, strideA, fromIndexA,
+                                            arrayB, offsetB + byteArrayBaseOffset(), lengthB, strideB, fromIndexB, null, lengthCMP});
                         }
                     }
                 }
@@ -82,40 +77,27 @@ public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEquals
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final byte[] arrayB;
-    final long offsetB;
-    final int lengthB;
-    final int strideB;
-    final int fromIndexB;
-    final int lengthCMP;
+    int strideA;
+    int strideB;
+    int lengthCMP;
 
-    public TStringOpsRegionEqualsTest(
-                    byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
-                    byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
+    public TStringOpsRegionEqualsTest() {
         super(ArrayRegionEqualsNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.arrayB = arrayB;
-        this.offsetB = offsetB + byteArrayBaseOffset();
-        this.lengthB = lengthB;
-        this.strideB = strideB;
-        this.fromIndexB = fromIndexB;
-        this.lengthCMP = lengthCMP;
+    }
+
+    protected void setTestCase(Object[] args) {
+        strideA = (int) args[4];
+        strideB = (int) args[9];
+        lengthCMP = (int) args[12];
     }
 
     @Test
     public void testRegionEquals() {
-        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
+        testParameterized(data(), this::testRegionEqualsCase);
+    }
+
+    private void testRegionEqualsCase(Object[] args) {
+        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, args);
     }
 
     @Override

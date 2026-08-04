@@ -29,16 +29,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -86,19 +81,20 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<CalcSt
         return ret;
     }
 
-    final byte[] array;
-    final long offset;
-    final int length;
-
-    public TStringOpsCalcStringAttributesBMPTest(byte[] array, int offset, int length) {
+    public TStringOpsCalcStringAttributesBMPTest() {
         super(CalcStringAttributesNode.class);
-        this.array = array;
-        this.offset = offset + byteArrayBaseOffset();
-        this.length = length;
     }
 
     @Test
     public void testBMP() {
+        testParameterized(data(), this::testBMPCase);
+    }
+
+    private void testBMPCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesBMP", byte[].class, long.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

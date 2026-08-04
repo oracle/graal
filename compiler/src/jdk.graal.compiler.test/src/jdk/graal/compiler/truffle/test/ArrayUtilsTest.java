@@ -24,7 +24,14 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static jdk.graal.compiler.truffle.test.strings.TStringTest.testParameterized;
+
 import java.util.ArrayList;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.ArrayUtils;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
@@ -37,15 +44,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.graal.compiler.truffle.test.strings.TStringTest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.ArrayUtils;
-
-@RunWith(Parameterized.class)
 public class ArrayUtilsTest extends GraalCompilerTest {
 
     @Override
@@ -74,7 +73,6 @@ public class ArrayUtilsTest extends GraalCompilerTest {
                     "VXY0",
     };
 
-    @Parameters(name = "{index}: haystack {0} fromIndex {1} maxIndex {2} needle {3}")
     public static Iterable<Object[]> data() {
         ArrayList<Object[]> parameters = new ArrayList<>();
         for (String str : strings) {
@@ -104,31 +102,31 @@ public class ArrayUtilsTest extends GraalCompilerTest {
         }
     }
 
-    private final String haystack;
-    private final int fromIndex;
-    private final int maxIndex;
-    private final String needle;
-
-    public ArrayUtilsTest(String haystack, int fromIndex, int maxIndex, String needle) {
-        this.haystack = haystack;
-        this.fromIndex = fromIndex;
-        this.maxIndex = maxIndex;
-        this.needle = needle;
-    }
-
     @Test
     public void testString() {
-        test("indexOfString", haystack, fromIndex, maxIndex, needle.toCharArray());
+        testParameterized(data(), this::testStringCase);
     }
 
     @Test
     public void testCharArray() {
-        test("indexOfCharArray", haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray());
+        testParameterized(data(), this::testCharArrayCase);
     }
 
     @Test
     public void testByteArray() {
-        test("indexOfByteArray", toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle));
+        testParameterized(data(), this::testByteArrayCase);
+    }
+
+    private void testStringCase(Object[] args) {
+        test("indexOfString", args[0], args[1], args[2], ((String) args[3]).toCharArray());
+    }
+
+    private void testCharArrayCase(Object[] args) {
+        test("indexOfCharArray", ((String) args[0]).toCharArray(), args[1], args[2], ((String) args[3]).toCharArray());
+    }
+
+    private void testByteArrayCase(Object[] args) {
+        test("indexOfByteArray", toByteArray((String) args[0]), args[1], args[2], toByteArray((String) args[3]));
     }
 
     public static int indexOfString(String haystack, int fromIndex, int maxIndex, char... needle) {

@@ -29,9 +29,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.amd64.AMD64ArrayEqualsOp;
@@ -47,22 +44,14 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEqualsTest {
 
     static final int[] lengthFilter = {1, 7, 16, 31};
 
-    final Object[] constantArgs = new Object[13];
+    Object[] constantArgs = new Object[13];
 
-    public TStringOpsRegionEqualsConstantLengthTest(
-                    byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
-                    byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
-        super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-    }
-
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
-        return TStringOpsConstantTest.reduceTestData(TStringOpsRegionEqualsTest.data(), 10, lengthFilter);
+        return TStringOpsConstantTest.reduceTestData(TStringOpsRegionEqualsTest.data(), 12, lengthFilter);
     }
 
     @Override
@@ -81,14 +70,17 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
     @Override
     @Test
     public void testRegionEquals() {
+        testParameterized(data(), this::testRegionEqualsCase);
+    }
+
+    private void testRegionEqualsCase(Object[] args) {
+        setTestCase(args);
         Assume.assumeTrue(getTarget().arch instanceof AMD64);
         Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), null, JavaKind.Byte, Stride.fromLog2(strideA), Stride.fromLog2(strideB), lengthCMP, getMaxVectorSize()));
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
         constantArgs[12] = lengthCMP;
-        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
+        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, args);
     }
 
     @Override

@@ -27,32 +27,37 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         return reduceTestData(TStringOpsCalcStringAttributesUTF32Test.data(), 2, 1, 7, 16);
     }
 
-    public TStringOpsCalcStringAttributesUTF32ConstantTest(byte[] array, int offset, int length) {
-        super(CalcStringAttributesNode.class, array, offset, length);
+    public TStringOpsCalcStringAttributesUTF32ConstantTest() {
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testUTF32() {
+        testParameterized(data(), this::testUTF32Case);
+    }
+
+    private void testUTF32Case(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
         test(getTStringOpsMethod("calcStringAttributesUTF32", byte[].class, long.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }
 
     @Test
     public void testUTF32ForeignEndian() {
+        testParameterized(data(), this::testUTF32ForeignEndianCase);
+    }
+
+    private void testUTF32ForeignEndianCase(Object[] args) {
+        setTestCase(args);
         byte[] swappedArray = byteSwapArray(arrayA, 2);
         setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
         test(getTStringOpsMethod("calcStringAttributesUTF32FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
@@ -60,6 +65,11 @@ public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsC
 
     @Test
     public void testUTF32I() {
+        testParameterized(data(), this::testUTF32ICase);
+    }
+
+    private void testUTF32ICase(Object[] args) {
+        setTestCase(args);
         int[] intArray = toIntArray(arrayA);
         long offsetIntArray = offsetA - byteArrayBaseOffset() + intArrayBaseOffset();
         setConstantArgs(DUMMY_LOCATION, intArray, offsetIntArray, lengthA);

@@ -24,30 +24,29 @@
  */
 package jdk.graal.compiler.truffle.test.strings;
 
-import static org.junit.runners.Parameterized.Parameters;
-
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfConstantTest<ArrayIndexOfNode> {
 
-    public TStringOpsIndexOfAnyConstantTest(byte[] array, int offset, int length, int stride, int fromIndex, int[] values) {
-        super(ArrayIndexOfNode.class, array, offset, length, stride, fromIndex, values);
+    public TStringOpsIndexOfAnyConstantTest() {
+        super(ArrayIndexOfNode.class);
     }
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
     public static List<Object[]> data() {
         return reduceTestData(reduceTestData(TStringOpsIndexOfAnyTest.data(), 2, 0, 1, 7, 16), 4, 0, 1);
     }
 
     @Test
     public void testIndexOfAny() {
+        testParameterized(data(), this::testIndexOfAnyCase);
+    }
+
+    private void testIndexOfAnyCase(Object[] args) {
+        setTestCase(args);
         constantArgs = new Object[7];
         constantArgs[0] = DUMMY_LOCATION;
         constantArgs[1] = arrayA;

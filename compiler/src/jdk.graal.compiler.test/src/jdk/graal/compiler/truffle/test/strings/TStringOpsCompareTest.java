@@ -29,16 +29,11 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNode> {
 
-    @Parameters(name = "{index}: offset: {1}, {4}, stride: {2}, {5}, length: {6}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -65,9 +60,9 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
                                 if (diffPos >= 0 && diffPos < lengthCMP) {
                                     writeValue(arrayB, strideB, offset + fromIndexB + diffPos, readValue(arrayA, strideA, offset + fromIndexA + diffPos) - 1);
                                 }
-                                ret.add(new Object[]{
-                                                arrayA, offsetA + (fromIndexA << strideA), strideA,
-                                                arrayB, offsetB + (fromIndexB << strideB), strideB, lengthCMP});
+                                ret.add(new Object[]{DUMMY_LOCATION,
+                                                arrayA, offsetA + ((long) fromIndexA << strideA) + byteArrayBaseOffset(), strideA,
+                                                arrayB, offsetB + ((long) fromIndexB << strideB) + byteArrayBaseOffset(), strideB, lengthCMP});
                             }
                         }
                     }
@@ -88,32 +83,28 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int strideA;
-    final byte[] arrayB;
-    final long offsetB;
-    final int strideB;
-    final int lengthCMP;
-
-    public TStringOpsCompareTest(
-                    byte[] arrayA, int offsetA, int strideA,
-                    byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
+    public TStringOpsCompareTest() {
         super(ArrayRegionCompareToNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.strideA = strideA;
-        this.arrayB = arrayB;
-        this.offsetB = offsetB + byteArrayBaseOffset();
-        this.strideB = strideB;
-        this.lengthCMP = lengthCMP;
+    }
+
+    int strideA;
+    int strideB;
+    int lengthCMP;
+
+    protected void setTestCase(Object[] args) {
+        this.strideA = (int) args[3];
+        this.strideB = (int) args[6];
+        this.lengthCMP = (int) args[7];
+
     }
 
     @Test
     public void testMemCmp() {
-        testWithNative(getMemcmpWithStride(), null, DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP);
+        testParameterized(data(), this::testMemCmpCase);
+    }
+
+    private void testMemCmpCase(Object[] args) {
+        testWithNative(getMemcmpWithStride(), null, args);
     }
 
     @Override

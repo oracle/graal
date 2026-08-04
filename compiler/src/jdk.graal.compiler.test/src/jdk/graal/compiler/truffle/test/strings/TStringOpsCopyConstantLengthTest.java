@@ -31,9 +31,6 @@ import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -42,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
@@ -53,28 +49,23 @@ import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCopyConstantLengthTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {
 
     private static final int[] LENGTH_FILTER = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64};
     private static final int ARRAY_LENGTH = 128;
 
-    private final Object[] constantArgs = new Object[5];
+    private Object[] constantArgs = new Object[5];
 
-    private final byte[] source;
-    private final int sourceIndex;
-    private final int destinationIndex;
-    private final int length;
+    private int length;
 
-    public TStringOpsCopyConstantLengthTest(byte[] source, int sourceIndex, int destinationIndex, int length) {
+    public TStringOpsCopyConstantLengthTest() {
         super(ArrayCopyWithConversionsNode.class);
-        this.source = source;
-        this.sourceIndex = sourceIndex;
-        this.destinationIndex = destinationIndex;
-        this.length = length;
     }
 
-    @Parameters(name = "{index}: sourceIndex: {1}, destinationIndex: {2}, length: {3}")
+    protected void setTestCase(Object[] args) {
+        this.length = (int) args[3];
+    }
+
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         byte[] source = initializedSource();
@@ -148,6 +139,11 @@ public class TStringOpsCopyConstantLengthTest extends TStringOpsTest<ArrayCopyWi
 
     @Test
     public void testCopy() {
+        testParameterized(data(), this::testCopyCase);
+    }
+
+    private void testCopyCase(Object[] args) {
+        setTestCase(args);
         int maxVectorSizeBytes = maxVectorSizeBytes();
         Assume.assumeTrue(ArrayCopyWithConversionsNode.canLowerConstantLengthCopy(maxVectorSizeBytes, Stride.S1, Stride.S1, false, length));
         constantArgs[4] = length;

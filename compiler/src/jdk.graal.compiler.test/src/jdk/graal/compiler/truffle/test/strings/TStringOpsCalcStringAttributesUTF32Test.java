@@ -35,16 +35,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -93,30 +88,46 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<Calc
         return ret;
     }
 
-    final byte[] array;
-    final long offset;
-    final int length;
-
-    public TStringOpsCalcStringAttributesUTF32Test(byte[] array, int offset, int length) {
+    public TStringOpsCalcStringAttributesUTF32Test() {
         super(CalcStringAttributesNode.class);
-        this.array = array;
-        this.offset = offset + byteArrayBaseOffset();
-        this.length = length;
     }
 
     @Test
     public void testUTF32() {
+        testParameterized(data(), this::testUTF32Case);
+    }
+
+    private void testUTF32Case(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF32", byte[].class, long.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 
     @Test
     public void testUTF32FE() {
+        testParameterized(data(), this::testUTF32FECase);
+    }
+
+    private void testUTF32FECase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF32FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, byteSwapArray(array, 2), offset, length);
     }
 
     @Test
     public void testUTF32I() {
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset - byteArrayBaseOffset() + intArrayBaseOffset(),
-                        length);
+        testParameterized(data(), this::testUTF32ICase);
+    }
+
+    private void testUTF32ICase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + intArrayBaseOffset();
+        int length = (int) args[2];
+
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset, length);
     }
 }

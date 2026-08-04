@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import static jdk.graal.compiler.truffle.test.strings.TStringTest.testParameterized;
+
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -32,17 +36,18 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest {
 
     Object[] constantArgs;
+    String sourceString;
+    int constantChar;
 
-    public StringIndexOfCharConstantBindingTest(String sourceString, int constantChar, int fromIndex, int toIndex) {
-        super(sourceString, constantChar, fromIndex, toIndex);
+    private void setTestCase(Object[] args) {
+        sourceString = (String) args[0];
+        constantChar = (int) args[1];
     }
 
     @Override
@@ -75,20 +80,25 @@ public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest 
     @Test
     @Override
     public void testStringIndexOfConstant() {
-        constantArgs = new Object[3];
-        constantArgs[1] = this.sourceString;
-        constantArgs[2] = this.constantChar;
-        test("testStringIndexOf", this.sourceString, this.constantChar);
+        testParameterized(data(), this::testStringIndexOfConstantCase);
     }
 
     @Test
     @Override
     public void testStringIndexOfConstantOffset() {
-        constantArgs = new Object[4];
-        constantArgs[1] = this.sourceString;
-        constantArgs[2] = this.constantChar;
-        constantArgs[3] = this.fromIndex;
-        test("testStringIndexOfOffset", this.sourceString, this.constantChar, this.fromIndex);
+        testParameterized(data(), this::testStringIndexOfConstantOffsetCase);
+    }
+
+    private void testStringIndexOfConstantCase(Object[] args) {
+        setTestCase(args);
+        constantArgs = new Object[]{null, sourceString, constantChar};
+        test("testStringIndexOf", args[0], args[1]);
+    }
+
+    private void testStringIndexOfConstantOffsetCase(Object[] args) {
+        setTestCase(args);
+        constantArgs = new Object[]{null, sourceString, constantChar, args[2]};
+        test("testStringIndexOfOffset", args[0], args[1], args[2]);
     }
 
     @Test

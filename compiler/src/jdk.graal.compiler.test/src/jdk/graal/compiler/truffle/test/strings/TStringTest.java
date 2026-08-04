@@ -47,6 +47,28 @@ import jdk.vm.ci.code.Architecture;
 
 public abstract class TStringTest extends MethodSubstitutionTest {
 
+    @FunctionalInterface
+    public interface ObjectArrayTest {
+        void run(Object[] args);
+    }
+
+    @FunctionalInterface
+    public interface ThrowingObjectArrayTest {
+        void run(Object[] args) throws Throwable;
+    }
+
+    public static void testParameterized(Iterable<Object[]> data, ObjectArrayTest test) {
+        for (Object[] args : data) {
+            test.run(args);
+        }
+    }
+
+    public static void testParameterizedThrowing(Iterable<Object[]> data, ThrowingObjectArrayTest test) throws Throwable {
+        for (Object[] args : data) {
+            test.run(args);
+        }
+    }
+
     public boolean isSupportedArchitecture() {
         return isSupportedArchitecture(getArchitecture());
     }

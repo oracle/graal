@@ -27,9 +27,6 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -39,24 +36,13 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
     public static List<Object[]> data() {
         return TStringOpsConstantTest.reduceTestData(TStringOpsCompareTest.data(), 6, 7);
     }
 
-    final Object[] constantArgs;
-
-    public TStringOpsCompareConstantTest(
-                    byte[] arrayA, int offsetA, int strideA,
-                    byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
-        super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-        constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, this.offsetA, strideA,
-                        arrayB, this.offsetB, strideB, lengthCMP};
-    }
+    Object[] constantArgs;
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
@@ -77,9 +63,12 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
     @Override
     @Test
     public void testMemCmp() {
-        test(getMemcmpWithStride(), null, DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP);
+        testParameterized(data(), this::testMemCmpCase);
+    }
+
+    private void testMemCmpCase(Object[] args) {
+        setTestCase(args);
+        test(getMemcmpWithStride(), null, args);
     }
 
     @Override

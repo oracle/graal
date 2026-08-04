@@ -29,9 +29,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
@@ -44,35 +41,17 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOf2ConsecutiveTablesForeignEndianTest extends TStringOpsTest<ArrayIndexOfNode> {
 
-    private final Object[] constantArgs = new Object[7];
+    private Object[] constantArgs = new Object[7];
+    private int strideA;
 
-    @Parameters(name = "{index}: offset: {0}, length: {1}, stride: {2}, fromIndex: {3}, tableCase: {4}, case: {5}, sequence: {7}")
     public static List<Object[]> data() {
         return TStringOpsIndexOfConsecutiveTablesTestData.data(1, 2);
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final byte[] tables;
-
-    public TStringOpsIndexOf2ConsecutiveTablesForeignEndianTest(int offsetA, int lengthA, int strideA, int fromIndexA,
-                    TStringOpsIndexOfConsecutiveTablesTestData.TableCase tableCase,
-                    TStringOpsIndexOfConsecutiveTablesTestData.CaseSpec caseSpec,
-                    int sequenceIndex,
-                    @SuppressWarnings("unused") String sequenceLabel) {
+    public TStringOpsIndexOf2ConsecutiveTablesForeignEndianTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = TStringOpsIndexOfConsecutiveTablesTestData.createArray(strideA, offsetA, lengthA, fromIndexA, caseSpec, tableCase.sequence(sequenceIndex));
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.tables = tableCase.tables();
     }
 
     @Override
@@ -90,6 +69,21 @@ public class TStringOpsIndexOf2ConsecutiveTablesForeignEndianTest extends TStrin
 
     @Test
     public void testIndexOf2ConsecutiveTablesForeignEndian() {
+        testParameterized(data(), args -> {
+            this.strideA = (int) args[2];
+            testIndexOf2ConsecutiveTablesForeignEndianCase(args);
+        });
+    }
+
+    private void testIndexOf2ConsecutiveTablesForeignEndianCase(Object[] args) {
+        byte[] arrayA = TStringOpsIndexOfConsecutiveTablesTestData.createArray((int) args[2], (int) args[0], (int) args[1], (int) args[3],
+                        (TStringOpsIndexOfConsecutiveTablesTestData.CaseSpec) args[5], ((TStringOpsIndexOfConsecutiveTablesTestData.TableCase) args[4]).sequence((int) args[6]));
+        long offsetA = (int) args[0] + byteArrayBaseOffset();
+        int lengthA = (int) args[1];
+        int strideA = (int) args[2];
+        int fromIndexA = (int) args[3];
+        byte[] tables = ((TStringOpsIndexOfConsecutiveTablesTestData.TableCase) args[4]).tables();
+
         Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveTablesForeignEndian));
         constantArgs[4] = strideA;
         testWithNative(getIndexOf2ConsecutiveTablesForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, tables);

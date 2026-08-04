@@ -26,18 +26,18 @@ package jdk.graal.compiler.truffle.test;
 
 import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
 import static com.oracle.truffle.api.test.ArrayUtilsTest.toCharArray;
+import static jdk.graal.compiler.truffle.test.strings.TStringTest.testParameterized;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.ArrayUtils;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.ArrayUtils;
+import java.util.Arrays;
 
-@RunWith(Parameterized.class)
 public class ArrayUtilsIndexOfWithMaskTest extends GraalCompilerTest {
 
     @Override
@@ -46,38 +46,35 @@ public class ArrayUtilsIndexOfWithMaskTest extends GraalCompilerTest {
         super.registerInvocationPlugins(invocationPlugins);
     }
 
-    @Parameters(name = "{index}: haystack \"{0}\" fromIndex {1} maxIndex {2} needle \"{3}\" mask \"{4}\"")
     public static Iterable<Object[]> data() {
-        return com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.data();
-    }
-
-    private final String haystack;
-    private final int fromIndex;
-    private final int length;
-    private final String needle;
-    private final String mask;
-
-    public ArrayUtilsIndexOfWithMaskTest(String haystack, int fromIndex, int length, String needle, String mask, @SuppressWarnings("unused") int expectedB, @SuppressWarnings("unused") int expectedC) {
-        this.haystack = haystack;
-        this.fromIndex = fromIndex;
-        this.length = length;
-        this.needle = needle;
-        this.mask = mask;
+        return com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.data().stream().map(args -> Arrays.copyOf(args, args.length - 2)).toList();
     }
 
     @Test
     public void testByteArray() {
-        test("indexOfWithORMaskByteArray", haystack, fromIndex, length, needle, mask);
+        testParameterized(data(), this::testByteArrayCase);
     }
 
     @Test
     public void testCharArray() {
-        test("indexOfWithORMaskCharArray", haystack, fromIndex, length, needle, mask);
+        testParameterized(data(), this::testCharArrayCase);
     }
 
     @Test
     public void testString() {
-        test("indexOfWithORMaskString", haystack, fromIndex, length, needle, mask);
+        testParameterized(data(), this::testStringCase);
+    }
+
+    private void testByteArrayCase(Object[] args) {
+        test("indexOfWithORMaskByteArray", args);
+    }
+
+    private void testCharArrayCase(Object[] args) {
+        test("indexOfWithORMaskCharArray", args);
+    }
+
+    private void testStringCase(Object[] args) {
+        test("indexOfWithORMaskString", args);
     }
 
     public static int indexOfWithORMaskByteArray(String haystack, int fromIndex, int maxIndex, String needle, String mask) {

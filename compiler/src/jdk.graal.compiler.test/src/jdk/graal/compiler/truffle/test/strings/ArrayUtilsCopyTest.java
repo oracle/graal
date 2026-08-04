@@ -28,34 +28,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.ArrayUtils;
 
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsSingleKillNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class ArrayUtilsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsSingleKillNode> {
 
     protected static final int ARRAY_LENGTH = 128;
 
-    protected final int[] source;
-    protected final int sourceIndex;
-    protected final int destinationIndex;
-    protected final int length;
+    protected int length;
 
-    public ArrayUtilsCopyTest(int[] source, int sourceIndex, int destinationIndex, int length) {
+    public ArrayUtilsCopyTest() {
         super(ArrayCopyWithConversionsSingleKillNode.class);
-        this.source = source;
-        this.sourceIndex = sourceIndex;
-        this.destinationIndex = destinationIndex;
-        this.length = length;
     }
 
-    @Parameters(name = "{index}: sourceIndex: {1}, destinationIndex: {2}, length: {3}")
+    protected void setTestCase(Object[] args) {
+        this.length = (int) args[3];
+    }
+
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int[] source = initializedSource();
@@ -85,8 +77,13 @@ public class ArrayUtilsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsS
 
     @Test
     public void testCopy() {
+        testParameterized(data(), this::testCopyCase);
+    }
+
+    private void testCopyCase(Object[] args) {
+        setTestCase(args);
         ArgSupplier destination = ArrayUtilsCopyTest::initializedDestination;
-        test(getArrayCopyS4(), null, source, sourceIndex, destination, destinationIndex, length);
+        test(getArrayCopyS4(), null, args[0], args[1], destination, args[2], args[3]);
     }
 
     protected static int[] initializedDestination() {

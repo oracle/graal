@@ -28,16 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayIndexOfNode> {
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -85,31 +80,24 @@ public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayInd
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final int v0;
-    final int v1;
-    final int mask0;
-    final int mask1;
-
-    public TStringOpsIndexOfTwoConsecutiveTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
+    public TStringOpsIndexOfTwoConsecutiveTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.v0 = v0;
-        this.v1 = v1;
-        this.mask0 = mask0;
-        this.mask1 = mask1;
     }
 
     @Test
     public void testIndexOfTwoConsecutive() {
+        testParameterized(data(), this::testIndexOfTwoConsecutiveCase);
+    }
+
+    private void testIndexOfTwoConsecutiveCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+        int v0 = (int) args[5];
+        int v1 = (int) args[6];
+
         testWithNative(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
     }
 }

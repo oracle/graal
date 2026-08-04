@@ -27,26 +27,26 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesBMPConstantTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         return reduceTestData(TStringOpsCalcStringAttributesBMPTest.data(), 2, 1, 7, 16);
     }
 
-    public TStringOpsCalcStringAttributesBMPConstantTest(byte[] array, int offset, int length) {
-        super(CalcStringAttributesNode.class, array, offset, length);
+    public TStringOpsCalcStringAttributesBMPConstantTest() {
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testBMP() {
+        testParameterized(data(), this::testBMPCase);
+    }
+
+    private void testBMPCase(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
         test(getTStringOpsMethod("calcStringAttributesBMP", byte[].class, long.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }

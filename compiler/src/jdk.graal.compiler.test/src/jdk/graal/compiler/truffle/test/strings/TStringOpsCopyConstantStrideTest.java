@@ -24,14 +24,10 @@
  */
 package jdk.graal.compiler.truffle.test.strings;
 
-import static org.junit.runners.Parameterized.Parameters;
-
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -40,19 +36,10 @@ import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCopyConstantStrideTest extends TStringOpsCopyTest {
 
     Object[] constantArgs = new Object[10];
 
-    public TStringOpsCopyConstantStrideTest(
-                    Object arrayA,
-                    int offsetA, int strideA,
-                    int offsetB, int strideB, int lengthCPY) {
-        super(arrayA, offsetA, strideA, offsetB, strideB, lengthCPY);
-    }
-
-    @Parameters(name = "{index}: args: {1}, {2}, {3}, {4}, {5}")
     public static List<Object[]> data() {
         return TStringOpsCopyTest.data();
     }
@@ -73,6 +60,11 @@ public class TStringOpsCopyConstantStrideTest extends TStringOpsCopyTest {
     @Override
     @Test
     public void testCopy() {
+        testParameterized(data(), this::testCopyCase);
+    }
+
+    private void testCopyCase(Object[] args) {
+        setTestCase(args);
         ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << strideB) + 128)];
         constantArgs[3] = strideA;
         constantArgs[7] = strideB;

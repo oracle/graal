@@ -30,15 +30,11 @@ import java.util.Arrays;
 
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCodepointIndexToByteIndexUTF16Test extends TStringOpsTest<StringCodepointIndexToByteIndexNode> {
 
     private static final byte[][] PATTERNS = {
@@ -53,7 +49,6 @@ public class TStringOpsCodepointIndexToByteIndexUTF16Test extends TStringOpsTest
         return new StringBuilder().appendCodePoint(codepoint).toString().getBytes(StandardCharsets.UTF_16LE);
     }
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static Iterable<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -106,21 +101,21 @@ public class TStringOpsCodepointIndexToByteIndexUTF16Test extends TStringOpsTest
         return ret;
     }
 
-    private final byte[] array;
-    private final long offset;
-    private final int length;
-    private final int index;
-
-    public TStringOpsCodepointIndexToByteIndexUTF16Test(byte[] array, int offset, int length, int index) {
+    public TStringOpsCodepointIndexToByteIndexUTF16Test() {
         super(StringCodepointIndexToByteIndexNode.class);
-        this.array = array;
-        this.offset = offset + byteArrayBaseOffset();
-        this.length = length;
-        this.index = index;
     }
 
     @Test
     public void testUtf16() {
+        testParameterized(data(), this::testUtf16Case);
+    }
+
+    private void testUtf16Case(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+        int index = (int) args[3];
+
         Assume.assumeTrue(getArchitecture() instanceof AMD64);
         ResolvedJavaMethod method = getTStringOpsMethod("codePointIndexToByteIndexUTF16Valid", byte[].class, long.class, int.class, int.class);
         testWithNative(method, null, DUMMY_LOCATION, array, offset, length, index);
@@ -128,6 +123,15 @@ public class TStringOpsCodepointIndexToByteIndexUTF16Test extends TStringOpsTest
 
     @Test
     public void testUtf16FE() {
+        testParameterized(data(), this::testUtf16FECase);
+    }
+
+    private void testUtf16FECase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+        int index = (int) args[3];
+
         Assume.assumeTrue(getArchitecture() instanceof AMD64);
         ResolvedJavaMethod method = getTStringOpsMethod("codePointIndexToByteIndexUTF16FEValid", byte[].class, long.class, int.class, int.class);
         testWithNative(method, null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length, index);

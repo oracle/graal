@@ -28,16 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNode> {
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, values: {5}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -95,34 +90,43 @@ public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNo
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final int[] values;
-
-    public TStringOpsIndexOfAnyRangeTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int[] values) {
+    public TStringOpsIndexOfAnyRangeTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.values = values;
     }
 
     @Test
     public void testIndexOfAnyRange() {
-        test(getIndexOfAnyIntRangeIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, clampedValues());
+        testParameterized(data(), this::testIndexOfAnyRangeCase);
+    }
+
+    private void testIndexOfAnyRangeCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+
+        test(getIndexOfAnyIntRangeIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, clampedValues(args));
     }
 
     @Test
     public void testIndexOfAnyRangeForeignEndian() {
-        test(getIndexOfAnyIntRangeForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, clampedValues());
+        testParameterized(data(), this::testIndexOfAnyRangeForeignEndianCase);
     }
 
-    private int[] clampedValues() {
+    private void testIndexOfAnyRangeForeignEndianCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+
+        test(getIndexOfAnyIntRangeForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, clampedValues(args));
+    }
+
+    private int[] clampedValues(Object[] args) {
+        int strideA = (int) args[3];
+        int[] values = (int[]) args[5];
         int[] valuesI = new int[values.length];
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];

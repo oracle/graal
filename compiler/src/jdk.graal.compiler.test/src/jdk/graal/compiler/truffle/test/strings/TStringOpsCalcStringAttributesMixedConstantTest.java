@@ -52,11 +52,12 @@ public class TStringOpsCalcStringAttributesMixedConstantTest extends TStringOpsC
     }
 
     public TStringOpsCalcStringAttributesMixedConstantTest() {
-        super(CalcStringAttributesNode.class, new byte[]{'a', 'b', 'c'}, 0, 3);
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testMixed() throws Throwable {
+        setTestCase(new Object[]{new byte[]{'a', 'b', 'c'}, 0, 3});
         setConstantArgs(arrayA, offsetA, lengthA);
         runTestMethod(arrayA, offsetA, lengthA, false);
         runTestMethod(arrayA, offsetA, 1, true);
