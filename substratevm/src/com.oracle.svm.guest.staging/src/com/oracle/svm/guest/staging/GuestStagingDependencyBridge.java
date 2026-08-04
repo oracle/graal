@@ -202,6 +202,13 @@ public interface GuestStagingDependencyBridge {
     void enablePreviewFeatures();
 
     /**
+     * Returns whether runtime class loading is supported.
+     * <p>
+     * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
+     */
+    boolean isRuntimeClassLoadingSupported();
+
+    /**
      * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
      * <p>
      * Remove this method when runtime class loading (aka Crema) options move to guest/staging.

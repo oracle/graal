@@ -92,7 +92,8 @@ import jdk.internal.module.ModuleReferenceImpl;
 final class RuntimeBootModuleLayerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
+        // Runtime boot layer augmentation is only included when class loading is supported.
+        return RuntimeClassLoading.isSupported() && ImageLayerBuildingSupport.firstImageBuild();
     }
 
     @Override

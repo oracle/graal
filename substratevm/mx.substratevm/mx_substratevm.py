@@ -390,6 +390,23 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
+        # Information-only options terminate before an image path is available.
+        info_only_options = {
+            '--help',
+            '--help-extra',
+            '--version',
+            '--print-options',
+            '--expert-options',
+            '--expert-options-all',
+            '--expert-options-detail',
+        }
+        if any(
+                arg in info_only_options
+                or arg.startswith('--print-options=')
+                or arg.startswith('--expert-options-detail=')
+                for arg in all_args
+        ):
+            return _native_image(all_args, **kwargs)
         path, name = query_native_image(all_args)
         image = join(path, name)
         _native_image(all_args, **kwargs)
@@ -483,6 +500,13 @@ def truffle_unittest_task(extra_build_args=None):
 
 
 def svm_gate_body(args, tasks):
+    with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
+        if t:
+            hellomodule(args.extra_image_builder_arguments)
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:-LegacyJavaOptionMode']))
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:-LegacyJavaOptionMode']))
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:-LegacyJavaOptionMode']))
+
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -630,12 +654,6 @@ def svm_gate_body(args, tasks):
                       * adopting mx {LIBCONTAINER_NAMESPACE} to handle the new case
                       * disable this gate if there is a good reason for it
                     """))
-
-    with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
-        if t:
-            hellomodule(args.extra_image_builder_arguments)
-            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:-LegacyJavaOptionMode']))
-            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:-LegacyJavaOptionMode']))
 
     with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
@@ -2712,6 +2730,45 @@ def hellomodule(args):
     builds a Hello, World! native image from a Java module.
     """
 
+    def _bool_option_value(name, defaults):
+        on = f"-H:+{name}"
+        off = f"-H:-{name}"
+        values = [arg for arg in args if arg in (on, off)]
+        return values[-1] == on if values else defaults[name]
+
+    def _assert_runtime_option_rejected(image, option):
+        stdout = mx.LinesOutputCapture()
+        stderr = mx.LinesOutputCapture()
+        returncode = mx.run([image, option], out=stdout, err=stderr, nonZeroIsFatal=False)
+        if returncode == 0:
+            mx.abort(f"Expected {option} to be rejected by the non-Crema image")
+        output = '\n'.join(stdout.lines + stderr.lines)
+        expected = f"The option '{option}' is not supported by Native Image without runtime class loading"
+        if expected not in output:
+            mx.abort(f"Expected substring in output for {option} was not found:\nsubstring: {expected}\noutput: {output}")
+
+    def _hosted_boolean_option_defaults(native_image):
+        """
+        Parses output of `--expert-options-all` to collect the defaults for each boolean hosted option.
+        """
+        defaults = {}
+        lines = mx.LinesOutputCapture()
+        # Force UTF-8 stream encodings so mx can decode the ± boolean marker on Windows.
+        native_image(['-J-Dfile.encoding=UTF-8', '-J-Dstdout.encoding=UTF-8', '-J-Dstderr.encoding=UTF-8', '--expert-options-all'], out=lines, err=lines)
+        option_pattern = re.compile(r'^\s*-H:±([A-Za-z0-9_]+)\b')
+        default_pattern = re.compile(r'.* Default: ([+\-]) ')
+        current_option = None
+        for line in lines.lines:
+            option_match = option_pattern.match(line)
+            if option_match:
+                current_option = option_match.group(1)
+            default_match = default_pattern.search(line)
+            if current_option and default_match:
+                defaults[current_option] = default_match.group(1) == '+'
+                current_option = None
+        return defaults
+
+
     # Build a helloworld Java module with maven
     module_path = []
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.lib')
@@ -2725,9 +2782,9 @@ def hellomodule(args):
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     runtime_module_path.append(join(proj_dir, 'target', 'hello-runtime-1.0-SNAPSHOT.jar'))
     with native_image_context(hosted_assertions=False) as native_image:
+        boolean_option_defaults = _hosted_boolean_option_defaults(native_image)
         module_path_sep = ';' if mx.is_windows() else ':'
-        runtime_class_loading = any('RuntimeClassLoading' in arg for arg in args)
-        class_loader_lookup = runtime_class_loading or any('ClassForNameRespectsClassLoader' in arg for arg in args)
+        runtime_class_loading = _bool_option_value('RuntimeClassLoading', boolean_option_defaults)
 
         def moduletest_args(modules, extra_args=None):
             return [
@@ -2745,7 +2802,7 @@ def hellomodule(args):
             # On Windows, java is always an .exe, never a .cmd symlink
             join(_vm_home(None), 'bin', mx.exe_suffix('java')),
             ] + moduletest_run_args)
-        if class_loader_lookup:
+        if runtime_class_loading:
             mx.log('Running module-tests on JVM with runtime module path:')
             runtime_module_path_jvm_args = ['-Dsvm.test.expectRuntimeModulePathFallback=true']
             if runtime_class_loading:
@@ -2767,14 +2824,17 @@ def hellomodule(args):
         )
         mx.log('Running image ' + built_image + ' built from module without runtime module path:')
         mx.run([built_image])
-        if class_loader_lookup:
+        if runtime_class_loading:
             mx.log('Running image ' + built_image + ' built from module with runtime module path:')
             runtime_module_path_args = [built_image, '-Dsvm.test.expectRuntimeModulePathFallback=true']
-            if runtime_class_loading:
-                runtime_module_path_args.append('-Dsvm.test.expectRuntimeDefinedModuleLayer=true')
-                runtime_module_path_args.append('-Djava.home=' + _vm_home(None))
+            runtime_module_path_args.append('-Dsvm.test.expectRuntimeDefinedModuleLayer=true')
+            runtime_module_path_args.append('-Djava.home=' + _vm_home(None))
             runtime_module_path_args.append('--module-path=' + module_path_sep.join(runtime_module_path))
             mx.run(runtime_module_path_args)
+        elif not _bool_option_value('LegacyJavaOptionMode', boolean_option_defaults):
+            # Verify that Crema-only runtime options fail clearly in a non-Crema image.
+            _assert_runtime_option_rejected(built_image, '--module-path=unused')
+            _assert_runtime_option_rejected(built_image, '-Xbootclasspath/a:unused')
 
 
 @mx.command(suite.name, 'cinterfacetutorial', 'Runs the ')
