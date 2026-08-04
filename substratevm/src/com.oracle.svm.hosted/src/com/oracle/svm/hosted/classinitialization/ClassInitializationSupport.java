@@ -156,6 +156,14 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
 
     boolean configurationSealed;
 
+    /**
+     * Type-reached tracking is an input to class-initializer simulation. Adding a tracking
+     * requirement can make a class initializer that was previously considered simulatable no
+     * longer simulatable. Since published simulation results and decoded graphs are not
+     * invalidated, this input must not change once analysis has started.
+     */
+    private boolean typeReachedTrackingSealed;
+
     final ImageClassLoader loader;
 
     /**
@@ -181,6 +189,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      */
     public synchronized void sealConfiguration() {
         setConfigurationSealed(true);
+        typeReachedTrackingSealed = true;
         if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
             allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
@@ -204,8 +213,11 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     public synchronized void withUnsealedConfiguration(Runnable action) {
         var previouslySealed = configurationSealed;
         setConfigurationSealed(false);
-        action.run();
-        setConfigurationSealed(previouslySealed);
+        try {
+            action.run();
+        } finally {
+            setConfigurationSealed(previouslySealed);
+        }
     }
 
     private void setConfigurationSealed(boolean sealed) {
@@ -648,13 +660,13 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         }
     }
 
-    public void addForTypeReachedTracking(Class<?> clazz) {
+    public synchronized void addForTypeReachedTracking(Class<?> clazz) {
         if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
             LogUtils.info("Detected 'typeReached' on interface type without default methods: %s", clazz.getName());
         }
 
         if (!isAlwaysReached(clazz)) {
-            UserError.guarantee(!configurationSealed || typesRequiringReachability.contains(clazz),
+            UserError.guarantee(!typeReachedTrackingSealed || typesRequiringReachability.contains(clazz),
                             "It is not possible to register types for reachability tracking after the analysis has started if they were not registered before analysis started. Trying to register: %s",
                             clazz.getName());
             typesRequiringReachability.add(clazz);
