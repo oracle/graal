@@ -924,6 +924,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 ResolvedJavaType targetReturnType = interceptParameterType(annotatedMethod.getSignature().getReturnType(annotatedMethod.getDeclaringClass()), annotatedMethod.getDeclaringClass());
                 ResolvedJavaMethod originalMethod = JVMCIReflectionUtil.getDeclaredMethod(true, originalType, originalName, targetReturnType, originalParams);
                 if (originalMethod == null) {
+                    ResolvedJavaMethod originalMethodWithDifferentReturnType = JVMCIReflectionUtil.getUniqueDeclaredMethod(true, originalType, originalName, originalParams);
+                    guarantee(originalMethodWithDifferentReturnType == null,
+                                    "Return type mismatch:%n    %s%n    %s", annotatedMethod, originalMethodWithDifferentReturnType);
                     throw UserError.abort("Could not find target method: %s", annotatedMethod);
                 }
 
