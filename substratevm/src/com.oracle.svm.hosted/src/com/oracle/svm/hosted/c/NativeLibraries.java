@@ -472,8 +472,14 @@ public final class NativeLibraries {
         }
     }
 
-    public void addStaticJniLibrary(String library, String... dependencies) {
+    public void addStaticJniLibrary(String library, List<String> allDeps) {
         jniStaticLibraries.add(library);
+        jniStaticLibrariesAndDependencies.add(library);
+        jniStaticLibrariesAndDependencies.addAll(allDeps);
+        dependencyGraph.add(library, allDeps);
+    }
+
+    public List<String> getLibraryDependencies(String library, String... dependencies) {
         List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
         /* "jvm" is a basic dependence for static JNI libs */
         allDeps.add("jvm");
@@ -481,21 +487,21 @@ public final class NativeLibraries {
             /* "nio" implicitly depends on "net" */
             allDeps.add("net");
         }
-        jniStaticLibrariesAndDependencies.add(library);
-        jniStaticLibrariesAndDependencies.addAll(allDeps);
-        dependencyGraph.add(library, allDeps);
+        return allDeps;
     }
+
+    private final Map<String, PotentialBuiltinJNILibrary> preregisteredLibraries = new HashMap<>();
 
     /**
      * Keeps the name and dependencies of a prepared JNI library together across feature phases.
      */
     public static final class PotentialBuiltinJNILibrary {
         private final String library;
-        private final String[] dependencies;
+        private final List<String> dependencies;
 
-        private PotentialBuiltinJNILibrary(String library, String[] dependencies) {
+        private PotentialBuiltinJNILibrary(String library, List<String> dependencies) {
             this.library = library;
-            this.dependencies = dependencies.clone();
+            this.dependencies = dependencies;
         }
 
         /**
@@ -505,12 +511,9 @@ public final class NativeLibraries {
          */
         public static PotentialBuiltinJNILibrary create(String library, String... dependencies) {
             addBuiltinNatives(library);
-            addBuiltinNatives("jvm");
-            if (library.equals("nio")) {
-                /* "nio" implicitly depends on "net" */
-                addBuiltinNatives("net");
-            }
-            return new PotentialBuiltinJNILibrary(library, dependencies);
+            List<String> allDeps = singleton().getLibraryDependencies(library, dependencies);
+            allDeps.forEach(PotentialBuiltinJNILibrary::addBuiltinNatives);
+            return new PotentialBuiltinJNILibrary(library, allDeps);
         }
 
         private static void addBuiltinNatives(String library) {
@@ -519,10 +522,18 @@ public final class NativeLibraries {
 
         public void preregisterUninitialized() {
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(library);
+            singleton().preregisteredLibraries.put(library, this);
         }
 
         public void linkLibrary() {
             singleton().addStaticJniLibrary(library, dependencies);
+        }
+
+        public static void linkLibraryIfPreregistered(String library) {
+            if (singleton().preregisteredLibraries.containsKey(library)) {
+                assert NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(library);
+                singleton().preregisteredLibraries.get(library).linkLibrary();
+            }
         }
 
         public void preregisterUninitializedAndAddLibrary() {

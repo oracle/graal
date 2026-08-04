@@ -67,9 +67,9 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
-import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
-import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
+import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -198,9 +198,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
          * If a library is in our list of static standard libraries, add the library to the linker
          * command.
          */
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
-            nativeLibraries.addStaticJniLibrary(libname);
-        }
+        NativeLibraries.PotentialBuiltinJNILibrary.linkLibraryIfPreregistered(libname);
     }
 
     public boolean isCurrentLayerRegisteredLibrary(String libname) {
