@@ -1681,6 +1681,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             .collect(Collectors.toUnmodifiableSet());
         }
     }
+
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, ConfigurationMemberAccessibility accessibility, Field field) {
             reflectionDataBuilder.registerField(unconditional(), accessibility, false, GuestAccess.get().lookupField(field));
