@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,6 +85,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -239,7 +240,12 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         public DebugContext getDebug(OptionValues options, List<DebugDumpHandlersFactory> factories) {
-            return new DebugContext.Builder(options, factories).description(getDescription()).build();
+            /*
+             * Disable the optimization log during hosted preparation because it contains
+             * hosted-only state that cannot be serialized into the image heap.
+             */
+            OptionValues hostedGraphOptions = options.derive(DebugOptions.OptimizationLog, null);
+            return new DebugContext.Builder(hostedGraphOptions, factories).description(getDescription()).build();
         }
 
         @Override
