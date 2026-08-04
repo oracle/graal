@@ -681,6 +681,13 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
 
         protected AMD64ReturnOp emitReturnOp(AllocatableValue operand, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
+            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                SubstrateCallingConvention convention = (SubstrateCallingConvention) getResult().getCallingConvention();
+                SubstrateCallingConventionType conventionType = (SubstrateCallingConventionType) convention.getType();
+                boolean validateReturn = !(conventionType.nativeABI() && SubstrateControlFlowIntegrity.singleton().getCFIMode() == SubstrateControlFlowIntegrity.CFIOptions.SW_NONATIVE);
+                boolean restoreScratchRegisters = getResult().getMethod().hasCalleeSavedRegisters() || conventionType.usesReturnBuffer() || additionalReturns.length > 0;
+                return new AMD64CFIReturnOp(operand, validateReturn, restoreScratchRegisters, tailCallTarget, additionalReturns);
+            }
             return new AMD64ReturnOp(operand, tailCallTarget, additionalReturns);
         }
 
@@ -2131,6 +2138,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public AMD64MacroAssembler createAssembler(OptionValues options) {
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            return new AMD64SoftwareCFISubstrateMacroAssembler(getTarget(), options, true);
+        }
         return new SubstrateAMD64MacroAssembler(getTarget(), options, true);
     }
 

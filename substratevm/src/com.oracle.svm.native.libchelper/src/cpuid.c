@@ -706,7 +706,8 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
-  features->fPACA = 0;
+  // PAC is currently not supported by HotSpot on Darwin/AArch64.
+  features->fPACA = !!(cpu_has("hw.optional.arm.FEAT_PAuth"));
 }
 
 /*

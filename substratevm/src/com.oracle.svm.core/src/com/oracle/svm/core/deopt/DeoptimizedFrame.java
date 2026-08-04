@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -112,9 +113,6 @@ public abstract class DeoptimizedFrame {
         protected Entry(int offset) {
             this.offset = offset;
         }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected abstract void write(Deoptimizer.TargetContent targetContent);
     }
 
     /**
@@ -123,6 +121,10 @@ public abstract class DeoptimizedFrame {
     abstract static class ConstantEntry extends Entry {
 
         protected final JavaConstant constant;
+
+        /** Writes this entry into the target frame buffer. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected abstract void write(Deoptimizer.TargetContent targetContent);
 
         protected static ConstantEntry factory(int offset, JavaConstant constant, FrameInfoQueryResult frameInfo) {
             switch (constant.getJavaKind()) {
@@ -216,10 +218,23 @@ public abstract class DeoptimizedFrame {
             this.returnAddress = returnAddress;
         }
 
-        @Override
+        /**
+         * Writes this return address into the target frame buffer, encoding it for its eventual
+         * stack location.
+         *
+         * @param targetContent buffer receiving the return address
+         * @param targetContentDestination address where the buffer will be installed
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected void write(Deoptimizer.TargetContent targetContent) {
-            targetContent.writeLong(offset, returnAddress);
+        protected void write(Deoptimizer.TargetContent targetContent, Pointer targetContentDestination) {
+            /*
+             * Encode the return address for its final stack location before writing it to the
+             * temporary buffer. On AArch64 with pointer authentication, the encoding uses the
+             * stack pointer immediately above the return-address slot.
+            */
+            Pointer returnAddressSp = targetContentDestination.add(Word.unsigned(offset + FrameAccess.returnAddressSize()));
+            CodePointer encodedReturnAddress = FrameAccess.singleton().encodeReturnAddress(returnAddressSp, Word.pointer(returnAddress));
+            targetContent.writeWord(offset, encodedReturnAddress);
         }
 
         public long getReturnAddress() {

@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -217,6 +218,18 @@ import jdk.vm.ci.meta.Value;
 
 public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<SubstrateAArch64MacroAssembler> implements LIRGenerationProvider {
     public static final Register HIDDEN_ARGUMENT_REGISTER = AArch64.r12;
+
+    protected static void emitCFIPrologue(AArch64MacroAssembler masm) {
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            masm.paciasp();
+        }
+    }
+
+    protected static void emitCFIEpilogue(AArch64MacroAssembler masm) {
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            masm.autiasp();
+        }
+    }
 
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
@@ -1125,6 +1138,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 });
             }
 
+            emitCFIPrologue(masm);
             makeFrameWithoutRuntimeCodeOffset(crb, masm, totalFrameSize, frameSize);
         }
 
@@ -1189,6 +1203,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 }
             }
 
+            emitCFIEpilogue(masm);
             crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
         }
 
@@ -1318,6 +1333,11 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
             /* Reread the fp and lr registers from the overwritten. Sets SP to newSp (+0). */
             masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 16));
+            /*
+             * The common epilogue authenticated the stub's original lr before this load. Authenticate
+             * the reconstructed return address with newSp before transferring to the deopt target.
+             */
+            emitCFIEpilogue(masm);
         }
     }
 
