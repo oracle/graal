@@ -1132,7 +1132,7 @@ public class HotSpotGraphBuilderPlugins {
 
         @Override
         public boolean isApplicable(Architecture arch) {
-            return IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(arch);
+            return IntegerPolynomialAssignNode.isSupported(arch);
         }
     }
 

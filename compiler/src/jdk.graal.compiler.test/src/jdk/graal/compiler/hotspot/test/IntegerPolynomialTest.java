@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,7 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
 
         Random rnd = getRandomInstance();
 
-        Assume.assumeTrue("IntegerPolynomialAssignNode not supported", IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(getArchitecture()));
+        Assume.assumeTrue("IntegerPolynomialAssignNode not supported", IntegerPolynomialAssignNode.isSupported(getArchitecture()));
         Assume.assumeTrue("IntegerPolynomialP256MontgomeryMultNode not supported",
                         IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(getArchitecture()));
 
@@ -112,30 +112,33 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
-    public void testAMD64FeaturePredicates() {
-        AMD64 minFeatures = amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA);
+    public void testAMD64FeaturePredicatesAssign() {
+        AMD64 minFeatures = amd64With(IntegerPolynomialAssignNode.minFeaturesAMD64());
         AMD64 maxFeatures = amd64With(IntegerPolynomialAssignNode.maxFeaturesAMD64());
+        assertTrue(IntegerPolynomialAssignNode.isSupported(minFeatures));
+        assertTrue(IntegerPolynomialAssignNode.isSupported(maxFeatures));
+    }
+
+    @Test
+    public void testAMD64FeaturePredicatesMontgomery() {
+        AMD64 minFeatures = amd64With(IntegerPolynomialP256MontgomeryMultNode.minFeaturesAMD64());
+        AMD64 maxFeatures = amd64With(IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
         AMD64 unsupportedFeatures = amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
-
-        assertTrue(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(minFeatures));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(minFeatures));
-        assertTrue(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(maxFeatures));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(maxFeatures));
-
-        assertFalse(IntegerPolynomialAssignNode.isSupportedForRuntimeCheckedStub(unsupportedFeatures));
+        assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupported(unsupportedFeatures));
         assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(unsupportedFeatures));
-        assertFalse(IntegerPolynomialAssignNode.isSupported(minFeatures));
         assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupported(minFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(minFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(maxFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(maxFeatures));
     }
 
     @Test
     public void testAMD64MaximumFeaturePredicate() {
-        Assert.assertEquals(EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL,
-                        AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F),
+        Assert.assertEquals(EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512F),
                         IntegerPolynomialAssignNode.maxFeaturesAMD64());
-        Assert.assertEquals(IntegerPolynomialAssignNode.maxFeaturesAMD64(), IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
-        assertTrue(IntegerPolynomialAssignNode.isSupported(amd64With(IntegerPolynomialAssignNode.maxFeaturesAMD64())));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(amd64With(IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64())));
+        Assert.assertEquals(
+                        EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL, AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F),
+                        IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
     }
 
     private static AMD64 amd64With(EnumSet<AMD64.CPUFeature> features) {
