@@ -567,20 +567,6 @@ public class FrameInfoEncoder {
         return data;
     }
 
-    FrameData addSyntheticDefaultDebugInfo(int totalFrameSize) {
-        FrameData data = new FrameData(null, totalFrameSize, null, true);
-        data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, FrameState.StackState.BeforePop);
-        // Synthetic runtime-code metadata has no source method table entry.
-        data.frame.sourceLineNumber = -1;
-
-        CompressedFrameData frame = new CompressedFrameData(data.frame.sourceMethodId, data.frame.getSourceMethod(), data.frame.getSourceClass(), data.frame.getSourceMethodName(),
-                        data.frame.getSourceMethodSignature(), data.frame.getSourceMethodFlags(), data.frame.sourceLineNumber, data.frame.encodedBci, true);
-        frameMetadata.addFrameSlice(data, List.of(frame));
-
-        allDebugInfos.add(data);
-        return data;
-    }
-
     private static int countVirtualObjects(DebugInfo debugInfo) {
         /*
          * We want to know the highest virtual object id in use in this DebugInfo. For that, we have
