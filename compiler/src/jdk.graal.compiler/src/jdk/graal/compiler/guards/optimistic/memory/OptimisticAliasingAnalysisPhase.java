@@ -35,6 +35,7 @@ import jdk.graal.compiler.guards.optimistic.OptimisticGuardNode;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
@@ -44,6 +45,7 @@ import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
@@ -801,7 +803,12 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         return TriState.FALSE;
     }
 
+    /**
+     * Computes the lowest and highest byte addresses touched by a raw memory access in a loop. The
+     * highest address is the address of the last byte accessed.
+     */
     private static Pair<ValueNode, ValueNode> accessBounds(AddressableMemoryAccess access, Loop loop) {
+        StructuredGraph graph = loop.loopBegin().graph();
         ValueNode accessBase = getBase(access, loop);
         InductionVariable accessIndex = getOffsetInductionVariable(access, loop);
         if (accessIndex == null) {
@@ -811,11 +818,37 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         ValueNode accessEnd = AddNode.create(accessBase, accessIndex.extremumNode(true, accessBase.stamp(NodeView.DEFAULT)), NodeView.DEFAULT);
 
         // Ensure that the lower component of the pair is always the smaller of the bounds.
+        ValueNode accessLow;
+        ValueNode accessHigh;
         if (accessIndex.direction() == Direction.Up) {
-            return Pair.create(accessStart, accessEnd);
+            accessLow = accessStart;
+            accessHigh = accessEnd;
         } else {
-            return Pair.create(accessEnd, accessStart);
+            accessLow = accessEnd;
+            accessHigh = accessStart;
         }
+        int accessSize = accessSizeInBytes(access);
+        ValueNode sizeMinusOne = ConstantNode.forIntegerStamp(accessHigh.stamp(NodeView.DEFAULT), accessSize - 1, graph);
+        accessHigh = AddNode.create(accessHigh, sizeMinusOne, NodeView.DEFAULT);
+
+        return Pair.create(accessLow, accessHigh);
+    }
+
+    /**
+     * Returns the number of bytes touched by a memory access.
+     */
+    private static int accessSizeInBytes(AddressableMemoryAccess access) {
+        Stamp stamp;
+        if (access instanceof ReadNode read) {
+            stamp = read.getAccessStamp(NodeView.DEFAULT);
+        } else if (access instanceof WriteNode write) {
+            stamp = write.getAccessStamp(NodeView.DEFAULT);
+        } else if (access instanceof FloatingReadNode read) {
+            stamp = read.stamp(NodeView.DEFAULT);
+        } else {
+            throw GraalError.shouldNotReachHereUnexpectedValue(access);
+        }
+        return ((PrimitiveStamp) stamp).getBits() / Byte.SIZE;
     }
 
     public static boolean canUseSpeculation(StructuredGraph graph) {
