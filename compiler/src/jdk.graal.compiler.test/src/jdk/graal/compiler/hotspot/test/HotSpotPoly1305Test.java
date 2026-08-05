@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.test;
 import java.lang.reflect.Method;
 import java.security.Key;
 import java.util.EnumSet;
+import java.util.List;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -229,19 +230,24 @@ public class HotSpotPoly1305Test extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAMD64FeaturePredicates() {
-        Assert.assertTrue(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA)));
-        Assert.assertTrue(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL,
-                        AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F)));
-        Assert.assertFalse(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2)));
-        Assert.assertFalse(Poly1305ProcessBlocksNode.isSupported(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA)));
+        for (var arch : List.of(
+                        amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA),
+                        amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL, AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F))) {
+            Assert.assertTrue(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch));
+            Assert.assertTrue(Poly1305ProcessBlocksNode.isSupported(arch));
+        }
+        for (var arch : List.of(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2))) {
+            Assert.assertFalse(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch));
+            Assert.assertFalse(Poly1305ProcessBlocksNode.isSupported(arch));
+        }
     }
 
     @Test
-    public void testAMD64MaximumFeaturePredicate() {
+    public void testAMD64AVX512FeaturePredicate() {
         Assert.assertEquals(EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL,
                         AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F),
-                        Poly1305ProcessBlocksNode.maxFeaturesAMD64());
-        Assert.assertTrue(Poly1305ProcessBlocksNode.isSupported(amd64With(Poly1305ProcessBlocksNode.maxFeaturesAMD64())));
+                        Poly1305ProcessBlocksNode.minFeaturesAMD64AVX512Variant());
+        Assert.assertTrue(Poly1305ProcessBlocksNode.isSupported(amd64With(Poly1305ProcessBlocksNode.minFeaturesAMD64AVX512Variant())));
     }
 
     private static AMD64 amd64With(EnumSet<AMD64.CPUFeature> features) {
