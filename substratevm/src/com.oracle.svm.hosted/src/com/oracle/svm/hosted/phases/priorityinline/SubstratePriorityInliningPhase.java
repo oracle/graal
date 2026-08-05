@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases.priorityinline;
 
-import static com.oracle.svm.hosted.cai.CAICompileQueueOptions.CAIApplyProfilesWhileExpanding;
 import static jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase.Options.UseGraphCache;
 
 import java.util.ArrayList;
@@ -275,13 +274,18 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
         return new SubstrateCallTree(expanderPolicy, tuningPolicy, context, graphCache, root, graph.getOptions());
     }
 
+    @Override
+    protected SubstrateInliningProvider getInliningProvider() {
+        return (SubstrateInliningProvider) super.getInliningProvider();
+    }
+
     private class SubstrateCallTree extends CallTree {
         private final SubgraphNode root;
         private final IdentityHashMap<CallTreeNode, PrefixTree.Cursor> nodeContextMap = new IdentityHashMap<>();
 
         SubstrateCallTree(Expander.Policy expanderPolicy, TuningPolicy tuningPolicy, HighTierContext context, GraphCache<ResolvedJavaMethod, StructuredGraph> graphCache, SubgraphNode root,
                         OptionValues options) {
-            super(SubstratePriorityInliningPhase.this.canonicalizer, expanderPolicy, tuningPolicy, context, SubstratePriorityInliningPhase.this.inliningProvider, graphCache, root,
+            super(SubstratePriorityInliningPhase.this.canonicalizer, expanderPolicy, tuningPolicy, context, getInliningProvider(), graphCache, root,
                             options, SubstratePriorityInliningPhase.this.directedRules);
             this.root = root;
         }
@@ -342,13 +346,8 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 if (isCFunctionInvoke(inlineCacheNode.invoke())) {
                     return;
                 }
-                List<SubgraphNode> hotSubgraphNodes = inlineCacheNode.children()
-                                .stream()
-                                .filter(e -> !(e instanceof GenericNode))
-                                .filter(this::isCallSiteToHotCaller)
-                                .map(this::expandIfCutoff)
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toList());
+                List<SubgraphNode> hotSubgraphNodes = inlineCacheNode.children().stream().filter(e -> !(e instanceof GenericNode)).filter(this::isCallSiteToHotCaller).map(this::expandIfCutoff).filter(
+                                Objects::nonNull).collect(Collectors.toList());
                 if (!hotSubgraphNodes.isEmpty()) {
                     inlineCacheNode.createDevirtualizationCascade(coreProviders, hotSubgraphNodes, false, SpeculationLog.NO_SPECULATION,
                                     _ -> {
@@ -366,7 +365,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 }
                 CallTargetNode callTarget = invoke.callTarget();
                 if (callTarget instanceof IndirectCallTargetNode) {
-                    JavaMethodProfile javaMethodProfile = ((SubstrateInliningProvider) inliningProvider).samplingMethodProfiles((HostedMethod) readonlySubgraph.method(), invoke);
+                    JavaMethodProfile javaMethodProfile = getInliningProvider().samplingMethodProfiles((HostedMethod) readonlySubgraph.method(), invoke);
                     if (javaMethodProfile == null) {
                         continue;
                     }
@@ -375,7 +374,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                         devirtualizations.add(new StandaloneAddressBasedDevirtualization(invoke, profiledMethod.getMethod(), profiledMethod.getProbability()));
                     }
                     if (!devirtualizations.isEmpty()) {
-                        DevirtualizationUtil.createDevirtualizationCascade(coreProviders, inliningProvider, invoke, devirtualizations, false, true, SpeculationLog.NO_SPECULATION, null);
+                        DevirtualizationUtil.createDevirtualizationCascade(coreProviders, getInliningProvider(), invoke, devirtualizations, false, true, SpeculationLog.NO_SPECULATION, null);
                     }
                 }
             }
@@ -403,7 +402,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             }
             HostedMethod compilationRoot = (HostedMethod) root.getReadonlySubgraph().method();
             NodeSourcePosition callPosition = directCallNode.invoke().asNode().getNodeSourcePosition();
-            return ((SubstrateInliningProvider) inliningProvider).isCallSiteToHotCaller(compilationRoot, callPosition, dispatchedMethod);
+            return getInliningProvider().isCallSiteToHotCaller(compilationRoot, callPosition, dispatchedMethod);
         }
 
         private ResolvedJavaMethod dispatchedMethod(CallTreeNode directCallNode) {
@@ -422,8 +421,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 return;
             }
             assert root.getOptions() != null;
-            if (root.getReadonlySubgraph().globalProfileProvider().hotCaller() && CAIApplyProfilesWhileExpanding.getValue(root.getOptions())) {
-                PGOApplyProfilesPhase applyProfilesPhase = ((SubstrateInliningProvider) inliningProvider).createPGOApplyProfilesPhase(
+            SubstrateInliningProvider inliningProvider = getInliningProvider();
+            if (root.getReadonlySubgraph().globalProfileProvider().hotCaller() && inliningProvider.shouldApplyProfilesWhileExpanding(root.getOptions())) {
+                PGOApplyProfilesPhase applyProfilesPhase = inliningProvider.createPGOApplyProfilesPhase(
                                 root.getReadonlySubgraph().method(),
                                 null,
                                 graphCopy.method(),
@@ -458,7 +458,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
 
         private void setHotness(CallTreeNode caller, Invoke invoke, ResolvedJavaMethod targetMethod, CallTreeNode substrateCutoffNode, SamplingCallTreeState samplingCallTreeState) {
             StructuredGraph rootGraph = caller.callTree().root().getReadonlySubgraph();
-            double hotness = ((SubstrateInliningProvider) inliningProvider).compilationRootRelativeHotness((HostedMethod) rootGraph.method(), concatPositions(invoke, caller), targetMethod);
+            double hotness = getInliningProvider().compilationRootRelativeHotness((HostedMethod) rootGraph.method(), concatPositions(invoke, caller), targetMethod);
             samplingCallTreeState.setHotness(substrateCutoffNode, hotness);
         }
 
@@ -477,8 +477,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             if (caller == null || callTarget == null) {
                 return null;
             }
+            SubstrateInliningProvider inliningProvider = getInliningProvider();
             boolean allowMethodProfiles = inliningProvider.useMethodChecks(getOptions());
-            JavaMethodProfile fullyContextSensitiveMethodProfile = ((SubstrateInliningProvider) inliningProvider).samplingMethodProfiles(nodeContextMap,
+            JavaMethodProfile fullyContextSensitiveMethodProfile = inliningProvider.samplingMethodProfiles(nodeContextMap,
                             (HostedMethod) root.getReadonlySubgraph().method(), caller,
                             callTarget);
             if (allowMethodProfiles && fullyContextSensitiveMethodProfile != null) {

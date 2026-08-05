@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.phases.priorityinline;
 
-import static com.oracle.svm.hosted.cai.CAICompileQueueOptions.CAIHotBonusWhileExpanding;
-import static com.oracle.svm.hosted.cai.CAICompileQueueOptions.CAIHotBonusWhileInlining;
 import static com.oracle.svm.hosted.phases.priorityinline.InterproceduralPartialEscapeAnalysisCallTreeState.getIPEACallTreeState;
 import static com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhase.Options.IPEAFrequency;
 import static com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhase.Options.IPEAMaxForce;
@@ -223,7 +221,8 @@ public class SubstratePolicyFactory extends DefaultPolicyFactory {
         private static final int SCALING_MAX_VALUE_MULTIPLIER = 2;
 
         private static double boostBasedOnHotness(CallTreeNode node, double value) {
-            Integer caiHotBonus = CAIHotBonusWhileInlining.getValue(node.getOptions());
+            SubstrateInliningProvider inliningProvider = (SubstrateInliningProvider) node.callTree().inliningProvider();
+            int caiHotBonus = inliningProvider.hotBonusWhileInlining(node.getOptions());
             if (caiHotBonus == 0) {
                 return value;
             }
@@ -308,7 +307,8 @@ public class SubstratePolicyFactory extends DefaultPolicyFactory {
         @Override
         public void updateCutoffNodePriority(CutoffNode node) {
             super.updateCutoffNodePriority(node);
-            int bonus = CAIHotBonusWhileExpanding.getValue(node.callTree().getOptions());
+            SubstrateInliningProvider inliningProvider = (SubstrateInliningProvider) node.callTree().inliningProvider();
+            int bonus = inliningProvider.hotBonusWhileExpanding(node.callTree().getOptions());
             if (bonus == 0) {
                 return;
             }

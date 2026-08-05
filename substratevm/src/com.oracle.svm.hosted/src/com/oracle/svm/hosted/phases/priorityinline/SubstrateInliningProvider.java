@@ -171,4 +171,26 @@ public class SubstrateInliningProvider extends DefaultInliningProvider {
         return PGOApplyProfilesPhase.validateProfile(calleeInvoke.callTarget(), javaMethodProfile);
 
     }
+
+    /// Determines whether sampling profiles are applied while expanding.
+    ///
+    /// @param options the options being used during expanding
+    protected boolean shouldApplyProfilesWhileExpanding(OptionValues options) {
+        return false;
+    }
+
+    /// Gets the hotness bonus applied while expanding.
+    ///
+    /// @param options the options being used during expanding
+    protected int hotBonusWhileExpanding(OptionValues options) {
+        return 0;
+    }
+
+    /// Gets the hotness bonus applied while inlining.
+    ///
+    /// @param options the options being used during inlining
+    protected int hotBonusWhileInlining(OptionValues options) {
+        return 0;
+    }
+
 }
