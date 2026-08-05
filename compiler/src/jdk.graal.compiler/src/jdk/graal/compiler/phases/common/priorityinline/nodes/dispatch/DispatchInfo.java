@@ -26,6 +26,7 @@ package jdk.graal.compiler.phases.common.priorityinline.nodes.dispatch;
 
 import java.util.ArrayList;
 
+import jdk.graal.compiler.phases.common.priorityinline.InliningProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -35,9 +36,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <code>dispatchedMethod</code> must be non-null.
  */
 public class DispatchInfo implements Comparable<DispatchInfo> {
-    public static DispatchInfo match(ArrayList<DispatchInfo> dispatches, ResolvedJavaMethod targetMethod) {
+    public static DispatchInfo match(ArrayList<DispatchInfo> dispatches, ResolvedJavaMethod targetMethod, InliningProvider inliningProvider) {
         for (DispatchInfo dispatchInfo : dispatches) {
-            if (dispatchInfo.dispatchedMethod.equals(targetMethod)) {
+            if (inliningProvider.isSameMethodForDevirtualizationCheck(dispatchInfo.dispatchedMethod, targetMethod)) {
                 return dispatchInfo;
             }
         }

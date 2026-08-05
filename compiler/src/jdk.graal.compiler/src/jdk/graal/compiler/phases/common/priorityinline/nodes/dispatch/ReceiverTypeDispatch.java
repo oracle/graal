@@ -87,7 +87,7 @@ public final class ReceiverTypeDispatch extends Dispatch {
             if (!inlineCacheNode.callTree().hasDirectedReceiverTypeFilters() &&
                             inliningProvider.useMethodChecks(inlineCacheNode.getOptions()) &&
                             inliningProvider.isMethodForDevirtualizationInTable(inlineCacheNode.originalTargetMethod(), targetMethod, directTarget, receiverType)) {
-                DispatchInfo existingInfo = DispatchInfo.match(dispatches, directTarget);
+                DispatchInfo existingInfo = DispatchInfo.match(dispatches, directTarget, inliningProvider);
                 if (existingInfo != null) {
                     existingInfo.needsMethodDispatch = true;
                     existingInfo.probability += typeProbability;
