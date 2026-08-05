@@ -61,6 +61,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangRefReferenceGet;
 
     final JNIObjectHandle javaSecurityProviderService;
+    final JNIMethodId javaSecurityProviderServiceGetClassName;
     final JNIMethodId javaSecurityProviderServiceGetProvider;
     final JNIMethodId javaSecurityProviderServiceNewInstance;
     final JNIFieldId javaSecurityProviderServiceClassCache;
@@ -187,6 +188,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangRefReferenceGet = getMethodId(env, javaLangRefReference, "get", "()Ljava/lang/Object;", false);
 
         javaSecurityProviderService = newClassGlobalRef(env, "java/security/Provider$Service");
+        javaSecurityProviderServiceGetClassName = getMethodId(env, javaSecurityProviderService, "getClassName", "()Ljava/lang/String;", false);
         javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
         javaSecurityProviderServiceNewInstance = getMethodId(env, javaSecurityProviderService, "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
         javaSecurityProviderServiceClassCache = getFieldIdOptional(env, javaSecurityProviderService, "classCache", "Ljava/lang/Object;", false);

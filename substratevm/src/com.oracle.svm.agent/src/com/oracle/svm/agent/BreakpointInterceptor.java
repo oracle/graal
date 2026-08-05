@@ -826,6 +826,76 @@ final class BreakpointInterceptor {
     }
 
     /**
+     * Retains a JCE service selected before provider verification. Native Image establishes a
+     * successful JCE verification outcome for a registered application-supplied provider, while
+     * HotSpot can reject the same unsigned provider before {@link java.security.Provider.Service}
+     * reaches {@code newInstance}. Record the constructor that the native executable will use
+     * without loading or caching the implementation class in the traced JVM.
+     */
+    private static boolean getSecurityServiceProviderForJceSelection(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        String callerClassName = getClassNameOrNull(jni, callerClass);
+        if (callerClassName == null || !callerClassName.startsWith("javax.crypto.")) {
+            return true;
+        }
+
+        JNIObjectHandle applicationCallerClass = findExternalSecurityCaller(jni, state, 1);
+        if (applicationCallerClass.equal(nullHandle())) {
+            return true;
+        }
+
+        traceSelectedJceServiceImplementation(jni, getReceiver(thread), applicationCallerClass, state);
+        return true;
+    }
+
+    private static void traceSelectedJceServiceImplementation(JNIEnvironment jni, JNIObjectHandle service, JNIObjectHandle callerClass, InterceptedState state) {
+        if (tracer == null) {
+            return;
+        }
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        if (handles.javaSecurityProviderServiceEngineDescription.isNull() ||
+                        handles.javaSecurityProviderEngineDescriptionConstructorParameterClass.isNull()) {
+            return;
+        }
+
+        JNIObjectHandle engineDescription = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceEngineDescription);
+        if (clearException(jni) || engineDescription.equal(nullHandle())) {
+            /* The constructor contract of an unknown engine cannot be inferred safely. */
+            return;
+        }
+
+        JNIObjectHandle parameterClass = jniFunctions().getGetObjectField().invoke(jni, engineDescription, handles.javaSecurityProviderEngineDescriptionConstructorParameterClass);
+        if (clearException(jni)) {
+            return;
+        }
+
+        String[] parameterTypes;
+        if (parameterClass.equal(nullHandle())) {
+            parameterTypes = new String[0];
+        } else {
+            String parameterType = getClassNameOrNull(jni, parameterClass);
+            if (parameterType == null) {
+                return;
+            }
+            parameterTypes = new String[]{parameterType};
+        }
+
+        JNIObjectHandle classNameHandle = Support.callObjectMethod(jni, service, handles.javaSecurityProviderServiceGetClassName);
+        if (clearException(jni)) {
+            return;
+        }
+        String className = fromJniString(jni, classNameHandle);
+        if (className == null || !ClassNameSupport.isValidReflectionName(className)) {
+            return;
+        }
+
+        NamedConfigurationTypeDescriptor implementationType = NamedConfigurationTypeDescriptor.fromReflectionName(className);
+        tracer.traceCall("reflect", "invokeConstructor", implementationType, implementationType,
+                        getClassNameOr(jni, callerClass, null, Tracer.UNKNOWN_VALUE), true, state.getFullStackTraceOrNull(), (Object) parameterTypes);
+        clearException(jni);
+    }
+
+    /**
      * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
      */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
@@ -2109,6 +2179,8 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getSecurityServiceForProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
                                     BreakpointInterceptor::newSecurityServiceInstance),
+                    brk("java/security/Provider$Service", "getProvider", "()Ljava/security/Provider;",
+                                    BreakpointInterceptor::getSecurityServiceProviderForJceSelection),
                     optionalBrk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
                                     BreakpointInterceptor::getCachedSecurityProvider),
 
