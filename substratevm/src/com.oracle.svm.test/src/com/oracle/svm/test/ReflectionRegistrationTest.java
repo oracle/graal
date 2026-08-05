@@ -56,6 +56,10 @@ public class ReflectionRegistrationTest {
         public int value = FIELD_LOOKUP_TEST_VALUE;
     }
 
+    public static class ExactFieldLookupTarget {
+        public int value = FIELD_LOOKUP_TEST_VALUE;
+    }
+
     public static class UnsafeAllocationTarget {
     }
 
@@ -190,15 +194,16 @@ public class ReflectionRegistrationTest {
         public static class TestFeature implements Feature {
             @Override
             public void beforeAnalysis(BeforeAnalysisAccess access) {
-                RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
+                RuntimeReflection.registerFieldLookup(ExactFieldLookupTarget.class, "value");
+                RuntimeReflection.registerFieldLookup(ExactFieldLookupTarget.class, "value");
             }
         }
 
         @Test
         public void testFieldLookupAllowsQueryOnly() throws NoSuchFieldException {
-            Field field = FieldLookupTarget.class.getDeclaredField(fieldName());
+            Field field = ExactFieldLookupTarget.class.getDeclaredField(fieldName());
             assertEquals(fieldName(), field.getName());
-            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new FieldLookupTarget()));
+            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new ExactFieldLookupTarget()));
         }
 
         private static String fieldName() {
