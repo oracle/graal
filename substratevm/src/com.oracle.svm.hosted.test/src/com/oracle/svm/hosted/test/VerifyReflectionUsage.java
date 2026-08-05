@@ -169,7 +169,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.methodhandles.MethodHandleIntrinsicImpl"),
                     clazz("com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle"),
                     clazz("com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandleNatives"),
-                    clazz("com.oracle.svm.core.MissingRegistrationSupport"),
                     clazz("com.oracle.svm.core.MissingRegistrationUtils"),
                     clazz("com.oracle.svm.core.monitor.MultiThreadedMonitorSupport"),
                     clazz("com.oracle.svm.core.option.GCOptionValue"),
