@@ -64,6 +64,7 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -74,9 +75,27 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     public static class Options {
+        private static final Pattern ELF_SYMBOL_VERSION_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_.]*");
+
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.", //
                         stability = OptionStability.STABLE)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+        @Option(help = "Assign the specified ELF symbol version to all exported image symbols.", type = OptionType.Expert)//
+        public static final HostedOptionKey<String> ExportedSymbolsVersion = new HostedOptionKey<>(null, Options::validateExportedSymbolsVersion);
+
+        private static void validateExportedSymbolsVersion(HostedOptionKey<String> optionKey) {
+            String value = optionKey.getValue();
+            if (value == null) {
+                return;
+            }
+            if (!Platform.includedIn(Platform.LINUX.class)) {
+                throw UserError.invalidOptionValue(optionKey, value, "ELF symbol versions are only supported on Linux.");
+            }
+            if (!ELF_SYMBOL_VERSION_PATTERN.matcher(value).matches()) {
+                throw UserError.invalidOptionValue(optionKey, value, "The value must be a valid ELF symbol version identifier.");
+            }
+        }
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -327,6 +346,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             /* Use --version-script to control the visibility of image symbols. */
             try {
                 StringBuilder exportedSymbols = new StringBuilder();
+                String exportedSymbolsVersion = Options.ExportedSymbolsVersion.getValue();
+                if (exportedSymbolsVersion != null) {
+                    exportedSymbols.append(exportedSymbolsVersion).append(' ');
+                }
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
                 Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
