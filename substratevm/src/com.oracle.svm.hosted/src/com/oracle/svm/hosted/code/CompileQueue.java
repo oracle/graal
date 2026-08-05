@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -84,11 +85,12 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
+import com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhase;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -116,6 +118,7 @@ import jdk.graal.compiler.lir.asm.DataBuilder;
 import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -132,11 +135,14 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.GraphOrder;
@@ -1234,8 +1240,51 @@ public class CompileQueue {
         }
     }
 
+    /// Determines whether reduced priority-inliner tuning is applicable to the compilation.
+    protected boolean omitPriorityInliningTuning() {
+        return SubstrateOptions.isMaximumOptimizationLevel();
+    }
+
     protected OptionValues getCustomizedOptions(@SuppressWarnings("unused") HostedMethod method, DebugContext debug) {
-        return debug.getOptions();
+        OptionValues customizedOptions = debug.getOptions();
+        if (omitPriorityInliningTuning()) {
+            return customizedOptions;
+        }
+
+        /*
+         * Inliner parameterization for reduced compile time. These values are derived from
+         * automatic tuning over representative benchmark suites and can be overridden explicitly.
+         */
+        EconomicMap<OptionKey<?>, Object> extraOptions = OptionValues.newOptionMap();
+        if (!PriorityInliningPhase.Options.UsePriorityInliningPEA.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.UsePriorityInliningPEA, false);
+        }
+
+        if (!SubstratePriorityInliningPhase.Options.UseIPEA.hasBeenSet(customizedOptions)) {
+            extraOptions.put(SubstratePriorityInliningPhase.Options.UseIPEA, false);
+        }
+
+        if (!PriorityInliningPhase.Options.TypicalGraphSize.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.TypicalGraphSize, 450);
+        }
+
+        if (!PriorityInliningPhase.Options.TypicalGraphSizeInvokeBonus.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.TypicalGraphSizeInvokeBonus, 100);
+        }
+
+        if (!PriorityInliningPhase.Options.ExpansionInertiaBaseValue.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.ExpansionInertiaBaseValue, 800);
+        }
+
+        if (!PriorityInliningPhase.Options.ExpansionInertiaInvokeBonus.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.ExpansionInertiaInvokeBonus, 40);
+        }
+
+        if (!PriorityInliningPhase.Options.MaxPriorityInliningPeelingIterations.hasBeenSet(customizedOptions)) {
+            extraOptions.put(PriorityInliningPhase.Options.MaxPriorityInliningPeelingIterations, 1);
+        }
+
+        return new OptionValues(customizedOptions, extraOptions);
     }
 
     protected boolean canBeUsedForInlining(Invoke invoke) {

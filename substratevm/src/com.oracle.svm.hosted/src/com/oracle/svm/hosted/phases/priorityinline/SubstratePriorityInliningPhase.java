@@ -99,8 +99,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
 
-    // Cannot use class name for logging since it gets obfuscated
-    public static final String SUBSTRATE_PRIORITY_INLINING_PHASE = "SubstratePriorityInliningPhase";
+    public static final String SUBSTRATE_PRIORITY_INLINING_PHASE = SubstratePriorityInliningPhase.class.getSimpleName();
 
     public static class Options {
         //@formatter:off

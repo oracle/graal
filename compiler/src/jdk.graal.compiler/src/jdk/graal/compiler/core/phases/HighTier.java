@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optional
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NativeImageSupport;
+import jdk.graal.compiler.duplication.phases.MethodDuplicationPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
@@ -84,6 +85,10 @@ public class HighTier extends BaseTier<HighTierContext> {
                 boxNodeIdentityPhaseAdded = true;
             } else {
                 appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer, options));
+            }
+            // Method duplication specializes the graph produced by the selected inliner.
+            if (MethodDuplicationPhase.Options.OptMethodDuplication.getValue(options)) {
+                appendPhase(new MethodDuplicationPhase(canonicalizer));
             }
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
