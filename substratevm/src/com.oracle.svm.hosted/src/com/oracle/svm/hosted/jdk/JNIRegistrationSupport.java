@@ -61,7 +61,6 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -110,7 +109,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false);
     }
 
-    private NativeLibraries nativeLibraries = null;
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private boolean isSunMSCAPIProviderReachable = false;
     private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
@@ -133,7 +131,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
         registerLibrary("java");
     }
 
