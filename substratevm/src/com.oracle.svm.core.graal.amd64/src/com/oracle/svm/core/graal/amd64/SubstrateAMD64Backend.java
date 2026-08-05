@@ -517,7 +517,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
     }
 
-    static void maybeTransitionToNative(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value javaFrameAnchor, Value temp, LIRFrameState state,
+    public static void maybeTransitionToNative(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value javaFrameAnchor, Value temp, LIRFrameState state,
                     int newThreadStatus) {
         if (ValueUtil.isIllegal(javaFrameAnchor)) {
             /* Not a call that needs to set up a JavaFrameAnchor. */
@@ -776,16 +776,25 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
             vzeroupperBeforeCall(this, arguments, info, targetMethod);
-            if (shouldEmitIndirectCall(targetMethod)) {
+            if (shouldEmitIndirectForeignCall(targetMethod)) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(SubstrateTarget.getWordStamp().getLIRKind(getLIRKindTool()));
                 Value targetAddress = emitIndirectForeignCallAddress(linkage);
                 emitMove(targetRegister, targetAddress); // targetAddress is a CFunctionPointer
-                append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
+                append(createIndirectForeignCallOp(targetMethod, result, arguments, temps, targetRegister, info, exceptionTemp));
             } else {
-                append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, Value.NO_VALUES, info, Value.ILLEGAL,
-                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
+                append(createDirectForeignCallOp(targetMethod, result, arguments, temps, info, exceptionTemp));
             }
+        }
+
+        protected AMD64Call.IndirectCallOp createIndirectForeignCallOp(SharedMethod targetMethod, Value result, Value[] arguments, Value[] temps, AllocatableValue targetRegister,
+                        LIRFrameState info, Value exceptionTemp) {
+            return new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
+                            Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null);
+        }
+
+        protected AMD64Call.DirectCallOp createDirectForeignCallOp(SharedMethod targetMethod, Value result, Value[] arguments, Value[] temps, LIRFrameState info, Value exceptionTemp) {
+            return new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, Value.NO_VALUES, info, Value.ILLEGAL,
+                            Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp);
         }
 
         private Variable getGOTEntryAddress(SharedMethod callee) {
@@ -797,7 +806,13 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return getArithmetic().emitLoad(wordKind, gotEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
         }
 
-        private boolean shouldEmitIndirectCall(SharedMethod callee) {
+        /**
+         * Returns whether a foreign/runtime call must be emitted through a register target
+         * materialized by generated code instead of as a direct call relocation. Foreign call
+         * targets can require this when the image policy forbids direct calls, when the callee is
+         * supplied by another layer, or when PLT/GOT routing is required for the caller/callee pair.
+         */
+        protected boolean shouldEmitIndirectForeignCall(SharedMethod callee) {
             return shouldEmitOnlyIndirectCalls() || callee.forceIndirectCall() || shouldEmitPLTGOTCall(callee);
         }
 
@@ -811,7 +826,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
          * exception.
          */
-        private Value getExceptionTemp(boolean hasExceptionEdge) {
+        protected Value getExceptionTemp(boolean hasExceptionEdge) {
             if (hasExceptionEdge) {
                 return getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
             } else {
@@ -1037,7 +1052,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return values;
         }
 
-        private boolean getDestroysCallerSavedRegisters(ResolvedJavaMethod targetMethod) {
+        protected boolean getDestroysCallerSavedRegisters(ResolvedJavaMethod targetMethod) {
             return ((SubstrateAMD64LIRGenerator) gen).getDestroysCallerSavedRegisters(targetMethod);
         }
 
@@ -1047,7 +1062,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
          * exception.
          */
-        private Value getExceptionTemp(CallTargetNode callTarget) {
+        protected Value getExceptionTemp(CallTargetNode callTarget) {
             return ((SubstrateAMD64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 
@@ -1111,9 +1126,14 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 additionalReturns = cc.getAdditionalReturns(result, parameters);
             }
 
-            append(new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, actualTemps, additionalReturns, callState,
+            append(createDirectCallOp(callTarget, targetMethod, result, parameters, actualTemps, additionalReturns, callState));
+        }
+
+        protected AMD64Call.DirectCallOp createDirectCallOp(DirectCallTargetNode callTarget, ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps,
+                        Value[] additionalReturns, LIRFrameState callState) {
+            return new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, temps, additionalReturns, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget));
         }
 
         @Override
@@ -1163,7 +1183,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                             getExceptionTemp(callTarget), gen.getLIRKindTool(), getConstantReflection()));
         }
 
-        private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
+        protected AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
             if (!hasJavaFrameAnchor(callTarget)) {
                 return Value.ILLEGAL;
             }
@@ -1175,7 +1195,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return frameAnchor;
         }
 
-        private AllocatableValue setupJavaFrameAnchorTemp(CallTargetNode callTarget) {
+        protected AllocatableValue setupJavaFrameAnchorTemp(CallTargetNode callTarget) {
             if (!hasJavaFrameAnchor(callTarget)) {
                 return Value.ILLEGAL;
             }

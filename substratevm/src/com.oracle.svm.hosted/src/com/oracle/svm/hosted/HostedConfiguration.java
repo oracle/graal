@@ -274,6 +274,14 @@ public class HostedConfiguration {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, Collections.emptyList());
     }
 
+    /**
+     * Invoked in a separate active executor pass after the normal compile queue and before later
+     * image-building phases consume compilation results. Implementations may compile additional
+     * methods.
+     */
+    public void afterCompileQueue(@SuppressWarnings("unused") DebugContext debug, @SuppressWarnings("unused") CompileQueue compileQueue) {
+    }
+
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }

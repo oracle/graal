@@ -29,6 +29,8 @@ import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
@@ -378,6 +380,11 @@ public class CGlobalDataFeature implements InternalFeature {
 
     public boolean isAppLayerForwardReference(String symbolName) {
         return symbolName != null && appLayerForwardReferenceSymbols.contains(symbolName);
+    }
+
+    public Collection<CGlobalDataInfo> getCGlobalDataInfos() {
+        assert isLaidOut() : "Not laid out yet";
+        return Collections.unmodifiableCollection(map.values());
     }
 
     private Object replaceObject(Object obj) {

@@ -1372,6 +1372,13 @@ public class CompileQueue {
         }
     }
 
+    /**
+     * Compiles an additional method result without adding it to the normal image compilation map.
+     */
+    public final CompilationResult compileAdditionalMethod(DebugContext debug, HostedMethod method, CompileReason reason) {
+        return doCompile(debug, method, new SubstrateHostedCompilationIdentifier(method), reason);
+    }
+
     protected final CompilationResult doCompile(DebugContext debug, final HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason) {
         CompileFunction customFunction = method.compilationInfo.getCustomCompileFunction();
         if (customFunction != null) {
