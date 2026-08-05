@@ -193,7 +193,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    private void addLibrary(String libname) {
+    private static void addLibrary(String libname) {
         /*
          * If a library is in our list of static standard libraries, add the library to the linker
          * command.
