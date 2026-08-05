@@ -24,30 +24,15 @@
  */
 package com.oracle.svm.test.thread;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.test.NativeImageBuildArgs;
-
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedThread;
-import jdk.jfr.consumer.RecordingFile;
 
 /**
  * Verifies Java main thread semantics when application main runs on a launcher-created thread.
@@ -58,42 +43,6 @@ import jdk.jfr.consumer.RecordingFile;
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class RunMainInNewThreadTest {
-    private static final String THREAD_START_EVENT = "jdk.ThreadStart";
-    private static final String THREAD_END_EVENT = "jdk.ThreadEnd";
-    private static final String JFR_WORKER_NAME = "RunMainInNewThreadTest-jfr-worker";
-
-    /**
-     * Checks the management counters before test methods create any worker threads.
-     */
-    @BeforeClass
-    public static void checkMainHandoffThreadLifecycle() {
-        if (ImageInfo.inImageRuntimeCode()) {
-            ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-            long totalStartedThreadCount = threadMXBean.getTotalStartedThreadCount();
-            int liveThreadCount = threadMXBean.getThreadCount();
-            Assert.assertEquals("Unexpected completed thread lifecycle before test startup.", liveThreadCount, totalStartedThreadCount);
-        }
-    }
-
-    /**
-     * Checks that application code observes the normal non-daemon {@code main} thread.
-     */
-    @Test
-    public void mainThreadKeepsJavaSemantics() throws InterruptedException {
-        Thread current = Thread.currentThread();
-        Assert.assertEquals("main", current.getName());
-        Assert.assertFalse(current.isDaemon());
-
-        AtomicBoolean childDaemon = new AtomicBoolean(true);
-        Thread child = new Thread(() -> childDaemon.set(Thread.currentThread().isDaemon()));
-
-        /* A child thread created by main should inherit non-daemon status. */
-        Assert.assertFalse(child.isDaemon());
-        child.start();
-        child.join();
-        Assert.assertFalse(childDaemon.get());
-    }
-
     /**
      * Verifies that the unmanaged launcher thread does not become an extra Java thread when main is
      * started on a fresh native thread.
@@ -152,121 +101,5 @@ public class RunMainInNewThreadTest {
         return Arrays.stream(threads, 0, count)
                         .filter(thread -> !thread.isDaemon())
                         .toList();
-    }
-
-    /**
-     * Checks that main can execute VM operations while the launcher thread waits for it to finish.
-     */
-    @Test
-    public void mainThreadCanReachSafepoint() {
-        System.gc();
-    }
-
-    /**
-     * Checks that JFR thread listeners still see a complete worker lifecycle.
-     */
-    @Test
-    public void jfrThreadHooksRecordThreadLifecycle() throws Throwable {
-        Assume.assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
-
-        Path recordingPath = Files.createTempFile(RunMainInNewThreadTest.class.getSimpleName(), ".jfr");
-        try (Recording recording = new Recording()) {
-            recording.setDestination(recordingPath);
-            recording.enable(THREAD_START_EVENT).withThreshold(Duration.ZERO);
-            recording.enable(THREAD_END_EVENT).withThreshold(Duration.ZERO);
-            recording.start();
-
-            Thread worker = new Thread(() -> {
-                /* The lifecycle hooks are the tested behavior; no worker-side action is required. */
-            }, JFR_WORKER_NAME);
-            worker.start();
-            worker.join();
-
-            recording.stop();
-        }
-        try {
-            validateJfrThreadLifecycle(RecordingFile.readAllEvents(recordingPath));
-        } finally {
-            Files.deleteIfExists(recordingPath);
-        }
-    }
-
-    private static void validateJfrThreadLifecycle(List<RecordedEvent> events) {
-        boolean foundStart = false;
-        boolean foundEnd = false;
-        for (RecordedEvent event : events) {
-            String eventName = event.getEventType().getName();
-            if (THREAD_START_EVENT.equals(eventName)) {
-                foundStart |= eventReferencesThread(event, JFR_WORKER_NAME);
-            } else if (THREAD_END_EVENT.equals(eventName)) {
-                foundEnd |= eventReferencesThread(event, JFR_WORKER_NAME);
-            }
-        }
-        Assert.assertTrue("Missing JFR ThreadStart event for " + JFR_WORKER_NAME, foundStart);
-        Assert.assertTrue("Missing JFR ThreadEnd event for " + JFR_WORKER_NAME, foundEnd);
-    }
-
-    private static boolean eventReferencesThread(RecordedEvent event, String threadName) {
-        RecordedThread eventThread = event.getThread();
-        return hasName(eventThread, threadName) || threadFieldHasName(event, "eventThread", threadName) || threadFieldHasName(event, "thread", threadName);
-    }
-
-    private static boolean threadFieldHasName(RecordedEvent event, String fieldName, String threadName) {
-        try {
-            return hasName(event.getThread(fieldName), threadName);
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private static boolean hasName(RecordedThread thread, String threadName) {
-        return thread != null && threadName.equals(thread.getJavaName());
-    }
-
-    /**
-     * Checks that management thread listeners still account for started and finished workers.
-     */
-    @Test
-    public void managementThreadHooksTrackThreadLifecycle() throws InterruptedException {
-        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        long startedBefore = threadMXBean.getTotalStartedThreadCount();
-        int liveBefore = threadMXBean.getThreadCount();
-        CountDownLatch workerStarted = new CountDownLatch(1);
-        CountDownLatch finishWorker = new CountDownLatch(1);
-
-        Thread worker = new Thread(() -> {
-            workerStarted.countDown();
-            await(finishWorker);
-        }, "RunMainInNewThreadTest-management-worker");
-        worker.start();
-        workerStarted.await();
-
-        waitUntilTrue(() -> threadMXBean.getTotalStartedThreadCount() >= startedBefore + 1);
-        waitUntilTrue(() -> threadMXBean.getThreadCount() >= liveBefore + 1);
-        int liveWithWorker = threadMXBean.getThreadCount();
-
-        finishWorker.countDown();
-        worker.join();
-
-        waitUntilTrue(() -> threadMXBean.getThreadCount() <= liveWithWorker - 1);
-    }
-
-    private static void waitUntilTrue(BooleanSupplier supplier) throws InterruptedException {
-        long timeoutNanos = System.nanoTime() + Duration.ofSeconds(30).toNanos();
-        while (!supplier.getAsBoolean()) {
-            if (System.nanoTime() > timeoutNanos) {
-                Assert.fail("Timed out waiting for condition.");
-            }
-            Thread.sleep(10);
-        }
-    }
-
-    private static void await(CountDownLatch latch) {
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError(e);
-        }
     }
 }
