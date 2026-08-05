@@ -1138,7 +1138,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata() {
-        return canUnsafeAllocate();
+        return registeredUnsafeAllocationMetadata();
     }
 
     private RuntimeDynamicAccessMetadata canUnsafeAllocate() {

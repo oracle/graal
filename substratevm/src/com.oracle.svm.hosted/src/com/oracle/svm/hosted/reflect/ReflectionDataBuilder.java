@@ -774,7 +774,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
                 ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
                 if (accessibility.includes(ACCESSED)) {
-                    data.legacyAccess = legacyAccess && (previous == null || !previous.includes(ACCESSED));
+                    data.legacyAccess = previous != null && previous.includes(ACCESSED) ? data.legacyAccess && legacyAccess : legacyAccess;
                 }
                 if (previous == null) {
                     registerTypesForField(analysisField);
