@@ -223,10 +223,11 @@ public class CodeInfoEncoder {
 
         /**
          * Installs prepared byte tables and copies object-reference side tables into the target
-         * {@link CodeInfo}.
+         * {@link CodeInfo}. References are written immediately; deferred adjustment is not
+         * supported by this prepared-install path.
          */
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-        public void install(CodeInfo target, ReferenceAdjuster adjuster) {
+        public void install(CodeInfo target, InstantReferenceAdjuster adjuster) {
             VMError.guarantee(!consumed, "Prepared CodeInfo metadata is already consumed");
             consumed = true;
             Encodings encodings = encodedCodeInfo.encodings;
