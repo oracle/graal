@@ -103,6 +103,21 @@ public class SecurityProviderAgentVerifierTest {
         Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
     }
 
+    @Test
+    public void verifySelectedJceServiceConstructorWasRecorded() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        ConfigurationType kemType = reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                        NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.DelayedTestKEM.class.getName()));
+        Assert.assertNotNull("Missing reflection metadata for the selected KEM service implementation", kemType);
+        ConfigurationMemberInfo constructorInfo = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(
+                        kemType, new ConfigurationMethod("<init>", "()V"));
+        Assert.assertNotNull("Missing selected KEM service implementation constructor metadata", constructorInfo);
+        Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
+    }
+
     private static void assertRecorded(TypeConfiguration reflectionConfiguration, String className) {
         Assert.assertNotNull("Missing reflection metadata for " + className,
                         reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
