@@ -86,6 +86,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -1914,6 +1915,30 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    private static boolean applyShortCircuitOr(GraphBuilderContext b, ValueNode x, ValueNode y, BranchProbabilityData shortCircuitProbability) {
+        LogicNode xTrue = b.add(LogicNegationNode.create(b.add(IntegerEqualsNode.create(x, ConstantNode.forInt(0), NodeView.DEFAULT))));
+        LogicNode yTrue = b.add(LogicNegationNode.create(b.add(IntegerEqualsNode.create(y, ConstantNode.forInt(0), NodeView.DEFAULT))));
+        b.addPush(JavaKind.Boolean, ConditionalNode.create(LogicNode.or(xTrue, yTrue, shortCircuitProbability), NodeView.DEFAULT));
+        return true;
+    }
+
+    private static boolean applyShortCircuitAnd(GraphBuilderContext b, ValueNode x, ValueNode y, BranchProbabilityData shortCircuitProbability) {
+        LogicNode xTrue = b.add(LogicNegationNode.create(b.add(IntegerEqualsNode.create(x, ConstantNode.forInt(0), NodeView.DEFAULT))));
+        LogicNode yTrue = b.add(LogicNegationNode.create(b.add(IntegerEqualsNode.create(y, ConstantNode.forInt(0), NodeView.DEFAULT))));
+        b.addPush(JavaKind.Boolean, ConditionalNode.create(LogicNode.and(xTrue, yTrue, shortCircuitProbability), NodeView.DEFAULT));
+        return true;
+    }
+
+    /**
+     * Converts a constant directive argument to the profile data used by a short circuit node.
+     */
+    private static BranchProbabilityData injectedShortCircuitProbability(ValueNode probability) {
+        GraalError.guarantee(probability.isJavaConstant(), "Short circuit probability must be a constant");
+        double value = probability.asJavaConstant().asDouble();
+        GraalError.guarantee(value >= 0.0 && value <= 1.0, "Probability must be between 0.0 and 1.0: %s", value);
+        return BranchProbabilityData.injected(value);
+    }
+
     private static void registerGraalDirectivesPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, GraalDirectives.class);
 
@@ -2074,6 +2099,35 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("shortCircuitOr", boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                return applyShortCircuitOr(b, x, y, BranchProbabilityData.injected(0.5));
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("shortCircuitOr", double.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode x, ValueNode y) {
+                return applyShortCircuitOr(b, x, y, injectedShortCircuitProbability(probability));
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("shortCircuitAnd", boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                return applyShortCircuitAnd(b, x, y, BranchProbabilityData.injected(0.5));
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("shortCircuitAnd", double.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode x, ValueNode y) {
+                return applyShortCircuitAnd(b, x, y, injectedShortCircuitProbability(probability));
+            }
+        });
+
         r.register(new RequiredInlineOnlyInvocationPlugin("injectSwitchCaseProbability", double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability) {

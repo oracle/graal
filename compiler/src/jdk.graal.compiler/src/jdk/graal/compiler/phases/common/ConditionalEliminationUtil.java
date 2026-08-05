@@ -112,6 +112,23 @@ public class ConditionalEliminationUtil {
         }
     }
 
+    /**
+     * Records a condition proof without applying the guard rewrite that would normally consume it.
+     */
+    private static final class ConditionProof {
+        private GuardingNode guard;
+        private boolean result;
+        private Stamp guardedValueStamp;
+        private ValueNode newInput;
+
+        void record(GuardingNode newGuard, boolean newResult, Stamp newGuardedValueStamp, ValueNode newInputValue) {
+            guard = newGuard;
+            result = newResult;
+            guardedValueStamp = newGuardedValueStamp;
+            newInput = newInputValue;
+        }
+    }
+
     @FunctionalInterface
     public interface GuardRewirer {
         /**
@@ -714,33 +731,79 @@ public class ConditionalEliminationUtil {
                     }
                 }
             }
-        } else if (node instanceof ShortCircuitOrNode) {
-            final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
-            return tryProveGuardCondition(infoElementProvider, conditions, guardFolding, null, shortCircuitOrNode.getX(), (guard, result, guardedValueStamp, newInput) -> {
-                if (result == !shortCircuitOrNode.isXNegated()) {
-                    return rewireGuards(guard, true, newInput, guardedValueStamp, rewireGuardFunction);
-                } else {
-                    return tryProveGuardCondition(infoElementProvider, conditions, guardFolding, null, shortCircuitOrNode.getY(), (innerGuard, innerResult, innerGuardedValueStamp, innerNewInput) -> {
-                        ValueNode proxifiedInput = newInput;
-                        if (proxifiedInput == null) {
-                            proxifiedInput = innerNewInput;
-                        } else if (innerNewInput != null) {
-                            if (innerNewInput != newInput) {
-                                // Cannot canonicalize due to different proxied inputs.
-                                return false;
-                            }
-                        }
-                        // Can only canonicalize if the guards are equal.
-                        if (innerGuard == guard) {
-                            return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), proxifiedInput, guardedValueStamp, rewireGuardFunction);
-                        }
-                        return false;
-                    }, allowControlFlowDependentOtherStamp, search);
-                }
-            }, allowControlFlowDependentOtherStamp, search);
+        } else if (node instanceof ShortCircuitOrNode shortCircuitOrNode) {
+            return tryProveShortCircuitOr(infoElementProvider, conditions, shortCircuitOrNode, rewireGuardFunction, allowControlFlowDependentOtherStamp, search);
         }
 
         return false;
+    }
+
+    /**
+     * Proves a short circuit OR from proofs of its operands. Operand proofs are collected before
+     * applying the rewrite, so the second proof cannot depend on a graph mutation from the first.
+     */
+    private static boolean tryProveShortCircuitOr(InfoElementProvider infoElementProvider, ArrayDeque<GuardedCondition> conditions, ShortCircuitOrNode node,
+                    GuardRewirer rewireGuardFunction, boolean allowControlFlowDependentOtherStamp, SafeStampInputSearch search) {
+        ConditionProof xProof = proveCondition(infoElementProvider, conditions, node.getX(), allowControlFlowDependentOtherStamp, search);
+        ConditionProof yProof = proveCondition(infoElementProvider, conditions, node.getY(), allowControlFlowDependentOtherStamp, search);
+
+        if (xProof != null && (xProof.result ^ node.isXNegated())) {
+            return rewireGuards(xProof.guard, true, xProof.newInput, xProof.guardedValueStamp, rewireGuardFunction);
+        }
+        if (yProof != null && (yProof.result ^ node.isYNegated())) {
+            return rewireGuards(yProof.guard, true, yProof.newInput, yProof.guardedValueStamp, rewireGuardFunction);
+        }
+        if (xProof != null && yProof != null) {
+            ConditionProof proofWithDeepestGuard = findProofWithDeepestGuard(conditions, xProof, yProof);
+            if (proofWithDeepestGuard != null) {
+                return rewireGuards(proofWithDeepestGuard.guard, false, proofWithDeepestGuard.newInput, proofWithDeepestGuard.guardedValueStamp, rewireGuardFunction);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Selects a proof whose guard is dominated by both operand proof guards. Active conditions are
+     * ordered from the closest dominator to the farthest one, so the first matching guard is safe
+     * to use when rewiring a condition proven false by both operands.
+     */
+    private static ConditionProof findProofWithDeepestGuard(ArrayDeque<GuardedCondition> conditions, ConditionProof xProof, ConditionProof yProof) {
+        if (xProof.guard == yProof.guard) {
+            return xProof;
+        }
+        ConditionProof deepestProof = null;
+        boolean foundXProofGuard = false;
+        boolean foundYProofGuard = false;
+        for (GuardedCondition condition : conditions) {
+            if (condition.getGuard() == xProof.guard) {
+                foundXProofGuard = true;
+                if (deepestProof == null) {
+                    deepestProof = xProof;
+                }
+            } else if (condition.getGuard() == yProof.guard) {
+                foundYProofGuard = true;
+                if (deepestProof == null) {
+                    deepestProof = yProof;
+                }
+            }
+        }
+        return foundXProofGuard && foundYProofGuard ? deepestProof : null;
+    }
+
+    /**
+     * Uses the regular condition proof machinery but records its result instead of changing the
+     * graph.
+     */
+    private static ConditionProof proveCondition(InfoElementProvider infoElementProvider, ArrayDeque<GuardedCondition> conditions, LogicNode node,
+                    boolean allowControlFlowDependentOtherStamp, SafeStampInputSearch search) {
+        ConditionProof proof = new ConditionProof();
+        if (tryProveGuardCondition(infoElementProvider, conditions, null, null, node, (guard, result, guardedValueStamp, newInput) -> {
+            proof.record(guard, result, guardedValueStamp, newInput);
+            return true;
+        }, allowControlFlowDependentOtherStamp, search)) {
+            return proof;
+        }
+        return null;
     }
 
 }

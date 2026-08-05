@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROB
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.EnumMap;
@@ -36,6 +37,7 @@ import java.util.function.Supplier;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -332,6 +334,8 @@ public abstract class ArrayCopySnippets implements Snippets {
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
+        } else if (!GraalDirectives.shortCircuitOr(SLOW_PATH_PROBABILITY, src != dest, srcPos >= destPos)) {
+            ReplacementsUtil.dynamicAssert(false, "unreachable arraycopy alias case");
         } else {
             for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
                 GuardingNode anchor = SnippetAnchorNode.anchor();
