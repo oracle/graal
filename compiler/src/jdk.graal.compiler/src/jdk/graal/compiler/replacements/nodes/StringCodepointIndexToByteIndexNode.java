@@ -142,10 +142,10 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
     /* NodeIntrinsic plugins for snippet stubs. */
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "codePointIndexToByteIndexUTF8", parameters = "UTF_8", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "codePointIndexToByteIndexUTF16", parameters = "UTF_16", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "codePointIndexToByteIndexUTF16FE", parameters = "UTF_16_FOREIGN_ENDIAN", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF8", parameters = "UTF_8")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF16", parameters = "UTF_16")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF16FE", parameters = "UTF_16_FOREIGN_ENDIAN")
     public static native int codepointIndexToByteIndex(Object array, long offset, int length, int index,
                     @ConstantNodeParameter InputEncoding inputEncoding);
 

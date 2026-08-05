@@ -510,12 +510,12 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
-    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
-    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
-    @GenerateStub(name = "indexOfTableForeignEndianS2", parameters = {"S2", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
-    @GenerateStub(name = "indexOfTableForeignEndianS4", parameters = {"S4", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"})
+    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"})
+    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"})
+    @GenerateStub(name = "indexOfTableForeignEndianS2", parameters = {"S2", "TableForeignEndian"})
+    @GenerateStub(name = "indexOfTableForeignEndianS4", parameters = {"S4", "TableForeignEndian"})
     public static native int optimizedArrayIndexOfTable(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -529,21 +529,22 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, byte[] tables);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf2ConsecutiveTablesS1", parameters = {"S1", "FindTwoConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf2ConsecutiveTablesS2", parameters = {"S2", "FindTwoConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf2ConsecutiveTablesS4", parameters = {"S4", "FindTwoConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf2ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindTwoConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf2ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindTwoConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf3ConsecutiveTablesS1", parameters = {"S1", "FindThreeConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf3ConsecutiveTablesS2", parameters = {"S2", "FindThreeConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf3ConsecutiveTablesS4", parameters = {"S4", "FindThreeConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf3ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindThreeConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf3ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindThreeConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf4ConsecutiveTablesS1", parameters = {"S1", "FindFourConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf4ConsecutiveTablesS2", parameters = {"S2", "FindFourConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf4ConsecutiveTablesS4", parameters = {"S4", "FindFourConsecutiveTables"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf4ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindFourConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOf4ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindFourConsecutiveTablesForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "indexOf2ConsecutiveTablesS1", parameters = {"S1", "FindTwoConsecutiveTables"})
+    @GenerateStub(name = "indexOf2ConsecutiveTablesS2", parameters = {"S2", "FindTwoConsecutiveTables"})
+    @GenerateStub(name = "indexOf2ConsecutiveTablesS4", parameters = {"S4", "FindTwoConsecutiveTables"})
+    @GenerateStub(name = "indexOf2ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindTwoConsecutiveTablesForeignEndian"})
+    @GenerateStub(name = "indexOf2ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindTwoConsecutiveTablesForeignEndian"})
+    @GenerateStub(name = "indexOf3ConsecutiveTablesS1", parameters = {"S1", "FindThreeConsecutiveTables"})
+    @GenerateStub(name = "indexOf3ConsecutiveTablesS2", parameters = {"S2", "FindThreeConsecutiveTables"})
+    @GenerateStub(name = "indexOf3ConsecutiveTablesS4", parameters = {"S4", "FindThreeConsecutiveTables"})
+    @GenerateStub(name = "indexOf3ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindThreeConsecutiveTablesForeignEndian"})
+    @GenerateStub(name = "indexOf3ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindThreeConsecutiveTablesForeignEndian"})
+    @GenerateStub(name = "indexOf4ConsecutiveTablesS1", parameters = {"S1", "FindFourConsecutiveTables"})
+    @GenerateStub(name = "indexOf4ConsecutiveTablesS2", parameters = {"S2", "FindFourConsecutiveTables"})
+    @GenerateStub(name = "indexOf4ConsecutiveTablesS4", parameters = {"S4", "FindFourConsecutiveTables"})
+    @GenerateStub(name = "indexOf4ConsecutiveTablesForeignEndianS2", parameters = {"S2", "FindFourConsecutiveTablesForeignEndian"})
+    @GenerateStub(name = "indexOf4ConsecutiveTablesForeignEndianS4", parameters = {"S4", "FindFourConsecutiveTablesForeignEndian"})
     public static native long optimizedArrayIndexOfTableLong(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,

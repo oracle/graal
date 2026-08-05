@@ -353,11 +353,11 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
     /* NodeIntrinsic plugins for snippet stubs. */
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "calcStringAttributesLatin1", parameters = {"LATIN1", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesBMP", parameters = {"BMP", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF32", parameters = {"UTF_32", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF32FE", parameters = {"UTF_32_FOREIGN_ENDIAN", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "calcStringAttributesLatin1", parameters = {"LATIN1", "false"})
+    @GenerateStub(name = "calcStringAttributesBMP", parameters = {"BMP", "false"})
+    @GenerateStub(name = "calcStringAttributesUTF32", parameters = {"UTF_32", "false"})
+    @GenerateStub(name = "calcStringAttributesUTF32FE", parameters = {"UTF_32_FOREIGN_ENDIAN", "false"})
     public static native int intReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);
@@ -369,13 +369,13 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "calcStringAttributesUTF8Valid", parameters = {"UTF_8", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF8Unknown", parameters = {"UTF_8", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF16Valid", parameters = {"UTF_16", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF16Unknown", parameters = {"UTF_16", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF16FEValid", parameters = {"UTF_16_FOREIGN_ENDIAN", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "calcStringAttributesUTF16FEUnknown", parameters = {"UTF_16_FOREIGN_ENDIAN", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "calcStringAttributesUTF8Valid", parameters = {"UTF_8", "true"})
+    @GenerateStub(name = "calcStringAttributesUTF8Unknown", parameters = {"UTF_8", "false"})
+    @GenerateStub(name = "calcStringAttributesUTF16Valid", parameters = {"UTF_16", "true"})
+    @GenerateStub(name = "calcStringAttributesUTF16Unknown", parameters = {"UTF_16", "false"})
+    @GenerateStub(name = "calcStringAttributesUTF16FEValid", parameters = {"UTF_16_FOREIGN_ENDIAN", "true"})
+    @GenerateStub(name = "calcStringAttributesUTF16FEUnknown", parameters = {"UTF_16_FOREIGN_ENDIAN", "false"})
     public static native long longReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);

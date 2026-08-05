@@ -101,10 +101,10 @@ public class IndexOfZeroNode extends PureFunctionStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
-    @GenerateStub(name = "indexOfZeroS1", parameters = "S1", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "indexOfZeroS2", parameters = "S2", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
-    @GenerateStub(name = "indexOfZeroS4", parameters = "S4", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub.Default(minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
+    @GenerateStub(name = "indexOfZeroS1", parameters = "S1")
+    @GenerateStub(name = "indexOfZeroS2", parameters = "S2")
+    @GenerateStub(name = "indexOfZeroS4", parameters = "S4")
     public static native long optimizedArrayIndexOf(@ConstantNodeParameter Stride stride, long arrayPtr);
 
     @NodeIntrinsic
