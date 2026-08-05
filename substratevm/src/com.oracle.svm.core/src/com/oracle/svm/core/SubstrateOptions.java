@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,12 +88,16 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CodeUtil;
@@ -325,7 +329,7 @@ public class SubstrateOptions {
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
             if (newLevel == OptimizationLevel.SIZE) {
-                configureOptimizeForCodeSize(values, true, true);
+                configureOptimizeForCodeSize(values, true, true, true);
             }
             SubstrateOptions.AOTPriorityInline.update(values, newLevel.isOneOf(O2, O3));
 
@@ -336,7 +340,10 @@ public class SubstrateOptions {
         }
     };
 
-    public static void configureOptimizeForCodeSize(EconomicMap<OptionKey<?>, Object> values, boolean disableLoopOptimizations, boolean disablePEA) {
+    public static void configureOptimizeForCodeSize(EconomicMap<OptionKey<?>, Object> values,
+                    boolean disableVectorization,
+                    boolean disableLoopOptimizations,
+                    boolean disablePEA) {
         enable(GraalOptions.ReduceCodeSize, values);
         enable(ReduceImplicitExceptionStackTraceInformation, values);
         enable(GraalOptions.OptimizeLongJumps, values);
@@ -350,7 +357,15 @@ public class SubstrateOptions {
             disable(GraalOptions.LoopUnswitch, values);
             disable(GraalOptions.FullUnroll, values);
             disable(GraalOptions.PartialUnroll, values);
+            disable(LoopVectorizationPhase.Options.VectorizeLoops, values);
+            disable(MidTier.Options.OptimisticAliasingAnalysis, values);
         }
+
+        if (disableVectorization) {
+            disable(VectorIntrinsics.Options.Vectorization, values);
+        }
+
+        enable(ConditionalMoveOptimizationPhase.Options.CMoveALot, values);
 
         /*
          * Do not align code to further reduce code size.

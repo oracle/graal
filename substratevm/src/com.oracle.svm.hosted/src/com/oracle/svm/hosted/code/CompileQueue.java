@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -86,6 +87,7 @@ import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
 import com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhase;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -101,6 +103,8 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.phases.EconomyMarkFixReadsPhase;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
@@ -137,19 +141,28 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.ExpandLogicPhase;
+import jdk.graal.compiler.phases.common.FixReadsPhase;
+import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
+import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -526,7 +539,8 @@ public class CompileQueue {
     }
 
     protected Suites createRegularSuites() {
-        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
+        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
+        return applyRegularSuiteTuning(suites, HostedOptionValues.singleton().get(), SubstrateOptions.isMaximumOptimizationLevel());
     }
 
     protected Suites createDeoptTargetSuites() {
@@ -534,7 +548,44 @@ public class CompileQueue {
     }
 
     protected Suites createFallbackSuites() {
-        return NativeImageGenerator.createFallbackSuites(featureHandler, runtimeConfig, true);
+        Suites suites = NativeImageGenerator.createFallbackSuites(featureHandler, runtimeConfig, true);
+        return applyFallbackSuiteTuning(suites, HostedOptionValues.singleton().get());
+    }
+
+    /// Applies reduced optimization-level tuning to the regular phase suites.
+    static Suites applyRegularSuiteTuning(Suites suites, OptionValues hostedOptions, boolean maximumOptimizationLevel) {
+        if (maximumOptimizationLevel) {
+            return suites;
+        }
+
+        Suites tunedSuites = suites.copy();
+        PhaseSuite<MidTierContext> midTier = tunedSuites.getMidTier();
+        if (!GraalOptions.PartialUnroll.hasBeenSet(hostedOptions)) {
+            midTier.removeSubTypePhases(LoopPartialUnrollPhase.class);
+        }
+        if (!LoopVectorizationPhase.Options.VectorizeLoops.hasBeenSet(hostedOptions)) {
+            midTier.removeSubTypePhases(LoopVectorizationPhase.class);
+        }
+        return tunedSuites;
+    }
+
+    /// Adds the vector lowering and fixed-read phases required by vectorized fallback compilation.
+    static Suites applyFallbackSuiteTuning(Suites suites, OptionValues hostedOptions) {
+        if (!VectorIntrinsics.Options.Vectorization.getValue(hostedOptions)) {
+            return suites;
+        }
+
+        Suites tunedSuites = suites.copy();
+        ListIterator<BasePhase<? super HighTierContext>> highTierPosition = tunedSuites.getHighTier().findPhase(EconomyMarkFixReadsPhase.class);
+        highTierPosition.remove();
+        ListIterator<BasePhase<? super LowTierContext>> lowTierPosition = tunedSuites.getLowTier().findPhase(LoweringPhase.class);
+        CanonicalizerPhase canonicalizerWithGVN = CanonicalizerPhase.create();
+        lowTierPosition.add(new VectorLoweringPhaseSuite(canonicalizerWithGVN));
+        lowTierPosition = tunedSuites.getLowTier().findPhase(ExpandLogicPhase.class);
+        lowTierPosition.add(new FixReadsPhase(true,
+                        new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(hostedOptions) ? SchedulePhase.SchedulingStrategy.EARLIEST
+                                        : SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+        return tunedSuites;
     }
 
     protected Suites createFallbackDeoptTargetSuites() {
