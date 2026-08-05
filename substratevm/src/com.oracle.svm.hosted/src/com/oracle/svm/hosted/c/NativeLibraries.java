@@ -487,6 +487,7 @@ public final class NativeLibraries {
     }
 
     private final Map<String, PotentialBuiltinJNILibrary> preregisteredLibraries = new HashMap<>();
+    private boolean jvmBuiltinNativesRegistered = false;
 
     /**
      * Keeps the name and dependencies of a prepared JNI library together across feature phases.
@@ -507,8 +508,16 @@ public final class NativeLibraries {
          */
         public static PotentialBuiltinJNILibrary create(String library, String... dependencies) {
             addBuiltinNatives(library);
+            /*
+             * JNI libraries can reference Java_* entry points implemented by Native Image's
+             * libjvm replacement, which is linked but never loaded explicitly as a JNI library.
+             */
+            if (!singleton().jvmBuiltinNativesRegistered) {
+                addBuiltinNatives("jvm");
+                singleton().jvmBuiltinNativesRegistered = true;
+            }
+
             List<String> allDeps = singleton().getLibraryDependencies(library, dependencies);
-            allDeps.forEach(PotentialBuiltinJNILibrary::addBuiltinNatives);
             return new PotentialBuiltinJNILibrary(library, allDeps);
         }
 
