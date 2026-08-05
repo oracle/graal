@@ -590,8 +590,23 @@ public class CodeInfoEncoder {
         int framePointerSaveAreaOffset = getFramePointerSaveAreaOffset(compilation);
 
         /* Mark the method start and register the frame size. */
+        IPData startEntry = makeEntry(compilationOffset);
         FrameInfoEncoder.FrameData defaultFrameData = frameInfoEncoder.addDefaultDebugInfo(method, totalFrameSize);
-        addDefaultFrameInfoEntries(compilationOffset, compilationSize, totalFrameSize, isEntryPoint, hasCalleeSavedRegisters, defaultFrameData, null, framePointerSaveAreaOffset);
+        startEntry.defaultFrameData = defaultFrameData;
+        startEntry.frameData = defaultFrameData;
+        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
+        startEntry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
+
+        /* Register the frame size for all entries that are starting points for the index. */
+        long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
+        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
+            IPData entry = makeEntry(entryIP);
+            entry.defaultFrameData = defaultFrameData;
+            entry.frameData = defaultFrameData;
+            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
+            entry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
+            entryIP += CodeInfoDecoder.indexGranularity();
+        }
 
         EconomicSet<Integer> infopointOffsets = EconomicSet.create(Equivalence.DEFAULT);
         EconomicSet<Long> deoptEntryBcis = EconomicSet.create(Equivalence.DEFAULT);
@@ -645,27 +660,6 @@ public class CodeInfoEncoder {
             return res.getFramePointerSaveAreaOffset();
         }
         return CodeInfoQueryResult.NO_FRAME_POINTER_SAVE_AREA_OFFSET;
-    }
-
-    private void addDefaultFrameInfoEntries(int compilationOffset, int compilationSize, int totalFrameSize, boolean isEntryPoint, boolean hasCalleeSavedRegisters,
-                    FrameInfoEncoder.FrameData defaultFrameData, ReferenceMapEncoder.Input referenceMap, int framePointerSaveAreaOffset) {
-        IPData startEntry = makeEntry(compilationOffset);
-        startEntry.defaultFrameData = defaultFrameData;
-        startEntry.referenceMap = referenceMap;
-        startEntry.frameData = defaultFrameData;
-        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
-        startEntry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
-
-        long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
-        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
-            IPData entry = makeEntry(entryIP);
-            entry.defaultFrameData = defaultFrameData;
-            entry.referenceMap = referenceMap;
-            entry.frameData = defaultFrameData;
-            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
-            entry.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
-            entryIP += CodeInfoDecoder.indexGranularity();
-        }
     }
 
     private IPData makeEntry(long ip) {

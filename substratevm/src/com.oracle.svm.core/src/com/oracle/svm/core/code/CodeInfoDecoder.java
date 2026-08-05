@@ -50,7 +50,6 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -636,15 +635,6 @@ public final class CodeInfoDecoder {
             assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
         } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
         return info;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean containsMethodId(CodeInfo info, int methodId) {
-        if (SubstrateUtil.HOSTED ? info == null : info.isNull()) {
-            return false;
-        }
-        int firstMethodId = CodeInfoAccess.getMethodTableFirstId(info);
-        return methodId >= firstMethodId && methodId - firstMethodId < CodeInfoAccess.getMethodCount(info);
     }
 
     /**
