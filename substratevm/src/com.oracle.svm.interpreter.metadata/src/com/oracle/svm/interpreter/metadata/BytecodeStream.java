@@ -503,7 +503,7 @@ public final class BytecodeStream {
     /**
      * Updates the specified array with opaque memory order semantics.
      */
-    public static void patchOpcodeOpaque(byte[] code, int curBCI, int newOpcode) {
+    public static void patchOpcodeOpaque(byte[] code, long curBCI, int newOpcode) {
         assert 0 <= newOpcode && newOpcode < Bytecodes.END;
         ByteUtils.opaqueWrite(code, curBCI, (byte) newOpcode);
     }

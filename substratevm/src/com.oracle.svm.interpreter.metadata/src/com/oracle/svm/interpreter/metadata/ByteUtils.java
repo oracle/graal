@@ -189,7 +189,7 @@ public final class ByteUtils {
         }
     }
 
-    public static void opaqueWrite(byte[] data, int bci, byte value) {
+    public static void opaqueWrite(byte[] data, long bci, byte value) {
         UNSAFE.putByteOpaque(data, offsetFor(bci), value);
     }
 }

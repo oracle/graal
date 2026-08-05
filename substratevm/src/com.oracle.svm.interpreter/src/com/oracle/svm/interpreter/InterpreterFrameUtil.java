@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
@@ -236,11 +237,11 @@ public final class InterpreterFrameUtil {
         frame.setDoubleStatic(slot, slotOffset + 1, value);
     }
 
-    private static void clearReference(InterpreterFrame frame, long slot) {
+    public static void clearReference(InterpreterFrame frame, long slot) {
         frame.clearObjectStatic(slot);
     }
 
-    private static void clearReference(InterpreterFrame frame, long slot, long slotOffset) {
+    public static void clearReference(InterpreterFrame frame, long slot, long slotOffset) {
         frame.clearObjectStatic(slot, slotOffset);
     }
 
@@ -327,6 +328,7 @@ public final class InterpreterFrameUtil {
         return maxLocals;
     }
 
+    @NeverInline("Keep argument array allocation and filling out of bytecode-handler stubs")
     public static Object[] popArguments(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature) {
         int argCount = signature.getParameterCount(false);
 

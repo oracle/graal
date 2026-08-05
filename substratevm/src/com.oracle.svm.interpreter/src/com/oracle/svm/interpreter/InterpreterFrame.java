@@ -29,8 +29,9 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.util.Arrays;
 
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -268,6 +269,7 @@ public final class InterpreterFrame {
         UNSAFE.putReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE), value);
     }
 
+    @NeverInline("Keep lock-array growth out of bytecode-handler stubs")
     private void ensureLocksCapacity(int capacity) {
         int oldLength = locks.length;
         Object[] newLocks = Arrays.copyOf(locks, Math.max(capacity, (oldLength * 2) + 1));
