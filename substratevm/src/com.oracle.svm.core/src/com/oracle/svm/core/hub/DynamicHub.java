@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2255,20 +2255,26 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         boolean followReflectionConfiguration = ClassLoadingSupport.singleton().followReflectionConfiguration();
         DynamicHub arrayHub = getArrayHub();
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
+        RuntimeDynamicAccessMetadata arrayMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
+        RuntimeDynamicAccessMetadata componentMetadata = isClassFlagSet(ALL_CLASSES_FLAG) ? getDynamicAccessMetadata() : null;
+        boolean metadataMissing = arrayMetadata == null && componentMetadata == null;
+        boolean metadataPreserved = (arrayMetadata != null && arrayMetadata.isPreserved()) ||
+                        (componentMetadata != null && componentMetadata.isPreserved());
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(metadataMissing, metadataPreserved)) {
             MetadataTracer.singleton().traceReflectionArrayType(clazz);
         }
+        boolean registrationSatisfied = (arrayMetadata != null && arrayMetadata.satisfied()) ||
+                        (componentMetadata != null && componentMetadata.satisfied());
         // this access is validated even if the array hub exists
         if (RuntimeClassLoading.isSupported()) {
             if (exactReflection() &&
                             followReflectionConfiguration &&
-                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
+                            !registrationSatisfied) {
                 MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
             }
         } else {
             if (followReflectionConfiguration && (arrayHub == null || (exactReflection() &&
-                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())))) {
+                            !registrationSatisfied))) {
                 MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
             }
         }
