@@ -475,7 +475,7 @@ public final class NativeLibraries {
         dependencyGraph.add(library, allDeps);
     }
 
-    public List<String> getLibraryDependencies(String library, String... dependencies) {
+    public static List<String> getLibraryDependencies(String library, String... dependencies) {
         List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
         /* "jvm" is a basic dependence for static JNI libs */
         allDeps.add("jvm");
@@ -517,7 +517,7 @@ public final class NativeLibraries {
                 singleton().jvmBuiltinNativesRegistered = true;
             }
 
-            List<String> allDeps = singleton().getLibraryDependencies(library, dependencies);
+            List<String> allDeps = getLibraryDependencies(library, dependencies);
             return new PotentialBuiltinJNILibrary(library, allDeps);
         }
 
