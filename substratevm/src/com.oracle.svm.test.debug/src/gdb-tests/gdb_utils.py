@@ -27,6 +27,7 @@
 # python utility code for use by the gdb scripts that test native debug info
 
 import gdb
+import os
 import re
 import sys
 
@@ -49,6 +50,10 @@ def configure_gdb():
 # execute a gdb command and return the resulting output as a string
 
 def execute(command):
+    # Include the call site to make commands traceable in the test output.
+    caller = sys._getframe(1)
+    caller_file = os.path.basename(caller.f_code.co_filename)
+    print(f'# {caller_file}:{caller.f_lineno}')
     print(f'(gdb) {command}')
     try:
         return gdb.execute(command, to_string=True)
@@ -120,6 +125,8 @@ class Checker:
                         print(f'Checker {self.name}: match {i:d} failed at line {line_idx:d} {line}\n')
                         print(self)
                         print(text)
+                        import traceback
+                        traceback.print_stack()
                         sys.exit(1)
                 else:
                     matches.append(match)
@@ -128,6 +135,8 @@ class Checker:
             print(f'Checker {self.name}: insufficient matching lines {len(matches):d} for regular expressions {num_rexps:d}')
             print(self)
             print(text)
+            import traceback
+            traceback.print_stack()
             sys.exit(1)
         print(text)
         return matches
