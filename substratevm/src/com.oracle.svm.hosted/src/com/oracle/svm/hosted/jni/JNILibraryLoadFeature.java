@@ -137,7 +137,7 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibraries());
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);

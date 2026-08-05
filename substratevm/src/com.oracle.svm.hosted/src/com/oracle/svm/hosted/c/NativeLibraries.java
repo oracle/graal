@@ -128,7 +128,6 @@ public final class NativeLibraries {
     private final List<String> libraries;
     private final DependencyGraph dependencyGraph;
     private final List<String> jniStaticLibraries;
-    private final Set<String> jniStaticLibrariesAndDependencies;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -273,7 +272,6 @@ public final class NativeLibraries {
         libraries = Collections.synchronizedList(new ArrayList<>());
         dependencyGraph = new DependencyGraph();
         jniStaticLibraries = Collections.synchronizedList(new ArrayList<>());
-        jniStaticLibrariesAndDependencies = ConcurrentHashMap.newKeySet();
 
         libraryPaths = initCLibraryPath();
 
@@ -474,8 +472,6 @@ public final class NativeLibraries {
 
     public void addStaticJniLibrary(String library, List<String> allDeps) {
         jniStaticLibraries.add(library);
-        jniStaticLibrariesAndDependencies.add(library);
-        jniStaticLibrariesAndDependencies.addAll(allDeps);
         dependencyGraph.add(library, allDeps);
     }
 
@@ -787,9 +783,5 @@ public final class NativeLibraries {
 
     public List<String> getJniStaticLibraries() {
         return jniStaticLibraries;
-    }
-
-    public Collection<String> getJniStaticLibrariesAndDependencies() {
-        return jniStaticLibrariesAndDependencies;
     }
 }
