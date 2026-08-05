@@ -195,6 +195,34 @@ final class EngineAccessor extends Accessor {
     private EngineAccessor() {
     }
 
+    /*
+     * An interop exception may also delegate host-object messages to an arbitrary host value, so
+     * the isException and isHostObject messages alone are not sufficient to identify a host
+     * exception.
+     */
+    static Throwable getHostException(Throwable exception) throws HeapIsolationException {
+        if (exception != null) {
+            InteropLibrary interop = InteropLibrary.getUncached(exception);
+            if (interop.isException(exception) && interop.isHostObject(exception)) {
+                try {
+                    Object hostObject = interop.asHostObject(exception);
+                    return hostObject instanceof Throwable hostException ? hostException : null;
+                } catch (UnsupportedMessageException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    static boolean isHostException(Throwable exception) {
+        try {
+            return getHostException(exception) != null;
+        } catch (HeapIsolationException e) {
+            return true;
+        }
+    }
+
     static final class EngineImpl extends EngineSupport {
 
         private EngineImpl() {
@@ -1227,25 +1255,19 @@ final class EngineAccessor extends Accessor {
         @Override
         @TruffleBoundary
         public boolean isHostException(Throwable exception) {
-            InteropLibrary interop = InteropLibrary.getUncached(exception);
-            return interop.isHostObject(exception) && interop.isException(exception);
+            return EngineAccessor.isHostException(exception);
         }
 
         @Override
         @TruffleBoundary
         public Throwable asHostException(Throwable exception) {
-            if (exception != null) {
-                InteropLibrary interop = InteropLibrary.getUncached(exception);
-                boolean isHostException = interop.isHostObject(exception) && interop.isException(exception);
-                if (isHostException) {
-                    try {
-                        return (Throwable) interop.asHostObject(exception);
-                    } catch (HeapIsolationException e) {
-                        return null;
-                    } catch (UnsupportedMessageException e) {
-                        // Fall through to IllegalArgumentException
-                    }
+            try {
+                Throwable hostException = getHostException(exception);
+                if (hostException != null) {
+                    return hostException;
                 }
+            } catch (HeapIsolationException e) {
+                return null;
             }
             throw new IllegalArgumentException("Provided value not a host exception.");
         }

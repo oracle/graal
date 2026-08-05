@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -243,6 +243,57 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             } else {
                 throw UnsupportedMessageException.create();
             }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("serial")
+    static final class TestGuestErrorWithHostObject extends TestGuestError {
+
+        private final Object hostObject;
+
+        TestGuestErrorWithHostObject(Object hostObject) {
+            this.hostObject = hostObject;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isHostObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object asHostObject() {
+            return hostObject;
+        }
+    }
+
+    @Test
+    public void testGuestExceptionWithNonThrowableHostObject() throws IOException {
+        Object hostObject = new Object();
+        CauseErrorTruffleObject throwError = new CauseErrorTruffleObject();
+        throwError.thrownError = new TestGuestErrorWithHostObject(hostObject);
+
+        try (Context testContext = Context.create()) {
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> testContext.asValue(throwError).execute());
+            assertTrue(exception.isGuestException());
+            assertFalse(exception.isHostException());
+            assertTrue(exception.getGuestObject().isHostObject());
+            assertSame(hostObject, exception.getGuestObject().asHostObject());
+            assertStackTraceStart(exception, PolyglotException.class.getName() + ": MyError");
+        }
+    }
+
+    @Test
+    public void testGuestExceptionWithThrowableHostObject() {
+        RuntimeException hostException = new RuntimeException("Host exception");
+        CauseErrorTruffleObject throwError = new CauseErrorTruffleObject();
+        throwError.thrownError = new TestGuestErrorWithHostObject(hostException);
+
+        try (Context testContext = Context.create()) {
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> testContext.asValue(throwError).execute());
+            assertTrue(exception.isHostException());
+            assertSame(hostException, exception.asHostException());
         }
     }
 

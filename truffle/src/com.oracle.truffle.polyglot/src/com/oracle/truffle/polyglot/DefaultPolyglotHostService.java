@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import static com.oracle.truffle.polyglot.PolyglotEngineImpl.HOST_LANGUAGE_INDEX
 import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET;
 import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
@@ -77,13 +76,8 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
 
     @Override
     public RuntimeException hostToGuestException(AbstractHostLanguageService host, Throwable throwable) {
-        assert !isHostException(throwable);
+        assert !EngineAccessor.isHostException(throwable);
         return host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), throwable);
-    }
-
-    private static boolean isHostException(Throwable throwable) {
-        InteropLibrary interop = InteropLibrary.getUncached(throwable);
-        return interop.isHostObject(throwable) && interop.isException(throwable);
     }
 
     @Override
