@@ -357,9 +357,9 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getInterpreterBytecodeHandlerBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
         /*
-         * Bytecode handlers use a uniform ABI whose first argument is curBCI. The generated stub
-         * itself has no Java local containing that value, so frameInfo denotes the Java handler
-         * inlined into the stub.
+         * Bytecode handlers and their generated stubs use a uniform ABI whose first argument is
+         * curBCI. The frame can therefore be either the Java handler inlined into the stub or the
+         * stub itself when an exceptional edge omits the inlined handler frame.
          *
          * Debugger-event delivery explicitly publishes the next BCI on the interpreter frame.
          * TODO: An asynchronous stack walk directly inside prepareOpcodeForDispatch,
