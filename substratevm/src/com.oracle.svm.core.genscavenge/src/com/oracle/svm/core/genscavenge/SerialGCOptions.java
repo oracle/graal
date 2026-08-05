@@ -147,7 +147,7 @@ public final class SerialGCOptions {
         CollectionPolicies.validatePolicyName(optionKey);
 
         if (optionKey.hasBeenSet() && !SerialGCOptions.useRememberedSet()) {
-            throw invalidOptionValue("The collection policy cannot be set via '%s' if 'UseRememberedSet' is disabled.", SerialGCOptions.InitialCollectionPolicy.getName());
+            throw invalidOptionValue("Collection policies cannot be used when 'UseRememberedSet' is disabled (attempted to set via '%s').", optionKey.getName());
         }
     }
 
