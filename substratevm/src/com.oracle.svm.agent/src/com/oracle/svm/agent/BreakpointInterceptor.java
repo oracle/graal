@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
-import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.LambdaConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
@@ -283,14 +282,6 @@ final class BreakpointInterceptor {
             return true; /* No point in tracing this. */
         }
         traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull(), className);
-        return true;
-    }
-
-    private static boolean arrayType(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle componentType = getReceiver(thread);
-        String arrayTypeName = ClassNameSupport.getArrayReflectionName(getClassNameOrNull(jni, componentType));
-        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "forName", null, state.getFullStackTraceOrNull(), arrayTypeName);
         return true;
     }
 
@@ -1819,7 +1810,6 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructor),
 
                     brk("java/lang/Class", "newInstance", "()Ljava/lang/Object;", BreakpointInterceptor::newInstance),
-                    brk("java/lang/Class", "arrayType", "()Ljava/lang/Class;", BreakpointInterceptor::arrayType),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 

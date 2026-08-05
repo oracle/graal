@@ -86,6 +86,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
+import com.oracle.svm.core.BuilderUtil;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
@@ -352,6 +353,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerTypesForTypeQuery(AnalysisType type, TypeData typeData, boolean preserved, boolean linkageError) {
         type.registerAsReachable("Is registered for reflection.");
+        if (type.getJavaClass() != void.class && BuilderUtil.arrayTypeDimension(type) < 255) {
+            /*
+             * Class.arrayType() must be available for a type registered for reflection. Only make
+             * the immediate array type reachable: registering it for reflection or recursively
+             * including further dimensions would unnecessarily increase image size.
+             */
+            type.getArrayClass().registerAsReachable("Is the immediate array type of a class registered for reflection.");
+        }
         runConditionalTask(unconditional(), _ -> {
             registerTypeForRuntimeAccess(type);
             if (!linkageError) {
