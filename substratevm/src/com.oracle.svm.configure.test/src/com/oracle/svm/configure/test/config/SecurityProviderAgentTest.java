@@ -49,6 +49,7 @@ import org.junit.Test;
 public class SecurityProviderAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = SecurityProviderAgentTest.class.getName() + ".generator.enabled";
     private static final String KEM_ALGORITHM = "AgentKEM";
+    private static final String DELAYED_KEM_ALGORITHM = "AgentDelayedKEM";
 
     /** Tests §FS-security-providers.6.1. */
     @Test
@@ -93,6 +94,22 @@ public class SecurityProviderAgentTest {
         }
     }
 
+    /** Tests §FS-security-providers.6.1 for selection before service instantiation. */
+    @Test
+    public void jceServiceSelectionRetainsConstructorMetadata() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+
+        Provider provider = new ProgrammaticallyAddedDelayedKEMProvider();
+        int position = Security.addProvider(provider);
+        try {
+            Assert.assertTrue("The test provider must be added", position > 0);
+            Assert.assertNotNull(KEM.getInstance(DELAYED_KEM_ALGORITHM));
+        } finally {
+            Security.removeProvider(provider.getName());
+        }
+    }
+
     static final class ReflectiveProbe {
     }
 
@@ -115,7 +132,31 @@ public class SecurityProviderAgentTest {
         }
     }
 
+    static final class ProgrammaticallyAddedDelayedKEMProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        @SuppressWarnings("deprecation")
+        ProgrammaticallyAddedDelayedKEMProvider() {
+            super("AgentDelayedKEMProvider", 1.0, "Provider used to verify pre-instantiation service tracing");
+            put("KEM." + DELAYED_KEM_ALGORITHM, DelayedTestKEM.class.getName());
+        }
+    }
+
     public static final class TestKEM implements KEMSpi {
+        @Override
+        public EncapsulatorSpi engineNewEncapsulator(PublicKey publicKey, AlgorithmParameterSpec spec, SecureRandom secureRandom)
+                        throws InvalidAlgorithmParameterException, InvalidKeyException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DecapsulatorSpi engineNewDecapsulator(PrivateKey privateKey, AlgorithmParameterSpec spec)
+                        throws InvalidAlgorithmParameterException, InvalidKeyException {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    public static final class DelayedTestKEM implements KEMSpi {
         @Override
         public EncapsulatorSpi engineNewEncapsulator(PublicKey publicKey, AlgorithmParameterSpec spec, SecureRandom secureRandom)
                         throws InvalidAlgorithmParameterException, InvalidKeyException {
