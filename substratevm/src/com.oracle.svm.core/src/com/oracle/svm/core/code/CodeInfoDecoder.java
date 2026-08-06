@@ -572,8 +572,15 @@ public final class CodeInfoDecoder {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void fillSourceFields(FrameInfoQueryResult result) {
-        CodeInfo info = imageCodeInfoForSourceMethod(result.sourceMethodId);
         int methodId = result.sourceMethodId;
+        CodeInfo info;
+        CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
+        assert next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next);
+        do {
+            info = next;
+            next = CodeInfoAccess.getNextImageCodeInfo(info);
+            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
+        } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
 
         boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;
         boolean shortName = NonmovableArrays.lengthOf(CodeInfoAccess.getMemberNames(info)) <= 0xffff;
@@ -615,22 +622,6 @@ public final class CodeInfoDecoder {
             sourceSignatureFlags = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS | getMethodFlags(methodEncodings, methodFlagsOffset, methodIndex);
         }
         result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureFlags);
-    }
-
-    /**
-     * Finds the image CodeInfo whose source metadata table owns {@code methodId}.
-     */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static CodeInfo imageCodeInfoForSourceMethod(int methodId) {
-        CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
-        assert next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next);
-        CodeInfo info;
-        do {
-            info = next;
-            next = CodeInfoAccess.getNextImageCodeInfo(info);
-            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
-        } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
-        return info;
     }
 
     /**
