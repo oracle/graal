@@ -34,6 +34,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -79,7 +80,9 @@ public sealed class AArch64CGlobalDataDirectLoadAddressOp extends AArch64LIRInst
             masm.adrpAdd(resultRegister);
         }
         if (addend != 0) {
-            masm.add(64, resultRegister, resultRegister, addend);
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                masm.add(64, resultRegister, resultRegister, addend, scratch.getRegister());
+            }
         }
     }
 }
