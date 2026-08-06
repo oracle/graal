@@ -53,6 +53,7 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -113,14 +114,14 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return UNSAFE.getReference(cachedEntries, objectArrayOffset(cpi));
     }
 
-    private void uncheckedCachedEntryAtPut(int cpi, Object value) {
-        UNSAFE.putReference(cachedEntries, objectArrayOffset(cpi), value);
-    }
-
     public Tag uncheckedTagAt(int cpi) {
         Tag tag = Tag.fromValue(UNSAFE.getByte(tags, byteArrayOffset(cpi)));
         assert tag != null;
         return tag;
+    }
+
+    public byte uncheckedTagValueAt(int cpi) {
+        return UNSAFE.getByte(tags, byteArrayOffset(cpi));
     }
 
     public Object uncheckedPeekCachedEntry(int cpi) {
@@ -386,38 +387,34 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public Object resolvedAt(int cpi, InterpreterResolvedObjectType accessingClass) {
         Object entry = cachedEntries[cpi];
         if (isUnresolved(entry)) {
-            // TODO(peterssen): GR-68611 Avoid deadlocks when hitting breakpoints (JDWP debugger)
-            // during class resolution.
-            /*
-             * Class resolution can run arbitrary code (not in the to-be resolved class <clinit>
-             * but) in the user class loaders where it can hit a breakpoint (JDWP debugger), causing
-             * a deadlock.
-             */
-            synchronized (this) {
-                entry = cachedEntries[cpi];
-                if (isUnresolved(entry)) {
-                    cachedEntries[cpi] = entry = resolve(cpi, accessingClass);
-                }
-            }
+            entry = forceResolveAt(cpi, accessingClass);
         }
+        return entry;
+    }
 
+    @NeverInline("Interpreter handler slow path")
+    private synchronized Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        // TODO(peterssen): GR-68611 Avoid deadlocks when hitting breakpoints (JDWP debugger)
+        // during class resolution.
+        /*
+         * Class resolution can run arbitrary code (not in the to-be resolved class <clinit>
+         * but) in the user class loaders where it can hit a breakpoint (JDWP debugger), causing
+         * a deadlock.
+         */
+        Object entry = cachedEntries[cpi];
+        if (isUnresolved(entry)) {
+            cachedEntries[cpi] = entry = resolve(cpi, accessingClass);
+        }
         return entry;
     }
 
     /**
-     * Resolves a constant-pool entry whose index and type were established by bytecode
-     * verification, without performing an array bounds check on the cache access.
+     * Returns a constant-pool entry whose index and type were established by bytecode verification.
      */
     public Object uncheckedResolvedAt(int cpi, InterpreterResolvedObjectType accessingClass) {
         Object entry = uncheckedCachedEntryAt(cpi);
         if (isUnresolved(entry)) {
-            synchronized (this) {
-                entry = uncheckedCachedEntryAt(cpi);
-                if (isUnresolved(entry)) {
-                    entry = resolve(cpi, accessingClass);
-                    uncheckedCachedEntryAtPut(cpi, entry);
-                }
-            }
+            entry = forceResolveAt(cpi, accessingClass);
         }
         return entry;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
 import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
 import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
@@ -35,23 +36,34 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownPro
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.impl.ObjectAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
@@ -63,13 +75,21 @@ import jdk.graal.compiler.replacements.InstanceOfSnippetsTemplates;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * GR-51603 Once this snippet logic reaches a steady-state merge with {@link TypeSnippets}.
  */
 public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippets {
+    private static final SubstrateForeignCallDescriptor OUTLINED_ITERATIVE_INTERFACE_TYPE_CHECK = SnippetRuntime.findForeignCall(
+                    OpenTypeWorldSnippets.class, "outlinedIterativeInterfaceTypeCheck", NO_SIDE_EFFECT);
+
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(OUTLINED_ITERATIVE_INTERFACE_TYPE_CHECK);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native boolean callOutlinedIterativeInterfaceTypeCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor, int interfaceID, Object checkedHub);
 
     @Snippet
     protected static SubstrateIntrinsics.Any typeEqualitySnippet(
@@ -157,14 +177,15 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                     @Snippet.NonNullParameter DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue,
-                    @Snippet.ConstantParameter boolean useInterfaceHashing) {
+                    @Snippet.ConstantParameter boolean useInterfaceHashing,
+                    @Snippet.ConstantParameter boolean outlineSecondary) {
         int typeIDDepth = type.getTypeIDDepth();
         if (unknownProbability(typeIDDepth >= 0)) {
             int typeID = type.getTypeID();
             return classTypeCheck(typeID, typeIDDepth, checkedHub, trueValue, falseValue);
         } else {
             int interfaceID = type.getInterfaceID();
-            return interfaceTypeCheckHelper(interfaceID, checkedHub, trueValue, falseValue, useInterfaceHashing);
+            return interfaceTypeCheckHelper(interfaceID, checkedHub, trueValue, falseValue, useInterfaceHashing, outlineSecondary);
         }
     }
 
@@ -203,18 +224,28 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue,
                     boolean useInterfaceHashing) {
-        if (useInterfaceHashing && probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, interfaceID <= SubstrateOptions.interfaceHashingMaxId())) {
-            return hashedInterfaceTypeCheck(interfaceID, checkedHub, trueValue, falseValue);
-        }
-        return iterativeInterfaceTypeCheck(interfaceID, checkedHub, trueValue, falseValue);
+        return interfaceTypeCheckHelper(interfaceID, checkedHub, trueValue, falseValue, useInterfaceHashing, false);
     }
 
-    @DuplicatedInNativeCode
-    protected static SubstrateIntrinsics.Any iterativeInterfaceTypeCheck(
+    protected static SubstrateIntrinsics.Any interfaceTypeCheckHelper(
                     int interfaceID,
                     DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
-                    SubstrateIntrinsics.Any falseValue) {
+                    SubstrateIntrinsics.Any falseValue,
+                    boolean useInterfaceHashing,
+                    boolean outlineIterativeTypeCheck) {
+        if (useInterfaceHashing && probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, interfaceID <= SubstrateOptions.interfaceHashingMaxId())) {
+            return hashedInterfaceTypeCheck(interfaceID, checkedHub, trueValue, falseValue);
+        }
+        if (outlineIterativeTypeCheck) {
+            return callOutlinedIterativeInterfaceTypeCheck(OUTLINED_ITERATIVE_INTERFACE_TYPE_CHECK, interfaceID, checkedHub) ? trueValue : falseValue;
+        } else {
+            return iterativeInterfaceTypeCheck(interfaceID, checkedHub) ? trueValue : falseValue;
+        }
+    }
+
+    @DuplicatedInNativeCode
+    protected static boolean iterativeInterfaceTypeCheck(int interfaceID, DynamicHub checkedHub) {
         int numClassTypes = checkedHub.getNumClassTypes();
         int numInterfaceTypes = checkedHub.getNumIterableInterfaceTypes();
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
@@ -224,10 +255,16 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             // GR-51603 can make a floating read
             int checkedInterfaceId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
             if (checkedInterfaceId == interfaceID) {
-                return trueValue;
+                return true;
             }
         }
-        return falseValue;
+        return false;
+    }
+
+    @Uninterruptible(reason = "Only calls accessors that read immutable type-check metadata.", calleeMustBe = false)
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static boolean outlinedIterativeInterfaceTypeCheck(int interfaceID, Object checkedHub) {
+        return iterativeInterfaceTypeCheck(interfaceID, GraalDirectives.uncheckedCast(checkedHub, DynamicHub.class));
     }
 
     /**
@@ -402,6 +439,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
             args.add("useInterfaceHashing", SubstrateOptions.useInterfaceHashing());
+            args.add("outlineSecondary", node.shouldOutlineSecondaryTypeCheck());
             return args;
         }
     }

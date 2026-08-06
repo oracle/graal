@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,18 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * The caller provides an error message that can be constructed using
      * <a href="#simpleFormat">Simple message format</a>
      */
+    default RuntimeException throwError(ErrorType error, String messageFormat, Object arg0) {
+        throw throwError(error, messageFormat, new Object[]{arg0});
+    }
+
+    default RuntimeException throwError(ErrorType error, String messageFormat, Object arg0, Object arg1) {
+        throw throwError(error, messageFormat, new Object[]{arg0, arg1});
+    }
+
+    default RuntimeException throwError(ErrorType error, String messageFormat, Object arg0, Object arg1, Object arg2) {
+        throw throwError(error, messageFormat, new Object[]{arg0, arg1, arg2});
+    }
+
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
     /**

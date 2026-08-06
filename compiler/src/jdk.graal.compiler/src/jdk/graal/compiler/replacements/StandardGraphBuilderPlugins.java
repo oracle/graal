@@ -2051,6 +2051,16 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("uncheckedCast", Object.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode type) {
+                GraalError.guarantee(type.isConstant(), "Class argument of GraalDirectives.uncheckedCast must be constant");
+                ResolvedJavaType targetType = b.getConstantReflection().asJavaType(type.asJavaConstant());
+                GraalError.guarantee(targetType != null, "Class argument of GraalDirectives.uncheckedCast must resolve to a Java type");
+                b.addPush(JavaKind.Object, PiNode.create(value, StampFactory.object(TypeReference.createTrustedWithoutAssumptions(targetType), true)));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("assumeStableDimension", Object.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode dimension) {

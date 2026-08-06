@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,11 @@
 
 package com.oracle.svm.interpreter;
 
+import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 
 /**
  * Wraps exceptions thrown by the interpreter or by compiled code. This is a way to
@@ -59,8 +63,59 @@ public final class SemanticJavaException extends RuntimeException {
         return this;
     }
 
+    @NeverInline("Exception construction")
     public static RuntimeException raise(Throwable cause) {
         InterpreterUtil.assertion(cause != null && !(cause instanceof SemanticJavaException), "bad SemanticJavaException nesting");
         throw new SemanticJavaException(cause);
+    }
+
+    @AlwaysInline("Inlined variant of raise")
+    static RuntimeException raiseInlined(Throwable cause) {
+        InterpreterUtil.assertion(cause != null && !(cause instanceof SemanticJavaException), "bad SemanticJavaException nesting");
+        throw new SemanticJavaException(cause);
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseNullPointerException() {
+        throw new SemanticJavaException(new NullPointerException());
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseArrayIndexOutOfBoundsException(int index, int length) {
+        throw new SemanticJavaException(new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length));
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseArrayStoreException(DynamicHub hub) {
+        throw new SemanticJavaException(new ArrayStoreException(ClassNameSupport.reflectionNameToTypeName(hub.getName())));
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseIllegalMonitorStateException() {
+        throw new SemanticJavaException(new IllegalMonitorStateException());
+    }
+
+    private static String cannotCastMsg(Object instance, Class<?> clazz) {
+        return "Cannot cast " + instance.getClass().getName() + " to " + clazz.getName();
+    }
+
+    @NeverInline("Keep class-cast exception construction out of bytecode-handler stubs")
+    static SemanticJavaException raiseClassCastException(Object instance, Class<?> clazz) {
+        throw raiseInlined(new ClassCastException(cannotCastMsg(instance, clazz)));
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseInstantiationError(String message) {
+        throw new SemanticJavaException(new InstantiationError(message));
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseNegativeArraySizeException(int length) {
+        throw new SemanticJavaException(new NegativeArraySizeException(String.valueOf(length)));
+    }
+
+    @NeverInline("Exception construction")
+    static RuntimeException raiseIncompatibleClassChangeError(String message) {
+        throw new SemanticJavaException(new IncompatibleClassChangeError(message));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,6 +80,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     private final int flags;
     private final Symbol<Name> name;
     private final Symbol<Type> typeSymbol;
+    private final JavaKind javaKind;
 
     // Computed after analysis.
     private int offset;
@@ -116,6 +117,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
                     boolean isWordStorage) {
         this.name = MetadataUtil.requireNonNull(name);
         this.typeSymbol = MetadataUtil.requireNonNull(typeSymbol);
+        this.javaKind = CremaTypeAccess.symbolToJvmciKind(typeSymbol);
         this.flags = flags;
         this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
         this.offset = offset;
@@ -296,7 +298,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     @Override
     public final JavaKind getJavaKind() {
-        return CremaTypeAccess.symbolToJvmciKind(getSymbolicType());
+        return javaKind;
     }
 
     public final boolean isWordStorage() {

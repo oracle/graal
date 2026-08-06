@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 public class InterpreterUtil {
@@ -48,7 +50,7 @@ public class InterpreterUtil {
      */
     public static void guarantee(boolean condition, String simpleFormat, Object arg1) {
         if (!condition) {
-            VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, arg1));
+            throw shouldNotReachHere(simpleFormat, arg1);
         }
     }
 
@@ -58,25 +60,50 @@ public class InterpreterUtil {
      */
     public static void guarantee(boolean condition, String simpleFormat, Object arg1, Object arg2) {
         if (!condition) {
-            VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, arg1, arg2));
+            throw shouldNotReachHere(simpleFormat, arg1, arg2);
         }
     }
 
     /**
-     * Alternative to {@link VMError#guarantee(boolean, String, Object, Object)} that avoids
+     * Alternative to {@link VMError#guarantee(boolean, String, Object, Object, Object)} that avoids
      * {@link String#format(String, Object...)} .
      */
-    public static void guarantee(boolean condition, String simpleFormat, Object... args) {
+    public static void guarantee(boolean condition, String simpleFormat, Object arg1, Object arg2, Object arg3) {
         if (!condition) {
-            VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, args));
+            throw shouldNotReachHere(simpleFormat, arg1, arg2, arg3);
         }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void assertion(boolean condition, String message) {
         if (assertionsEnabled && !condition) {
-            VMError.guarantee(condition, message);
+            throw VMError.shouldNotReachHere(message);
         }
+    }
+
+    @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
+    public static RuntimeException shouldNotReachHereAtRuntime() {
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
+    public static RuntimeException shouldNotReachHere(String simpleFormat, Object arg1) {
+        throw VMError.shouldNotReachHere(MetadataUtil.fmt(simpleFormat, arg1));
+    }
+
+    @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
+    public static RuntimeException shouldNotReachHere(String simpleFormat, Object arg1, Object arg2) {
+        throw VMError.shouldNotReachHere(MetadataUtil.fmt(simpleFormat, arg1, arg2));
+    }
+
+    @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
+    public static RuntimeException shouldNotReachHere(String simpleFormat, Object arg1, Object arg2, Object arg3) {
+        throw VMError.shouldNotReachHere(MetadataUtil.fmt(simpleFormat, arg1, arg2, arg3));
+    }
+
+    @NeverInline("Keep invalid opcode diagnostics out of the bytecode-handler stubs")
+    public static RuntimeException invalidOpcode(int opcode) {
+        throw VMError.shouldNotReachHere(Bytecodes.nameOf(opcode));
     }
 
     /**
