@@ -292,6 +292,10 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     };
     private static final ArrayDataPointerConstant powersOf31 = pointerConstant(16, POWERS_OF_31_BACKWARDS);
 
+    private static int powerOf31(int exponent) {
+        return POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - 1 - exponent];
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Label labelShortUnrolledBegin = new Label();
@@ -345,8 +349,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
 
             Register bound = tmp2;
             Register next = tmp3;
-            masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
-            masm.movl(next, new AMD64Address(tmp2, powersOf31Offset));
+            masm.movl(next, powerOf31(elementsPerLoop));
             masm.movdl(vnext, next);
             masm.emit(supports(CPUFeature.AVX2) ? VPBROADCASTD : VBROADCASTSS, vnext, vnext, avxSize);
 
