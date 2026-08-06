@@ -29,12 +29,16 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.SocketOption;
+import java.net.StandardSocketOptions;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -484,7 +488,7 @@ public class LibsState {
 
     /**
      * Only used for testing.
-     * 
+     *
      * @return true if there are no registrations for the TrufflePoller
      */
     public boolean noPollerRegisterations() {
@@ -635,6 +639,68 @@ public class LibsState {
                 lMeta.net.java_net_Inet6Address$Inet6AddressHolder_scope_ifname.setObject(ipv6Holder, netIF);
             }
             return guestInetAddr;
+        }
+    }
+
+    /**
+     * Class for synchronizing platform-specific socket options between the host and the guest.
+     */
+    public static final class SocketOptionSync {
+        /*
+         * The guest encodes SocketOptions to ints in the platform-specific
+         * sun.nio.ch.SocketOptionRegistry.findOption. Those encodings are then provided to native
+         * get/set methods. In the substitutions of those methods in EspressoNoNative we have to
+         * decode the ints back to the original SocketOption. To ensure consistency between guest
+         * SocketOptions and host SocketOptions across platforms, we substitute findOption to use our
+         * custom encoding defined by this class.
+         */
+
+        // Defines all supported StandardSocketOptions. ExtendedSocketOptions are currently disabled GR-78554.
+        private static final SocketOption<?>[] intToOption = {
+                        StandardSocketOptions.SO_BROADCAST,
+                        StandardSocketOptions.SO_KEEPALIVE,
+                        StandardSocketOptions.SO_SNDBUF,
+                        StandardSocketOptions.SO_RCVBUF,
+                        StandardSocketOptions.SO_REUSEADDR,
+                        StandardSocketOptions.SO_REUSEPORT,
+                        StandardSocketOptions.SO_LINGER,
+                        StandardSocketOptions.IP_TOS,
+                        StandardSocketOptions.TCP_NODELAY,
+                        StandardSocketOptions.IP_MULTICAST_IF,
+                        StandardSocketOptions.IP_MULTICAST_TTL,
+                        StandardSocketOptions.IP_MULTICAST_LOOP
+        };
+        private static final Map<String, Integer> optionNameToInt = createOptionNameToInt();
+
+        private static Map<String, Integer> createOptionNameToInt() {
+            Map<String, Integer> result = new HashMap<>(intToOption.length);
+            for (int i = 0; i < intToOption.length; i++) {
+                String name = intToOption[i].name();
+                if (result.put(name, i) != null) {
+                    throw new IllegalStateException("Duplicate SocketOption name: " + name);
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Retrieve the int encoding associated with the given name of the SocketOption.
+         *
+         * @param name the name associated with the SocketOption
+         * @return the encoding or -1 if the option was not found
+         */
+        public static int getInt(String name) {
+            return name == null ? -1 : optionNameToInt.getOrDefault(name, -1);
+        }
+
+        /**
+         * Retrieve the SocketOption associated with the given encoding.
+         *
+         * @param code the encoded SocketOption
+         * @return the SocketOption
+         */
+        public static SocketOption<?> getOption(int code) {
+            return intToOption[code];
         }
     }
 }
