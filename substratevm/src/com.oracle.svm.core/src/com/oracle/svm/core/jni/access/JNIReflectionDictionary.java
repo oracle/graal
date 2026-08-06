@@ -44,7 +44,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
@@ -52,8 +51,9 @@ import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.DeferredKeyMap;
+import com.oracle.svm.core.util.DynamicHubKey;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
-import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -111,20 +111,10 @@ public final class JNIReflectionDictionary {
     }
 
     private final EconomicMap<CharSequence, JNIAccessibleClass> classesByName = ImageHeapMap.createNonLayeredMap(WRAPPED_CSTRING_EQUIVALENCE);
-    /**
-     * JNI registrations are collected during analysis, before final {@link DynamicHub} type IDs are
-     * assigned, so the hosted-time map {@link #classesByHub} uses {@link DynamicHubKey}s to
-     * deduplicate repeated class registrations and merge their method/field metadata. Before
-     * compilation, once type IDs are stable, the entries are copied to classesByTypeID for runtime
-     * lookup. Runtime layered-image lookup must not use {@link Class} or {@link DynamicHub} object
-     * keys because their identity/hash behavior is not stable across layers.
-     */
-    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
-    private EconomicMap<Integer, JNIAccessibleClass> classesByTypeID = null;
 
     /**
-     * The classes map keyed by typeID need to be rescanned manually because the
-     * {@link JNIReflectionDictionary#classesByTypeID} map is only available after compilation.
+     * The runtime classes map need to be rescanned manually because the
+     * {@link JNIReflectionDictionary#classes} map is only available after compilation.
      */
     @Platforms(HOSTED_ONLY.class) //
     private Consumer<Object> objectRescanner;
@@ -133,25 +123,19 @@ public final class JNIReflectionDictionary {
     @Platforms(HOSTED_ONLY.class) //
     private Consumer<JNIAccessibleClass> fieldsFieldRescanner;
 
-    @Platforms(HOSTED_ONLY.class) //
-    private EconomicMap<DynamicHubKey, JNIAccessibleClass> classesByHub = EconomicMap.create();
+    /**
+     * JNI registrations are collected during analysis, before final {@link DynamicHub} type IDs are
+     * assigned, so the hosted-time map uses {@link DynamicHubKey} keys to deduplicate repeated
+     * class registrations and merge their method/field metadata. Before compilation, once type IDs
+     * are stable, {@link DeferredKeyMap} converts those keys for runtime lookup. Runtime
+     * layered-image lookup must not use {@link Class} or {@link DynamicHub} object keys because
+     * their identity/hash behavior is not stable across layers.
+     */
+    private final DeferredKeyMap<DynamicHubKey, Integer, JNIAccessibleClass> classes;
     private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.createNonLayeredMap();
 
     private JNIReflectionDictionary() {
-    }
-
-    /**
-     * Maps that are conceptually indexed by {@link Class} need different keys before and after type
-     * IDs are assigned. Hosted maps can use {@link DynamicHub} keys to identify classes while
-     * registrations are still collected, but image heap maps need to be keyed by
-     * {@link DynamicHub#getTypeID()}, which is stable at run time. This hosted-only wrapper is used
-     * for the first map to ensure that {@link DynamicHub} keys do not leak into the image.
-     */
-    @Platforms(HOSTED_ONLY.class)
-    private record DynamicHubKey(DynamicHub hub) {
-        int getTypeID() {
-            return hub.getTypeID();
-        }
+        classes = new DeferredKeyMap<>(DynamicHubKey::getTypeID);
     }
 
     private static void dump(boolean condition, String label) {
@@ -183,7 +167,7 @@ public final class JNIReflectionDictionary {
                 }
 
                 ps.println(" classesByTypeID:");
-                MapCursor<Integer, JNIAccessibleClass> cursor = dictionary.classesByTypeID.getEntries();
+                MapCursor<Integer, JNIAccessibleClass> cursor = dictionary.classes.getRuntimeEntries();
                 while (cursor.advance()) {
                     ps.print("  ");
                     ps.println(cursor.getKey());
@@ -196,10 +180,10 @@ public final class JNIReflectionDictionary {
     public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, DynamicHub hub, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
         assert !isSealed() : "The JNIReflectionDictionary is already sealed";
         DynamicHubKey key = new DynamicHubKey(hub);
-        JNIAccessibleClass existing = classesByHub.get(key);
+        JNIAccessibleClass existing = classes.getHosted(key);
         if (existing == null) {
             JNIAccessibleClass instance = mappingFunction.apply(classObj);
-            classesByHub.put(key, instance);
+            classes.putHosted(key, instance);
             String name = instance.getJNIName();
             classesByName.put(name, instance);
             rescanObject(instance);
@@ -253,27 +237,21 @@ public final class JNIReflectionDictionary {
 
     @Platforms(HOSTED_ONLY.class)
     public Iterable<JNIAccessibleClass> getClasses() {
-        return classesByHub == null ? classesByTypeID.getValues() : classesByHub.getValues();
+        return classes.getValues();
     }
 
     @Platforms(HOSTED_ONLY.class)
     public void seal() {
-        VMError.guarantee(classesByTypeID == null, "The DynamicHub keys should only be populated once");
-        classesByTypeID = EconomicMap.create();
-        MapCursor<DynamicHubKey, JNIAccessibleClass> cursor = classesByHub.getEntries();
-        while (cursor.advance()) {
-            classesByTypeID.put(cursor.getKey().getTypeID(), cursor.getValue());
-        }
-        classesByHub = null;
+        classes.seal();
     }
 
     private boolean isSealed() {
-        return classesByHub == null;
+        return classes.isSealed();
     }
 
     private static JNIAccessibleClass getJniAccessibleClass(JNIReflectionDictionary dictionary, Class<?> classObject) {
         int typeId = DynamicHub.fromClass(classObject).getTypeID();
-        return dictionary.classesByTypeID.get(typeId);
+        return dictionary.classes.getRuntime(typeId);
     }
 
     public static Class<?> getClassObjectByName(CharSequence name) {
