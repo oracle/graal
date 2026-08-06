@@ -572,11 +572,7 @@ public final class CodeInfoDecoder {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void fillSourceFields(FrameInfoQueryResult result) {
-        fillSourceFields(result, imageCodeInfoForSourceMethod(result.sourceMethodId));
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static void fillSourceFields(FrameInfoQueryResult result, CodeInfo info) {
+        CodeInfo info = imageCodeInfoForSourceMethod(result.sourceMethodId);
         int methodId = result.sourceMethodId;
 
         boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;

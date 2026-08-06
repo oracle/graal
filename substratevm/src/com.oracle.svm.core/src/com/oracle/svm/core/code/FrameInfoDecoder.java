@@ -296,27 +296,9 @@ public class FrameInfoDecoder {
         } else {
             result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, constantAccess, state);
         }
-        fillRuntimeLocalSourceFields(result, info);
         state.isFirstFrame = false;
 
         return result;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void fillRuntimeLocalSourceFields(FrameInfoQueryResult result, CodeInfo info) {
-        if (CodeInfoAccess.isAOTImageCode(info) || CodeInfoAccess.getMethodCount(info) == 0) {
-            // Keep AOT metadata lazy; without a local method table, there is nothing to resolve.
-            return;
-        }
-        /*
-         * Resolve runtime-local source metadata while the producing CodeInfo is valid. Decoded
-         * frames then retain only ordinary Java source fields, not an unmanaged CodeInfo pointer.
-         */
-        for (FrameInfoQueryResult frame = result; frame != null; frame = frame.caller) {
-            if (frame.sourceMethodId != 0) {
-                CodeInfoDecoder.fillSourceFields(frame, info);
-            }
-        }
     }
 
     /*
