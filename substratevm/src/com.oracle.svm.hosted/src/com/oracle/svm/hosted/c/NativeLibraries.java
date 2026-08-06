@@ -73,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
@@ -95,6 +96,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -482,15 +484,27 @@ public final class NativeLibraries {
         if (library.equals("nio")) {
             /* "nio" implicitly depends on "net" */
             allDeps.add("net");
+        } else if (library.equals("management_ext")) {
+            allDeps.add("java");
         }
         return allDeps;
     }
 
-    private final Map<String, PotentialBuiltinJNILibrary> potentialBuiltinJNILibraryMap = new HashMap<>();
+    @Stable //
+    private Map<String, PotentialBuiltinJNILibrary> potentialBuiltinJNILibraryMap;
     private boolean jvmBuiltinNativesRegistered = false;
 
-    public Map<String, PotentialBuiltinJNILibrary> getPotentialBuiltinJNILibraryMap() {
-        return potentialBuiltinJNILibraryMap;
+    public void initializePotentialBuiltinLibraries() {
+        this.potentialBuiltinJNILibraryMap = Arrays.stream(JNIPlatformNativeLibrarySupport.potentialBuiltinLibrary).collect(Collectors.toMap(lib -> lib, PotentialBuiltinJNILibrary::create));
+    }
+
+    public boolean isPotentialBuiltinJNILibrary(String library) {
+        return potentialBuiltinJNILibraryMap.containsKey(library);
+    }
+
+    public void markPotentialBuiltinJNILibraryReachable(String library) {
+        assert potentialBuiltinJNILibraryMap.containsKey(library);
+        potentialBuiltinJNILibraryMap.get(library).markReachable();
     }
 
     public List<PotentialBuiltinJNILibrary> getReachableBuiltinLibraries() {
@@ -527,7 +541,7 @@ public final class NativeLibraries {
          * remain conditional. Calling this method does not preregister the library as built-in or add its static
          * archive to the linker command.
          */
-        public static PotentialBuiltinJNILibrary create(String library, String... dependencies) {
+        public static PotentialBuiltinJNILibrary create(String library) {
             addBuiltinNatives(library);
             /*
              * JNI libraries can reference Java_* entry points implemented by Native Image's
@@ -538,10 +552,8 @@ public final class NativeLibraries {
                 singleton().jvmBuiltinNativesRegistered = true;
             }
 
-            List<String> allDeps = getLibraryDependencies(library, dependencies);
-            var object = new PotentialBuiltinJNILibrary(library, allDeps);
-            singleton().potentialBuiltinJNILibraryMap.put(library, object);
-            return object;
+            List<String> allDeps = getLibraryDependencies(library);
+            return new PotentialBuiltinJNILibrary(library, allDeps);
         }
 
         private static void addBuiltinNatives(String library) {
@@ -561,8 +573,8 @@ public final class NativeLibraries {
             return isReachable;
         }
 
-        public void setIsReachable(boolean isReachable) {
-            this.isReachable = isReachable;
+        public void markReachable() {
+            this.isReachable = true;
         }
     }
 

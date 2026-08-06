@@ -62,7 +62,7 @@ public class JmxServerFeature implements InternalFeature {
     private static void handleNativeLibraries() {
         // This is required for password authentication.
         // JMX checks the restrictions on the password file via a JNI native method.
-        NativeLibraries.PotentialBuiltinJNILibrary.create("management_agent").setIsReachable(true);
+        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("management_agent");
     }
 
     @Override

@@ -34,7 +34,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -46,8 +45,6 @@ import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -186,14 +183,6 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 return LibLoaderAPI.GetProcAddress(dlhandle, symbol.get());
             }
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class WindowsNativeLibraryFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        NativeLibraries.PotentialBuiltinJNILibrary.create("extnet");
     }
 }
 

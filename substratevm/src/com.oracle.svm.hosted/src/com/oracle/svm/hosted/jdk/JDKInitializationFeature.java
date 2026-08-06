@@ -386,9 +386,8 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         access.allowStableFieldFoldingBeforeAnalysis(JVMCIReflectionUtil.getUniqueDeclaredField(guestAccess.lookupType("java.util.jar.Attributes$Name"), "KNOWN_NAMES"));
 
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            NativeLibraries.PotentialBuiltinJNILibrary zip = NativeLibraries.PotentialBuiltinJNILibrary.create("zip");
             a.registerReachabilityHandler(JDKInitializationFeature::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(_ -> zip.setIsReachable(true),
+            a.registerReachabilityHandler(_ -> NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("zip"),
                             method(a, "java.util.zip.ZipUtils", "loadLibrary"));
         }
     }

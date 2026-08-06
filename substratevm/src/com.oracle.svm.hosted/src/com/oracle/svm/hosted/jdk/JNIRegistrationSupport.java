@@ -194,9 +194,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
          * If a library is in our list of static standard libraries, add the library to the linker
          * command.
          */
-        var map = NativeLibraries.singleton().getPotentialBuiltinJNILibraryMap();
-        if (map.containsKey(libname)) {
-            map.get(libname).setIsReachable(true);
+        if (NativeLibraries.singleton().isPotentialBuiltinJNILibrary(libname)) {
+            NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable(libname);
         }
     }
 

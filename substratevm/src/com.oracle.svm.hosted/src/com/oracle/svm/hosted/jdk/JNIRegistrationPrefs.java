@@ -81,8 +81,7 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
             triggers.add(type(access, darwinSpecificClass));
         }
 
-        NativeLibraries.PotentialBuiltinJNILibrary prefs = NativeLibraries.PotentialBuiltinJNILibrary.create("prefs");
-        access.registerReachabilityHandler(a -> handlePreferencesClassReachable(a, prefs),
+        access.registerReachabilityHandler(JNIRegistrationPrefs::handlePreferencesClassReachable,
                         triggers.toArray());
     }
 
@@ -97,8 +96,8 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
         throw VMError.shouldNotReachHere("Unexpected platform");
     }
 
-    private static void handlePreferencesClassReachable(DuringAnalysisAccess access, NativeLibraries.PotentialBuiltinJNILibrary prefs) {
-        prefs.setIsReachable(true);
+    private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
+        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("prefs");
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             RuntimeJNIAccess.register(String[].class);

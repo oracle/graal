@@ -45,6 +45,20 @@ public abstract class PlatformNativeLibrarySupport {
                     "net"
     };
 
+    public static final String[] potentialBuiltinLibrary = {
+                    "java",
+                    "nio",
+                    "net",
+                    "extnet",
+                    "jaas",
+                    "sunmscapi",
+                    "zip",
+                    "management_agent",
+                    "attach",
+                    "management_ext",
+                    "prefs"
+    };
+
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
     }

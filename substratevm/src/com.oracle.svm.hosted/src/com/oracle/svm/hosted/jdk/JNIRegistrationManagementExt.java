@@ -36,14 +36,13 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        NativeLibraries.PotentialBuiltinJNILibrary managementExt = NativeLibraries.PotentialBuiltinJNILibrary.create("management_ext", "java");
-        access.registerReachabilityHandler(a -> linkManagementExt(a, managementExt),
+        access.registerReachabilityHandler(JNIRegistrationManagementExt::linkManagementExt,
                         type(access, "com.sun.management.internal.OperatingSystemImpl"));
     }
 
-    private static void linkManagementExt(DuringAnalysisAccess access, NativeLibraries.PotentialBuiltinJNILibrary managementExt) {
+    private static void linkManagementExt(DuringAnalysisAccess access) {
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
-        managementExt.setIsReachable(true);
+        nativeLibraries.markPotentialBuiltinJNILibraryReachable("management_ext");
         if (isWindows()) {
             nativeLibraries.addDynamicNonJniLibrary("psapi");
         }

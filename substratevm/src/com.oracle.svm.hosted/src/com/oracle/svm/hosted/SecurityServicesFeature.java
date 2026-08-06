@@ -391,14 +391,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (isPosix()) {
             Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
             optMethodGetUnixInfo.ifPresent(m -> {
-                NativeLibraries.PotentialBuiltinJNILibrary jaas = NativeLibraries.PotentialBuiltinJNILibrary.create("jaas");
-                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess, jaas), m);
+                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess), m);
             });
         }
 
         if (isMscapiModulePresent) {
-            NativeLibraries.PotentialBuiltinJNILibrary sunMSCAPI = NativeLibraries.PotentialBuiltinJNILibrary.create("sunmscapi");
-            access.registerReachabilityHandler(analysisAccess -> registerSunMSCAPIConfig(analysisAccess, sunMSCAPI),
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig,
                             type(access, "sun.security.mscapi.SunMSCAPI"));
         }
 
@@ -521,10 +519,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a, NativeLibraries.PotentialBuiltinJNILibrary sunMSCAPI) {
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
         // We statically link sunmscapi, so we classify it as a built-in library.
-        sunMSCAPI.setIsReachable(true);
+        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("sunmscapi");
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
@@ -571,11 +569,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
     }
 
-    private static void linkJaas(DuringAnalysisAccess a, NativeLibraries.PotentialBuiltinJNILibrary jaas) {
+    private static void linkJaas(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
         // We can statically link jaas, so we classify it as a built-in library.
-        jaas.setIsReachable(true);
+        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("jaas");
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {

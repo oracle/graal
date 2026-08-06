@@ -83,9 +83,7 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
-        for (String libName : PlatformNativeLibrarySupport.defaultBuiltinLibraries) {
-            NativeLibraries.PotentialBuiltinJNILibrary.create(libName).setIsReachable(true);
-        }
+        NativeLibraries.singleton().initializePotentialBuiltinLibraries();
     }
 
     @Override

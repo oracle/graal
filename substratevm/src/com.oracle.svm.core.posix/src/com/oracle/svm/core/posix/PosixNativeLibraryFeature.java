@@ -49,7 +49,6 @@ import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -61,11 +60,6 @@ class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        NativeLibraries.PotentialBuiltinJNILibrary.create("extnet");
     }
 }
 
