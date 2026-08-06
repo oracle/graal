@@ -40,6 +40,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.TTY.Filter;
+import jdk.graal.compiler.duplication.phases.MethodDuplicationPhase;
 import jdk.graal.compiler.java.BytecodeParserOptions;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -78,6 +79,13 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
         PhaseSuite<HighTierContext> highTier = createSuites(options).getHighTier();
         Assert.assertNull(highTier.findPhase(PriorityInliningPhase.class));
         Assert.assertNotNull(highTier.findPhase(InliningPhase.class));
+    }
+
+    @Test
+    public void testMethodDuplicationCanBeSelected() {
+        Assert.assertNull(createSuites(getInitialOptions()).getHighTier().findPhase(MethodDuplicationPhase.class));
+        OptionValues options = new OptionValues(getInitialOptions(), MethodDuplicationPhase.Options.OptMethodDuplication, true);
+        Assert.assertNotNull(createSuites(options).getHighTier().findPhase(MethodDuplicationPhase.class));
     }
 
     @Test

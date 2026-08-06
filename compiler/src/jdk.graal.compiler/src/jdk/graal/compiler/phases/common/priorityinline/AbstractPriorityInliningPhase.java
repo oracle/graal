@@ -333,7 +333,7 @@ public abstract class AbstractPriorityInliningPhase extends AbstractInliningPhas
     @SharedGlobalPhaseState private static volatile boolean shutdownHookAdded;
 
     protected final CanonicalizerPhase canonicalizer;
-    protected final InliningProvider inliningProvider;
+    private final InliningProvider inliningProvider;
     private final TrackInliningMode trackInliningMode;
     private final PolicyFactory policyFactory;
     private final MethodFilter priorityForceInlineFilter;
@@ -341,6 +341,10 @@ public abstract class AbstractPriorityInliningPhase extends AbstractInliningPhas
 
     protected AbstractPriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, InliningProvider inliningProvider) {
         this(canonicalizer, options, inliningProvider, inliningProvider.policy(options));
+    }
+
+    protected InliningProvider getInliningProvider() {
+        return inliningProvider;
     }
 
     protected AbstractPriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, InliningProvider inliningProvider, PolicyFactory policyFactory) {
