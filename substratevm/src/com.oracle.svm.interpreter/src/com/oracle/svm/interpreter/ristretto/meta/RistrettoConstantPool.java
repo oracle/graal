@@ -34,13 +34,12 @@ import com.oracle.svm.interpreter.CallSiteLink;
 import com.oracle.svm.interpreter.CremaLinkResolver;
 import com.oracle.svm.interpreter.CremaRuntimeAccess;
 import com.oracle.svm.interpreter.FailedCallSiteLink;
-import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.ResolvedInvokeDynamicConstant;
 import com.oracle.svm.interpreter.SuccessfulCallSiteLink;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedInvokeGenericJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -56,6 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * JVMCI representation of a {@link ConstantPool} used by Ristretto for compilation. Exists once per
@@ -125,7 +125,7 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public JavaMethod lookupMethod(int rawIndex, int opcode, ResolvedJavaMethod caller) {
-        assert caller instanceof RistrettoMethod;
+        GraalError.guarantee(caller instanceof RistrettoMethod, "Unexpected caller for Ristretto constant-pool lookup");
         GraalError.guarantee(compilerMethod.equals(caller), "Mismatching compiler method for constant-pool lookup");
         final int cpi = rawIndex;
         if (opcode == Bytecodes.INVOKEDYNAMIC) {
@@ -141,15 +141,37 @@ public final class RistrettoConstantPool implements ConstantPool {
             }
             return res;
         }
-        if (compilerMethod.getInterpreterMethod().getConstantPool().peekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
-            /* The interpreter has not resolved this method yet. */
+        LinkedInvoke linkedInvoke = interpreterConstantPool.peekLinkedInvoke(cpi, opcode);
+        if (linkedInvoke != null) {
+            return RistrettoMethod.getOrCreate(linkedInvoke.seedMethod);
+        }
+        Object cachedEntry = interpreterConstantPool.peekCachedEntry(cpi);
+        if (cachedEntry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             return unresolvedJavaMethod;
         }
-        InterpreterResolvedJavaMethod resolvedMethod = Interpreter.resolveMethod(compilerMethod.getInterpreterMethod(), opcode, (char) cpi);
-        if (resolvedMethod instanceof InterpreterResolvedInvokeGenericJavaMethod invokeGenericMethod) {
-            resolvedMethod = invokeGenericMethod.getInvoker();
+        /*
+         * Ristretto compilation must not perform symbolic method resolution or call-site linking.
+         * If the interpreter has not already published a linked invoke for this opcode, keep the
+         * compiler on the unresolved-deopt path so the interpreter remains the owner of first
+         * resolution.
+         */
+        return createUnresolvedMethod(cpi);
+    }
+
+    /**
+     * Creates a symbolic method for an entry that the interpreter has not linked yet.
+     */
+    private JavaMethod createUnresolvedMethod(int rawIndex) {
+        String name = interpreterConstantPool.methodName(rawIndex).toString();
+        Signature signature = new RistrettoUnresolvedSignature(CremaMethodAccess.toJVMCI(interpreterConstantPool.methodSignature(rawIndex), SymbolsSupport.getTypes()));
+        int holderIndex = interpreterConstantPool.memberClassIndex(rawIndex);
+        JavaType holder = interpreterConstantPool.findClassAt(holderIndex);
+        if (holder == null) {
+            holder = UnresolvedJavaType.create(SymbolsSupport.getTypes().fromClassNameEntry(interpreterConstantPool.className(holderIndex)).toString());
+        } else if (holder instanceof InterpreterResolvedJavaType interpreterType) {
+            holder = RistrettoType.getOrCreate(interpreterType);
         }
-        return RistrettoMethod.getOrCreate(resolvedMethod);
+        return new UnresolvedJavaMethod(name, signature, holder);
     }
 
     private JavaMethod lookupInvokeDynamicMethod(int rawIndex) {
@@ -229,12 +251,15 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public Object lookupConstant(int cpi) {
-        return interpreterConstantPool.lookupConstant(cpi);
+        return lookupConstant(cpi, true);
     }
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
+        return toRistrettoConstant(interpreterConstantPool.lookupConstant(cpi, resolve));
+    }
+
+    private static Object toRistrettoConstant(Object retVal) {
         if (retVal == null) {
             /*
              * Return null if the interpreter has not yet resolved this constant. That tells the
@@ -253,7 +278,7 @@ public final class RistrettoConstantPool implements ConstantPool {
                 return retVal;
             }
         }
-        throw GraalError.shouldNotReachHere(String.format("Unknown value for constant lookup, cpi=%s resolve=%s this=%s", cpi, resolve, this));
+        return SubstrateObjectConstant.forObject(retVal);
     }
 
     @Override

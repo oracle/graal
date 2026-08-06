@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,13 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class RuntimeClassLoading {
+    /**
+     * Marker for threads that must not load or define a new class. Queries that return an
+     * already-loaded class remain allowed.
+     */
+    public interface NoClassLoadingThread {
+    }
+
     public enum VerifyMode {
         /**
          * Disables bytecode verification for all class loaders.
@@ -140,6 +147,11 @@ public class RuntimeClassLoading {
     @Fold
     public static boolean isSupported() {
         return Options.RuntimeClassLoading.getValue();
+    }
+
+    /** Fails if the current thread must not load or define a new class. */
+    public static void guaranteeClassLoadingAllowed() {
+        VMError.guarantee(!(Thread.currentThread() instanceof NoClassLoadingThread), "Class loading is prohibited in the current thread");
     }
 
     public static Class<?> defineClass(ClassLoader loader, String expectedName, byte[] b, int off, int len, ClassDefinitionInfo info) {

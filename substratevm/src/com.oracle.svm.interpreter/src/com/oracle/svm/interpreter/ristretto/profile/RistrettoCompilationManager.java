@@ -33,11 +33,19 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
 public final class RistrettoCompilationManager {
+    private static final class RistrettoCompilerThread extends Thread implements RuntimeClassLoading.NoClassLoadingThread {
+        RistrettoCompilerThread(Runnable target) {
+            super(target);
+            setDaemon(true);
+        }
+    }
+
     /**
      * Global compilation manager instance. Created lazily on first access.
      */
@@ -113,11 +121,7 @@ public final class RistrettoCompilationManager {
         compilerExceptions = Collections.synchronizedList(new ArrayList<>());
         final int compilerThreadCount = RistrettoOptions.JITCompilerThreadCount.getValue();
         statisticsReporterPeriodSeconds = RistrettoOptions.JITTraceCompilerStatisticsPeriodSeconds.getValue();
-        compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount, runnable -> {
-            Thread t = new Thread(runnable);
-            t.setDaemon(true);
-            return t;
-        });
+        compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount, RistrettoCompilerThread::new);
         compilationQueue = new PriorityBlockingQueue<>();
         performedCompilations = Collections.synchronizedList(new ArrayList<>());
         submittedRequests = new AtomicLong();

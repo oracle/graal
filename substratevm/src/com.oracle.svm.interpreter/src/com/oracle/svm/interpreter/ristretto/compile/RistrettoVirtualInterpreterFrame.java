@@ -30,6 +30,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.nodes.FrameState.StackState;
@@ -50,8 +51,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
     /** Materialized interpreter frame that resumes execution for this virtual frame. */
     private final InterpreterFrame frame;
-    /** Interpreter method whose locals, stack, and bytecodes this frame represents. */
-    private final InterpreterResolvedJavaMethod method;
+    /** Ristretto method and its interpreter method represented by this frame. */
+    private final RistrettoMethod method;
     /** BCI reported by the compiled frame state that triggered deoptimization. */
     private final int currentBci;
     /**
@@ -72,7 +73,7 @@ public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
     /** Next outer virtual frame, linked after reconstruction. */
     private RistrettoVirtualInterpreterFrame caller;
 
-    RistrettoVirtualInterpreterFrame(FrameInfoQueryResult frameInfo, InterpreterFrame frame, InterpreterResolvedJavaMethod method,
+    RistrettoVirtualInterpreterFrame(FrameInfoQueryResult frameInfo, InterpreterFrame frame, RistrettoMethod method,
                     int currentBci, int targetBci, StackState stackState, int numStack, JavaKind compiledReturnKind, RistrettoVirtualInterpreterFrame callee) {
         super(frameInfo);
         this.frame = frame;
@@ -100,6 +101,10 @@ public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
     }
 
     public InterpreterResolvedJavaMethod getMethod() {
+        return method.getInterpreterMethod();
+    }
+
+    public RistrettoMethod getRistrettoMethod() {
         return method;
     }
 
