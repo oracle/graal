@@ -512,7 +512,7 @@ public final class NativeLibraries {
         return getReachableBuiltinLibraries().stream().map(PotentialBuiltinJNILibrary::getLibrary).toList();
     }
 
-    public void addReachableBuiltinLibraries() {
+    public void linkReachableBuiltinLibraries() {
         getReachableBuiltinLibraries().forEach(PotentialBuiltinJNILibrary::linkLibrary);
     }
 

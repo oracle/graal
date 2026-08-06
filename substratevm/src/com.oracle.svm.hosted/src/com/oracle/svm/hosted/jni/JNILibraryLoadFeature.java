@@ -99,7 +99,7 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        NativeLibraries.singleton().addReachableBuiltinLibraries();
+        NativeLibraries.singleton().linkReachableBuiltinLibraries();
 
         if (!ClassRegistries.respectClassLoader()) {
             return;
