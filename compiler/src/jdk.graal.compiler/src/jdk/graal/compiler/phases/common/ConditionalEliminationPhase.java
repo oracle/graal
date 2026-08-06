@@ -56,7 +56,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
-import jdk.graal.compiler.guards.optimistic.OptimisticFixedGuardNode;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractFixedGuardNode;
@@ -634,7 +633,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                          * just recently skipped. In the optimization (if conditional elimination is
                          * called multiple times).
                          */
-                        if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode()))) {
+                        if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode())) &&
+                                        ConditionalEliminationUtil.mayRewriteToGuard(infoElement.getGuard())) {
                             final Stamp stamp = infoElement.getStamp();
                             /*
                              * Determine if this pi can be skipped by using a pi based on the stamp
@@ -762,6 +762,9 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         }
 
         private boolean rewriteIfCondition(IfNode node, GuardingNode guard, boolean result) {
+            if (!ConditionalEliminationUtil.mayRewriteToGuard(guard)) {
+                return false;
+            }
             AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
             node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
             if (survivingSuccessor instanceof LoopExitNode loopExitNode) {
@@ -796,7 +799,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             ConditionalEliminationUtil.InfoElement infoElement = infoElementProvider.infoElements(piNode.object());
             while (infoElement != null) {
                 Stamp joinedStamp = infoElement.getStamp().join(piNode.piStamp());
-                if (joinedStamp.equals(infoElement.getStamp())) {
+                if (joinedStamp.equals(infoElement.getStamp()) && ConditionalEliminationUtil.mayRewriteToGuard(infoElement.getGuard())) {
                     /*
                      * The PiNode is already proven by a dominating condition. We just re-anchor the
                      * PiNode at the dominating point. If that point already has an equivalent
@@ -943,8 +946,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                         ValueNode valueAt = phi.valueAt(i);
                         Stamp curBestStamp = valueAt.stamp(NodeView.DEFAULT);
                         ConditionalEliminationUtil.InfoElement infoElement = phiInfoElements.get(merge.forwardEndAt(i));
-                        if (infoElement != null && infoElement.getGuard() instanceof OptimisticFixedGuardNode) {
-                            /* Optimistic guards should not get Pi usages, so don't use this information. */
+                        if (infoElement != null && !ConditionalEliminationUtil.mayRewriteToGuard(infoElement.getGuard())) {
                             infoElement = null;
                         }
                         if (infoElement != null) {
