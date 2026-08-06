@@ -565,9 +565,8 @@ public final class CodeInfoDecoder {
     }
 
     /**
-     * Looks up the appropriate {@link CodeInfo} for {@link FrameInfoQueryResult#sourceMethodId} and
-     * reads its associated method table entry to resolve and fill the source class and method name
-     * using the respective other arrays.
+     * Resolves {@link FrameInfoQueryResult#sourceMethodId} through the owning source metadata table
+     * and fills the decoded source class, method name, signature, and flags.
      *
      * @see CodeInfoEncoder.Encoders#encodeMethodTable
      */

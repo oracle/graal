@@ -54,8 +54,8 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.Heap;
@@ -226,15 +226,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                             (SubstrateObjectConstant) constant);
         });
 
-        int entryPointOffset = 0;
-
-        /* If the code starts after an offset, adjust the entry point accordingly */
-        for (CompilationResult.CodeMark mark : compilation.getMarks()) {
-            if (mark.id == SubstrateBackend.SubstrateMarkId.PROLOGUE_START) {
-                assert entryPointOffset == 0;
-                entryPointOffset = mark.pcOffset;
-            }
-        }
+        int entryPointOffset = SharedCompilationResult.getEntryPointOffset(compilation);
 
         NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
         RuntimeCodeInfoAccess.initialize(codeInfo, code, entryPointOffset, codeSize, dataOffset, dataSize, codeAndDataMemorySize, tier, observerHandles, false);

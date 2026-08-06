@@ -545,7 +545,7 @@ public class FrameInfoEncoder {
         return data;
     }
 
-    protected FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
+    FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
         FrameData data = new FrameData(null, totalFrameSize, null, true);
         data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, FrameState.StackState.BeforePop);
         customization.fillSourceFields(method, data.frame);
@@ -918,13 +918,17 @@ public class FrameInfoEncoder {
         return result;
     }
 
+    byte[] encodeAll(Runnable recordActivity) {
+        return NonmovableArrays.heapCopyOfByteArray(encodeFrameDatas(recordActivity));
+    }
+
     protected void encodeAllAndInstall(CodeInfo target, Runnable recordActivity) {
         NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas(recordActivity);
         install(target, frameInfoEncodings);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings) {
+    static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings) {
         CodeInfoAccess.setFrameInfo(target, frameInfoEncodings);
         afterInstallation(target);
     }

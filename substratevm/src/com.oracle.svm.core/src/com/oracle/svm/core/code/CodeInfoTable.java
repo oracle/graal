@@ -64,7 +64,7 @@ import jdk.vm.ci.code.InstalledCode;
 /**
  * Provides the main entry points to look up metadata for code, either
  * {@link #getImageCodeCacheForLayer(int) ahead-of-time compiled code in the native image} or
- * {@link CodeInfoTable#getRuntimeCodeCache() code compiled at runtime}.
+ * {@link CodeInfoTable#getRuntimeCodeCache() code installed at runtime}.
  * <p>
  * Users of this class must take special care because code can be invalidated at arbitrary times and
  * their metadata can be freed, see notes on {@link CodeInfoAccess}.

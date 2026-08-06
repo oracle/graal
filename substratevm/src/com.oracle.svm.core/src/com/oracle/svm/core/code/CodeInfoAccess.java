@@ -280,6 +280,18 @@ public final class CodeInfoAccess {
         return absoluteIPFromCodeStartOffset(impl, offset);
     }
 
+    /**
+     * Converts an offset measured directly from {@link CodeInfoImpl#getCodeStart()} into a runtime
+     * code pointer. Use this for code-section coordinates that are not encoded relative IPs and
+     * therefore must not be adjusted by {@link CodeInfoImpl#getRelativeIPOffset()}.
+     */
+    public static CodePointer absoluteIPFromCodeStartOffset(CodeInfo info, long codeStartOffset) {
+        CodeInfoImpl impl = cast(info);
+        UnsignedWord offset = Word.unsigned(codeStartOffset);
+        assert codeStartOffset >= 0 && offset.belowThan(impl.getCodeSize()) : "codeStartOffset=" + codeStartOffset + ", codeSize=" + impl.getCodeSize().rawValue();
+        return absoluteIPFromCodeStartOffset(impl, offset);
+    }
+
     private static CodePointer absoluteIPFromCodeStartOffset(CodeInfoImpl impl, UnsignedWord codeStartOffset) {
         return (CodePointer) ((UnsignedWord) impl.getCodeStart()).add(codeStartOffset);
     }
@@ -356,6 +368,7 @@ public final class CodeInfoAccess {
         impl.setFrameInfoEncodings(encodings);
     }
 
+    @Uninterruptible(reason = "Nonmovable arrays are not visible to GC until installed.")
     public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, int indexEntriesPerBlock,
                     NonmovableArray<Byte> defaultFrameInfoIndexes, NonmovableArray<Byte> referenceMapEncoding) {
         CodeInfoImpl impl = cast(info);
