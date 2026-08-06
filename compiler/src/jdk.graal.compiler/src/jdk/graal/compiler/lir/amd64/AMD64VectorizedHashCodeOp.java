@@ -390,6 +390,8 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             int coefficientOffset = powersOf31Offset + JavaKind.Int.getByteCount();
             for (int idx = 0; idx < 4; idx++) {
                 loadVector(masm, vtmp[idx], new AMD64Address(tmp2, coefficientOffset + idx * avxSize.getBytes()), avxSize.getBytes());
+            }
+            for (int idx = 0; idx < 4; idx++) {
                 masm.emit(VPMULLD, vresult[idx], vresult[idx], vtmp[idx], avxSize);
             }
             // result += vresult.reduceLanes(ADD);
