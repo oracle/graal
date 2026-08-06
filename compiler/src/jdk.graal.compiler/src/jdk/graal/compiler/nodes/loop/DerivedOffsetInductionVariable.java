@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
+import jdk.vm.ci.code.CodeUtil;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
@@ -330,7 +331,16 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         if (this == ref) {
             return 1;
         }
-        return base.constantScale(ref) * (value instanceof SubNode && baseIsSubtrahend ? -1 : 1);
+        long baseScale = base.constantScale(ref);
+        if (value instanceof SubNode && baseIsSubtrahend) {
+            /*
+             * For `offset - base*scale`, the negated scale must be sign extended to the
+             * IV's arithmetic width to preserve the wrapping semantics (-Integer.MIN_VALUE == Integer.MIN_VALUE)
+             */
+            int bits = IntegerStamp.getBits(valueNode().stamp(NodeView.DEFAULT));
+            return CodeUtil.signExtend(-baseScale, bits);
+        }
+        return baseScale;
     }
 
     @Override
