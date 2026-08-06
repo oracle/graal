@@ -3105,9 +3105,11 @@ class StaticLibrarySymbolsBuilder(mx.ArchivableProject):
         return StaticLibrarySymbolsBuildTask(self, args)
 
     def _dynamic_lib(self, static_lib):
+        """Return the dynamic counterpart used to derive dependencies, if one exists."""
         return None
 
     def _require_dynamic_lib_for_symbols(self):
+        """Whether JNI symbols are invalid when no dynamic counterpart can be found."""
         return False
 
 
@@ -3123,6 +3125,8 @@ class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
         return join(self.get_output_root(), 'static', relative_path + '.symbols')
 
     def _dynamic_lib(self, static_lib):
+        # Convert the platform-specific static filename back to its logical library name and
+        # then to the corresponding dynamic filename (for example, libjava.a -> libjava.so).
         static_name = os.path.basename(static_lib)
         prefix = mx.add_lib_prefix('')
         suffix = mx.add_static_lib_suffix('')
@@ -3131,6 +3135,8 @@ class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
         assert static_name.endswith(suffix)
         dynamic_name = mx.add_lib_suffix(mx.add_lib_prefix(static_name[:-len(suffix)]))
         base_jdk_home = mx_sdk_vm.base_jdk().home
+        # Unix JDK libraries normally live below lib, whereas Windows DLLs live below bin.
+        # The server variants are needed for libjvm.so, libjvm.dylib, and jvm.dll.
         for directory in ('lib', join('lib', 'server'), 'bin', join('bin', 'server')):
             candidate = join(base_jdk_home, directory, dynamic_name)
             if os.path.isfile(candidate):
@@ -3158,6 +3164,8 @@ class SVMStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
 
 
 class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
+    # Version 2 extends the original symbol-only files with "dependency:<library>" records.
+    # Keeping the format version in the project stamp invalidates old manifests exactly once.
     manifest_format_version = '2'
     dependency_prefix = 'dependency:'
     symbol_prefixes = ('JNI_OnLoad_', 'JNI_OnUnload_', 'Java_')
@@ -3191,6 +3199,9 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
             if mx.TimeStampFile(static_lib).isNewerThan(mx.TimeStampFile(manifest)):
                 return True, static_lib + ' is newer than ' + manifest
             dynamic_lib = self.subject._dynamic_lib(static_lib)
+            # A nonempty Base JDK manifest cannot be reused after its dynamic counterpart
+            # disappears: rebuilding will either clear a non-JNI manifest or report that JNI
+            # symbols exist without dependency metadata.
             if dynamic_lib is None and self.subject._require_dynamic_lib_for_symbols() and os.path.getsize(manifest) != 0:
                 return True, static_lib + ' has manifest content but no matching dynamic library'
             if dynamic_lib is not None and mx.TimeStampFile(dynamic_lib).isNewerThan(mx.TimeStampFile(manifest)):
@@ -3217,11 +3228,16 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
         symbols = self._collect_symbols(static_lib)
         dynamic_lib = self.subject._dynamic_lib(static_lib)
         if dynamic_lib is None:
+            # Base JDK JNI archives must have a dynamic counterpart from which dependencies can
+            # be derived. Archives without a counterpart are valid only when their manifest is
+            # empty, which identifies them as non-JNI libraries for this purpose.
             if self.subject._require_dynamic_lib_for_symbols() and symbols:
                 mx.abort('{} exports JNI symbols but has no matching dynamic library'.format(static_lib))
             dependencies = []
         else:
             dependencies = self._collect_dependencies(dynamic_lib, self.subject._static_libs())
+        # Dependency records precede symbols so consumers can distinguish both record types
+        # without changing the existing .symbols filename or the symbol line representation.
         content = ''.join(self.dependency_prefix + dependency + '\n' for dependency in sorted(dependencies))
         content += ''.join(symbol + '\n' for symbol in sorted(symbols))
         old_content = None
@@ -3279,6 +3295,7 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
 
     @staticmethod
     def _library_name(path):
+        """Normalize static and dynamic filenames to the logical linker library name."""
         name = os.path.basename(path)
         prefix = mx.add_lib_prefix('')
         if prefix and name.startswith(prefix):
@@ -3290,17 +3307,21 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
 
     @classmethod
     def _collect_dependencies(cls, dynamic_lib, static_libs):
+        """Return dynamic dependencies for which a corresponding JDK static archive exists."""
         dependencies = set()
 
         def collect_dependency(line):
             line = line.strip()
             if mx.is_windows():
+                # dumpbin /DEPENDENTS prints each imported DLL on a line by itself.
                 if ' ' not in line and line.lower().endswith('.dll'):
                     dependencies.add(line)
             elif mx.is_darwin():
+                # otool -L prints an install name followed by compatibility information.
                 if line.startswith('/') or line.startswith('@'):
                     dependencies.add(line.split(' ', 1)[0])
             else:
+                # readelf -d represents DT_NEEDED entries as "Shared library: [name]".
                 match = re.search(r'Shared library: \[(.+)\]', line)
                 if match:
                     dependencies.add(match.group(1))
@@ -3313,6 +3334,8 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
             command = ['readelf', '-d', dynamic_lib]
         mx.run(command, out=collect_dependency, err=collect_dependency)
 
+        # Ignore operating-system dependencies such as libc: the static dependency graph only
+        # models libraries that are available as JDK static archives in the same distribution.
         static_library_names = {cls._library_name(path).lower(): cls._library_name(path) for path in static_libs}
         result = set()
         for dependency in dependencies:
