@@ -80,6 +80,7 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
@@ -194,10 +195,19 @@ final class Target_java_lang_StackWalker {
      * {@link JavaStackFrameVisitor}.
      */
     private abstract class AbstractStackFrameSpliterator implements Spliterator<StackFrame> {
+        protected JavaStackWalk walk;
+        protected final IsolateThread walkerThread;
         protected VirtualFrame deoptimizedVFrame;
         protected FrameInfoQueryResult vmLevelVFrame;
         protected FrameSourceInfo sourceLevelVFrame;
         protected final StackWalkState interpreterStackWalkState = new StackWalkState();
+
+        AbstractStackFrameSpliterator(JavaStackWalk walk, IsolateThread walkerThread) {
+            assert walk.isNonNull();
+            assert walkerThread.isNonNull();
+            this.walk = walk;
+            this.walkerThread = walkerThread;
+        }
 
         @Override
         public boolean tryAdvance(Consumer<? super StackFrame> action) {
@@ -269,9 +279,24 @@ final class Target_java_lang_StackWalker {
             return CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
         }
 
-        protected abstract void invalidate();
+        protected void invalidate() {
+            walk = Word.nullPointer();
+        }
 
-        protected abstract void checkState();
+        protected void checkState() {
+            if (walk.isNull()) {
+                throw new IllegalStateException("Stack traversal no longer valid");
+            } else if (walkerThread != CurrentIsolate.getCurrentThread() || !isWalkWithinCurrentStack()) {
+                throw new IllegalStateException("Invalid thread");
+            }
+        }
+
+        private boolean isWalkWithinCurrentStack() {
+            Pointer walkPointer = (Pointer) walk;
+            Pointer stackPointer = KnownIntrinsics.readStackPointer();
+            var stackBase = VMThreads.StackBase.get();
+            return walkPointer.aboveOrEqual(stackPointer) && (stackBase.equal(0) || walkPointer.belowThan(stackBase));
+        }
 
         protected abstract boolean advancePhysically();
 
@@ -279,20 +304,15 @@ final class Target_java_lang_StackWalker {
     }
 
     final class ContinuationSpliterator extends AbstractStackFrameSpliterator {
-        private final IsolateThread walkerThread;
         private final Target_jdk_internal_vm_ContinuationScope contScope;
 
         private boolean initialized;
-        private JavaStackWalk walk;
         private Target_jdk_internal_vm_Continuation continuation;
         private StoredContinuation stored;
         private final InterpretedFrameData interpretedFrameData = new InterpretedFrameData();
 
         ContinuationSpliterator(JavaStackWalk walk, IsolateThread walkerThread, Target_jdk_internal_vm_ContinuationScope contScope, Target_jdk_internal_vm_Continuation continuation) {
-            assert walk.isNonNull();
-            assert walkerThread.isNonNull();
-            this.walk = walk;
-            this.walkerThread = walkerThread;
+            super(walk, walkerThread);
             this.contScope = contScope;
             this.continuation = continuation;
         }
@@ -373,18 +393,9 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
-            walk = Word.nullPointer();
+            super.invalidate();
             continuation = null;
             stored = null;
-        }
-
-        @Override
-        protected void checkState() {
-            if (walk.isNull()) {
-                throw new IllegalStateException("Continuation traversal no longer valid");
-            } else if (walkerThread != CurrentIsolate.getCurrentThread()) {
-                throw new IllegalStateException("Invalid thread");
-            }
         }
 
         @Override
@@ -429,33 +440,16 @@ final class Target_java_lang_StackWalker {
     }
 
     final class StackFrameSpliterator extends AbstractStackFrameSpliterator {
-        private final IsolateThread thread;
         private final Pointer startSP;
         private final Pointer endSP;
 
         private boolean initialized;
-        private JavaStackWalk walk;
 
-        StackFrameSpliterator(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP) {
+        StackFrameSpliterator(JavaStackWalk walk, IsolateThread walkerThread, Pointer startSP, Pointer endSP) {
+            super(walk, walkerThread);
             this.initialized = false;
-            this.walk = walk;
-            this.thread = thread;
             this.startSP = startSP;
             this.endSP = endSP;
-        }
-
-        @Override
-        protected void invalidate() {
-            walk = Word.nullPointer();
-        }
-
-        @Override
-        protected void checkState() {
-            if (walk.isNull()) {
-                throw new IllegalStateException("Stack traversal no longer valid");
-            } else if (thread != CurrentIsolate.getCurrentThread()) {
-                throw new IllegalStateException("Invalid thread");
-            }
         }
 
         @Override
@@ -463,10 +457,10 @@ final class Target_java_lang_StackWalker {
         protected boolean advancePhysically() {
             if (!initialized) {
                 initialized = true;
-                JavaStackWalker.initialize(walk, thread, startSP, endSP);
+                JavaStackWalker.initialize(walk, walkerThread, startSP, endSP);
             }
 
-            if (!JavaStackWalker.advance(walk, thread)) {
+            if (!JavaStackWalker.advance(walk, walkerThread)) {
                 return false;
             }
 
