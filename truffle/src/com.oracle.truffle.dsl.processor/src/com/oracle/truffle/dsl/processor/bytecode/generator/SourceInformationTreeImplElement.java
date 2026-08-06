@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
-import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -94,7 +95,13 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("0").end();
         b.end();
-        b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            CodeTree decodedValue = emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex", null);
+            b.startReturn().tree(decodedValue).end();
+        } else {
+            b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
+        }
         return ex;
     }
 
@@ -104,7 +111,14 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("bytecode.bytecodes.length").end();
         b.end();
-        b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            b.declaration(type(int.class), "startBci", emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex"));
+            CodeTree decodedValue = emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex", null);
+            b.startReturn().string("startBci + ").tree(decodedValue).end();
+        } else {
+            b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
+        }
         return ex;
     }
 
@@ -115,11 +129,20 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startReturn().string("null").end();
         b.end();
 
-        b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
-        b.string("bytecode.sources");
-        b.string("bytecode.sourceInfo");
-        b.string("baseIndex");
-        b.end(2);
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex");
+            emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex");
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+            b.string("bytecode.sources").string("bytecode.sourceInfo").string("sourceInfoIndex");
+            b.end(2);
+        } else {
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+            b.string("bytecode.sources");
+            b.string("bytecode.sourceInfo");
+            b.string("baseIndex");
+            b.end(2);
+        }
         return ex;
     }
 
@@ -137,7 +160,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("true").end();
         b.end();
-        b.statement("return this.getStartBytecodeIndex() <= other.getStartBytecodeIndex() && other.getEndBytecodeIndex() <= this.getEndBytecodeIndex()");
+        b.startReturn().string("this.getStartBytecodeIndex() <= other.getStartBytecodeIndex() && other.getEndBytecodeIndex() <= this.getEndBytecodeIndex()").end();
         return ex;
     }
 
@@ -146,44 +169,90 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         ex.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecode"));
 
         CodeTreeBuilder b = ex.createBuilder();
-        /**
-         * This algorithm reconstructs the source information tree in a single linear pass of the
-         * source info table.
-         */
-        b.declaration(arrayOf(type(int.class)), "sourceInfo", "bytecode.sourceInfo");
+
+        b.declaration(parent.sourceInfoTable.getSourceInfoType(), "sourceInfo", "bytecode.sourceInfo");
 
         b.startIf().string("sourceInfo.length == 0").end().startBlock();
         b.statement("return null");
         b.end();
 
-        b.lineComment("Create a synthetic root node that contains all other SourceInformationTrees.");
-        b.startDeclaration(this.asType(), "root");
-        b.startNew(this.asType()).string("bytecode").string("UNAVAILABLE_ROOT").end();
-        b.end();
+        if (model().enableCompressedSources) {
+            /**
+             * Compressed sources logic is similar to the uncompressed sources, except we cannot walk
+             * the source table backwards. So, we can't do a single linear backwards pass to construct the tree.
+             * Instead, we first walk sources forward and building up a list of entries, then walk that
+             * list backwards to construct the tree as expected.
+             */
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex");
+            b.declaration(generic(ArrayDeque.class, this.asType()), "entries", "new ArrayDeque<>()");
+            b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length").end().startBlock();
+            b.declaration(type(int.class), "baseIndex", "sourceInfoIndex");
+            b.declaration(type(int.class), "entryEnd", "baseIndex + (sourceInfo[sourceInfoIndex++] & 0xFF)");
+            b.startStatement().startCall("entries.addLast");
+            b.startNew(this.asType()).string("bytecode").string("baseIndex").end();
+            b.end().end();
+            emitDecodeVarintEntry(b, "sourceInfo", "sourceInfoIndex");
+            emitDecodeVarintEntry(b, "sourceInfo", "sourceInfoIndex", null);
+            b.statement("sourceInfoIndex = entryEnd");
+            b.end();
 
-        b.declaration(type(int.class), "baseIndex", "sourceInfo.length");
-        b.declaration(this.asType(), "current", "root");
-        b.declaration(generic(ArrayDeque.class, this.asType()), "stack", "new ArrayDeque<>()");
-        b.startDoBlock();
-        // Create the next node.
-        b.startStatement().string("baseIndex -= ").variable(parent.sourceInfoTable.entryLengthVariable).end();
-        b.startDeclaration(this.asType(), "newNode");
-        b.startNew(this.asType()).string("bytecode").string("baseIndex").end();
-        b.end();
+            b.lineComment("Create a synthetic root node that contains all other SourceInformationTrees.");
+            b.startDeclaration(this.asType(), "root");
+            b.startNew(this.asType()).string("bytecode").string("UNAVAILABLE_ROOT").end();
+            b.end();
 
-        // Find the node's parent.
-        b.startWhile().string("!current.contains(newNode)").end().startBlock();
-        // If newNode is not contained in current, then no more entries belong to current (we
-        // are done parsing it). newNode must be a child of some other node on the stack.
-        b.statement("current = stack.pop()");
-        b.end();
+            b.declaration(this.asType(), "current", "root");
+            b.declaration(generic(ArrayDeque.class, this.asType()), "stack", "new ArrayDeque<>()");
+            b.startDoBlock();
+            b.declaration(this.asType(), "newNode", "entries.removeLast()");
 
-        // Link up the child and continue parsing.
-        b.statement("current.children.addFirst(newNode)");
-        b.statement("stack.push(current)");
-        b.statement("current = newNode");
+            // Find the node's parent.
+            b.startWhile().string("!current.contains(newNode)").end().startBlock();
+            // If newNode is not contained in current, then no more entries belong to current (we
+            // are done parsing it). newNode must be a child of some other node on the stack.
+            b.statement("current = stack.pop()");
+            b.end();
 
-        b.end().startDoWhile().string("baseIndex > 0").end();
+            // Link up the child and continue parsing.
+            b.statement("current.children.addFirst(newNode)");
+            b.statement("stack.push(current)");
+            b.statement("current = newNode");
+            b.end().startDoWhile().string("!entries.isEmpty()").end();
+        } else {
+            /**
+             * This algorithm reconstructs the source information tree in a single linear pass of the
+             * source info table.
+             */
+
+            b.lineComment("Create a synthetic root node that contains all other SourceInformationTrees.");
+            b.startDeclaration(this.asType(), "root");
+            b.startNew(this.asType()).string("bytecode").string("UNAVAILABLE_ROOT").end();
+            b.end();
+
+            b.declaration(type(int.class), "baseIndex", "sourceInfo.length");
+            b.declaration(this.asType(), "current", "root");
+            b.declaration(generic(ArrayDeque.class, this.asType()), "stack", "new ArrayDeque<>()");
+            b.startDoBlock();
+            // Create the next node.
+            b.startStatement().string("baseIndex -= ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+            b.startDeclaration(this.asType(), "newNode");
+            b.startNew(this.asType()).string("bytecode").string("baseIndex").end();
+            b.end();
+
+            // Find the node's parent.
+            b.startWhile().string("!current.contains(newNode)").end().startBlock();
+            // If newNode is not contained in current, then no more entries belong to current (we
+            // are done parsing it). newNode must be a child of some other node on the stack.
+            b.statement("current = stack.pop()");
+            b.end();
+
+            // Link up the child and continue parsing.
+            b.statement("current.children.addFirst(newNode)");
+            b.statement("stack.push(current)");
+            b.statement("current = newNode");
+
+            b.end().startDoWhile().string("baseIndex > 0").end();
+        }
 
         b.startIf().string("root.getChildren().size() == 1").end().startBlock();
         b.lineComment("If there is an actual root source section, ignore the synthetic root we created.");
@@ -191,6 +260,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.end().startElseBlock();
         b.statement("return root");
         b.end();
+
         return parent.withTruffleBoundary(ex);
     }
 

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static javax.lang.model.element.Modifier.ABSTRACT;
@@ -93,7 +95,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(Object.class)), "constants")));
         add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(int.class)), "handlers")));
         add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), type(int[].class), "locals")));
-        add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), type(int[].class), "sourceInfo")));
+        add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), parent.sourceInfoTable.getSourceInfoType(), "sourceInfo")));
         add(new CodeVariableElement(Set.of(FINAL), generic(type(List.class), types.Source), "sources"));
         add(new CodeVariableElement(Set.of(FINAL), type(int.class), "numNodes"));
         add(parent.compFinal(new CodeVariableElement(Set.of(FINAL), type(long.class), "configEncoding")));
@@ -1006,22 +1008,45 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.end(); // for handler
 
         // Source information validation
-        b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+        b.declaration(parent.sourceInfoTable.getSourceInfoType(), "info", "this.sourceInfo");
 
         b.startIf().string("info != null").end().startBlock();
         b.declaration(generic(declaredType(List.class), types.Source), "localSources", "this.sources");
-        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
-        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
-        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
-        b.declaration(type(int.class), "sourceIndex", parent.sourceInfoTable.loadSource("info", "i"));
-        b.startIf().string("startBci > endBci").end().startBlock();
-        b.tree(createValidationError("source bci range is malformed"));
-        b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
-        b.tree(createValidationError("source index is out of bounds"));
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
+            b.startWhile().string("index < info.length").end().startBlock();
+            b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "startBci", "(int) decoded");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "endBci", "startBci + (int) decoded");
+            b.declaration(type(int.class), "sourceIndexValue", emitDecodeVarintEntry(b, "info", "index", model().additionalAssertions ? "index" : null));
+            b.startIf().string("startBci > endBci").end().startBlock();
+            b.tree(createValidationError("source bci range is malformed"));
+            b.end().startElseIf().string("sourceIndexValue < 0 || sourceIndexValue > localSources.size()").end().startBlock();
+            b.tree(createValidationError("source index is out of bounds"));
+            b.end();
+            if (model().additionalAssertions) {
+                for (int i = 0; i < parent.sourceInfoTable.attributeOffsets.size(); i++) {
+                    emitDecodeVarintEntry(b, "info", "index");
+                }
+                b.startAssert().string("index == entryEnd || entryEnd == info.length").end();
+            }
+            b.statement("index = entryEnd");
+            b.end(); // while sources
+        } else {
+            b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+            b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+            b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+            b.declaration(type(int.class), "sourceIndex", parent.sourceInfoTable.loadSource("info", "i"));
+            b.startIf().string("startBci > endBci").end().startBlock();
+            b.tree(createValidationError("source bci range is malformed"));
+            b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
+            b.tree(createValidationError("source index is out of bounds"));
+            b.end();
+            b.end(); // for sources
+        }
         b.end();
-
-        b.end(); // for sources
-        b.end(); // if sources
 
         b.startReturn().string("true").end();
 
@@ -1849,25 +1874,43 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.statement("assert validateBytecodeIndex(bci)");
 
-        b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+        b.declaration(parent.sourceInfoTable.getSourceInfoType(), "info", "this.sourceInfo");
         b.startIf().string("info == null").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
 
-        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
-        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
-        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+        if (model().enableCompressedSources) {
 
-        b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
-        b.startReturn();
-        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
-        b.end();
-        b.end();
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
 
-        b.end();
+            b.startWhile().string("index < info.length").end().startBlock();
+            b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "startBci", "(int) decoded");
 
-        b.startReturn().string("null").end();
-        return ex;
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "endBci", "startBci + (int) decoded");
+
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("index").end().end();
+            b.end();
+
+            b.statement("index = entryEnd");
+            b.end();
+
+            b.startReturn().string("null").end();
+            return ex;
+        } else {
+            b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+            b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+            b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end().end();
+            b.end();
+            b.end();
+            b.startReturn().string("null").end();
+            return ex;
+        }
     }
 
     private CodeExecutableElement createGetSourceLocations() {
@@ -1877,40 +1920,62 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.statement("assert validateBytecodeIndex(bci)");
 
-        b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+        b.declaration(parent.sourceInfoTable.getSourceInfoType(), "info", "this.sourceInfo");
         b.startIf().string("info == null").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
 
-        b.declaration(type(int.class), "sectionIndex", "0");
-        b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
+            b.declaration(type(int.class), "sectionIndex", "0");
+            b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
-        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
-        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
-        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+            b.startWhile().string("index < info.length").end().startBlock();
+            b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "startBci", "(int) decoded");
 
-        b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "endBci", "startBci + (int) decoded");
 
-        b.startIf().string("sectionIndex == sections.length").end().startBlock();
-        b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
-        b.string("sections");
-        // Double the size of the array, but cap it at the number of source section entries.
-        b.startStaticCall(type(Math.class), "min");
-        b.string("sections.length * 2");
-        b.startGroup().string("info.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
-        b.end(); // call
-        b.end(2); // assign
-        b.end(); // if
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
+            b.startIf().string("sectionIndex == sections.length").end().startBlock();
+            b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sections.length * 2").end(2);
+            b.end();
+            b.startAssign("sections[sectionIndex++]");
+            b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("index").end();
+            b.end();
+            b.end();
 
-        b.startAssign("sections[sectionIndex++]");
-        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
-        b.end();
+            b.statement("index = entryEnd");
+            b.end();
 
-        b.end(); // if
+            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
+        } else {
+            b.declaration(type(int.class), "sectionIndex", "0");
+            b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
+            b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+            b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+            b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
+            b.startIf().string("sectionIndex == sections.length").end().startBlock();
+            b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
+            b.string("sections");
+            // Double the size of the array, but cap it at the number of source section entries.
+            b.startStaticCall(type(Math.class), "min");
+            b.string("sections.length * 2");
+            b.startGroup().string("info.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+            b.end(); // call
+            b.end(2); // assign
+            b.end(); // if
+            b.startAssign("sections[sectionIndex++]");
+            b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
+            b.end();
+            b.end(); // if
+            b.end(); // for block
+            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
+        }
 
-        b.end(); // for block
-
-        b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
         return ex;
     }
 
@@ -1919,22 +1984,37 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+        b.declaration(parent.sourceInfoTable.getSourceInfoType(), "info", "this.sourceInfo");
         b.startIf().string("info == null || info.length == 0").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
 
-        b.startDeclaration(type(int.class), "lastEntry");
-        b.string("info.length - ").variable(parent.sourceInfoTable.entryLengthVariable);
-        b.end();
-        b.startIf();
-        b.tree(parent.sourceInfoTable.loadStartBci("info", "lastEntry")).string(" == 0 &&").startIndention().newLine();
-        b.tree(parent.sourceInfoTable.loadEndBci("info", "lastEntry")).string(" == bytecodes.length").end();
-        b.end().startBlock();
-        b.startReturn();
-        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("lastEntry").end();
-        b.end();
-        b.end(); // if
+        if (model().enableCompressedSources) {
+            b.declaration(type(int.class), "lastEntry", "0");
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
+            b.startWhile().string("index < info.length").end().startBlock();
+            b.statement("lastEntry = index");
+            b.statement("index += info[index] & 0xFF");
+            b.end();
+            b.statement("index = lastEntry + 1");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.declaration(type(int.class), "startBci", "(int) decoded");
+            emitDecodeVarintEntry(b, "info", "index");
+            b.startIf().string("startBci == 0 && (int) decoded == bytecodes.length").end().startBlock();
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("index").end().end();
+            b.end();
+        } else {
+            b.startDeclaration(type(int.class), "lastEntry");
+            b.string("info.length - ").variable(parent.sourceInfoTable.entryLengthVariable);
+            b.end();
+            b.startIf();
+            b.tree(parent.sourceInfoTable.loadStartBci("info", "lastEntry")).string(" == 0 &&").startIndention().newLine();
+            b.tree(parent.sourceInfoTable.loadEndBci("info", "lastEntry")).string(" == bytecodes.length").end();
+            b.end().startBlock();
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("lastEntry").end();
+            b.end();
+            b.end(); // if
+        }
 
         b.startReturn().string("null").end();
         return ex;

@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.4
+* GR-72480: Bytecode DSL: Implemented compressed source information, configurable with `@GenerateBytecode(enableCompressedSources = true|false)`. Compression is enabled by default and reduces the source-table memory footprint, at the cost of slower decoding when source information is accessed.
+
 ## Version 25.3
 * GR-57730: Improved descriptive `toString()` output for Polyglot API objects and builders.
 * GR-73530: Added `StaticShape.Builder.safetyChecks(boolean)` to let language implementations configure safety checks for individual static shapes. Added `engine.ForceStaticObjectSafetyChecks` to enable safety checks for all static shapes, overriding the builder setting.

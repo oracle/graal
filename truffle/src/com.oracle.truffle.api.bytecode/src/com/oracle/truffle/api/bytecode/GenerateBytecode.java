@@ -821,4 +821,17 @@ public @interface GenerateBytecode {
      */
     String sourceContentSupplier() default "";
 
+    /**
+     * Enables compression of source information tables.
+     * <p>
+     * Source information can require a large amount of memory, and so this option makes source tables rely
+     * on a compressed encoding.
+     * This significantly reduces source table footprint, at the cost of making accessing source information
+     * less efficient because of the additional decoding step.
+     * It is set to `true` as a default, as the assumption is that the language is likely to only access source
+     * information infrequently, e.g. to get debugging information.
+     *
+     * @since 25.4
+     */
+    boolean enableCompressedSources() default true;
 }

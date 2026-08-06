@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -77,25 +79,47 @@ final class SourceInformationImplElement extends AbstractElement {
     private CodeExecutableElement createGetStartBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getStartBytecodeIndex");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            CodeTree decodedValue = emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex", null);
+            b.startReturn().tree(decodedValue).end();
+        } else {
+            b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
+        }
         return ex;
     }
 
     private CodeExecutableElement createGetEndBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getEndBytecodeIndex");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            b.declaration(type(int.class), "startBci", emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex"));
+            CodeTree decodedValue = emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex", null);
+            b.startReturn().string("startBci + ").tree(decodedValue).end();
+        } else {
+            b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
+        }
         return ex;
     }
 
     private CodeExecutableElement createGetSourceSection() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getSourceSection");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
-        b.string("bytecode.sources");
-        b.string("bytecode.sourceInfo");
-        b.string("baseIndex");
-        b.end(2);
+        if (model().enableCompressedSources) {
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex", "baseIndex + 1");
+            emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex");
+            emitDecodeVarintEntry(b, "bytecode.sourceInfo", "sourceInfoIndex");
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+            b.string("bytecode.sources").string("bytecode.sourceInfo").string("sourceInfoIndex");
+            b.end(2);
+        } else {
+            b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+            b.string("bytecode.sources");
+            b.string("bytecode.sourceInfo");
+            b.string("baseIndex");
+            b.end(2);
+        }
         return ex;
     }
 

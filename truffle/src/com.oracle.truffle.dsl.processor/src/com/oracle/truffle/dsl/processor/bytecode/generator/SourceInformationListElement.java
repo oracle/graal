@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -47,6 +48,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.AbstractList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -65,31 +67,70 @@ final class SourceInformationListElement extends AbstractElement {
                         ElementKind.CLASS, null, "SourceInformationList");
         this.setSuperClass(generic(type(AbstractList.class), types.SourceInformation));
         this.add(new CodeVariableElement(Set.of(FINAL), parent.abstractBytecodeNode.asType(), "bytecode"));
-        this.add(createConstructorUsingFields(Set.of(), this, null));
+        if (model().enableCompressedSources) {
+            this.add(new CodeVariableElement(Set.of(FINAL), arrayOf(type(int.class)), "offsets"));
+            this.add(createCompressedConstructor());
+        } else {
+            this.add(createConstructorUsingFields(Set.of(), this, null));
+        }
         this.add(createGet());
         this.add(createSize());
+    }
+
+    private CodeExecutableElement createCompressedConstructor() {
+        CodeExecutableElement constructor = new CodeExecutableElement(Set.of(), null, this.getSimpleName().toString());
+        constructor.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecode"));
+        CodeTreeBuilder b = constructor.createBuilder();
+        b.startAssign("this.bytecode").string("bytecode").end();
+        b.declaration(arrayOf(type(int.class)), "sourceInfoOffsets", "new int[8]");
+        b.declaration(type(int.class), "sourceInfoIndex", "0");
+        b.declaration(type(int.class), "sourceInfoEntryCount", "0");
+        b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length").end().startBlock();
+        b.startIf().string("sourceInfoEntryCount == sourceInfoOffsets.length").end().startBlock();
+        b.startAssign("sourceInfoOffsets").startStaticCall(type(Arrays.class), "copyOf").string("sourceInfoOffsets").string("sourceInfoOffsets.length * 2").end().end();
+        b.end();
+        b.startAssign("sourceInfoOffsets[sourceInfoEntryCount++]").string("sourceInfoIndex").end();
+        b.statement("sourceInfoIndex += bytecode.sourceInfo[sourceInfoIndex] & 0xFF");
+        b.end();
+        b.startAssign("this.offsets").startStaticCall(type(Arrays.class), "copyOf").string("sourceInfoOffsets").string("sourceInfoEntryCount").end().end();
+        return constructor;
     }
 
     private CodeExecutableElement createGet() {
         CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "get", new String[]{"index"}, new TypeMirror[]{type(int.class)});
         ex.setReturnType(types.SourceInformation);
         CodeTreeBuilder b = ex.createBuilder();
-        b.startDeclaration(type(int.class), "baseIndex");
-        b.string("index * ").variable(parent.sourceInfoTable.entryLengthVariable);
-        b.end();
-        b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.sourceInfo.length").end().startBlock();
-        b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
-        b.end();
-        b.startReturn();
-        b.startNew("SourceInformationImpl").string("bytecode").string("baseIndex").end();
-        b.end();
+
+        if (model().enableCompressedSources) {
+            b.startIf().string("index < 0 || index >= offsets.length").end().startBlock();
+            b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
+            b.end();
+            b.startReturn();
+            b.startNew("SourceInformationImpl").string("bytecode").string("offsets[index]").end();
+            b.end();
+        } else {
+            b.startDeclaration(type(int.class), "baseIndex");
+            b.string("index * ").variable(parent.sourceInfoTable.entryLengthVariable);
+            b.end();
+            b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.sourceInfo.length").end().startBlock();
+            b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
+            b.end();
+            b.startReturn();
+            b.startNew("SourceInformationImpl").string("bytecode").string("baseIndex").end();
+            b.end();
+        }
+
         return ex;
     }
 
     private CodeExecutableElement createSize() {
         CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "size");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().string("bytecode.sourceInfo.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+        if (model().enableCompressedSources) {
+            b.startReturn().string("offsets.length").end();
+        } else {
+            b.startReturn().string("bytecode.sourceInfo.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+        }
         return ex;
     }
 

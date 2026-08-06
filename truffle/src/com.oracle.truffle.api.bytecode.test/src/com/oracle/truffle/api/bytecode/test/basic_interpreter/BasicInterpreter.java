@@ -211,7 +211,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
-                                enableTailCallHandlers = true, variadicStackLimit = "16"))
+                                enableTailCallHandlers = true, variadicStackLimit = "16")),
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
@@ -681,16 +681,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation(storeBytecodeIndex = true)
-    public static final class GetSourcePosition {
-        @Specialization
-        public static SourceSection doOperation(VirtualFrame frame,
-                        @Bind Node node,
-                        @Bind BytecodeNode bytecode) {
-            return bytecode.getSourceLocation(frame, node);
-        }
-    }
-
-    @Operation(storeBytecodeIndex = true)
     public static final class EnsureAndGetSourcePosition {
         @Specialization
         public static SourceSection doOperation(VirtualFrame frame, boolean ensure,
@@ -777,54 +767,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                 return null;
             });
             return bytecodeLocations;
-        }
-    }
-
-    @Operation(storeBytecodeIndex = true)
-    public static final class CollectSourceLocations {
-        @Specialization
-        public static List<SourceSection> perform(
-                        @Bind BytecodeLocation location,
-                        @Bind BasicInterpreter currentRootNode) {
-            List<SourceSection> sourceLocations = new ArrayList<>();
-            Truffle.getRuntime().iterateFrames(f -> {
-                if (f.getCallTarget() instanceof RootCallTarget rct && rct.getRootNode() instanceof BasicInterpreter frameRootNode) {
-                    if (currentRootNode == frameRootNode) {
-                        // The top-most stack trace element doesn't have a call node.
-                        sourceLocations.add(location.getSourceLocation());
-                    } else {
-                        sourceLocations.add(frameRootNode.getBytecodeNode().getSourceLocation(f));
-                    }
-                } else {
-                    sourceLocations.add(null);
-                }
-                return null;
-            });
-            return sourceLocations;
-        }
-    }
-
-    @Operation(storeBytecodeIndex = true)
-    public static final class CollectAllSourceLocations {
-        @Specialization
-        public static List<SourceSection[]> perform(
-                        @Bind BytecodeLocation location,
-                        @Bind BasicInterpreter currentRootNode) {
-            List<SourceSection[]> allSourceLocations = new ArrayList<>();
-            Truffle.getRuntime().iterateFrames(f -> {
-                if (f.getCallTarget() instanceof RootCallTarget rct && rct.getRootNode() instanceof BasicInterpreter frameRootNode) {
-                    if (currentRootNode == frameRootNode) {
-                        // The top-most stack trace element doesn't have a call node.
-                        allSourceLocations.add(location.getSourceLocations());
-                    } else {
-                        allSourceLocations.add(frameRootNode.getBytecodeNode().getSourceLocations(f));
-                    }
-                } else {
-                    allSourceLocations.add(null);
-                }
-                return null;
-            });
-            return allSourceLocations;
         }
     }
 

@@ -703,33 +703,6 @@ public abstract class AbstractBasicInterpreterTest {
         throw new AssertionError("unreachable");
     }
 
-    /**
-     * Helper class for validating SourceInformationTrees.
-     */
-    record ExpectedSourceTree(boolean available, String contents, ExpectedSourceTree... children) {
-        public void assertTreeEquals(SourceInformationTree actual) {
-            if (!available) {
-                assertTrue(!actual.getSourceSection().isAvailable());
-            } else if (contents == null) {
-                assertNull(actual.getSourceSection());
-            } else {
-                assertEquals(contents, actual.getSourceSection().getCharacters().toString());
-            }
-            assertEquals(children.length, actual.getChildren().size());
-            for (int i = 0; i < children.length; i++) {
-                children[i].assertTreeEquals(actual.getChildren().get(i));
-            }
-        }
-
-        public static ExpectedSourceTree expectedSourceTree(String contents, ExpectedSourceTree... children) {
-            return new ExpectedSourceTree(true, contents, children);
-        }
-
-        public static ExpectedSourceTree expectedSourceTreeUnavailable(ExpectedSourceTree... children) {
-            return new ExpectedSourceTree(false, null, children);
-        }
-    }
-
     @SuppressWarnings("unchecked")
     public static List<BytecodeVariant> allVariants() {
         return BasicInterpreterBuilder.variants();
