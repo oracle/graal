@@ -2256,7 +2256,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         boolean followReflectionConfiguration = ClassLoadingSupport.singleton().followReflectionConfiguration();
         DynamicHub arrayHub = getArrayHub();
         RuntimeDynamicAccessMetadata arrayMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
-        RuntimeDynamicAccessMetadata componentMetadata = isClassFlagSet(ALL_CLASSES_FLAG) ? getDynamicAccessMetadata() : null;
+        RuntimeDynamicAccessMetadata componentMetadata = getDynamicAccessMetadata();
         boolean metadataMissing = arrayMetadata == null && componentMetadata == null;
         boolean metadataPreserved = (arrayMetadata != null && arrayMetadata.isPreserved()) ||
                         (componentMetadata != null && componentMetadata.isPreserved());
