@@ -113,10 +113,28 @@ final class Target_java_lang_StackWalker {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private void forEach(Consumer<? super StackFrame> action) {
+        if (ContinuationSupport.isSupported() && continuation != null) {
+            walk(stream -> {
+                stream.forEach(action);
+                return null;
+            });
+            return;
+        }
+
+        Pointer startSP = KnownIntrinsics.readCallerStackPointer();
+        Pointer endSP = Word.nullPointer();
+        if (ContinuationSupport.isSupported() && contScope != null) {
+            var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(contScope);
+            if (top != null) {
+                /* Has a delimitation scope, so we need to stop the stack walk correctly. */
+                endSP = ContinuationInternals.getBaseSP(top);
+            }
+        }
+
         boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
         boolean showReflectFrames = showHiddenFrames || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
-        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
+        JavaStackWalker.walkCurrentThread(startSP, endSP, new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameSourceInfo frameInfo, Pointer sp) {
                 if (!StackWalkerUtil.skipFrame(frameInfo, !showHiddenFrames, !showReflectFrames, false)) {
@@ -133,10 +151,12 @@ final class Target_java_lang_StackWalker {
      */
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    @SuppressWarnings("static-method")
     private Class<?> getCallerClass() {
         if (!retainClassRef) {
             throw new UnsupportedOperationException("This stack walker does not have RETAIN_CLASS_REFERENCE access");
+        }
+        if (continuation != null) {
+            throw new UnsupportedOperationException("This stack walker walks a continuation");
         }
 
         /*
@@ -161,11 +181,11 @@ final class Target_java_lang_StackWalker {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
-        JavaStackWalk walk = UnsafeStackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        JavaStackWalk stackWalk = UnsafeStackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         AbstractStackFrameSpliterator spliterator;
         if (ContinuationSupport.isSupported() && continuation != null) {
             /* Walk a yielded continuation. */
-            spliterator = new ContinuationSpliterator(walk, CurrentIsolate.getCurrentThread(), contScope, continuation);
+            spliterator = new ContinuationSpliterator(stackWalk, CurrentIsolate.getCurrentThread(), contScope, continuation);
         } else {
             /* Walk the stack of the current thread. */
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
@@ -180,7 +200,7 @@ final class Target_java_lang_StackWalker {
                 }
             }
 
-            spliterator = new StackFrameSpliterator(walk, isolateThread, sp, endSP);
+            spliterator = new StackFrameSpliterator(stackWalk, isolateThread, sp, endSP);
         }
 
         try {
