@@ -28,16 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -94,25 +89,23 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final int[] values;
-
-    public TStringOpsIndexOfAnyTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int[] values) {
+    public TStringOpsIndexOfAnyTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.values = values;
     }
 
     @Test
     public void testIndexOfAny() {
+        testParameterized(data(), this::testIndexOfAnyCase);
+    }
+
+    private void testIndexOfAnyCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+        int[] values = (int[]) args[5];
+
         if (strideA == 0) {
             byte[] valuesB = new byte[values.length];
             for (int i = 0; i < values.length; i++) {

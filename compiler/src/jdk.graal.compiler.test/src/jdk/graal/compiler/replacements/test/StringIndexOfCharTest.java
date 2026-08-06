@@ -24,19 +24,17 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import static jdk.graal.compiler.truffle.test.strings.TStringTest.testParameterized;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 
-@RunWith(Parameterized.class)
 public class StringIndexOfCharTest extends GraalCompilerTest {
 
-    @Parameterized.Parameters(name = "{0},{1},{2}")
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
         String longString = "ab";
@@ -62,20 +60,8 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
                 }
             }
         }
-        tests.add(new Object[]{"abcd", 'c', 1, 1});
+        tests.add(new Object[]{"abcd", (int) 'c', 1, 1});
         return tests;
-    }
-
-    protected final String sourceString;
-    protected final int constantChar;
-    protected final int fromIndex;
-    protected final int toIndex;
-
-    public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex, int toIndex) {
-        this.sourceString = sourceString;
-        this.constantChar = constantChar;
-        this.fromIndex = fromIndex;
-        this.toIndex = toIndex;
     }
 
     public int testStringIndexOf(String a, int b) {
@@ -92,16 +78,28 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
 
     @Test
     public void testStringIndexOfConstant() {
-        test("testStringIndexOf", this.sourceString, this.constantChar);
+        testParameterized(data(), this::testStringIndexOfConstantCase);
     }
 
     @Test
     public void testStringIndexOfConstantOffset() {
-        test("testStringIndexOfOffset", this.sourceString, this.constantChar, this.fromIndex);
+        testParameterized(data(), this::testStringIndexOfConstantOffsetCase);
     }
 
     @Test
     public void testStringIndexOfRegion() {
-        test("stringIndexOfRegion", this.sourceString, this.constantChar, this.fromIndex, this.toIndex);
+        testParameterized(data(), this::testStringIndexOfRegionCase);
+    }
+
+    private void testStringIndexOfConstantCase(Object[] args) {
+        test("testStringIndexOf", args[0], args[1]);
+    }
+
+    private void testStringIndexOfConstantOffsetCase(Object[] args) {
+        test("testStringIndexOfOffset", args[0], args[1], args[2]);
+    }
+
+    private void testStringIndexOfRegionCase(Object[] args) {
+        test("stringIndexOfRegion", args);
     }
 }

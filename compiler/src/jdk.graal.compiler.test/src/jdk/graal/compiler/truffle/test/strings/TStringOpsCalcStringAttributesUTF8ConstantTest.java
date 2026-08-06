@@ -27,35 +27,35 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesUTF8ConstantTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         return reduceTestData(TStringOpsCalcStringAttributesUTF8Test.data(), 2, 1, 16);
     }
 
-    public TStringOpsCalcStringAttributesUTF8ConstantTest(byte[] array, int offset, int length) {
-        super(CalcStringAttributesNode.class, array, offset, length);
+    public TStringOpsCalcStringAttributesUTF8ConstantTest() {
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testUtf8Valid() {
+        testParameterized(data(), this::testUtf8ValidCase);
+    }
+
+    private void testUtf8ValidCase(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, true, false, InlinedConditionProfile.getUncached());
         ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, true, false, InlinedConditionProfile.getUncached());
@@ -63,6 +63,11 @@ public class TStringOpsCalcStringAttributesUTF8ConstantTest extends TStringOpsCo
 
     @Test
     public void testUtf8Unknown() {
+        testParameterized(data(), this::testUtf8UnknownCase);
+    }
+
+    private void testUtf8UnknownCase(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, false, false, InlinedConditionProfile.getUncached());
         ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", byte[].class, long.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
         test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, false, false, InlinedConditionProfile.getUncached());

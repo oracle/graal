@@ -24,14 +24,10 @@
  */
 package jdk.graal.compiler.truffle.test.strings;
 
-import static org.junit.runners.Parameterized.Parameters;
-
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -40,18 +36,10 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsConstantStrideTest extends TStringOpsRegionEqualsTest {
 
     Object[] constantArgs = new Object[10];
 
-    public TStringOpsRegionEqualsConstantStrideTest(
-                    byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
-                    byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
-        super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-    }
-
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         return TStringOpsRegionEqualsTest.data();
     }
@@ -72,11 +60,14 @@ public class TStringOpsRegionEqualsConstantStrideTest extends TStringOpsRegionEq
     @Override
     @Test
     public void testRegionEquals() {
+        testParameterized(data(), this::testRegionEqualsCase);
+    }
+
+    private void testRegionEqualsCase(Object[] args) {
+        setTestCase(args);
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
-        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
+        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, args);
     }
 
     @Override

@@ -25,18 +25,18 @@
 package jdk.graal.compiler.truffle.test;
 
 import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
+import static jdk.graal.compiler.truffle.test.strings.TStringTest.testParameterized;
+
+import java.util.Arrays;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.ArrayUtils;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.ArrayUtils;
-
-@RunWith(Parameterized.class)
 public class ArrayUtilsRegionEqualsWithMaskTest extends GraalCompilerTest {
 
     @Override
@@ -45,52 +45,46 @@ public class ArrayUtilsRegionEqualsWithMaskTest extends GraalCompilerTest {
         super.registerInvocationPlugins(invocationPlugins);
     }
 
-    @Parameters(name = "{index}: fromIndex1 {1} fromIndex2 {3} length {5} mask {4}")
     public static Iterable<Object[]> data() {
-        return com.oracle.truffle.api.test.ArrayUtilsRegionEqualsWithMaskTest.data();
-    }
-
-    private final String a1;
-    private final int fromIndex1;
-    private final String a2;
-    private final int fromIndex2;
-    private final int length;
-    private final String mask;
-
-    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, @SuppressWarnings("unused") boolean expectedByte,
-                    @SuppressWarnings("unused") boolean expectedChar) {
-        this.a1 = a1;
-        this.fromIndex1 = fromIndex1;
-        this.a2 = a2;
-        this.fromIndex2 = fromIndex2;
-        this.length = length;
-        this.mask = mask;
+        return com.oracle.truffle.api.test.ArrayUtilsRegionEqualsWithMaskTest.data().stream().map(args -> Arrays.copyOf(args, args.length - 2)).toList();
     }
 
     @Test
     public void testByteArray() {
-        test("regionEqualsWithORMaskByteArray", a1, fromIndex1, a2, fromIndex2, length, mask);
+        testParameterized(data(), this::testByteArrayCase);
     }
 
     @Test
     public void testCharArray() {
-        test("regionEqualsWithORMaskCharArray", a1, fromIndex1, a2, fromIndex2, length, mask);
+        testParameterized(data(), this::testCharArrayCase);
     }
 
     @Test
     public void testString() {
-        test("regionEqualsWithORMaskString", a1, fromIndex1, a2, fromIndex2, length, mask);
+        testParameterized(data(), this::testStringCase);
     }
 
-    public static boolean regionEqualsWithORMaskByteArray(String a1, int fromIndex1, String a2, int fromIndex2, int length, String mask) {
+    private void testByteArrayCase(Object[] args) {
+        test("regionEqualsWithORMaskByteArray", args);
+    }
+
+    private void testCharArrayCase(Object[] args) {
+        test("regionEqualsWithORMaskCharArray", args);
+    }
+
+    private void testStringCase(Object[] args) {
+        test("regionEqualsWithORMaskString", args);
+    }
+
+    public static boolean regionEqualsWithORMaskByteArray(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length) {
         return ArrayUtils.regionEqualsWithOrMask(toByteArray(a1), fromIndex1, toByteArray(a2), fromIndex2, length, toByteArray(mask));
     }
 
-    public static boolean regionEqualsWithORMaskCharArray(String a1, int fromIndex1, String a2, int fromIndex2, int length, String mask) {
+    public static boolean regionEqualsWithORMaskCharArray(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length) {
         return ArrayUtils.regionEqualsWithOrMask(a1.toCharArray(), fromIndex1, a2.toCharArray(), fromIndex2, length, mask == null ? null : mask.toCharArray());
     }
 
-    public static boolean regionEqualsWithORMaskString(String a1, int fromIndex1, String a2, int fromIndex2, int length, String mask) {
+    public static boolean regionEqualsWithORMaskString(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length) {
         return ArrayUtils.regionEqualsWithOrMask(a1, fromIndex1, a2, fromIndex2, length, mask);
     }
 }

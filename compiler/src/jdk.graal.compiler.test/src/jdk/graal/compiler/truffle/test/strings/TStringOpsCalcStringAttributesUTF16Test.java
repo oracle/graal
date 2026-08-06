@@ -35,16 +35,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -189,40 +184,72 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
         }
     }
 
-    final byte[] array;
-    final long offset;
-    final int length;
-
-    public TStringOpsCalcStringAttributesUTF16Test(byte[] array, int offset, int length) {
+    public TStringOpsCalcStringAttributesUTF16Test() {
         super(CalcStringAttributesNode.class);
-        this.array = array;
-        this.offset = offset + byteArrayBaseOffset();
-        this.length = length;
     }
 
     @Test
     public void testValid() {
+        testParameterized(data(), this::testValidCase);
+    }
+
+    private void testValidCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, true);
     }
 
     @Test
     public void testUnknown() {
+        testParameterized(data(), this::testUnknownCase);
+    }
+
+    private void testUnknownCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, false);
     }
 
     @Test
     public void testForeignEndianValid() {
+        testParameterized(data(), this::testForeignEndianValidCase);
+    }
+
+    private void testForeignEndianValidCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FEAssumeValid", byte[].class, long.class, int.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length);
     }
 
     @Test
     public void testForeignEndianUnknown() {
+        testParameterized(data(), this::testForeignEndianUnknownCase);
+    }
+
+    private void testForeignEndianUnknownCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + byteArrayBaseOffset();
+        int length = (int) args[2];
+
         testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length);
     }
 
     @Test
     public void testUnknownC() {
-        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, long.class, int.class), null, DUMMY_LOCATION, toCharArray(array), offset - byteArrayBaseOffset() + charArrayBaseOffset(),
-                        length);
+        testParameterized(data(), this::testUnknownCCase);
+    }
+
+    private void testUnknownCCase(Object[] args) {
+        byte[] array = (byte[]) args[0];
+        long offset = (int) args[1] + charArrayBaseOffset();
+        int length = (int) args[2];
+
+        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, long.class, int.class), null, DUMMY_LOCATION, toCharArray(array), offset, length);
     }
 }

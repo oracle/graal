@@ -31,7 +31,6 @@ import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -53,13 +52,8 @@ public class ArrayUtilsCopyConstantLengthTest extends ArrayUtilsCopyTest {
 
     private static final int[] LENGTH_FILTER = {1, 2, 7, 8, 9, 15, 16};
 
-    private final Object[] constantArgs = new Object[5];
+    private Object[] constantArgs = new Object[5];
 
-    public ArrayUtilsCopyConstantLengthTest(int[] source, int sourceIndex, int destinationIndex, int length) {
-        super(source, sourceIndex, destinationIndex, length);
-    }
-
-    @Parameters(name = "{index}: sourceIndex: {1}, destinationIndex: {2}, length: {3}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int[] source = initializedSource();
@@ -99,11 +93,16 @@ public class ArrayUtilsCopyConstantLengthTest extends ArrayUtilsCopyTest {
     @Override
     @Test
     public void testCopy() {
+        testParameterized(data(), this::testCopyCase);
+    }
+
+    private void testCopyCase(Object[] args) {
+        setTestCase(args);
         int maxVectorSizeBytes = maxVectorSizeBytes();
         Assume.assumeTrue(ArrayCopyWithConversionsNode.canLowerConstantLengthCopy(maxVectorSizeBytes, Stride.S4, Stride.S4, false, length));
         constantArgs[4] = length;
         ArgSupplier destination = ArrayUtilsCopyTest::initializedDestination;
-        test(getArrayCopyS4(), null, source, sourceIndex, destination, destinationIndex, length);
+        test(getArrayCopyS4(), null, args[0], args[1], destination, args[2], args[3]);
     }
 
     @Override

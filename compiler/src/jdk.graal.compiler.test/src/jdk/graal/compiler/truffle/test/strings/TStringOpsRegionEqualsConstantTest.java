@@ -27,9 +27,6 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -40,23 +37,19 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTest {
 
-    final Object[] constantArgs;
+    Object[] constantArgs;
 
-    public TStringOpsRegionEqualsConstantTest(
-                    byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
-                    byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
-        super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-        constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, this.offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, this.offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
+    @Override
+    protected void setTestCase(Object[] args) {
+        super.setTestCase(args);
+        constantArgs = args.clone();
+        constantArgs[11] = JavaConstant.NULL_POINTER;
     }
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
     public static List<Object[]> data() {
-        return TStringOpsConstantTest.reduceTestData(TStringOpsRegionEqualsTest.data(), 10, 0, 1, 7, 16);
+        return TStringOpsConstantTest.reduceTestData(TStringOpsRegionEqualsTest.data(), 12, 0, 1, 7, 16);
     }
 
     @Override
@@ -78,9 +71,12 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
     @Override
     @Test
     public void testRegionEquals() {
-        test(getRegionEqualsWithOrMaskWithStride(), null, DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
+        testParameterized(data(), this::testRegionEqualsCase);
+    }
+
+    private void testRegionEqualsCase(Object[] args) {
+        setTestCase(args);
+        test(getRegionEqualsWithOrMaskWithStride(), null, args);
     }
 
     @Override

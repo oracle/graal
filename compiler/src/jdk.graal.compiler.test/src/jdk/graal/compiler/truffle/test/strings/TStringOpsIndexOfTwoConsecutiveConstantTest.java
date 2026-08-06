@@ -27,26 +27,26 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndexOfConstantTest<ArrayIndexOfNode> {
 
-    public TStringOpsIndexOfTwoConsecutiveConstantTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
-        super(ArrayIndexOfNode.class, arrayA, offsetA, lengthA, strideA, fromIndexA, new int[]{v0, v1, mask0, mask1});
+    public TStringOpsIndexOfTwoConsecutiveConstantTest() {
+        super(ArrayIndexOfNode.class);
     }
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
     public static List<Object[]> data() {
         return reduceTestData(reduceTestData(TStringOpsIndexOfTwoConsecutiveTest.data(), 2, 1, 7, 16), 4, 0, 1);
     }
 
     @Test
     public void testIndexOfTwoConsecutive() {
+        testParameterized(data(), this::testIndexOfTwoConsecutiveCase);
+    }
+
+    private void testIndexOfTwoConsecutiveCase(Object[] args) {
+        setTestCase(new Object[]{args[0], args[1], args[2], args[3], args[4], new int[]{(int) args[5], (int) args[6], (int) args[7], (int) args[8]}});
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, values[0], values[1]);
         test(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, values[0], values[1]);
     }

@@ -27,20 +27,15 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.Stride;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOfTableTest extends TStringOpsTest<ArrayIndexOfNode> {
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, values: {5}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
@@ -97,31 +92,40 @@ public class TStringOpsIndexOfTableTest extends TStringOpsTest<ArrayIndexOfNode>
         return array;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final byte[] table;
-
-    public TStringOpsIndexOfTableTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, byte[] table) {
+    public TStringOpsIndexOfTableTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.table = table;
     }
 
     @Test
     public void testIndexOfTable() {
+        testParameterized(data(), this::testIndexOfTableCase);
+    }
+
+    private void testIndexOfTableCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+        byte[] table = (byte[]) args[5];
+
         Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.Table));
         test(getIndexOfTableIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, table);
     }
 
     @Test
     public void testIndexOfTableForeignEndian() {
+        testParameterized(data(), this::testIndexOfTableForeignEndianCase);
+    }
+
+    private void testIndexOfTableForeignEndianCase(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        int lengthA = (int) args[2];
+        int strideA = (int) args[3];
+        int fromIndexA = (int) args[4];
+        byte[] table = (byte[]) args[5];
+
         Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian));
         test(getIndexOfTableForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, table);
     }

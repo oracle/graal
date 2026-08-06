@@ -30,14 +30,10 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
     private static final MethodHandle calcLatin1;
@@ -52,7 +48,6 @@ public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends T
         }
     }
 
-    @Parameters(name = "{index}: offset={0}, length={1}")
     public static List<Object[]> data() {
         return List.of(
                         // (offset + length) >= array.length
@@ -63,12 +58,17 @@ public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends T
                         new Object[]{2, -1});
     }
 
-    public TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest(int offset, int length) {
-        super(CalcStringAttributesNode.class, new byte[]{'a', 'b', 'c', -1}, offset, length);
+    public TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest() {
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testConstantRegionOutOfBounds() throws Throwable {
+        testParameterizedThrowing(data(), this::testConstantRegionOutOfBoundsCase);
+    }
+
+    private void testConstantRegionOutOfBoundsCase(Object[] args) throws Throwable {
+        setTestCase(new Object[]{new byte[]{'a', 'b', 'c', -1}, args[0], args[1]});
         setConstantArgs(arrayA, offsetA, lengthA);
         // Make calcStringAttributesLatin1 branch reachable (must be in bounds)
         runTestMethod(arrayA, 2 + byteArrayBaseOffset(), 2, true);

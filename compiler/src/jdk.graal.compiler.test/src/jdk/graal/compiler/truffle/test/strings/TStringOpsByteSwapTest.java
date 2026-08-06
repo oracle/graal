@@ -29,16 +29,11 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsByteSwapTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}, {3}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offsetBytes = 20;
@@ -63,27 +58,36 @@ public class TStringOpsByteSwapTest extends TStringOpsTest<ArrayCopyWithConversi
         return ret;
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final long offsetB;
-    final int lengthCPY;
-
-    public TStringOpsByteSwapTest(byte[] arrayA, int offsetA, int offsetB, int lengthCPY) {
+    public TStringOpsByteSwapTest() {
         super(ArrayCopyWithConversionsNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.offsetB = offsetB + byteArrayBaseOffset();
-        this.lengthCPY = lengthCPY;
     }
 
     @Test
     public void testByteSwapS1() {
+        testParameterized(data(), this::testByteSwapS1Case);
+    }
+
+    private void testByteSwapS1Case(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        long offsetB = (int) args[2] + byteArrayBaseOffset();
+        int lengthCPY = (int) args[3];
+
         ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << 1) + 128)];
         testWithNativeExcept(getByteSwapS1(), null, 1 << 3, DUMMY_LOCATION, arrayA, offsetA, arrayB, offsetB + 128, lengthCPY);
     }
 
     @Test
     public void testByteSwapS2() {
+        testParameterized(data(), this::testByteSwapS2Case);
+    }
+
+    private void testByteSwapS2Case(Object[] args) {
+        byte[] arrayA = (byte[]) args[0];
+        long offsetA = (int) args[1] + byteArrayBaseOffset();
+        long offsetB = (int) args[2] + byteArrayBaseOffset();
+        int lengthCPY = (int) args[3];
+
         ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << 2) + 128)];
         testWithNativeExcept(getByteSwapS2(), null, 1 << 3, DUMMY_LOCATION, arrayA, offsetA, arrayB, offsetB + 128, lengthCPY);
     }

@@ -29,16 +29,11 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}, {3}, {4}, {5}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offsetBytes = 20;
@@ -87,28 +82,34 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
         return ret;
     }
 
-    final Object arrayA;
-    final long offsetA;
-    final int strideA;
-    final long offsetB;
-    final int strideB;
-    final int lengthCPY;
+    Object arrayA;
+    long offsetA;
+    int strideA;
+    long offsetB;
+    int strideB;
+    int lengthCPY;
 
-    public TStringOpsCopyTest(
-                    Object arrayA,
-                    int offsetA, int strideA,
-                    int offsetB, int strideB, int lengthCPY) {
+    public TStringOpsCopyTest() {
         super(ArrayCopyWithConversionsNode.class);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.strideA = strideA;
-        this.offsetB = offsetB + byteArrayBaseOffset();
-        this.strideB = strideB;
-        this.lengthCPY = lengthCPY;
+    }
+
+    protected void setTestCase(Object[] args) {
+        this.arrayA = args[0];
+        this.offsetA = ((int) args[1]) + byteArrayBaseOffset();
+        this.strideA = (int) args[2];
+        this.offsetB = ((int) args[3]) + byteArrayBaseOffset();
+        this.strideB = (int) args[4];
+        this.lengthCPY = (int) args[5];
+
     }
 
     @Test
     public void testCopy() {
+        testParameterized(data(), this::testCopyCase);
+    }
+
+    private void testCopyCase(Object[] args) {
+        setTestCase(args);
         ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << strideB) + 128)];
         testWithNativeExcept(getArrayCopyWithStride(), null, 1 << 5, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
         if (strideA == 1) {

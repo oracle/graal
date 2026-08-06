@@ -39,15 +39,18 @@ public abstract class TStringOpsConstantTest<T extends Node> extends TStringOpsT
 
     Object[] constantArgs;
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
+    byte[] arrayA;
+    long offsetA;
+    int lengthA;
 
-    protected TStringOpsConstantTest(Class<T> nodeClass, byte[] arrayA, int offsetA, int lengthA) {
+    protected TStringOpsConstantTest(Class<T> nodeClass) {
         super(nodeClass);
-        this.arrayA = arrayA;
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
+    }
+
+    protected void setTestCase(Object[] args) {
+        this.arrayA = (byte[]) args[0];
+        this.offsetA = ((int) args[1]) + byteArrayBaseOffset();
+        this.lengthA = (int) args[2];
     }
 
     static List<Object[]> reduceTestData(List<Object[]> data, int argIndex, int... accept) {

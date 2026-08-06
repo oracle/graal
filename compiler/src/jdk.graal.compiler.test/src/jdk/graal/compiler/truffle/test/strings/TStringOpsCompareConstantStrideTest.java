@@ -24,14 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test.strings;
 
-import static org.junit.runners.Parameterized.Parameters;
-
-import java.util.List;
-
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -40,21 +34,9 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
 
     Object[] constantArgs = new Object[10];
-
-    public TStringOpsCompareConstantStrideTest(
-                    byte[] arrayA, int offsetA, int strideA,
-                    byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
-        super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    @Parameters(name = "{index}: offset: {1}, {4}, stride: {2}, {5}, length: {6}")
-    public static List<Object[]> data() {
-        return TStringOpsCompareTest.data();
-    }
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
@@ -72,11 +54,14 @@ public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
     @Override
     @Test
     public void testMemCmp() {
+        testParameterized(TStringOpsCompareTest.data(), this::testMemCmpCase);
+    }
+
+    private void testMemCmpCase(Object[] args) {
+        setTestCase(args);
         constantArgs[3] = strideA;
         constantArgs[6] = strideB;
-        testWithNative(getMemcmpWithStride(), null, DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP);
+        testWithNative(getMemcmpWithStride(), null, args);
     }
 
     @Override

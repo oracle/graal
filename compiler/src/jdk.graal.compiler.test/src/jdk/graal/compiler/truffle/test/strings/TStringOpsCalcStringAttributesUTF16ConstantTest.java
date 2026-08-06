@@ -27,38 +27,48 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.List;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
-@RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
-    @Parameters(name = "{index}: args: {1}, {2}")
     public static List<Object[]> data() {
         return reduceTestData(TStringOpsCalcStringAttributesUTF16Test.data(), 2, 1, 7, 16);
     }
 
-    public TStringOpsCalcStringAttributesUTF16ConstantTest(byte[] array, int offset, int length) {
-        super(CalcStringAttributesNode.class, array, offset, length);
+    public TStringOpsCalcStringAttributesUTF16ConstantTest() {
+        super(CalcStringAttributesNode.class);
     }
 
     @Test
     public void testValid() {
+        testParameterized(data(), this::testValidCase);
+    }
+
+    private void testValidCase(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, true);
         test(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, true);
     }
 
     @Test
     public void testUnknown() {
+        testParameterized(data(), this::testUnknownCase);
+    }
+
+    private void testUnknownCase(Object[] args) {
+        setTestCase(args);
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, false);
         test(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, false);
     }
 
     @Test
     public void testForeignEndianValid() {
+        testParameterized(data(), this::testForeignEndianValidCase);
+    }
+
+    private void testForeignEndianValidCase(Object[] args) {
+        setTestCase(args);
         byte[] swappedArray = byteSwapArray(arrayA, 1);
         setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
         test(getTStringOpsMethod("calcStringAttributesUTF16FEAssumeValid", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
@@ -66,6 +76,11 @@ public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsC
 
     @Test
     public void testForeignEndianUnknown() {
+        testParameterized(data(), this::testForeignEndianUnknownCase);
+    }
+
+    private void testForeignEndianUnknownCase(Object[] args) {
+        setTestCase(args);
         byte[] swappedArray = byteSwapArray(arrayA, 1);
         setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
         test(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
@@ -73,6 +88,11 @@ public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsC
 
     @Test
     public void testUnknownC() {
+        testParameterized(data(), this::testUnknownCCase);
+    }
+
+    private void testUnknownCCase(Object[] args) {
+        setTestCase(args);
         char[] charArray = toCharArray(arrayA);
         long offsetCharArray = offsetA - byteArrayBaseOffset() + charArrayBaseOffset();
         setConstantArgs(DUMMY_LOCATION, charArray, offsetCharArray, lengthA);

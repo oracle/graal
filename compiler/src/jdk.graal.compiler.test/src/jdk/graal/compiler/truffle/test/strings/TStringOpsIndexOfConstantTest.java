@@ -28,14 +28,18 @@ import jdk.graal.compiler.graph.Node;
 
 public abstract class TStringOpsIndexOfConstantTest<T extends Node> extends TStringOpsConstantTest<T> {
 
-    final int stride;
-    final int fromIndex;
-    final int[] values;
+    int stride;
+    int fromIndex;
+    int[] values;
 
-    protected TStringOpsIndexOfConstantTest(Class<T> nodeClass, byte[] array, int offset, int length, int stride, int fromIndex, int[] values) {
-        super(nodeClass, array, offset, length);
-        this.stride = stride;
-        this.fromIndex = fromIndex;
-        this.values = values;
+    protected TStringOpsIndexOfConstantTest(Class<T> nodeClass) {
+        super(nodeClass);
+    }
+
+    protected void setTestCase(Object[] args) {
+        super.setTestCase(args);
+        this.stride = (int) args[3];
+        this.fromIndex = (int) args[4];
+        this.values = (int[]) args[5];
     }
 }

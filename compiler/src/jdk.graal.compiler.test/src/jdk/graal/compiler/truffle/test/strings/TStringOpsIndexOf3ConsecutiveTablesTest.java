@@ -29,9 +29,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
@@ -39,37 +36,29 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.vm.ci.meta.JavaKind;
 
-@RunWith(Parameterized.class)
 public class TStringOpsIndexOf3ConsecutiveTablesTest extends TStringOpsTest<ArrayIndexOfNode> {
-
-    @Parameters(name = "{index}: offset: {0}, length: {1}, stride: {2}, fromIndex: {3}, tableCase: {4}, case: {5}, sequence: {7}")
     public static List<Object[]> data() {
         return TStringOpsIndexOfConsecutiveTablesTestData.data(0, 3);
     }
 
-    final byte[] arrayA;
-    final long offsetA;
-    final int lengthA;
-    final int strideA;
-    final int fromIndexA;
-    final byte[] tables;
-
-    public TStringOpsIndexOf3ConsecutiveTablesTest(int offsetA, int lengthA, int strideA, int fromIndexA,
-                    TStringOpsIndexOfConsecutiveTablesTestData.TableCase tableCase,
-                    TStringOpsIndexOfConsecutiveTablesTestData.CaseSpec caseSpec,
-                    int sequenceIndex,
-                    @SuppressWarnings("unused") String sequenceLabel) {
+    public TStringOpsIndexOf3ConsecutiveTablesTest() {
         super(ArrayIndexOfNode.class);
-        this.arrayA = TStringOpsIndexOfConsecutiveTablesTestData.createArray(strideA, offsetA, lengthA, fromIndexA, caseSpec, tableCase.sequence(sequenceIndex));
-        this.offsetA = offsetA + byteArrayBaseOffset();
-        this.lengthA = lengthA;
-        this.strideA = strideA;
-        this.fromIndexA = fromIndexA;
-        this.tables = tableCase.tables();
     }
 
     @Test
     public void testIndexOf3ConsecutiveTables() {
+        testParameterized(data(), this::testIndexOf3ConsecutiveTablesCase);
+    }
+
+    private void testIndexOf3ConsecutiveTablesCase(Object[] args) {
+        byte[] arrayA = TStringOpsIndexOfConsecutiveTablesTestData.createArray((int) args[2], (int) args[0], (int) args[1], (int) args[3],
+                        (TStringOpsIndexOfConsecutiveTablesTestData.CaseSpec) args[5], ((TStringOpsIndexOfConsecutiveTablesTestData.TableCase) args[4]).sequence((int) args[6]));
+        long offsetA = (int) args[0] + byteArrayBaseOffset();
+        int lengthA = (int) args[1];
+        int strideA = (int) args[2];
+        int fromIndexA = (int) args[3];
+        byte[] tables = ((TStringOpsIndexOfConsecutiveTablesTestData.TableCase) args[4]).tables();
+
         Assume.assumeTrue(ArrayIndexOfNode.isSupported(getArchitecture(), Stride.fromLog2(strideA), LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTables));
         testWithNative(getIndexOf3ConsecutiveTablesIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, tables);
     }
