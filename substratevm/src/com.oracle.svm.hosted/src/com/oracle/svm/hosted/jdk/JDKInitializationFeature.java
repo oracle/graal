@@ -388,7 +388,7 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             NativeLibraries.PotentialBuiltinJNILibrary zip = NativeLibraries.PotentialBuiltinJNILibrary.create("zip");
             a.registerReachabilityHandler(JDKInitializationFeature::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(_ -> zip.preregisterUninitializedAndAddLibrary(),
+            a.registerReachabilityHandler(_ -> zip.setIsReachable(true),
                             method(a, "java.util.zip.ZipUtils", "loadLibrary"));
         }
     }

@@ -524,7 +524,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a, NativeLibraries.PotentialBuiltinJNILibrary sunMSCAPI) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
         // We statically link sunmscapi, so we classify it as a built-in library.
-        sunMSCAPI.preregisterUninitializedAndAddLibrary();
+        sunMSCAPI.setIsReachable(true);
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
@@ -575,7 +575,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
         // We can statically link jaas, so we classify it as a built-in library.
-        jaas.preregisterUninitializedAndAddLibrary();
+        jaas.setIsReachable(true);
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {

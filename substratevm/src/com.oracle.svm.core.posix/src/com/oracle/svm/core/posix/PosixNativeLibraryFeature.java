@@ -65,7 +65,7 @@ class PosixNativeLibraryFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        NativeLibraries.PotentialBuiltinJNILibrary.create("extnet").preregisterUninitialized();
+        NativeLibraries.PotentialBuiltinJNILibrary.create("extnet");
     }
 }
 

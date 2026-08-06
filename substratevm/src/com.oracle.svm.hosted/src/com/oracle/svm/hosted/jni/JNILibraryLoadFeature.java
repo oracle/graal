@@ -84,7 +84,7 @@ public class JNILibraryLoadFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
         for (String libName : PlatformNativeLibrarySupport.defaultBuiltinLibraries) {
-            NativeLibraries.PotentialBuiltinJNILibrary.create(libName).preregisterUninitialized();
+            NativeLibraries.PotentialBuiltinJNILibrary.create(libName).setIsReachable(true);
         }
     }
 
@@ -93,7 +93,7 @@ public class JNILibraryLoadFeature implements Feature {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
         Predicate<String> hasOnLoadSymbol = library -> nativeLibraries.getStaticLibrarySymbols(library)
                         .contains(JNILibraryInitializer.getOnLoadName(library, true));
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries(), hasOnLoadSymbol);
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(NativeLibraries.singleton().getReachableBuiltinLibraryNames(), hasOnLoadSymbol);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
@@ -101,6 +101,8 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        NativeLibraries.singleton().addReachableBuiltinLibraries();
+
         if (!ClassRegistries.respectClassLoader()) {
             return;
         }

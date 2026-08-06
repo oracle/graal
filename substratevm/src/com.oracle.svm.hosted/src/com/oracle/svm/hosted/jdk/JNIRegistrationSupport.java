@@ -56,7 +56,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -195,7 +194,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
          * If a library is in our list of static standard libraries, add the library to the linker
          * command.
          */
-        NativeLibraries.PotentialBuiltinJNILibrary.linkLibraryIfPreregistered(libname);
+        var map = NativeLibraries.singleton().getPotentialBuiltinJNILibraryMap();
+        if (map.containsKey(libname)) {
+            map.get(libname).setIsReachable(true);
+        }
     }
 
     public boolean isCurrentLayerRegisteredLibrary(String libname) {
@@ -370,7 +372,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
             return false;
         }
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+        if (NativeLibraries.singleton().getJniStaticLibraries().contains(libname)) {
             return false;
         }
         if (shimExports.containsKey(libname)) {

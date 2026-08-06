@@ -55,7 +55,7 @@ public abstract class PlatformNativeLibrarySupport {
 
     /**
      * Determines if a library which has <em>not</em> been
-     * {@linkplain NativeLibrarySupport#preregisterUninitializedBuiltinLibrary pre-registered}
+     * {@linkplain NativeLibrarySupport#addBuiltinLibrary pre-registered}
      * during image generation is a built-in library.
      */
     public boolean isBuiltinLibrary(@SuppressWarnings("unused") String name) {

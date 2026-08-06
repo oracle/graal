@@ -486,8 +486,24 @@ public final class NativeLibraries {
         return allDeps;
     }
 
-    private final Map<String, PotentialBuiltinJNILibrary> preregisteredLibraries = new HashMap<>();
+    private final Map<String, PotentialBuiltinJNILibrary> potentialBuiltinJNILibraryMap = new HashMap<>();
     private boolean jvmBuiltinNativesRegistered = false;
+
+    public Map<String, PotentialBuiltinJNILibrary> getPotentialBuiltinJNILibraryMap() {
+        return potentialBuiltinJNILibraryMap;
+    }
+
+    public List<PotentialBuiltinJNILibrary> getReachableBuiltinLibraries() {
+        return potentialBuiltinJNILibraryMap.values().stream().filter(lib -> lib.isReachable() && lib.isBuiltin()).toList();
+    }
+
+    public List<String> getReachableBuiltinLibraryNames() {
+        return getReachableBuiltinLibraries().stream().map(PotentialBuiltinJNILibrary::getLibrary).toList();
+    }
+
+    public void addReachableBuiltinLibraries() {
+        getReachableBuiltinLibraries().forEach(PotentialBuiltinJNILibrary::linkLibrary);
+    }
 
     /**
      * Keeps the name and dependencies of a prepared JNI library together across feature phases.
@@ -495,10 +511,15 @@ public final class NativeLibraries {
     public static final class PotentialBuiltinJNILibrary {
         private final String library;
         private final List<String> dependencies;
+        private boolean isReachable = false;
 
         private PotentialBuiltinJNILibrary(String library, List<String> dependencies) {
             this.library = library;
             this.dependencies = dependencies;
+        }
+
+        public String getLibrary() {
+            return library;
         }
 
         /**
@@ -518,32 +539,30 @@ public final class NativeLibraries {
             }
 
             List<String> allDeps = getLibraryDependencies(library, dependencies);
-            return new PotentialBuiltinJNILibrary(library, allDeps);
+            var object = new PotentialBuiltinJNILibrary(library, allDeps);
+            singleton().potentialBuiltinJNILibraryMap.put(library, object);
+            return object;
         }
 
         private static void addBuiltinNatives(String library) {
             PlatformNativeLibrarySupport.singleton().addBuiltinNatives(singleton().getStaticLibrarySymbols(library));
         }
 
-        public void preregisterUninitialized() {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(library);
-            singleton().preregisteredLibraries.put(library, this);
-        }
-
         public void linkLibrary() {
+            NativeLibrarySupport.singleton().addBuiltinLibrary(library);
             singleton().addStaticJniLibrary(library, dependencies);
         }
 
-        public static void linkLibraryIfPreregistered(String library) {
-            if (singleton().preregisteredLibraries.containsKey(library)) {
-                assert NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(library);
-                singleton().preregisteredLibraries.get(library).linkLibrary();
-            }
+        public boolean isBuiltin() {
+            return true;
         }
 
-        public void preregisterUninitializedAndAddLibrary() {
-            preregisterUninitialized();
-            linkLibrary();
+        public boolean isReachable() {
+            return isReachable;
+        }
+
+        public void setIsReachable(boolean isReachable) {
+            this.isReachable = isReachable;
         }
     }
 

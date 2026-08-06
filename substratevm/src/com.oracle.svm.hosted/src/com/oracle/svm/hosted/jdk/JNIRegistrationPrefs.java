@@ -98,7 +98,7 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
     }
 
     private static void handlePreferencesClassReachable(DuringAnalysisAccess access, NativeLibraries.PotentialBuiltinJNILibrary prefs) {
-        prefs.preregisterUninitializedAndAddLibrary();
+        prefs.setIsReachable(true);
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             RuntimeJNIAccess.register(String[].class);

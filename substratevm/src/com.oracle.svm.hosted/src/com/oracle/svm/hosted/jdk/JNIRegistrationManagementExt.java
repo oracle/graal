@@ -43,7 +43,7 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
 
     private static void linkManagementExt(DuringAnalysisAccess access, NativeLibraries.PotentialBuiltinJNILibrary managementExt) {
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
-        managementExt.linkLibrary();
+        managementExt.setIsReachable(true);
         if (isWindows()) {
             nativeLibraries.addDynamicNonJniLibrary("psapi");
         }

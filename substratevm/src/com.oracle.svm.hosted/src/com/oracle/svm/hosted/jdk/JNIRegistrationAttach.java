@@ -50,7 +50,7 @@ class JNIRegistrationAttach extends JNIRegistrationUtil implements InternalFeatu
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         NativeLibraries.PotentialBuiltinJNILibrary attach = NativeLibraries.PotentialBuiltinJNILibrary.create("attach");
-        a.registerReachabilityHandler(_ -> attach.preregisterUninitializedAndAddLibrary(),
+        a.registerReachabilityHandler(_ -> attach.setIsReachable(true),
                         method(a, "sun.tools.attach.AttachProviderImpl", "attachVirtualMachine", String.class));
     }
 }
