@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,6 +106,8 @@ import jdk.vm.ci.meta.annotation.Annotated;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class NativeLibraries {
+
+    private static final String STATIC_LIBRARY_DEPENDENCY_PREFIX = "dependency:";
 
     private final MetaAccessProvider metaAccess;
     private final WordTypes wordTypes;
@@ -477,17 +479,12 @@ public final class NativeLibraries {
         dependencyGraph.add(library, allDeps);
     }
 
-    public static List<String> getLibraryDependencies(String library, String... dependencies) {
-        List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
-        /* "jvm" is a basic dependence for static JNI libs */
-        allDeps.add("jvm");
-        if (library.equals("nio")) {
-            /* "nio" implicitly depends on "net" */
-            allDeps.add("net");
-        } else if (library.equals("management_ext")) {
-            allDeps.add("java");
+    public List<String> getLibraryDependencies(String library) {
+        Path libraryPath = getStaticLibraryPath(getAllStaticLibs(), library);
+        if (libraryPath != null) {
+            return readStaticLibraryManifest(libraryPath).dependencies();
         }
-        return allDeps;
+        return List.of();
     }
 
     @Stable //
@@ -552,7 +549,7 @@ public final class NativeLibraries {
                 singleton().jvmBuiltinNativesRegistered = true;
             }
 
-            List<String> allDeps = getLibraryDependencies(library);
+            List<String> allDeps = singleton().getLibraryDependencies(library);
             return new PotentialBuiltinJNILibrary(library, allDeps);
         }
 
@@ -614,19 +611,31 @@ public final class NativeLibraries {
         if (libraryPath == null) {
             return List.of();
         }
-        return readStaticLibrarySymbols(libraryPath);
+        return readStaticLibraryManifest(libraryPath).symbols();
     }
 
-    private static List<String> readStaticLibrarySymbols(Path libraryPath) {
+    private record StaticLibraryManifest(List<String> symbols, List<String> dependencies) {
+    }
+
+    private static StaticLibraryManifest readStaticLibraryManifest(Path libraryPath) {
         Path symbolsPath = Paths.get(libraryPath + ".symbols");
         if (!Files.isRegularFile(symbolsPath)) {
-            return List.of();
+            return new StaticLibraryManifest(List.of(), List.of());
         }
         try {
-            return Files.readAllLines(symbolsPath).stream()
-                            .map(String::trim)
-                            .filter(line -> !line.isEmpty())
-                            .toList();
+            List<String> symbols = new ArrayList<>();
+            List<String> dependencies = new ArrayList<>();
+            for (String rawLine : Files.readAllLines(symbolsPath)) {
+                String line = rawLine.trim();
+                if (line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
+                    String dependency = line.substring(STATIC_LIBRARY_DEPENDENCY_PREFIX.length());
+                    VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
+                    dependencies.add(dependency);
+                } else if (!line.isEmpty()) {
+                    symbols.add(line);
+                }
+            }
+            return new StaticLibraryManifest(List.copyOf(symbols), List.copyOf(dependencies));
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }

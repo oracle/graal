@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -3104,6 +3104,12 @@ class StaticLibrarySymbolsBuilder(mx.ArchivableProject):
     def getBuildTask(self, args):
         return StaticLibrarySymbolsBuildTask(self, args)
 
+    def _dynamic_lib(self, static_lib):
+        return None
+
+    def _require_dynamic_lib_for_symbols(self):
+        return False
+
 
 class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
     def __init__(self):
@@ -3116,8 +3122,29 @@ class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
         relative_path = os.path.relpath(static_lib, self._static_lib_root())
         return join(self.get_output_root(), 'static', relative_path + '.symbols')
 
+    def _dynamic_lib(self, static_lib):
+        static_name = os.path.basename(static_lib)
+        prefix = mx.add_lib_prefix('')
+        suffix = mx.add_static_lib_suffix('')
+        if prefix and static_name.startswith(prefix):
+            static_name = static_name[len(prefix):]
+        assert static_name.endswith(suffix)
+        dynamic_name = mx.add_lib_suffix(mx.add_lib_prefix(static_name[:-len(suffix)]))
+        base_jdk_home = mx_sdk_vm.base_jdk().home
+        for directory in ('lib', join('lib', 'server'), 'bin', join('bin', 'server')):
+            candidate = join(base_jdk_home, directory, dynamic_name)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
+    def _require_dynamic_lib_for_symbols(self):
+        return True
+
 
 class SVMStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
+    # The SVM libjvm archive is a Native Image replacement, not the static variant of a JDK
+    # dynamic library. It intentionally has a symbol-only manifest and no matching dynamic
+    # library from which dependencies could be inferred.
     def __init__(self):
         self.native_jvm_project_name = 'com.oracle.svm.native.jvm.windows' if mx.is_windows() else 'com.oracle.svm.native.jvm.posix'
         super().__init__(suite, 'svm-static-library-symbols', [self.native_jvm_project_name], None, None)
@@ -3131,6 +3158,8 @@ class SVMStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
 
 
 class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
+    manifest_format_version = '2'
+    dependency_prefix = 'dependency:'
     symbol_prefixes = ('JNI_OnLoad_', 'JNI_OnUnload_', 'Java_')
 
     def __init__(self, subject, args):
@@ -3150,27 +3179,34 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
         if not static_libs:
             return False, None
         static_lib_root_file = self.subject._static_lib_root_file()
-        static_lib_root = self.subject._static_lib_root()
         if not exists(static_lib_root_file):
             return True, static_lib_root_file + ' does not exist'
         with open(static_lib_root_file, encoding='utf-8') as root_file:
-            if root_file.read() != static_lib_root:
-                return True, 'static library root changed'
+            if root_file.read() != self._static_lib_root_file_content():
+                return True, 'static library root or manifest format changed'
         for static_lib in static_libs:
             manifest = self.subject._manifest_path(static_lib)
             if not exists(manifest):
                 return True, manifest + ' does not exist'
             if mx.TimeStampFile(static_lib).isNewerThan(mx.TimeStampFile(manifest)):
                 return True, static_lib + ' is newer than ' + manifest
+            dynamic_lib = self.subject._dynamic_lib(static_lib)
+            if dynamic_lib is None and self.subject._require_dynamic_lib_for_symbols() and os.path.getsize(manifest) != 0:
+                return True, static_lib + ' has manifest content but no matching dynamic library'
+            if dynamic_lib is not None and mx.TimeStampFile(dynamic_lib).isNewerThan(mx.TimeStampFile(manifest)):
+                return True, dynamic_lib + ' is newer than ' + manifest
         return False, None
 
     def build(self):
         output_root = self.subject.get_output_root()
         mx_util.ensure_dir_exists(output_root)
         with open(self.subject._static_lib_root_file(), mode='w', encoding='utf-8') as root_file:
-            root_file.write(self.subject._static_lib_root())
+            root_file.write(self._static_lib_root_file_content())
         for static_lib in self.subject._static_libs():
             self._write_manifest(static_lib, self.subject._manifest_path(static_lib))
+
+    def _static_lib_root_file_content(self):
+        return self.subject._static_lib_root() + '\n' + self.manifest_format_version
 
     def clean(self, forBuild=False):
         output_root = self.subject.get_output_root()
@@ -3179,7 +3215,15 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
 
     def _write_manifest(self, static_lib, manifest):
         symbols = self._collect_symbols(static_lib)
-        content = ''.join(symbol + '\n' for symbol in sorted(symbols))
+        dynamic_lib = self.subject._dynamic_lib(static_lib)
+        if dynamic_lib is None:
+            if self.subject._require_dynamic_lib_for_symbols() and symbols:
+                mx.abort('{} exports JNI symbols but has no matching dynamic library'.format(static_lib))
+            dependencies = []
+        else:
+            dependencies = self._collect_dependencies(dynamic_lib, self.subject._static_libs())
+        content = ''.join(self.dependency_prefix + dependency + '\n' for dependency in sorted(dependencies))
+        content += ''.join(symbol + '\n' for symbol in sorted(symbols))
         old_content = None
         if exists(manifest):
             with open(manifest, encoding='utf-8') as old_manifest:
@@ -3232,6 +3276,51 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
         else:
             mx.run(['nm', '-g', static_lib], out=collect_symbol, err=suppress_gnu_property_type_5_warnings)
         return symbols
+
+    @staticmethod
+    def _library_name(path):
+        name = os.path.basename(path)
+        prefix = mx.add_lib_prefix('')
+        if prefix and name.startswith(prefix):
+            name = name[len(prefix):]
+        for suffix in (mx.add_static_lib_suffix(''), mx.add_lib_suffix('')):
+            if name.endswith(suffix):
+                return name[:-len(suffix)]
+        return name
+
+    @classmethod
+    def _collect_dependencies(cls, dynamic_lib, static_libs):
+        dependencies = set()
+
+        def collect_dependency(line):
+            line = line.strip()
+            if mx.is_windows():
+                if ' ' not in line and line.lower().endswith('.dll'):
+                    dependencies.add(line)
+            elif mx.is_darwin():
+                if line.startswith('/') or line.startswith('@'):
+                    dependencies.add(line.split(' ', 1)[0])
+            else:
+                match = re.search(r'Shared library: \[(.+)\]', line)
+                if match:
+                    dependencies.add(match.group(1))
+
+        if mx.is_windows():
+            command = ['dumpbin', '/DEPENDENTS', dynamic_lib]
+        elif mx.is_darwin():
+            command = ['otool', '-L', dynamic_lib]
+        else:
+            command = ['readelf', '-d', dynamic_lib]
+        mx.run(command, out=collect_dependency, err=collect_dependency)
+
+        static_library_names = {cls._library_name(path).lower(): cls._library_name(path) for path in static_libs}
+        result = set()
+        for dependency in dependencies:
+            dependency_name = cls._library_name(dependency)
+            static_library_name = static_library_names.get(dependency_name.lower())
+            if static_library_name is not None:
+                result.add(static_library_name)
+        return result
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
