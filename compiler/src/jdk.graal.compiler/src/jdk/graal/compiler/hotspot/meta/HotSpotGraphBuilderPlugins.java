@@ -1124,7 +1124,7 @@ public class HotSpotGraphBuilderPlugins {
 
         @Override
         public boolean isApplicable(Architecture arch) {
-            return IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(arch);
+            return IntegerPolynomialP256MontgomeryMultNode.isSupported(arch);
         }
     }
 

@@ -82,7 +82,7 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
 
         Assume.assumeTrue("IntegerPolynomialAssignNode not supported", IntegerPolynomialAssignNode.isSupported(getArchitecture()));
         Assume.assumeTrue("IntegerPolynomialP256MontgomeryMultNode not supported",
-                        IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(getArchitecture()));
+                        IntegerPolynomialP256MontgomeryMultNode.isSupported(getArchitecture()));
 
         ResolvedJavaMethod intpolyAssignMethod = getResolvedJavaMethod(IntegerPolynomial.class, "conditionalAssign");
         ResolvedJavaMethod intpolyMontgomeryMultP256Method = getResolvedJavaMethod(MontgomeryIntegerPolynomialP256.class, "mult");
@@ -121,15 +121,12 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAMD64FeaturePredicatesMontgomery() {
-        AMD64 minFeatures = amd64With(IntegerPolynomialP256MontgomeryMultNode.minFeaturesAMD64());
-        AMD64 maxFeatures = amd64With(IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
+        AMD64 avx2Features = amd64With(IntegerPolynomialP256MontgomeryMultNode.minFeaturesAMD64AVX2Variant());
+        AMD64 avx512Features = amd64With(IntegerPolynomialP256MontgomeryMultNode.minFeaturesAMD64AVX512Variant());
         AMD64 unsupportedFeatures = amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
         assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupported(unsupportedFeatures));
-        assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(unsupportedFeatures));
-        assertFalse(IntegerPolynomialP256MontgomeryMultNode.isSupported(minFeatures));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(minFeatures));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(maxFeatures));
-        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupportedForRuntimeCheckedStub(maxFeatures));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(avx2Features));
+        assertTrue(IntegerPolynomialP256MontgomeryMultNode.isSupported(avx512Features));
     }
 
     @Test
@@ -138,7 +135,7 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
                         IntegerPolynomialAssignNode.maxFeaturesAMD64());
         Assert.assertEquals(
                         EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL, AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F),
-                        IntegerPolynomialP256MontgomeryMultNode.maxFeaturesAMD64());
+                        IntegerPolynomialP256MontgomeryMultNode.minFeaturesAMD64AVX512Variant());
     }
 
     private static AMD64 amd64With(EnumSet<AMD64.CPUFeature> features) {
