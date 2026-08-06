@@ -369,7 +369,7 @@ public final class RuntimeOptionParser {
                             (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseXBootClasspathAppendOption(arg, context) ||
-                                            parseRecognizedJavaOption(arg, context)))) {
+                                            parseRecognizedJavaOption(arg)))) {
                 continue;
             }
             args[newIdx] = arg;
@@ -571,7 +571,20 @@ public final class RuntimeOptionParser {
     }
 
     /// Parses known and implemented Java VM options.
-    private static boolean parseRecognizedJavaOption(String arg, @SuppressWarnings("unused") ParseContext context) {
+    private static boolean parseRecognizedJavaOption(String arg) {
+        if (isEnableAssertionsOption(arg)) {
+            GuestStagingDependencyBridge.singleton().updateRuntimeAssertionStatus(assertionOptionTarget(arg), true);
+            return true;
+        }
+        if (isDisableAssertionsOption(arg)) {
+            GuestStagingDependencyBridge.singleton().updateRuntimeAssertionStatus(assertionOptionTarget(arg), false);
+            return true;
+        }
+        if (SYSTEM_ASSERTION_OPTIONS.contains(arg)) {
+            boolean enable = arg.equals("-esa") || arg.equals("-enablesystemassertions");
+            GuestStagingDependencyBridge.singleton().updateRuntimeSystemAssertionStatus(enable);
+            return true;
+        }
         if (arg.equals("-verbose") || arg.equals("-verbose:class")) {
             GuestStagingDependencyBridge.singleton().enableTraceClassLoading();
             return true;
@@ -602,15 +615,6 @@ public final class RuntimeOptionParser {
     /// Returns whether `arg` is a recognized but unimplemented VM option.
     private static boolean isRecognizedUnimplementedJavaOption(String arg) {
         if (arg.startsWith(FINALIZATION_OPTION_PREFIX)) {
-            return true;
-        }
-        if (isEnableAssertionsOption(arg)) {
-            return true;
-        }
-        if (isDisableAssertionsOption(arg)) {
-            return true;
-        }
-        if (SYSTEM_ASSERTION_OPTIONS.contains(arg)) {
             return true;
         }
         if (arg.startsWith("-agentlib:")) {
@@ -654,6 +658,12 @@ public final class RuntimeOptionParser {
     /// Returns whether `arg` selects the disable-assertions family, including `:<target>` forms.
     private static boolean isDisableAssertionsOption(String arg) {
         return arg.equals("-da") || arg.equals("-disableassertions") || arg.startsWith("-da:") || arg.startsWith("-disableassertions:");
+    }
+
+    /// Extracts the optional class or package target from an assertion option.
+    private static String assertionOptionTarget(String arg) {
+        int separatorIndex = arg.indexOf(':');
+        return separatorIndex == -1 ? "" : arg.substring(separatorIndex + 1);
     }
 
     /// Returns whether `arg` is a recognized `-Xshare` mode.

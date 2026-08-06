@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -295,7 +295,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private static Target_java_lang_AssertionStatusDirectives retrieveDirectives() {
-        RuntimeAssertionsSupport.ClassLoaderAssertionStatusDirectives assertionSupport = RuntimeAssertionsSupport.singleton().createClassLoaderAssertionStatusDirectives();
+        AssertionsSupport.ClassLoaderAssertionStatusDirectives assertionSupport = AssertionsSupport.singleton().createClassLoaderAssertionStatusDirectives();
         Target_java_lang_AssertionStatusDirectives directives = new Target_java_lang_AssertionStatusDirectives();
         directives.classes = assertionSupport.classes();
         directives.classEnabled = assertionSupport.classEnabled();

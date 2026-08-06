@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -85,7 +85,7 @@ public final class CodeInfoAccess {
 
     @Fold
     static boolean haveAssertions() {
-        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(CodeInfoAccess.class);
+        return AssertionsSupport.singleton().desiredAssertionStatus(CodeInfoAccess.class);
     }
 
     @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)

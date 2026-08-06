@@ -182,8 +182,7 @@ invocation (`CremaSupportImpl.java`: `invokeBasic`, `linkToVirtual`, `linkToStat
 ## Current boundaries
 
 The current implementation still has several important boundaries: no parallel class loading, no JNI support for
-runtime-loaded classes, no `condy`, fixed assertion status, and limited reflection for runtime-loaded
-classes.
+runtime-loaded classes, no `condy`, and limited reflection for runtime-loaded classes.
 
 The code also shows a few areas that are still under construction:
 

@@ -659,10 +659,8 @@ public final class ClassInitializationInfo {
 
         /*
          * Step 8: Next, determine whether assertions are enabled for C by querying its defining
-         * loader.
-         *
-         * Nothing to do for this step, Substrate VM fixes the assertion status during image
-         * building.
+         * loader. The compiled class initializer performs this query when assertion code was
+         * preserved for run time; otherwise image building already fixed the assertion status.
          */
 
         /*

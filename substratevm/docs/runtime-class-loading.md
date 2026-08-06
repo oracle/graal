@@ -63,5 +63,15 @@ This matches HotSpot-style resource lookup behavior where each directory resourc
 
 ## Current Limitations
 * Parallel class loading is explicitly disabled and not supported.
-* The assertion status of classes is fixed at image build time.
+* Assertion status depends on whether you build with `-H:-StrictRuntimeJavaOptions` or
+  `-H:+StrictRuntimeJavaOptions`:
+  * Build-time-initialized classes use the assertion status configured when the image is built.
+    Runtime `-ea`, `-da`, `-esa`, and `-dsa` options never change their status.
+  * Runtime-initialized image classes use the build-time `-ea`, `-da`, `-esa`, and `-dsa`
+    options when you build with `-H:-StrictRuntimeJavaOptions`.
+    When you build with `-H:+StrictRuntimeJavaOptions`, runtime `-ea`, `-da`, `-esa`, and `-dsa`
+    options control their status instead.
+  * Runtime-loaded classes use runtime assertion options.
+    The runtime assertion options are supported only when the image was built with
+    `-H:+StrictRuntimeJavaOptions`.
 * Methods or static fields removed by analysis from a class included in the image have no fallback and cause an error if run-time-loaded code uses them.

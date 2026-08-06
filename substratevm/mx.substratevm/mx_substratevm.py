@@ -264,6 +264,7 @@ GraalTags = Tags([
     'standalone_pointsto_unittests',
     'native_unittests',
     'generic_field_type',
+    'runtime_assertions',
     'all_native_unittests',
     'java_desktop_integration',
     'build',
@@ -564,6 +565,11 @@ def svm_gate_body(args, tasks):
     with Task('generic field type', tasks, tags=generic_field_type_tags) as t:
         if t:
             generic_field_type_test_task(args.extra_image_builder_arguments)
+
+    runtime_assertions_tags = [GraalTags.runtime_assertions, GraalTags.native_unittests, GraalTags.all_native_unittests]
+    with Task('runtime assertions', tasks, tags=runtime_assertions_tags) as t:
+        if t:
+            runtime_assertions_test_task(args.extra_image_builder_arguments)
 
     with Task('runtime classpath resource lookup', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
@@ -921,6 +927,93 @@ def generic_field_type_test_task(extra_build_args=None):
         ]
         if field_output != expected_field_output:
             mx.abort('Unexpected generic field types: ' + str(field_output) + ' != ' + str(expected_field_output))
+
+
+def runtime_assertions_test_task(extra_image_args=None):
+    test_dir = join(suite.dir, 'src', 'native-image-tests', 'runtime-assertions')
+    output_dir = join(svmbuild_dir(), 'runtime-assertions-test')
+    if exists(output_dir):
+        mx.rmtree(output_dir)
+    mx_util.ensure_dir_exists(output_dir)
+
+    sources = [
+        join(test_dir, 'RuntimeAssertions.java'),
+        join(test_dir, 'RuntimeLoadedAssertions.java'),
+    ]
+    mx.run([mx.get_jdk().javac, '-d', output_dir] + sources)
+
+    test_class = 'runtimeassertions.RuntimeAssertions'
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+        def build_assertion_image(name, assertion_args, image_options, main_class=test_class, classpath=output_dir, output_root=output_dir):
+            build_args = []
+            if classpath is not None:
+                build_args += ['-cp', classpath]
+            build_args += assertion_args + [
+                '-o', join(output_root, name),
+            ] + svm_experimental_options(image_options)
+            if main_class is not None:
+                build_args.append(main_class)
+            if extra_image_args is not None:
+                build_args += extra_image_args
+            return native_image(build_args)
+
+        assertion_image = build_assertion_image('runtime-assertions', [
+            '-ea',
+            '-esa',
+        ], [
+            '-H:+StrictRuntimeJavaOptions',
+        ])
+
+        # Each execution starts with fresh runtime assertion directives.
+        test_cases = [
+            [],
+            ['-ea'],
+            ['-ea', '-da'],
+            ['-ea:runtimeassertions.ClassEnabled'],
+            ['-ea:runtimeassertions...', '-da:runtimeassertions.ClassDisabled'],
+            ['-ea', '-da:runtimeassertions...', '-ea:runtimeassertions.ClassEnabled'],
+            ['-esa'],
+            ['-esa', '-dsa'],
+            ['-enableassertions:runtimeassertions.ClassEnabled', '-enablesystemassertions'],
+            ['-enableassertions', '-disableassertions', '-enablesystemassertions', '-disablesystemassertions'],
+        ]
+        for runtime_args in test_cases:
+            scenario = " ".join(runtime_args)
+            mx.run([assertion_image] + runtime_args + ['--', scenario])
+
+        legacy_assertion_image = build_assertion_image('runtime-assertions-legacy', [
+            '-ea',
+        ], [
+            '-H:-StrictRuntimeJavaOptions',
+        ])
+        mx.run([legacy_assertion_image, 'legacy-build-time-status'])
+
+        runtime_loaded_excluded_image = build_assertion_image('runtime-assertions-runtime-loaded-excluded', [
+            '-ea',
+        ], [
+            '-H:IncludeResources=runtimeassertions/RuntimeLoadedAssertions.class',
+            '-H:+StrictRuntimeJavaOptions',
+            '-H:+RuntimeClassLoading',
+        ])
+        # Runtime-loaded classes must remain controlled by runtime directives even when image assertion code is excluded.
+        runtime_loaded_test_cases = [
+            ([], False),
+            (['-ea'], True),
+            (['-ea:runtimeassertions...'], True),
+            (['-ea', '-da:runtimeassertions...'], False),
+            (['-ea:runtimeassertions...', '-da:runtimeassertions.RuntimeLoadedAssertions'], False),
+        ]
+        for runtime_args, expected in runtime_loaded_test_cases:
+            scenario = 'runtime-loaded:' + str(expected).lower()
+            mx.run([runtime_loaded_excluded_image] + runtime_args + ['--', scenario])
+
+        default_assertion_image = build_assertion_image('runtime-assertions-default', [], ['-H:-StrictRuntimeJavaOptions'])
+        mx.run([default_assertion_image, 'code-excluded'])
+
+
+@mx.command(suite.name, 'runtime-assertionstest', 'Builds and tests runtime assertion options in a native image.')
+def runtime_assertionstest(args):
+    runtime_assertions_test_task(args)
 
 
 def runtime_classpath_resource_test_task(extra_build_args=None):
@@ -2861,17 +2954,16 @@ def hellomodule(args):
         boolean_option_defaults = _hosted_boolean_option_defaults(native_image)
         module_path_sep = ';' if mx.is_windows() else ':'
         runtime_class_loading = _bool_option_value('RuntimeClassLoading', boolean_option_defaults)
+        strict_runtime_java_options = _bool_option_value('StrictRuntimeJavaOptions', boolean_option_defaults)
 
-        def moduletest_args(modules, extra_args=None):
-            return [
-                '-ea',
-            ] + (extra_args or []) + [
+        def moduletest_args(modules, *, on_jvm, extra_args=None):
+            return (['-ea'] if on_jvm or not strict_runtime_java_options else []) + (extra_args or []) + [
                 '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
                 '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
                 '-p', module_path_sep.join(modules), '-m', 'moduletests.hello.app'
             ]
 
-        moduletest_run_args = moduletest_args(module_path)
+        moduletest_run_args = moduletest_args(module_path, on_jvm=True)
         mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
         mx.run([
@@ -2886,9 +2978,10 @@ def hellomodule(args):
             mx.run([
                 # On Windows, java is always an .exe, never a .cmd symlink
                 join(_vm_home(None), 'bin', mx.exe_suffix('java')),
-                ] + moduletest_args(runtime_module_path, runtime_module_path_jvm_args))
+                ] + moduletest_args(runtime_module_path, on_jvm=True, extra_args=runtime_module_path_jvm_args))
 
         # Build module into native image
+        moduletest_run_args = moduletest_args(module_path, on_jvm=False)
         mx.log('Building image from java modules: ' + str(module_path))
         moduletest_build_args = list(moduletest_run_args)
         if runtime_class_loading:
@@ -2899,10 +2992,11 @@ def hellomodule(args):
             ['--verbose'] + svm_experimental_options(['-H:Path=' + build_dir]) + args + moduletest_build_args
         )
         mx.log('Running image ' + built_image + ' built from module without runtime module path:')
-        mx.run([built_image])
+        runtime_ea = ["-ea"] if "-ea" not in moduletest_build_args else []
+        mx.run([built_image] + runtime_ea)
         if runtime_class_loading:
             mx.log('Running image ' + built_image + ' built from module with runtime module path:')
-            runtime_module_path_args = [built_image, '-Dsvm.test.expectRuntimeModulePathFallback=true']
+            runtime_module_path_args = [built_image] + runtime_ea + ['-Dsvm.test.expectRuntimeModulePathFallback=true']
             runtime_module_path_args.append('-Dsvm.test.expectRuntimeDefinedModuleLayer=true')
             runtime_module_path_args.append('-Djava.home=' + _vm_home(None))
             runtime_module_path_args.append('--module-path=' + module_path_sep.join(runtime_module_path))

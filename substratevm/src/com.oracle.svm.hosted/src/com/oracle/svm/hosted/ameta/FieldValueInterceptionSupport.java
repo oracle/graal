@@ -41,21 +41,21 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
+import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerImpl;
 import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
@@ -69,8 +69,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -486,10 +486,9 @@ public final class FieldValueInterceptionSupport {
      * such a field here if user code, e.g., accesses it via reflection.
      */
     private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
-        if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            Class<?> clazz = field.getDeclaringClass().getJavaClass();
-            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
-            return JavaConstant.forBoolean(!assertionsEnabled);
+        Boolean enabled = ClassInitializationSupport.foldedAssertionStatus(field);
+        if (enabled != null) {
+            return JavaConstant.forBoolean(!enabled);
         }
         return value;
     }

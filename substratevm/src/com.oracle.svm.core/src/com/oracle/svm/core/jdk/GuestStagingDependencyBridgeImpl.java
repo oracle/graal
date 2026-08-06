@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -177,6 +178,16 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void enableTraceClassLoading() {
         RuntimeClassLoading.Options.TraceClassLoading.update(true);
+    }
+
+    @Override
+    public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
+        AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
+    }
+
+    @Override
+    public void updateRuntimeSystemAssertionStatus(boolean enable) {
+        AssertionsSupport.singleton().updateRuntimeSystemAssertionStatus(enable);
     }
 
     @Override

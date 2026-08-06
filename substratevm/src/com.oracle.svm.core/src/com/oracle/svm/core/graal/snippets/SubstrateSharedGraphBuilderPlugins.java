@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import java.util.Objects;
+import java.util.function.Function;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
-import java.util.Objects;
-import java.util.function.Function;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -106,16 +107,14 @@ public final class SubstrateSharedGraphBuilderPlugins {
         });
     }
 
-    public static void registerClassPlugins(InvocationPlugins plugins) {
-        registerClassPlugins(plugins, null, null);
-    }
-
     public static void registerClassPlugins(InvocationPlugins plugins, Function<String, String> classNameEncoder, Function<Object, Boolean> desiredAssertionStatusProvider) {
         registerClassGetNamePlugin(plugins, classNameEncoder);
         registerClassIsArrayPlugin(plugins);
         registerClassDesiredAssertionStatusPlugin(plugins, desiredAssertionStatusProvider);
     }
 
+    /// Registers `Class` plugins, allowing `desiredAssertionStatusProvider` to decline folding by
+    /// returning `null` for a constant class whose status must be resolved at run time.
     private static void registerClassDesiredAssertionStatusPlugin(InvocationPlugins plugins, Function<Object, Boolean> desiredAssertionStatusProvider) {
         Registration registration = new Registration(plugins, Class.class);
         registration.register(new RequiredInvocationPlugin("desiredAssertionStatus", Receiver.class) {
@@ -125,12 +124,13 @@ public final class SubstrateSharedGraphBuilderPlugins {
                 if (clazzOrHub == null) {
                     return false;
                 }
-                Boolean desiredAssertionStatus = null;
+                Boolean desiredAssertionStatus;
                 if (desiredAssertionStatusProvider != null) {
                     desiredAssertionStatus = desiredAssertionStatusProvider.apply(clazzOrHub);
-                }
-                if (desiredAssertionStatus == null && clazzOrHub instanceof Class<?> clazz) {
+                } else if (clazzOrHub instanceof Class<?> clazz) {
                     desiredAssertionStatus = clazz.desiredAssertionStatus();
+                } else {
+                    desiredAssertionStatus = null;
                 }
                 if (desiredAssertionStatus == null) {
                     return false;

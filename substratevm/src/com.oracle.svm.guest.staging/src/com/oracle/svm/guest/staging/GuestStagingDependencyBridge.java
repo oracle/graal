@@ -213,6 +213,18 @@ public interface GuestStagingDependencyBridge {
      */
     void enableTraceClassLoading();
 
+    /// Applies a runtime assertion directive to a class, package, or the application default.
+    ///
+    /// Remove this method when runtime assertion support moves to guest/staging.
+    /// @param classOrPackage target class or package to which directive applies.
+    /// A value of `""` applies the directive to all classes.
+    void updateRuntimeAssertionStatus(String classOrPackage, boolean enable);
+
+    /// Updates the runtime assertion default for bootstrap-loaded classes.
+    ///
+    /// Remove this method when runtime assertion support moves to guest/staging.
+    void updateRuntimeSystemAssertionStatus(boolean enable);
+
     /**
      * This method is called at the end of runtime options parsing.
      * <p>
