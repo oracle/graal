@@ -62,11 +62,13 @@ import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
+import jdk.graal.compiler.nodes.MultiReturnNode;
 import jdk.graal.compiler.nodes.ProfileData.LoopFrequencyData;
 import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -932,6 +934,36 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         }
         this.maxDominatorDepth = curMaxDominatorDepth;
         calcDominatorRanges(getStartBlock(), reversePostOrder.length);
+    }
+
+    /**
+     * Marks blocks whose LIR should avoid spill optimizations that add fast-path memory traffic.
+     */
+    public void markFastPathBlocks() {
+        for (HIRBlock block : reversePostOrder) {
+            if (isThreadedSwitchBlock(block)) {
+                block.markFastPathBlock();
+            }
+            if (isStubFastPathBlock(block)) {
+                for (HIRBlock fastPathBlock = block; fastPathBlock != null; fastPathBlock = fastPathBlock.getDominator()) {
+                    fastPathBlock.markFastPathBlock();
+                }
+            }
+        }
+    }
+
+    private static boolean isThreadedSwitchBlock(HIRBlock block) {
+        return (block.getBeginNode() instanceof LoopBeginNode loopBeginNode && loopBeginNode.mayEmitThreadedCode()) ||
+                        (block.getEndNode() instanceof IntegerSwitchNode integerSwitchNode && integerSwitchNode.mayEmitThreadedCode());
+    }
+
+    /**
+     * Determines whether {@code block} is the exit of a bytecode-handler stub fast path. Such a
+     * block returns the results of a {@link MultiReturnNode}; its dominator chain forms the fast
+     * path.
+     */
+    private static boolean isStubFastPathBlock(HIRBlock block) {
+        return block.getEndNode() instanceof ReturnNode returnNode && returnNode.result() instanceof MultiReturnNode;
     }
 
     private static void calcDominatorRanges(HIRBlock block, int size) {

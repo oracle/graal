@@ -271,6 +271,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             if (postProcessingPhase != null) {
                 postProcessingPhase.apply(graph, context);
             }
+            graph.getLastSchedule().getCFG().markFastPathBlocks();
         }
 
         @Override

@@ -282,9 +282,9 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     public abstract boolean isLoopHeader();
 
     /**
-     * This basic block is marked as a candidate for threaded switch optimization.
+     * Returns whether this block is part of a fast path that should avoid unnecessary spilling.
      */
-    public abstract boolean mayEmitThreadedCode();
+    public abstract boolean isFastPathBlock();
 
     /**
      * If this block {@linkplain #isLoopHeader() is a loop header}, returns the number of the loop's
