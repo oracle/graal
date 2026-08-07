@@ -196,6 +196,10 @@ final class TStringInternalNodes {
             }
             return codeRange;
         }
+
+        static GetPreciseCodeRangeWithMaterializationNode getUncached() {
+            return TStringInternalNodesFactory.GetPreciseCodeRangeWithMaterializationNodeGen.getUncached();
+        }
     }
 
     static int getCodePointLength(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding, InlinedConditionProfile calcCodePointLengthProfile) {
@@ -238,6 +242,10 @@ final class TStringInternalNodes {
                 }
             }
             return codePointLength;
+        }
+
+        static GetCodePointLengthWithMaterializationNode getUncached() {
+            return TStringInternalNodesFactory.GetCodePointLengthWithMaterializationNodeGen.getUncached();
         }
     }
 
