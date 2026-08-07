@@ -92,6 +92,26 @@ public class StackValuesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testTopValueUsesDup() {
+        BasicInterpreter root = parseNode("topValueUsesDup", b -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginBlock();
+            StackValue value = emitBindStackValue(b, 42L);
+            b.emitLoadStackValue(value);
+            b.endBlock();
+
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.getCallTarget().call());
+        assertTrue(root.getBytecodeNode().getInstructionsAsList().stream().anyMatch(instruction -> instruction.getName().equals("dup")));
+        assertFalse(root.getBytecodeNode().getInstructionsAsList().stream().anyMatch(instruction -> instruction.getName().equals("load.stackvalue")));
+    }
+
+    @Test
     public void testMultipleValues() {
         BasicInterpreter root = parseNode("multipleValues", b -> {
             b.beginRoot();

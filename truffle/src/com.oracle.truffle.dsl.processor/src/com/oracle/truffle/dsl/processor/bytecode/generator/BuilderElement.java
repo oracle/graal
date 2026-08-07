@@ -3397,8 +3397,7 @@ final class BuilderElement extends AbstractElement {
                     b.string(operationStack.read(operation, operationFields.stackValue));
                 }
                 b.end();
-                b.declaration(type(int.class), "stackOffset", "state.currentStackHeight - 1 - stackValueImpl.stackHeight");
-                yield new String[]{BytecodeRootNodeElement.safeCastShort("stackOffset")};
+                yield new String[]{BytecodeRootNodeElement.safeCastShort("state.currentStackHeight - 1 - stackValueImpl.stackHeight")};
             }
             case YIELD -> {
                 b.declaration(type(int.class), "constantPoolIndex", "state.allocateContinuationConstant()");
@@ -3421,6 +3420,17 @@ final class BuilderElement extends AbstractElement {
                 b.string("state.currentStackHeight");
                 b.end(2); // statement + call
                 emitRequestLeaderBci(b, "start of continuation resume block");
+                break;
+            case LOAD_STACKVALUE:
+                if (declareEmittedBci) {
+                    b.declaration(type(int.class), emittedBciLocal);
+                }
+                // Special case: instead of load.stackvalue(0), emit dup.
+                b.startIf().string("state.currentStackHeight == stackValueImpl.stackHeight + 1").end().startBlock();
+                buildEmitInstructionWithStackEffect(b, emittedBciLocal, false, model.dupInstruction, String.valueOf(model.dupInstruction.getStackEffect()));
+                b.end().startElseBlock();
+                buildEmitInstructionWithStackEffect(b, emittedBciLocal, false, instruction, String.valueOf(instruction.getStackEffect()), args);
+                b.end();
                 break;
             default:
                 buildEmitInstructionWithStackEffect(b, emittedBciLocal, declareEmittedBci, instruction, String.valueOf(instruction.getStackEffect()), args);

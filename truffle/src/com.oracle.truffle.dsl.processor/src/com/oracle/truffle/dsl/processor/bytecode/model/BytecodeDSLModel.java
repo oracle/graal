@@ -680,6 +680,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         rules.add(rule(delete(p(loadNullInstruction), p(popInstruction))));
         // load.stackvalue, pop -> _
         rules.add(rule(delete(p(loadStackValueInstruction), p(popInstruction))));
+        // dup, pop -> _
+        rules.add(rule(delete(p(dupInstruction), p(popInstruction))));
         // Throwing an exception on illegal load makes load.local side-effecting.
         if (loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
             // load.local x, pop -> _
