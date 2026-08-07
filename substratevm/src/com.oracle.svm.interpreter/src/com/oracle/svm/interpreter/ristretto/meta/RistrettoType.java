@@ -147,12 +147,24 @@ public final class RistrettoType extends SubstrateType {
 
     @Override
     public ResolvedJavaType getSingleImplementor() {
-        ResolvedJavaType result = super.getSingleImplementor();
-        if (result instanceof SubstrateType sType) {
-            return RistrettoUtils.toRType(sType);
+        ResolvedJavaType result = interpreterType.getSingleImplementor();
+        return result == null ? null : normalizeJVMCIType(result);
+    }
+
+    @Override
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
+        if (method instanceof RistrettoMethod rMethod) {
+            AssumptionResult<ResolvedJavaMethod> result = interpreterType.findUniqueConcreteMethod(rMethod.getInterpreterMethod());
+            if (result == null) {
+                return null;
+            }
+            ResolvedJavaMethod ristrettoResult = toRequiredRistrettoMethod(result.getResult());
+            if (result.isAssumptionFree()) {
+                return new AssumptionResult<>(ristrettoResult);
+            }
+            return new AssumptionResult<>(ristrettoResult, toRistrettoAssumptions(result));
         }
-        GraalError.guarantee(result == null, "Unexpected Ristretto single implementor type: %s", result);
-        return result;
+        return super.findUniqueConcreteMethod(method);
     }
 
     private static ResolvedJavaType normalizeJVMCIType(ResolvedJavaType type) {

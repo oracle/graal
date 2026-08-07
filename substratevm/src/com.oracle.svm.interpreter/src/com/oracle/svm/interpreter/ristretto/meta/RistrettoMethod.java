@@ -120,6 +120,9 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     public volatile SubstrateInstalledCodeImpl installedCode;
 
+    /** Serializes invocation-entry code publication with invalidation of the published code. */
+    private final Object invocationPublicationLock = new Object();
+
     private static final AtomicIntegerFieldUpdater<RistrettoMethod> COMPILATION_ATTEMPTS_UPDATER = AtomicIntegerFieldUpdater.newUpdater(RistrettoMethod.class, "compilationAttempts");
 
     private static final AtomicReferenceFieldUpdater<RistrettoMethod, SubstrateInstalledCodeImpl> INSTALLED_CODE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RistrettoMethod.class,
@@ -268,18 +271,24 @@ public final class RistrettoMethod extends SubstrateMethod {
      * @param installCode whether the current test configuration wants to publish {@code code}
      *            through {@link #installedCode}
      */
-    public void onCompilationSuccess(SubstrateInstalledCodeImpl code, boolean installCode) {
-        if (installCode) {
-            INSTALLED_CODE_UPDATER.set(this, code);
-        }
-        if (!RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_SUBMITTED,
-                        RistrettoConstants.COMPILE_STATE_COMPILED)) {
-            if (installCode) {
-                INSTALLED_CODE_UPDATER.compareAndSet(this, code, null);
+    public boolean onCompilationSuccess(SubstrateInstalledCodeImpl code, boolean installCode) {
+        synchronized (invocationPublicationLock) {
+            if (installCode && !code.isValid()) {
+                return false;
             }
-            throw GraalError.shouldNotReachHere(
-                            String.format("Only a single compile of %s should ever reach the compile queue, it cannot be that we reach here with a different state but did %s",
-                                            this, RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(this)));
+            if (installCode) {
+                INSTALLED_CODE_UPDATER.set(this, code);
+            }
+            if (!RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_SUBMITTED,
+                            RistrettoConstants.COMPILE_STATE_COMPILED)) {
+                if (installCode) {
+                    INSTALLED_CODE_UPDATER.compareAndSet(this, code, null);
+                }
+                throw GraalError.shouldNotReachHere(
+                                String.format("Only a single compile of %s should ever reach the compile queue, it cannot be that we reach here with a different state but did %s",
+                                                this, RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(this)));
+            }
+            return true;
         }
     }
 
@@ -353,11 +362,30 @@ public final class RistrettoMethod extends SubstrateMethod {
         return requireOSRBackedgeState(targetBCI).installedCodeEntryPointIfLive();
     }
 
-    public void onOSRCompilationSuccess(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
-        requireOSRBackedgeState(targetBCI).onCompilationSuccess(this, requestId, code, installCode);
-        if (installCode) {
+    public boolean onOSRCompilationSuccess(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
+        return onOSRCompilationSuccess(targetBCI, requestId, code, installCode, true);
+    }
+
+    /**
+     * Publishes OSR code from a hierarchy-validation transaction.
+     *
+     * Rejected code must be invalidated by the caller after it releases the hierarchy lock. The
+     * ordinary publication entry point invalidates stale code itself only after releasing the OSR
+     * state monitor.
+     */
+    public boolean onOSRCompilationSuccessAfterHierarchyValidation(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
+        return onOSRCompilationSuccess(targetBCI, requestId, code, installCode, false);
+    }
+
+    private boolean onOSRCompilationSuccess(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode, boolean invalidateRejectedCode) {
+        boolean published = requireOSRBackedgeState(targetBCI).onCompilationSuccess(this, requestId, code, installCode);
+        if (!published && invalidateRejectedCode && code != null && code.isValid()) {
+            code.invalidate();
+        }
+        if (published && installCode) {
             getProfile().resetOSRBackedgeCodePoll(targetBCI);
         }
+        return published;
     }
 
     public void onOSRCompilationFailure(int targetBCI, int requestId) {
@@ -430,16 +458,21 @@ public final class RistrettoMethod extends SubstrateMethod {
      * @param reprofile whether the invalidation should also reset interpreter profiling
      */
     public void invalidateInstalledCode(SubstrateInstalledCodeImpl expectedInstalledCode, boolean reprofile) {
-        if (!INSTALLED_CODE_UPDATER.compareAndSet(this, expectedInstalledCode, null)) {
+        boolean invalidatedInvocationCode;
+        synchronized (invocationPublicationLock) {
+            invalidatedInvocationCode = INSTALLED_CODE_UPDATER.compareAndSet(this, expectedInstalledCode, null);
+            if (invalidatedInvocationCode) {
+                RistrettoDiagnostics.InvalidatedCode.getAndIncrement();
+                if (reprofile) {
+                    RistrettoDiagnostics.ReprofileRequested.getAndIncrement();
+                    getProfile().reprofile();
+                }
+                transitionToInterpreted();
+            }
+        }
+        if (!invalidatedInvocationCode) {
             invalidateOSRInstalledCode(expectedInstalledCode, reprofile);
-            return;
         }
-        RistrettoDiagnostics.InvalidatedCode.getAndIncrement();
-        if (reprofile) {
-            RistrettoDiagnostics.ReprofileRequested.getAndIncrement();
-            getProfile().reprofile();
-        }
-        transitionToInterpreted();
     }
 
     /**

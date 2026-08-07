@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -165,6 +165,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.metadata.RuntimeLoadedClassHierarchy;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -475,6 +476,9 @@ public class CremaSupportImpl implements CremaSupport {
 
         // Ensure all metadata is stored before publication
         MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+        if (SubstrateOptions.useRistretto()) {
+            RuntimeLoadedClassHierarchy.registerRuntimeType(thisType);
+        }
 
         return hub;
     }
@@ -739,6 +743,9 @@ public class CremaSupportImpl implements CremaSupport {
 
         // Ensure all metadata is stored before publication
         MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+        if (SubstrateOptions.useRistretto()) {
+            RuntimeLoadedClassHierarchy.registerRuntimeType(thisType);
+        }
 
         componentHub.setArrayHub(arrayHub);
         return arrayHub;

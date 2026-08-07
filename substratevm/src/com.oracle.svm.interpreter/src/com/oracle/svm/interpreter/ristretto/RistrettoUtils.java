@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -62,6 +63,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.interpreter.metadata.RuntimeLoadedClassHierarchy;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoInstalledCode;
@@ -120,6 +122,11 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.Assumptions.ConcreteMethod;
+import jdk.vm.ci.meta.Assumptions.ConcreteSubtype;
+import jdk.vm.ci.meta.Assumptions.LeafType;
+import jdk.vm.ci.meta.Assumptions.NoFinalizableSubclass;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -302,13 +309,20 @@ public class RistrettoUtils {
 
     /**
      * DEBUG ONLY facility to compile the given method and install the resulting code. Normally done
-     * over {@link com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager}. Use
-     * only for testing.
+     * over {@link com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager}. Final
+     * hierarchy validation and the installed-code assignment are one transaction so test code does
+     * not expose hierarchy-dependent code after the validation lock is released. Use only for
+     * testing.
      */
     public static SubstrateInstalledCodeImpl compileAndInstallInCrema(RistrettoMethod method) {
-        SubstrateInstalledCodeImpl ic = compileAndInstall(method);
-        method.installedCode = ic;
-        return ic;
+        SubstrateInstalledCodeImpl code = compileAndInstallAndPublish(method, INVOCATION_ENTRY_BCI, installedCode -> {
+            method.installedCode = installedCode;
+            return true;
+        });
+        if (code == null) {
+            method.installedCode = null;
+        }
+        return code;
     }
 
     public static StructuredGraph parseOnly(SubstrateMethod method) {
@@ -339,10 +353,42 @@ public class RistrettoUtils {
         if (!(method instanceof RistrettoMethod)) {
             throw GraalError.shouldNotReachHere("Invalid substrate method " + method);
         }
-        if (RistrettoOptions.JITTraceCompilation.getValue()) {
-            Log.log().string("[Ristretto Compiler] Starting compilation of ").string(method.format("%H.%n(%p)")).newline();
+        return compileAndInstallAndPublish((RistrettoMethod) method, entryBCI, SubstrateInstalledCodeImpl::isValid);
+    }
+
+    /**
+     * Compiles and installs code whose final hierarchy validation and publication are deferred. The
+     * caller must complete hierarchy-assumption registration and final publication with
+     * {@link RistrettoInstalledCode#registerHierarchyAssumptionsAndPublish(java.util.function.BooleanSupplier)}.
+     */
+    public static SubstrateInstalledCodeImpl compileAndInstallForPublication(RistrettoMethod rMethod, int entryBCI) {
+        return compileAndInstall(rMethod, entryBCI);
+    }
+
+    /**
+     * Compiles code and makes it available only after final hierarchy validation. Callers that
+     * publish method or OSR state must perform that state update through the callback instead of
+     * after this method returns.
+     */
+    private static SubstrateInstalledCodeImpl compileAndInstallAndPublish(RistrettoMethod rMethod, int entryBCI, Predicate<SubstrateInstalledCodeImpl> publish) {
+        SubstrateInstalledCodeImpl code = compileAndInstall(rMethod, entryBCI);
+        if (code == null) {
+            return null;
         }
-        RistrettoMethod rMethod = (RistrettoMethod) method;
+        RistrettoInstalledCode ristrettoCode = (RistrettoInstalledCode) code;
+        if (!ristrettoCode.registerHierarchyAssumptionsAndPublish(() -> publish.test(code))) {
+            if (code.isValid()) {
+                code.invalidate();
+            }
+            return discardCompiledCode(rMethod, "because a class-hierarchy assumption failed during final publication");
+        }
+        return code;
+    }
+
+    private static SubstrateInstalledCodeImpl compileAndInstall(RistrettoMethod rMethod, int entryBCI) {
+        if (RistrettoOptions.JITTraceCompilation.getValue()) {
+            Log.log().string("[Ristretto Compiler] Starting compilation of ").string(rMethod.format("%H.%n(%p)")).newline();
+        }
         RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
         DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton().get(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
         return compileAndInstallIfSpeculationsStillValid(rMethod, runtimeConfiguration, debug, entryBCI);
@@ -357,13 +403,28 @@ public class RistrettoUtils {
      * the caller publishes the code through {@link RistrettoMethod#onCompilationSuccess}.
      */
     private static SubstrateInstalledCodeImpl compileAndInstallIfSpeculationsStillValid(RistrettoMethod rMethod, RuntimeConfiguration runtimeConfiguration, DebugContext debug, int entryBCI) {
+        TestingBackdoor.unsupportedAssumptionRetry.set(false);
         RistrettoSpeculationLog methodSpeculationLog = rMethod.getSubstrateSpeculationLog();
         CompilationSpeculationLog compilationSpeculationLog = methodSpeculationLog.createCompilationLog();
-        CompilationResult compilationResult = doCompile(debug, runtimeConfiguration, RuntimeCompilationSupport.getLIRSuites(), rMethod, entryBCI, compilationSpeculationLog);
+        boolean useDeoptimization = RistrettoOptions.useDeoptimization();
+        CompilationResult compilationResult = doCompile(debug, runtimeConfiguration, RuntimeCompilationSupport.getLIRSuites(), rMethod, entryBCI, compilationSpeculationLog,
+                        useDeoptimization ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO);
+        TestingBackdoor.injectUnsupportedAssumptionIfRequested(compilationResult, rMethod);
+        if (useDeoptimization && hasUnsupportedRuntimeHierarchyAssumption(compilationResult)) {
+            compilationSpeculationLog = methodSpeculationLog.createCompilationLog();
+            compilationResult = doCompile(debug, runtimeConfiguration, RuntimeCompilationSupport.getLIRSuites(), rMethod, entryBCI, compilationSpeculationLog,
+                            StructuredGraph.AllowAssumptions.NO);
+            TestingBackdoor.unsupportedAssumptionRetry.set(true);
+        }
+        RuntimeLoadedClassHierarchy.Assumptions hierarchyAssumptions = useDeoptimization ? createRuntimeHierarchyAssumptions(compilationResult)
+                        : RuntimeLoadedClassHierarchy.createAssumptions(List.of());
         EconomicMap<Integer, Infopoint> relativeIpToInfopoint = collectInfopointsForDeopt(rMethod, compilationResult);
-        RistrettoInstalledCode installedCode = new RistrettoInstalledCode(rMethod, relativeIpToInfopoint, methodSpeculationLog);
+        RistrettoInstalledCode installedCode = new RistrettoInstalledCode(rMethod, relativeIpToInfopoint, methodSpeculationLog, hierarchyAssumptions);
         if (compilationSpeculationLog.hasFailedSpeculation()) {
             return discardCompiledCode(rMethod, "because a speculation failed before installation");
+        }
+        if (!hierarchyAssumptions.isValid()) {
+            return discardCompiledCode(rMethod, "because a class-hierarchy assumption failed before installation");
         }
         RuntimeCodeInstaller.install(rMethod, compilationResult, installedCode);
         /*
@@ -390,6 +451,106 @@ public class RistrettoUtils {
                             .newline();
         }
         return installedCode;
+    }
+
+    /**
+     * Returns whether a compilation used an assumption for which Ristretto has no runtime
+     * invalidation mechanism. Such a result is discarded and compiled again without assumptions.
+     */
+    private static boolean hasUnsupportedRuntimeHierarchyAssumption(CompilationResult compilationResult) {
+        Assumption[] assumptions = compilationResult.getAssumptions();
+        if (assumptions == null) {
+            return false;
+        }
+        for (Assumption assumption : assumptions) {
+            if (!(assumption instanceof LeafType || assumption instanceof ConcreteSubtype || assumption instanceof ConcreteMethod)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Derives runtime hierarchy assumptions from the assumptions recorded in the compilation
+     * result. Every assumption produced through Ristretto metadata must have a matching runtime
+     * invalidation mechanism.
+     */
+    private static RuntimeLoadedClassHierarchy.Assumptions createRuntimeHierarchyAssumptions(CompilationResult compilationResult) {
+        Assumption[] assumptions = compilationResult.getAssumptions();
+        if (assumptions == null || assumptions.length == 0) {
+            return RuntimeLoadedClassHierarchy.createAssumptions(List.of());
+        }
+        guaranteeRistrettoAssumptionTypes(assumptions);
+        ArrayList<Assumption> runtimeAssumptions = new ArrayList<>();
+        for (Assumption assumption : assumptions) {
+            addRuntimeHierarchyAssumption(runtimeAssumptions, assumption);
+        }
+        return RuntimeLoadedClassHierarchy.createAssumptions(runtimeAssumptions);
+    }
+
+    /**
+     * Converts the type and method references in a supported hierarchy assumption to
+     * {@link InterpreterResolvedObjectType} and {@link InterpreterResolvedJavaMethod} metadata.
+     * Supported assumption payloads are already required to use Ristretto metadata, so a partial
+     * conversion is an invariant violation rather than a signal to silently retry compilation.
+     */
+    private static void addRuntimeHierarchyAssumption(ArrayList<Assumption> runtimeAssumptions, Assumption assumption) {
+        if (assumption instanceof LeafType leafType) {
+            runtimeAssumptions.add(new LeafType(toRequiredInterpreterObjectType(leafType.context, assumption)));
+        } else if (assumption instanceof ConcreteSubtype concreteSubtype) {
+            InterpreterResolvedObjectType context = toRequiredInterpreterObjectType(concreteSubtype.context, assumption);
+            InterpreterResolvedObjectType subtype = toRequiredInterpreterObjectType(concreteSubtype.subtype, assumption);
+            runtimeAssumptions.add(new ConcreteSubtype(context, subtype));
+        } else if (assumption instanceof ConcreteMethod concreteMethod) {
+            InterpreterResolvedJavaMethod method = toRequiredInterpreterMethod(concreteMethod.method, assumption);
+            InterpreterResolvedObjectType context = toRequiredInterpreterObjectType(concreteMethod.context, assumption);
+            InterpreterResolvedJavaMethod implementation = toRequiredInterpreterMethod(concreteMethod.impl, assumption);
+            runtimeAssumptions.add(new ConcreteMethod(method, context, implementation));
+        } else {
+            throw GraalError.shouldNotReachHere("Unsupported Ristretto assumption: " + assumption);
+        }
+    }
+
+    /** Returns the interpreter object type represented by a supported assumption payload. */
+    private static InterpreterResolvedObjectType toRequiredInterpreterObjectType(ResolvedJavaType type, Assumption assumption) {
+        ResolvedJavaType resolvedType = type;
+        if (resolvedType instanceof RistrettoType rType) {
+            resolvedType = rType.getInterpreterType();
+        }
+        GraalError.guarantee(resolvedType instanceof InterpreterResolvedObjectType,
+                        "Ristretto hierarchy assumption has non-object interpreter metadata: %s in %s", type, assumption);
+        return (InterpreterResolvedObjectType) resolvedType;
+    }
+
+    /** Ensures compiler assumptions do not leak shared AOT type metadata into Ristretto. */
+    private static void guaranteeRistrettoAssumptionTypes(Assumption[] assumptions) {
+        for (Assumption assumption : assumptions) {
+            if (assumption instanceof LeafType leafType) {
+                guaranteeRistrettoAssumptionType(leafType.context, assumption);
+            } else if (assumption instanceof ConcreteSubtype concreteSubtype) {
+                guaranteeRistrettoAssumptionType(concreteSubtype.context, assumption);
+                guaranteeRistrettoAssumptionType(concreteSubtype.subtype, assumption);
+            } else if (assumption instanceof ConcreteMethod concreteMethod) {
+                guaranteeRistrettoAssumptionType(concreteMethod.context, assumption);
+            }
+        }
+    }
+
+    /** Rejects shared AOT type metadata embedded in one Ristretto compiler assumption. */
+    private static void guaranteeRistrettoAssumptionType(ResolvedJavaType type, Assumption assumption) {
+        GraalError.guarantee(!(type instanceof SubstrateType) || type instanceof RistrettoType,
+                        "Ristretto compilation assumption contains non-Ristretto type metadata: %s in %s", type, assumption);
+    }
+
+    /** Returns the interpreter method represented by a supported assumption payload. */
+    private static InterpreterResolvedJavaMethod toRequiredInterpreterMethod(ResolvedJavaMethod method, Assumption assumption) {
+        if (method instanceof RistrettoMethod rMethod) {
+            return rMethod.getInterpreterMethod();
+        }
+        if (method instanceof InterpreterResolvedJavaMethod iMethod) {
+            return iMethod;
+        }
+        throw GraalError.shouldNotReachHere("Ristretto hierarchy assumption has non-interpreter method metadata: " + method + " in " + assumption);
     }
 
     private static SubstrateInstalledCodeImpl discardCompiledCode(RistrettoMethod rMethod, String reason) {
@@ -451,6 +612,11 @@ public class RistrettoUtils {
 
     private static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method, int entryBCI,
                     SpeculationLog speculationLog) {
+        return doCompile(initialDebug, runtimeConfig, lirSuites, method, entryBCI, speculationLog, StructuredGraph.AllowAssumptions.YES);
+    }
+
+    private static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method, int entryBCI,
+                    SpeculationLog speculationLog, StructuredGraph.AllowAssumptions allowAssumptions) {
         GraalError.guarantee(method instanceof RistrettoMethod, "Ristretto runtime compilation requires a Ristretto method: %s", method);
         RistrettoMethod ristrettoMethod = (RistrettoMethod) method;
         SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
@@ -458,7 +624,8 @@ public class RistrettoUtils {
         String methodString = method.format("%H.%n(%p)");
         SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier(method);
 
-        return new CompilationWrapper<CompilationResult>(RuntimeCompilationSupport.get().getDebugOutputDirectory(), SubstrateGraalUtils.COMPILATION_PROBLEMS_PER_ACTION) {
+        CompilationResult completedCompilation = new CompilationWrapper<CompilationResult>(RuntimeCompilationSupport.get().getDebugOutputDirectory(),
+                        SubstrateGraalUtils.COMPILATION_PROBLEMS_PER_ACTION) {
             @SuppressWarnings({"unchecked", "unused"})
             <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable ex) throws E {
                 throw (E) ex;
@@ -497,7 +664,6 @@ public class RistrettoUtils {
                          */
                         speculationLog.collectFailedSpeculations();
                         final ProfileProvider profileProvider = new StableProfileProvider();
-                        final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
                         graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                                         .profileProvider(profileProvider).compilationId(compilationId).entryBCI(entryBCI).build();
                         if (!RistrettoOptions.useDeoptimization()) {
@@ -605,6 +771,9 @@ public class RistrettoUtils {
                 System.exit(status);
             }
         }.run(initialDebug);
+        GraalError.guarantee(allowAssumptions == StructuredGraph.AllowAssumptions.YES || completedCompilation.getAssumptions() == null || completedCompilation.getAssumptions().length == 0,
+                        "Compilation with assumptions disabled produced assumptions: %s", method);
+        return completedCompilation;
     }
 
     private static boolean assertVerifyRistrettoJVMCI(Suites suites) {
@@ -744,6 +913,9 @@ public class RistrettoUtils {
     }
 
     public static final class TestingBackdoor {
+        private static final ThreadLocal<Boolean> injectUnsupportedAssumption = ThreadLocal.withInitial(() -> false);
+        private static final ThreadLocal<Boolean> unsupportedAssumptionRetry = ThreadLocal.withInitial(() -> false);
+
         private TestingBackdoor() {
             // this type should never be allocated
         }
@@ -761,6 +933,35 @@ public class RistrettoUtils {
         public static boolean shouldRememberGraph() {
             String prop = System.getProperty("com.oracle.svm.interpreter.ristretto.RistrettoUtils.PreserveLastCompiledGraph", "false");
             return Boolean.parseBoolean(prop);
+        }
+
+        public static RuntimeLoadedClassHierarchy.Assumptions createRuntimeHierarchyAssumptions(CompilationResult compilationResult) {
+            return RistrettoUtils.createRuntimeHierarchyAssumptions(compilationResult);
+        }
+
+        /** Forces the next compilation on this thread through the unsupported-assumption retry. */
+        public static void injectUnsupportedAssumptionForNextCompilation() {
+            injectUnsupportedAssumption.set(true);
+        }
+
+        /** Returns whether the last compilation on this thread retried without assumptions. */
+        public static boolean usedUnsupportedAssumptionRetry() {
+            return unsupportedAssumptionRetry.get();
+        }
+
+        private static void injectUnsupportedAssumptionIfRequested(CompilationResult compilationResult, RistrettoMethod method) {
+            if (!injectUnsupportedAssumption.get()) {
+                return;
+            }
+            injectUnsupportedAssumption.set(false);
+            Assumption[] assumptions = compilationResult.getAssumptions();
+            int assumptionCount = assumptions == null ? 0 : assumptions.length;
+            Assumption[] injectedAssumptions = new Assumption[assumptionCount + 1];
+            if (assumptionCount != 0) {
+                System.arraycopy(assumptions, 0, injectedAssumptions, 0, assumptionCount);
+            }
+            injectedAssumptions[assumptionCount] = new NoFinalizableSubclass(method.getDeclaringClass());
+            compilationResult.setAssumptions(injectedAssumptions);
         }
 
         static void installLastGraphThieves(Suites suites, StructuredGraph rootGraph) {
