@@ -85,6 +85,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.core.BuilderUtil;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -354,7 +355,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerTypesForTypeQuery(AnalysisType type, TypeData typeData, boolean preserved, boolean linkageError) {
         type.registerAsReachable("Is registered for reflection.");
-        if (type.getJavaClass() != void.class && BuilderUtil.arrayTypeDimension(type) < 255) {
+        if (!(type.getWrapped() instanceof BaseLayerType) && type.getJavaClass() != void.class && BuilderUtil.arrayTypeDimension(type) < 255) {
             /*
              * Class.arrayType() must be available for a type registered for reflection. Only make
              * the immediate array type reachable: registering it for reflection or recursively
@@ -635,6 +636,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void checkSubtypeForOverridingMethod(AnalysisMethod supertypeMethod, AnalysisType subtype) {
+        if (subtype.getWrapped() instanceof BaseLayerType) {
+            return;
+        }
         if (methods.containsKey(supertypeMethod) && methods.get(supertypeMethod).isRegisteredAs(QUERIED)) {
             for (AnalysisMethod subtypeMethod : subtype.getDeclaredMethods(false)) {
                 if (supertypeMethod.getName().equals(subtypeMethod.getName()) &&
@@ -826,6 +830,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void checkSubtypeForOverridingField(AnalysisField supertypeField, AnalysisType subtype) {
+        if (subtype.getWrapped() instanceof BaseLayerType) {
+            return;
+        }
         if (fields.containsKey(supertypeField) && fields.get(supertypeField).isRegisteredAs(QUERIED)) {
             for (ResolvedJavaField javaField : JVMCIReflectionUtil.getAllFields(subtype)) {
                 AnalysisField subtypeField = (AnalysisField) javaField;
@@ -868,6 +875,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void checkSubtypeForOverridingElements(AnalysisType declaringType, AnalysisType subtype) {
+        if (declaringType.getWrapped() instanceof BaseLayerType || subtype.getWrapped() instanceof BaseLayerType) {
+            return;
+        }
         /* All fields and methods are already registered, no need for hiding elements */
         if (!types.containsKey(subtype) || !types.get(subtype).isRegisteredAs(ACCESSED)) {
             DeadlockWatchdog.singleton().recordActivity();
