@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jvmti;
 
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_ACCESS_DENIED;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_ILLEGAL_ARGUMENT;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_INVALID_EVENT_TYPE;
@@ -60,7 +60,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIFieldId;

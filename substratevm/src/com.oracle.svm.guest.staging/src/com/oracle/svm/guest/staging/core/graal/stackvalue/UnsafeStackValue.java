@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.stackvalue;
+package com.oracle.svm.guest.staging.core.graal.stackvalue;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.PointerBase;

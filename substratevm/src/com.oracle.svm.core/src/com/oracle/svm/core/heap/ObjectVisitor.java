@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+
 /**
  * Supply a closure to be applied to Objects.
  *

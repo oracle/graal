@@ -22,46 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.BooleanSupplier;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
- * For fields with this annotation no static analysis is done.
- *
- * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
- * that any subtype of c is instantiated.
- *
- * This annotation is only necessary during the image build. It prevents the static analysis from
- * wrongly constant-folding a value that is initialized late during the image build and therefore
- * not available during analysis.
+ * For classes with this annotation no context sensitive analysis is done. This means that no
+ * context information is recorded for objects of the annotated class, i.e., no allocation site or
+ * other context information, but only the declared type is used to model objects of the annotated
+ * class.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.TYPE})
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface UnknownObjectField {
+public @interface UnknownClass {
 
-    /**
-     * Specify types that this field can take.
-     */
-    Class<?>[] types() default {};
-
-    /**
-     * Specify fully qualified names of types that this field can take.
-     */
-    String[] fullyQualifiedTypes() default {};
-
-    /**
-     * Specify if this field can be null. By default unknown value object fields cannot be null.
-     */
-    boolean canBeNull() default false;
-
-    Class<? extends BooleanSupplier> availability();
 }

@@ -44,7 +44,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.shared.Uninterruptible;

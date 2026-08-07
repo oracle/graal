@@ -26,7 +26,7 @@
 package com.oracle.svm.hosted.webimage.wasmgc.image;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 /**

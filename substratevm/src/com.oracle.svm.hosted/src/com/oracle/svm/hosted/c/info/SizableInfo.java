@@ -55,7 +55,7 @@ public abstract class SizableInfo extends ElementInfo {
          */
         BYTEARRAY,
         /**
-         * Java object, can be stored in {@link com.oracle.svm.core.c.struct.PinnedObjectField} of
+         * Java object, can be stored in {@link com.oracle.svm.guest.staging.core.c.struct.PinnedObjectField} of
          * {@link org.graalvm.nativeimage.c.struct.RawStructure} only.
          */
         OBJECT,

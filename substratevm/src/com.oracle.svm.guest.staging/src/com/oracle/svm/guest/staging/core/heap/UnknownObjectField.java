@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.struct;
+package com.oracle.svm.guest.staging.core.heap;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
- * Allows {@link RawField fields} of {@link Object} types in {@link RawStructure structures}. This
- * is inherently dangerous, because such fields are not visited by the garbage collector. Therefore,
- * only references to objects that are never moved and never freed by the garbage collector can be
- * safely stored in such fields. That can be objects that are in the native image or objects that
- * are pinned.
- * <p>
- * This annotation serves as a marker, by using it you acknowledge that you know what you are doing.
+ * For fields with this annotation no static analysis is done.
+ *
+ * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
+ * that any subtype of c is instantiated.
+ *
+ * This annotation is only necessary during the image build. It prevents the static analysis from
+ * wrongly constant-folding a value that is initialized late during the image build and therefore
+ * not available during analysis.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
-public @interface PinnedObjectField {
+@Target(ElementType.FIELD)
+@Platforms(Platform.HOSTED_ONLY.class)
+public @interface UnknownObjectField {
+
+    /**
+     * Specify types that this field can take.
+     */
+    Class<?>[] types() default {};
+
+    /**
+     * Specify fully qualified names of types that this field can take.
+     */
+    String[] fullyQualifiedTypes() default {};
+
+    /**
+     * Specify if this field can be null. By default unknown value object fields cannot be null.
+     */
+    boolean canBeNull() default false;
+
+    Class<? extends BooleanSupplier> availability();
 }

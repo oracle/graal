@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jdk.SplittableRandomAccessors;
 import com.oracle.svm.shared.Uninterruptible;

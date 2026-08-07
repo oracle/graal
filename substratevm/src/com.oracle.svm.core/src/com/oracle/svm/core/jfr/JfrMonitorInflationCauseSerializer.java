@@ -29,7 +29,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
 public class JfrMonitorInflationCauseSerializer implements JfrSerializer {

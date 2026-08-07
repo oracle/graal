@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;

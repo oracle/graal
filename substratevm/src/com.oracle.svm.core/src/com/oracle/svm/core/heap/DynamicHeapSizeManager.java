@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 
 /**
  * This interface defines the functions needed to implement a dynamic heap size manager, where the

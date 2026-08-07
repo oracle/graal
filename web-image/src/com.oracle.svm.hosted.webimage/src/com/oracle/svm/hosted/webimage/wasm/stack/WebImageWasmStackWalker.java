@@ -33,7 +33,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
 import com.oracle.svm.webimage.wasm.code.FrameData;
 import com.oracle.svm.webimage.wasm.code.WasmCodeInfoHolder;

@@ -38,7 +38,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;

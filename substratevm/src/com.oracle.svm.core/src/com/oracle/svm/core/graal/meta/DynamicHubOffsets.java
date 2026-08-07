@@ -34,7 +34,7 @@ import org.graalvm.word.impl.BarrieredAccess;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;

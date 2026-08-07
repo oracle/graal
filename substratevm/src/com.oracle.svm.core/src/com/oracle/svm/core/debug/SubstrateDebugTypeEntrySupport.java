@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
-import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
