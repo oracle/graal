@@ -53,6 +53,7 @@ import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64Kind.QWORD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Label;
@@ -290,7 +291,9 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
                     31,
                     1,
     };
-    private static final ArrayDataPointerConstant powersOf31 = pointerConstant(16, POWERS_OF_31_BACKWARDS);
+    // The first coefficient (31^32) is used as a scalar and is not loaded into a vector.
+    private static final ArrayDataPointerConstant powersOf31 = pointerConstant(64,
+                    Arrays.copyOfRange(POWERS_OF_31_BACKWARDS, 1, POWERS_OF_31_BACKWARDS.length));
 
     private static int powerOf31(int exponent) {
         return POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - 1 - exponent];
@@ -390,9 +393,8 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
 
             // vresult *= IntVector.fromArray(species, power_of_31_backwards, 1);
             masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
-            int coefficientOffset = powersOf31Offset + JavaKind.Int.getByteCount();
             for (int idx = 0; idx < 4; idx++) {
-                loadVector(masm, vtmp[idx], new AMD64Address(tmp2, coefficientOffset + idx * avxSize.getBytes()), avxSize.getBytes());
+                loadVector(masm, vtmp[idx], new AMD64Address(tmp2, powersOf31Offset + idx * avxSize.getBytes()), avxSize.getBytes());
             }
             for (int idx = 0; idx < 4; idx++) {
                 masm.emit(VPMULLD, vresult[idx], vresult[idx], vtmp[idx], avxSize);
