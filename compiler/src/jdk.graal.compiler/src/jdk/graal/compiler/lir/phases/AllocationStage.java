@@ -26,6 +26,8 @@ package jdk.graal.compiler.lir.phases;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.alloc.AllocationStageVerifier;
+import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
+import jdk.graal.compiler.lir.alloc.verifier.RegAllocVerifierPhase;
 import jdk.graal.compiler.lir.stackslotalloc.LSStackSlotAllocator;
 import jdk.graal.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 import jdk.graal.compiler.lir.alloc.lsra.LinearScanPhase;
@@ -40,10 +42,24 @@ public class AllocationStage extends LIRPhaseSuite<AllocationPhase.AllocationCon
         appendPhase(new LinearScanPhase());
 
         // build frame map
+        LIRPhase<AllocationPhase.AllocationContext> stackAllocator;
         if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue(options)) {
-            appendPhase(new LSStackSlotAllocator());
+            stackAllocator = new LSStackSlotAllocator();
         } else {
-            appendPhase(new SimpleStackSlotAllocator());
+            stackAllocator = new SimpleStackSlotAllocator();
+        }
+
+        if (RegAllocVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
+            // Wrap used register allocator with the verifier to check it's output
+            // based on the input with variables
+            var iterator = this.findPhase(RegisterAllocationPhase.class);
+            if (iterator != null) {
+                var allocator = (RegisterAllocationPhase) iterator.previous();
+                // If not found, then let later reg alloc check throw
+                iterator.set(new RegAllocVerifierPhase(allocator, stackAllocator));
+            }
+        } else {
+            appendPhase(stackAllocator);
         }
 
         if (Assertions.detailedAssertionsEnabled(options)) {
