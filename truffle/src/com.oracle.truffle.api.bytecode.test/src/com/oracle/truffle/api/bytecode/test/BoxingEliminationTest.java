@@ -1958,8 +1958,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testOrTwice() {
-        // return arg0 & arg1 & arg2
+    public void testOrTwoOperands() {
+        // return arg0 & arg1
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 
@@ -2006,7 +2006,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Consumer",
                         "return");
 
-        var quickenings = assertQuickenings(node, 12, 5);
+        var quickenings = assertQuickenings(node, 11, 5);
 
         assertStable(quickenings, node, false, true);
         assertStable(quickenings, node, true, false);
@@ -2017,7 +2017,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testOrSingle() {
-        // return arg0 & arg1 & arg2
+        // return Or(arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 
@@ -2064,8 +2064,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testAndReturnTwice() {
-        // return arg0 & arg1 & arg2
+    public void testAndReturnTwoOperands() {
+        // return arg0 & arg1
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 
@@ -2112,7 +2112,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Consumer",
                         "return");
 
-        var quickenings = assertQuickenings(node, 6, 4);
+        var quickenings = assertQuickenings(node, 4, 4);
 
         assertStable(quickenings, node, false, true);
         assertStable(quickenings, node, true, false);
@@ -2123,7 +2123,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testAndReturnSingle() {
-        // return arg0 & arg1 & arg2
+        // return And(arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 
@@ -2167,8 +2167,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testAndTwice() {
-        // return arg0 & arg1 & arg2
+    public void testAndTwoOperands() {
+        // return arg0 & arg1
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 
@@ -2215,7 +2215,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Consumer",
                         "return");
 
-        var quickenings = assertQuickenings(node, 12, 5);
+        var quickenings = assertQuickenings(node, 11, 5);
 
         assertStable(quickenings, node, false, true);
         assertStable(quickenings, node, true, false);
@@ -2226,7 +2226,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testAndSingle() {
-        // return arg0 & arg1 & arg2
+        // return And(arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
             b.beginRoot();
 

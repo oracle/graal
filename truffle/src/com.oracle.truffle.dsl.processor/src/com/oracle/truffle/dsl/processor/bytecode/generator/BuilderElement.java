@@ -2541,24 +2541,14 @@ final class BuilderElement extends AbstractElement {
             b.end(); // if block
 
             b.startElseBlock();
-            b.lineComment("Multi child -> boxing elimination not possible use short-circuit bci to disable it.");
-
-            String shortCircuitBci = "-1";
-            if (model.usesBoxingElimination()) {
-                shortCircuitBci = operationStack.read(operation, operationFields.shortCircuitBci);
-            }
-            b.statement("nextBci = ", shortCircuitBci);
+            // BE not supported for short-circuit ops with multiple children.
+            b.statement("nextBci = -1");
             b.end();
 
             emitCallAfterChild(b, operation, "true", "nextBci");
         } else if (model.enableTagInstrumentation && (operation.kind == OperationKind.YIELD || operation.kind == OperationKind.CUSTOM_YIELD)) {
-            /*
-             * We don't BE yields/tag.resume, but the BE machinery needs a valid bci. Use the
-             * tag.resume bci if it was emitted, otherwise use the yield bci. Note: a leader bci was
-             * already requested at state.bci in buildEmitOperationInstruction, so yieldBci is safe from rewrites.
-             */
-            String yieldBci = "state.bci - " + operation.instruction().getInstructionLength();
-            emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : " + yieldBci);
+            // We don't BE yields/tag.resume.
+            emitCallAfterChild(b, operation, "true", "-1");
         } else {
             String nextBci;
             if (operation.hasInstruction()) {
