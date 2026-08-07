@@ -78,6 +78,7 @@ import java.util.BitSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -158,6 +159,14 @@ public final class TruffleString extends AbstractTruffleString {
         TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
         if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
             string.toJavaStringUncached();
+        }
+        if (ImageInfo.inImageBuildtimeCode()) {
+            string.materializeUncached(encoding);
+            if (!string.isHashCodeCalculated()) {
+                HashCodeNode.calculateHashCodeUncached(string);
+            }
+            TStringInternalNodes.GetPreciseCodeRangeWithMaterializationNode.getUncached().execute(null, string, encoding);
+            TStringInternalNodes.GetCodePointLengthWithMaterializationNode.getUncached().execute(null, string, encoding);
         }
         return string;
     }
