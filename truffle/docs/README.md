@@ -52,6 +52,7 @@ It simplifies language implementation by automatically deriving high-performance
 We provide extensive [Truffle API documentation](http://graalvm.org/truffle/javadoc/).
 Start by looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which you should subclass to start developing a language.
 Truffle comes with the Graal Compiler and several language implementations as part of GraalVM.
+Because partial evaluation is central to how Truffle derives compiled code from interpreters, language implementers should also read [Writing Truffle Interpreters for Partial Evaluation](./PartialEvaluation.md).
 
 A good way to start implementing your language with Truffle is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
 SimpleLanguage is a relatively small language implementation, well-documented, and designed to demonstrate most of the Truffle features.
