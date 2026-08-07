@@ -39,7 +39,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -388,17 +387,13 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
 
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             a.registerReachabilityHandler(JDKInitializationFeature::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(JDKInitializationFeature::registerAndLinkZip, method(a, "java.util.zip.ZipUtils", "loadLibrary"));
+            a.registerReachabilityHandler(_ -> NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("zip"),
+                            method(a, "java.util.zip.ZipUtils", "loadLibrary"));
         }
     }
 
     private static void registerInflaterInitIDs(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
-    }
-
-    private static void registerAndLinkZip(@SuppressWarnings("unused") DuringAnalysisAccess a) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("zip");
-        NativeLibraries.singleton().addStaticJniLibrary("zip");
     }
 
     /**

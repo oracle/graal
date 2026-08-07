@@ -56,20 +56,18 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
-import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
-import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
+import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -110,7 +108,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false);
     }
 
-    private NativeLibraries nativeLibraries = null;
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private boolean isSunMSCAPIProviderReachable = false;
     private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
@@ -133,7 +130,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
         registerLibrary("java");
     }
 
@@ -193,13 +189,13 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    private void addLibrary(String libname) {
+    private static void addLibrary(String libname) {
         /*
          * If a library is in our list of static standard libraries, add the library to the linker
          * command.
          */
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
-            nativeLibraries.addStaticJniLibrary(libname);
+        if (NativeLibraries.singleton().isPotentialBuiltinJNILibrary(libname)) {
+            NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable(libname);
         }
     }
 
@@ -375,7 +371,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
             return false;
         }
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+        if (NativeLibraries.singleton().getJniStaticLibraries().contains(libname)) {
             return false;
         }
         if (shimExports.containsKey(libname)) {

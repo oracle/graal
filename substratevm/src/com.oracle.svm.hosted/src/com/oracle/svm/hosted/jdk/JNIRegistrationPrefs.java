@@ -31,13 +31,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -83,7 +81,8 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
             triggers.add(type(access, darwinSpecificClass));
         }
 
-        access.registerReachabilityHandler(JNIRegistrationPrefs::handlePreferencesClassReachable, triggers.toArray());
+        access.registerReachabilityHandler(JNIRegistrationPrefs::handlePreferencesClassReachable,
+                        triggers.toArray());
     }
 
     private static String getPlatformPreferencesClassName() {
@@ -97,11 +96,8 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
         throw VMError.shouldNotReachHere("Unexpected platform");
     }
 
-    private static void handlePreferencesClassReachable(@SuppressWarnings("unused") DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) access).getNativeLibraries();
-
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("prefs");
-        nativeLibraries.addStaticJniLibrary("prefs");
+    private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
+        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("prefs");
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             RuntimeJNIAccess.register(String[].class);

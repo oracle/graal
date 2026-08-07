@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -82,12 +83,15 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
+        NativeLibraries.singleton().initializePotentialBuiltinLibraries();
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        Predicate<String> hasOnLoadSymbol = library -> nativeLibraries.getStaticLibrarySymbols(library)
+                        .contains(JNILibraryInitializer.getOnLoadName(library, true));
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(NativeLibraries.singleton().getReachableBuiltinLibraryNames(), hasOnLoadSymbol);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
@@ -95,6 +99,8 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        NativeLibraries.singleton().linkReachableBuiltinLibraries();
+
         if (!ClassRegistries.respectClassLoader()) {
             return;
         }
@@ -131,7 +137,7 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibraries());
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);
