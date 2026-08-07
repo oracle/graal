@@ -754,6 +754,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     protected void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer, boolean includeThisType) {
+        if (wrapped instanceof BaseLayerType) {
+            /*
+             * An incomplete base-layer array already contains its persisted direct type hierarchy.
+             * Reconstructing array supertypes from its incomplete elemental type would require
+             * BaseLayerType.getArrayClass(), which is intentionally unsupported.
+             */
+            forAllSuperTypes(this, 0, includeThisType, superTypeConsumer);
+            return;
+        }
         forAllSuperTypes(elementalType, dimension, includeThisType, superTypeConsumer);
         for (int i = 0; i < dimension; i++) {
             forAllSuperTypes(this, i, false, superTypeConsumer);

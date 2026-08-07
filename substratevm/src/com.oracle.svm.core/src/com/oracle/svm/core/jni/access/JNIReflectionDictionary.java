@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jni.access;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReflection;
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
@@ -275,7 +275,7 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
-        if (throwMissingRegistrationErrors() && clazz == null) {
+        if (exactReflection() && clazz == null) {
             MissingJNIRegistrationUtils.reportClassAccess(name.toString());
         } else if (clazz != null && clazz.isNegative()) {
             return null;
@@ -407,12 +407,12 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleMethod checkMethod(JNIAccessibleMethod method, Class<?> clazz, CharSequence name, CharSequence signature) {
-        if (throwMissingRegistrationErrors() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
+        if (exactReflection() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
             /*
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
              */
-            MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
+            throw MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
         } else if (method != null && method.isNegative()) {
             return null;
         }
@@ -508,8 +508,8 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
-        if (throwMissingRegistrationErrors() && field == null) {
-            MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
+        if (exactReflection() && field == null) {
+            throw MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
         } else if (field != null && field.isNegative()) {
             return null;
         }

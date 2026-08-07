@@ -47,6 +47,8 @@ public interface ReflectionHostedSupport {
      */
     Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields();
 
+    boolean isLegacyFieldAccess(AnalysisField field);
+
     /**
      * Requests that {@link #getReflectionFields()} remains available after
      * {@link #afterRuntimeMetadataEncoding()}.

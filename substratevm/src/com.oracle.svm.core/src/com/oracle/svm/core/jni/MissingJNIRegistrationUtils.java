@@ -44,7 +44,7 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
         report(exception);
     }
 
-    public static void reportFieldAccess(Class<?> declaringClass, String fieldName) {
+    public static MissingJNIRegistrationError reportFieldAccess(Class<?> declaringClass, String fieldName) {
         var type = getConfigurationType(declaringClass);
         type.setJniAccessible();
         addField(type, fieldName);
@@ -52,9 +52,14 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
                         jniMessage("access field", declaringClass.getTypeName() + "." + fieldName, elementToJSON(type)),
                         Field.class, declaringClass, fieldName, null);
         report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
     }
 
-    public static void reportMethodAccess(Class<?> declaringClass, String methodName, String signature) {
+    public static MissingJNIRegistrationError reportMethodAccess(Class<?> declaringClass, String methodName, String signature) {
         ConfigurationType type = getConfigurationType(declaringClass);
         type.setJniAccessible();
         type.addMethod(methodName, signature, ConfigurationMemberInfo.ConfigurationMemberDeclaration.PRESENT);
@@ -63,6 +68,11 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
                         jniMessage("access method", declaringClass.getTypeName() + "." + methodName + signature, json),
                         Method.class, declaringClass, methodName, signature);
         report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
     }
 
     private static String jniMessage(String failedAction, String elementDescriptor, String json) {

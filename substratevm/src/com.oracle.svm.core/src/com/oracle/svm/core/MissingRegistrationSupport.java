@@ -28,22 +28,19 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class MissingRegistrationSupport {
-    private final OptionClassFilter classFilter;
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MissingRegistrationSupport(OptionClassFilter classFilter) {
-        this.classFilter = classFilter;
+    public MissingRegistrationSupport() {
     }
 
     @Fold
@@ -51,20 +48,16 @@ public class MissingRegistrationSupport {
         return ImageSingletons.lookup(MissingRegistrationSupport.class);
     }
 
-    public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
-        return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
+    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") StackTraceElement responsibleClass) {
+        return reportMissingRegistrationErrors();
     }
 
-    public boolean reportMissingRegistrationErrors(Class<?> clazz) {
-        return reportMissingRegistrationErrors(clazz.getModule().getName(), clazz.getPackageName(), clazz.getName());
+    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") Class<?> clazz) {
+        return reportMissingRegistrationErrors();
     }
 
-    private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
-        return classFilter.isIncluded(moduleName, packageName, className) != null;
-    }
-
-    private static String getPackageName(String className) {
-        int lastDot = className.lastIndexOf('.');
-        return (lastDot != -1) ? className.substring(0, lastDot) : "";
+    private static boolean reportMissingRegistrationErrors() {
+        /* Hosted plugins must retain the metadata needed by either runtime mode. */
+        return SubstrateUtil.HOSTED || MissingRegistrationUtils.exactReflection();
     }
 }

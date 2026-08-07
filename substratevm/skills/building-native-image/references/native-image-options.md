@@ -51,9 +51,9 @@ native-image -J<flag> <class>
 native-image --exact-reachability-metadata <class>
 ```
 
-**If you want to scope exact metadata handling to specific classpath entries:**
+**If you want to select exact metadata handling when starting the executable:**
 ```bash
-native-image --exact-reachability-metadata-path=<path> <class>
+./application -XX:+ExactReachabilityMetadata
 ```
 
 ## Output and binary type

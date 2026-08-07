@@ -48,6 +48,7 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -262,6 +263,7 @@ public class FutureDefaultsOptions {
     /**
      * @see FutureDefaultsOptions#FutureDefaults
      */
+    @Fold
     public static boolean exactReflection() {
         return getFutureDefaults().contains(EXACT_REFLECTION);
     }

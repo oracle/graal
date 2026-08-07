@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.ThrowMissingRegistrationErrors;
-
 import java.io.IOException;
 import java.io.Serial;
 import java.io.StringWriter;
@@ -58,8 +56,12 @@ import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MissingRegistrationUtils {
 
-    public static boolean throwMissingRegistrationErrors() {
-        return ThrowMissingRegistrationErrors.hasBeenSet();
+    public static boolean exactReflection() {
+        return FutureDefaultsOptions.exactReflection() || exactReachabilityMetadata();
+    }
+
+    public static boolean exactReachabilityMetadata() {
+        return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadata.getValue();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {
