@@ -2382,7 +2382,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * Prerequisite: at least one true end and at least one false end, and either exactly one true
      * end or exactly one false end or both.
      *
-     * Simple case: Exactly one true and and one false end in the merge and both ends need to lead
+     * Simple case: Exactly one true and one false end in the merge and both ends need to lead
      * to a common predecessor if without merges in between.
      *
      * More general case: there can be merges/ifs in one of the two branches, in which case we would

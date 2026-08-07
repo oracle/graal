@@ -344,7 +344,7 @@ public class BuiltinsTutorial {
 
         /**
          * When the Bytecode DSL interpreter transitions from uncached to cached we call this
-         * supplier to create the the cached node. This, by default, happens after 16 calls or loop
+         * supplier to create the cached node. This, by default, happens after 16 calls or loop
          * iterations (controlled by {@link BytecodeNode#setUncachedThreshold}).
          */
         BuiltinNode createNode() {

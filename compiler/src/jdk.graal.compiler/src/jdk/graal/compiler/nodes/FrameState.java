@@ -723,7 +723,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
                 /*
                  * The virtual object may be mapped to another virtual object. If this is the case,
-                 * we must ensure that that one is mapped too.
+                 * we must ensure that one is mapped too.
                  */
                 MaterializedObjectState materializedObjectState = (MaterializedObjectState) pushedEscapeObjectState;
                 if (materializedObjectState.materializedValue() instanceof VirtualObjectNode) {

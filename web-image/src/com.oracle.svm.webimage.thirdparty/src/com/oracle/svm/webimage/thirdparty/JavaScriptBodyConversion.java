@@ -172,7 +172,7 @@ public class JavaScriptBodyConversion {
     /**
      * Longs are represented differently and have to be converted manually.
      *
-     * This function loses precision if the the input number cannot be represented as a JS number.
+     * This function loses precision if the input number cannot be represented as a JS number.
      */
     @JSRawCall
     @JS("return Long64.toNumber(l);")

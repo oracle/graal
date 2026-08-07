@@ -112,7 +112,7 @@ public final class CPUSamplerData {
     }
 
     /**
-     * The sample bias is a measurement of of how much time passed between requesting a stack sample
+     * The sample bias is a measurement of how much time passed between requesting a stack sample
      * and starting the stack traversal. This method provies a summary of said times during the
      * profiling run.
      *

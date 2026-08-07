@@ -591,7 +591,7 @@ public final class NativeImageClassLoaderSupport {
 
     private static void adjustBootLayerQualifiedExports(ModuleLayer layer) {
         /*
-         * For all qualified exports packages of modules in the the boot layer we check if layer
+         * For all qualified exports packages of modules in the boot layer we check if layer
          * contains modules that satisfy such qualified exports. If we find a match we perform a
          * addExports.
          */

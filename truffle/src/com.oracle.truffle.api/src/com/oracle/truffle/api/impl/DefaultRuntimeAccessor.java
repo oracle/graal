@@ -265,12 +265,12 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord) {
-            throw new UnsupportedOperationException("Persisting an engine is not supported with the the Truffle fallback runtime. It is only supported on native-image hosts.");
+            throw new UnsupportedOperationException("Persisting an engine is not supported with the Truffle fallback runtime. It is only supported on native-image hosts.");
         }
 
         @Override
         public ByteBuffer persistCache(Object runtimeData, Engine.CancellationCallback callback) {
-            throw new UnsupportedOperationException("Persisting an engine is not supported with the the Truffle fallback runtime. It is only supported on native-image hosts.");
+            throw new UnsupportedOperationException("Persisting an engine is not supported with the Truffle fallback runtime. It is only supported on native-image hosts.");
         }
 
         @Override

@@ -208,7 +208,7 @@ public final class AArch64Kyber12To16Op extends AArch64LIRInstruction {
         // twice, one copy manipulated to provide the lower 4 bits
         // belonging to the first short in a pair and another copy
         // manipulated to provide the higher 4 bits belonging to the
-        // second short in a pair. This is why the the vector sequences va
+        // second short in a pair. This is why the vector sequences va
         // and vb used to hold the expanded 8H elements are of length 8.
 
         // Expand vin[0] into va[0:1], and vin[1] into va[2:3] and va[4:5]

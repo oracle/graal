@@ -58,7 +58,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in an execution
- * {@link Context context}. Each source is associated with the the ID of the language.
+ * {@link Context context}. Each source is associated with the ID of the language.
  *
  * <h3>From a file on disk</h3>
  *

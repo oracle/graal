@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -269,7 +269,7 @@ public final class TestCaseCollector {
             @Override
             public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
                 if (path.toString().endsWith(".exclude")) {
-                    // add all entries in the exclude file the the map
+                    // add all entries in the exclude file the map
                     String excludeFile = Paths.get(TestOptions.CONFIG_ROOT).relativize(path).toString();
                     readAllLines(path).forEach(excludeTest -> {
                         String oldReason = excludeTestToFile.get(excludeTest);

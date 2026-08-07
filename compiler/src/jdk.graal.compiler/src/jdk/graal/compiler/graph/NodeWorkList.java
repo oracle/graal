@@ -79,7 +79,7 @@ public abstract class NodeWorkList implements Iterable<Node> {
      * </p>
      *
      * Nodes are only re-added to the worklist if they are not already enqueued for a future visit.
-     * Therefore calling {@link #add} with a node ensures that that node will be visited in the
+     * Therefore calling {@link #add} with a node ensures that node will be visited in the
      * future, but the total number of visits may be less than the number of {@link #add} calls.
      * </p>
      *

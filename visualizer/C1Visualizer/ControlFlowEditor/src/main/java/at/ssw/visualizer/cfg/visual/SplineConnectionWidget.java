@@ -54,7 +54,7 @@ import org.netbeans.api.visual.widget.Widget;
  *  curve the, inner bezier points are calculated automatically with FMILL 
  *  tangents and a chord parametrization, this interpolant is also known as
  *  cutmull-rom spline. The resulting spline fullfills c^1 continuity.
- *  The the end points the interpolation algorithm uses the bessel end condition.
+ *  The end points the interpolation algorithm uses the Bessel end condition.
  */
 
 public class SplineConnectionWidget extends ConnectionWidget {     

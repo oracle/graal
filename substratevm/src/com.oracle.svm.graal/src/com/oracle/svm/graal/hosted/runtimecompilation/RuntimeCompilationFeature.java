@@ -1236,7 +1236,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 return true;
             }
             assert callerMethodVariantKey == ORIGINAL_METHOD;
-            /* An original method can can be returned to from all three. */
+            /* An original method can be returned to from all three. */
             return true;
         }
 

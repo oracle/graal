@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -157,7 +157,7 @@ public abstract class ClangLikeBase extends Driver {
 
     private void unsupportedFlagExit(String flag) {
         System.err.println("Using `" + flag + "` is not supported.");
-        System.err.println("Try calling the the wrapped tool directly: " + exe);
+        System.err.println("Try calling the wrapped tool directly: " + exe);
         System.exit(1);
     }
 

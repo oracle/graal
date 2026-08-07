@@ -1092,7 +1092,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * entries where needed. If they are incompatible, then all incoming virtual objects will be
          * materialized, and a PhiNode for the materialized values will be created. Object states
          * can be incompatible if they contain {@code long} or {@code double} values occupying two
-         * {@code int} slots in such a way that that their values cannot be merged using PhiNodes.
+         * {@code int} slots in such a way that their values cannot be merged using PhiNodes.
          * The states may also be incompatible if they contain escaped large writes to byte arrays
          * in such a way that they cannot be merged using PhiNodes.
          *

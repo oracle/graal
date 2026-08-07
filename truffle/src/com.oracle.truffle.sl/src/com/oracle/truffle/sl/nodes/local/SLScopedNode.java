@@ -79,7 +79,7 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 public abstract class SLScopedNode extends Node {
 
     /**
-     * Index to the the {@link SLBlockNode#getDeclaredLocalVariables() block's variables} that
+     * Index to the {@link SLBlockNode#getDeclaredLocalVariables() block's variables} that
      * determine variables belonging into this scope (excluding parent scopes) on node enter. The
      * scope variables are in the interval &lt;0, visibleVariablesIndexOnEnter).
      */
@@ -182,7 +182,7 @@ public abstract class SLScopedNode extends Node {
     }
 
     /**
-     * Set the index to the the {@link SLBlockNode#getDeclaredLocalVariables() block's variables}
+     * Set the index to the {@link SLBlockNode#getDeclaredLocalVariables() block's variables}
      * that determine variables belonging into this scope (excluding parent scopes) on node enter.
      */
     public final void setVisibleVariablesIndexOnEnter(int index) {

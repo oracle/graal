@@ -114,7 +114,7 @@ public final class Interop {
      *
      * Foreign objects for which this method returns <code>true</code>, can be
      * {@link Polyglot#cast(Class, Object) polyglot-casted} as {@link String}; in this particular
-     * case the the conversion is eager and does not preserves identity.
+     * case the conversion is eager and does not preserve identity.
      *
      * @see #asString(Object)
      * @since 21.0

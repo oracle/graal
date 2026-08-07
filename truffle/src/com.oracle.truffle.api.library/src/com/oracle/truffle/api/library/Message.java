@@ -139,7 +139,7 @@ public abstract class Message {
     /**
      * Returns a qualified and unique name of this message. The qualified name is specified as
      * <code>getLibraryName() + "." + getSimpleName()</code>. The returned name is
-     * {@link String#intern() interned} can can safely be compared by identity. The returned name is
+     * {@link String#intern() interned} can safely be compared by identity. The returned name is
      * never <code>null</code>.
      *
      * @see #getSimpleName()
@@ -157,7 +157,7 @@ public abstract class Message {
     /**
      * Returns the simple name of this message. The simple name is unique per library and equals the
      * method name of the method in the library specification class. The returned name is
-     * {@link String#intern() interned} can can safely be compared by identity. The returned name is
+     * {@link String#intern() interned} can safely be compared by identity. The returned name is
      * never <code>null</code>.
      *
      * @since 19.0

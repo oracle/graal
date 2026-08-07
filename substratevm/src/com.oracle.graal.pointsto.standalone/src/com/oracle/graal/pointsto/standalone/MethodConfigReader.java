@@ -163,7 +163,7 @@ public class MethodConfigReader {
             dotAfterClassNamePos = method.lastIndexOf('.', pos);
         }
         if (dotAfterClassNamePos == -1) {
-            AnalysisError.shouldNotReachHere("The the given method's name " + method + " doesn't contain the declaring class name.");
+            AnalysisError.shouldNotReachHere("The given method's name " + method + " doesn't contain the declaring class name.");
         }
         String className = method.substring(0, dotAfterClassNamePos);
         ResolvedJavaType t = classLoaderAccess.forName(className);

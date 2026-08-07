@@ -261,7 +261,7 @@ public class InstructionNodeWidget extends Widget{
 
 
     /**
-     * This method handles the the Data that is shown within the widget. This
+     * This method handles the Data that is shown within the widget. This
      * data depends on the Attibutes of the Widget.
      */
     private void setWidgetData(){

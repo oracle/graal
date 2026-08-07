@@ -502,7 +502,7 @@ public class TruffleFeature implements InternalFeature {
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
          * property option parsing to initialize the profilingEnabled flag correctly. A polyglot
-         * fallback engine can not stay in the the image though, so we clear it right after. We
+         * fallback engine can not stay in the image though, so we clear it right after. We
          * don't expect it to be used except for profiling enabled check.
          */
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());

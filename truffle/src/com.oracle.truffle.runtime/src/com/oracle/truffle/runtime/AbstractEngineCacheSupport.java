@@ -62,7 +62,7 @@ import java.util.function.Function;
 public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
 
     protected static final String COMPILE_HELP = ""//
-                    + "Policy to use to to force compilation for executed call targets before persisting the engine. "//
+                    + "Policy to use to force compilation for executed call targets before persisting the engine. "//
                     + "Possible values are:%n"//
                     + "  - 'none':     No compilations will be persisted and existing compilations will be invalidated.%n"//
                     + "  - 'compiled': No compilations will be forced but finished compilations will be persisted.%n"//

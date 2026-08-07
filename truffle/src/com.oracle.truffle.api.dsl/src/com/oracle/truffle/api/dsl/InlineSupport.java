@@ -145,7 +145,7 @@ public final class InlineSupport {
         int bits() default 0;
 
         /**
-         * 90 Specifies the the value type for {@link ReferenceField reference} required fields.
+         * 90 Specifies the value type for {@link ReferenceField reference} required fields.
          * This property only has an effect for {@link ReferenceField}.
          *
          * @since 23.0

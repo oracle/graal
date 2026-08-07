@@ -968,7 +968,7 @@ public class DuplicationUtil {
 
             /*
              * Build the set of nodes that have (transitive) usages within the duplicatedNodes. This
-             * is achieved by iterating all nodes that are reachable via inputs from the the fixed
+             * is achieved by iterating all nodes that are reachable via inputs from the fixed
              * nodes.
              */
             final Collection<FixedNode> fixedNodes = region.getFixedNodes();

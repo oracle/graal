@@ -2066,7 +2066,7 @@ public final class Context implements AutoCloseable {
          * Sets a host class loader. If set the given {@code classLoader} is used to load host
          * classes and it's also set as a {@link Thread#setContextClassLoader(java.lang.ClassLoader)
          * context ClassLoader} during code execution. Otherwise the ClassLoader that was captured
-         * when the context was {@link #build() built} is used to to load host classes and the
+         * when the context was {@link #build() built} is used to load host classes and the
          * {@link Thread#setContextClassLoader(java.lang.ClassLoader) context ClassLoader} is not
          * set during code execution. Setting the hostClassLoader has a negative effect on enter and
          * leave performance.

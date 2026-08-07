@@ -126,7 +126,7 @@ public class JfrFeature implements InternalFeature {
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
                 LogUtils.warning("When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
-                                "This can affect the measurements because it can can make the image larger and image build time longer.");
+                                "This can affect the measurements because it can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
         }

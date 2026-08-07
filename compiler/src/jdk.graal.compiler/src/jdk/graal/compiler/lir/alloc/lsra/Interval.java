@@ -193,7 +193,7 @@ public final class Interval {
 
     /**
      * Constants denoting the register usage priority for an interval. The constants are declared in
-     * increasing order of priority are are used to optimize spilling when multiple overlapping
+     * increasing order of priority are used to optimize spilling when multiple overlapping
      * intervals compete for limited registers.
      */
     public enum RegisterPriority {

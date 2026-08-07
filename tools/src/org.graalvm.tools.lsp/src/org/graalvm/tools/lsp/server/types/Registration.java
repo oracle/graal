@@ -28,7 +28,7 @@ import org.graalvm.shadowed.org.json.JSONObject;
 import java.util.Objects;
 
 /**
- * General parameters to to register for an notification or to register a provider.
+ * General parameters to register for an notification or to register a provider.
  */
 public class Registration extends JSONBase {
 

@@ -188,7 +188,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     /**
      * Print the coverage results for each source.
      *
-     * The printing is one the the {@link Env#out output stream} specified by the {@link Env
+     * The printing is one the {@link Env#out output stream} specified by the {@link Env
      * enviroment}.
      *
      * @param env

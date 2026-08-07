@@ -79,7 +79,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
- * source is associated with the the ID of the language.
+ * source is associated with the ID of the language.
  *
  * <h3>From a file on disk</h3>
  *
@@ -1574,7 +1574,7 @@ public abstract class Source {
          * {@code false}, then {@link Source#getPath()} will be the same as the passed TruffleFile
          * {@link TruffleFile#getPath()}.
          *
-         * @param canonicalize whether to canonicalize the path from the the TruffleFile
+         * @param canonicalize whether to canonicalize the path from the TruffleFile
          * @return the instance of this builder
          * @since 20.2
          */
