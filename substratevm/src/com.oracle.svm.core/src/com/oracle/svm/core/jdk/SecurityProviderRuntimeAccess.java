@@ -101,6 +101,18 @@ public final class SecurityProviderRuntimeAccess {
         return provider;
     }
 
+    /** §FS-security-providers.6.1: Successful service selection traces its provider and SPI. */
+    public static void traceServiceSelection(Provider.Service service, Class<?> serviceClass) {
+        if (MetadataTracer.enabled()) {
+            Provider provider = service.getProvider();
+            MetadataTracer tracer = MetadataTracer.singleton();
+            tracer.traceReflectionType(provider.getClass());
+            if (serviceClass != null) {
+                tracer.traceReflectionType(serviceClass);
+            }
+        }
+    }
+
     /** §FS-security-providers.6.1: JDK-managed provider lookups retain construction. */
     public static Provider traceJdkProviderLookup(Provider provider) {
         if (provider != null && MetadataTracer.enabled()) {
