@@ -60,6 +60,10 @@ public class IntegerNegExactOverflowNode extends LogicNode implements Simplifiab
         this.value = value;
     }
 
+    public ValueNode getValue() {
+        return value;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
