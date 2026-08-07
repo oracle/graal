@@ -204,7 +204,7 @@ final class Target_sun_security_jca_ProviderList {
     public Provider getProvider(String name) {
         int index = getIndex(name);
         if (index >= 0) {
-            return SecurityProviderRuntimeAccess.traceLookup(getProvider(index));
+            return SecurityProviderRuntimeAccess.traceJdkProviderLookup(getProvider(index));
         }
         for (Target_sun_security_jca_ProviderConfig config : configs) {
             String configuredProviderName = config.provName;
@@ -213,7 +213,7 @@ final class Target_sun_security_jca_ProviderList {
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
                 Provider provider = SecurityProviderRuntimeAccess.loadUnregisteredConfiguredProvider(config::getProvider);
-                return SecurityProviderRuntimeAccess.traceLookup(provider);
+                return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
             }
         }
         return null;
