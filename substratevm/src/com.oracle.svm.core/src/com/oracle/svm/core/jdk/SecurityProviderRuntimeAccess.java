@@ -27,9 +27,11 @@ package com.oracle.svm.core.jdk;
 import java.security.Provider;
 import java.util.function.Supplier;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.security.SecurityProviderCatalog;
 
 public final class SecurityProviderRuntimeAccess {
     private static final ThreadLocal<Boolean> LOAD_UNREGISTERED_CONFIGURED_PROVIDER = new ThreadLocal<>();
@@ -99,11 +101,24 @@ public final class SecurityProviderRuntimeAccess {
         return provider;
     }
 
-    /** §FS-security-providers.6.1: Enumeration traces every provider returned by the JDK. */
-    public static Provider[] traceLookups(Provider[] providers) {
+    /** §FS-security-providers.6.1: JDK-managed provider lookups retain construction. */
+    public static Provider traceJdkProviderLookup(Provider provider) {
+        if (provider != null && MetadataTracer.enabled()) {
+            Class<? extends Provider> providerClass = provider.getClass();
+            MetadataTracer tracer = MetadataTracer.singleton();
+            tracer.traceReflectionType(providerClass);
+            if (SecurityProviderCatalog.isDirectlyConstructible(providerClass.getName())) {
+                tracer.traceMethodAccess(providerClass, "<init>", "()", ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            }
+        }
+        return provider;
+    }
+
+    /** §FS-security-providers.6.1: Enumeration traces every JDK-managed provider returned. */
+    public static Provider[] traceJdkProviderLookups(Provider[] providers) {
         if (providers != null && MetadataTracer.enabled()) {
             for (Provider provider : providers) {
-                traceLookup(provider);
+                traceJdkProviderLookup(provider);
             }
         }
         return providers;
