@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,15 @@ public class AMD64LibCHelper {
     @Platforms(Platform.AMD64.class)
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
+
+    /**
+     * Returns {@code 1} if the runtime CPU supports the AVX-512 SIMD sort implementation and
+     * {@code 0} otherwise. In particular, AVX-512 SIMD sort is disabled on AMD Zen 4 processors
+     * because it has a severe performance penalty there.
+     */
+    @Platforms(Platform.AMD64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int supportsAvx512SimdSort();
 
     @Platforms(Platform.AMD64.class)
     @CFunction(transition = Transition.NO_TRANSITION)

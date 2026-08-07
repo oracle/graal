@@ -51,6 +51,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -81,6 +82,8 @@ import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.SimdSortSupport;
+import com.oracle.svm.core.jdk.SimdSortSupport.Variant;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -118,6 +121,7 @@ import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
@@ -133,11 +137,13 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.TypeSymbol;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
@@ -213,6 +219,7 @@ public class SubstrateGraphBuilderPlugins {
         registerSizeOfPlugins(plugins);
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
+        registerDualPivotQuicksortPlugins(plugins, parsingReason);
         if (supportsStubBasedPlugins) {
             registerAESPlugins(plugins);
             registerArraysSupportPlugins(plugins);
@@ -1315,6 +1322,79 @@ public class SubstrateGraphBuilderPlugins {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport");
         r.register(new StandardGraphBuilderPlugins.VectorizedMismatchInvocationPlugin());
         r.register(new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin());
+    }
+
+    private static void registerDualPivotQuicksortPlugins(InvocationPlugins plugins, ParsingReason parsingReason) {
+        if (parsingReason != ParsingReason.PointsToAnalysis && parsingReason != ParsingReason.AOTCompilation) {
+            return;
+        }
+        Variant variant = SimdSortSupport.getSupportedVariant();
+        if (variant == Variant.NONE) {
+            return;
+        }
+
+        GuestAccess guestAccess = GuestAccess.get();
+        ResolvedJavaType simdSortSupport = guestAccess.lookupType(SimdSortSupport.class);
+        ResolvedJavaMethod sortWrapper = guestAccess.lookupMethod(simdSortSupport, variant.sortWrapperName(), Object.class, int.class, int.class, int.class, Object.class);
+        ResolvedJavaMethod partitionWrapper = guestAccess.lookupMethod(simdSortSupport, variant.partitionWrapperName(), Object.class, int.class, int.class, int.class, int.class, int.class,
+                        Object.class);
+
+        Registration r = new Registration(plugins, "java.util.DualPivotQuicksort");
+        r.register(new OptionalInvocationPlugin("sort", Class.class, Object.class, long.class, int.class, int.class,
+                        new TypeSymbol("java.util.DualPivotQuicksort$SortOperation")) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elementType, ValueNode array,
+                            ValueNode offset, ValueNode low, ValueNode high, ValueNode sortOperation) {
+                JavaKind elementKind = getSimdSortElementKind(b, variant, elementType, offset);
+                if (elementKind == null) {
+                    return false;
+                }
+                ValueNode arrayNonNull = b.nullCheckedValue(array);
+                ValueNode jvmType = b.add(ConstantNode.forInt(SimdSortSupport.toJVMType(elementKind)));
+                ResolvedJavaMethod wrapper = lookupInCurrentUniverse(b.getMetaAccess(), sortWrapper);
+                b.handleReplacedInvoke(InvokeKind.Static, wrapper, new ValueNode[]{arrayNonNull, jvmType, low, high, sortOperation}, false);
+                return true;
+            }
+        });
+        r.register(new OptionalInvocationPlugin("partition", Class.class, Object.class, long.class, int.class, int.class, int.class, int.class,
+                        new TypeSymbol("java.util.DualPivotQuicksort$PartitionOperation")) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elementType, ValueNode array,
+                            ValueNode offset, ValueNode low, ValueNode high, ValueNode pivotIndex1, ValueNode pivotIndex2, ValueNode partitionOperation) {
+                JavaKind elementKind = getSimdSortElementKind(b, variant, elementType, offset);
+                if (elementKind == null) {
+                    return false;
+                }
+                ValueNode arrayNonNull = b.nullCheckedValue(array);
+                ValueNode jvmType = b.add(ConstantNode.forInt(SimdSortSupport.toJVMType(elementKind)));
+                ResolvedJavaMethod wrapper = lookupInCurrentUniverse(b.getMetaAccess(), partitionWrapper);
+                b.handleReplacedInvoke(InvokeKind.Static, wrapper, new ValueNode[]{arrayNonNull, jvmType, low, high, pivotIndex1, pivotIndex2, partitionOperation}, false);
+                return true;
+            }
+        });
+    }
+
+    private static ResolvedJavaMethod lookupInCurrentUniverse(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
+        if (metaAccess instanceof UniverseMetaAccess universeMetaAccess) {
+            ResolvedJavaMethod wrappedMethod = lookupInCurrentUniverse(universeMetaAccess.getWrapped(), method);
+            return universeMetaAccess.getUniverse().lookup(wrappedMethod);
+        }
+        return method;
+    }
+
+    private static JavaKind getSimdSortElementKind(GraphBuilderContext b, Variant variant, ValueNode elementType, ValueNode offset) {
+        if (!elementType.isConstant()) {
+            return null;
+        }
+        JavaKind elementKind = SimdSortSupport.getSupportedJavaKind(variant, b.getConstantReflection().asJavaType(elementType.asJavaConstant()));
+        if (elementKind == null) {
+            return null;
+        }
+        if (!offset.isJavaConstant() || offset.asJavaConstant().asLong() != ObjectLayout.singleton().getArrayBaseOffset(elementKind)) {
+            /* The native routines expect indices relative to the first array element. */
+            return null;
+        }
+        return elementKind;
     }
 
     private static void registerPoly1305Plugin(InvocationPlugins plugins) {
