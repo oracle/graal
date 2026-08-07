@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -66,6 +67,26 @@ final class Target_java_security_Security_ProviderEnumeration {
     @Substitute
     public static Provider[] getProviders() {
         return SecurityProviderRuntimeAccess.traceJdkProviderLookups(sun.security.jca.Providers.getFullProviderList().toArray());
+    }
+}
+
+@TargetClass(className = "sun.security.jca.GetInstance")
+final class Target_sun_security_jca_GetInstance_Tracing {
+    /**
+     * §FS-security-providers.6.1: The JDK may cache the SPI class before native metadata tracing
+     * starts. Trace it and the selected provider after successful service construction so the
+     * collected metadata remains replayable for application-supplied providers.
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/sun/security/jca/GetInstance.java#L243-L253")
+    public static void checkSuperClass(Provider.Service service, Class<?> subClass, Class<?> superClass) throws NoSuchAlgorithmException {
+        if (superClass != null && !superClass.isAssignableFrom(subClass)) {
+            // Checkstyle: allow inconsistent exceptions and errors (JDK-compatible message)
+            throw new NoSuchAlgorithmException("class configured for " + service.getType() + ": " +
+                            service.getClassName() + " not a " + service.getType());
+            // Checkstyle: disallow inconsistent exceptions and errors
+        }
+        SecurityProviderRuntimeAccess.traceServiceSelection(service, superClass);
     }
 }
 
