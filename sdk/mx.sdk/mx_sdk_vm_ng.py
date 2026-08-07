@@ -384,11 +384,11 @@ class LanguageLibraryProject(NativeImageLibraryProject):
 
         # Monitoring flags
         if get_bootstrap_graalvm_version() >= mx.VersionSpec("24.0"):
-            monitoring_features = ['heapdump', 'jfr', 'threaddump'] if mx.is_windows() else [
-                'jvmstat', 'heapdump', 'jfr', 'threaddump'
-            ]
+            monitoring_features = ['jvmstat', 'heapdump', 'jfr', 'threaddump']
         else:
-            monitoring_features = ['heapdump', 'jfr'] if mx.is_windows() else ['jvmstat', 'heapdump', 'jfr']
+            monitoring_features = ['jvmstat', 'heapdump', 'jfr']
+        if mx.is_windows():
+            monitoring_features.remove('jvmstat')
         build_args += ['--enable-monitoring=' + ','.join(monitoring_features)]
         if get_bootstrap_graalvm_version() < mx.VersionSpec("24.0"):
             build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal'])

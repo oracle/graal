@@ -1329,9 +1329,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 ]
 
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
-                monitoring_features = ['heapdump', 'jfr', 'threaddump'] if mx.is_windows() else [
-                    'jvmstat', 'heapdump', 'jfr', 'threaddump'
-                ]
+                monitoring_features = ['jvmstat', 'heapdump', 'jfr', 'threaddump']
+                if mx.is_windows():
+                    monitoring_features.remove('jvmstat')
                 build_args += [
                     '-R:+EnableSignalHandling',
                     '-R:+InstallSegfaultHandler',
