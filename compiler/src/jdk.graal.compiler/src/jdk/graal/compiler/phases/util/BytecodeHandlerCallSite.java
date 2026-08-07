@@ -59,6 +59,20 @@ public final class BytecodeHandlerCallSite {
     private final BytecodeHandlerConfig handlerConfig;
 
     public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
+        this(enclosingMethod, bci, targetMethod, false);
+    }
+
+    /**
+     * Creates metadata for a handler call site.
+     *
+     * @param enclosingMethod the interpreter method containing the handler invocation
+     * @param bci bytecode index of the invocation in {@code enclosingMethod}
+     * @param targetMethod the invoked bytecode handler method
+     * @param templateModeEnabled whether {@code templateVariable} fields are modeled as template
+     *            state instead of ordinary stub ABI arguments
+     */
+    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod,
+                    boolean templateModeEnabled) {
         this.enclosingMethod = enclosingMethod;
         this.bci = bci;
 
@@ -66,11 +80,11 @@ public final class BytecodeHandlerCallSite {
                         "Target method %s is not annotated by @BytecodeInterpreterHandler", targetMethod.format("%H.%n(%p)"));
         this.targetMethod = targetMethod;
 
-        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod);
+        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled);
     }
 
-    public List<ResolvedJavaType> getArgumentTypes() {
-        return handlerConfig.getArgumentTypes();
+    public List<ResolvedJavaType> getStubAbiArgumentTypes() {
+        return handlerConfig.getStubAbiArgumentTypes();
     }
 
     public ResolvedJavaType getReturnType() {
@@ -93,8 +107,8 @@ public final class BytecodeHandlerCallSite {
         return handlerConfig;
     }
 
-    public List<ArgumentInfo> getArgumentInfos() {
-        return handlerConfig.getArgumentInfos();
+    public List<ArgumentInfo> getStubAbiArgumentInfos() {
+        return handlerConfig.getStubAbiArgumentInfos();
     }
 
     public String getStubName() {
@@ -106,10 +120,10 @@ public final class BytecodeHandlerCallSite {
      * loads from their Java owner objects; non-expanded arguments are forwarded unchanged.
      */
     public ValueNode[] createCallerArguments(ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
-        List<ArgumentInfo> argumentInfos = handlerConfig.getArgumentInfos();
+        List<ArgumentInfo> stubAbiArgumentInfos = handlerConfig.getStubAbiArgumentInfos();
         List<ValueNode> newArguments = new ArrayList<>();
         StructuredGraph graph = insertBefore.graph();
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             if (argumentInfo.isExpanded()) {
                 ValueNode owner = oldArguments[argumentInfo.originalIndex()];
                 LoadFieldNode load = LoadFieldNode.create(graph.getAssumptions(), owner, fieldMap.apply(argumentInfo.field()));
@@ -120,7 +134,9 @@ public final class BytecodeHandlerCallSite {
             }
             if (argumentInfo.nonNull() && !argumentInfo.type().isPrimitive()) {
                 LogicNode isNull = graph.addOrUnique(IsNullNode.create(newArguments.getLast()));
-                graph.addBeforeFixed(insertBefore, graph.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true)));
+                FixedGuardNode nullCheck = new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException,
+                                DeoptimizationAction.InvalidateReprofile, true);
+                graph.addBeforeFixed(insertBefore, graph.add(nullCheck));
             }
         }
         return newArguments.toArray(ValueNode.EMPTY_ARRAY);
@@ -130,13 +146,15 @@ public final class BytecodeHandlerCallSite {
      * Writes mutable expanded argument values returned by the stub's multi-return payload back into
      * their Java owner objects on the normal return path.
      */
-    public void updateCallerReturns(FixedNode newInvoke, ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
+    public void updateCallerReturns(FixedNode newInvoke, ValueNode[] oldArguments, FixedNode insertBefore,
+                    Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
         StructuredGraph graph = insertBefore.graph();
-        List<ArgumentInfo> argumentInfos = handlerConfig.getArgumentInfos();
+        List<ArgumentInfo> stubAbiArgumentInfos = handlerConfig.getStubAbiArgumentInfos();
 
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             if (argumentInfo.isExpanded() && !argumentInfo.isImmutable()) {
-                ReadArgumentNode fetchReturn = graph.unique(new ReadArgumentNode(newInvoke, argumentInfo.type().getJavaKind(), argumentInfo.index()));
+                ReadArgumentNode fetchReturn = graph.unique(new ReadArgumentNode(newInvoke,
+                                argumentInfo.type().getJavaKind(), argumentInfo.index()));
                 ValueNode owner = oldArguments[argumentInfo.originalIndex()];
                 StoreFieldNode writeback = new StoreFieldNode(owner, fieldMap.apply(argumentInfo.field()), fetchReturn);
                 graph.addBeforeFixed(insertBefore, graph.add(writeback));

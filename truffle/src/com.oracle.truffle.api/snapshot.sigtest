@@ -187,6 +187,7 @@ intf java.lang.annotation.Annotation
 meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
 meth public abstract int maximumOperationCode()
 meth public abstract !hasdefault boolean secondarySwitch()
+meth public abstract !hasdefault int[] templateCompatibleOpcodes()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
  outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
@@ -216,6 +217,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean nonNull()
 meth public abstract java.lang.String name()
+meth public abstract !hasdefault int templateVariable()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
  outer com.oracle.truffle.api.HostCompilerDirectives
@@ -1892,4 +1894,3 @@ meth public !varargs static org.graalvm.options.OptionDescriptors createUnion(or
 meth public abstract java.util.Iterator<org.graalvm.options.OptionDescriptor> iterator()
 meth public abstract org.graalvm.options.OptionDescriptor get(java.lang.String)
 meth public static org.graalvm.options.OptionDescriptors create(java.util.List<org.graalvm.options.OptionDescriptor>)
-

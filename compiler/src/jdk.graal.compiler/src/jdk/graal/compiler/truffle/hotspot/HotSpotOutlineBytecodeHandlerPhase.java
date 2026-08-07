@@ -97,7 +97,7 @@ public class HotSpotOutlineBytecodeHandlerPhase extends OutlineBytecodeHandlerPh
     protected FixedNode replaceInvoke(HighTierContext context, BytecodeHandlerCallSite callsite, Invoke invoke, ValueNode[] arguments) {
         StructuredGraph graph = invoke.asNode().graph();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) context.getForeignCalls();
-        ForeignCallSignature foreignCallSignature = new ForeignCallSignature(callsite.getStubName(), toJavaClass(callsite.getReturnType()), toJavaClasses(callsite.getArgumentTypes()));
+        ForeignCallSignature foreignCallSignature = new ForeignCallSignature(callsite.getStubName(), toJavaClass(callsite.getReturnType()), toJavaClasses(callsite.getStubAbiArgumentTypes()));
 
         HotSpotForeignCallLinkage linkage;
         if (foreignCalls.isRegistered(foreignCallSignature)) {
