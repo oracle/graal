@@ -26,20 +26,29 @@
 package com.oracle.svm.core.jdk.runtimeinit;
 
 import java.net.URL;
+import java.security.NoSuchProviderException;
 import java.security.Provider;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.UnsupportedFeatureError;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import sun.security.util.Debug;
 
 @TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtRunTime.class)
 final class Target_java_security_Security {
@@ -74,31 +83,59 @@ final class Target_java_security_Security_SecPropLoader {
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 
+    // Checkstyle: stop
+    @Alias //
+    static Object PROVIDER_VERIFIED;
+    // Checkstyle: resume
+
+    @Alias //
+    static Debug debug;
+
     /*
      * Map<Provider, ?> of providers that have already been verified. A value of PROVIDER_VERIFIED
      * indicates successful verification. Otherwise, the value is the Exception that caused the
      * verification to fail.
      */
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static Map<Object, Object> verificationResults;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class) //
+    static Map<Object, Object> verificationResults;
 
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static Map<Provider, Object> verifyingProviders;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = IdentityHashMap.class) //
+    static Map<Provider, Object> verifyingProviders;
 
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     private static Map<Class<?>, URL> codeBaseCacheRef = new WeakHashMap<>();
 
+    @Alias //
+    @TargetElement //
+    static java.lang.ref.ReferenceQueue<Object> queue;
+
+    @Alias //
+    static native void expungeStaleWrappers();
+
+    @Alias //
+    static native URL getCodeBase(Class<?> clazz);
+
+    @Alias //
+    static native void verifyProvider(URL codeBase, Provider p) throws Exception;
+
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* The verification results map key is an identity wrapper object. */
-        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
+        /* Provider verification is tied to the provider implementation class. */
+        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getClass());
         if (o == Boolean.TRUE) {
             return null;
         } else if (o != null) {
             return (Exception) o;
+        }
+        if (RuntimeClassLoading.isSupported() && DynamicHub.fromClass(p.getClass()).isRuntimeLoaded()) {
+            /*
+             * Providers loaded by Crema at run time cannot have a build-time verification result,
+             * so they use the JDK verifier path and its provider-identity cache.
+             */
+            return JceSecurityRuntimeLoadedProviderVerifier.getVerificationResult(p);
         }
         /*
          * If the verification result is not found in the verificationResults map, HotSpot will
@@ -111,6 +148,62 @@ final class Target_javax_crypto_JceSecurity {
                         "Attempted to verify a provider that was not registered at build time: " + providerFQN + ". " +
                                         "All security providers must be registered and verified during native image generation. " +
                                         "Try adding the option: -H:AdditionalSecurityProviders=" + providerFQN + " and rebuild the image.");
+    }
+}
+
+final class JceSecurityRuntimeLoadedProviderVerifier {
+
+    private JceSecurityRuntimeLoadedProviderVerifier() {
+    }
+
+    /** Verifies runtime-loaded providers using the JDK verifier algorithm. */
+    static Exception getVerificationResult(Provider p) {
+        Target_javax_crypto_JceSecurity.expungeStaleWrappers();
+        Object pKey = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, Target_javax_crypto_JceSecurity.queue);
+        try {
+            Object o = Target_javax_crypto_JceSecurity.verificationResults.computeIfAbsent(pKey, new Function<>() {
+                @Override
+                public Object apply(Object key) {
+                    if (Target_javax_crypto_JceSecurity.verifyingProviders.get(p) != null) {
+                        throw new IllegalStateException();
+                    }
+                    Object result;
+                    try {
+                        Target_javax_crypto_JceSecurity.verifyingProviders.put(p, Boolean.FALSE);
+                        URL providerURL = Target_javax_crypto_JceSecurity.getCodeBase(p.getClass());
+                        Target_javax_crypto_JceSecurity.verifyProvider(providerURL, p);
+                        result = Target_javax_crypto_JceSecurity.PROVIDER_VERIFIED;
+                    } catch (UnsupportedFeatureError e) {
+                        /*
+                         * OracleJDK can route provider verification through JarVerifier, which is
+                         * intentionally unsupported in Native Image. OpenJDK's provider verifier is
+                         * open for this case, so runtime-loaded providers fall back to that behavior.
+                         */
+                        result = Target_javax_crypto_JceSecurity.PROVIDER_VERIFIED;
+                    } catch (Exception e) {
+                        result = e;
+                    } finally {
+                        Target_javax_crypto_JceSecurity.verifyingProviders.remove(p);
+                    }
+                    if (Target_javax_crypto_JceSecurity.debug != null) {
+                        Target_javax_crypto_JceSecurity.debug.println("Provider " + p.getName() + " verification result: " + result);
+                    }
+                    return result;
+                }
+            });
+            return o == Target_javax_crypto_JceSecurity.PROVIDER_VERIFIED ? null : (Exception) o;
+        } catch (IllegalStateException ise) {
+            return new NoSuchProviderException("Recursion during verification");
+        }
+    }
+}
+
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = SecurityProvidersInitializedAtRunTime.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
+
+    @Alias //
+    Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, java.lang.ref.ReferenceQueue<Object> queue) {
     }
 }
 
