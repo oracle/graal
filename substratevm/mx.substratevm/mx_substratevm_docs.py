@@ -52,10 +52,10 @@ def _ensure_native_image_executable():
     return native_image_cmd
 
 
-def _generate_markdown_options_table():
+def _generate_html_options_table():
     native_image_cmd = _ensure_native_image_executable()
     output = mx.OutputCapture()
-    mx.run([native_image_cmd, '--print-options=markdown'], out=output)
+    mx.run([native_image_cmd, '--print-options=html'], out=output)
     return output.data.strip()
 
 
@@ -118,7 +118,7 @@ def verify_build_options_table():
 
     # Generate current options table
     mx.log("Generating current options table for verification...")
-    generated_content = _generate_markdown_options_table()
+    generated_content = _generate_html_options_table()
 
     # Read existing BuildOptions.md and extract just the table section
     with open(build_options_file, 'r', encoding='utf-8') as f:
@@ -147,7 +147,7 @@ def verify_build_options_table():
         # Extract content between markers
         existing_table = content[begin_idx + len(begin_marker):end_idx].strip()
 
-    generated_table = _extract_table_from_markdown(generated_content)
+    generated_table = generated_content
 
     existing_normalized = _normalize_table(existing_table)
     generated_normalized = _normalize_table(generated_table)
@@ -219,7 +219,7 @@ def update_build_options_table():
 
     # Generate current options table
     mx.log("Generating updated options table...")
-    generated_content = _generate_markdown_options_table()
+    generated_content = _generate_html_options_table()
 
     # Read existing BuildOptions.md
     with open(build_options_file, 'r', encoding='utf-8') as f:
@@ -235,33 +235,34 @@ def update_build_options_table():
     if begin_idx == -1 or end_idx == -1:
         # Fallback: try to find existing table and suggest adding markers
         table_start = content.find('| Command | Type | Description |')
-        if table_start == -1:
+        if table_start != -1:
+            mx.log("Found existing table but no auto-generation markers.")
+            mx.log("Consider adding comment markers around the table:")
+            mx.log(f"  {begin_marker}")
+            mx.log("  [existing table content]")
+            mx.log(f"  {end_marker}")
+
+            # For now, use the old method
+            table_end = content.find('\n## ', table_start)
+            if table_end == -1:
+                table_end = len(content)
+
+            # Extract table from generated content (skip markdown header)
+            new_table = generated_content
+            new_content = content[:table_start] + new_table + content[table_end:]
+        else:
             mx.abort("Could not find table or auto-generation markers in BuildOptions.md")
-
-        mx.log("Found existing table but no auto-generation markers.")
-        mx.log("Consider adding comment markers around the table:")
-        mx.log(f"  {begin_marker}")
-        mx.log("  [existing table content]")
-        mx.log(f"  {end_marker}")
-
-        # For now, use the old method
-        table_end = content.find('\n## ', table_start)
-        if table_end == -1:
-            table_end = len(content)
-
-        # Extract table from generated content (skip markdown header)
-        new_table = _extract_table_from_markdown(generated_content)
-        new_content = content[:table_start] + new_table + content[table_end:]
+            return False
     else:
         # Use marker-based replacement (preferred method)
         mx.log("Found auto-generation markers - using clean replacement")
 
         # Extract table content from generated markdown
-        table_content = _extract_table_from_markdown(generated_content)
+        table_content = generated_content
 
         # Replace content between markers
         new_content = (content[:begin_idx + len(begin_marker)] +
-                   '\n' + table_content + '\n' +
+                   '\n\n' + table_content + '\n' +
                    content[end_idx:])
 
     # Write updated content
