@@ -33,10 +33,10 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 @TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 final class Target_java_security_Security_ProviderLookup {
 
-    /** §FS-security-providers.6: Successful name-based lookup traces provider type access. */
+    /** §FS-security-providers.6: Successful name-based lookup traces provider construction. */
     @Substitute
     public static Provider getProvider(String name) {
-        return SecurityProviderRuntimeAccess.traceLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
+        return SecurityProviderRuntimeAccess.traceJdkProviderLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
     }
 
 }
@@ -65,7 +65,7 @@ final class Target_java_security_Security_ProviderMutation {
 final class Target_java_security_Security_ProviderEnumeration {
     @Substitute
     public static Provider[] getProviders() {
-        return SecurityProviderRuntimeAccess.traceLookups(sun.security.jca.Providers.getFullProviderList().toArray());
+        return SecurityProviderRuntimeAccess.traceJdkProviderLookups(sun.security.jca.Providers.getFullProviderList().toArray());
     }
 }
 
