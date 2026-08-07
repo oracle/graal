@@ -504,42 +504,37 @@ public final class RuntimeOptionParser {
         Log.log().string("Substrate VM warning: ignoring Java VM option ").string(arg).newline();
     }
 
+    /// Throws an exception for `arg` unless runtime class loading is supported.
+    private static void enforceRuntimeClassLoadingSupported(String arg) {
+        if (!GuestStagingDependencyBridge.singleton().isRuntimeClassLoadingSupported()) {
+            throw new IllegalArgumentException("The option '" + arg + "' is not supported by Native Image without runtime class loading");
+        }
+    }
+
     /// Parses module options that SVM applies to the runtime boot layer into the normalized
     /// `jdk.module.*` property scheme.
     private static boolean parseModuleOption(String arg, ParseContext context) {
         if (arg.startsWith(PATCH_MODULE_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.PATCH_MODULE_PROPERTY_PREFIX + context.patchModuleIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.MODULE_PATH_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.MODULE_PATH_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.MODULE_PATH_PROPERTY, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.UPGRADE_MODULE_PATH_PROPERTY, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_MODULES_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_MODULES_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.ADD_MODULES_PROPERTY_PREFIX + context.addModulesIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_READS_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_READS_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.ADD_READS_PROPERTY_PREFIX + context.addReadsIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_EXPORTS_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_EXPORTS_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.ADD_EXPORTS_PROPERTY_PREFIX + context.addExportsIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_OPENS_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.ADD_OPENS_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.ADD_OPENS_PROPERTY_PREFIX + context.addOpensIndex++, optionValue(arg));
-            return true;
-        }
-        if (arg.startsWith(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
+        } else if (arg.startsWith(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_OPTION + "=")) {
             context.properties.put(RuntimeBootModuleLayerOptions.ENABLE_NATIVE_ACCESS_PROPERTY_PREFIX + context.enableNativeAccessIndex++, optionValue(arg));
-            return true;
+        } else {
+            return false;
         }
-        return false;
+        enforceRuntimeClassLoadingSupported(arg);
+        return true;
     }
 
     /// Parses `--enable-preview` and enables the runtime preview-feature flag consulted by
@@ -562,6 +557,8 @@ public final class RuntimeOptionParser {
         if (!arg.startsWith(X_BOOTCLASSPATH_APPEND_OPTION_PREFIX)) {
             return false;
         }
+
+        enforceRuntimeClassLoadingSupported(arg);
 
         // Buffer the property read by jdk.internal.loader.ClassLoaders.<clinit>.
         String value = arg.substring(X_BOOTCLASSPATH_APPEND_OPTION_PREFIX.length());

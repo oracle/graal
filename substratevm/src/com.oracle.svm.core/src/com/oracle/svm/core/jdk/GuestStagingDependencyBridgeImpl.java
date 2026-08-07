@@ -170,6 +170,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean isRuntimeClassLoadingSupported() {
+        return RuntimeClassLoading.isSupported();
+    }
+
+    @Override
     public void enableTraceClassLoading() {
         RuntimeClassLoading.Options.TraceClassLoading.update(true);
     }
