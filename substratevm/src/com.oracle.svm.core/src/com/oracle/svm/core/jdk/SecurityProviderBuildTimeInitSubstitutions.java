@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-package com.oracle.svm.core;
+import java.security.Provider;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.shared.util.VMError;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_jca_ProviderConfig_BuildTimeInit {
 
-/**
- * Feature to register a default {@link RuntimeRandomness} instance. If another component has
- * already registered a {@link RuntimeRandomness} instance, this feature does nothing.
- */
-@AutomaticallyRegisteredFeature
-public class RuntimeRandomnessFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
+    @Alias //
+    private String provName;
+
+    /**
+     * The legacy build-time provider list cannot load a new provider after image generation.
+     */
+    @Substitute
+    private Provider doLoadProvider() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
     }
+}
 
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(RuntimeRandomness.class)) {
-            ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
-        }
-    }
+public final class SecurityProviderBuildTimeInitSubstitutions {
 }

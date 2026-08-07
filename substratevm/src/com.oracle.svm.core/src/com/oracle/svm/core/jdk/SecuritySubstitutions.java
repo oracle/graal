@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.security.CodeSource;
@@ -61,6 +60,19 @@ import com.oracle.svm.shared.util.VMError;
 
 import sun.security.util.SecurityConstants;
 
+// §FS-security-providers.3.1 and §FS-security-providers.4.1:
+// Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
+@TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
+final class Target_sun_security_jca_Providers_ExplicitRegistration {
+    @Substitute
+    public static Provider getSunProvider() {
+        if (!SecurityProviderRuntimeState.isJdkConstructible("sun.security.provider.Sun")) {
+            SecurityProviderRuntimeAccess.reportMissingRegistration(sun.security.provider.Sun.class);
+        }
+        return new sun.security.provider.Sun();
+    }
+}
+
 /*
  * All security checks are disabled.
  */
@@ -71,6 +83,16 @@ final class Target_javax_crypto_JceSecurityManager {
     @Substitute
     Target_javax_crypto_CryptoPermission getCryptoPermission(String var1) {
         return SubstrateUtil.cast(Target_javax_crypto_CryptoAllPermission.INSTANCE, Target_javax_crypto_CryptoPermission.class);
+    }
+
+    /**
+     * Native Image cannot perform the JAR verification used by the JDK to establish caller trust.
+     * All callers embedded in an image are trusted; provider verification remains enforced
+     * separately by {@link JceProviderVerificationSupport}.
+     */
+    @Substitute
+    boolean isCallerTrusted(Class<?> callerClass, Provider provider) {
+        return true;
     }
 }
 
@@ -228,30 +250,14 @@ class ProviderVerifierJavaHomeAccessors {
 }
 
 /**
- * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
- * SecurityServicesFeature at build time, for all registered providers. The cache is used by
- * {@code javax.crypto.JceSecurity#canUseProvider} at run time to check whether a provider is
- * properly signed and can be used by JCE. It does that via jar verification which we cannot
- * support.
+ * JCE jar verification cannot run in the image. SecurityServicesFeature records build-time
+ * verification outcomes by provider class in SecurityProviderRuntimeState and clears the JDK's
+ * provider-instance-keyed weak cache.
  */
 @TargetClass(className = "javax.crypto.JceSecurity", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
-
-    // Checkstyle: stop
-    @Alias //
-    private static Object PROVIDER_VERIFIED;
-    // Checkstyle: resume
-
-    /*
-     * Map<Provider, ?> of providers that have already been verified. A value of PROVIDER_VERIFIED
-     * indicates successful verification. Otherwise, the value is the Exception that caused the
-     * verification to fail.
-     */
-    @Alias //
-    private static Map<Object, Object> verificationResults;
-
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Map<Provider, Object> verifyingProviders;
@@ -260,40 +266,9 @@ final class Target_javax_crypto_JceSecurity {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     private static Map<Class<?>, URL> codeBaseCacheRef = new WeakHashMap<>();
 
-    @Alias //
-    @TargetElement //
-    private static ReferenceQueue<Object> queue;
-
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* The verification results map key is an identity wrapper object. */
-        Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
-        Object o = verificationResults.get(key);
-        if (o == PROVIDER_VERIFIED) {
-            return null;
-        } else if (o != null) {
-            return (Exception) o;
-        }
-        /*
-         * If the verification result is not found in the verificationResults map, HotSpot will
-         * attempt to verify the provider. This requires accessing the code base, which isn't
-         * supported in Native Image, so we need to fail. We could either fail here or substitute
-         * getCodeBase() and fail there, but handling it here is a cleaner approach.
-         */
-        String providerFQN = p.getClass().getName();
-        throw new SecurityException(
-                        "Attempted to verify a provider that was not registered at build time: " + providerFQN + ". " +
-                                        "All security providers must be registered and verified during native image generation. " +
-                                        "Try adding the option: -H:AdditionalSecurityProviders=" + providerFQN + " and rebuild the image.");
-    }
-}
-
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
-@SuppressWarnings({"unused"})
-final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
-
-    @Alias //
-    Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, ReferenceQueue<Object> queue) {
+        return JceProviderVerificationSupport.getVerificationResult(p);
     }
 }
 
@@ -359,29 +334,6 @@ final class AllPermissionsPolicy extends Policy {
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
-    }
-}
-
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderConfig {
-
-    @Alias //
-    private String provName;
-
-    /**
-     * All security providers used in a native-image must be registered during image build time. At
-     * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
-     * at runtime, and transitively includes other types in the image, among which is
-     * sun.security.jca.ProviderConfig.ProviderLoader. This class contains a static field with a
-     * cache of providers loaded during the image build. The contents of this cache can vary even
-     * when building the same image due to the way services are loaded on Java 11. This cache can
-     * increase the final image size substantially (if it contains, for example,
-     * {@code org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
-     */
-    @Substitute
-    private Provider doLoadProvider() {
-        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
     }
 }
 

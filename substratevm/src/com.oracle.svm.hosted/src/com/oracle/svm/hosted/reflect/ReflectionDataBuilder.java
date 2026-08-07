@@ -1419,6 +1419,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return types.get(analysisType).dynamicAccess;
     }
 
+    public boolean isTypeRegisteredForReflection(Class<?> clazz) {
+        AnalysisType analysisType = metaAccess.optionalLookupJavaType(clazz).orElse(null);
+        if (analysisType == null) {
+            return false;
+        }
+        TypeData data = types.get(analysisType);
+        return data != null && data.isRegisteredAs(ACCESSED);
+    }
+
+    public boolean isMethodRegisteredForReflection(Executable method) {
+        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
+        ElementData data = methods.get(analysisMethod);
+        return data != null && data.isRegisteredAs(ACCESSED);
+    }
+
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return types.get(metaAccess.lookupJavaType(clazz)).unsafeAllocatedDynamicAccess;
