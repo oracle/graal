@@ -278,6 +278,8 @@ GraalTags = Tags([
     'java_agent'
 ])
 
+NATIVE_UNITTEST_CUSTOM_BATCHES = ('1/2', '2/2')
+
 def vm_native_image_path(config=None):
     return vm_executable_path('native-image', config)
 
@@ -553,7 +555,7 @@ def svm_gate_body(args, tasks):
                 standalone_pointsto_unittest(['espresso'])
                 standalone_pointsto_unittest(['host'])
 
-    with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
+    with Task('native unittests', tasks, tags=[GraalTags.native_unittests, GraalTags.all_native_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments)
@@ -570,11 +572,18 @@ def svm_gate_body(args, tasks):
 
     # Keep the shared native_unittests gate aligned with GitHub Actions and other low-cost presubmits.
     # The internal all_native_unittests tag opts into the more expensive custom @NativeImageBuildArgs
-    # image groups without changing the behavior of existing public gate consumers.
-    with Task('all_native_unittests', tasks, tags=[GraalTags.all_native_unittests]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS):
-                native_unittests_task(args.extra_image_builder_arguments, include_custom_test_groups=True)
+    # image groups without changing the behavior of existing public gate consumers. Separate Task
+    # instances allow the standard mx gate --partial mechanism to distribute the custom groups.
+    for custom_batch in NATIVE_UNITTEST_CUSTOM_BATCHES:
+        with Task(f'all_native_unittests {custom_batch}', tasks, tags=[GraalTags.all_native_unittests]) as t:
+            if t:
+                with native_image_context(IMAGE_ASSERTION_FLAGS):
+                    native_unittests_task(
+                        args.extra_image_builder_arguments,
+                        include_custom_test_groups=True,
+                        include_default_test_group=False,
+                        custom_batch=custom_batch,
+                    )
 
     with Task('SVM invariants', tasks, tags=[GraalTags.check_svm_invariants]) as t:
         if t:
@@ -857,12 +866,25 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
         return ['--build-args'] + additional_build_args
 
 # Do not inline this, it's used from the enterprise repository.
-def native_unittests_task(extra_build_args=None, include_custom_test_groups=False):
+def native_unittests_task(
+        extra_build_args=None,
+        include_custom_test_groups=False,
+        include_default_test_group=True,
+        custom_batch=None):
     # native_unittests runs the SVM test suite => include SVM test features.
     computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
     if include_custom_test_groups:
         computed = computed + ['--all']
-    native_image_context_run(_native_unittest, computed)
+    if not include_default_test_group:
+        computed = computed + ['--custom-only']
+    native_image_context_run(
+        lambda native_image, native_unittest_args: _native_unittest(
+            native_image,
+            native_unittest_args,
+            custom_batch=custom_batch,
+        ),
+        computed,
+    )
 
 
 def generic_field_type_test_task(extra_build_args=None):
@@ -1115,7 +1137,18 @@ def batched(iterable, n):
         yield batch
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, test_classes_per_run=None, include_custom_test_groups=True):
+def _native_junit(
+        native_image,
+        unittest_args,
+        build_args=None,
+        run_args=None,
+        blacklist=None,
+        whitelist=None,
+        preserve_image=False,
+        test_classes_per_run=None,
+        include_custom_test_groups=True,
+        include_default_test_group=True,
+        custom_batch=None):
     """
     Builds and runs native JUnit images for the selected tests.
 
@@ -1145,16 +1178,22 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
             mx.abort('No matching unit tests found. Skip image build and execution.')
         # The Java helper inspects the selected test classes and emits a grouped manifest so the
         # Python side only needs to decide which groups to build and run.
-        test_groups, skipped_tests = _partition_native_unittest_groups(
+        test_groups, skipped_custom_tests = _partition_native_unittest_groups(
             _collect_native_unittest_groups(unittest_deps, unittest_file),
-            include_custom_test_groups
+            include_custom_test_groups,
+            include_default_test_group
         )
-        if skipped_tests:
+        if skipped_custom_tests:
             mx.log('Skipping tests that require custom @NativeImageBuildArgs in the default native-unittest run. '
-                   'Re-run with --all or select the tests explicitly: ' + ' '.join(skipped_tests))
+                   'Re-run with --all or select the tests explicitly: ' + ' '.join(skipped_custom_tests))
         if not test_groups:
-            mx.abort('No tests remain after excluding custom @NativeImageBuildArgs groups. '
-                     'Re-run with --all or select the desired tests explicitly.')
+            mx.abort('No tests remain after applying native-unittest group filters.')
+        if not include_default_test_group:
+            selected_batch = custom_batch or os.environ.get('MX_NATIVE_UNITTEST_CUSTOM_BATCH')
+            test_groups = _native_unittest_batch(test_groups, custom_batch)
+            if not test_groups:
+                mx.log(f"No custom native-unittest groups are assigned to batch {selected_batch}.")
+                return
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         failures = []
         for group_index, (group_build_args, group_tests) in enumerate(test_groups.items()):
@@ -1214,17 +1253,38 @@ def _collect_native_unittest_groups(unittest_deps, unittest_file):
     return [(tuple(group['buildArgs']), group['tests']) for group in manifest]
 
 
-def _partition_native_unittest_groups(grouped_test_specs, include_custom_test_groups):
+def _partition_native_unittest_groups(grouped_test_specs, include_custom_test_groups, include_default_test_group):
     grouped_tests = collections.OrderedDict()
-    skipped_tests = []
+    skipped_custom_tests = []
     for group_key, test_classes in grouped_test_specs:
+        is_default_group = len(group_key) == 0
         # The default no-argument command remains cheap by only running the empty-args group.
         # Explicit selectors or --all opt into the extra images required by custom build args.
-        if len(group_key) == 0 or include_custom_test_groups:
+        if (is_default_group and include_default_test_group) or (not is_default_group and include_custom_test_groups):
             grouped_tests[group_key] = test_classes
-        else:
-            skipped_tests.extend(test_classes)
-    return grouped_tests, skipped_tests
+        elif not is_default_group:
+            skipped_custom_tests.extend(test_classes)
+    return grouped_tests, skipped_custom_tests
+
+
+def _native_unittest_batch(test_groups, batch=None):
+    if batch is None:
+        batch = os.environ.get('MX_NATIVE_UNITTEST_CUSTOM_BATCH')
+    if batch is None:
+        return test_groups
+
+    match = re.fullmatch(r'([1-9][0-9]*)/([1-9][0-9]*)', batch)
+    if match is None:
+        mx.abort(f"MX_NATIVE_UNITTEST_CUSTOM_BATCH must have the form '<batch>/<batch-count>', got: {batch}")
+    batch_index, batch_count = map(int, match.groups())
+    if batch_index > batch_count:
+        mx.abort(f"MX_NATIVE_UNITTEST_CUSTOM_BATCH has a batch number greater than its batch count: {batch}")
+
+    return collections.OrderedDict(
+        (build_args, tests)
+        for group_index, (build_args, tests) in enumerate(test_groups.items())
+        if group_index % batch_count == batch_index - 1
+    )
 
 
 def _native_junit_group_dir(junit_root_dir, total_groups, group_index, has_custom_build_args):
@@ -1250,9 +1310,9 @@ def unmask(args):
     return [arg.replace(_mask_str, '-') for arg in args]
 
 
-def _native_unittest(native_image, cmdline_args):
+def _native_unittest(native_image, cmdline_args, custom_batch=None):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--custom-only']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
@@ -1261,8 +1321,12 @@ def _native_unittest(native_image, cmdline_args):
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
     parser.add_argument('--test-classes-per-run', help='run N test classes per image run, instead of all tests at once', nargs=1, type=int)
     parser.add_argument('--all', help='include tests that require custom @NativeImageBuildArgs and build one image per effective build-arg group', action='store_true')
+    parser.add_argument('--custom-only', help='exclude the default test group and include all custom build-argument groups (i.e., implies --all)', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
+
+    if pargs.custom_only:
+        pargs.all = True
 
     blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
     whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
@@ -1286,7 +1350,19 @@ def _native_unittest(native_image, cmdline_args):
     # Keep the no-argument path cheap for presubmit and GitHub-action usage by only running the
     # default image group. Explicit selectors or --all opt into additional custom-arg images.
     include_custom_test_groups = pargs.all or bool(user_unittest_args)
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, test_classes_per_run, include_custom_test_groups)
+    _native_junit(
+        native_image,
+        unittest_args,
+        unmask(pargs.build_args),
+        unmask(pargs.run_args),
+        blacklist,
+        whitelist,
+        pargs.preserve_image,
+        test_classes_per_run,
+        include_custom_test_groups=include_custom_test_groups,
+        include_default_test_group=not pargs.custom_only,
+        custom_batch=custom_batch,
+    )
 
 
 def jvm_unittest(args):
