@@ -91,7 +91,9 @@ local common_json = import "../common.json";
     local _lv = std.strReplace(_labsjdk.version, "ee-", "jdk-");
     # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
     local no_labsjdk = _labsjdk.name != "labsjdk";
-    assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    # Skip the check if we are using labsjdk with build number equal zero
+    local labsjdk_with_build_zero = std.findSubstr('+0-jvmci-', _lv) != [];
+    assert no_labsjdk || std.startsWith(_lv, _ov) || labsjdk_with_build_zero: "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
     true,
   # Verify labsjdk-ce-latest and labsjdk-ee-latest JVMCI build numbers match
   assert
