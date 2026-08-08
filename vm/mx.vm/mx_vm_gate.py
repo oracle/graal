@@ -67,7 +67,6 @@ class VmGateTasks:
     graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
     python = 'python'
-    fastr = 'fastr'
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
