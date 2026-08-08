@@ -80,7 +80,6 @@ public class JmxCommonFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.jmx.remote.util.EnvHelp", "JMX support");
         rci.initializeAtBuildTime("java.rmi.server.RemoteObjectInvocationHandler", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.Introspector", "JMX support");
-        rci.initializeAtBuildTime("java.beans.Introspector", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.JavaBeansAccessor", "JMX support");
 
         rci.initializeAtBuildTime("com.sun.jmx.remote.security.JMXPluggableAuthenticator", "JMX support");
@@ -93,7 +92,6 @@ public class JmxCommonFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.jmx.remote.internal.ServerNotifForwarder", "JMX support");
 
         rci.initializeAtBuildTime("sun.rmi.runtime.Log$LoggerLogFactory", "JMX support");
-        rci.initializeAtBuildTime("java.beans.Introspector$1", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.remote.internal.ArrayNotificationBuffer$BroadcasterQuery", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.WeakIdentityHashMap", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.MBeanIntrospector$PerInterfaceMap", "JMX support");
