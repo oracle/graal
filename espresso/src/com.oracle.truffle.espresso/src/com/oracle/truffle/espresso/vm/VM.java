@@ -3796,7 +3796,7 @@ public final class VM extends NativeEnv {
         StaticObject guestName = meta.java_lang_Module_name.getObject(module);
         if (StaticObject.isNull(guestName)) {
             profiler.profile(4);
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "modue name cannot be null");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "module name cannot be null");
         }
 
         String hostName = meta.toHostString(guestName);

@@ -290,7 +290,7 @@ def prettier(args=None):
 
     if rc != 0:
         if not diff_files:
-            mx.abort("An error occured while formatting")
+            mx.abort("An error occurred while formatting")
 
         for f in diff_files:
             mx.log(f)
