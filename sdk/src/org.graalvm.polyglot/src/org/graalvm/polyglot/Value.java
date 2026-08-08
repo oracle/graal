@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1747,7 +1747,7 @@ public final class Value extends AbstractValue {
      * {@link Long}. It is recommended to use {@link #as(TypeLiteral) type literals} to specify the
      * expected collection component types. With type literals the value type can be restricted, for
      * example to <code>Map&lt;String, String&gt;</code>. If the raw <code>{@link Map}.class</code>
-     * or an Object component type is used, then the return types of the the list are subject to
+     * or an Object component type is used, then the return types of the list are subject to
      * Object target type mapping rules recursively.
      * <li><code>{@link List}.class</code> is supported if
      * {@link HostAccess.MutableTargetMapping#ARRAY_TO_JAVA_LIST} is
@@ -1759,7 +1759,7 @@ public final class Value extends AbstractValue {
      * literals} to specify the expected component type. With type literals the value type can be
      * restricted to any supported target type, for example to <code>List&lt;Integer&gt;</code>. If
      * the raw <code>{@link List}.class</code> or an Object component type is used, then the return
-     * types of the the list are recursively subject to Object target type mapping rules.
+     * types of the list are recursively subject to Object target type mapping rules.
      * <li><code>{@link ByteSequence}.class</code> is supported if the value has
      * {@link #hasBufferElements() buffer elements} and it has a {@link Value#getBufferSize() buffer
      * size} that is smaller or equal to {@link Integer#MAX_VALUE}.
@@ -1788,7 +1788,7 @@ public final class Value extends AbstractValue {
      * {@link #as(TypeLiteral) type literals} to specify the expected component type. With type
      * literals the value type can be restricted to any supported target type, for example to
      * <code>Iterator&lt;Integer&gt;</code>. If the raw <code>{@link Iterator}.class</code> or an
-     * Object component type is used, then the return types of the the iterator are recursively
+     * Object component type is used, then the return types of the iterator are recursively
      * subject to Object target type mapping rules. The returned iterator's {@link Iterator#next()
      * next} method may throw a {@link ConcurrentModificationException} when an underlying iterable
      * has changed or {@link UnsupportedOperationException} when the iterator's current element is

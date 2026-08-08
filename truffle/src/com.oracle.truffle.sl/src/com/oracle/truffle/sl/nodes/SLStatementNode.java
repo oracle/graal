@@ -161,7 +161,7 @@ public abstract class SLStatementNode extends SLScopedNode implements Instrument
     }
 
     /**
-     * Execute this node as as statement, where no return value is necessary.
+     * Execute this node as a statement, where no return value is necessary.
      */
     public abstract void executeVoid(VirtualFrame frame);
 

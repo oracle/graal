@@ -145,7 +145,7 @@ public final class TruffleLogger {
      * already exists it's returned, otherwise a new logger is created.
      *
      * @param id the unique id of language or instrument
-     * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is null or
+     * @param loggerName the name of a {@link TruffleLogger}, if a {@code loggerName} is null or
      *            empty a root logger for language or instrument is returned
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null

@@ -149,7 +149,7 @@ public class PanamaDisassemblerVisitor extends HotSpotDisassembler.Visitor {
         this.fileBuffer = arena.allocate(BUFFER_LAYOUT);
         clearFileBuffer();
 
-        // Copy assembly bytes into the the C heap buffer
+        // Copy assembly bytes into the C heap buffer
         for (int i = 0; i < section.length; ++i) {
             buffer.set(ValueLayout.JAVA_BYTE, i, section[i]);
         }

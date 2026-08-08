@@ -59,7 +59,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * the {@link BytecodeRootNodes#update(BytecodeConfig) update} method at any time.
  * <p>
  * Unlike regular operations, instrumentations must have transparent stack effects. This is
- * important to ensure that that the stack layout remains compatible when instrumentations are
+ * important to ensure that the stack layout remains compatible when instrumentations are
  * enabled at runtime. This means that instrumentations can either have no dynamic operands and no
  * return value or one dynamic operand and one return value. Note that instrumentations can declare
  * {@link ConstantOperand constant operands} since those do not affect the stack.

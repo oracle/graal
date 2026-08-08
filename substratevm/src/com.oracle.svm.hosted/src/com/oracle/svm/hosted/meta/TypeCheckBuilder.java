@@ -1750,7 +1750,7 @@ public final class TypeCheckBuilder {
                     } else {
                         /*
                          * COLUMN-PARTITION Algorithm STEP 2.2 checking that either the left or
-                         * right intersect are a subset of the the new grouping.
+                         * right intersect are a subset of the new grouping.
                          */
                         if (leftIntersect == 0 && leftColor == SetColor.FULL) {
                             /*

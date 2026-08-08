@@ -92,7 +92,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * only exception are constants - an arbitrary number of constants is always allowed. Limiting to 1
  * node (which can be also 1 invoke) means that field accessors can be inlined and forwarding
  * methods can be inlined. But null checks and class initialization checks are already putting a
- * method above the limit. On the other hand, the inlining depth is generous because we do do not
+ * method above the limit. On the other hand, the inlining depth is generous because we do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
  *

@@ -93,7 +93,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         DefaultConstant(false),
 
         /**
-         * A {@link VirtualObject}. The The {@link ValueInfo#data} is the id of the virtual object,
+         * A {@link VirtualObject}. The {@link ValueInfo#data} is the id of the virtual object,
          * i.e., the index into the {@link #virtualObjects}.
          */
         VirtualObject(true);

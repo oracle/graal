@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -259,7 +259,7 @@ public class Driver {
     private void printInfos(boolean verbose, boolean help, boolean earlyExit, ArrayList<String> toolArgs) {
         if (help) {
             System.out.println("##################################################");
-            System.out.println("This it the the GraalVM wrapper script for " + getTool());
+            System.out.println("This it the GraalVM wrapper script for " + getTool());
             System.out.println();
             System.out.println("Its purpose is to make it easy to compile native projects to be used with");
             System.out.println("GraalVM's LLVM IR engine (bin/lli).");

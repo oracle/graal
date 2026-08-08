@@ -95,7 +95,7 @@ public interface VMListener {
     boolean onMethodReturn(MethodRef method, Node node, Object returnValue);
 
     /**
-     * This method should be called when when the monitor wait(timeout) method is invoked in the
+     * This method should be called when the monitor wait(timeout) method is invoked in the
      * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
      * current thread.
      *

@@ -786,7 +786,7 @@ public final class GCImpl implements GC {
              * Mark pinned objects in aligned chunks and leave these chunks in From spaces. In
              * copying collections, while scanning, we copy unmarked (non-pinned) live objects out
              * of them and then sweep the chunks (leaving only pinned objects and filler objects)
-             * and promote them to To spaces. In CompactingOldGen, the chunks are swept with other
+             * and promote them to the To spaces. In CompactingOldGen, the chunks are swept with other
              * non-pinned live objects remaining in them.
              *
              * Note that:
@@ -1130,7 +1130,7 @@ public final class GCImpl implements GC {
         }
 
         if (!completeCollection && originalSpace.isOldSpace()) {
-            assert !originalSpace.isFromSpace() : "must have already moved to To space";
+            assert !originalSpace.isFromSpace() : "must have already moved to the To space";
             return; // object is in old gen, which we don't collect
         }
 

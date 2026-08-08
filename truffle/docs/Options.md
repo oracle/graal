@@ -136,7 +136,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
 - `--engine.UsePreInitializedContext=true|false` : Use pre-initialized context when it's available (default: true).
-- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to to force compilation for executed call targets before persisting the engine. Possible values are:
+- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to force compilation for executed call targets before persisting the engine. Possible values are:
   - 'none':     No compilations will be persisted and existing compilations will be invalidated.
   - 'compiled': No compilations will be forced but finished compilations will be persisted.
   - 'hot':      (default) All started compilations will be completed and then persisted.

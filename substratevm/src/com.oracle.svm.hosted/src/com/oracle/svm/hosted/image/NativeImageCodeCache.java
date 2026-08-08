@@ -812,7 +812,7 @@ public abstract class NativeImageCodeCache {
 
     /*
      * Constants and code objects are all assigned offsets in the heap. Reference constants can
-     * refer to other heap objects. TODO: is it true that that all code-->data references go via a
+     * refer to other heap objects. TODO: is it true that all code-->data references go via a
      * Constant? It appears so, but I'm not sure. -srk
      */
 

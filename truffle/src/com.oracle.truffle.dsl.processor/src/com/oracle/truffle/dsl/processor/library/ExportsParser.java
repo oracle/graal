@@ -1390,7 +1390,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             if (!method.getModifiers().contains(Modifier.PRIVATE) //
                             && !method.getModifiers().contains(Modifier.STATIC) //
                             && method.getSimpleName().toString().startsWith("execute")) {
-                exportedMessage.addError(method, "A class annotated with with @%s must not specify methods starting with execute. " +
+                exportedMessage.addError(method, "A class annotated with @%s must not specify methods starting with execute. " +
                                 "Execute methods for such classes can be inferred automatically from the message signature.",
                                 types.ExportMessage.asElement().getSimpleName().toString());
             }

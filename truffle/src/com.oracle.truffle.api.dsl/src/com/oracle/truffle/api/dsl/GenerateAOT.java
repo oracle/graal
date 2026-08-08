@@ -60,7 +60,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * The following properties make a specialization incapable of being used for AOT preparation:
  * <ul>
  * <li>Dynamic parameters bound in cached initializers. At AOT preparation time no dynamic
- * parameters are available, therefore the the caches not be initialized. Values read from the node
+ * parameters are available, therefore the caches not be initialized. Values read from the node
  * instance are supported.
  * <li>If a Truffle library is used that is automatically dispatched or where the expression
  * initializer is bound to a dynamic parameter value.

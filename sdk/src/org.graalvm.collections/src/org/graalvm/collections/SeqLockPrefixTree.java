@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import java.util.function.BiFunction;
  * arity, which is the number of children, and the 64-bit value of that node.
  * <p>
  * The set of child nodes can be represented as {@code null} if the set is empty, an array-list if
- * the the set is small, or a hash table if the set is large. In all cases, the keys and the child
+ * the set is small, or a hash table if the set is large. In all cases, the keys and the child
  * nodes are kept in separate arrays.
  * <p>
  * The {@code at} operation, which takes a node and a key, and returns the corresponding child node,

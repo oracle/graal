@@ -51,7 +51,7 @@ import jdk.graal.compiler.jtt.JTTTest;
  * the backend can address only 8k of memory with an immediate offset. Beyond this barrier, a
  * different addressing mode must be used.
  *
- * In order to do this this test generates a large method containing a large switch statement in
+ * To do this, this test generates a large method containing a large switch statement in
  * form of
  *
  * <code>

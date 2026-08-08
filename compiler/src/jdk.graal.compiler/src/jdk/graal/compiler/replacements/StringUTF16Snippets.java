@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Snippets for for {@code java.lang.StringUTF16} methods.
+ * Snippets for {@code java.lang.StringUTF16} methods.
  */
 public class StringUTF16Snippets implements Snippets {
     public static class Templates extends SnippetTemplate.AbstractTemplates {

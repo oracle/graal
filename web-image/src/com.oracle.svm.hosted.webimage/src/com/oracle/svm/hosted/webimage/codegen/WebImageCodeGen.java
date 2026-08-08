@@ -154,7 +154,7 @@ public abstract class WebImageCodeGen {
             try {
                 return this.methodMetricsCollector.getMethodMetric(method, MethodMetricKeys.METHOD_SIZE).intValue();
             } catch (NullPointerException ex) {
-                // Not all hosted methods are lowered due the the optimization with TypeControl.
+                // Not all hosted methods are lowered due to the optimization with TypeControl.
                 return 0;
             }
         });

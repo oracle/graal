@@ -267,7 +267,7 @@ public class SourceCache {
 
     /**
      * Given a prototype path for a file to be resolved return a File identifying a cached candidate
-     * for for that Path or null if no cached candidate exists.
+     * for that Path or null if no cached candidate exists.
      *
      * @param filePath a prototype path for a file to be included in the cache derived from the name
      *            of some associated class.

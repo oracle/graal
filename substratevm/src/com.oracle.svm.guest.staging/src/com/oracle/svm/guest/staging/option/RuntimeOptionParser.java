@@ -210,7 +210,7 @@ public final class RuntimeOptionParser {
         String[] args = parseJavaVMOptions(initialArgs, context);
         args = consumeCompatibilityOptions(args);
         args = singleton().parse(args, ignoreUnrecognized);
-        if (!context.legacyJavaOptionMode) {
+        if (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode()) {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
         configureLogFile(context.logFile);
@@ -366,7 +366,7 @@ public final class RuntimeOptionParser {
                 continue;
             }
             if (parseProperty(arg, context) ||
-                            (!context.legacyJavaOptionMode && (parseModuleOption(arg, context) ||
+                            (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseXBootClasspathAppendOption(arg, context) ||
                                             parseRecognizedJavaOption(arg, context)))) {
@@ -399,7 +399,7 @@ public final class RuntimeOptionParser {
         if (!arg.startsWith(PROPERTY_PREFIX) || hasPrefix(arg, GRAAL_OPTION_PREFIX) || hasPrefix(arg, LEGACY_GRAAL_OPTION_PREFIX)) {
             return false;
         }
-        if (!context.legacyJavaOptionMode && isReservedInternalModuleProperty(arg)) {
+        if (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode() && isReservedInternalModuleProperty(arg)) {
             if (!context.warnedInternalModuleProperty) {
                 Log.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
                 context.warnedInternalModuleProperty = true;
@@ -677,9 +677,6 @@ public final class RuntimeOptionParser {
     }
 
     private static final class ParseContext {
-        /// Whether to preserve the Java option handling behavior that existed before GR-74762.
-        final boolean legacyJavaOptionMode = GuestStagingDependencyBridge.singleton().legacyJavaOptionMode();
-
         /// Collects system properties to initialize after recognized options are parsed.
         final EconomicMap<String, String> properties = EconomicMap.create();
 

@@ -106,7 +106,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
      * Stores a counter how often the yellow zone has been made available, so that the yellow zone
      * is only protected after a matching number of calls. Note that the counter doesn't start at 0:
      * 0 is the default value of thread local variables, so disallowing 0 as a valid value allows us
-     * to to detect error in the state transitions.
+     * to detect error in the state transitions.
      */
     static final FastThreadLocalInt yellowZoneStateTL = FastThreadLocalFactory.createInt("StackOverflowCheckImpl.yellowZoneStateTL");
     static final int STATE_UNINITIALIZED = 0;

@@ -881,7 +881,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                 Class<?> type = field.getType();
                 if (Modifier.isFinal(type.getModifiers())) {
                     // optimization: there is only one possible value for fields with final types
-                    // -> registering as as accessed is enough
+                    // -> registering as accessed is enough
                 } else if (type == Node.class || type == NodeInterface.class) {
                     // optimization: there are always more than one node subclasses
                     // -> we need to register as unsafe accessed eagerly

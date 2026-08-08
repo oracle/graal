@@ -596,7 +596,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     #########################
 
     # DaCapo benchmarks that can run with system assertions enabled but
-    # java.util.Logging assertions disabled because the the DaCapo harness
+    # java.util.Logging assertions disabled because the DaCapo harness
     # misuses the API. The same harness is used by Scala DaCapo.
     enable_assertions = ['-esa']
     dacapo_esa = enable_assertions + ['-da:java.util.logging...']

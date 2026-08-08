@@ -335,7 +335,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return was the the maximum amount of stack frames that are sampled insufficient for the
+     * @return was the maximum amount of stack frames that are sampled insufficient for the
      *         execution.
      * @since 0.30
      */

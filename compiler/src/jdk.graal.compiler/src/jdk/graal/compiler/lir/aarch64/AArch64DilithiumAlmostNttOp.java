@@ -328,7 +328,7 @@ public final class AArch64DilithiumAlmostNttOp extends AArch64LIRInstruction {
             // inputs. Once again we can use 4-way parallelism to combine 16
             // zetas at a time. However, we have to load 8 adjacent values at
             // 4 different offsets using an ld2 load with arrangement 4S. That
-            // interleaves the the odd words of each pair into one
+            // interleaves the odd words of each pair into one
             // coefficients vector register and the even words of the pair
             // into the next register. We then need to montmul the 4 even
             // elements of the coefficients register sequence by the zetas in

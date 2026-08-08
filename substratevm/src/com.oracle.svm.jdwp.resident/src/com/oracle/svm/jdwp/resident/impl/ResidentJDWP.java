@@ -2175,7 +2175,7 @@ public final class ResidentJDWP implements JDWP {
             assert reader.isEndOfInput();
 
             require(!method.isClassInitializer(), ErrorCode.ILLEGAL_ARGUMENT, "method cannot be a static initializer %s", method);
-            require(method.isStatic(), ErrorCode.ILLEGAL_ARGUMENT, "method must be be static %s", method);
+            require(method.isStatic(), ErrorCode.ILLEGAL_ARGUMENT, "method must be static %s", method);
             require(type.equals(method.getDeclaringClass()), ErrorCode.ILLEGAL_ARGUMENT, "method declaring type %s and type %s differ", method.getDeclaringClass(), type);
             require(type.isInterface(), ErrorCode.ILLEGAL_ARGUMENT, "type %s is not an interface");
             require(type.equals(method.getDeclaringClass()), ErrorCode.ILLEGAL_ARGUMENT, "method %s is not a member of the interface type %s", method, type);

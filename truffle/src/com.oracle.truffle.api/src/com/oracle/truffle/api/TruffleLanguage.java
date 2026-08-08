@@ -3795,7 +3795,7 @@ public abstract class TruffleLanguage<C> {
          * {@link ThreadLocalAction#ThreadLocalAction(boolean, boolean, boolean) recurring} then the
          * action will automatically be rescheduled in the same configuration until it is
          * {@link Future#cancel(boolean) cancelled}. For recurring actions, an invocation of
-         * {@link Future#get()} will only wait for the first action to to be performed.
+         * {@link Future#get()} will only wait for the first action to be performed.
          * {@link Future#isDone()} will return <code>true</code> only if the action was canceled.
          * Canceling a recurring action will result in the current event being canceled and no
          * further events being submitted. Using recurring events should be preferred over

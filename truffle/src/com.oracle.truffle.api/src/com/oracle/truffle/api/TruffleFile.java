@@ -1128,7 +1128,7 @@ public final class TruffleFile {
      * Returns the file's Posix permissions.
      *
      * @param linkOptions the options determining how the symbolic links should be handled
-     * @return the the file's Posix permissions
+     * @return the file's Posix permissions
      * @throws IOException in case of IO error
      * @throws UnsupportedOperationException when the Posix permissions are not supported by
      *             filesystem

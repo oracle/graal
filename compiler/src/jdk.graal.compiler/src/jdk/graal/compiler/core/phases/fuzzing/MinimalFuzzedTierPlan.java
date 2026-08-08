@@ -143,7 +143,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
         });
         Collections.shuffle(minimalPhases, random);
         ListIterator<BasePhase<? super C>> phasesIterator = minimalPhases.listIterator();
-        // The the maximum number of attempts is determined with this logic:
+        // The maximum number of attempts is determined with this logic:
         // If we have minimalPhases = [phaseA, phaseB, phaseC]
         // During attempt 0, in the worst case, we can only insert phaseC because the others phases
         // need to be after phaseC.
@@ -227,7 +227,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
         phases.addAll(getMultiApplyPhases());
         Supplier<BasePhase<? super C>> phaseThatMustApplySupplier = () -> phases.stream().filter(p -> mustApplyAfterSuite(p, graphState)).findFirst().orElse(null);
         BasePhase<? super C> phaseThatMustApply = phaseThatMustApplySupplier.get();
-        // The the maximum number of attempts is determined with this logic:
+        // The maximum number of attempts is determined with this logic:
         // In the worst case, all phases must apply and
         // phaseThatMustApplyQueue = [phaseA, phaseB, phaseC]
         // Attempt 0: We try to insert phaseA but cannot since it needs to run after phaseB so we

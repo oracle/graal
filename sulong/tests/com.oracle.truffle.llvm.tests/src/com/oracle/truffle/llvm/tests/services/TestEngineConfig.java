@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ public interface TestEngineConfig extends Comparable<TestEngineConfig> {
     String getName();
 
     /**
-     * If no config has explicitly selected, the one with with lowest priority is used.
+     * If no config has been explicitly selected, the one with lowest priority is used.
      */
     int getPriority();
 

@@ -28,7 +28,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * This class contains just static methods for for providing random token in tests.
+ * This class contains just static methods for providing random token in tests.
  *
  * Even during testing, we need securely generated unpredictable path. Without that, an attacker
  * could connect to the debugger via a webpage using WebSocket, because same-origin policy is not

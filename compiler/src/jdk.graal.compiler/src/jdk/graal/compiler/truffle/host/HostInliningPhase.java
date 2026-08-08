@@ -1583,7 +1583,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
         int subTreeCost = -1;
 
         /**
-         * Cost of of all graal nodes in this method. The size is computed during exploration.
+         * Cost of all graal nodes in this method. The size is computed during exploration.
          */
         int cost = -1;
 

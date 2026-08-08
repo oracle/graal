@@ -492,7 +492,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                             /*
                              * Check monotonicity: Once an iteration over the loop has determined
                              * that a certain loop end is reachable (the state at that end is
-                             * alive), a later iteration must not conclude that that loop end is
+                             * alive), a later iteration must not conclude that loop end is
                              * unreachable (the state is dead). This would mean that analysis
                              * information became more precise. But it can only become less precise
                              * as we try to converge towards a fixed point.

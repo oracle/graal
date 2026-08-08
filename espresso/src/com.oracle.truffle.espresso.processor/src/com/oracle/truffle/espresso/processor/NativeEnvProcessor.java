@@ -335,7 +335,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         AnnotationMirror pointer = getAnnotation(typeMirror, pointerAnnotation);
         AnnotationMirror handle = getAnnotation(typeMirror, handleAnnotation);
         if (pointer != null && handle != null) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("Parameter cannot be be annotated with both %s and %s", pointer, handle), element);
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("Parameter cannot be annotated with both %s and %s", pointer, handle), element);
         }
         if (pointer != null) {
             if (typeMirror.getKind().isPrimitive()) {

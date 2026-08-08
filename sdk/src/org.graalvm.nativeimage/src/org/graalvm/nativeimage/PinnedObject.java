@@ -108,7 +108,7 @@ public interface PinnedObject extends AutoCloseable {
 
     /**
      * Returns the raw address of the pinned object. The object layout is not specified, but usually
-     * the address of an object is a pointer to to the first header word. In particular, the result
+     * the address of an object is a pointer to the first header word. In particular, the result
      * is not a pointer to the first array element when the object is an array.
      *
      * @since 19.0

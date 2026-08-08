@@ -432,7 +432,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
 
 
     /**
-     * Add Expand attributes to the nodes making up cycles the the
+     * Add Expand attributes to the nodes making up cycles to the
      * Node with the given id
      */
     void handleExpandCycles(String id) {

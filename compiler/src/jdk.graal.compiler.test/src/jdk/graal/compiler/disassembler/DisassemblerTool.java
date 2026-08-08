@@ -175,7 +175,7 @@ public class DisassemblerTool {
     }
 
     /**
-     * Computes the max width of a column based on values to be be printed in the column.
+     * Computes the max width of a column based on values to be printed in the column.
      */
     public static class Width {
         public static final Width ONE = new Width(1);
