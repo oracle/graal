@@ -1364,6 +1364,9 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
             ],
+            "requires": [
+                "jdk.unsupported", # sun.misc.Unsafe
+            ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
