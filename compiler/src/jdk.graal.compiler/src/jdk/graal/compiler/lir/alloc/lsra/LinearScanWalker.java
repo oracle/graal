@@ -603,6 +603,94 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
+    private boolean spillFlowsIntoBlock(Interval interval, BasicBlock<?> block) {
+        int operandNumber = interval.splitParent().operandNumber;
+        boolean hasLivePredecessor = false;
+        boolean allLivePredecessorsCarrySpill = true;
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            BasicBlock<?> predecessor = block.getPredecessorAt(i);
+            if (!allocator.getBlockData(predecessor).liveOut.get(operandNumber)) {
+                continue;
+            }
+
+            hasLivePredecessor = true;
+            int predecessorEnd = allocator.getLastLirInstructionId(predecessor) + 1;
+            Interval incoming = allocator.splitChildAtOpId(interval.splitParent(), predecessorEnd, LIRInstruction.OperandMode.DEF);
+            if (incoming.location() == null) {
+                // An unknown backedge location is treated conservatively.
+                return true;
+            }
+            allLivePredecessorsCarrySpill &= incoming.location().equals(interval.location());
+        }
+        assert hasLivePredecessor : "live interval enters block without a live predecessor";
+        return allLivePredecessorsCarrySpill;
+    }
+
+    /**
+     * Finds the first live block after {@link #currentPosition} whose incoming control-flow edges
+     * do not carry {@code interval}'s spill location. Only such a block inherited the spill merely
+     * because it follows the pressure path in linear-scan order.
+     */
+    private int firstBlockWithoutSpillPredecessor(Interval interval) {
+        BasicBlock<?> currentBlock = allocator.blockForId(currentPosition);
+        for (int i = currentBlock.getLinearScanNumber() + 1; i < allocator.blockCount(); i++) {
+            BasicBlock<?> block = allocator.blockAt(i);
+            int blockFrom = allocator.getFirstLirInstructionId(block);
+            if (blockFrom >= interval.to()) {
+                return -1;
+            }
+
+            if (!interval.hasHoleBetween(blockFrom - 1, blockFrom + 1) && !spillFlowsIntoBlock(interval, block)) {
+                return blockFrom;
+            }
+        }
+        return -1;
+    }
+
+    private boolean coversFastPathBlock(Interval interval) {
+        Interval.RangeIterator range = new Interval.RangeIterator(interval);
+        while (!range.isAtEnd()) {
+            int firstBlock = allocator.blockForId(range.from()).getLinearScanNumber();
+            int lastBlock = allocator.blockForId(range.to() - 1).getLinearScanNumber();
+            for (int i = firstBlock; i <= lastBlock; i++) {
+                if (allocator.blockAt(i).isFastPathBlock()) {
+                    return true;
+                }
+            }
+            range.next();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("try")
+    private void splitPressureSpillBeforeUnrelatedPath(Interval interval) {
+        if (interval.canMaterialize()) {
+            return;
+        }
+        if (!LinearScan.Options.LIROptLSRAForceSpillSplitAtSlowPath.getValue(allocator.getOptions()) && !coversFastPathBlock(interval)) {
+            return;
+        }
+        assert LIRValueUtil.isStackSlotValue(interval.location()) : "not a spilled interval: " + interval;
+
+        int splitPos = firstBlockWithoutSpillPredecessor(interval);
+        if (splitPos == -1) {
+            return;
+        }
+
+        DebugContext debug = allocator.getDebug();
+        try (Indent indent = debug.logAndIndent("splitting pressure spill %s before unrelated path at %d", interval, splitPos)) {
+            splitBeforeUsage(interval, splitPos, splitPos);
+            if (interval.spillState() != SpillState.StartInMemory) {
+                /*
+                 * Spill state is shared by all children of a split parent. The recovered child is
+                 * reached through different control flow, so combining its future spills with the
+                 * current spill would hoist a store onto paths that do not need a stack copy.
+                 */
+                interval.setSpillState(SpillState.NoOptimization);
+            }
+        }
+    }
+
     // split an interval at the optimal position between minSplitPos and
     // maxSplitPos in two parts:
     // 1) the left part has already a location assigned
@@ -667,6 +755,7 @@ class LinearScanWalker extends IntervalWalker {
                             }
                         }
                     }
+                    splitPressureSpillBeforeUnrelatedPath(interval);
                 }
 
             } else {
@@ -703,6 +792,7 @@ class LinearScanWalker extends IntervalWalker {
                     // the currentSplitChild is needed later when moves are inserted for reloading
                     assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
                     spilledPart.makeCurrentSplitChild();
+                    splitPressureSpillBeforeUnrelatedPath(spilledPart);
 
                     if (debug.isLogEnabled()) {
                         debug.log("left interval: %s", interval.logString(allocator));
