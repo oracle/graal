@@ -23,6 +23,8 @@
  * questions.
  */
 
+#include <stdint.h>
+#include <time.h>
 
 #ifdef _WIN64
 /*
@@ -588,3 +590,49 @@ char *SVM_FindJavaTZmd(const char *tzmappings, int length) {
     return findJavaTZ_md((void *) 0);
 }
 #endif // _WIN64
+
+/*
+ * Returns the local-to-UTC offset for the supplied epoch time in seconds.
+ * Based on logic extracted from os::iso8601_time in HotSpot.
+ */
+int SVM_localUTCOffsetSeconds(int64_t milliseconds_since_19700101) {
+    const int milliseconds_per_second = 1000;
+    time_t seconds_since_19700101 = (time_t) (milliseconds_since_19700101 / milliseconds_per_second);
+    struct tm time_struct;
+
+#ifdef _WIN64
+    if (localtime_s(&time_struct, &seconds_since_19700101) != 0) {
+        return 0;
+    }
+#else
+    if (localtime_r(&seconds_since_19700101, &time_struct) == NULL) {
+        return 0;
+    }
+#endif
+
+    time_t UTC_to_local;
+
+#ifdef _WIN64
+    long zone;
+    if (_get_timezone(&zone) != 0) {
+        return 0;
+    }
+    UTC_to_local = (time_t) zone;
+#elif (defined(_ALLBSD_SOURCE) || defined(_GNU_SOURCE)) && !defined(AIX)
+    /* tm_gmtoff already includes the adjustment for daylight saving time. */
+    UTC_to_local = -(time_struct.tm_gmtoff);
+#else
+    UTC_to_local = timezone;
+#endif
+
+#if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
+    /* The standard timezone value excludes the daylight-saving adjustment. */
+    const time_t seconds_per_hour = 60 * 60;
+    if (time_struct.tm_isdst > 0) {
+        UTC_to_local -= seconds_per_hour;
+    }
+#endif
+
+    /* Negate UTC_to_local to obtain the local-to-UTC offset. */
+    return (int) (-UTC_to_local);
+}

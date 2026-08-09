@@ -202,9 +202,11 @@ public final class RuntimeOptionParser {
     /// Note that the logic of whether to parse options must be in sync with the isolate argument
     /// parser. [GuestStagingDependencyBridge#shouldParseRuntimeOptions] provides that policy here.
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions()) {
+        GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+        if (!dependencyBridge.shouldParseRuntimeOptions()) {
             return initialArgs;
         }
+        dependencyBridge.initializeLogging();
 
         ParseContext context = new ParseContext();
         String[] args = parseJavaVMOptions(initialArgs, context);
@@ -572,21 +574,29 @@ public final class RuntimeOptionParser {
 
     /// Parses known and implemented Java VM options.
     private static boolean parseRecognizedJavaOption(String arg) {
+        GuestStagingDependencyBridge bridge = GuestStagingDependencyBridge.singleton();
         if (isEnableAssertionsOption(arg)) {
-            GuestStagingDependencyBridge.singleton().updateRuntimeAssertionStatus(assertionOptionTarget(arg), true);
+            bridge.updateRuntimeAssertionStatus(assertionOptionTarget(arg), true);
             return true;
         }
         if (isDisableAssertionsOption(arg)) {
-            GuestStagingDependencyBridge.singleton().updateRuntimeAssertionStatus(assertionOptionTarget(arg), false);
+            bridge.updateRuntimeAssertionStatus(assertionOptionTarget(arg), false);
             return true;
         }
         if (SYSTEM_ASSERTION_OPTIONS.contains(arg)) {
             boolean enable = arg.equals("-esa") || arg.equals("-enablesystemassertions");
-            GuestStagingDependencyBridge.singleton().updateRuntimeSystemAssertionStatus(enable);
+            bridge.updateRuntimeSystemAssertionStatus(enable);
             return true;
         }
+        if (arg.equals("-Xlog") || arg.startsWith(XLOG_OPTION_PREFIX)) {
+            return bridge.parseXLogOption(arg);
+        }
         if (arg.equals("-verbose") || arg.equals("-verbose:class")) {
-            GuestStagingDependencyBridge.singleton().enableTraceClassLoading();
+            bridge.parseXLogOption("-Xlog:class+load=info");
+            return true;
+        }
+        if (arg.equals("-verbose:module")) {
+            bridge.parseXLogOption("-Xlog:module+load=info");
             return true;
         }
         if (arg.startsWith("-verbose:")) {
@@ -639,9 +649,6 @@ public final class RuntimeOptionParser {
             return true;
         }
         if (arg.startsWith("--limit-modules=")) {
-            return true;
-        }
-        if (arg.equals("-Xlog") || arg.startsWith("-Xlog:")) {
             return true;
         }
         if (arg.startsWith("-Xloggc:")) {

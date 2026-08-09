@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
@@ -38,9 +39,12 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.logging.HasULSupport;
+import com.oracle.svm.core.logging.LogConfiguration;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
@@ -149,6 +153,23 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean parseXLogOption(String arg) {
+        HasULSupport.require();
+        boolean parsed = LogConfiguration.parseCommandLineArgument(arg);
+        if (arg.equalsIgnoreCase("-Xlog:help")) {
+            System.exit(0);
+        }
+        return parsed;
+    }
+
+    @Override
+    public void initializeLogging() {
+        if (HasULSupport.get()) {
+            LogConfiguration.initialize();
+        }
+    }
+
+    @Override
     public boolean shouldParseRuntimeOptions() {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
                         RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
@@ -176,11 +197,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void enableTraceClassLoading() {
-        RuntimeClassLoading.Options.TraceClassLoading.update(true);
-    }
-
-    @Override
     public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
         AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
     }
@@ -192,15 +208,28 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void endOfParsing() {
+        if (HasULSupport.get()) {
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging(true));
+            LogConfiguration.logInitializationComplete();
+        }
         maybeReportImageClasses();
     }
 
     private static void maybeReportImageClasses() {
-        if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+        boolean logClassLoad = LogTagSet.class_load_image.isInfo();
+        boolean logModuleLoad = LogTagSet.module_load_image.isInfo();
+        if (logClassLoad || logModuleLoad) {
+            EconomicSet<Module> reportedModules = EconomicSet.create();
             Heap.getHeap().visitLoadedClasses((cls) -> {
                 DynamicHub hub = DynamicHub.fromClass(cls);
                 if (!hub.isArray() && !hub.isPrimitive()) {
-                    Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
+                    ClassLoader loader = hub.getClassLoader();
+                    String loaderDesc = ClassRegistries.loaderNameAndId(loader);
+                    LogTagSet.class_load_image.info(hub.getName() + " loader=" + loaderDesc + " image");
+                    Module module = cls.getModule();
+                    if (logModuleLoad && reportedModules.add(module)) {
+                        LogTagSet.module_load_image.info(module.getName() + " location: image");
+                    }
                 }
             });
         }

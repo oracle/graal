@@ -43,17 +43,16 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.AssertionsSupport;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -76,7 +75,6 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
@@ -86,11 +84,12 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryLog;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
@@ -103,8 +102,12 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
@@ -171,6 +174,11 @@ public final class GCImpl implements GC {
         } else {
             return "Serial GC";
         }
+    }
+
+    @Override
+    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+        log.string("GC(").unsigned(collectionEpoch).string(") ");
     }
 
     @Override
@@ -397,8 +405,19 @@ public final class GCImpl implements GC {
 
     private void verifyHeap(HeapVerifier.Occasion occasion) {
         if (SubstrateGCOptions.VerifyHeap.getValue() && shouldVerify(occasion)) {
+            // LEGACY LOGGING
             if (SubstrateGCOptions.VerboseGC.getValue()) {
                 printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ").newline();
+            }
+
+            // UNIFIED LOGGING
+            if (LogTagSet.gc.isDebug()) {
+                LogMessage message = LogTagSet.gc.message();
+                try {
+                    message.debug().string("Verifying ").string(occasion.name()).string(" GC ");
+                } finally {
+                    message.close();
+                }
             }
 
             long start = System.nanoTime();
@@ -413,9 +432,21 @@ public final class GCImpl implements GC {
                 throw VMError.shouldNotReachHere("Heap verification failed");
             }
 
+            // LEGACY LOGGING
             if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ")
+                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ") //
                                 .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+            }
+
+            // UNIFIED LOGGING
+            if (LogTagSet.gc.isDebug()) {
+                LogMessage message = LogTagSet.gc.message();
+                try {
+                    message.debug().string("Verifying ").string(occasion.name()).string(" GC ") //
+                                    .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms");
+                } finally {
+                    message.close();
+                }
             }
         }
     }
@@ -461,29 +492,51 @@ public final class GCImpl implements GC {
     }
 
     private void printGCBefore(GCCause cause) {
-        if (!SubstrateGCOptions.VerboseGC.getValue()) {
-            return;
+        // LEGACY LOGGING
+        if (SubstrateGCOptions.VerboseGC.getValue()) {
+            if (getCollectionEpoch().equal(0)) {
+                printGCPrefixAndTime().string("Using ").string(getName()).newline();
+                Log log = printGCPrefixAndTime().spaces(2).string("Memory: ");
+                log.rational(PhysicalMemory.size(), M, 0).string("M").newline();
+                printGCPrefixAndTime().spaces(2).string("GC policy: ").string(getPolicy().getName()).newline();
+                printGCPrefixAndTime().spaces(2).string("Maximum young generation size: ").rational(getPolicy().getMaximumYoungGenerationSize(), M, 0).string("M").newline();
+                printGCPrefixAndTime().spaces(2).string("Maximum heap size: ").rational(getPolicy().getMaximumHeapSize(), M, 0).string("M").newline();
+                printGCPrefixAndTime().spaces(2).string("Minimum heap size: ").rational(getPolicy().getMinimumHeapSize(), M, 0).string("M").newline();
+                printGCPrefixAndTime().spaces(2).string("Aligned chunk size: ").rational(HeapParameters.getAlignedHeapChunkSize(), K, 0).string("K").newline();
+                printGCPrefixAndTime().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K").newline();
+            }
+
+            printGCPrefixAndTime().string(cause.getName()).newline();
         }
 
-        if (getCollectionEpoch().equal(0)) {
-            printGCPrefixAndTime().string("Using ").string(getName()).newline();
-            Log log = printGCPrefixAndTime().spaces(2).string("Memory: ");
-            log.rational(PhysicalMemory.size(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("GC policy: ").string(getPolicy().getName()).newline();
-            printGCPrefixAndTime().spaces(2).string("Maximum young generation size: ").rational(getPolicy().getMaximumYoungGenerationSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Maximum heap size: ").rational(getPolicy().getMaximumHeapSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Minimum heap size: ").rational(getPolicy().getMinimumHeapSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Aligned chunk size: ").rational(HeapParameters.getAlignedHeapChunkSize(), K, 0).string("K").newline();
-            printGCPrefixAndTime().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K").newline();
+        // UNIFIED LOGGING
+        if (LogTagSet.gc.isInfo()) {
+            if (collectionEpoch.equal(0)) {
+                LogMessage message = LogTagSet.gc.message();
+                try {
+                    message.info().string("Using ").string(getName());
+                    if (LogTagSet.gc.isDebug()) {
+                        message.debug().spaces(2).string("Memory: ").rational(PhysicalMemory.size(), M, 0).string("M");
+                        message.debug().spaces(2).string("GC policy: ").string(getPolicy().getName());
+                        message.debug().spaces(2).string("Maximum young generation size: ").rational(getPolicy().getMaximumYoungGenerationSize(), M, 0).string("M");
+                        message.debug().spaces(2).string("Maximum heap size: ").rational(getPolicy().getMaximumHeapSize(), M, 0).string("M");
+                        message.debug().spaces(2).string("Minimum heap size: ").rational(getPolicy().getMinimumHeapSize(), M, 0).string("M");
+                        message.debug().spaces(2).string("Aligned chunk size: ").rational(HeapParameters.getAlignedHeapChunkSize(), K, 0).string("K");
+                        message.debug().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K");
+                    }
+                } finally {
+                    message.close();
+                }
+            }
+            LogTagSet.gc.debug(cause.getName());
         }
-
-        printGCPrefixAndTime().string(cause.getName()).newline();
     }
 
     private void printGCAfter(GCCause cause) {
         HeapAccounting heapAccounting = HeapImpl.getAccounting();
         HeapSizes beforeGc = heapAccounting.getHeapSizesBeforeGc();
 
+        // LEGACY LOGGING
         if (SubstrateGCOptions.VerboseGC.getValue()) {
             printHeapSizeChange("Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
             printHeapSizeChange("Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
@@ -501,14 +554,63 @@ public final class GCImpl implements GC {
 
         if (SubstrateGCOptions.PrintGC.getValue() || SubstrateGCOptions.VerboseGC.getValue()) {
             String collectionType = completeCollection ? "Full GC" : "Incremental GC";
-            printGCPrefixAndTime().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ")
-                            .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ")
+            printGCPrefixAndTime().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ") //
+                            .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ") //
                             .rational(timers.collection.totalNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+        }
+
+        // UNIFIED LOGGING
+        if (LogTagSet.gc.isDebug()) {
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                NativeMemoryLog log = message.debug();
+                printHeapSizeChange(log, "Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
+                printHeapSizeChange(log, "Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
+                printHeapSizeChange(log, "Old", beforeGc.old, heapAccounting.getOldUsedBytes());
+                printHeapSizeChange(log, "Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
+
+            } finally {
+                message.close();
+            }
+
+            if (SerialGCOptions.PrintGCTimes.getValue()) {
+                message = LogTagSet.gc.message();
+                try {
+                    timers.logAfterCollection(message.debug());
+                } finally {
+                    message.close();
+                }
+            }
+
+            if (SerialGCOptions.TraceHeapChunks.getValue()) {
+                message = LogTagSet.gc.message();
+                try {
+                    HeapImpl.getHeapImpl().logChunks(message.debug(), false);
+                } finally {
+                    message.close();
+                }
+            }
+        }
+
+        if (LogTagSet.gc.isInfo()) {
+            String collectionType = completeCollection ? "Full GC" : "Incremental GC";
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                message.info().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ") //
+                                .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ") //
+                                .rational(timers.collection.totalNanos(), TimeUtils.nanosPerMilli, 3).string("ms");
+            } finally {
+                message.close();
+            }
         }
     }
 
     private void printHeapSizeChange(String text, UnsignedWord before, UnsignedWord after) {
-        printGCPrefixAndTime().string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M").newline();
+        printHeapSizeChange(printGCPrefixAndTime(), text, before, after);
+    }
+
+    private static void printHeapSizeChange(Log log, String text, UnsignedWord before, UnsignedWord after) {
+        log.string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M").newline();
     }
 
     private Log printGCPrefixAndTime() {

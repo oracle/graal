@@ -119,24 +119,13 @@ public class RuntimeClassLoading {
         @Option(help = "Verification mode for runtime class loading.") //
         public static final HostedOptionKey<VerifyMode> ClassVerification = new HostedOptionKey<>(VerifyMode.REMOTE);
 
-        @Option(help = "Trace runtime class loading events.") //
-        public static final RuntimeOptionKey<Boolean> TraceClassLoading = new RuntimeOptionKey<>(false, Options::validateTraceRuntimeClassLoading);
-
         @Option(help = "Logs a stack trace when a class is defined. " +
                         "The logging is applied to all classes whose fully qualified name contains this string. " +
                         "(\"*\" matches any class.)") //
-        public static final RuntimeOptionKey<String> LogClassLoadingCauseFor = new RuntimeOptionKey<>(null, Options::validateLogClassLoadingCauseFor);
+        public static final RuntimeOptionKey<String> LogClassLoadingCauseFor = new RuntimeOptionKey<>(null, Options::validateTraceRuntimeClassLoading);
 
-        private static void validateTraceRuntimeClassLoading(RuntimeOptionKey<Boolean> optionKey) {
-            if (optionKey.getValue() && !RuntimeClassLoading.getValue()) {
-                throw UserError.abort("Option '%s' requires runtime class-loading support to be enabled via '%s'.",
-                                optionKey.getName(),
-                                SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+"));
-            }
-        }
-
-        private static void validateLogClassLoadingCauseFor(RuntimeOptionKey<String> optionKey) {
-            if (optionKey.getValue() != null && !RuntimeClassLoading.getValue()) {
+        private static void validateTraceRuntimeClassLoading(RuntimeOptionKey<String> optionKey) {
+            if (optionKey.hasBeenSet() && !RuntimeClassLoading.getValue()) {
                 throw UserError.abort("Option '%s' requires runtime class-loading support to be enabled via '%s'.",
                                 optionKey.getName(),
                                 SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+"));
@@ -188,8 +177,8 @@ public class RuntimeClassLoading {
                      'java -agentlib:native-image-agent=config-output-dir=<config-dir>,experimental-class-define-support <application-arguments>'.\
                      Note that this is an experimental feature and that it does not guarantee success. Furthermore, the resulting classes can contain entries\
                      from the classpath that should be manually filtered out to reduce image size. The agent should be used only in cases where modifying the source of the project is not possible.
-                    """
-                    .replace("\n", System.lineSeparator());
+                    """.replace(
+                    "\n", System.lineSeparator());
 
     public static RuntimeException throwNoBytecodeClasses(String className) {
         assert !PredefinedClassesSupport.hasBytecodeClasses() && !RuntimeClassLoading.isSupported();

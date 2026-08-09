@@ -173,6 +173,16 @@ public interface GuestStagingDependencyBridge {
      */
     void configureLogFile(String optionPrefix, String logFile);
 
+    /// Parses and applies one unified logging option.
+    ///
+    /// @param arg a value that starts with `-Xlog`
+    boolean parseXLogOption(String arg);
+
+    /**
+     * Initializes unified logging before runtime options are parsed.
+     */
+    void initializeLogging();
+
     /**
      * Returns whether runtime arguments must be parsed in the current isolate.
      * <p>
@@ -205,13 +215,6 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
      */
     boolean isRuntimeClassLoadingSupported();
-
-    /**
-     * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
-     * <p>
-     * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
-     */
-    void enableTraceClassLoading();
 
     /// Applies a runtime assertion directive to a class, package, or the application default.
     ///

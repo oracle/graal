@@ -80,6 +80,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerRuntimeSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -515,6 +516,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                         throw VMError.shouldNotReachHereAtRuntime();
                     }
                 } else {
+                    HasJfrSupport.get();
                     String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
                     if (!ignoreUnrecognized && remainingArgs.length != 0) {
                         if (SubstrateOptions.StrictRuntimeJavaOptions.getValue()) {
@@ -531,6 +533,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             } catch (IllegalArgumentException e) {
                 Log.logStream().println("Error: " + e.getMessage());
+                for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+                    Log.logStream().println("Caused by: " + cause.getMessage());
+                }
                 if (forJavaMainCall) {
                     System.exit(1);
                 } else {

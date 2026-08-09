@@ -39,4 +39,10 @@ public class LibCHelper {
     // Checkstyle: stop
     public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
     // Checkstyle: start
+
+    /// Returns the local-to-UTC offset for `millisecondsSince19700101` in seconds.
+    @CFunction(transition = Transition.NO_TRANSITION)
+    // Checkstyle: stop
+    public static native int SVM_localUTCOffsetSeconds(long millisecondsSince19700101);
+    // Checkstyle: start
 }

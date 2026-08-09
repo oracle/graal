@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.thread.VMThreads.SAFEPOINT_MUTEX;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -36,18 +36,20 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
 import com.oracle.svm.core.jfr.events.SafepointEndEvent;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.core.logging.HasULSupport;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.shared.util.DuplicatedInNativeCode;
-import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -55,6 +57,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.DuplicatedInNativeCode;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -103,6 +107,30 @@ public final class Safepoint {
     private volatile UnsignedWord safepointId;
     private volatile IsolateThread requestingThread;
 
+    /// Reason for current safepoint.
+    private String safepointReason;
+
+    /// Number of threads on VM thread list for current safepoint.
+    private int numAllThreads;
+
+    /// Number of running threads on VM thread list for current safepoint.
+    private int numRunningThreads;
+
+    // Time at which current safepoint began.
+    private long safepointBeginTimeNs;
+
+    // Time at which all threads were stopped by current safepoint.
+    private long safepointSyncTimeNs;
+
+    // Time at which VM operation completed for current safepoint.
+    private long safepointLeaveTimeNs;
+
+    // Time at which current safepoint ended.
+    private long safepointEndTimeNs;
+
+    // Time spent in application execution between last safepoint and current safepoint.
+    private long appTimeNs;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     Safepoint() {
         this.safepointState = NOT_AT_SAFEPOINT;
@@ -147,6 +175,18 @@ public final class Safepoint {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
+        if (HasULSupport.get()) {
+            // update the time stamp to begin recording safepoint time
+            safepointBeginTimeNs = System.nanoTime();
+            safepointSyncTimeNs = 0;
+
+            if (safepointEndTimeNs == 0) {
+                safepointEndTimeNs = Isolates.getStartTimeNanos();
+            }
+            appTimeNs = safepointBeginTimeNs - safepointEndTimeNs;
+            safepointEndTimeNs = 0;
+        }
+
         /*
          * Acquire the ThreadsLock before the safepoint mutex. This is necessary to prevent
          * deadlocks in case that there are any threads that execute safepoint checks while holding
@@ -166,6 +206,7 @@ public final class Safepoint {
 
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
+        safepointReason = reason;
         SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
         return acquiredThreadsLock;
     }
@@ -173,6 +214,10 @@ public final class Safepoint {
     /** Let all threads proceed from their safepoint. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
     void endSafepoint(boolean acquiredThreadsLock) {
+        if (HasULSupport.get()) {
+            safepointLeaveTimeNs = System.nanoTime();
+        }
+
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
@@ -201,6 +246,25 @@ public final class Safepoint {
         ImageSingletons.lookup(Heap.class).endSafepoint();
         SafepointEndEvent.emit(getSafepointId(), startTicks);
         VMThreads.singleton().cleanupExitedOsThreads();
+
+        if (LogTagSet.safepoint.isInfo()) {
+            safepointEndTimeNs = System.nanoTime();
+            LogMessage message = LogTagSet.safepoint.message();
+            try {
+                message.info().string("Safepoint ").unsigned(this.safepointId) //
+                                .string(" \"").string(safepointReason) //
+                                .string("\", Time since last: ").signed(appTimeNs) //
+                                .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
+                                .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
+                                .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
+                                .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
+                                .string(" ns, Threads: ") //
+                                .signed(numRunningThreads).string(" runnable, ") //
+                                .signed(numAllThreads).string(" total");
+            } finally {
+                message.close();
+            }
+        }
     }
 
     /**
@@ -231,7 +295,7 @@ public final class Safepoint {
     }
 
     /** Blocks until all threads (other than the current thread) have entered the safepoint. */
-    private static int requestThreadsEnterSafepoint(String reason) {
+    private int requestThreadsEnterSafepoint(String reason) {
         assert ThreadsLock.hasNonExclusiveWriteAccess() : "prevents threads from attaching/detaching";
 
         long startNanos = System.nanoTime();
@@ -298,8 +362,13 @@ public final class Safepoint {
                 }
             }
 
+            if (loopCount == 1) {
+                numRunningThreads = notAtSafepoint;
+            }
+            numAllThreads = numThreads;
             if (notAtSafepoint == 0) {
                 /* All relevant threads entered the safepoint. */
+                safepointSyncTimeNs = System.nanoTime();
                 return numThreads;
             }
 
@@ -316,13 +385,13 @@ public final class Safepoint {
                 boolean printWarning = warningNanos > 0 && TimeUtils.nanoTimeLessThan(warningNanos, nanosSinceLastWarning);
                 boolean fatalError = failureNanos > 0 && TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart);
                 if (printWarning || fatalError) {
-                    Log.log().string("[Safepoint: not all threads reached a safepoint (").string(reason).string(") within ").signed(warningNanos).string(" ns. ")
+                    Log.log().string("[Safepoint: not all threads reached a safepoint (").string(reason).string(") within ").signed(warningNanos).string(" ns. ") //
                                     .string("Total wait time so far: ").signed(nanosSinceStart).string(" ns.").newline();
-                    Log.log().string("  loopCount: ").signed(loopCount)
-                                    .string("  atSafepoint: ").signed(atSafepoint)
-                                    .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
-                                    .string("  notAtSafepoint: ").signed(notAtSafepoint)
-                                    .string("]")
+                    Log.log().string("  loopCount: ").signed(loopCount) //
+                                    .string("  atSafepoint: ").signed(atSafepoint) //
+                                    .string("  ignoreSafepoints: ").signed(ignoreSafepoints) //
+                                    .string("  notAtSafepoint: ").signed(notAtSafepoint) //
+                                    .string("]") //
                                     .newline();
 
                     loopNanos = System.nanoTime();
