@@ -133,7 +133,7 @@ public class SVMImageLayerSnapshotUtil {
     static final ResolvedJavaField ENUM_CONSTANTS_REFERENCE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "enumConstantsReference");
     static final ResolvedJavaField ARRAY_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "arrayHub");
 
-    static final ResolvedJavaType STRING = GuestAccess.get().lookupType(String.class);
+    static final ResolvedJavaType STRING = GuestAccess.get().elements.java_lang_String;
     static final ResolvedJavaType ENUM = GuestAccess.get().lookupType(Enum.class);
 
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);

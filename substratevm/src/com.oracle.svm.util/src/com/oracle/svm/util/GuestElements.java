@@ -125,9 +125,11 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Object_hashCode = lookupMethod(java_lang_Object, "hashCode");
     public final ResolvedJavaMethod java_lang_Object_toString = lookupMethod(java_lang_Object, "toString");
 
+    public final ResolvedJavaType java_lang_String = lookupType(String.class);
+
     public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
     public final ResolvedJavaMethod java_lang_Throwable_init_String_Throwable_boolean_boolean = JVMCIReflectionUtil.getDeclaredConstructor(java_lang_Throwable,
-                    lookupType(String.class), java_lang_Throwable, lookupType(boolean.class), lookupType(boolean.class));
+                    java_lang_String, java_lang_Throwable, lookupType(boolean.class), lookupType(boolean.class));
 
     public final ResolvedJavaType java_lang_ref_Reference = lookupType(Reference.class);
     public final ResolvedJavaMethod java_lang_ref_Reference_refersTo = lookupMethod(java_lang_ref_Reference, "refersTo", Object.class);
@@ -151,6 +153,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_util_Map = lookupType(Map.class);
     public final ResolvedJavaMethod java_util_Map_entrySet = lookupMethod(java_util_Map, "entrySet");
+
+    public final ResolvedJavaType java_util_Set = lookupType(Set.class);
+    public final ResolvedJavaMethod java_util_Set_of = lookupMethod(java_util_Set, "of", Object[].class);
 
     public final ResolvedJavaType java_util_Map_Entry = lookupType("java.util.Map$Entry");
     public final ResolvedJavaMethod java_util_Map_Entry_getKey = lookupMethod(java_util_Map_Entry, "getKey");
