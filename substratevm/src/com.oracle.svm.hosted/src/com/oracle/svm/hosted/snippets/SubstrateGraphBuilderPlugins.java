@@ -93,6 +93,7 @@ import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
@@ -1329,7 +1330,7 @@ public class SubstrateGraphBuilderPlugins {
             return;
         }
         Variant variant = SimdSortSupport.getSupportedVariant();
-        if (variant == Variant.NONE) {
+        if (variant == Variant.NONE || !NativeLibraries.singleton().hasStaticLibrary("simdsort")) {
             return;
         }
 
