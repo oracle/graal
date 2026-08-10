@@ -256,6 +256,11 @@ suite = {
 
     "graalwasm_thin_launcher": {
       "class": "ThinLauncherProject",
+      "multitarget": [
+        {"os": ["linux"], "libc": ["glibc", "default"], "compiler": ["llvm-toolchain", "host", "*"]},
+        {"os": ["linux"], "libc": ["musl"], "variant": ["swcfi"]},
+        {"os": ["windows", "darwin"], "libc": ["default"]},
+      ],
       "mainClass": "org.graalvm.wasm.launcher.WasmLauncher",
       "jar_distributions": ["wasm:WASM_LAUNCHER"],
       "relative_home_paths": {
@@ -531,7 +536,7 @@ suite = {
           "extracted-dependency:WASM_GRAALVM_SUPPORT",
           "dependency:graalwasm_licenses/*",
         ],
-        "bin/<exe:wasm>": "dependency:graalwasm_thin_launcher",
+        "bin/<exe:wasm>": "dependency:graalwasm_thin_launcher/<os>-<arch>/<multitarget_libc_selection>/<exe:graalwasm_thin_launcher>",
         "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
       },
     },
