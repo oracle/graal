@@ -90,6 +90,7 @@ final class HostObjectReferences implements ReflectionLibraryDispatch {
     }
 
     long registerHostObject(TruffleObject obj) {
+        assert !InteropLibrary.getUncached().isNull(obj) : "Host null must be canonicalized";
         long id = currentReferenceId.getAndIncrement();
         exportById.put(id, obj);
         return id;
