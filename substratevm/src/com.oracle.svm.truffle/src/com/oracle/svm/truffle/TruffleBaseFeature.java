@@ -995,10 +995,15 @@ public final class TruffleBaseFeature implements InternalFeature {
                 access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
                 if (hasExplicitReceiverExport(type)) {
                     /*
-                     * Exports with an explicit receiver can be used as dynamic dispatch targets
-                     * without the export class being instantiated.
+                     * Initialize the export class first so its generated code registers the
+                     * explicit receiver types, then initialize those actual dispatch targets.
                      */
                     initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                    for (ExportLibrary export : GuestAnnotationAccess.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
+                        if (export.receiverType() != Void.class) {
+                            initializeTruffleLibraryReceiverAtBuildTime(export.receiverType());
+                        }
+                    }
                 }
             }
         }
