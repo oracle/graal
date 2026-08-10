@@ -1594,6 +1594,9 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
+    @Option(help = "Include JNI metadata for preserved types.")//
+    public static final HostedOptionKey<Boolean> PreserveIncludesJNI = new HostedOptionKey<>(true);
+
     @Fold
     public static boolean isForeignAPIEnabled() {
         Boolean value = ConcealedOptions.ForeignAPISupport.getValue();

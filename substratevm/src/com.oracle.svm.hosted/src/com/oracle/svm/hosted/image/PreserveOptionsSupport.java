@@ -227,7 +227,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             registerPreservedClass(reflection, resources, proxy, always, c);
         });
 
-        if (SubstrateOptions.JNI.getValue()) {
+        if (SubstrateOptions.JNI.getValue() && SubstrateOptions.PreserveIncludesJNI.getValue()) {
             RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
             for (Class<?> primitive : new Class<?>[]{boolean.class, byte.class, char.class, short.class, int.class, long.class, float.class, double.class}) {
                 Class<?> arrayType = primitive.arrayType();
@@ -291,7 +291,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         } catch (LinkageError e) {
             /* If we can't link we can not register for reflection */
         }
-        if (SubstrateOptions.JNI.getValue()) {
+        if (SubstrateOptions.JNI.getValue() && SubstrateOptions.PreserveIncludesJNI.getValue()) {
             final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
             jni.register(always, true, c);
             jni.register(always, true, c.arrayType());
