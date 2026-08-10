@@ -2156,7 +2156,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w', encoding='utf-8') as f:
-            f.writelines(l + os.linesep for l in build_args)
+            f.writelines(l + '\n' for l in build_args)
 
     def native_image_needs_build(self, out_file):
         sup = super().native_image_needs_build(out_file)
