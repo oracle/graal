@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.vmaccess.InvocationException;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -589,9 +590,27 @@ public final class GuestAccess implements VMAccess {
         return delegate.owns(value);
     }
 
+    /**
+     * Invokes the provided method. Unlike {@link VMAccess#invoke}, this method rethrows builder
+     * exceptions returned through host proxies directly instead of wrapping them in an
+     * {@link InvocationException}.
+     */
     @Override
     public JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... args) {
-        return delegate.invoke(method, receiver, args);
+        try {
+            return delegate.invoke(method, receiver, args);
+        } catch (InvocationException ie) {
+            if (ie.getCause() != null && ie.getExceptionObject() == null) {
+                // host exception
+                throw sneakyThrow(ie.getCause());
+            }
+            throw ie;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+        throw (T) ex;
     }
 
     @Override
