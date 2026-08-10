@@ -119,8 +119,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -319,7 +319,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (analysisType == null || shouldExcludeClass(analysisType, accessibility)) {
                 return;
             }
-            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType)) {
+            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType, accessibility)) {
                 /* GR-66387: The runtime condition should be combined across layers. */
                 return;
             }
@@ -580,7 +580,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (analysisMethod == null) {
                 return;
             }
-            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod)) {
+            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod, accessibility)) {
                 /* GR-66387: The runtime condition should be combined across layers. */
                 return;
             }
@@ -734,7 +734,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (analysisField == null) {
                 return;
             }
-            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isFieldRegistered(analysisField)) {
+            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isFieldRegistered(analysisField, accessibility)) {
                 /* GR-66387: The runtime condition should be combined across layers. */
                 return;
             }
@@ -1639,19 +1639,27 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return filterElements(elements).size();
     }
 
-    private record LayeredReflectionDataSnapshot(Set<Integer> registeredTypes, Set<Integer> registeredMethods, Set<Integer> registeredFields, Set<String> registeredTypeNames,
+    private record LayeredReflectionDataSnapshot(Map<Integer, ConfigurationMemberAccessibility> registeredTypes,
+                    Map<Integer, ConfigurationMemberAccessibility> registeredMethods,
+                    Map<Integer, ConfigurationMemberAccessibility> registeredFields, Set<String> registeredTypeNames,
                     Set<Integer> unsafeAllocatedTypes) {
         static LayeredReflectionDataSnapshot create(Map<AnalysisType, TypeData> types, Map<AnalysisMethod, ElementData> methods, Map<AnalysisField, ElementData> fields,
                         Set<String> negativeClassLookups) {
             return new LayeredReflectionDataSnapshot(
-                            getRegisteredElementIds(types, AnalysisType::getId, d -> d.isRegisteredAs(ACCESSED)),
-                            getRegisteredElementIds(methods, AnalysisMethod::getId, d -> d.isRegisteredAs(ACCESSED)),
-                            getRegisteredElementIds(fields, AnalysisField::getId, d -> d.isRegisteredAs(ACCESSED)),
+                            getRegisteredElementsMap(types, AnalysisType::getId, d -> d.isRegisteredAs(QUERIED)),
+                            getRegisteredElementsMap(methods, AnalysisMethod::getId, d -> d.isRegisteredAs(QUERIED)),
+                            getRegisteredElementsMap(fields, AnalysisField::getId, d -> d.isRegisteredAs(QUERIED)),
                             Set.copyOf(negativeClassLookups),
                             getRegisteredElementIds(types, AnalysisType::getId, d -> d.unsafeAllocatedDynamicAccess != null));
         }
 
-        private static <T extends AnalysisElement, D extends ElementData> Set<Integer> getRegisteredElementIds(Map<T, D> elements, Function<T, Integer> getId, Predicate<D> filter) {
+        private static <T, D extends ElementData> Map<Integer, ConfigurationMemberAccessibility> getRegisteredElementsMap(Map<T, D> elements, Function<T, Integer> getId, Predicate<D> filter) {
+            return elements.entrySet().stream()
+                            .filter(e -> filter.test(e.getValue()))
+                            .collect(Collectors.toUnmodifiableMap(e -> getId.apply(e.getKey()), e -> e.getValue().getAccessibility()));
+        }
+
+        private static <T, D extends ElementData> Set<Integer> getRegisteredElementIds(Map<T, D> elements, Function<T, Integer> getId, Predicate<D> filter) {
             return elements.entrySet().stream()
                             .filter(e -> filter.test(e.getValue()))
                             .map(e -> getId.apply(e.getKey()))
@@ -1845,6 +1853,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         boolean isRegisteredAs(ConfigurationMemberAccessibility target) {
             return accessibility != null && accessibility.includes(target);
+        }
+
+        ConfigurationMemberAccessibility getAccessibility() {
+            return accessibility;
         }
 
         void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
@@ -2068,20 +2080,20 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         public static final String UNSAFE_ALLOCATED_TYPES = "unsafe allocated types";
         public static final String REFLECTION_DATA_BUILDER = "reflection data builder";
         /**
-         * The types registered for reflection in the previous layers. The set contains the type
-         * ids.
+         * The types registered for reflection in the previous layers. The map contains type ids
+         * and their registration metadata.
          */
-        private final Set<Integer> previousLayerRegisteredTypes;
+        private final Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredTypes;
         /**
-         * The methods registered for reflection in the previous layers. The set contains the method
-         * ids.
+         * The methods registered for reflection in the previous layers. The map contains method ids
+         * and their registration metadata.
          */
-        private final Set<Integer> previousLayerRegisteredMethods;
+        private final Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredMethods;
         /**
-         * The fields registered for reflection in the previous layers. The set contains the field
-         * ids.
+         * The fields registered for reflection in the previous layers. The map contains field ids
+         * and their registration metadata.
          */
-        private final Set<Integer> previousLayerRegisteredFields;
+        private final Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredFields;
         /**
          * The class names registered in previous layers.
          */
@@ -2093,10 +2105,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         private final Set<Integer> previousLayerUnsafe;
 
         public LayeredReflectionDataBuilder() {
-            this(Set.of(), Set.of(), Set.of(), Set.of(), Set.of());
+            this(Map.of(), Map.of(), Map.of(), Set.of(), Set.of());
         }
 
-        private LayeredReflectionDataBuilder(Set<Integer> previousLayerRegisteredTypes, Set<Integer> previousLayerRegisteredMethods, Set<Integer> previousLayerRegisteredFields,
+        private LayeredReflectionDataBuilder(Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredTypes,
+                        Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredMethods,
+                        Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredFields,
                         Set<String> previousLayerRegisteredTypeNames,
                         Set<Integer> previousLayerUnsafe) {
             this.previousLayerRegisteredTypes = previousLayerRegisteredTypes;
@@ -2110,21 +2124,27 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return ImageSingletons.lookup(LayeredReflectionDataBuilder.class);
         }
 
-        public boolean isTypeRegistered(AnalysisType analysisType) {
-            return isElementRegistered(previousLayerRegisteredTypes, analysisType, analysisType.getId());
+        public boolean isTypeRegistered(AnalysisType analysisType, ConfigurationMemberAccessibility accessibility) {
+            return isElementRegistered(previousLayerRegisteredTypes, analysisType, analysisType.getId(), accessibility);
         }
 
-        public boolean isMethodRegistered(AnalysisMethod analysisMethod) {
-            return isElementRegistered(previousLayerRegisteredMethods, analysisMethod.getDeclaringClass(), analysisMethod.getId());
+        public boolean isMethodRegistered(AnalysisMethod analysisMethod, ConfigurationMemberAccessibility accessibility) {
+            return isElementRegistered(previousLayerRegisteredMethods, analysisMethod.getDeclaringClass(), analysisMethod.getId(), accessibility);
         }
 
-        public boolean isFieldRegistered(AnalysisField analysisField) {
-            return isElementRegistered(previousLayerRegisteredFields, analysisField.getDeclaringClass(), analysisField.getId());
+        public boolean isFieldRegistered(AnalysisField analysisField, ConfigurationMemberAccessibility accessibility) {
+            return isElementRegistered(previousLayerRegisteredFields, analysisField.getDeclaringClass(), analysisField.getId(), accessibility);
         }
 
-        private static boolean isElementRegistered(Set<Integer> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId) {
-            if (declaringClass.isInSharedLayer()) {
-                return previousLayerRegisteredElements.contains(elementId);
+        private static boolean isElementRegistered(Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId,
+                        ConfigurationMemberAccessibility accessibility) {
+            /* NONE records that an element is in the current layer's heap, so it cannot be deduplicated across layers. */
+            if (accessibility == NONE) {
+                return false;
+            }
+            if (declaringClass.isInSharedLayer() && previousLayerRegisteredElements.containsKey(elementId)) {
+                ConfigurationMemberAccessibility previousAccessibility = previousLayerRegisteredElements.get(elementId);
+                return previousAccessibility.includes(accessibility);
             }
             return false;
         }
@@ -2146,19 +2166,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             @Override
             public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
                 return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LayeredReflectionDataBuilder>() {
-                    private static <T, K> void persistRegisteredElements(Set<T> registeredElements, Function<T, K> getId, BiConsumer<String, List<K>> writer, String element) {
-                        writer.accept(getElementKeyName(element), registeredElements.stream().map(getId).toList());
+                    private static void persistRegisteredElements(Map<Integer, ConfigurationMemberAccessibility> registeredElements, ImageSingletonWriter writer, String element) {
+                        List<Map.Entry<Integer, ConfigurationMemberAccessibility>> entries = registeredElements.entrySet().stream().toList();
+                        writer.writeIntList(getElementKeyName(element), entries.stream().map(Map.Entry::getKey).toList());
+                        writer.writeIntList(getElementKeyName(element + " accessibility"), entries.stream().map(e -> e.getValue().ordinal()).toList());
                     }
 
                     @Override
                     public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
                         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
                         LayeredReflectionDataSnapshot snapshot = reflectionDataBuilder.getLayeredReflectionDataSnapshot();
-                        persistRegisteredElements(snapshot.registeredTypes, Function.identity(), writer::writeIntList, TYPES);
-                        persistRegisteredElements(snapshot.registeredMethods, Function.identity(), writer::writeIntList, METHODS);
-                        persistRegisteredElements(snapshot.registeredFields, Function.identity(), writer::writeIntList, FIELDS);
-                        persistRegisteredElements(snapshot.registeredTypeNames, Function.identity(), writer::writeStringList, TYPE_NAMES);
-                        persistRegisteredElements(snapshot.unsafeAllocatedTypes, Function.identity(), writer::writeIntList, UNSAFE_ALLOCATED_TYPES);
+                        persistRegisteredElements(snapshot.registeredTypes, writer, TYPES);
+                        persistRegisteredElements(snapshot.registeredMethods, writer, METHODS);
+                        persistRegisteredElements(snapshot.registeredFields, writer, FIELDS);
+                        writer.writeStringList(getElementKeyName(TYPE_NAMES), snapshot.registeredTypeNames.stream().toList());
+                        writer.writeIntList(getElementKeyName(UNSAFE_ALLOCATED_TYPES), snapshot.unsafeAllocatedTypes.stream().toList());
                         return LayeredPersistFlags.CREATE;
                     }
 
@@ -2171,18 +2193,34 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
             static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionDataBuilder> {
 
-                private static <T> Set<T> loadRegisteredElements(String element, Function<String, List<T>> reader) {
+                private static <T> Set<T> loadRegisteredElementsSet(String element, Function<String, List<T>> reader) {
                     Set<T> previousLayerRegisteredElements = new HashSet<>(reader.apply(getElementKeyName(element)));
                     return Collections.unmodifiableSet(previousLayerRegisteredElements);
                 }
 
+                private static Map<Integer, ConfigurationMemberAccessibility> loadRegisteredElementsMap(String element, ImageSingletonLoader loader) {
+                    List<Integer> elementIds = loader.readIntList(getElementKeyName(element));
+                    List<Integer> accessibilityOrdinals = loader.readIntList(getElementKeyName(element + " accessibility"));
+                    VMError.guarantee(elementIds.size() == accessibilityOrdinals.size(),
+                                    "Mismatched layered reflection %s metadata: ids=%s accessibilities=%s", element, elementIds.size(), accessibilityOrdinals.size());
+
+                    Map<Integer, ConfigurationMemberAccessibility> previousLayerRegisteredElements = new HashMap<>();
+                    for (int i = 0; i < elementIds.size(); i++) {
+                        int accessibilityOrdinal = accessibilityOrdinals.get(i);
+                        VMError.guarantee(accessibilityOrdinal >= 0 && accessibilityOrdinal < ConfigurationMemberAccessibility.values().length,
+                                        "Invalid layered reflection %s accessibility ordinal: %s", element, accessibilityOrdinal);
+                        previousLayerRegisteredElements.put(elementIds.get(i), ConfigurationMemberAccessibility.values()[accessibilityOrdinal]);
+                    }
+                    return Collections.unmodifiableMap(previousLayerRegisteredElements);
+                }
+
                 @Override
                 public LayeredReflectionDataBuilder createFromLoader(ImageSingletonLoader loader) {
-                    var previousLayerRegisteredTypes = loadRegisteredElements(TYPES, loader::readIntList);
-                    var previousLayerRegisteredMethods = loadRegisteredElements(METHODS, loader::readIntList);
-                    var previousLayerRegisteredFields = loadRegisteredElements(FIELDS, loader::readIntList);
-                    var previousLayerRegisteredTypeNames = loadRegisteredElements(TYPE_NAMES, loader::readStringList);
-                    var previousLayerUnsafe = loadRegisteredElements(UNSAFE_ALLOCATED_TYPES, loader::readIntList);
+                    var previousLayerRegisteredTypes = loadRegisteredElementsMap(TYPES, loader);
+                    var previousLayerRegisteredMethods = loadRegisteredElementsMap(METHODS, loader);
+                    var previousLayerRegisteredFields = loadRegisteredElementsMap(FIELDS, loader);
+                    var previousLayerRegisteredTypeNames = loadRegisteredElementsSet(TYPE_NAMES, loader::readStringList);
+                    var previousLayerUnsafe = loadRegisteredElementsSet(UNSAFE_ALLOCATED_TYPES, loader::readIntList);
                     return new LayeredReflectionDataBuilder(previousLayerRegisteredTypes, previousLayerRegisteredMethods, previousLayerRegisteredFields, previousLayerRegisteredTypeNames,
                                     previousLayerUnsafe);
                 }
