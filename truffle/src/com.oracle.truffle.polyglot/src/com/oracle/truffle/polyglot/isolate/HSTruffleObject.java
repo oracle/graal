@@ -63,6 +63,7 @@ import java.lang.ref.WeakReference;
 final class HSTruffleObject implements TruffleObject {
 
     private static final Message MESSAGE_READ_BUFFER = Message.resolveExact(InteropLibrary.class, "readBuffer", Object.class, long.class, byte[].class, int.class, int.class);
+    private static final Message MESSAGE_IS_NULL = Message.resolveExact(InteropLibrary.class, "isNull", Object.class);
 
     final GuestContext context;
     private final long hostReferenceId;
@@ -109,6 +110,16 @@ final class HSTruffleObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object send(Message message, Object[] args) throws Exception {
+        /*
+         * A host object that represents null never crosses the boundary as a HOST_OBJECT
+         * reference: BinaryProtocol.writeHostTypedValue diverts every isNull() host value to the
+         * HOST_NULL tag, which materializes as getHostNull() rather than an HSTruffleObject.
+         * Therefore an HSTruffleObject is guaranteed to wrap a non-null host object and can answer
+         * isNull() locally, avoiding a round trip to the host on every guest-side null check.
+         */
+        if (MESSAGE_IS_NULL == message) {
+            return false;
+        }
         byte[] messageReadBufferIntoOutByteArray = null;
         int messageReadBufferIntoOutByteArrayOffset = -1;
         if (message == MESSAGE_READ_BUFFER) {

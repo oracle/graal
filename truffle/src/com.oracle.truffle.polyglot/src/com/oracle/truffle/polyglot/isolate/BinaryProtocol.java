@@ -106,6 +106,7 @@ final class BinaryProtocol {
     private static final byte ZONE_ID = 24;
     private static final byte BIG_INTEGER = 25;
     private static final byte BYTE_ARRAY = 26;
+    private static final byte HOST_NULL = 27;
 
     // Exception kinds
     private static final byte EXCEPTION_KIND_INVALID_REFERENCE = 1;
@@ -138,6 +139,8 @@ final class BinaryProtocol {
                 return arr;
             case GUEST_OBJECT:
                 return context.hostToGuestObjectReferences.getObject(in.readLong());
+            case HOST_NULL:
+                return PolyglotIsolateAccessor.ENGINE.getHostNull();
             case HOST_OBJECT:
                 return HSTruffleObject.createHostObjectReference(in.readLong(), context);
             case EXCEPTION:
@@ -161,6 +164,8 @@ final class BinaryProtocol {
                 return arr;
             case GUEST_OBJECT:
                 return NativeTruffleObject.createReference(in.readLong(), context);
+            case HOST_NULL:
+                return PolyglotIsolateAccessor.ENGINE.getHostNull();
             case HOST_OBJECT:
                 return context.getGuestToHostReceiver().getHostObject(in.readLong());
             case EXCEPTION:
@@ -412,9 +417,18 @@ final class BinaryProtocol {
         } else if (value instanceof Throwable) {
             writeGuestException(out, (Throwable) value, hostToGuestObjectReceiver);
         } else if (value instanceof TruffleObject) {
-            out.writeByte(GUEST_OBJECT);
-            long objId = hostToGuestObjectReceiver.registerGuestObject((TruffleObject) value);
-            out.writeLong(objId);
+            /*
+             * The host null materialized on the guest side to getHostNull is a well-known
+             * singleton. When it is sent back to the host we translate it to HOST_NULL so the host
+             * rematerializes its own host null instead of registering a fresh guest reference.
+             */
+            if (value == PolyglotIsolateAccessor.ENGINE.getHostNull()) {
+                out.writeByte(HOST_NULL);
+            } else {
+                out.writeByte(GUEST_OBJECT);
+                long objId = hostToGuestObjectReceiver.registerGuestObject((TruffleObject) value);
+                out.writeLong(objId);
+            }
         } else {
             writeSimpleTypedValue(out, value);
         }
@@ -434,8 +448,19 @@ final class BinaryProtocol {
         } else if (value instanceof Throwable) {
             writeHostException(out, (Throwable) value, guestToHostObjectReceiver);
         } else if (value instanceof TruffleObject) {
-            out.writeByte(HOST_OBJECT);
-            out.writeLong(guestToHostObjectReceiver.registerHostObject((TruffleObject) value));
+            /*
+             * Any TruffleObject that represents null is canonicalized to HOST_NULL rather than
+             * exported as a HOST_OBJECT reference, so we must test isNull() here, not identity
+             * against getHostNull(). The value need not be the HostObject.NULL singleton: a
+             * host-side value may be an OtherContextGuestObject wrapping another context's guest
+             * null, which reports isNull() but is not == getHostNull().
+             */
+            if (InteropLibrary.getUncached().isNull(value)) {
+                out.writeByte(HOST_NULL);
+            } else {
+                out.writeByte(HOST_OBJECT);
+                out.writeLong(guestToHostObjectReceiver.registerHostObject((TruffleObject) value));
+            }
         } else if (value instanceof Class<?> && TruffleLanguage.class.isAssignableFrom((Class<?>) value)) {
             out.writeByte(TRUFFLE_LANGUAGE);
         } else {
