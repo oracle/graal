@@ -2156,6 +2156,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w', encoding='utf-8') as f:
+            # Use '\n' and let text mode translate it to the platform-native line ending.
             f.writelines(l + '\n' for l in build_args)
 
     def native_image_needs_build(self, out_file):

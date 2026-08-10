@@ -43,7 +43,7 @@ import os
 import shutil
 import sys
 from abc import ABCMeta, abstractmethod
-from os import listdir, linesep
+from os import listdir
 from os.path import join, exists, isfile, basename, relpath, isdir, isabs, dirname, normpath
 from typing import Tuple
 
@@ -538,7 +538,8 @@ class NativeImageBuildTask(mx.BuildTask):
         mx.run(run_command, nonZeroIsFatal=True, out=out, err=err)
 
         with open(self._get_command_file(), 'w', encoding='utf-8') as f:
-            f.writelines(l + linesep for l in native_image_command)
+            # Use '\n' and let text mode translate it to the platform-native line ending.
+            f.writelines(l + '\n' for l in native_image_command)
 
 
     def _get_command_file(self):
