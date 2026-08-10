@@ -297,7 +297,7 @@ final class PolyglotEngineOptions {
                     "This is a hard limit for the size of the isolate heap including both guest applications retained data and data allocated by the runtime.", usageSyntax = "[32MB, inf)<B>|<KB>|<MB>|<GB>", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Long> MaxIsolateMemory = new OptionKey<>(-1L, createSizeInBytesType("engine.MaxIsolateMemory", 32 * SizeUnit.MEGABYTE.factor));
 
-    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "Defines how an isolated heap is implemented for isolated engines. " +
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Defines how an isolated heap is implemented for isolated engines. " +
                     "'internal' runs the isolate within the current VM, using native-image isolation, 'external' runs the isolate in a separate external process.", usageSyntax = "internal|external", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<IsolatePolicy> IsolateMode = new OptionKey<>(IsolatePolicy.INTERNAL);
 
