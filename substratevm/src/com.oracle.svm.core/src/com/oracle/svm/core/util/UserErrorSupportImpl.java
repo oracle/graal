@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -39,8 +38,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Builder implementation that forwards guest-reported user errors to {@link UserError}. Fully
- * isolated builds install this support in the guest singleton registry as a host proxy.
+ * Builder implementation that forwards guest-reported user errors to {@link UserError}. The
+ * support is installed in the guest singleton registry as a host proxy.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -48,13 +47,10 @@ public final class UserErrorSupportImpl implements UserErrorSupport {
 
     public static void init() {
         UserErrorSupportImpl support = new UserErrorSupportImpl();
-        ImageSingletons.add(UserErrorSupport.class, support);
-        if (GuestAccess.get().isFullyIsolated()) {
-            GuestAccess access = GuestAccess.get();
-            ResolvedJavaType key = access.lookupType(UserErrorSupport.class);
-            JavaConstant hostProxy = access.createHostProxy(support, key);
-            GuestImageSingletonSupport.add(key, hostProxy);
-        }
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(UserErrorSupport.class);
+        JavaConstant hostProxy = access.createHostProxy(support, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
     }
 
     private UserErrorSupportImpl() {

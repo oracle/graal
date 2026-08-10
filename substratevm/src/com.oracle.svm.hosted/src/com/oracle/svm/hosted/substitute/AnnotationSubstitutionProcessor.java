@@ -1324,10 +1324,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                                     guestAccess.asGuestString(className), JavaConstant.FALSE, substitutionsClassLoaderConstant);
                     holder = guestAccess.getProviders().getConstantReflection().asJavaType(targetClass);
                     break;
-                } catch (InvocationException e) {
-                    JavaConstant exceptionObject = e.getExceptionObject();
-                    if (exceptionObject == null || !guestAccess.elements.java_lang_ClassNotFoundException.isInstance(exceptionObject)) {
-                        throw e;
+                } catch (Throwable t) {
+                    if (!isClassNotFoundException(t)) {
+                        throw t;
                     }
                     if (substitutionsClassLoaderConstant.equals(substitutionsClassLoaders.getLast())) {
                         throw UserError.abort("Substitution target for %s is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.",
@@ -1348,6 +1347,18 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
 
         return holder;
+    }
+
+    private boolean isClassNotFoundException(Throwable throwable) {
+        if (throwable instanceof InvocationException invocationException) {
+            JavaConstant exceptionObject = invocationException.getExceptionObject();
+            return exceptionObject != null && guestAccess.elements.java_lang_ClassNotFoundException.isInstance(exceptionObject);
+        }
+        /*
+         * GuestAccess can unwrap a guest exception in non-isolated host mode, so also recognize the
+         * resulting direct ClassNotFoundException.
+         */
+        return !guestAccess.isFullyIsolated() && throwable instanceof ClassNotFoundException;
     }
 
     protected ResolvedJavaType findInnerClass(ResolvedJavaType outerClass, String innerClassSimpleName) {
