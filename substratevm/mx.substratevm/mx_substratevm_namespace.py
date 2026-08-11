@@ -35,6 +35,8 @@ suite = mx.suite("substratevm")
 # namespace are not global symbols anymore.
 qualify_with_namespace = {"swap", "CardTableBarrierSet", "G1BarrierSet", "tty", "badHeapWordVal", "badAddressVal"}
 
+include_statement = re.compile(r"^\s*#\s*include[ \t]+(.+?)\s*$")
+
 # Some files must not have the namespace added, as they are included within a class definition. Normally includes
 # need to be outside the namespace, but the includes of these files need to be inside the namespace.
 ignore_files = {"copy_x86.hpp", "copy_aarch64.hpp", "copy_windows_x86.hpp"}
@@ -150,7 +152,7 @@ def write_str(file, s, namespaceName):
     while match:
         qualifiedName = ""
         i = 3
-        while is_valid_identifier_character(s[match.start() + i]):
+        while match.start() + i < len(s) and is_valid_identifier_character(s[match.start() + i]):
             qualifiedName += s[match.start() + i]
             i += 1
 
@@ -224,7 +226,7 @@ def calc_insert_indices(lines):
                 # The number of current ifs does not change as there exists an #else/#elsif part.
             elif is_include_statement(line):
                 # The namespace is open but another include occurs. Close the namespace if necessary.
-                if line[len("#include "):].strip() not in ignore_includes:
+                if include_target(line) not in ignore_includes:
                     assert namespace_n_open_ifs <= cur_n_open_ifs
 
                     idx_namespace_end = i
@@ -316,7 +318,12 @@ def is_preprocessor_directive_name(line, name):
 
 
 def is_include_statement(line):
-    return is_preprocessor_directive_name(line, "include ")
+    return include_target(line) is not None
+
+
+def include_target(line):
+    match = include_statement.match(line)
+    return match.group(1) if match else None
 
 
 def is_if_statement(line):
