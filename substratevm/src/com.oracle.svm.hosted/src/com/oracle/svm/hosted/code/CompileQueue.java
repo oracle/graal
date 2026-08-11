@@ -1296,6 +1296,14 @@ public class CompileQueue {
         return SubstrateOptions.isMaximumOptimizationLevel();
     }
 
+    protected boolean reduceInlinerExploration() {
+        /*
+         * Reduce inliner exploration for O2, which is the default optimization level, to keep build
+         * time and image size low.
+         */
+        return SubstrateOptions.optimizationLevel() == SubstrateOptions.OptimizationLevel.O2;
+    }
+
     protected OptionValues getCustomizedOptions(@SuppressWarnings("unused") HostedMethod method, DebugContext debug) {
         OptionValues customizedOptions = debug.getOptions();
         if (omitPriorityInliningTuning()) {
@@ -1307,6 +1315,10 @@ public class CompileQueue {
          * automatic tuning over representative benchmark suites and can be overridden explicitly.
          */
         EconomicMap<OptionKey<?>, Object> extraOptions = OptionValues.newOptionMap();
+        if (!PriorityInliningPhase.Options.TuneInlinerExploration.hasBeenSet(customizedOptions) && reduceInlinerExploration()) {
+            extraOptions.put(PriorityInliningPhase.Options.TuneInlinerExploration, -1.0);
+        }
+
         if (!PriorityInliningPhase.Options.UsePriorityInliningPEA.hasBeenSet(customizedOptions)) {
             extraOptions.put(PriorityInliningPhase.Options.UsePriorityInliningPEA, false);
         }
