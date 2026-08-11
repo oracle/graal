@@ -51,4 +51,11 @@ import org.graalvm.nativeimage.Platforms;
 @Target({ElementType.TYPE})
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface AutomaticallyRegisteredFeature {
+
+    /**
+     * Controls whether {@code AutomaticallyRegisteredFeatureProcessor} generates the service
+     * registration. If {@code false}, the processor generating the feature must emit both the
+     * registration class and its provider metadata.
+     */
+    boolean generateRegistration() default true;
 }

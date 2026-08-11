@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,7 +99,7 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
                             import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
                             import com.oracle.svm.shared.util.ReflectionUtil;
 
-                            @AutomaticallyRegisteredFeature
+                            @AutomaticallyRegisteredFeature(generateRegistration = false)
                             public class %4$s implements com.oracle.svm.core.feature.InternalFeature {
                                 @Override
                                 public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -123,6 +123,11 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
                             computeParams(annotatedExecutable));
             out.print(classContents);
         }
+        /*
+         * ECJ does not expose generated sources to other processors until a later round; the opt-out
+         * prevents javac from generating this registration again.
+         */
+        AutomaticallyRegisteredFeatureSupport.generateRegistration(this, packageName, featureClassName, annotatedExecutable);
     }
 
     private String computeFileName(ExecutableElement e) {
