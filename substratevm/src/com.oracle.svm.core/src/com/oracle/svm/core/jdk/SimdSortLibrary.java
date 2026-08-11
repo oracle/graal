@@ -31,11 +31,13 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.shared.Uninterruptible;
+
 /**
  * Native entry points for the JDK's statically linked {@code libsimdsort} library.
  * <p>
- * The sort entry points explicitly register {@code libm}; {@link CLibrary#dependsOn} orders an
- * already registered dependency but does not register a dynamic library by itself.
+ * The marker method below registers {@code libm}; {@link CLibrary#dependsOn} orders an already
+ * registered dependency but does not register a dynamic library by itself.
  */
 @Platforms(Platform.LINUX_AMD64.class)
 @CLibrary(value = "simdsort", requireStatic = true, dependsOn = "m")
@@ -44,15 +46,18 @@ final class SimdSortLibrary {
     private SimdSortLibrary() {
     }
 
-    @CFunction(value = "avx2_sort", transition = Transition.NO_TRANSITION)
     @CLibrary("m")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void requireLibM() {
+    }
+
+    @CFunction(value = "avx2_sort", transition = Transition.NO_TRANSITION)
     static native void avx2Sort(Pointer array, int elementType, int fromIndex, int toIndex);
 
     @CFunction(value = "avx2_partition", transition = Transition.NO_TRANSITION)
     static native void avx2Partition(Pointer array, int elementType, int fromIndex, int toIndex, Pointer pivotIndices, int pivotIndex1, int pivotIndex2);
 
     @CFunction(value = "avx512_sort", transition = Transition.NO_TRANSITION)
-    @CLibrary("m")
     static native void avx512Sort(Pointer array, int elementType, int fromIndex, int toIndex);
 
     @CFunction(value = "avx512_partition", transition = Transition.NO_TRANSITION)

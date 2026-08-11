@@ -220,6 +220,7 @@ public final class SimdSortSupport {
 
     @Uninterruptible(reason = "The array must not move during the native call.")
     private static void avx2SortImpl(Object array, int elementType, int fromIndex, int toIndex) {
+        SimdSortLibrary.requireLibM();
         SimdSortLibrary.avx2Sort(addressOfArray(array), elementType, fromIndex, toIndex);
     }
 
@@ -230,6 +231,7 @@ public final class SimdSortSupport {
 
     @Uninterruptible(reason = "The array must not move during the native call.")
     private static void avx512SortImpl(Object array, int elementType, int fromIndex, int toIndex) {
+        SimdSortLibrary.requireLibM();
         SimdSortLibrary.avx512Sort(addressOfArray(array), elementType, fromIndex, toIndex);
     }
 
