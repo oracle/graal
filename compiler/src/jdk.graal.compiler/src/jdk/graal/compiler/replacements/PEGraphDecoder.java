@@ -182,7 +182,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public static final OptionKey<Integer> InliningDepthError = new OptionKey<>(1000);
 
         @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)//
-        public static final OptionKey<Integer> MaximumLoopExplosionCount = new OptionKey<>(10000);
+        public static final OptionKey<Integer> MaximumLoopExplosionCount = new OptionKey<>(30000);
 
         @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)//
         public static final OptionKey<Boolean> FailedLoopExplosionIsFatal = new OptionKey<>(false);
