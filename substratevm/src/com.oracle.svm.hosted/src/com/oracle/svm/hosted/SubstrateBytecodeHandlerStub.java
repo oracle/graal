@@ -61,6 +61,8 @@ import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
@@ -79,8 +81,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * To minimize the overhead in the prologue and epilogue of the generated code, we inject the
  * {@link SkipStackOverflowCheck} annotation to eliminate the stack overflow check, and the
- * {@link SkipEpilogueSafepointCheck} annotation to eliminate the safepoint check when
- * {@link BytecodeInterpreterHandler#safepoint()} is false.
+ * {@link SkipEpilogueSafepointCheck} annotation to eliminate the return-style safepoint check.
+ * Handlers for which {@link BytecodeInterpreterHandler#safepoint()} is true instead use an explicit
+ * safepoint before returning or tail dispatching so that execution resumes in the stub after the
+ * slow path.
  *
  * We also inject the {@link NeverStrengthenGraphWithConstants} annotation to prevent the compiler
  * from replacing {@link jdk.graal.compiler.nodes.ParameterNode} with constants derived from static
@@ -126,8 +130,15 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
             return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
         }
-        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
+        StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod,
+                        () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
                         SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
+        if (needSafepoint) {
+            for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
+                graph.addBeforeFixed(returnNode, graph.add(new SafepointNode()));
+            }
+        }
+        return graph;
     }
 
     /**
@@ -344,16 +355,6 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
 
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
                     newAnnotationValue(SkipStackOverflowCheck.class),
-                    newAnnotationValue(NeverStrengthenGraphWithConstants.class),
-                    newAnnotationValue(NeverInline.class,
-                                    "value", "Keep bytecode handler stubs as standalone compilations to ease register pressure in caller and enable tail call threading"),
-                    newAnnotationValue(ExplicitCallingConvention.class,
-                                    "value", SubstrateCallingConventionKind.Custom),
-                    newAnnotationValue(Deoptimizer.DeoptStub.class,
-                                    "stubType", NoDeoptStub));
-
-    private static final List<AnnotationValue> INJECTED_ANNOTATIONS_NO_SAFEPOINT = List.of(
-                    newAnnotationValue(SkipStackOverflowCheck.class),
                     newAnnotationValue(SkipEpilogueSafepointCheck.class),
                     newAnnotationValue(NeverStrengthenGraphWithConstants.class),
                     newAnnotationValue(NeverInline.class,
@@ -365,7 +366,7 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
 
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
-        return needSafepoint ? INJECTED_ANNOTATIONS : INJECTED_ANNOTATIONS_NO_SAFEPOINT;
+        return INJECTED_ANNOTATIONS;
     }
 
     @Override
