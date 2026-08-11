@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;

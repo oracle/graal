@@ -35,7 +35,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 
 /** Visits surviving objects before compaction to update their references. */
@@ -50,7 +50,7 @@ public final class ObjectFixupVisitor implements UninterruptibleObjectVisitor {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     public void visitObject(Object obj) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
             // update Target_java_lang_ref_Reference.referent
             Reference<?> dr = (Reference<?>) obj;

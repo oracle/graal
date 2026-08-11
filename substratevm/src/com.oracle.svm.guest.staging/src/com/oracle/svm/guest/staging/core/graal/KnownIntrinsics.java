@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.snippets;
+package com.oracle.svm.guest.staging.core.graal;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.core.hub.DynamicHub;
 
 /**
- * Functions that are implemented as compiler intrinsics. For implementation see
- * SubstrateGraphBuilderPlugins.registerKnownIntrinsicsPlugins().
+ * Functions that are implemented as compiler intrinsics. For hosted registration, see
+ * {@code SubstrateGraphBuilderPlugins}.
  */
 public class KnownIntrinsics {
 
@@ -42,15 +42,10 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
-     * Returns the value of the code base, which is the address which
-     * {@linkplain com.oracle.svm.core.meta.MethodOffset method offsets} are relative to.
+     * Returns the value of the code base, which is the address which {@code MethodOffset} method
+     * offsets are relative to.
      */
     public static native Pointer codeBase();
-
-    /**
-     * Returns the hub of the given object.
-     */
-    public static native DynamicHub readHub(Object obj);
 
     /**
      * Narrow down the range of values to exclude 0 as the possible pointer value.
@@ -95,6 +90,20 @@ public class KnownIntrinsics {
      * push on the stack (such as on AArch64).
      */
     public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
+
+    /** Intrinsified as {@code PauseNode} by {@code SubstrateGraphBuilderPlugins}. */
+    public static native void pause();
+
+    /**
+     * Intrinsified as {@code WriteCurrentVMThreadNode} by
+     * {@code SubstrateGraphBuilderPlugins}.
+     */
+    public static native void writeCurrentVMThread(IsolateThread thread);
+
+    /**
+     * Intrinsified as {@code CodeSynchronizationNode} by {@code SubstrateGraphBuilderPlugins}.
+     */
+    public static native void synchronizeCode();
 
     /**
      * For deoptimization testing only. Performs a deoptimization in a regular method, but is a

@@ -53,7 +53,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

@@ -41,6 +41,7 @@ import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
 import com.oracle.svm.core.jfr.events.SafepointEndEvent;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -57,7 +58,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.options.Option;
 
 /**
@@ -345,7 +345,7 @@ public final class Safepoint {
                 VMThreads.singleton().nativeSleep(1);
             }
         } else {
-            PauseNode.pause();
+            KnownIntrinsics.pause();
         }
     }
 

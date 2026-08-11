@@ -49,7 +49,7 @@ public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLo
 
     @Input protected ValueNode value;
 
-    protected WriteCurrentVMThreadNode(ValueNode value) {
+    public WriteCurrentVMThreadNode(ValueNode value) {
         super(TYPE, StampFactory.forVoid());
         this.value = value;
     }

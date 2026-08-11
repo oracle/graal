@@ -39,7 +39,7 @@ import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.NumUtil;

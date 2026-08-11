@@ -45,7 +45,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.vm.ci.code.stack.InspectedFrame;

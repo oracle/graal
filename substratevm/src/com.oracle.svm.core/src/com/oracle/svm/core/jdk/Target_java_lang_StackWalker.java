@@ -71,7 +71,7 @@ import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport.InterpretedFrameData;
 import com.oracle.svm.core.interpreter.InterpreterSupport.StackWalkState;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;

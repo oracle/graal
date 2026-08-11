@@ -53,7 +53,7 @@ import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1HeapOptions;

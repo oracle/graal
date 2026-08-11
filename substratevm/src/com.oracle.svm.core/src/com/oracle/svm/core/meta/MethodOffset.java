@@ -31,7 +31,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;

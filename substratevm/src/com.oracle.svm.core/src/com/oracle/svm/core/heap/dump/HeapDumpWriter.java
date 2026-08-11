@@ -92,7 +92,8 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFile;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -834,7 +835,7 @@ public class HeapDumpWriter {
     }
 
     private void writeObject(Object obj) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
             if (LayoutEncoding.isPrimitiveArray(layoutEncoding)) {
@@ -1412,7 +1413,7 @@ public class HeapDumpWriter {
         }
 
         private UnsignedWord getObjectSize(Object obj) {
-            int layoutEncoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
+            int layoutEncoding = DynamicHubIntrinsics.readHub(obj).getLayoutEncoding();
             if (LayoutEncoding.isArray(layoutEncoding)) {
                 int elementSize;
                 if (LayoutEncoding.isPrimitiveArray(layoutEncoding)) {

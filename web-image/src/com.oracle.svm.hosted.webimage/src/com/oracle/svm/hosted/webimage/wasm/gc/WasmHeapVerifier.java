@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 
 /**
  * Verifies correctness of objects in the heap (see {@link #verifyObject}).
@@ -120,7 +120,7 @@ public class WasmHeapVerifier {
             return false;
         }
 
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         if (!Heap.getHeap().isInImageHeap(hub)) {
             Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(Word.objectToUntrackedPointer(hub)).newline();
             return false;
@@ -143,7 +143,7 @@ public class WasmHeapVerifier {
         InteriorObjRefWalker.walkObject(obj, REFERENCE_VERIFIER);
 
         boolean success = REFERENCE_VERIFIER.result;
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         if (hub.isReferenceInstanceClass()) {
             // The referent field of java.lang.Reference is excluded from the reference map, so we
             // need to verify it separately.

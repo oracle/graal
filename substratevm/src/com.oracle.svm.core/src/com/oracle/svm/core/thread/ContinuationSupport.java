@@ -43,7 +43,7 @@ import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;

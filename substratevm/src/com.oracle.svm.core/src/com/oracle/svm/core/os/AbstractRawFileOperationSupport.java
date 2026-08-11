@@ -39,7 +39,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -66,7 +66,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     @Override
     @Uninterruptible(reason = "Array must not move.")
     public boolean write(RawFileDescriptor fd, byte[] data) {
-        DynamicHub hub = KnownIntrinsics.readHub(data);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
         Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
         return write(fd, dataPtr, Word.unsigned(data.length));

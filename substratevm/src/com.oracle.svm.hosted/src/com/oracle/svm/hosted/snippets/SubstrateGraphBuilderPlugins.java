@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -73,6 +74,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.SubstrateSharedGraphBuilderPlugins;
 import com.oracle.svm.core.graal.stackvalue.LateStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
@@ -80,13 +82,17 @@ import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SimdSortSupport;
 import com.oracle.svm.core.jdk.SimdSortSupport.Variant;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers;
+import com.oracle.svm.guest.staging.core.graal.MemoryBarriers.BarrierKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
@@ -130,12 +136,15 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -210,6 +219,7 @@ public class SubstrateGraphBuilderPlugins {
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins);
+        registerMemoryBarriersPlugins(plugins);
         registerUninterruptibleUtilsPlugins(plugins);
         registerStackValuePlugins(plugins);
         registerArrayPlugins(plugins);
@@ -950,7 +960,8 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("readHub", Object.class) {
+        Registration hubRegistration = new Registration(plugins, DynamicHubIntrinsics.class);
+        hubRegistration.register(new RequiredInvocationPlugin("readHub", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode nonNullObject = b.nullCheckedValue(object);
@@ -1032,8 +1043,109 @@ public class SubstrateGraphBuilderPlugins {
             }
         });
         r.register(StandardGraphBuilderPlugins.newArrayPlugin("unvalidatedNewArray"));
+        r.register(new RequiredInvocationPlugin("pause") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new PauseNode());
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("writeCurrentVMThread", IsolateThread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
+                b.add(new WriteCurrentVMThreadNode(thread));
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("synchronizeCode") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new CodeSynchronizationNode());
+                return true;
+            }
+        });
 
         registerCastExact(r);
+    }
+
+    /** Registers the guest-facing memory-barrier intrinsics. */
+    private static void registerMemoryBarriersPlugins(InvocationPlugins plugins) {
+        assert verifyEnumMapping(FenceKind.class, GuestAccess.get().lookupType(BarrierKind.class));
+        Registration r = new Registration(plugins, MemoryBarriers.class);
+        r.register(new RequiredInvocationPlugin("memoryBarrier", BarrierKind.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode kindNode) {
+                if (!kindNode.isConstant()) {
+                    throw b.bailout("parameter kind is not a compile time constant for call to " + targetMethod.format("%H.%n(%p)") + " in " +
+                                    b.getMethod().asStackTraceElement(b.bci()));
+                }
+                JavaConstant kindConstant = kindNode.asJavaConstant();
+                if (kindConstant.isNull()) {
+                    throw b.bailout("parameter kind is null for call to " + targetMethod.format("%H.%n(%p)") + " in " +
+                                    b.getMethod().asStackTraceElement(b.bci()));
+                }
+                FenceKind fenceKind;
+                try {
+                    fenceKind = asBuilderEnum(b, kindConstant, FenceKind.class);
+                } catch (IllegalArgumentException ex) {
+                    throw b.bailout("parameter kind is invalid for call to " + targetMethod.format("%H.%n(%p)") + " in " +
+                                    b.getMethod().asStackTraceElement(b.bci()) + ": " + ex.getMessage());
+                }
+                b.add(new MembarNode(fenceKind));
+                return true;
+            }
+        });
+    }
+
+    /**
+     * Converts {@code guestValue} to an instance of {@code builderEnum}. Although the
+     * constant semantically represents a guest enum value, its representation belongs to the
+     * current {@link GraphBuilderContext} provider stack. It must therefore be inspected through
+     * that context rather than through {@link GuestAccess}.
+     */
+    private static <B extends Enum<B>> B asBuilderEnum(GraphBuilderContext b, JavaConstant guestValue, Class<B> builderEnum) {
+        ResolvedJavaType enumType = b.getMetaAccess().lookupJavaType(guestValue);
+        if (!enumType.isEnum()) {
+            throw new IllegalArgumentException("Guest value does not represent enum " + builderEnum);
+        }
+        ResolvedJavaField nameField = JVMCIReflectionUtil.getUniqueDeclaredField(enumType.getSuperclass(), "name");
+        JavaConstant nameConstant = b.getConstantReflection().readFieldValue(nameField, guestValue);
+        if (nameConstant == null) {
+            throw new IllegalArgumentException("Cannot read the name of guest enum " + enumType.toJavaName());
+        }
+        String name = b.getSnippetReflection().asObject(String.class, nameConstant);
+        if (name == null) {
+            throw new IllegalArgumentException("Cannot convert the name of guest enum " + enumType.toJavaName());
+        }
+        return Enum.valueOf(builderEnum, name);
+    }
+
+    /**
+     * Verifies that every constant in {@code guestEnum} has an exact-name counterpart in
+     * {@code builderEnum}. Values and names from {@code guestEnum} are obtained exclusively through
+     * JVMCI.
+     */
+    private static <B extends Enum<B>> boolean verifyEnumMapping(Class<B> builderEnum, ResolvedJavaType guestEnum) {
+        assert guestEnum.isEnum() : "Guest type is not an enum: " + guestEnum.toJavaName();
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaMethod valuesMethod = access.lookupMethod(guestEnum, "values");
+        assert valuesMethod != null : "Cannot find values() for guest enum " + guestEnum.toJavaName();
+        ResolvedJavaMethod nameMethod = access.elements.java_lang_Enum_name;
+        JavaConstant guestValues = access.invokeStatic(valuesMethod);
+        var constantReflection = access.getProviders().getConstantReflection();
+        Integer length = constantReflection.readArrayLength(guestValues);
+        assert length != null : "Cannot read constants of guest enum " + guestEnum.toJavaName();
+        for (int i = 0; i < length; i++) {
+            JavaConstant guestValue = constantReflection.readArrayElement(guestValues, i);
+            assert guestValue != null : "Cannot read constant " + i + " of guest enum " + guestEnum.toJavaName();
+            String name = access.asHostString(access.invoke(nameMethod, guestValue));
+            try {
+                Enum.valueOf(builderEnum, name);
+            } catch (IllegalArgumentException ex) {
+                assert false : "Guest enum " + guestEnum.toJavaName() + " constant " + name + " has no counterpart in builder enum " + builderEnum.getName();
+            }
+        }
+        return true;
     }
 
     public static void registerCastExact(Registration r) {

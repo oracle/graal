@@ -55,7 +55,7 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -294,7 +294,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean mayContainReferences(Object obj) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int hubType = hub.getHubType();
         return switch (hubType) {
             case HubType.INSTANCE -> !DynamicHubSupport.hasEmptyReferenceMap(hub);

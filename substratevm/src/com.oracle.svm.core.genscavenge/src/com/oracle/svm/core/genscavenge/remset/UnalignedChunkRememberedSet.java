@@ -48,7 +48,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
@@ -173,7 +173,7 @@ final class UnalignedChunkRememberedSet {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void dirtyAllReferencesOf(Object obj) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int hubType = hub.getHubType();
 
         Pointer objPtr = Word.objectToUntrackedPointer(obj);

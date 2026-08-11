@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jfr.sampler;
 
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
+import static com.oracle.svm.guest.staging.core.graal.KnownIntrinsics.readCallerStackPointer;
+import static com.oracle.svm.guest.staging.core.graal.KnownIntrinsics.readReturnAddress;
 
 import java.util.Collections;
 import java.util.List;

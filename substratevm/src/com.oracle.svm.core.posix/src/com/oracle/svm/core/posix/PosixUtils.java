@@ -60,7 +60,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.Uninterruptible;
@@ -165,7 +165,7 @@ public class PosixUtils {
 
     @Uninterruptible(reason = "Array must not move.")
     public static boolean writeUninterruptibly(int fd, byte[] data) {
-        DynamicHub hub = KnownIntrinsics.readHub(data);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
         Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
         return writeUninterruptibly(fd, dataPtr, Word.unsigned(data.length));

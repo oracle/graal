@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;

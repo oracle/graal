@@ -36,7 +36,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 

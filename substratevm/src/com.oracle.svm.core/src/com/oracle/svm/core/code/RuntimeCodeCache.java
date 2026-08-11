@@ -28,7 +28,7 @@ import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode.WRITE;
 import static com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+import static com.oracle.svm.guest.staging.core.graal.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;

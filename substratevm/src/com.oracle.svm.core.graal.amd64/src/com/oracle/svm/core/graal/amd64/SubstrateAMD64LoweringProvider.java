@@ -35,8 +35,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -120,15 +120,15 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
 
         @Override
         public boolean hubsEqual(Object nonNullSrc, Object nonNullDest) {
-            DynamicHub fromHub = KnownIntrinsics.readHub(nonNullSrc);
-            DynamicHub toHub = KnownIntrinsics.readHub(nonNullDest);
+            DynamicHub fromHub = DynamicHubIntrinsics.readHub(nonNullSrc);
+            DynamicHub toHub = DynamicHubIntrinsics.readHub(nonNullDest);
             return fromHub == toHub;
         }
 
         @Override
         public boolean layoutHelpersEqual(Object nonNullSrc, Object nonNullDest) {
-            DynamicHub fromHub = KnownIntrinsics.readHub(nonNullSrc);
-            DynamicHub toHub = KnownIntrinsics.readHub(nonNullDest);
+            DynamicHub fromHub = DynamicHubIntrinsics.readHub(nonNullSrc);
+            DynamicHub toHub = DynamicHubIntrinsics.readHub(nonNullDest);
             return fromHub.getLayoutEncoding() == toHub.getLayoutEncoding();
         }
 

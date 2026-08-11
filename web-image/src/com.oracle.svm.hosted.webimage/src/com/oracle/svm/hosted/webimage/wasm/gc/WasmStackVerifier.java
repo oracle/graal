@@ -33,8 +33,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.hosted.webimage.wasm.gc.WasmHeapVerifier.ObjectReferenceVerifier;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackFrameVisitor;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackWalker;

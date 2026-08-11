@@ -37,7 +37,6 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
@@ -321,7 +320,7 @@ public class LayoutEncoding {
             return ol.getObjectHeaderIdentityHashOffset();
         }
 
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (ol.isIdentityHashFieldOptional() && isArrayLike(encoding)) {
             long unalignedSize = getArrayElementOffset(encoding, ArrayLengthNode.arrayLength(obj)).rawValue();
@@ -372,7 +371,7 @@ public class LayoutEncoding {
     @AlwaysInline("Actual inlining decided by callers.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj), withOptionalIdHashField);
@@ -418,12 +417,12 @@ public class LayoutEncoding {
     }
 
     public static boolean isArray(Object obj) {
-        final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
+        final int encoding = DynamicHubIntrinsics.readHub(obj).getLayoutEncoding();
         return isArray(encoding);
     }
 
     public static boolean isArrayLike(Object obj) {
-        final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
+        final int encoding = DynamicHubIntrinsics.readHub(obj).getLayoutEncoding();
         return isArrayLike(encoding);
     }
 }

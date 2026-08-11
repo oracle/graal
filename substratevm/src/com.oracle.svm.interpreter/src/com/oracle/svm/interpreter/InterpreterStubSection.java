@@ -74,7 +74,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;

@@ -29,8 +29,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import jdk.vm.ci.meta.VMConstant;
 
 /**

@@ -38,7 +38,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
@@ -80,7 +80,7 @@ public final class PodReferenceMapDecoder {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean hasEmptyReferenceMap(Object obj) {
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int layoutEncoding = hub.getLayoutEncoding();
 
         UnsignedWord mapOffset = getReferenceMapOffset(obj, layoutEncoding);

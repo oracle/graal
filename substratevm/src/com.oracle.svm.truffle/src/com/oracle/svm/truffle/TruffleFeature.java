@@ -129,7 +129,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.UserError;
