@@ -75,6 +75,22 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+/**
+ * Emits the AMD64 implementation of the vectorized array hash-code intrinsic.
+ * <p>
+ * This implementation is based on the corresponding C2 intrinsic, with the following intentional
+ * differences:
+ * <ul>
+ * <li>The four result vectors are reduced pairwise before their lanes are reduced.</li>
+ * <li>Lane reduction uses shuffles and {@code VPADDD} instead of {@code VPHADDD}.</li>
+ * <li>The scalar tail uses a three-operand immediate {@code IMUL}, and the vector-loop recurrence
+ * multiplier is materialized as an immediate rather than loaded from the coefficient table.</li>
+ * <li>The data temporaries are reused for coefficients, reducing the number of vector temporary
+ * registers from 13 to 9.</li>
+ * <li>The vector loop and powers-of-31 coefficient data are aligned.</li>
+ * <li>XMM/AVX1 and scalar-only x86-64-v1 targets are supported in addition to YMM/AVX2.</li>
+ * </ul>
+ */
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1896-L2005",
           sha1 = "1cc5a10b19e7746105493d8f430f628cc7f89c51")
